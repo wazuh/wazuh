@@ -2,7 +2,7 @@
 * Copyright (C) 2015-2019, Wazuh Inc.
 * December 05, 2018.
 *
-* This program is a free software; you can redistribute it
+* This program is free software; you can redistribute it
 * and/or modify it under the terms of the GNU General Public
 * License (version 2) as published by the FSF - Free Software
 * Foundation.
@@ -99,7 +99,7 @@ static void *RequestDBThread() {
                     if ((rc = OS_SendUnix(cfga_socket, dump_db_msg, 0)) < 0) {
                         /* Error on the socket */
                         if (rc == OS_SOCKTERR) {
-                            merror("socketerr (not available).");
+                            merror("socketerr (not available)");
                             close(cfga_socket);
                         }
                         /* Unable to send. Socket busy */
@@ -167,7 +167,7 @@ int DecodeSCA(Eventinfo *lf, int *socket)
 
     if (json_event = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0), !json_event)
     {
-        merror("Malformed configuration assessment JSON event");
+        merror("Malformed configuration assessment JSON event.");
         return ret_val;
     }
 
@@ -642,7 +642,7 @@ static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char
 
     mdebug1("Saving policy info for policy id '%s', agent id '%s'", id, lf->agent_id);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_policy %s|%s|%s|%s|%s|%s",lf->agent_id,name,file,id,description,references,hash_file);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_policy %s|%s|%s|%s|%s|%s",lf->agent_id,name,file,id,description ? description : "NULL",references ? references : "NULL",hash_file);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -734,7 +734,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *policy_id = NULL;
     cJSON *rules = NULL;
 
-    mdebug1("Checking event JSON fields");
+    mdebug1("Checking event JSON fields.");
 
     if(!CheckEventJSON(event,&scan_id,&id,&name,&title,&description,&rationale,&remediation,&compliance,&check,&reference,&file,&directory,&process,&registry,&result,&status,&reason,&policy_id,&command,&rules)) {
 
@@ -748,7 +748,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
         switch (result_db)
         {
             case -1:
-                merror("Error querying policy monitoring database for agent %s", lf->agent_id);
+                merror("Error querying policy monitoring database for agent '%s'", lf->agent_id);
                 break;
             case 0: // It exists, update
                 result_event = SaveEventcheck(lf, 1, socket,id->valueint,scan_id ? scan_id->valueint : -1, result ? result->valuestring : NULL, status ? status->valuestring : NULL, reason ? reason->valuestring : NULL, event);
@@ -765,7 +765,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
 
                 if (result_event < 0)
                 {
-                    merror("Error updating policy monitoring database for agent %s", lf->agent_id);
+                    merror("Error updating policy monitoring database for agent '%s'", lf->agent_id);
                 }
                 break;
             case 1: // It not exists, insert
@@ -775,7 +775,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                     if(strcmp(wdb_response,result->valuestring)) {
                         FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,status,reason,NULL,command);
                     }
-                } else {
+                } else if (status && status->valuestring) {
                     if(strcmp(wdb_response, status->valuestring)) {
                         FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,status,reason,NULL,command);
                     }
@@ -783,7 +783,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
 
                 if (result_event < 0)
                 {
-                    merror("Error storing policy monitoring information for agent %s", lf->agent_id);
+                    merror("Error storing policy monitoring information for agent '%s'", lf->agent_id);
                 } else {
 
                     mdebug1("Saving compliance fields to database for event id: %d", id->valueint);
@@ -844,6 +844,10 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                                 case 'p':
                                     os_calloc(8, sizeof(char), type);
                                     strncpy(type, "process", 8);
+                                    break;
+                                case 'n':
+                                    os_calloc(8, sizeof(char), type);
+                                    strncpy(type, "numeric", 8);
                                     break;
                                 default:
                                     merror("Invalid type: %c", flag);
@@ -912,7 +916,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     }
 
     if(!policy_id->valuestring) {
-        merror("Malformed JSON: field 'policy_id' must be a string");
+        merror("Malformed JSON: field 'policy_id' must be a string.");
         return;
     }
 
@@ -921,88 +925,82 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     }
 
     if(!pm_scan_id->valueint) {
-        merror("Malformed JSON: field 'scan_id' must be a string");
-        return;
-    }
-
-    if(!description){
-        merror("Malformed JSON: field 'description' not found");
-        return;
-    }
-
-    if(!description->valuestring) {
-        merror("Malformed JSON: field 'description' must be a string");
+        merror("Malformed JSON: field 'scan_id' must be a string.");
         return;
     }
 
     if(!pm_scan_start) {
-        merror("Malformed JSON: field 'start_time' not found");
+        merror("Malformed JSON: field 'start_time' not found.");
         return;
     }
 
     if(!pm_scan_end) {
-        merror("Malformed JSON: field 'end_time' not found");
+        merror("Malformed JSON: field 'end_time' not found.");
         return;
     }
 
     if(!passed){
-        merror("Malformed JSON: field 'passed' not found");
+        merror("Malformed JSON: field 'passed' not found.");
         return;
     }
 
     if(!failed){
-        merror("Malformed JSON: field 'failed' not found");
+        merror("Malformed JSON: field 'failed' not found.");
         return;
     }
 
     if(!invalid){
-        merror("Malformed JSON: field 'invalid' not found");
+        merror("Malformed JSON: field 'invalid' not found.");
         return;
     }
 
     if(!total_checks){
-        merror("Malformed JSON: field 'total_checks' not found");
+        merror("Malformed JSON: field 'total_checks' not found.");
         return;
     }
 
     if(!score){
-        merror("Malformed JSON: field 'score' not found");
+        merror("Malformed JSON: field 'score' not found.");
         return;
     }
 
     if(!hash){
+        merror("Malformed JSON: field 'hash' not found.");
         return;
     }
 
     if(!hash->valuestring) {
-        merror("Malformed JSON: field 'hash' must be a string");
+        merror("Malformed JSON: field 'hash' must be a string.");
         return;
     }
 
     if(!hash_file){
+        merror("Malformed JSON: field 'hash_file' not found.");
         return;
     }
 
     if(!hash_file->valuestring) {
-        merror("Malformed JSON: field 'hash' must be a string");
+        merror("Malformed JSON: field 'hash_file' must be a string.");
         return;
     }
 
     if(!file){
+        merror("Malformed JSON: field 'file' not found.");
         return;
     }
 
     if(!file->valuestring) {
-        merror("Malformed JSON: field 'file' must be a string");
+        merror("Malformed JSON: field 'file' must be a string.");
         return;
     }
 
     if(!policy){
+        merror("Malformed JSON: field 'policy' not found.");
         return;
     }
 
     if(!policy->valuestring) {
-        merror("Malformed JSON: field 'policy' must be a string");
+        merror("Malformed JSON: field 'policy' must be a string.");
         return;
     }
 
@@ -1027,13 +1025,13 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     switch (result_db)
     {
         case -1:
-            merror("Error querying policy monitoring database for agent %s", lf->agent_id);
+            merror("Error querying policy monitoring database for agent '%s'", lf->agent_id);
             break;
         case 0: // It exists, update
             result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,pm_scan_start->valueint,pm_scan_end->valueint,passed->valueint,failed->valueint,invalid->valueint,total_checks->valueint,score->valueint,hash->valuestring,1);
             if (result_event < 0)
             {
-                merror("Error updating scan policy monitoring database for agent %s", lf->agent_id);
+                merror("Error updating scan policy monitoring database for agent '%s'", lf->agent_id);
             } else {
 
                 /* Compare hash with previous hash */
@@ -1053,7 +1051,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,pm_scan_start->valueint,pm_scan_end->valueint,passed->valueint,failed->valueint,invalid->valueint,total_checks->valueint,score->valueint,hash->valuestring,0);
             if (result_event < 0)
             {
-                merror("Error storing scan policy monitoring information for agent %s", lf->agent_id);
+                merror("Error storing scan policy monitoring information for agent '%s'", lf->agent_id);
             } else {
 
                 /* Compare hash with previous hash */
@@ -1086,7 +1084,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     switch (result_db)
     {
         case -1:
-            merror("Error querying policy monitoring database for agent %s", lf->agent_id);
+            merror("Error querying policy monitoring database for agent '%s'", lf->agent_id);
             break;
         case 1: // It not exists, insert
             if(references) {
@@ -1107,7 +1105,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             result_event = SavePolicyInfo(lf,socket,policy->valuestring,file->valuestring,policy_id->valuestring,description_db,references_db,hash_file->valuestring);
             if (result_event < 0)
             {
-                merror("Error storing scan policy monitoring information for agent %s", lf->agent_id);
+                merror("Error storing scan policy monitoring information for agent '%s'", lf->agent_id);
             }
             break;
         default:
@@ -1120,7 +1118,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                             /* Delete checks */
                             DeletePolicyCheck(lf, policy_id->valuestring, socket);
                             PushDumpRequest(lf->agent_id, policy_id->valuestring, 1);
-                            minfo("Policy '%s' outdated in agent '%s'. Latest scan requested.", policy_id->valuestring, lf->agent_id);
+                            minfo("Policy '%s' information for agent '%s' is outdated. Requested latest scan results.", policy_id->valuestring, lf->agent_id);
                             break;
                         default:
                             merror("Unable to purge DB content for policy '%s'", policy_id->valuestring);
@@ -1139,27 +1137,34 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
     switch (result_db)
     {
-        case -1:
-            merror("Error querying policy monitoring database for agent %s", lf->agent_id);
-            break;
         case 0:
 
             /* Integrity check */
             if(strcmp(wdb_response,hash->valuestring)) {
-
-                mdebug2("SHA256 from DB: %s SHA256 from summary: %s",wdb_response,hash->valuestring);
-                mdebug2("Requesting DB dump");
-
+                mdebug1("Scan result integrity failed for policy '%s'. Hash from DB: '%s', hash from summary: '%s'. Requesting DB dump.",
+                        policy_id->valuestring, wdb_response, hash->valuestring);
                 if (!first_scan) {
                     PushDumpRequest(lf->agent_id,policy_id->valuestring,0);
                 } else {
                     PushDumpRequest(lf->agent_id,policy_id->valuestring,1);
                 }
+            }
 
+            break;
+        case 1:
+
+            /* Empty DB */
+            mdebug1("Check results DB empty for policy '%s'. Requesting DB dump.",
+                    policy_id->valuestring);
+            if (!first_scan) {
+                PushDumpRequest(lf->agent_id,policy_id->valuestring,0);
+            } else {
+                PushDumpRequest(lf->agent_id,policy_id->valuestring,1);
             }
 
             break;
         default:
+            merror("Error querying policy monitoring database for agent '%s'", lf->agent_id);
             break;
     }
 
@@ -1174,7 +1179,7 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *policy_id = NULL;
     cJSON *scan_id = NULL;
 
-    mdebug1("Checking dump event JSON fields");
+    mdebug1("Checking dump event JSON fields.");
 
     if(!CheckDumpJSON(event,&elements_sent,&policy_id,&scan_id)) {
 
@@ -1183,7 +1188,7 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
         switch (result_db)
         {
             case -1:
-                merror("Error querying policy monitoring database for agent %s", lf->agent_id);
+                merror("Error querying policy monitoring database for agent '%s'", lf->agent_id);
                 break;
             default:
                 break;
@@ -1207,11 +1212,10 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
             }
 
             if(!result_db_hash) {
-
                 /* Integrity check */
                 if(strcmp(wdb_response, hash_sha256)) {
-                    mdebug2("SHA256 from DB: %s SHA256 from summary: %s", wdb_response, hash_sha256);
-                    mdebug2("Requesting DB dump");
+                    mdebug1("Scan result integrity failed for policy '%s'. Hash from DB: '%s' hash from summary: '%s'. Requesting DB dump.",
+                        policy_id->valuestring, wdb_response, hash_sha256);
                     PushDumpRequest(lf->agent_id,policy_id->valuestring,0);
                 }
             }
@@ -1228,23 +1232,23 @@ static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id,cJ
     cJSON *obj;
 
     if( *elements_sent = cJSON_GetObjectItem(event, "elements_sent"), !*elements_sent) {
-        merror("Malformed JSON: field 'elements_sent' not found");
+        merror("Malformed JSON: field 'elements_sent' not found.");
         return retval;
     }
 
     if( *policy_id = cJSON_GetObjectItem(event, "policy_id"), !*policy_id) {
-        merror("Malformed JSON: field 'policy_id' not found");
+        merror("Malformed JSON: field 'policy_id' not found.");
         return retval;
     }
 
     obj = *policy_id;
     if( !obj->valuestring ) {
-        merror("Malformed JSON: field 'policy_id' must be a string");
+        merror("Malformed JSON: field 'policy_id' must be a string.");
         return retval;
     }
 
     if( *scan_id = cJSON_GetObjectItem(event, "scan_id"), !*scan_id) {
-        merror("Malformed JSON: field 'scan_id' not found");
+        merror("Malformed JSON: field 'scan_id' not found.");
         return retval;
     }
 
@@ -1259,63 +1263,63 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
     cJSON *obj;
 
     if( *scan_id = cJSON_GetObjectItem(event, "id"), !*scan_id) {
-        merror("Malformed JSON: field 'id' not found");
+        merror("Malformed JSON: field 'id' not found.");
         return retval;
     }
 
     obj = *scan_id;
     if( !obj->valueint ) {
-        merror("Malformed JSON: field 'id' must be a number");
+        merror("Malformed JSON: field 'id' must be a number.");
         return retval;
     }
 
     if( *name = cJSON_GetObjectItem(event, "policy"), !*name) {
-        merror("Malformed JSON: field 'profile' not found");
+        merror("Malformed JSON: field 'policy' not found.");
         return retval;
     }
 
     obj = *name;
     if( !obj->valuestring ) {
-        merror("Malformed JSON: field 'policy' must be a string");
+        merror("Malformed JSON: field 'policy' must be a string.");
         return retval;
     }
 
     if( *policy_id = cJSON_GetObjectItem(event, "policy_id"), !*policy_id) {
-        merror("Malformed JSON: field 'policy_id' not found");
+        merror("Malformed JSON: field 'policy_id' not found.");
         return retval;
     }
 
     obj = *policy_id;
     if( !obj->valuestring ) {
-        merror("Malformed JSON: field 'policy_id' must be a string");
+        merror("Malformed JSON: field 'policy_id' must be a string.");
         return retval;
     }
 
     if( *check = cJSON_GetObjectItem(event, "check"), !*check) {
-        merror("Malformed JSON: field 'check' not found");
+        merror("Malformed JSON: field 'check' not found.");
         return retval;
 
     } else {
 
         if( *id = cJSON_GetObjectItem(*check, "id"), !*id) {
-            merror("Malformed JSON: field 'id' not found");
+            merror("Malformed JSON: field 'id' not found.");
             return retval;
         }
 
         obj = *id;
         if( !obj->valueint ) {
-            merror("Malformed JSON: field 'id' must be a string");
+            merror("Malformed JSON: field 'id' must be a string.");
             return retval;
         }
 
         if( *title = cJSON_GetObjectItem(*check, "title"), !*title) {
-            merror("Malformed JSON: field 'title' not found");
+            merror("Malformed JSON: field 'title' not found.");
             return retval;
         }
 
         obj = *title;
         if( !obj->valuestring ) {
-            merror("Malformed JSON: field 'title' must be a string");
+            merror("Malformed JSON: field 'title' must be a string.");
             return retval;
         }
 
@@ -1323,7 +1327,7 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
 
         obj = *description;
         if( obj && !obj->valuestring ) {
-            merror("Malformed JSON: field 'description' must be a string");
+            merror("Malformed JSON: field 'description' must be a string.");
             return retval;
         }
 
@@ -1331,7 +1335,7 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
 
         obj = *rationale;
         if( obj && !obj->valuestring ) {
-            merror("Malformed JSON: field 'rationale' must be a string");
+            merror("Malformed JSON: field 'rationale' must be a string.");
             return retval;
         }
 
@@ -1339,7 +1343,7 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
 
         obj = *remediation;
         if( obj && !obj->valuestring ) {
-            merror("Malformed JSON: field 'remediation' must be a string");
+            merror("Malformed JSON: field 'remediation' must be a string.");
             return retval;
         }
 
@@ -1347,7 +1351,7 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
 
         obj = *reference;
         if( obj && !obj->valuestring ) {
-            merror("Malformed JSON: field 'reference' must be a string");
+            merror("Malformed JSON: field 'reference' must be a string.");
             return retval;
         }
 
@@ -1356,35 +1360,35 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
         *file = cJSON_GetObjectItem(*check, "file");
         obj = *file;
         if( obj && !obj->valuestring ) {
-            merror("Malformed JSON: field 'file' must be a string");
+            merror("Malformed JSON: field 'file' must be a string.");
             return retval;
         }
 
         *directory = cJSON_GetObjectItem(*check, "directory");
         obj = *directory;
         if( obj && !obj->valuestring ) {
-            merror("Malformed JSON: field 'directory' must be a string");
+            merror("Malformed JSON: field 'directory' must be a string.");
             return retval;
         }
 
         *process = cJSON_GetObjectItem(*check, "process");
         obj = *process;
         if( obj && !obj->valuestring ) {
-            merror("Malformed JSON: field 'process' must be a string");
+            merror("Malformed JSON: field 'process' must be a string.");
             return retval;
         }
 
         *registry = cJSON_GetObjectItem(*check, "registry");
         obj = *registry;
         if( obj && !obj->valuestring ) {
-            merror("Malformed JSON: field 'registry' must be a string");
+            merror("Malformed JSON: field 'registry' must be a string.");
             return retval;
         }
 
         *command = cJSON_GetObjectItem(*check, "command");
         obj = *command;
         if( obj && !obj->valuestring ) {
-            merror("Malformed JSON: field 'command' must be a string");
+            merror("Malformed JSON: field 'command' must be a string.");
             return retval;
         }
 
@@ -1392,30 +1396,30 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
 
         if ( *status = cJSON_GetObjectItem(*check, "status"), *status) {
             if ( *reason = cJSON_GetObjectItem(*check, "reason"), !*reason) {
-                merror("Malformed JSON: field 'reason' not found");
+                merror("Malformed JSON: field 'reason' not found.");
                 return retval;
             }
             obj = *status;
             if( obj && !obj->valuestring ) {
-                merror("Malformed JSON: field 'status' must be a string");
+                merror("Malformed JSON: field 'status' must be a string.");
                 return retval;
             }
             obj = *reason;
             if( obj && !obj->valuestring ) {
-                merror("Malformed JSON: field 'reason' must be a string");
+                merror("Malformed JSON: field 'reason' must be a string.");
                 return retval;
             }
         }
 
         if ( *result = cJSON_GetObjectItem(*check, "result"), !*result) {
             if (!*status){
-                merror("Malformed JSON: field 'result' not found");
+                merror("Malformed JSON: field 'result' not found.");
                 return retval;
             }
         } else {
             obj = *result;
             if(!obj->valuestring ) {
-                merror("Malformed JSON: field 'result' must be a string");
+                merror("Malformed JSON: field 'result' must be a string.");
                 return retval;
             }
         }
@@ -1430,7 +1434,7 @@ static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event) {
     assert(event);
     cJSON *policies = NULL;
 
-    mdebug1("Checking policy JSON fields");
+    mdebug1("Checking policy JSON fields.");
 
     if(!CheckPoliciesJSON(event,&policies)) {
 
@@ -1439,13 +1443,13 @@ static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event) {
         char *saveptr;
         os_calloc(OS_MAXSTR, sizeof(char), policies_ids);
 
-        mdebug1("Retrieving policies from database");
+        mdebug1("Retrieving policies from database.");
 
         int result_db = FindPoliciesIds(lf,socket,policies_ids);
         switch (result_db)
         {
             case -1:
-                merror("Error querying policy monitoring database for agent %s", lf->agent_id);
+                merror("Error querying policy monitoring database for agent '%s'", lf->agent_id);
                 break;
 
             default:
@@ -1499,7 +1503,7 @@ static int CheckPoliciesJSON(cJSON *event,cJSON **policies) {
     int retval = 1;
 
     if( *policies = cJSON_GetObjectItem(event, "policies"), !*policies) {
-        merror("Malformed JSON: field 'policies' not found");
+        merror("Malformed JSON: field 'policies' not found.");
         return retval;
     }
 
@@ -1583,7 +1587,7 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
             if(value) {
                 fillData(lf, compliance_key, value);
             } else {
-                mdebug1("Could not fill event compliance data, alert not generated");
+                mdebug1("Could not fill event compliance data, alert not generated.");
             }
 
             if(free_value) {
@@ -1651,7 +1655,11 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%d", scan_id->valueint);
         } else if (scan_id->valuedouble) {
             sprintf(value, "%lf", scan_id->valuedouble);
+        } else {
+            mdebug1("Unexpected 'sca.scan_id' type: %d.", scan_id->type);
+            return;
         }
+
         fillData(lf, "sca.scan_id", value);
     }
 
@@ -1674,6 +1682,9 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%d", pass->valueint);
         } else if (pass->valuedouble >= 0) {
             sprintf(value, "%lf", pass->valuedouble);
+        } else {
+            mdebug1("Unexpected 'sca.passed' type: %d", pass->type);
+            return;
         }
 
         fillData(lf, "sca.passed", value);
@@ -1686,6 +1697,9 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%d", failed->valueint);
         } else if (failed->valuedouble >= 0) {
             sprintf(value, "%lf", failed->valuedouble);
+        } else {
+            mdebug1("Unexpected 'sca.failed' type: %d", failed->type);
+            return;
         }
 
         fillData(lf, "sca.failed", value);
@@ -1698,6 +1712,9 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%d", invalid->valueint);
         } else if (invalid->valuedouble >= 0) {
             sprintf(value, "%lf", invalid->valuedouble);
+        } else {
+            mdebug1("Unexpected 'sca.invalid' type: %d", invalid->type);
+            return;
         }
 
         fillData(lf, "sca.invalid", value);
@@ -1710,6 +1727,9 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%d", total_checks->valueint);
         } else if (total_checks->valuedouble >= 0) {
             sprintf(value, "%lf", total_checks->valuedouble);
+        } else {
+            mdebug1("Unexpected 'sca.total_checks' type: %d", total_checks->type);
+            return;
         }
 
         fillData(lf, "sca.total_checks", value);
@@ -1722,6 +1742,9 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%d", score->valueint);
         } else if (score->valuedouble >= 0) {
             sprintf(value, "%lf", score->valuedouble);
+        } else {
+            mdebug1("Unexpected 'sca.score' type: %d", score->type);
+            return;
         }
 
         fillData(lf, "sca.score", value);
@@ -1845,7 +1868,7 @@ int pm_send_db(char *msg, char *response, int *sock)
     switch (length)
     {
     case OS_SOCKTERR:
-        merror("OS_RecvSecureTCP(): response size is bigger than expected");
+        merror("OS_RecvSecureTCP(): response size is bigger than expected.");
         break;
     case -1:
         merror("at OS_RecvSecureTCP(): %s (%d)", strerror(errno), errno);

@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS fim_entry (
 
 CREATE TABLE IF NOT EXISTS pm_event (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    date_first TEXT,
-    date_last TEXT,
+    date_first INTEGER,
+    date_last INTEGER,
     log TEXT,
     pci_dss TEXT,
     cis TEXT

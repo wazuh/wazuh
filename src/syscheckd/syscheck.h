@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -56,7 +56,7 @@ void start_daemon(void) __attribute__((noreturn));
 /* Read the XML config */
 int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getSyscheckConfig(void);
 cJSON *getSyscheckInternalOptions(void);
 

@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -675,7 +675,7 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
 int TestUnmergeFiles(const char *finalpath, int mode)
 {
     int ret = 1;
-    size_t i = 0, n = 0, files_size = 0, readed_bytes = 0,data_size = 0;
+    size_t i = 0, n = 0, files_size = 0, read_bytes = 0,data_size = 0;
     char *files;
     char buf[2048 + 1];
     FILE *finalfp;
@@ -735,10 +735,10 @@ parse:
             files_size -= sizeof(buf) - 1;
         }
 
-        readed_bytes = 0;
+        read_bytes = 0;
         while ((n = fread(buf, 1, i, finalfp)) > 0) {
             buf[n] = '\0';
-            readed_bytes += n;
+            read_bytes += n;
 
             if (files_size == 0) {
                 break;
@@ -753,7 +753,7 @@ parse:
             }
         }
 
-        if(readed_bytes != data_size){
+        if(read_bytes != data_size){
             ret = 0;
             goto end;
         }
@@ -1025,22 +1025,22 @@ const char *getuname()
 {
     struct utsname uts_buf;
     static char muname[512] = "";
-    os_info *readed_version;
+    os_info *read_version;
 
     if (!muname[0]){
-        if (readed_version = get_unix_version(), readed_version){
+        if (read_version = get_unix_version(), read_version){
             snprintf(muname, 512, "%s |%s |%s |%s |%s [%s|%s: %s] - %s %s",
-                    readed_version->sysname,
-                    readed_version->nodename,
-                    readed_version->release,
-                    readed_version->version,
-                    readed_version->machine,
-                    readed_version->os_name,
-                    readed_version->os_platform,
-                    readed_version->os_version,
+                    read_version->sysname,
+                    read_version->nodename,
+                    read_version->release,
+                    read_version->version,
+                    read_version->machine,
+                    read_version->os_name,
+                    read_version->os_platform,
+                    read_version->os_version,
                     __ossec_name, __ossec_version);
 
-            free_osinfo(readed_version);
+            free_osinfo(read_version);
         }
         else if (uname(&uts_buf) >= 0) {
             snprintf(muname, 512, "%s %s %s %s %s - %s %s",
@@ -1152,11 +1152,8 @@ int checkVista()
     /* Check if the system is Vista (must be called during the startup) */
     isVista = 0;
 
-    OSVERSIONINFOEX osvi;
+    OSVERSIONINFOEX osvi = { .dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX) };
     BOOL bOsVersionInfoEx;
-
-    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
-    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
     if (!(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi))) {
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
@@ -2706,8 +2703,8 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
     int is_ascii = 1;
     int retval = 0;
     char *buffer = NULL;
-    unsigned int lines_readed_ascii = 0;
-    unsigned int chars_readed_utf8 = 0;
+    unsigned int lines_read_ascii = 0;
+    unsigned int chars_read_utf8 = 0;
     fpos_t begin;
     FILE *fp;
 
@@ -2728,11 +2725,11 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
         int i;
         unsigned char *c = (unsigned char *)buffer;
 
-        if (lines_readed_ascii >= max_lines_ascii) {
+        if (lines_read_ascii >= max_lines_ascii) {
             break;
         }
 
-        lines_readed_ascii++;
+        lines_read_ascii++;
 
         for (i = 0; i < OS_MAXSTR; i++) {
             if( c[i] >= 0x80 ) {
@@ -2757,11 +2754,11 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
 
     while (nbytes = fread(b,sizeof(char),4,fp), nbytes) {
 
-        if (chars_readed_utf8 >= max_chars_utf8) {
+        if (chars_read_utf8 >= max_chars_utf8) {
             break;
         }
 
-        chars_readed_utf8++;
+        chars_read_utf8++;
 
         /* Check for UTF-8 BOM */
         if (b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF) {
@@ -2953,4 +2950,20 @@ int64_t w_ftell (FILE *x) {
     } else {
         return z;
     }
+}
+
+/* Prevent children processes from inheriting a file pointer */
+void w_file_cloexec(__attribute__((unused)) FILE * fp) {
+#ifndef WIN32
+    w_descriptor_cloexec(fileno(fp));
+#endif
+}
+
+/* Prevent children processes from inheriting a file descriptor */
+void w_descriptor_cloexec(__attribute__((unused)) int fd){
+#ifndef WIN32
+    if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) {
+        mwarn("Cannot set close-on-exec flag to the descriptor: %s (%d)", strerror(errno), errno);
+    }
+#endif
 }

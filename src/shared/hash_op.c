@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -50,10 +50,10 @@ OSHash *OSHash_Create()
     }
 
     /* Get seed */
-    srandom(123);
-    self->initial_seed = os_getprime(456 % self->rows);
-    self->constant = os_getprime(789 % self->rows);
-    pthread_rwlock_init(&self->mutex, NULL);
+    srandom((unsigned int)time(0));
+    self->initial_seed = os_getprime((unsigned)os_random() % self->rows);
+    self->constant = os_getprime((unsigned)os_random() % self->rows);
+    w_rwlock_init(&self->mutex, NULL);
     return (self);
 }
 
@@ -609,7 +609,7 @@ OSHash *OSHash_Duplicate(const OSHash *hash) {
     self->free_data_function = hash->free_data_function;
 
     os_calloc(self->rows + 1, sizeof(OSHashNode*), self->table);
-    pthread_rwlock_init(&self->mutex, NULL);
+    w_rwlock_init(&self->mutex, NULL);
 
     for (i = 0; i <= self->rows; i++) {
         next_addr = &self->table[i];

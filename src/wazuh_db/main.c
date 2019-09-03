@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * January 03, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -35,7 +35,7 @@ int main(int argc, char ** argv) {
     int status;
 
     pthread_t thread_dealer;
-    pthread_t * worker_pool;
+    pthread_t * worker_pool = NULL;
     pthread_t thread_gc;
     pthread_t thread_up;
 
@@ -176,7 +176,7 @@ int main(int argc, char ** argv) {
 
     if (status = pthread_create(&thread_dealer, NULL, run_dealer, NULL), status != 0) {
         merror("Couldn't create thread: %s", strerror(status));
-        return EXIT_FAILURE;
+        goto failure;
     }
 
     os_malloc(sizeof(pthread_t) * config.worker_pool_size, worker_pool);
@@ -184,18 +184,18 @@ int main(int argc, char ** argv) {
     for (i = 0; i < config.worker_pool_size; i++) {
         if (status = pthread_create(worker_pool + i, NULL, run_worker, NULL), status != 0) {
             merror("Couldn't create thread: %s", strerror(status));
-            return EXIT_FAILURE;
+            goto failure;
         }
     }
 
     if (status = pthread_create(&thread_gc, NULL, run_gc, NULL), status != 0) {
         merror("Couldn't create thread: %s", strerror(status));
-        return EXIT_FAILURE;
+        goto failure;
     }
 
     if (status = pthread_create(&thread_up, NULL, run_up, NULL), status != 0) {
         merror("Couldn't create thread: %s", strerror(status));
-        return EXIT_FAILURE;
+        goto failure;
     }
 
     // Join threads
@@ -221,6 +221,10 @@ int main(int argc, char ** argv) {
     mdebug1("Template file removed again: %s", path_template);
 
     return EXIT_SUCCESS;
+
+failure:
+    free(worker_pool);
+    return EXIT_FAILURE;
 }
 
 void * run_dealer(__attribute__((unused)) void * args) {

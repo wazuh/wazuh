@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 22, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -183,6 +183,9 @@ void wm_setup()
 
     if (CreatePID(ARGV0, getpid()) < 0)
         merror_exit("Couldn't create PID file: (%s)", strerror(errno));
+
+    // Initialize children pool
+    wm_children_pool_init();
 }
 
 // Cleanup function, called on exiting.

@@ -168,7 +168,7 @@ int main(void) {
     // Encrypts a string using MD5 algorithm
     TAP_TEST_MSG(test_md5_string(), "MD5 encryption test.");
 
-    // Encrypts text readed from a temporal file using MD5 algorithm
+    // Encrypts text read from a temporal file using MD5 algorithm
     TAP_TEST_MSG(test_md5_file(), "MD5 file reading encryption test.");
 
     // Attempts to read from a non-existing file.
@@ -177,16 +177,16 @@ int main(void) {
     // Encrypts a string using SHA1 algorithm
     TAP_TEST_MSG(test_sha1_string(), "SHA1 encryption test.");
 
-    // Encrypts text readed from a temporal file using SHA1 algorithm
+    // Encrypts text read from a temporal file using SHA1 algorithm
     TAP_TEST_MSG(test_sha1_file(), "SHA1 file reading encryption test.");
 
     // Attempts to read from a non-existing file.
     TAP_TEST_MSG(test_sha1_file_fail(), "SHA1 non-existing file to read from.");
 
-    // Encrypts text readed from a temporal file using SHA1 and MD5 algorithm
+    // Encrypts text read from a temporal file using SHA1 and MD5 algorithm
     TAP_TEST_MSG(test_md5_sha1_file(), "MD5+SHA1 file reading encryption test.");
 
-    // Encrypts text readed executing a command using SHA1 and MD5 algorithm
+    // Encrypts text read executing a command using SHA1 and MD5 algorithm
     TAP_TEST_MSG(test_md5_sha1_cmd_file(), "MD5+SHA1 reading from file using command encryption test.");
 
     // Attempts to read from a non-existing file.

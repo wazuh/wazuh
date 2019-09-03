@@ -49,3 +49,10 @@
   <regex>^warning: (\S+):|warning: Illegal address syntax from unknown[(\S+)]|warning: hostname \S+ does not resolve to address (\S+): </regex>
   <order>srcip</order>
 </decoder>
+
+<decoder name="postfix-too-many-errors">
+  <parent>postfix</parent>
+  <prematch>^too many errors after</prematch>
+  <regex>^too many errors after (\S+) from (\.+)[(\.+)]$</regex>
+  <order>action,srchost,srcip</order>
+</decoder>

@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 5, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -568,7 +568,8 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
 
 void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
 {
-    pthread_t tlauncher, treader;
+    pthread_t tlauncher = 0;
+    pthread_t treader = 0;
 
     if (osquery->disable) {
         minfo("Module disabled. Exiting...");
@@ -595,6 +596,11 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
 
 #endif
 
+    if( pthread_create(&treader, NULL, (void *)&Read_Log, osquery) != 0){
+        merror("Error while creating Read_Log thread.");
+        return NULL;
+    }
+
     if (osquery->run_daemon) {
         // Handle configuration
 
@@ -603,20 +609,12 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
         }
 
         if( pthread_create(&tlauncher, NULL, (void *)&Execute_Osquery, osquery) != 0){
-            merror("creating thread Execute_Osquery");
+            merror("Error while creating Execute_Osquery thread.");
             return NULL;
         }
+        pthread_join(tlauncher, NULL);
     } else {
         minfo("run_daemon disabled, finding detached osquery process results.");
-    }
-
-    if( pthread_create(&treader, NULL, (void *)&Read_Log, osquery) != 0){
-        merror("creating thread Read_Log");
-        return NULL;
-    }
-
-    if (osquery->run_daemon) {
-        pthread_join(tlauncher, NULL);
     }
 
     pthread_join(treader, NULL);
@@ -646,7 +644,7 @@ void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor)
 }
 
 
-// Get readed data
+// Get read data
 cJSON *wm_osquery_dump(const wm_osquery_monitor_t *osquery_monitor) {
 
     cJSON *root = cJSON_CreateObject();

@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
 import random
 import time
@@ -673,8 +673,8 @@ def upload_group_configuration(group_id, file_content):
         try:
             new_conf_path = "{}/{}/agent.conf".format(common.shared_path, group_id)
             safe_move(tmp_file_path, new_conf_path, permissions=0o660)
-        except Exception as e:
-            raise WazuhException(1017, str(e))
+        except Exception:
+            raise WazuhException(1016)
 
         return 'Agent configuration was updated successfully'
     except Exception as e:

@@ -30,7 +30,7 @@
     <if_matched_sid>3702</if_matched_sid>
     <same_source_ip />
     <description>mailscanner: Multiple attempts of spam.</description>
-    <group>multiple_spam,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,</group>
+    <group>multiple_spam,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="3752" level="0">

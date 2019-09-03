@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * June 06, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -73,9 +73,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SCA_INSERT] = "INSERT INTO sca_check (id,scan_id,title,description,rationale,remediation,file,directory,process,registry,`references`,result,policy_id,command,status,reason) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
     [WDB_STMT_SCA_SCAN_INFO_INSERT] = "INSERT INTO sca_scan_info (start_scan,end_scan,id,policy_id,pass,fail,invalid,total_checks,score,hash) VALUES (?,?,?,?,?,?,?,?,?,?);",
     [WDB_STMT_SCA_SCAN_INFO_UPDATE] = "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ?, invalid = ?, total_checks = ?, score = ?, hash = ? WHERE policy_id = ?;",
-    [WDB_STMT_SCA_GLOBAL_INSERT] = "INSERT INTO sca_global (scan_id,name,description,`references`,pass,failed,score) VALUES(?,?,?,?,?,?,?);",
-    [WDB_STMT_SCA_GLOBAL_UPDATE] = "UPDATE sca_global SET scan_id = ?, name = ?, description = ?, `references` = ?, pass = ?, failed = ?, score = ? WHERE name = ?;",
-    [WDB_STMT_SCA_GLOBAL_FIND] = "SELECT name FROM sca_global WHERE name = ?;",
     [WDB_STMT_SCA_INSERT_COMPLIANCE] = "INSERT INTO sca_check_compliance (id_check,`key`,`value`) VALUES(?,?,?);",
     [WDB_STMT_SCA_INSERT_RULES] = "INSERT INTO sca_check_rules (id_check,`type`, rule) VALUES(?,?,?);",
     [WDB_STMT_SCA_FIND_SCAN] = "SELECT policy_id,hash,id FROM sca_scan_info WHERE policy_id = ?;",
@@ -83,7 +80,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SCA_POLICY_FIND] = "SELECT id FROM sca_policy WHERE id = ?;",
     [WDB_STMT_SCA_POLICY_SHA256] = "SELECT hash_file FROM sca_policy WHERE id = ?;",
     [WDB_STMT_SCA_POLICY_INSERT] = "INSERT INTO sca_policy (name,file,id,description,`references`,hash_file) VALUES(?,?,?,?,?,?);",
-    [WDB_STMT_SCA_CHECK_UPDATE_SCAN_ID] = "UPDATE sca_check SET scan_id = ? WHERE policy_id = ?;",
     [WDB_STMT_SCA_CHECK_GET_ALL_RESULTS] = "SELECT result FROM sca_check WHERE policy_id = ? ORDER BY id;",
     [WDB_STMT_SCA_POLICY_GET_ALL] = "SELECT id FROM sca_policy;",
     [WDB_STMT_SCA_POLICY_DELETE] = "DELETE FROM sca_policy WHERE id = ?;",
@@ -573,7 +569,7 @@ wdb_t * wdb_init(sqlite3 * db, const char * agent_id) {
 
 void wdb_destroy(wdb_t * wdb) {
     os_free(wdb->agent_id);
-    pthread_mutex_destroy(&wdb->mutex);
+    w_mutex_destroy(&wdb->mutex);
     free(wdb);
 }
 

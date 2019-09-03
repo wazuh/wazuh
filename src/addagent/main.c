@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -72,7 +72,10 @@ char shost[512];
 int main(int argc, char **argv)
 {
     char *user_msg;
-    int c = 0, cmdlist = 0, json_output = 0, no_limit = 0;
+    int c = 0, cmdlist = 0, json_output = 0;
+#ifndef CLIENT
+    int no_limit = 0;
+#endif
     int force_antiquity;
     char *end;
     const char *cmdexport = NULL;
@@ -172,7 +175,9 @@ int main(int argc, char **argv)
                 setenv("OSSEC_REMOVE_DUPLICATED", optarg, 1);
                 break;
             case 'L':
+#ifndef CLIENT
                 no_limit = 1;
+#endif
                 break;
             default:
                 helpmsg();
@@ -284,9 +289,9 @@ int main(int argc, char **argv)
             case 'a':
 #ifdef CLIENT
                 printf("\n ** Agent adding only available on a master ** \n\n");
-                break;
-#endif
+#else
                 add_agent(json_output, no_limit);
+#endif
                 break;
             case 'e':
             case 'E':

@@ -2,7 +2,7 @@
  * Copyright (C) 2010 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -80,7 +80,7 @@ void start_daemon()
     struct tm *p;
 
     // A higher nice value means a low priority.
-#if defined _BSD_SOURCE || defined _SVID_SOURCE || defined _XOPEN_SOURCE
+#ifndef WIN32
     mdebug1(FIM_PROCESS_PRIORITY, syscheck.process_priority);
     nice(syscheck.process_priority);
 #endif

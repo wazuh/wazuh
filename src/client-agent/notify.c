@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -133,7 +133,7 @@ void run_notify()
 #if defined (__linux__) || defined (__MACH__)
     char *agent_ip;
     int sock;
-    char label_ip[50];
+    char label_ip[60];
     int i;
     os_calloc(IPSIZE + 1,sizeof(char),agent_ip);
 
@@ -148,7 +148,7 @@ void run_notify()
                     *agent_ip = '\0';
                 }
                 else{
-                    snprintf(label_ip,50,"#\"_agent_ip\":%s", agent_ip);
+                    snprintf(label_ip,sizeof label_ip,"#\"_agent_ip\":%s", agent_ip);
                 }
             }
 
