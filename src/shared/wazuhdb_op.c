@@ -61,8 +61,6 @@ int wdbc_query(const int sock, const char *query, char *response, const int len)
 
     int size = strlen(query);
     int retval = -2;
-    struct timeval timeout = {0, 1000};
-    fd_set fdset;
     ssize_t recv_len;
 
     // Send query to Wazuh DB
@@ -76,14 +74,6 @@ int wdbc_query(const int sock, const char *query, char *response, const int len)
         }
     }
 
-    // Wait for socket
-    FD_ZERO(&fdset);
-    FD_SET(sock, &fdset);
-
-    if (select(sock + 1, &fdset, NULL, NULL, &timeout) < 0) {
-        mterror(ARGV0, "in select (%d) '%s'.", errno, strerror(errno));
-        goto end;
-    }
     retval = -1;
 
     // Receive response from socket
