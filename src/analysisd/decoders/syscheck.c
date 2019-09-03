@@ -43,13 +43,13 @@ void sdb_clean(_sdb *localsdb);
 int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb);
 
 // Decode events in json format
-static int decode_fim_event(Eventinfo *lf);
+static int decode_fim_event(_sdb * sdb, Eventinfo *lf);
 
 // Process fim alert
-static int fim_process_alert(Eventinfo *lf, cJSON * event);
+static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event);
 
 // Generate fim alert
-static int fim_generate_alert(Eventinfo *lf, char *path, int options, char *alert, cJSON * attributes, cJSON * audit, cJSON * extra_data);
+static int fim_generate_alert(_sdb * sdb, Eventinfo *lf, char *path, int options, char *alert, cJSON * attributes, cJSON * audit, cJSON * extra_data);
 
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -202,7 +202,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
 
     if (*lf->log == '{') {
         // If the event comes in JSON format agent version is >= 3.10. Therefore we decode, alert and update DB entry.
-        return (decode_fim_event(lf));
+        return (decode_fim_event(sdb, lf));
     }
 
     f_name = wstr_chr(lf->log, ' ');
@@ -1058,7 +1058,7 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
 }
 
 
-static int decode_fim_event(Eventinfo *lf) {
+static int decode_fim_event(_sdb * sdb, Eventinfo *lf) {
     cJSON *root_json = NULL;
     cJSON *type = NULL;
     cJSON *event = NULL;
@@ -1079,7 +1079,7 @@ static int decode_fim_event(Eventinfo *lf) {
 
     if (type && type->string) {
         if (strcmp(type->string, "alert")) {
-            fim_process_alert(lf, event);
+            fim_process_alert(sdb, lf, event);
             retval = 1;
         }
         if (strcmp(type->string, "control")) {
@@ -1098,7 +1098,7 @@ static int decode_fim_event(Eventinfo *lf) {
 }
 
 
-static int fim_process_alert(Eventinfo *lf, cJSON * event) {
+static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     cJSON *data = NULL;
     cJSON *attributes = NULL;
     cJSON *audit = NULL;
@@ -1128,13 +1128,13 @@ static int fim_process_alert(Eventinfo *lf, cJSON * event) {
         alert = object->valuestring;
     }
 
-    fim_generate_alert(lf, path, options, alert, attributes, audit, extra_data);
+    fim_generate_alert(sdb, lf, path, options, alert, attributes, audit, extra_data);
 
     return 0;
 }
 
 
-static int fim_generate_alert(Eventinfo *lf, char *path, int options, char *alert, cJSON * attributes, cJSON * audit, cJSON * extra_data) {
+static int fim_generate_alert(_sdb * sdb, Eventinfo *lf, char *path, int options, char *alert, cJSON * attributes, cJSON * audit, cJSON * extra_data) {
     cJSON *object = NULL;
     int comment_buf = 0;
     int db_result = 0;
@@ -1390,10 +1390,9 @@ static int fim_generate_alert(Eventinfo *lf, char *path, int options, char *aler
             lf->process_name
     );
 
-    char *wdb_query = NULL;
-    char *response = NULL;
+    char wdb_query[6144];
+    char response[6144];
 
-    os_calloc(OS_SIZE_6144, sizeof(char), wdb_query);
     snprintf(wdb_query, OS_SIZE_6144, "agent %s syscheck save file "
             "%s:%d:%s:%s:%s:%s:%lu:%lu:%s:%s:%s!0:%ld: %s",
             lf->agent_id,
@@ -1414,15 +1413,13 @@ static int fim_generate_alert(Eventinfo *lf, char *path, int options, char *aler
             path
     );
 
-    db_result = wdb_send_query(wdb_query, &response);
+    db_result = wdbc_query_ex(&sdb->socket, wdb_query, response, sizeof(response) - 1);
 
     switch (db_result) {
     case -2:
         merror("FIM decoder: Bad save/update query: '%s'.", wdb_query);
         // Fallthrough
     case -1:
-        os_free(response);
-        os_free(wdb_query);
         return -1;
     }
 
@@ -1432,7 +1429,5 @@ static int fim_generate_alert(Eventinfo *lf, char *path, int options, char *aler
         lf->data = NULL;
     }
 
-    os_free(response);
-    os_free(wdb_query);
     return 0;
 }
