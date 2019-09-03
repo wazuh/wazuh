@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -210,6 +210,7 @@ extern const char *__local_name;
 #include "list_op.h"
 #include "dirtree_op.h"
 #include "hash_op.h"
+#include "rbtree_op.h"
 #include "queue_op.h"
 #include "store_op.h"
 #include "rc.h"

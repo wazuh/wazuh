@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -94,5 +94,9 @@ int w_is_str_in_array(char *const *ar, const char *str);
 
 /* Similar to strtok_r but checks for full delim appearances */
 char *w_strtok_r_str_delim(const char *delim, char **remaining_str);
+
+// Returns the characters number of the string source if, only if, source is included completely in str, 0 in other case.
+int w_compare_str(char * source, char * str);
+const char * find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len);
 
 #endif

@@ -2,7 +2,7 @@
  * Shared functions for Syscheck events decoding
  * Copyright (C) 2015-2019, Wazuh Inc.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -63,6 +63,23 @@
 #define FILE_EXECUTE                            0x00000020
 #define FILE_READ_ATTRIBUTES                    0x00000080
 #define FILE_WRITE_ATTRIBUTES                   0x00000100
+
+/* Checking options */
+#define CHECK_SIZE          0000001
+#define CHECK_PERM          0000002
+#define CHECK_OWNER         0000004
+#define CHECK_GROUP         0000010
+#define CHECK_MTIME         0000020
+#define CHECK_INODE         0000040
+#define CHECK_MD5SUM        0000100
+#define CHECK_SHA1SUM       0000200
+#define CHECK_SHA256SUM     0000400
+#define CHECK_ATTRS         0001000
+#define CHECK_SEECHANGES    0002000
+#define CHECK_FOLLOW        0004000
+#define REALTIME_ACTIVE     0010000
+#define WHODATA_ACTIVE      0020000
+#define SCHEDULED_ACTIVE    0040000
 
 #else
 

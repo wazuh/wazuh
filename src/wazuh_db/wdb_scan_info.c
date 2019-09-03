@@ -3,27 +3,13 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * June 06, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
 #include "wdb.h"
-
-int wdb_scan_info_init (wdb_t *wdb) {
-    int result = 0;
-
-    if (result = wdb_scan_info_insert(wdb, "fim"), result < 0) {
-        merror("DB(%s) Couldn't initialize fim scan info into database", wdb->agent_id);
-    }
-
-    if (result = wdb_scan_info_insert(wdb, "syscollector"), result < 0) {
-        merror("DB(%s) Couldn't initialize syscollector scan info into database", wdb->agent_id);
-    }
-
-    return result;
-}
 
 // Find scan_info entry: returns 1 if found, 0 if not, or -1 on error.
 int wdb_scan_info_find (wdb_t * wdb, const char * module) {
@@ -226,7 +212,7 @@ int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output
 // Update checks control: return 0 on success
 int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check) {
     int result;
-    long value;
+    long value = 0;
     long last = atol(last_check);
 
     if(result = wdb_scan_info_get(wdb, "fim", "fim_second_check", &value), result < 0) {

@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -25,11 +25,27 @@
 
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
 
+#ifdef WIN32
+#define FIM_REGULAR _S_IFREG
+#define FIM_DIRECTORY _S_IFDIR
+#else
+#define FIM_REGULAR S_IFREG
+#define FIM_DIRECTORY S_IFDIR
+#define FIM_LINK S_IFLNK
+#endif
+
 /* Global config */
 extern syscheck_config syscheck;
 extern int sys_debug_level;
 
 /** Function Prototypes **/
+
+/* Win32 does not have lstat */
+#ifdef WIN32
+    #define w_stat(x, y) stat(x, y)
+#else
+    #define w_stat(x, y) lstat(x, y)
+#endif
 
 /* Check the integrity of the files against the saved database */
 void run_check(void);
@@ -40,18 +56,68 @@ void start_daemon(void) __attribute__((noreturn));
 /* Read the XML config */
 int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getSyscheckConfig(void);
 cJSON *getSyscheckInternalOptions(void);
 
-/* Create the database */
-int create_db(void);
+// TODO: Add description to functions
 
-/* Check database for changes */
-int run_dbcheck(void);
+// Create the database
+int fim_scan();
 
-/* Scan directory */
-int read_dir(const char *dir_name, const char *link, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link, char silent);
+//
+int fim_directory (char * path, int dir_position, whodata_evt * w_evt);
+
+//
+int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * w_evt);
+
+//
+int fim_process_event(char * file, int mode, whodata_evt *w_evt);
+
+//
+int fim_configuration_directory (char * path);
+
+//
+int fim_check_depth(char * path, int dir_position);
+
+//
+fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, int mode, int options);
+
+//
+void fim_get_checksum (fim_entry_data * data);
+
+//
+int fim_insert (char *file_name, fim_entry_data * data);
+
+//
+int fim_update (char * file, fim_entry_data * data);
+
+//
+int fim_delete (char * file_name);
+
+//
+void check_deleted_files();
+
+//
+void delete_inode_item(char *inode, char *file_name);
+
+//
+cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int dir_position, int type, int mode, whodata_evt *w_evt);
+
+//
+cJSON * fim_json_alert (char * file_name, fim_entry_data * data, int dir_position, int type, int mode, whodata_evt * w_evt);
+
+//
+cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int dir_position, int type, int mode, whodata_evt * w_evt);
+
+//
+void set_integrity_index(char * file_name, fim_entry_data * data);
+
+//
+void free_entry_data(fim_entry_data * data);
+
+//
+void free_inode_data(fim_inode_data * data);
 
 /* Check the registry for changes */
 void os_winreg_check(void);
@@ -68,6 +134,9 @@ int run_whodata_scan(void);
 /* Process real time queue */
 int realtime_process(void);
 
+/* Delete data form dir_tb hash table */
+void free_syscheck_dirtb_data(char *data);
+
 /* Process the content of the file changes */
 char *seechanges_addfile(const char *filename) __attribute__((nonnull));
 
@@ -77,16 +146,10 @@ void init_whodata_event(whodata_evt *w_evt);
 void free_whodata_event(whodata_evt *w_evt);
 
 /* Get checksum changes */
-int c_read_file(const char *file_name, const char *linked_file, const char *oldsum, char *newsum, whodata_evt * evt) __attribute__((nonnull(1,3,4)));
+int c_read_file(const char *file_name, const char *linked_file, const char *oldsum, char *newsum, int dir_position, whodata_evt *evt) __attribute__((nonnull(1,3,4)));
 
 int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
-
-
-int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
-
-/* Find container directory */
-int find_dir_pos(const char *filename, int full_compare, int check_find, int deep_search) __attribute__((nonnull(1)));
 
 /* Return the version with symbolic link */
 void replace_linked_path(const char *file_name, int dir_position, char *linked_file);
@@ -126,7 +189,6 @@ int set_winsacl(const char *dir, int position);
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
 #endif
 
-extern pthread_mutex_t lastcheck_mutex;
 int fim_initialize();
 
 /* Check for restricts and ignored files */
@@ -153,5 +215,8 @@ int fim_delete_hashes(char *file_name);
 #ifdef WIN32
 #define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })
 #endif
+
+void fim_sync_checksum();
+void fim_sync_checksum_split(const char * start, const char * top);
 
 #endif

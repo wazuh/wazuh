@@ -2,7 +2,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * January 17, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -79,12 +79,12 @@
 #define FIM_CANNOT_ACCESS_FILE              "(6210): Cannot access '%s': it was removed during scan."
 #define FIM_SCANNING_FILE                   "(6211): File '%s'"
 #define FIM_SIMBOLIC_LINK_DISABLE           "(6212): Follow symbolic links disabled."
-#define FIM_CHECK_LINK_REALPATH             "(6213): Error checking realpath() of link '%s'"
+#define FIM_CHECK_LINK_REALPATH             "(6213): Cannot get the real path of the link '%s'"
 #define FIM_HASH_ADD_FAIL                   "(6214): Not enough memory to add inode to db: '%s' (%s) "
 #define FIM_HASH_UPDATE                     "(6215): Updating path '%s' in inode hash table: '%s' (%s) "
 #define FIM_SCANNING_IRREGFILE              "(6216): IRREG File: '%s'"
 #define FIM_MAX_RECURSION_LEVEL             "(6217): Max level of recursion reached. File '%s' out of bounds."
-#define FIM_SYMBOLIC_LINK_DISCARDED         "(6218): Discarding symbolic link '%s' is already added in the configuration.",
+#define FIM_SYMBOLIC_LINK_DISCARDED         "(6218): Discarding symbolic link '%s' is already added in the configuration."
 #define FIM_SYMBOLIC_LINK_ADD               "(6219): Directory added to FIM configuration by link '%s'"
 #define FIM_FILE_MSG_DELETE                 "(6220): Sending delete msg for file: '%s'"
 #define FIM_FREQUENCY_DIRECTORY             "(6221): Directory loaded from syscheck db: '%s'"
@@ -184,5 +184,7 @@
 #define FIM_WHODATA_FOLDER_REMOVED          "(6308): File '%s' was inside the removed directory '%s'. It will be notified."
 #define FIM_WHODATA_IGNORE_FILEEVENT        "(6309): Ignoring remove event for file '%s' because it has already been reported."
 #define FIM_CHECKSUM_MSG                    "(6310): Sending msg to the server: '%s'."
+#define FIM_PATH_EXEED_MAX                  "(6311): The path exeed maximum permited (%d): '%s'."
+#define FIM_PROCESS_PRIORITY                    "(6201): Setting process priority to: '%d'"
 
 #endif

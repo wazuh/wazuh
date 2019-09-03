@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * December 12, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -14,36 +14,38 @@
 
 // Upgrade agent database to last version
 wdb_t * wdb_upgrade(wdb_t *wdb) {
+    const char * UPDATES[] = {
+        schema_upgrade_v1_sql,
+        schema_upgrade_v2_sql,
+        schema_upgrade_v3_sql
+    };
+
     char db_version[OS_SIZE_256 + 2];
     int version = 0;
-    int result = 0;
-    wdb_t *new_wdb = NULL;
 
-    if(result = wdb_metadata_get_entry(wdb, "db_version", db_version), result) {
+    switch (wdb_metadata_get_entry(wdb, "db_version", db_version)) {
+    case -1:
+        return wdb;
+
+    case 0:
+        break;
+
+    default:
         version = atoi(db_version);
+
+        if (version < 0) {
+            merror("DB(%s): Incorrect database version: %d", wdb->agent_id, version);
+            return wdb;
+        }
     }
 
-    //All cases must contain /* Fallthrough */ except the last one that needs to break;
-    switch(version) {
-    case 0:
-        mdebug2("Updating database for agent %s to version 1", wdb->agent_id);
-        if(result = wdb_sql_exec(wdb, schema_upgrade_v1_sql), result == -1) {
-            new_wdb = wdb_backup(wdb, version);
-            wdb = new_wdb ? new_wdb : wdb;
+    for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
+        mdebug2("Updating database '%s' to version %d", wdb->agent_id, i + 1);
+
+        if (wdb_sql_exec(wdb, UPDATES[i]) == -1) {
+            wdb_t * new_wdb = wdb_backup(wdb, version);
+            return new_wdb ? new_wdb : wdb;
         }
-        /* Fallthrough */
-    case 1:
-        mdebug2("Updating database for agent %s to version 2", wdb->agent_id);
-        if(result = wdb_sql_exec(wdb, schema_upgrade_v2_sql), result == -1) {
-            new_wdb = wdb_backup(wdb, version);
-            wdb = new_wdb ? new_wdb : wdb;
-        }
-        /* Fallthrough */
-    case 2:
-        //Updated to last version
-        break;
-    default:
-        merror("Incorrect database version %d", version);
     }
 
     return wdb;
@@ -59,7 +61,7 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
     os_strdup(wdb->agent_id, sagent_id),
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, sagent_id);
 
-    if (wdb_close(wdb) != -1) {
+    if (wdb_close(wdb, TRUE) != -1) {
         if (wdb_create_backup(sagent_id, version) != -1) {
             mwarn("Creating DB backup and create clear DB for agent: '%s'", sagent_id);
             unlink(path);
@@ -79,13 +81,6 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
             }
 
             new_wdb = wdb_init(db, sagent_id);
-
-            if (wdb_metadata_initialize(new_wdb) < 0) {
-                mwarn("Couldn't initialize metadata table in '%s'", path);
-            }
-            if (wdb_scan_info_init(new_wdb) < 0) {
-                mwarn("Couldn't initialize scan_info table in '%s'", path);
-            }
         }
     } else {
         merror("Couldn't create SQLite database backup for agent '%s'", sagent_id);

@@ -1,6 +1,6 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 from wazuh import Wazuh
 from wazuh import common
 from wazuh.agent import Agent
@@ -228,7 +228,7 @@ functions = {
 
     # Managers
     '/manager/info': {
-        'function': Wazuh(common.ossec_path).get_ossec_init,
+        'function': manager.get_info,
         'type': 'local_any',
         'is_async': False
     },
@@ -305,7 +305,8 @@ functions = {
     'PUT/manager/restart': {
         'function': manager.restart,
         'type': 'local_any',
-        'is_async': False
+        'is_async': False,
+        'basic_services': ['ossec-execd']
     },
 
     # Cluster
@@ -340,7 +341,7 @@ functions = {
         'is_async': True
     },
     '/cluster/:node_id/info': {
-        'function': Wazuh(common.ossec_path).get_ossec_init,
+        'function': manager.get_info,
         'type': 'distributed_master',
         'is_async': False
     },
@@ -407,12 +408,14 @@ functions = {
     'PUT/cluster/restart': {
         'function': cluster.restart_all_nodes,
         'type': 'distributed_master',
-        'is_async': False
+        'is_async': False,
+        'basic_services': ['ossec-execd']
     },
     'PUT/cluster/:node_id/restart': {
         'function': manager.restart,
         'type': 'distributed_master',
-        'is_async': False
+        'is_async': False,
+        'basic_services': ['ossec-execd']
     },
     '/cluster/:node_id/files': {
         'function': manager.get_file,
@@ -490,8 +493,23 @@ functions = {
         'type': 'local_any',
         'is_async': False
     },
+    '/rules/gpg13': {
+        'function': Rule.get_gpg13,
+        'type': 'local_any',
+        'is_async': False
+    },
     '/rules/gdpr': {
         'function': Rule.get_gdpr,
+        'type': 'local_any',
+        'is_async': False
+    },
+    '/rules/hipaa': {
+        'function': Rule.get_hipaa,
+        'type': 'local_any',
+        'is_async': False
+    },
+    '/rules/nist-800-53': {
+        'function': Rule.get_nist_800_53,
         'type': 'local_any',
         'is_async': False
     },
@@ -643,6 +661,11 @@ functions = {
         'is_async': False
     },
 
+    # Summary
+    '/summary/agents': {
+        'function': Agent.get_full_summary,
+        'type': 'local_master',
+        'is_async': False
+    },
 
 }
-

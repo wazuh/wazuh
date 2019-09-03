@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -31,7 +31,7 @@ OSHash *OSHash_Create()
     }
 
     /* Set default row size */
-    self->rows = os_getprime(1024);
+    self->rows = os_getprime(32);
     if (self->rows == 0) {
         free(self);
         return (NULL);
@@ -53,7 +53,7 @@ OSHash *OSHash_Create()
     srandom((unsigned int)time(0));
     self->initial_seed = os_getprime((unsigned)os_random() % self->rows);
     self->constant = os_getprime((unsigned)os_random() % self->rows);
-    pthread_rwlock_init(&self->mutex, NULL);
+    w_rwlock_init(&self->mutex, NULL);
     return (self);
 }
 
@@ -158,8 +158,8 @@ int OSHash_setSize(OSHash *self, unsigned int new_size)
     }
 
     /* New seed */
-    self->initial_seed = os_getprime((unsigned)os_random() % self->rows);
-    self->constant = os_getprime((unsigned)os_random() % self->rows);
+    self->initial_seed = os_getprime(456 % self->rows);
+    self->constant = os_getprime(789 % self->rows);
 
     return (1);
 }
@@ -196,7 +196,9 @@ int OSHash_Update(OSHash *self, const char *key, void *data)
     while (curr_node) {
         /* Checking for duplicated key -- not adding */
         if (strcmp(curr_node->key, key) == 0) {
-            if (curr_node->data && self->free_data_function) self->free_data_function(curr_node->data);
+            if (curr_node->data && self->free_data_function) {
+                self->free_data_function(curr_node->data);
+            }
             curr_node->data = data;
             return (1);
         }
@@ -292,6 +294,87 @@ int _OSHash_Add(OSHash *self, const char *key, void *data, int update)
         new_node->next = self->table[index];
         self->table[index]->prev = new_node;
         self->table[index] = new_node;
+    }
+
+    return (2);
+}
+
+int OSHash_Add_fim(OSHash *self, const char *key, void *data, int update)
+{
+    unsigned int hash_key;
+    unsigned int index;
+    OSHashNode *curr_node;
+    OSHashNode *new_node;
+    OSHashNode *prev = NULL;
+
+    /* Generate hash of the message */
+    hash_key = _os_genhash(self, key);
+
+    /* Get array index */
+    index = hash_key % self->rows;
+
+    /* Check for duplicated entries in the index */
+    curr_node = self->table[index];
+    while (curr_node) {
+        /* Checking for duplicated key */
+        if (strcmp(curr_node->key, key) == 0) {
+            if (update) {
+                 curr_node->data = data;
+            }
+            return (1);
+        }
+        curr_node = curr_node->next;
+    }
+
+    /* Create new node */
+    new_node = (OSHashNode *) calloc(1, sizeof(OSHashNode));
+    if (!new_node) {
+        mdebug1("hash_op: calloc() failed!");
+        return (0);
+    }
+    new_node->next = NULL;
+    new_node->prev = NULL;
+    new_node->data = data;
+    new_node->key = strdup(key);
+    if ( new_node->key == NULL ) {
+        free(new_node);
+        mdebug1("hash_op: strdup() failed!");
+        return (0);
+    }
+
+    /* Add to table */
+    if (!self->table[index]) {
+        self->table[index] = new_node;
+    }
+    /* If there is duplicated, sort */
+    else {
+        curr_node = self->table[index];
+        while (curr_node) {
+            if (strcmp(curr_node->key, new_node->key) > 0) {
+                break;
+            }
+            prev = curr_node;
+            curr_node = curr_node->next;
+        }
+
+        if (!curr_node) {
+            prev->next = new_node;
+            new_node->prev = prev;
+        } else if (!prev) {
+            self->table[index] = new_node;
+            new_node->next = curr_node;
+            curr_node->prev = new_node;
+        } else {
+            prev->next = new_node;
+            new_node->prev = prev;
+            new_node->next = curr_node;
+            curr_node->prev = new_node;
+        }
+
+
+        //new_node->next = self->table[index];
+        //self->table[index]->prev = new_node;
+        //self->table[index] = new_node;
     }
 
     return (2);
@@ -526,7 +609,7 @@ OSHash *OSHash_Duplicate(const OSHash *hash) {
     self->free_data_function = hash->free_data_function;
 
     os_calloc(self->rows + 1, sizeof(OSHashNode*), self->table);
-    pthread_rwlock_init(&self->mutex, NULL);
+    w_rwlock_init(&self->mutex, NULL);
 
     for (i = 0; i <= self->rows; i++) {
         next_addr = &self->table[i];
@@ -655,4 +738,23 @@ void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_fu
     }
     OSHash_It(hash, data, iterating_function);
     w_rwlock_unlock((pthread_rwlock_t *)&hash->mutex);
+}
+
+
+/** int OSHash_GetIndex(OSHash *self, char *key)
+ * Returns -1 on error (not found).
+ * Key must not be NULL.
+ */
+int OSHash_GetIndex(OSHash *self, const char *key)
+{
+    unsigned int hash_key;
+    unsigned int index;
+
+    /* Generate hash of the message */
+    hash_key = _os_genhash(self, key);
+
+    /* Get array index */
+    index = hash_key % self->rows;
+
+    return index;
 }

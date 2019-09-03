@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -77,4 +77,31 @@ int OS_SHA1_Str(const char *str, ssize_t length, os_sha1 output)
     }
 
     return (0);
+}
+
+int OS_SHA1_Str2(const char *str, ssize_t length, os_sha1 output)
+{
+    unsigned char temp[SHA_DIGEST_LENGTH];
+    size_t n;
+
+    memset(temp, 0x0, SHA_DIGEST_LENGTH);
+    SHA1((unsigned char *)str, length, temp);
+
+    for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
+        snprintf(output, 3, "%02x", temp[n]);
+        output += 2;
+    }
+
+    return (0);
+}
+
+// Get the hexadecimal result of a SHA-1 digest
+
+void OS_SHA1_Hexdigest(const unsigned char * digest, os_sha1 output) {
+    size_t n;
+
+    for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
+        snprintf(output, 3, "%02x", digest[n]);
+        output += 2;
+    }
 }

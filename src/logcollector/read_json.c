@@ -1,7 +1,7 @@
 /* Copyright (C) 2015-2019 Wazuh Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -23,8 +23,8 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
     fpos_t fp_pos;
     int lines = 0;
     cJSON * obj;
-    int64_t offset;
-    int64_t rbytes;
+    int64_t offset = 0;
+    int64_t rbytes = 0;
 
     str[OS_MAXSTR] = '\0';
     *rc = 0;
@@ -32,7 +32,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
     /* Get initial file location */
     fgetpos(lf->fp, &fp_pos);
 
-    for (offset = w_ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
+    for (offset = w_ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
 

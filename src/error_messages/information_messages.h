@@ -2,7 +2,7 @@
  * Copyright (C) 2015-2019
  * January 17
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -33,8 +33,7 @@
 #define FIM_REALTIME_INCOMPATIBLE           "(6015): Real-time Whodata mode is not compatible with this version of Windows."
 #define FIM_REALTIME_MONITORING_DIRECTORY   "(6016): Directory set for real time monitoring: '%s'."
 
-#define FIM_WHODATA_START                   "(6017): Whodata auditing engine started."
-#define FIM_WHODATA_STARTING                "(6018): Starting file integrity monitoring real-time Whodata engine."
+#define FIM_WHODATA_STARTING                "(6018): Initializing file integrity monitoring real-time Whodata engine."
 #define FIM_WHODATA_STARTED                 "(6019): File integrity monitoring real-time Whodata engine started."
 #define FIM_WHODATA_READDED                 "(6020): '%s' has been re-added. It will be monitored in real-time Whodata mode."
 #define FIM_WHODATA_SACL_CHANGED            "(6021): The SACL of '%s' has been modified and it is not valid for the real-time Whodata mode. Whodata will not be available for this file."
@@ -45,16 +44,16 @@
 #define FIM_AUDIT_RESTARTING                "(6025): Audit plugin configuration (%s) was modified. Restarting Auditd service."
 #define FIM_AUDIT_HEALTHCHECK_DISABLE       "(6026): Audit health check is disabled. Real-time Whodata could not work correctly."
 #define FIM_AUDIT_REMOVE_RULE               "(6027): Monitored directory '%s' was removed: Audit rule removed."
-#define FIM_AUDIT_INVALID_AUID              "(6028): Audit: Invalid 'auid' value readed. Check Audit configuration (PAM)."
+#define FIM_AUDIT_INVALID_AUID              "(6028): Audit: Invalid 'auid' value read. Check Audit configuration (PAM)."
 #define FIM_AUDIT_RECONNECT                 "(6029): Audit: reconnecting... (%i)"
 #define FIM_AUDIT_CONNECT                   "(6030): Audit: connected."
 
-#define FIM_WINREGISTRY_START               "(6231): Registry integrity monitoring scan started"
-#define FIM_WINREGISTRY_ENDED               "(6232): Registry integrity monitoring scan ended"
+#define FIM_WINREGISTRY_START               "(6031): Registry integrity monitoring scan started"
+#define FIM_WINREGISTRY_ENDED               "(6032): Registry integrity monitoring scan ended"
 
-#define FIM_LINKCHECK_START                 "(6233): Starting symbolic link updater. Interval '%d'."
-#define FIM_LINKCHECK_CHANGED               "(6234): Updating the symbolic link from '%s': '%s' to '%s'."
+#define FIM_LINKCHECK_START                 "(6033): Starting symbolic link updater. Interval '%d'."
+#define FIM_LINKCHECK_CHANGED               "(6034): Updating the symbolic link from '%s': '%s' to '%s'."
 
-#define FIM_WHODATA_VOLUMES                 "(6236): Analyzing Windows volumes"
+#define FIM_WHODATA_VOLUMES                 "(6036): Analyzing Windows volumes"
 
 #endif

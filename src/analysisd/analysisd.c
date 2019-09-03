@@ -2,7 +2,7 @@
  * Copyright (C) 2010-2012 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -607,18 +607,6 @@ int main_analysisd(int argc, char **argv)
             merror_exit(MEM_ERROR, errno, strerror(errno));
         }
         AddHash_Rule(tmp_node);
-    }
-
-    /* Ignored files on syscheck */
-    {
-        char **files;
-        files = Config.syscheck_ignore;
-        while (files && *files) {
-            if (!test_config) {
-                minfo("Ignoring file: '%s'", *files);
-            }
-            files++;
-        }
     }
 
     /* Check if log_fw is enabled */
@@ -2265,7 +2253,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 lf->full_log = __stats_comment;
 
                 /* Alert for statistical analysis */
-                if (stats_rule->alert_opts & DO_LOGALERT) {
+                if (stats_rule && (stats_rule->alert_opts & DO_LOGALERT)) {
                     os_calloc(1, sizeof(Eventinfo), lf_cpy);
                     w_copy_event_for_log(lf,lf_cpy);
 

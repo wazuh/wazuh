@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -13,27 +13,22 @@
 #include "../os_net/os_net.h"
 #include "../addagent/manage_agents.h"
 
-static pthread_mutex_t restart_syscheck = PTHREAD_MUTEX_INITIALIZER;
 
 /* Check if syscheck is to be executed/restarted
  * Returns 1 on success or 0 on failure (shouldn't be executed now)
  */
 int os_check_restart_syscheck()
 {
-    w_mutex_lock(&restart_syscheck);
     /* If the restart is not present, return 0 */
     if (isChroot()) {
         if (unlink(SYSCHECK_RESTART) == -1) {
-            w_mutex_unlock(&restart_syscheck);
             return (0);
         }
     } else {
         if (unlink(SYSCHECK_RESTART_PATH) == -1) {
-            w_mutex_unlock(&restart_syscheck);
             return (0);
         }
     }
-    w_mutex_unlock(&restart_syscheck);
     return (1);
 }
 

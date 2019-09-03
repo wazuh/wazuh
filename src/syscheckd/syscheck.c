@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -76,27 +76,54 @@ static void read_internal(int debug_level)
     return;
 }
 
-void free_syscheck_node_data(syscheck_node *data) {
-    if (!data) return;
-    if (data->checksum) free(data->checksum);
-    free(data);
+void free_syscheck_node_data(fim_entry_data *data) {
+    if (!data) {
+        return;
+    }
+
+    os_free(data->user_name);
+    os_free(data->group_name);
+    os_free(data);
 }
 
-// Initialize syscheck variables
+// Initialize syscheck data
 int fim_initialize() {
-    /* Create store data */
-    syscheck.fp = OSHash_Create();
-    syscheck.local_hash = OSHash_Create();
-#ifndef WIN32
-    syscheck.inode_hash = OSHash_Create();
-#endif
-    // Duplicate hash table to check for deleted files
-    syscheck.last_check = OSHash_Create();
+    // Create store data
+    syscheck.fim_entry = rbtree_init();
+    syscheck.n_entries = 0;
 
-    if (!syscheck.fp || !syscheck.local_hash || !syscheck.last_check) {
-        merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "fim_initialize()", strerror(errno));
+    // To manage events in whodata mode
+#ifndef WIN32
+    // Create inodes entries
+    syscheck.fim_inode = OSHash_Create();
+#endif
+    syscheck.n_inodes = 0;
+
+    // To check for deleted files in Scheduled scans
+    syscheck.last_check = OSHash_Create();
+#ifndef WIN32
+    if (!syscheck.fim_entry || !syscheck.fim_inode || !syscheck.last_check)
+#else
+    if (!syscheck.fim_entry || !syscheck.last_check)
+#endif
+    {
+        merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "realtime_adddir()", strerror(errno));
     }
-    OSHash_SetFreeDataPointer(syscheck.fp, (void (*)(void *))free_syscheck_node_data);
+
+#ifndef WIN32
+    if (!OSHash_setSize(syscheck.fim_inode, OS_SIZE_16)) {
+        merror(LIST_ERROR);
+        return (0);
+    }
+#endif
+
+    if (!OSHash_setSize_ex(syscheck.last_check, OS_SIZE_16)) {
+        merror(LIST_ERROR);
+        return (0);
+    }
+
+    rbtree_set_dispose(syscheck.fim_entry, (void (*)(void *))free_syscheck_node_data);
+    pthread_mutex_init(&syscheck.fim_entry_mutex, NULL);
 
     return 0;
 }
@@ -160,13 +187,13 @@ int Start_win32_Syscheck()
         int whodata_notification = 0;
         /* Remove whodata attributes */
         for (r = 0; syscheck.dir[r]; r++) {
-            if (syscheck.opts[r] & CHECK_WHODATA) {
+            if (syscheck.opts[r] & WHODATA_ACTIVE) {
                 if (!whodata_notification) {
                     whodata_notification = 1;
                     minfo(FIM_REALTIME_INCOMPATIBLE);
                 }
-                syscheck.opts[r] &= ~CHECK_WHODATA;
-                syscheck.opts[r] |= CHECK_REALTIME;
+                syscheck.opts[r] &= ~WHODATA_ACTIVE;
+                syscheck.opts[r] |= REALTIME_ACTIVE;
             }
         }
 #endif
@@ -175,6 +202,7 @@ int Start_win32_Syscheck()
 
         /* Print options */
         r = 0;
+        // TODO: allow sha256 sum on registries
         while (syscheck.registry[r].entry != NULL) {
             minfo(FIM_MONITORING_REGISTRY, syscheck.registry[r].entry, syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "");
             r++;
@@ -450,7 +478,7 @@ int main(int argc, char **argv)
         /* Check directories set for real time */
         r = 0;
         while (syscheck.dir[r] != NULL) {
-            if (syscheck.opts[r] & CHECK_REALTIME) {
+            if (syscheck.opts[r] & REALTIME_ACTIVE) {
   #ifdef INOTIFY_ENABLED
                 minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
   #elif defined(WIN32)

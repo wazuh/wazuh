@@ -37,7 +37,7 @@ logcollector must be configured with the following labels
       <field name="audit_record.name">^Connect$</field>
       <field name="audit_record.status">^0$</field>
       <description>Percona audit: authentication success.</description>
-      <group>authentication_success,pci_dss_10.2.5,pci_dss_8.7,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
+      <group>authentication_success,pci_dss_10.2.5,pci_dss_8.7,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.d,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SC.2,</group>
       <options>no_full_log</options>
     </rule>
 
@@ -45,7 +45,7 @@ logcollector must be configured with the following labels
       <if_sid>88000</if_sid>
       <field name="audit_record.name">^Quit$</field>
       <description>Percona audit: user logout.</description>
-      <group>pci_dss_10.2.5,pci_dss_8.7,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+      <group>pci_dss_10.2.5,pci_dss_8.7,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.d,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SC.2,</group>
       <options>no_full_log</options>
     </rule>
 
@@ -54,7 +54,7 @@ logcollector must be configured with the following labels
       <field name="audit_record.name">^Connect$</field>
       <field name="audit_record.status">^1</field>
       <description>Percona audit: authentication failure.</description>
-      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.d,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SC.2,</group>
       <options>no_full_log</options>
     </rule>
 
@@ -63,7 +63,7 @@ logcollector must be configured with the following labels
       <field name="audit_record.name">^Query$</field>
       <field name="audit_record.status">^0$</field>
       <description>Percona audit success: $(audit_record.command_class) statement.</description>
-      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,</group>
+      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,hipaa_164.312.d,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,nist_800_53_SC.2,</group>
       <options>no_full_log</options>
     </rule>
 
@@ -72,7 +72,7 @@ logcollector must be configured with the following labels
       <field name="audit_record.name">^Query$</field>
       <field name="audit_record.command_class">^drop|^alter|^insert|^update|^grant|^delete</field>
       <description>Percona audit success: $(audit_record.command_class) statement.</description>
-      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,</group>
+      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,hipaa_164.312.d,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,nist_800_53_SC.2,</group>
       <options>no_full_log</options>
     </rule>
 
@@ -81,7 +81,7 @@ logcollector must be configured with the following labels
       <field name="audit_record.name">^Query$</field>
       <field name="audit_record.status">^1</field>
       <description>Percona audit failed: $(audit_record.command_class) statement.</description>
-      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,</group>
+      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,hipaa_164.312.d,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,nist_800_53_SC.2,</group>
       <options>no_full_log</options>
     </rule>
 
@@ -90,7 +90,7 @@ logcollector must be configured with the following labels
       <field name="audit_record.name">^Query$</field>
       <field name="audit_record.command_class">^drop|^alter|^insert|^update|^grant|^delete</field>
       <description>Percona audit failed: $(audit_record.command_class) statement.</description>
-      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,</group>
+      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,hipaa_164.312.d,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,nist_800_53_SC.2,</group>
       <options>no_full_log</options>
     </rule>
 
@@ -105,7 +105,7 @@ logcollector must be configured with the following labels
       <if_sid>89050</if_sid>
       <field name="cmd">^Connect$</field>
       <description>McAfee MySQL audit: authentication attempt.</description>
-      <group>pci_dss_10.2.5,pci_dss_8.7,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+      <group>pci_dss_10.2.5,pci_dss_8.7,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.d,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SC.2,</group>
       <options>no_full_log</options>
     </rule>
 
@@ -113,7 +113,7 @@ logcollector must be configured with the following labels
       <if_sid>89050</if_sid>
       <field name="cmd">^Quit$</field>
       <description>McAfee MySQL audit: user logout.</description>
-      <group>pci_dss_10.2.5,pci_dss_8.7,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+      <group>pci_dss_10.2.5,pci_dss_8.7,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.d,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SC.2,</group>
       <options>no_full_log</options>
     </rule>
 
@@ -121,7 +121,7 @@ logcollector must be configured with the following labels
       <if_sid>89050</if_sid>
       <field name="cmd">^Failed Login$</field>
       <description>McAfee MySQL audit: authentication failure.</description>
-      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.d,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SC.2,</group>
       <options>no_full_log</options>
     </rule>
 
@@ -129,7 +129,7 @@ logcollector must be configured with the following labels
       <if_sid>89050</if_sid>
       <status>^0$</status>
       <description>McAfee MySQL audit success: $(cmd) statement.</description>
-      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,</group>
+      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,hipaa_164.312.d,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,nist_800_53_SC.2,</group>
       <options>no_full_log</options>
     </rule>
 
@@ -137,7 +137,7 @@ logcollector must be configured with the following labels
       <if_sid>89054</if_sid>
       <field name="cmd">^drop|^alter|^insert|^update|^grant|^delete</field>
       <description>McAfee MySQL audit success: $(cmd) statement.</description>
-      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,</group>
+      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,hipaa_164.312.d,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,nist_800_53_SC.2,</group>
       <options>no_full_log</options>
     </rule>
 
@@ -145,7 +145,7 @@ logcollector must be configured with the following labels
       <if_sid>89050</if_sid>
       <status>^1</status>
       <description>McAfee MySQL audit failed: $(cmd) statement.</description>
-      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,</group>
+      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,hipaa_164.312.d,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,nist_800_53_SC.2,</group>
       <options>no_full_log</options>
     </rule>
 
@@ -153,7 +153,7 @@ logcollector must be configured with the following labels
       <if_sid>89056</if_sid>
       <field name="cmd">^drop|^alter|^insert|^update|^grant|^delete</field>
       <description>McAfee MySQL audit failed: $(cmd) statement.</description>
-      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,</group>
+      <group>pci_dss_8.7,gpg13_7.1,gdpr_IV_35.7.d,hipaa_164.312.d,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,nist_800_53_SC.2,</group>
       <options>no_full_log</options>
     </rule>
 

@@ -1,0 +1,50 @@
+<group name="qa,test">
+
+<!-- May 27 14:49:04 testUser ow_test[13244]: overwrite and list test -->
+<!-- testing overwrite and list -->
+  <rule id="99900" level="5">
+    <match>overwrite and list test</match>
+    <description>Testing ow&list</description>
+  </rule>
+
+  <rule id="99900" level="7" overwrite="yes">
+    <match>overwrite and list test</match>
+    <list field="program_name" lookup="not_match_key">etc/lists/black_list</list>
+    <description>Successfully</description>
+  </rule>
+
+
+<!-- Trigger alerts which depend on same_fields . Also it tests if_matched_sid -->
+<!-- Dec 25 20:45:02 MyHost test_same_fields[12345]: User 'admin' logged from '192.168.1.100' 5 this is the same_fields test -->
+<!-- Dec 25 20:45:02 MyHost test_same_fields[12345]: User 'admin' logged from '192.168.1.100' 5 this is the same_fields test -->
+<!-- Dec 25 20:45:02 MyHost test_same_fields[12345]: User 'admin' logged from '192.168.1.100' 5 this is the same_fields test -->
+
+<rule id="999205" level="3">
+  <match>this is the same_fields test</match>
+  <description>Testing same_fields</description>
+</rule>
+
+<rule id="999206" level="7" frequency="3" timeframe="300">
+  <if_matched_sid>999205</if_matched_sid>
+  <same_field>number</same_field>
+  <description>Same fields works!</description>
+</rule>
+
+
+<!-- Trigger alerts which depend on not_same_fields . Also it tests if_matched_sid. -->
+<!-- Dec 25 20:45:02 MyHost test_same_fields[12345]: User 'admin' logged from '192.168.1.100' 5 this is the not_same_fields test -->
+<!-- Dec 25 20:45:02 MyHost test_same_fields[12345]: User 'admin' logged from '192.168.1.100' 6 this is the not_same_fields test -->
+<!-- Dec 25 20:45:02 MyHost test_same_fields[12345]: User 'admin' logged from '192.168.1.100' 7 this is the not_same_fields test -->
+  <rule id="999207" level="3">
+  <match>this is the not_same_fields test</match>
+  <description>Testing not_same_fields</description>
+</rule>
+
+<rule id="999208" level="7" frequency="3" timeframe="300">
+ <if_matched_sid>999207</if_matched_sid>
+  <not_same_field>number</not_same_field>
+  <description>Not Same fields works!</description>
+</rule>
+
+
+</group>

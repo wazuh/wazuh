@@ -2,7 +2,7 @@
  * Copyright (C) 2009-2012 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -34,6 +34,9 @@
 #define OS_SIZE_512     512
 #define OS_SIZE_256     256
 #define OS_SIZE_128     128
+#define OS_SIZE_64      64
+#define OS_SIZE_32      32
+#define OS_SIZE_16      16
 
 /* Level of log messages */
 #define LOGLEVEL_CRITICAL 4
@@ -48,7 +51,7 @@
 #define OS_HEADER_SIZE  OS_SIZE_128     /* Maximum header size          */
 #define OS_LOG_HEADER   OS_SIZE_256     /* Maximum log header size      */
 #define OS_SK_HEADER    OS_SIZE_6144    /* Maximum syscheck header size */
-#define IPSIZE          16              /* IP Address size              */
+#define IPSIZE          INET6_ADDRSTRLEN /* IP Address size             */
 #define AUTH_POOL       1000            /* Max number of connections    */
 #define BACKLOG         128             /* Socket input queue length    */
 #define MAX_EVENTS      1024            /* Max number of epoll events   */
@@ -61,7 +64,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.9.4"
+#define __ossec_version "v3.10.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -403,6 +406,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #ifndef DEFAULT_SYSLOG
 #define DEFAULT_SYSLOG 514 /* Default syslog port - udp */
+#endif
+
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
 #endif
 
 /* XML global elements */

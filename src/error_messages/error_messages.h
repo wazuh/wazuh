@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -67,7 +67,7 @@
 #define QUEUE_ERROR     "(1210): Queue '%s' not accessible: '%s'."
 #define QUEUE_FATAL     "(1211): Unable to access queue: '%s'. Giving up.."
 #define PID_ERROR       "(1212): Unable to create PID file."
-#define DENYIP_WARN     "(1213): Message from '%s' not allowed."
+#define DENYIP_WARN     "(1213): Message from '%s' not allowed. Cannot find the ID of the agent."
 #define MSG_ERROR       "(1214): Problem receiving message from '%s'."
 #define CLIENT_ERROR    "(1215): No client configured. Exiting."
 #define CONNS_ERROR     "(1216): Unable to connect to '%s': '%s'."
@@ -95,7 +95,7 @@
 #define NO_CONFIG       "(1239): Configuration file not found: '%s'."
 #define INVALID_TIME    "(1240): Invalid time format: '%s'."
 #define INVALID_DAY     "(1241): Invalid day format: '%s'."
-#define ACCEPT_ERROR    "(1242): Couldn't accept TCP connections."
+#define ACCEPT_ERROR    "(1242): Couldn't accept TCP connections: %s (%d)"
 #define RECV_ERROR      "(1243): Couldn't receive message from peer."
 #define DUP_SECURE      "(1244): Can't add more than one secure connection."
 #define SEND_DISCON     "(1245): Sending message to disconnected agent '%s'."
@@ -194,14 +194,15 @@
 #define OPEN_UNABLE     "(1963): Unable to open file '%s'."
 #define NON_TEXT_FILE   "(1964): File '%s' is not ASCII or UTF-8 encoded."
 #define EXCLUDE_FILE    "(1965): File excluded: '%s'."
+#define DUP_FILE_INODE  "(1966): Inode for file '%s' already found. Skipping it."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
 #define NO_AUTHFILE     "(1402): Authentication key file '%s' not found."
 #define ENCFORMAT_ERROR "(1403): Incorrectly formatted message from agent '%s' (host '%s')."
-#define ENCKEY_ERROR    "(1404): Authentication error. Wrong key from '%s'."
+#define ENCKEY_ERROR    "(1404): Authentication error. Wrong key or corrupt payload. Message received from agent '%s' at '%s'."
 #define ENCSIZE_ERROR   "(1405): Message size not valid: '%64s'."
-#define ENCSUM_ERROR    "(1406): Checksum mismatch on message from '%s'."
+#define ENCSUM_ERROR    "(1406): Checksum mismatch. Message received from agent '%s' at '%s'."
 #define ENCTIME_ERROR   "(1407): Duplicated counter for '%s'."
 #define ENC_IP_ERROR    "(1408): Invalid ID %s for the source ip: '%s' (name '%s')."
 #define ENCFILE_CHANGED "(1409): Authentication file changed. Updating."
@@ -343,7 +344,7 @@
 
 #define FIM_ERROR_INOTIFY_INITIALIZE                "(6607): Unable to initialize inotify."
 #define FIM_ERROR_NFS_INOTIFY                       "(6608): '%s' NFS Directories do not support iNotify."
-#define FIM_ERROR_INOTIFY_ADD_WATCH                 "(6609): Unable to add inotify watch to real time monitoring: '%s'. '%d' '%d'"
+#define FIM_ERROR_INOTIFY_ADD_WATCH                 "(6609): Unable to add inotify watch to real time monitoring: '%s'. '%d' '%d':'%s'"
 #define FIM_ERROR_REALTIME_WAITSINGLE_OBJECT        "(6610): WaitForSingleObjectEx failed (for real time file integrity monitoring)."
 #define FIM_ERROR_REALTIME_ADDDIR_FAILED            "(6611): 'realtime_adddir' failed, the directory '%s'could't be added to real time mode."
 #define FIM_ERROR_REALTIME_READ_BUFFER              "(6612): Unable to read from real time buffer."
@@ -439,8 +440,10 @@
 
 #define FIM_CRITICAL_ERROR_DB                       "(6696): Unable to create syscheck database. Exiting."
 #define FIM_CRITICAL_ERROR_OUT_MEM                  "(6697): Out of memory. Exiting."
-#define FIM_CRITICAL_ERROR_HASH_CREATE              "(6698): At '%s': OSHash_Create() failed '%s'. Exiting."
+#define FIM_CRITICAL_ERROR_HASH_CREATE              "(6698): At '%s': OSHash_Create() failed %s. Exiting."
 #define FIM_CRITICAL_ERROR_SELECT                   "(6699): At '%s': select(): %s. Exiting."
+
+#define FIM_ERROR_INOTIFY_ADD_MAX_REACHED           "(6700): Unable to add inotify watch to real time monitoring: '%s'. '%d' '%d': The maximum limit of inotify watches has been reached."
 
 
 /* Verbose messages */

@@ -20,8 +20,8 @@
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
-!define VERSION "3.9.4"
-!define REVISION "3930"
+!define VERSION "3.10.0"
+!define REVISION "31007"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
@@ -36,7 +36,7 @@ Name "${NAME} Windows Agent v${VERSION}"
 BrandingText "Copyright (C) 2015-2019, Wazuh Inc."
 OutFile "${OutFile}"
 
-VIProductVersion "3.9.1.0"
+VIProductVersion "3.10.0.0"
 VIAddVersionKey ProductName "${NAME}"
 VIAddVersionKey CompanyName "Wazuh Inc."
 VIAddVersionKey LegalCopyright "2019 - Wazuh Inc."
@@ -213,7 +213,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
     File ../wazuh_modules/syscollector/syscollector_win_ext.dll
     File /oname=libwazuhext.dll ../libwazuhext.dll
-    File /oname=ruleset\sca\win_audit_rcl.yml ../../etc/sca/windows/win_audit_rcl.yml
+    File /oname=ruleset\sca\sca_win_audit.yml ../../etc/sca/windows/sca_win_audit.yml
     File VERSION
     File REVISION
 

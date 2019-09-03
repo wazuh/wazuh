@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -48,6 +48,7 @@ void *OSHash_Free(OSHash *self) __attribute__((nonnull));
  * Key must not be NULL
  */
 int OSHash_Add(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
+int OSHash_Add_fim(OSHash *self, const char *key, void *data, int update);
 int OSHash_Numeric_Add_ex(OSHash *hash, int key, void *data) __attribute__((nonnull(1, 3)));
 int OSHash_Add_ex(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
 int OSHash_Add_ins(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
@@ -85,5 +86,10 @@ void *OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 */
 void OSHash_It(const OSHash *hash, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
 void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
+
+/*
+ * Returns the index of the key.
+*/
+int OSHash_GetIndex(OSHash *self, const char *key);
 
 #endif
