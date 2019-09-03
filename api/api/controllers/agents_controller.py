@@ -6,7 +6,6 @@ import asyncio
 import logging
 
 import connexion
-from connexion.lifecycle import ConnexionResponse
 
 import wazuh.configuration as config
 from api import configuration
@@ -59,8 +58,8 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents='all', purg
 
 @exception_handler
 def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
-                   status=None, q='', older_than=None, os_platform=None, os_version=None, os_name=None, manager=None,
-                   version=None, group=None, node_name=None, name=None, ip=None, registerIP=None):
+                   status=None, q='', older_than=None, manager=None, version=None, group=None, node_name=None,
+                   name=None, ip=None, registerip=None):
     """Get all agents
 
     Returns a list with the available agents.
@@ -89,28 +88,31 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     :param registerIP: Filters by agent register IP
     :return: AllAgents
     """
-
     f_kwargs = {'offset': offset,
                 'limit': limit,
-                'sort': parse_api_param(sort.replace('os_', 'os.') if sort else sort, 'sort'),
+                'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'select': [x.replace('os_', 'os.') for x in select] if select else select,
+                'select': select,
                 'filters': {
                     'status': status,
                     'older_than': older_than,
-                    'os.platform': os_platform,
-                    'os.version': os_version,
-                    'os.name': os_name,
                     'manager': manager,
                     'version': version,
                     'group': group,
                     'node_name': node_name,
                     'name': name,
                     'ip': ip,
-                    'registerIP': registerIP
+                    'registerIP': registerip
                 },
                 'q': q
                 }
+    # Add nested fields to kwargs filters
+    nested = ['os.version', 'os.name', 'os.platform']
+    for field in nested:
+        try:
+            f_kwargs['filters'][field] = connexion.request.args[field]
+        except KeyError:
+            f_kwargs['filters'][field] = None
 
     dapi = DistributedAPI(f=Agent.get_agents_overview,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -956,7 +958,7 @@ def get_group_file_xml(group_id, file_name, pretty=False, wait_for_complete=Fals
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = ConnexionResponse(body=data["message"], mimetype='application/xml')
+    response = connexion.lifecycle.ConnexionResponse(body=data["message"], mimetype='application/xml')
 
     return response
 
