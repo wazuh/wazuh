@@ -220,7 +220,7 @@ endif
 
 
 OSSEC_CFLAGS+=${DEFINES}
-OSSEC_CFLAGS+=-pipe -Wall -Wextra
+OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
 OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include
 
 
