@@ -20,7 +20,7 @@ def get_ciscat_results(agent_id=None, offset=0, limit=common.database_limit, sel
     :param q: Defines query to filter in DB.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    valid_select_fields = {'scan_id': 'scan_id', 'scan_time': 'scan_time', 'benchmark': 'benchmark',
+    valid_select_fields = {'scan.id': 'scan_id', 'scan.time': 'scan_time', 'benchmark': 'benchmark',
                            'profile': 'profile', 'pass': 'pass', 'fail': 'fail', 'error': 'error',
                            'notchecked': 'notchecked', 'unknown': 'unknown', 'score': 'score'}
     table = 'ciscat_results'
