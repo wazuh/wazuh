@@ -53,6 +53,8 @@ int wdbc_connect() {
  * @param[in] query Query to be sent to Wazuh-DB.
  * @param[out] response Char pointer where the response from Wazuh-DB will be stored.
  * @param[in] len Lenght of the response param.
+ * @post This function will read up to len bytes from Wazuh DB.
+ * @post This function will null-terminate response, the last byte may be truncated.
  * @retval -2 Error in the communication.
  * @retval -1 Error in the response from socket.
  * @retval 0 Success.
@@ -87,7 +89,7 @@ int wdbc_query(const int sock, const char *query, char *response, const int len)
         merror("at OS_RecvSecureTCP(): %s (%d)", strerror(errno), errno);
         break;
     default:
-        response[recv_len] = '\0';
+        response[len - 1] = '\0';
         retval = 0;
     }
 
@@ -103,6 +105,8 @@ end:
  * @param[in] query Query to be sent to Wazuh-DB.
  * @param[out] response Char pointer where the response from Wazuh-DB will be stored.
  * @param[in] len Lenght of the response param.
+ * @post This function will read up to len bytes from Wazuh DB.
+ * @post This function will null-terminate response, the last byte may be truncated.
  * @retval -2 Error in the communication.
  * @retval -1 Error in the response from socket.
  * @retval 0 Success.
