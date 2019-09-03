@@ -151,8 +151,11 @@ int wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
 /**
  * @brief Parse the result of the query to Wazuh-DB
  *
+ * If payload is not NULL, this function stores the address of the result
+ * argument, this is the substring after the first whitespace.
+ *
  * @param result Result from the query to Wazuh-DB.
- * @param payload Pointer inside the result where the payload starts.
+ * @param payload[out] Pointer inside the result where the payload starts.
  * @return Enum wdbc_result.
  */
 int wdbc_parse_result(char *result, char **payload) {
@@ -163,10 +166,13 @@ int wdbc_parse_result(char *result, char **payload) {
     ptr = strchr(result, ' ');
 
     if (ptr) {
-        *ptr = '\0';
-        *payload = ++ptr;
+        *ptr++ = '\0';
     } else {
-        *payload = result;
+        ptr = result;
+    }
+
+    if (payload) {
+        *payload = ptr;
     }
 
     if (!strcmp(result, "ok")) {

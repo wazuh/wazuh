@@ -78,7 +78,7 @@ int main(void) {
 
     TAP_TEST_MSG(test_okmsg_query(&wdb_sock), "Send query and receive a message starting with 'ok' (Get syscheck scan info).");
 
-    TAP_TEST_MSG(test_err_query(&wdb_sock), "Send query and receive a message starting with 'err' (Invalid syscheck query sintax).");
+    TAP_TEST_MSG(test_err_query(&wdb_sock), "Send query and receive a message starting with 'err' (Invalid syscheck query syntax).");
 
     TAP_PLAN;
     TAP_SUMMARY;
