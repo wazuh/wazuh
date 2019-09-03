@@ -1211,7 +1211,7 @@ class Agent:
                 conn.execute(query, request)
                 id_group = conn.fetch()
 
-                if id_group == None:
+                if id_group is None:
                     continue
 
                 # Group count
@@ -1946,10 +1946,10 @@ class Agent:
         # Comparing versions
         agent_ver = self.version
 
-        if (manager_ver < WazuhVersion(agent_new_ver) and not force):
+        if manager_ver < WazuhVersion(agent_new_ver) and not force:
             raise WazuhException(1717, "Manager: {0} / Agent: {1} -> {2}".format(manager_ver, agent_new_ver))
 
-        if (WazuhVersion(agent_ver) >= WazuhVersion(agent_new_ver) and not force):
+        if WazuhVersion(agent_ver) >= WazuhVersion(agent_new_ver) and not force:
             raise WazuhException(1749, "Agent: {0} -> {1}".format(agent_ver, agent_new_ver))
 
         if debug:
@@ -2019,7 +2019,8 @@ class Agent:
         return [wpk_file, sha1hash]
 
 
-    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1, timeout=common.open_retries, use_http=False):
+    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None,
+                       chunk_size=None, rl_timeout=-1, timeout=common.open_retries, use_http=False):
         """
         Sends WPK file to agent.
         """
@@ -2145,7 +2146,8 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
 
-    def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1, use_http=False):
+    def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None, chunk_size=None,
+                rl_timeout=-1, use_http=False):
         """
         Upgrade agent using a WPK file.
         """
@@ -2165,7 +2167,7 @@ class Agent:
         if self.os['platform']=="windows" and int(self.os['major']) < 6:
             raise WazuhException(1721, self.os['name'])
 
-        if wpk_repo == None:
+        if wpk_repo is None:
             wpk_repo = common.wpk_repo_url
 
         if not wpk_repo.endswith('/'):
