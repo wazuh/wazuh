@@ -163,27 +163,19 @@ wdb_t * wdb_open_global2() {
         sqlite3_close_v2(wdb_global);
 
         if (wdb_create_global(path) < 0) {
-            merror("Couldn't create SQLite database '%s'", path);
-            goto end;
+            merror("Couldn't create SQLite database '%s'. Retrying to open again", path);
         }
 
         // Retry to open
-
         if (sqlite3_open_v2(path, &wdb_global, SQLITE_OPEN_READWRITE, NULL)) {
             merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(wdb_global));
             sqlite3_close_v2(wdb_global);
             goto end;
+        } else {
+            mdebug1("SQLite global DB created");
         }
-
+        
         wdb = wdb_init(wdb_global, s_global);
-
-        if (wdb_metadata_initialize(wdb) < 0) {
-            mwarn("Couldn't initialize metadata table in '%s'", path);
-        }
-        if (wdb_scan_info_init(wdb) < 0) {
-            mwarn("Couldn't initialize scan_info table in '%s'", path);
-        }
-
         wdb_pool_append(wdb);
     }
     else {
