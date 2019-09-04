@@ -17,9 +17,9 @@ def test_select_key(response, select_key):
     :param select_key: Parametrized key used for select param in request
     :return: True if request response item key matches used select param
     """
-    if '_' in select_key and 'start' not in select_key and \
-            'vm' not in select_key and 'rx' not in select_key and 'tx' not in select_key:
-        assert list(response.json()["data"]["items"][0][select_key.split('_')[0]])[0] == select_key.split('_')[1]
+    if '.' in select_key:
+        assert list(response.json()["data"])[0] == select_key.split('.')[0]
+        assert list(response.json()["data"][select_key.split('.')[0]])[0] == select_key.split('.')[1]
     else:
         assert list(response.json()["data"]["items"][0])[0] == select_key
     return
@@ -31,9 +31,9 @@ def test_select_key_no_items(response, select_key):
     :param select_key: Parametrized key used for select param in request
     :return: True if request response item key matches used select param
     """
-    if '_' in select_key and 'board' not in select_key:
-        assert list(response.json()["data"])[0] == select_key.split('_')[0]
-        assert list(response.json()["data"][select_key.split('_')[0]])[0] == select_key.split('_')[1]
+    if '.' in select_key:
+        assert list(response.json()["data"])[0] == select_key.split('.')[0]
+        assert list(response.json()["data"][select_key.split('.')[0]])[0] == select_key.split('.')[1]
     else:
         assert list(response.json()["data"])[0] == select_key
     return
