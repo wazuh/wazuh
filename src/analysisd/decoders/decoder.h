@@ -76,7 +76,6 @@ void RootcheckInit(void);
 void SyscollectorInit(void);
 void CiscatInit(void);
 void WinevtInit(void);
-int sc_send_db(char * msg,int *sock);
 void SecurityConfigurationAssessmentInit(void);
 int ReadDecodeXML(const char *file);
 

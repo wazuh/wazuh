@@ -29,7 +29,7 @@ int test_search_and_replace(){
 }
 
 int test_utf8_random(bool replacement) {
-    int i;
+    size_t i;
     const size_t LENGTH = 4096;
     char buffer[LENGTH];
 
@@ -50,6 +50,41 @@ int test_utf8_random(bool replacement) {
     return r;
 }
 
+static int compare(const struct statfs * statfs) {
+    for (int i = 0; network_file_systems[i].name; i++) {
+        if (network_file_systems[i].f_type == statfs->f_type) {
+            return 1;
+        }
+    }
+
+    for (int i = 0; skip_file_systems[i].name; i++) {
+        if (skip_file_systems[i].f_type == statfs->f_type) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+static int test_fs_magic() {
+    struct statfs statfs = {.f_type = 0x6969};
+    w_assert_int_eq(compare(&statfs), 1);
+
+    statfs.f_type = 0xFF534D42;
+    w_assert_int_eq(compare(&statfs), 1);
+
+    statfs.f_type = 0x9123683E;
+    w_assert_int_eq(compare(&statfs), 1);
+
+    statfs.f_type = 0x61756673;
+    w_assert_int_eq(compare(&statfs), 1);
+
+    statfs.f_type = 0x794c7630;
+    w_assert_int_eq(compare(&statfs), 1);
+
+    return 1;
+}
+
 int main(void) {
     printf("\n\n   STARTING TEST - OS_SHARED   \n\n");
 
@@ -61,6 +96,9 @@ int main(void) {
 
     /* Test UTF-8 string operations */
     TAP_TEST_MSG(test_utf8_random(false), "Filter a random string into UTF-8 without character replacement.");
+
+    /* Test filesystem magic code searching */
+    TAP_TEST_MSG(test_fs_magic(), "Filesystem magic code searching.");
 
     TAP_PLAN;
     TAP_SUMMARY;
