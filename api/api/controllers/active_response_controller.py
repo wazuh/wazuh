@@ -30,7 +30,7 @@ def run_command(pretty=False, wait_for_complete=False, agent_id=None):
     active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
 
     rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {**{'agent_id': agent_id}, **active_response_model.to_dict()}
+    f_kwargs = {'rbac': rbac, **{'agent_id': agent_id}, **active_response_model.to_dict()}
 
     dapi = DistributedAPI(f=active_response.run_command,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -57,7 +57,7 @@ def run_command_all(pretty=False, wait_for_complete=False):
     active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
 
     rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {**active_response_model.to_dict()}
+    f_kwargs = {'rbac': rbac, **active_response_model.to_dict()}
 
     dapi = DistributedAPI(f=active_response.run_command_all,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
