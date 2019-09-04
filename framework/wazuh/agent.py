@@ -2142,7 +2142,8 @@ class Agent:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
             raise WazuhException(1715,
-                                 "The agent has been disconnected during the process or the file has been modified [Agent side]",
+                                 "The agent has been disconnected during the process "
+                                 "or the file has been modified [Agent side]",
                                  cmd_error=True)
 
         # Get file SHA1 from agent and compare
@@ -2158,7 +2159,8 @@ class Agent:
         if not data.startswith('ok'):
             raise WazuhException(
                 1715,
-                extra_message="Error sending WPK file. Error when receiving SHA1 from the upgrade file or the installer is invalid",
+                extra_message="Error sending WPK file. Error when receiving SHA1 from the upgrade file "
+                              "or the installer is invalid",
                 cmd_error=True)
         rcv_sha1 = data.split(' ')[1]
         if rcv_sha1 == file_sha1:
@@ -2228,7 +2230,8 @@ class Agent:
             s.close()
             raise WazuhException(1716,
                                  "Error when receiving the upgrade command. "
-                                 "It is possible that the agent has been disconnected or a timeout has occurred in the call",
+                                 "It is possible that the agent has been disconnected "
+                                 "or a timeout has occurred in the call",
                                  cmd_error=True)
 
 
@@ -2334,9 +2337,9 @@ class Agent:
         if not data.startswith('ok'):
             raise WazuhException(
                 1715,
-                extra_message= data.replace("err ", "") +
-                              ". Please check the internet connection and that the agent is active (timeout). Agent {}".format(
-                                  self.id), cmd_error=True)
+                data.replace("err ", "") +
+                ". Please check the internet connection and that the agent is active (timeout). Agent {}".format(
+                    self.id), cmd_error=True)
 
         # Open file on agent
         s = OssecSocket(common.REQUEST_SOCKET)
@@ -2429,7 +2432,8 @@ class Agent:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok '):
             raise WazuhException(
-                1715, extra_message="Error sending WPK file. Error when receiving SHA1 from the upgrade file or the installer is invalid",
+                1715,
+                "Error sending WPK file. Error when receiving SHA1 from the upgrade file or the installer is invalid",
                 cmd_error=True)
         rcv_sha1 = data.split(' ')[1]
         if calc_sha1 == rcv_sha1:
@@ -2474,7 +2478,8 @@ class Agent:
             s.sendto(("1:wazuh-upgrade:wazuh: Custom installation on agent {0} ({1}): aborted: {2}".format(str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(), common.ossec_path + "/queue/ossec/queue")
             s.close()
             raise WazuhException(1716,
-                                 "File {} . It is possible that the agent has been disconnected or a timeout has occurred in the call".format(file_path), cmd_error=True)
+                                 "File {} . It is possible that the agent has been disconnected "
+                                 "or a timeout has occurred in the call".format(file_path), cmd_error=True)
 
 
     @staticmethod
