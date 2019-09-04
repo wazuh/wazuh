@@ -780,10 +780,9 @@ static void c_files()
     }
 
     OSHashNode *my_node;
-    unsigned int *i;
-    os_calloc(1, sizeof(unsigned int), i);
+    unsigned int i;
 
-    for (my_node = OSHash_Begin(m_hash, i); my_node; my_node = OSHash_Next(m_hash, i, my_node)) {
+    for (my_node = OSHash_Begin(m_hash, &i); my_node; my_node = OSHash_Next(m_hash, &i, my_node)) {
         os_free(key);
         os_free(data);
         os_strdup(my_node->key, key);
@@ -791,7 +790,6 @@ static void c_files()
             os_strdup(my_node->data, data);
         }
         else {
-            os_free(i);
             os_free(key);
             os_free(data);
             closedir(dp);
@@ -836,7 +834,6 @@ static void c_files()
         p_size++;
     }
 
-    os_free(i);
     os_free(key);
     os_free(data);
     /* Unlock mutex */

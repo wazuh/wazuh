@@ -1139,19 +1139,16 @@ int fim_delete_hashes(char *file_name) {
         char *inode_str;
 
         if(inode_str = get_attr_from_checksum(data->checksum, SK_INODE), !inode_str || *inode_str == '\0') {
-            unsigned int *inode_it;
+            unsigned int inode_it;
             OSHashNode *s_inode;
 
-            os_calloc(1, sizeof(unsigned int), inode_it);
-
             //Looking for inode if check_inode = no
-            for (s_inode = OSHash_Begin(syscheck.inode_hash, inode_it); s_inode && s_inode->data; s_inode = OSHash_Next(syscheck.inode_hash, inode_it, s_inode)) {
+            for (s_inode = OSHash_Begin(syscheck.inode_hash, &inode_it); s_inode && s_inode->data; s_inode = OSHash_Next(syscheck.inode_hash, &inode_it, s_inode)) {
                 if(!strcmp(s_inode->data, file_name)){
                     inode_str = s_inode->key;
                     break;
                 }
             }
-            os_free(inode_it);
         }
 
         char * inode_path;

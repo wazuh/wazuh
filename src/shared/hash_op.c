@@ -590,15 +590,14 @@ OSHashNode *OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current
 }
 
 void *OSHash_Clean(OSHash *self, void (*cleaner)(void*)){
-    unsigned int *i;
-    os_calloc(1, sizeof(unsigned int), i);
+    unsigned int i;
     OSHashNode *curr_node;
     OSHashNode *next_node;
 
-    curr_node = OSHash_Begin(self, i);
+    curr_node = OSHash_Begin(self, &i);
     if(curr_node){
         do {
-            next_node = OSHash_Next(self, i, curr_node);
+            next_node = OSHash_Next(self, &i, curr_node);
             if(curr_node->key){
                 free(curr_node->key);
             }
@@ -609,8 +608,6 @@ void *OSHash_Clean(OSHash *self, void (*cleaner)(void*)){
             curr_node = next_node;
         } while (curr_node);
     }
-
-    os_free(i);
 
     /* Free the hash table */
     free(self->table);
