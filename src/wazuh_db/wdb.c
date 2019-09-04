@@ -107,6 +107,7 @@ static const char *SQL_STMT[] = {
 sqlite3 *wdb_global = NULL;
 wdb_config config;
 pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
 wdb_t * db_pool_begin;
 wdb_t * db_pool_last;
 int db_pool_size;
@@ -722,6 +723,19 @@ void wdb_commit_old() {
     }
 
     w_mutex_unlock(&pool_mutex);
+
+    w_mutex_lock(&global_mutex);
+    
+    if (wdb_global != NULL){ //note: db_global->db = wdb_global
+        w_mutex_lock(&db_global->mutex);
+        if (db_global->transaction && time(NULL) - db_global->last > config.commit_time) {
+            mdebug2("Committing database for %s", db_global->id);
+            wdb_commit2(db_global);
+        }
+        w_mutex_unlock(&db_global->mutex);
+    }
+    
+    w_mutex_unlock(&global_mutex);
 }
 
 void wdb_close_old() {
