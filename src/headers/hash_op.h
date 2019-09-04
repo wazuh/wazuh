@@ -28,6 +28,7 @@ typedef struct _OSHash {
     unsigned int initial_seed;
     unsigned int constant;
     pthread_rwlock_t mutex;
+    unsigned int elements;
 
     void (*free_data_function)(void *data);
     OSHashNode **table;
@@ -68,6 +69,8 @@ void *OSHash_Get(const OSHash *self, const char *key) __attribute__((nonnull));
 void *OSHash_Numeric_Get_ex(const OSHash *self, int key) __attribute__((nonnull(1)));
 void *OSHash_Get_ex(const OSHash *self, const char *key) __attribute__((nonnull));
 void *OSHash_Get_ins(const OSHash *self, const char *key) __attribute__((nonnull));
+
+unsigned int OSHash_Get_Elem_ex(OSHash *self) __attribute__((nonnull));
 
 int OSHash_setSize(OSHash *self, unsigned int new_size) __attribute__((nonnull));
 int OSHash_setSize_ex(OSHash *self, unsigned int new_size) __attribute__((nonnull));

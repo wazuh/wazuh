@@ -822,6 +822,8 @@ int run_dbcheck()
 
     os_calloc(OS_SIZE_6144, sizeof(char), alert_msg);
 
+    mdebug2(FIM_MONITORING_FILES_COUNT, "before", OSHash_Get_Elem_ex(syscheck.fp));
+
     __counter = 0;
     while (syscheck.dir[i] != NULL) {
         char *clink;
@@ -887,6 +889,7 @@ int run_dbcheck()
     }
 
     free(alert_msg);
+    mdebug2(FIM_MONITORING_FILES_COUNT, "after", OSHash_Get_Elem_ex(syscheck.fp));
 
     return (0);
 }
