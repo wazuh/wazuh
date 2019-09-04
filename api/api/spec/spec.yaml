@@ -324,7 +324,6 @@ components:
       - id
       - name
       $ref: '#/components/schemas/AgentSimple'
-      
 
     AgentStatus:
       type: string
@@ -334,6 +333,25 @@ components:
       - neverconnected
       - disconnected
       description: Agent status. It is calculated based on the last keep alive and the Wazuh version.
+
+    AgentsSummary:
+      type: object
+      properties:
+        Total:
+          type: integer
+          format: int32
+        Active:
+          type: integer
+          format: int32
+        Disconnected:
+          type: integer
+          format: int32
+        Never connected:
+          type: integer
+          format: int32
+        Pending:
+          type: integer
+          format: int32
 
     AgentID:
       type: string
@@ -2082,8 +2100,8 @@ components:
           type: string
           description: Value of the CDB list item value.
 
-    # Summary models
-    SummaryAgents:
+    # Overview models
+    OverviewAgents:
       type: object
       required:
         - nodes
@@ -2096,21 +2114,79 @@ components:
         nodes:
           type: object
           description: Active nodes in the cluster.
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  node_name:
+                    type: string
+                  count:
+                    type: integer
+            totalItems:
+              type: integer
+              format: int32
         groups:
           type: object
           description: Recount of the number of Wazuh agents group by Wazuh groups.
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/AgentGroup'
+            totalItems:
+              type: integer
+              format: int32
         agent_os:
           type: object
           description: Recount of the number of Wazuh agents group by OS.
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    format: int32
+                  os:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        format: alphanumeric
+                      platform:
+                        type: string
+                        format: alphanumeric
+                      version:
+                        type: string
+                        format: alphanumeric
+            totalItems:
+              type: integer
+              format: int32
         agent_status:
-          type: object
-          description: Recount of the number of Wazuh agents group by status (active, disconnected, never connected, pending).
+          $ref: '#/components/schemas/AgentsSummary'
         agent_version:
           type: object
           description: Recount of the number of Wazuh agents group by version.
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    format: int32
+                  version:
+                    type: string
+                    format: alphanumeric
+            totalItems:
+              type: integer
+              format: int32
         last_registered_agent:
-          type: object
-          description: Information about last registered agent.
+          $ref: '#/components/schemas/Agent'
 
   securitySchemes:
     basicAuth:
@@ -5241,17 +5317,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      properties:
-                        Total:
-                          type: integer
-                        Active:
-                          type: integer
-                        Disconnected:
-                          type: integer
-                        Never connected:
-                          type: integer
-                        Pending:
-                          type: integer
+                      $ref: '#/components/schemas/AgentsSummary'
               example:
                 data:
                   Total: 7
@@ -10795,7 +10861,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /summary/agents:
+  /overview/agents:
     get:
       tags:
       - summary
@@ -10807,7 +10873,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: 'Full summary of agents'
+          description: 'Overview of agents'
           content:
             application/json:
               schema:
@@ -10816,7 +10882,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/SummaryAgents'
+                      $ref: '#/components/schemas/OverviewAgents'
               example:
                data:
                 nodes:
