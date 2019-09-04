@@ -19,6 +19,9 @@ RuleNode *rulenode;
 static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule);
 static int _AddtoRule(int sid, int level, int none, const char *group,
                RuleNode *r_node, RuleInfo *read_rule);
+/* Internal functions to copy and remove rules */
+static void _remove_rules (RuleNode *array);
+static RuleNode *_copy_rule(RuleNode *orig);
 
 
 /* Create the RuleList */
@@ -252,13 +255,16 @@ int OS_AddRule(RuleInfo *read_rule)
     return (0);
 }
 
-/* Remove rules child from parent */
-void removeChild (RuleNode *array)
+/**
+ * @brief Remove an array of rules and child arrays
+ * @param array Array of rule childs.
+ */
+void _remove_rules (RuleNode *array)
 {
     RuleNode *tmp = NULL;
 
     if (array->child){
-        removeChild(array->child);
+        _remove_rules(array->child);
     }
 
     while (array){
@@ -269,51 +275,51 @@ void removeChild (RuleNode *array)
 }
 
 /* Remove rule */
-void removeRule (int sid_parent, int sid_rule)
+void removeRule (RuleNode *parent, int sid_rule)
 {
-    RuleNode *r_parent, *r_child;
-    RuleNode *prev;
+    RuleNode *tmp = parent->child;
+    RuleNode *prev = parent->child;
+    bool removed = false;
 
-    r_parent = getRule(sid_parent, rulenode);
-    r_child = getRule(sid_rule, r_parent->child);
-
-    if (r_child->child){
-        removeChild(r_child->child);
+    if (tmp->ruleinfo->sigid == sid_rule){
+        parent->child = tmp->next;
+        tmp->next = NULL;
+        _remove_rules(tmp);
+        tmp = parent->child;
+        prev = parent->child;
     }
 
-    r_child = r_parent->next;
-    while(r_child->ruleinfo->sigid != sid_rule || !r_child->next){
-        prev = r_child;
-        r_child = r_child->next;
-    }
+    while(tmp){
 
-    prev->next = r_child->next;
-    free(r_child);
-}
-
-/* Get node */
-RuleNode *getRule (int sigid, RuleNode *array){
-    RuleNode *tmp = array, *node = NULL;
-
-    while(tmp != NULL){
-        if (tmp->ruleinfo->sigid == sigid) {
-            return tmp;
+        if (tmp->ruleinfo->sigid == sid_rule) {
+            prev->next = tmp->next;
+            tmp->next = NULL;
+            _remove_rules(tmp);
+            removed = true;
         }
         else if (tmp->child){
-            node = getRule(sigid, tmp->child);
-            if(node != NULL){
-                return node;
-            }
+            removeRule(tmp, sid_rule);
         }
 
-        tmp = tmp->next;
-    }
+        if(removed){
+            tmp = prev->next;
+            removed = false;
+        } else {
+            prev = tmp;
+            tmp = tmp->next;
+        }
 
-    return node;
+    }
+}
+
+RuleNode *_copy_rule(RuleNode *orig)
+{
+
 }
 
 /* Get initial node */
-RuleNode *getInitialNode(u_int8_t category){
+RuleNode *getInitialNode(u_int8_t category)
+{
     RuleNode *node = rulenode;
 
     while(node != NULL && node->ruleinfo->category != category)
@@ -338,102 +344,7 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
         /* Check if the sigid matches */
         if (r_node->ruleinfo->sigid == sid) {
 
-            /* Parent will be modified if category or if_sid are diferents */
-            RuleNode *new_f = NULL, *old_f = NULL;
-
-            if (r_node->ruleinfo->if_sid != NULL && newrule->if_sid != NULL
-                && strcmp(r_node->ruleinfo->if_sid, newrule->if_sid) != 0) {
-                old_f = getRule(atoi(r_node->ruleinfo->if_sid), rulenode);
-                new_f = getRule(atoi(newrule->if_sid), rulenode);
-            }
-            else if (r_node->ruleinfo->if_sid != NULL && newrule->if_sid == NULL) {
-                old_f = getRule(atoi(r_node->ruleinfo->if_sid), rulenode);
-                new_f = getInitialNode(newrule->category);
-            }
-            else if (r_node->ruleinfo->if_sid == NULL && newrule->if_sid != NULL){
-                old_f = getInitialNode(r_node->ruleinfo->category);
-                new_f = getRule(atoi(newrule->if_sid), rulenode);
-            }
-            else if(r_node->ruleinfo->category != newrule->category) {
-                old_f = getInitialNode(r_node->ruleinfo->category);
-                new_f = getInitialNode(newrule->category);
-            }
-
-            if(new_f != NULL && old_f != NULL) {
-                modifyParent(r_node, old_f, new_f);
-            }
-
-            /* Assign new values */
-            r_node->ruleinfo->category = newrule->category;
-            r_node->ruleinfo->if_sid = newrule->if_sid;
-            r_node->ruleinfo->if_level = newrule->if_level;
-            r_node->ruleinfo->if_group = newrule->if_group;
-
-            r_node->ruleinfo->level = newrule->level;
-            r_node->ruleinfo->maxsize = newrule->maxsize;
-            r_node->ruleinfo->frequency = newrule->frequency;
-            r_node->ruleinfo->timeframe = newrule->timeframe;
-
-            r_node->ruleinfo->firedtimes = newrule->firedtimes;
-            r_node->ruleinfo->time_ignored = newrule->time_ignored;
-            r_node->ruleinfo->ignore_time = newrule->ignore_time;
-            r_node->ruleinfo->ignore = newrule->ignore;
-            r_node->ruleinfo->ckignore = newrule->ckignore;
-            r_node->ruleinfo->ignore_fields = newrule->ignore_fields;
-            r_node->ruleinfo->ckignore_fields = newrule->ckignore_fields;
-            r_node->ruleinfo->group_prev_matched_sz = newrule->group_prev_matched_sz;
-
-            r_node->ruleinfo->sid_prev_matched = newrule->sid_prev_matched;
-            r_node->ruleinfo->sid_search = newrule->sid_search;
-            r_node->ruleinfo->group_prev_matched = newrule->group_prev_matched;
-            r_node->ruleinfo->group_search = newrule->group_search;
-            r_node->ruleinfo->event_search = newrule->event_search;
-
-            r_node->ruleinfo->group = newrule->group;
-            r_node->ruleinfo->match = newrule->match;
-            r_node->ruleinfo->regex = newrule->regex;
-            r_node->ruleinfo->day_time = newrule->day_time;
-            r_node->ruleinfo->week_day = newrule->week_day;
-            r_node->ruleinfo->srcip = newrule->srcip;
-            r_node->ruleinfo->dstip = newrule->dstip;
-            r_node->ruleinfo->srcport = newrule->srcport;
-            r_node->ruleinfo->dstport = newrule->dstport;
-            r_node->ruleinfo->user = newrule->user;
-            r_node->ruleinfo->url = newrule->url;
-            r_node->ruleinfo->id = newrule->id;
-            r_node->ruleinfo->status = newrule->status;
-            r_node->ruleinfo->hostname = newrule->hostname;
-            r_node->ruleinfo->program_name = newrule->program_name;
-            r_node->ruleinfo->extra_data = newrule->extra_data;
-            r_node->ruleinfo->fields = newrule->fields;
-            r_node->ruleinfo->action = newrule->action;
-            r_node->ruleinfo->comment = newrule->comment;
-            r_node->ruleinfo->info = newrule->info;
-            r_node->ruleinfo->cve = newrule->cve;
-            r_node->ruleinfo->info_details = newrule->info_details;
-            r_node->ruleinfo->lists = newrule->lists;
-            r_node->ruleinfo->if_matched_regex = newrule->if_matched_regex;
-            r_node->ruleinfo->if_matched_group = newrule->if_matched_group;
-            r_node->ruleinfo->if_matched_sid = newrule->if_matched_sid;
-            r_node->ruleinfo->file = newrule->file;
-            r_node->ruleinfo->alert_opts = newrule->alert_opts;
-            r_node->ruleinfo->context_opts = newrule->context_opts;
-            r_node->ruleinfo->context = newrule->context;
-            r_node->ruleinfo->decoded_as = newrule->decoded_as;
-            r_node->ruleinfo->ar = newrule->ar;
-            r_node->ruleinfo->compiled_rule = newrule->compiled_rule;
-
-            r_node->ruleinfo->mutex = newrule->mutex;
-            r_node->ruleinfo->location = newrule->location;
-            r_node->ruleinfo->lists = newrule->lists;
-            r_node->ruleinfo->prev_rule = newrule->prev_rule;
-            r_node->ruleinfo->same_fields = newrule->same_fields;
-            r_node->ruleinfo->not_same_fields = newrule->not_same_fields;
-
-#ifdef LIBGEOIP_ENABLED
-            r_node->ruleinfo->srcgeoip = newrule->srcgeoip;
-            r_node->ruleinfo->dstgeoip = newrule->dstgeoip;
-#endif
+            removeRule(rulenode, sid);
 
             return (1);
         }

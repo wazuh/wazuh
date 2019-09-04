@@ -219,24 +219,11 @@ int OS_AddRule(RuleInfo *read_rule);
 int OS_AddChild(RuleInfo *read_rule);
 
 /**
- * @brief Remove all child from rule.
- * @param array Array of rule childs.
- */
-void removeChild(RuleNode *array);
-
-/**
  * @brief Remove rule and childs
  * @param sid_parent Rule parent
  * @param sid_rule Rule
  */
-void removeRule(int sid_parent, int sid_rule);
-/**
- * @brief Get rule node
- * @param sigid Rule id
- * @param array Array of rules
- * @return node Pointer to rule node
- */
-RuleNode *getRule(int sigid, RuleNode *array);
+void removeRule(RuleNode *parent, int sid_rule);
 
 /**
  * @brief Get root node
