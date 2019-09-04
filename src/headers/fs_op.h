@@ -39,6 +39,7 @@ struct file_system_type {
 };
 
 extern const struct file_system_type network_file_systems[];
+extern const struct file_system_type skip_file_systems[];
 
 short IsNFS(const char *file)  __attribute__((nonnull));
 short skipFS(const char *file)  __attribute__((nonnull));
