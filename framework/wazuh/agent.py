@@ -1929,16 +1929,16 @@ class Agent:
         agent_new_ver = None
         versions = self._get_versions(wpk_repo=wpk_repo, version=version, use_http=use_http)
         if not version:
-            for versions in versions:
-                if WazuhVersion(versions[0]) == manager_ver:
-                    agent_new_ver = versions[0]
-                    agent_new_shasum = versions[1]
+            for ver in versions:
+                if WazuhVersion(ver[0]) == manager_ver:
+                    agent_new_ver = ver[0]
+                    agent_new_shasum = ver[1]
                     break
         else:
-            for versions in versions:
-                if WazuhVersion(versions[0]) == WazuhVersion(version):
-                    agent_new_ver = versions[0]
-                    agent_new_shasum = versions[1]
+            for ver in versions:
+                if WazuhVersion(ver[0]) == WazuhVersion(version):
+                    agent_new_ver = ver[0]
+                    agent_new_shasum = ver[1]
                     break
         if not agent_new_ver:
             raise WazuhException(1718, version)
@@ -1947,10 +1947,13 @@ class Agent:
         agent_ver = self.version
 
         if manager_ver < WazuhVersion(agent_new_ver) and not force:
-            raise WazuhException(1717, "Manager: {0} / Agent: {1} -> {2}".format(manager_ver, agent_new_ver))
+            raise WazuhException(1717, WazuhException.ERRORS[1717] + ". Manager; {0} / Agent; {1} -> {2}".format(
+                manager_ver, agent_ver, agent_new_ver), cmd_error=True)
 
         if WazuhVersion(agent_ver) >= WazuhVersion(agent_new_ver) and not force:
-            raise WazuhException(1749, "Agent: {0} -> {1}".format(agent_ver, agent_new_ver))
+            raise WazuhException(1749,
+                                 WazuhException.ERRORS[1749] + ". Agent; {0} -> {1}".format(agent_ver, agent_new_ver),
+                                 cmd_error=True)
 
         if debug:
             print("Agent version: {0}".format(agent_ver))
@@ -2419,8 +2422,7 @@ class Agent:
         Upgrade agent using a custom WPK file.
         """
         self._load_info_from_DB()
-        import pydevd_pycharm
-        pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+
         # Check if agent is active.
         if self.status != 'Active':
             raise WazuhException(1720)
