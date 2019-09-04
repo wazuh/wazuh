@@ -2155,10 +2155,11 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        raise WazuhException(
-            1715,
-            extra_message="Error sending WPK file. Error when receiving SHA1 from the upgrade file or the installer is invalid",
-            cmd_error=True)
+        if not data.startswith('ok'):
+            raise WazuhException(
+                1715,
+                extra_message="Error sending WPK file. Error when receiving SHA1 from the upgrade file or the installer is invalid",
+                cmd_error=True)
         rcv_sha1 = data.split(' ')[1]
         if rcv_sha1 == file_sha1:
             return ["WPK file sent", wpk_file]
