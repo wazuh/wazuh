@@ -2185,10 +2185,11 @@ class Agent:
 
         # Check if remote upgrade is available for the selected agent version
         if WazuhVersion(self.version) < WazuhVersion("3.0.0-alpha4"):
-            raise WazuhException(1719, version)
+            raise WazuhException(1719, WazuhException.ERRORS[1719] + ". Version; {}".format(version), cmd_error=True)
 
         if self.os['platform'] == "windows" and int(self.os['major']) < 6:
-            raise WazuhException(1721, self.os['name'])
+            raise WazuhException(1721, WazuhException.ERRORS[1721] + ". OS name; {} OS patform; {} OS major; {}".format(
+                self.os['name'], self.os['platform'], self.os['major']), cmd_error=True)
 
         if wpk_repo is None:
             wpk_repo = common.wpk_repo_url
