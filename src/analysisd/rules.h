@@ -218,22 +218,44 @@ int OS_AddRule(RuleInfo *read_rule);
 /* Add rule information as a child */
 int OS_AddChild(RuleInfo *read_rule);
 
-/* Modify rule parent */
-void modifyParent(RuleNode *c, RuleNode *old_p, RuleNode *new_p);
-
-/* Get node */
+/**
+ * @brief Get rule node
+ * @param sigid Rule id
+ * @param array Array of rules
+ * @return node Pointer to rule node
+ */
 RuleNode *getRule(int sigid, RuleNode *array);
 
-/* Get initial node */
+/**
+ * @brief Get root node
+ * @param category Rule category
+ * @return node pointer to rule node
+ */
 RuleNode *getInitialNode(u_int8_t category);
 
-/* Add an overwrite rule */
+/**
+ * @brief Update rule info for overwritten ones
+ * @param r_node Rule to modify
+ * @param newrule The new values of the rule
+ * @param sid Rule id
+ * @return Success 1 if not success 0
+ */
 int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid);
 
-/* Mark groups (if_matched_group) */
+/**
+ * @brief Mark rules that match specific group (for if_matched_group)
+ * @param r_node Rule to mark
+ * @param orig_rule Rule that match if specific group do
+ * @return 0
+ */
 int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule);
 
-/* Mark IDs (if_matched_sid) */
+/**
+ * @brief Mark rules that match specific id (for if_matched_sid)
+ * @param r_node Rule to mark
+ * @param orig_rule Rule that match if specific rule do
+ * @return 0
+ */
 int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule);
 
 /* Get first rule */
