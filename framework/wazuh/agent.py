@@ -2188,7 +2188,7 @@ class Agent:
             raise WazuhException(1719, WazuhException.ERRORS[1719] + ". Version; {}".format(version), cmd_error=True)
 
         if self.os['platform'] == "windows" and int(self.os['major']) < 6:
-            raise WazuhException(1721, WazuhException.ERRORS[1721] + ". OS name; {} OS patform; {} OS major; {}".format(
+            raise WazuhException(1721, WazuhException.ERRORS[1721] + ". OS name; {} OS platform; {} OS major; {}".format(
                 self.os['name'], self.os['platform'], self.os['major']), cmd_error=True)
 
         if wpk_repo is None:
