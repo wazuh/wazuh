@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -60,15 +60,15 @@ int CreateThread(void * (*function_pointer)(void *), void *data)
     pthread_t lthread;
 
     if (CreateThreadJoinable(&lthread, function_pointer, data) < 0) {
-        return -1;
+        return 0;
     }
 
     if (pthread_detach(lthread) != 0) {
         merror(THREAD_ERROR " Cannot detach thread.");
-        return -1;
+        return 0;
     }
 
-    return (0);
+    return 1;
 }
 
 #endif /* !WIN32 */

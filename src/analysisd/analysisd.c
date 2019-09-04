@@ -2,7 +2,7 @@
  * Copyright (C) 2010-2012 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -2280,7 +2280,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 lf->full_log = __stats_comment;
 
                 /* Alert for statistical analysis */
-                if (stats_rule->alert_opts & DO_LOGALERT) {
+                if (stats_rule && (stats_rule->alert_opts & DO_LOGALERT)) {
                     os_calloc(1, sizeof(Eventinfo), lf_cpy);
                     w_copy_event_for_log(lf,lf_cpy);
 

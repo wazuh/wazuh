@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -10,13 +10,17 @@
 
 /* Functions to handle operation with files */
 
-#ifndef __FILE_H
-#define __FILE_H
+#ifndef FILE_OP_H
+#define FILE_OP_H
 
 #include <stdint.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <external/cJSON/cJSON.h>
+
+#ifdef WIN32
+#include <windows.h>
+#endif
 
 #define OS_PIDFILE  "/var/run"
 #define UCS2_LE 1
@@ -150,7 +154,10 @@ int checkBinaryFile(const char *f_name);
 
 int64_t w_ftell (FILE *x);
 
-#ifndef WIN32
-size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, int timeout);
-#endif
+/* Prevent children processes from inheriting a file pointer */
+void w_file_cloexec(FILE * fp);
+
+/* Prevent children processes from inheriting a file descriptor */
+void w_descriptor_cloexec(int fd);
+
 #endif /* __FILE_H */

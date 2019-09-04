@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -67,7 +67,7 @@
 #define QUEUE_ERROR     "(1210): Queue '%s' not accessible: '%s'."
 #define QUEUE_FATAL     "(1211): Unable to access queue: '%s'. Giving up.."
 #define PID_ERROR       "(1212): Unable to create PID file."
-#define DENYIP_WARN     "(1213): Message from '%s' not allowed."
+#define DENYIP_WARN     "(1213): Message from '%s' not allowed. Cannot find the ID of the agent."
 #define MSG_ERROR       "(1214): Problem receiving message from '%s'."
 #define CLIENT_ERROR    "(1215): No client configured. Exiting."
 #define CONNS_ERROR     "(1216): Unable to connect to '%s': '%s'."
@@ -95,7 +95,7 @@
 #define NO_CONFIG       "(1239): Configuration file not found: '%s'."
 #define INVALID_TIME    "(1240): Invalid time format: '%s'."
 #define INVALID_DAY     "(1241): Invalid day format: '%s'."
-#define ACCEPT_ERROR    "(1242): Couldn't accept TCP connections."
+#define ACCEPT_ERROR    "(1242): Couldn't accept TCP connections: %s (%d)"
 #define RECV_ERROR      "(1243): Couldn't receive message from peer."
 #define DUP_SECURE      "(1244): Can't add more than one secure connection."
 #define SEND_DISCON     "(1245): Sending message to disconnected agent '%s'."
@@ -194,14 +194,15 @@
 #define OPEN_UNABLE     "(1963): Unable to open file '%s'."
 #define NON_TEXT_FILE   "(1964): File '%s' is not ASCII or UTF-8 encoded."
 #define EXCLUDE_FILE    "(1965): File excluded: '%s'."
+#define DUP_FILE_INODE  "(1966): Inode for file '%s' already found. Skipping it."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
 #define NO_AUTHFILE     "(1402): Authentication key file '%s' not found."
 #define ENCFORMAT_ERROR "(1403): Incorrectly formatted message from agent '%s' (host '%s')."
-#define ENCKEY_ERROR    "(1404): Authentication error. Wrong key from '%s'."
+#define ENCKEY_ERROR    "(1404): Authentication error. Wrong key or corrupt payload. Message received from agent '%s' at '%s'."
 #define ENCSIZE_ERROR   "(1405): Message size not valid: '%64s'."
-#define ENCSUM_ERROR    "(1406): Checksum mismatch on message from '%s'."
+#define ENCSUM_ERROR    "(1406): Checksum mismatch. Message received from agent '%s' at '%s'."
 #define ENCTIME_ERROR   "(1407): Duplicated counter for '%s'."
 #define ENC_IP_ERROR    "(1408): Invalid ID %s for the source ip: '%s' (name '%s')."
 #define ENCFILE_CHANGED "(1409): Authentication file changed. Updating."
@@ -320,7 +321,7 @@
 #define VU_NO_SYSC_SCANS            "(5434): No package inventory found for agent %s, so their vulnerabilities will not be checked."
 #define VU_GLOBALDB_OPEN_ERROR      "(5435): Could not open global_db."
 #define VU_REPORT_ERROR             "(5436): The agent %s vulnerabilities could not be reported."
-#define VU_UPDATE_RETRY             "(5437): Failed when updating '%s %s' database. Retrying in %lu seconds..."
+#define VU_UPDATE_RETRY             "(5437): Failed when updating %s %s database. Retrying in %lu seconds..."
 #define VU_API_REQ_INV              "(5489): There was no valid response to '%s' after %d attempts."
 #define VU_PARSED_FEED_ERROR        "(5491): The %s feed couldn't be parsed."
 #define VU_VER_EXTRACT_ERROR        "(5493): The version of '%s' could not be extracted."
@@ -329,6 +330,7 @@
 #define VU_NULL_AGENT_IP            "(5498): The agent database returned a null registration IP address. Skipping agent %s."
 #define VU_API_REQ_INV_NEW          "(5499): There was no valid response to '%s' after %d attempts. Trying the next page..."
 #define VU_UNC_SEVERITY             "(5500): Uncontrolled severity has been found: '%s'."
+#define VU_FEED_NODE_NULL_ELM       "(5506): Null elements needing value have been found in a node of the feed. The update will not continue."
 
 
 /* File integrity monitoring error messages*/

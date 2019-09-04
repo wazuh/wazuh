@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -171,9 +171,6 @@ int main(int argc, char **argv)
 
     /* Setup random */
     srandom_init();
-
-    /* pid before going daemon */
-    i = getpid();
 
     if (!run_foreground) {
         nowDaemon();

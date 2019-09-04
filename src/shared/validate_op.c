@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -56,6 +56,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
         }
         return (NULL);
     }
+    w_file_cloexec(fp);
 
     /* Invalid call */
     if (!high_name || !low_name) {

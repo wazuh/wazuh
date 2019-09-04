@@ -2,7 +2,7 @@
  * Copyright (C) 2010 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -69,7 +69,6 @@ int send_rootcheck_msg(const char *msg)
 static void send_sk_db(int first_start)
 {
 #ifdef WIN_WHODATA
-    HANDLE t_hdle;
     long unsigned int t_id;
 #endif
 
@@ -114,9 +113,7 @@ static void send_sk_db(int first_start)
 #ifdef WIN_WHODATA
     if (syscheck.wdata.whodata_setup && !run_whodata_scan()) {
         minfo(FIM_WHODATA_START);
-        if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
-            merror(FIM_ERROR_CHECK_THREAD);
-        }
+        w_create_thread(NULL, 0, state_checker, NULL, 0, &t_id);
     }
 #endif
 
@@ -140,14 +137,12 @@ void start_daemon()
     /* Launch rootcheck thread */
     w_create_thread(w_rootcheck_thread,&syscheck);
 #else
-    if (CreateThread(NULL,
+    w_create_thread(NULL,
                     0,
                     (LPTHREAD_START_ROUTINE)w_rootcheck_thread,
                     &syscheck,
                     0,
-                    NULL) == NULL) {
-                    merror(THREAD_ERROR);
-                }
+                    NULL);
 #endif
 
 #ifdef INOTIFY_ENABLED
@@ -334,7 +329,7 @@ void start_daemon()
 }
 
 /* Read file information and return a pointer to the checksum */
-int c_read_file(const char *file_name, const char *linked_file, const char *oldsum, char *newsum, whodata_evt * evt)
+int c_read_file(const char *file_name, const char *linked_file, const char *oldsum, char *newsum, int dir_position, whodata_evt *evt)
 {
     int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, sha256sum = 0, mtime = 0, inode = 0;
     struct stat statbuf;
@@ -367,13 +362,12 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
     {
         char alert_msg[OS_SIZE_6144 + OS_SIZE_2048];
         char wd_sum[OS_SIZE_6144 + 1];
-        int pos;
 
 #ifdef WIN_WHODATA
         // If this flag is enable, the remove event will be notified at another point
         if (evt && evt->ignore_remove_event) {
             mdebug2(FIM_WHODATA_FILENOEXIST, file_name);
-            return 0;
+            return -1;
         }
 #endif
 
@@ -384,12 +378,9 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
             merror(FIM_ERROR_WHODATA_SUM_MAX, file_name);
         }
 
-        /* Find tag position for the evaluated file name */
-        if (pos = find_dir_pos(file_name, 1, 0, 0), pos >= 0) {
-            //Alert for deleted file
-            snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s:%s: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", linked_file ? linked_file : "", file_name);
-            send_syscheck_msg(alert_msg);
-        }
+        //Alert for deleted file
+        snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s:%s: %s", wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", linked_file ? linked_file : "", file_name);
+        send_syscheck_msg(alert_msg);
 
 #ifndef WIN32
         if(evt && evt->inode) {
@@ -692,7 +683,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
 
 static void update_link_monitoring(int pos, char *old_path, char *new_path) {
     w_rwlock_wrlock((pthread_rwlock_t *)&syscheck.fp->mutex);
-    free( syscheck.converted_links[pos]);
+    free(syscheck.converted_links[pos]);
     os_strdup(new_path, syscheck.converted_links[pos]);
     w_rwlock_unlock((pthread_rwlock_t *)&syscheck.fp->mutex);
 

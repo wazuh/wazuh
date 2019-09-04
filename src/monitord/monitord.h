@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -31,7 +31,7 @@ void OS_CompressLog(const char *logfile);
 char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations, int last_counter);
 int delete_old_agent(const char *agent_id);
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getMonitorInternalOptions(void);
 cJSON *getReportsOptions(void);
 cJSON *getMonitorLogging(void);

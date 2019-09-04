@@ -1,0 +1,1482 @@
+{
+  "order": 0,
+  "index_patterns": [
+    "wazuh-alerts-3.x-*"
+  ],
+  "settings": {
+    "index.refresh_interval": "5s",
+    "index.number_of_shards": "3",
+    "index.number_of_replicas": "0",
+    "index.auto_expand_replicas": "0-1",
+    "index.mapping.total_fields.limit": 2000
+  },
+  "mappings": {
+    "wazuh": {
+      "dynamic_templates": [
+        {
+          "string_as_keyword": {
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
+        }
+      ],
+      "properties": {
+        "@timestamp": {
+          "type": "date"
+        },
+        "@version": {
+          "type": "text"
+        },
+        "agent": {
+          "properties": {
+            "ip": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "id": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "name": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
+        },
+        "manager": {
+          "properties": {
+            "name": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
+        },
+        "cluster": {
+          "properties": {
+            "name": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
+        },
+        "AlertsFile": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "full_log": {
+          "type": "text"
+        },
+        "previous_log": {
+          "type": "text"
+        },
+        "GeoLocation": {
+          "properties": {
+            "area_code": {
+              "type": "long"
+            },
+            "city_name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "continent_code": {
+              "type": "text"
+            },
+            "coordinates": {
+              "type": "double"
+            },
+            "country_code2": {
+              "type": "text"
+            },
+            "country_code3": {
+              "type": "text"
+            },
+            "country_name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "dma_code": {
+              "type": "long"
+            },
+            "ip": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "latitude": {
+              "type": "double"
+            },
+            "location": {
+              "type": "geo_point"
+            },
+            "longitude": {
+              "type": "double"
+            },
+            "postal_code": {
+              "type": "keyword"
+            },
+            "real_region_name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "region_name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "timezone": {
+              "type": "text"
+            }
+          }
+        },
+        "host": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "syscheck": {
+          "properties": {
+            "path": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "sha1_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "sha1_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "uid_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "uid_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "gid_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "gid_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "perm_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "perm_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "md5_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "md5_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "gname_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "gname_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "inode_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "inode_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "mtime_after": {
+              "type": "date",
+              "format": "dateOptionalTime",
+              "doc_values": "true"
+            },
+            "mtime_before": {
+              "type": "date",
+              "format": "dateOptionalTime",
+              "doc_values": "true"
+            },
+            "uname_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "uname_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "size_before": {
+              "type": "long",
+              "doc_values": "true"
+            },
+            "size_after": {
+              "type": "long",
+              "doc_values": "true"
+            },
+            "diff": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "event": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
+        },
+        "location": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "message": {
+          "type": "text"
+        },
+        "offset": {
+          "type": "keyword"
+        },
+        "rule": {
+          "properties": {
+            "description": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "groups": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "level": {
+              "type": "long",
+              "doc_values": "true"
+            },
+            "id": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "cve": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "info": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "frequency": {
+              "type": "long",
+              "doc_values": "true"
+            },
+            "firedtimes": {
+              "type": "long",
+              "doc_values": "true"
+            },
+            "cis": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "pci_dss": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "gdpr": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "gpg13": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "hipaa": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "nist_800_53": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
+        },
+        "predecoder": {
+          "properties": {
+            "program_name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "timestamp": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
+        },
+        "decoder": {
+          "properties": {
+            "parent": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "ftscomment": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "fts": {
+              "type": "long",
+              "doc_values": "true"
+            },
+            "accumulate": {
+              "type": "long",
+              "doc_values": "true"
+            }
+          }
+        },
+        "data": {
+          "properties": {
+            "protocol": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "action": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "srcip": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "dstip": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "srcport": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "dstport": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "srcuser": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "dstuser": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "id": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "status": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "data": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "system_name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "url": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "oscap": {
+              "properties": {
+                "check.title": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "check.id": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "check.result": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "check.severity": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "check.description": {
+                  "type": "text"
+                },
+                "check.rationale": {
+                  "type": "text"
+                },
+                "check.references": {
+                  "type": "text"
+                },
+                "check.identifiers": {
+                  "type": "text"
+                },
+                "check.oval.id": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "scan.id": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "scan.content": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "scan.benchmark.id": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "scan.profile.title": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "scan.profile.id": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "scan.score": {
+                  "type": "double",
+                  "doc_values": "true"
+                },
+                "scan.return_code": {
+                  "type": "long",
+                  "doc_values": "true"
+                }
+              }
+            },
+            "audit": {
+              "properties": {
+                "type": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "id": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "syscall": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "exit": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "ppid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "pid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "auid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "uid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "gid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "euid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "suid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "fsuid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "egid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "sgid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "fsgid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "tty": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "session": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "command": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "exe": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "key": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "cwd": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "directory.name": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "directory.inode": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "directory.mode": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "file.name": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "file.inode": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "file.mode": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "acct": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "dev": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "enforcing": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "list": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "old-auid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "old-ses": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "old_enforcing": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "old_prom": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "op": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "prom": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "res": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "srcip": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "subj": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "success": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                }
+              }
+            },
+            "aws": {
+              "properties": {
+                "bytes": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "dstaddr": {
+                  "type": "ip",
+                  "doc_values": "true"
+                },
+                "srcaddr": {
+                  "type": "ip",
+                  "doc_values": "true"
+                },
+                "end": {
+                  "type": "date",
+                  "doc_values": "true"
+                },
+                "start": {
+                  "type": "date",
+                  "doc_values": "true"
+                },
+                "source_ip_address": {
+                  "type": "ip",
+                  "doc_values": "true"
+                },
+                "resource.instanceDetails.networkInterfaces": {
+                  "properties": {
+                    "privateIpAddress": {
+                      "type": "ip",
+                      "doc_values": "true"
+                    },
+                    "publicIp": {
+                      "type": "ip",
+                      "doc_values": "true"
+                    }
+                  }
+                },
+                "service": {
+                  "properties": {
+                    "count": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "action.networkConnectionAction.remoteIpDetails": {
+                      "properties": {
+                        "ipAddressV4": {
+                          "type": "ip",
+                          "doc_values": "true"
+                        },
+                        "geoLocation": {
+                          "type": "geo_point",
+                          "doc_values": "true"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "type": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "netinfo": {
+              "properties": {
+                "iface": {
+                  "properties": {
+                    "name": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "mac": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "adapter": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "type": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "state": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "mtu": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "tx_bytes": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "rx_bytes": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "tx_errors": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "rx_errors": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "tx_dropped": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "rx_dropped": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "tx_packets": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "rx_packets": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "ipv4": {
+                      "properties": {
+                        "gateway": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "dhcp": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "address": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "netmask": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "broadcast": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "metric": {
+                          "type": "long",
+                          "doc_values": "true"
+                        }
+                      }
+                    },
+                    "ipv6": {
+                      "properties": {
+                        "gateway": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "dhcp": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "address": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "netmask": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "broadcast": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "metric": {
+                          "type": "long",
+                          "doc_values": "true"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "os": {
+              "properties": {
+                "hostname": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "architecture": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "name": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "version": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "codename": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "major": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "minor": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "build": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "platform": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "sysname": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "release": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "release_version": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                }
+              }
+            },
+            "port": {
+              "properties": {
+                "protocol": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "local_ip": {
+                  "type": "ip",
+                  "doc_values": "true"
+                },
+                "local_port": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "remote_ip": {
+                  "type": "ip",
+                  "doc_values": "true"
+                },
+                "remote_port": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "tx_queue": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "rx_queue": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "inode": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "state": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "pid": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "process": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                }
+              }
+            },
+            "hardware": {
+              "properties": {
+                "serial": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "cpu_name": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "cpu_cores": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "cpu_mhz": {
+                  "type": "double",
+                  "doc_values": "true"
+                },
+                "ram_total": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "ram_free": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "ram_usage": {
+                  "type": "long",
+                  "doc_values": "true"
+                }
+              }
+            },
+            "program": {
+              "properties": {
+                "format": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "name": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "priority": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "section": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "size": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "vendor": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "install_time": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "version": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "architecture": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "multiarch": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "source": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "description": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "location": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                }
+              }
+            },
+            "process": {
+              "properties": {
+                "pid": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "name": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "state": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "ppid": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "utime": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "stime": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "cmd": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "args": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "euser": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "ruser": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "suser": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "egroup": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "sgroup": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "fgroup": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "rgroup": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "priority": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "nice": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "size": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "vm_size": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "resident": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "share": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "start_time": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "pgrp": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "session": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "nlwp": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "tgid": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "tty": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "processor": {
+                  "type": "long",
+                  "doc_values": "true"
+                }
+              }
+            },
+            "sca": {
+              "properties": {
+                "type": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "scan_id": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "policy": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "name": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "file": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "description": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "passed": {
+                  "type": "integer",
+                  "doc_values": "true"
+                },
+                "failed": {
+                  "type": "integer",
+                  "doc_values": "true"
+                },
+                "invalid": {
+                  "type": "integer",
+                  "doc_values": "true"
+                },
+                "total_checks": {
+                  "type": "integer",
+                  "doc_values": "true"
+                },
+                "score": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "check": {
+                  "properties": {
+                    "id": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "title": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "description": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "rationale": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "remediation": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "compliance": {
+                      "properties": {
+                        "cis": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "cis_csc": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "pci_dss": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        }
+                      }
+                    },
+                    "references": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "file": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "directory": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "registry": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "process": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "command": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "result": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "status": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "reason": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "previous_result": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    }
+                  }
+                }
+              }
+            },
+            "win": {
+              "properties": {
+                "system": {
+                  "properties": {
+                    "providerName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "providerGuid": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "eventSourceName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "securityUserID": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "userID": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "eventID": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "version": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "level": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "task": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "opcode": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "keywords": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "systemTime": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "eventRecordID": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "processID": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "threadID": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "channel": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "computer": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "severityValue": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "message": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    }
+                  }
+                },
+                "eventdata": {
+                  "properties": {
+                    "subjectUserSid": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "subjectUserName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "subjectDomainName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "subjectLogonId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "targetUserSid": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "targetUserName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "targetDomainName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "targetLogonId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "logonType": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "logonProcessName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "authenticationPackageName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "logonGuid": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "keyLength": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "impersonationLevel": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "transactionId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "newState": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "resourceManager": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "processId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "processName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "data": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "image": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "binary": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "parentImage": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "categoryId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "subcategoryId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "subcategoryGuid": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "auditPolicyChangesId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "category": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "subcategory": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "auditPolicyChanges": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    }
+                  }
+                },
+                "rmSessionEvent" :{
+                  "properties": {
+                    "rmSessionId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "uTCStartTime": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "program_name": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "command": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "type": {
+          "type": "text"
+        },
+        "title": {
+          "type": "keyword",
+          "doc_values": "true"
+        }
+      }
+    }
+  }
+}

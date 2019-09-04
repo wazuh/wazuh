@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -26,6 +26,21 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     /* Initial random numbers must happen before chroot */
     srandom_init();
+
+    /* Initialize sender */
+    sender_init();
+
+    // Resolve hostnames
+    rc = 0;
+    while (rc < agt->rip_id) {
+        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
+            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
+            resolveHostname(&agt->server[rc].rip, 5);
+            int rip_l = strlen(agt->server[rc].rip);
+            mdebug2("Server hostname resolved: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
+        }
+        rc++;
+    }
 
     /* Going Daemon */
     if (!run_foreground) {
@@ -112,8 +127,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Launch rotation thread */
 
     rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
-    if (rotate_log && CreateThread(w_rotate_log_thread, (void *)NULL) != 0) {
-        merror_exit(THREAD_ERROR);
+    if (rotate_log) {
+        w_create_thread(w_rotate_log_thread, (void *)NULL);
     }
 
     /* Launch dispatch thread */
@@ -121,16 +136,15 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
         buffer_init();
 
-        if (CreateThread(dispatch_buffer, (void *)NULL) != 0) {
-            merror_exit(THREAD_ERROR);
-        }
+        w_create_thread(dispatch_buffer, (void *)NULL);
     }else{
         minfo(DISABLED_BUFFER);
     }
     /* Connect remote */
     rc = 0;
     while (rc < agt->rip_id) {
-        minfo("Server IP Address: %s", agt->server[rc].rip);
+        int rip_l = strlen(agt->server[rc].rip);
+        minfo("Server IP Address: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
         rc++;
     }
 

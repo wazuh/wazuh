@@ -4,7 +4,7 @@
 # by Lorenzo Costanzia di Costigliole <mummie@tin.it>
 # Modified by Wazuh, Inc. <info@wazuh.com>.
 # Copyright (C) 2015-2019, Wazuh Inc.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 SERVICE=/Library/LaunchDaemons/com.wazuh.agent.plist
 STARTUP=/Library/StartupItems/WAZUH/StartupParameters.plist
