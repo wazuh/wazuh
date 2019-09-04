@@ -3,7 +3,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 # Requirements:
 #  Python 2.6 or newer
@@ -581,7 +581,6 @@ def usage():
 
 
 if __name__ == "__main__":
-    mywazuh = Wazuh(get_init=True)
     cluster_config = read_config()
 
     if cluster_config['node_type'] != 'master' and not cluster_config['disabled']:

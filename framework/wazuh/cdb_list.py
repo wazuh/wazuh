@@ -1,26 +1,22 @@
-#!/usr/bin/env python
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-
+import re
 from os import listdir
 from os.path import isfile, isdir, join
-import re
 
 from wazuh import common
-from wazuh.exception import WazuhException
-from wazuh.utils import sort_array, search_array
-
+from wazuh.exception import WazuhError
+from wazuh.utils import process_array
 
 _regex_path = r'^(etc/lists/)[\w\.\-/]+$'
 _pattern_path = re.compile(_regex_path)
 
 
 def _get_relative_path(path):
-    """
-    Get relative path
+    """Get relative path
+
     :param path: Original path
     :return: Relative path (from Wazuh base directory)
     """
@@ -28,18 +24,18 @@ def _get_relative_path(path):
 
 
 def _check_path(path):
-    """
-    Check if path is well formed (without './' or '../')
+    """Check if path is well formed (without './' or '../')
+
     :param path: Path to check
     :return: Result of check the path (boolean)
     """
     if './' in path or '../' in path or not _pattern_path.match(path):
-        raise WazuhException(1801)
+        raise WazuhError(1801)
 
 
 def _iterate_lists(absolute_path, only_names=False):
-    """
-    Get the content of all CDB lists
+    """Get the content of all CDB lists
+
     :param absolute_path: Full path of directory to get CDB lists
     :param only_names: If this parameter is true, only the name of all lists will be showed
     :return: List with all CDB lists
@@ -55,13 +51,10 @@ def _iterate_lists(absolute_path, only_names=False):
         new_absolute_path = join(absolute_path, name)
         new_relative_path = _get_relative_path(new_absolute_path)
         # '.cdb' and '.swp' files are skipped
-        if (isfile(new_absolute_path)) \
-            and ('.cdb' not in name)  \
-            and ('~' not in name) \
-            and not pattern.search(name):
+        if (isfile(new_absolute_path)) and ('.cdb' not in name) and ('~' not in name) and not pattern.search(name):
             if only_names:
                 relative_path = _get_relative_path(absolute_path)
-                output.append({'path': relative_path, 'name': name})
+                output.append({'path': '{0}/{1}'.format(relative_path, name), 'name': name, 'folder': relative_path})
             else:
                 items = get_list_from_file(new_relative_path)
                 output.append({'path': new_relative_path, 'items': items})
@@ -74,53 +67,42 @@ def _iterate_lists(absolute_path, only_names=False):
     return output
 
 
-def get_lists(path=None, offset=0, limit=common.database_limit, sort=None, search=None):
-    """
-    Get CDB lists
+def get_lists(path=None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True, search_text=None,
+              complementary_search=False, search_in_fields=None):
+    """Get CDB lists
+
     :param path: Relative path of list file to get (if it is not specified, all lists will be returned)
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
-    :param sort: Sorts the items.
-    :param search:  Looks for items with the specified string.
-    :return: CDB list
+    :param sort_by: Fields to sort the items by
+    :param sort_ascending: Sort in ascending (true) or descending (false) order
+    :param search_text: Text to search
+    :param complementary_search: Find items without the text to search
+    :param search_in_fields: Fields to search in
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
+    lists = _iterate_lists(common.lists_path)
 
-    output = []
-
-    if limit == 0:
-        raise WazuhException(1406)
-
-    # if path parameter is present, return only CDB list from path
-    if path:
+    if path is not None:
         # check if path is correct
         _check_path(path)
-        output.append(get_list_from_file(path))
-    else:
-        output = _iterate_lists(common.lists_path)
+        for l in list(lists):
+            if path != l['path']:
+                lists.remove(l)
+                continue
 
-    if offset:
-        output = output[offset:]
-
-    if search:
-        # only search in path field
-        output = search_array(output, search['value'], search['negation'], fields=['path'])
-
-    if sort:
-        output = sort_array(output, sort['fields'], sort['order'], allowed_sort_fields=['path'])
-
-    # limit is common.database_limit by default
-    output = output[:limit]
-
-    return {'totalItems' : len(output), 'items': output}
+    return process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         allowed_sort_fields=['path'], offset=offset, limit=limit)
 
 
-def get_list_from_file(path):
+def get_list_from_file(file_path):
     """
     Get CDB list from file
-    :param path: Relative path of list file to get
+    :param file_path: Relative path of list file to get
     :return: CDB list
     """
-    file_path = join(common.ossec_path, path)
+    file_path = join(common.ossec_path, file_path)
     output = []
 
     try:
@@ -131,40 +113,45 @@ def get_list_from_file(path):
                 else:
                     key, value = line.split(':')
                     output.append({'key': key, 'value': value})
-
-    except IOError:
-        raise WazuhException(1006)
-
+    except OSError as e:
+        if e.errno == 2:
+            raise WazuhError(1802)
+        elif e.errno == 13:
+            raise WazuhError(1803)
+        elif e.errno == 21:
+            raise WazuhError(1804, extra_message="{0} {1}".format(join('WAZUH_HOME', file_path), "is a directory"))
+        else:
+            raise e
     except ValueError:
-        raise WazuhException(1800, {'path': path})
-
-    except Exception:
-        raise WazuhException(1000)
+        raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
 
     return output
 
 
-def get_path_lists(offset=0, limit=common.database_limit, sort=None, search=None):
+def get_list(file_path):
+    """Get single CDB list from file
+
+    :param file_path: Relative path of list file to get
+    :return: CDB list
     """
-    Get paths of all CDB lists
-    :return: List with paths of all CDB lists
+    return {'items': get_list_from_file(file_path)}
+
+
+def get_path_lists(offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True, search_text=None,
+                   complementary_search=False, search_in_fields=None):
+    """Get paths of all CDB lists
+
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort_by: Fields to sort the items by
+    :param sort_ascending: Sort in ascending (true) or descending (false) order
+    :param search_text: Text to search
+    :param complementary_search: Find items without the text to search
+    :param search_in_fields: Fields to search in
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     output = _iterate_lists(common.lists_path, only_names=True)
 
-    if limit == 0:
-        raise WazuhException(1406)
-
-    if offset:
-        output = output[offset:]
-
-    if search:
-        # only search in path field
-        output = search_array(output, search['value'], search['negation'], fields=['name', 'path'])
-
-    if sort:
-        output = sort_array(output, sort['fields'], sort['order'], allowed_sort_fields=['name', 'path'])
-
-    # limit is common.database_limit by default
-    output = output[:limit]
-
-    return {'totalItems': len(output), 'items': output}
+    return process_array(output, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)

@@ -2,13 +2,14 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh import common
 import socket
 from json import dumps, loads
 from struct import pack, unpack
+
 
 class OssecSocket:
 
@@ -23,22 +24,22 @@ class OssecSocket:
             self.s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.s.connect(self.path)
         except Exception as e:
-            raise WazuhException(1013, str(e))
+            raise WazuhInternalError(1013, extra_message=str(e))
 
     def close(self):
         self.s.close()
 
     def send(self, msg_bytes):
         if not isinstance(msg_bytes, bytes):
-            raise WazuhException(1104, "Type must be bytes")
+            raise WazuhError(1104, extra_message="Type must be bytes")
 
         try:
             sent = self.s.send(pack("<I", len(msg_bytes)) + msg_bytes)
             if sent == 0:
-                raise WazuhException(1014, "Number of sent bytes is 0")
+                raise WazuhInternalError(1014, extra_message="Number of sent bytes is 0")
             return sent
         except Exception as e:
-            raise WazuhException(1014, str(e))
+            raise WazuhInternalError(1014, extra_message=str(e))
 
     def receive(self):
 
@@ -46,7 +47,7 @@ class OssecSocket:
             size = unpack("<I", self.s.recv(4, socket.MSG_WAITALL))[0]
             return self.s.recv(size, socket.MSG_WAITALL)
         except Exception as e:
-            raise WazuhException(1014, str(e))
+            raise WazuhInternalError(1014, extra_message=str(e))
 
 
 class OssecSocketJSON(OssecSocket):
@@ -64,6 +65,6 @@ class OssecSocketJSON(OssecSocket):
 
         if 'error' in response.keys():
             if response['error'] != 0:
-                raise WazuhException(response['error'], response['message'], cmd_error=True)
+                raise WazuhError(response['error'], extra_message=response['message'], cmd_error=True)
             else:
                 return response['data']

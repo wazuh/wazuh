@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -82,7 +82,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
         /* Read until no more messages are available */
         while (1) {
-            if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
+            if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
                 /* Only one read per call */
                 if (reads++) {
                     break;

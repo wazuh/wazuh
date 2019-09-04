@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 5, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -104,6 +104,8 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
         // Read the file
 
         while (active) {
+            clearerr(result_log);
+
             // Get file until EOF
 
             while (fgets(line, OS_MAXSTR, result_log)) {
@@ -114,7 +116,8 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
                     *end = '\0';
                 }
 
-                if (osquery_json = cJSON_Parse(line), osquery_json) {
+                const char *jsonErrPtr;
+                if (osquery_json = cJSON_ParseWithOpts(line, &jsonErrPtr, 0), osquery_json) {
 
                     // Nest object into a "osquery" object
 
@@ -565,7 +568,7 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
 
 void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
 {
-    pthread_t tlauncher, treader;
+    pthread_t tlauncher = 0, treader;
 
     if (osquery->disable) {
         minfo("Module disabled. Exiting...");
@@ -643,7 +646,7 @@ void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor)
 }
 
 
-// Get readed data
+// Get read data
 cJSON *wm_osquery_dump(const wm_osquery_monitor_t *osquery_monitor) {
 
     cJSON *root = cJSON_CreateObject();

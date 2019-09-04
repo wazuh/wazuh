@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -62,20 +62,7 @@ int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5
     SHA256_Init(&sha256_ctx);
 
     /* Update for each one */
-#ifdef WIN32
     while ((n = fread(buf, 1, OS_BUFFER_SIZE, fp)) > 0) {
-#else
-    while ((n = w_fread_timeout(buf, 1, OS_BUFFER_SIZE, fp, 5)) > 0) {
-#endif
-        if (n == OS_BUFFER_SIZE + 1) {    // Timeout error
-            mwarn("Timeout when scanning file '%s'. File skipped.", fname);
-            if (prefilter_cmd == NULL) {
-                fclose(fp);
-            } else {
-                pclose(fp);
-            }
-            return (-1);
-        }
 
         if (max_size > 0) {
             read = read + n;

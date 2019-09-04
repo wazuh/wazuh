@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -39,7 +39,7 @@ int connect_server(int initial_id)
             minfo("Closing connection to server (%s:%d/%s).",
                     agt->server[rc].rip,
                     agt->server[rc].port,
-                    agt->server[rc].protocol == UDP_PROTO ? "udp" : "tcp");
+                    agt->server[rc].protocol == IPPROTO_UDP ? "udp" : "tcp");
         }
     }
 
@@ -49,43 +49,37 @@ int connect_server(int initial_id)
         /* Check if we have a hostname */
         tmp_str = strchr(agt->server[rc].rip, '/');
         if (tmp_str) {
-            char *f_ip;
-            *tmp_str = '\0';
-
-            f_ip = OS_GetHost(agt->server[rc].rip, 5);
-            if (f_ip) {
-                char ip_str[128];
-                ip_str[127] = '\0';
-
-                snprintf(ip_str, 127, "%s/%s", agt->server[rc].rip, f_ip);
-
-                free(f_ip);
-                free(agt->server[rc].rip);
-
-                os_strdup(ip_str, agt->server[rc].rip);
-                tmp_str = strchr(agt->server[rc].rip, '/');
-                if (!tmp_str) {
-                    mwarn("Invalid hostname format: '%s'.", agt->server[rc].rip);
-                    return 0;
-                }
-
-                tmp_str++;
-            } else {
-                mwarn("Unable to reload hostname for '%s'. Using previous address.",
-                       agt->server[rc].rip);
-                *tmp_str = '/';
-                tmp_str++;
+            // Resolve hostname
+            if (!isChroot()) {
+                resolveHostname(&agt->server[rc].rip, 5);
             }
+            tmp_str++;
         } else {
             tmp_str = agt->server[rc].rip;
+        }
+
+        // The hostname was not resolved correctly
+        if (strlen(tmp_str) == 0) {
+            int rip_l = strlen(agt->server[rc].rip);
+            mdebug2("Could not resolve hostname '%.*s'", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
+            rc++;
+            if (agt->server[rc].rip == NULL) {
+                attempts += 10;
+                if (agt->server[1].rip) {
+                    merror("Unable to connect to any server.");
+                }
+                sleep(attempts < agt->notify_time ? attempts : agt->notify_time);
+                rc = 0;
+            }
+            continue;
         }
 
         minfo("Trying to connect to server (%s:%d/%s).",
                 agt->server[rc].rip,
                 agt->server[rc].port,
-                agt->server[rc].protocol == UDP_PROTO ? "udp" : "tcp");
+                agt->server[rc].protocol == IPPROTO_UDP ? "udp" : "tcp");
 
-        if (agt->server[rc].protocol == UDP_PROTO) {
+        if (agt->server[rc].protocol == IPPROTO_UDP) {
             agt->sock = OS_ConnectUDP(agt->server[rc].port, tmp_str, strchr(tmp_str, ':') != NULL);
         } else {
             if (agt->sock >= 0) {
@@ -117,7 +111,7 @@ int connect_server(int initial_id)
                 rc = 0;
             }
         } else {
-            if (agt->server[rc].protocol == TCP_PROTO) {
+            if (agt->server[rc].protocol == IPPROTO_TCP) {
                 if (OS_SetRecvTimeout(agt->sock, timeout, 0) < 0){
                     switch (errno) {
                     case ENOPROTOOPT:
@@ -131,7 +125,7 @@ int connect_server(int initial_id)
             }
 
 #ifdef WIN32
-            if (agt->server[rc].protocol == UDP_PROTO) {
+            if (agt->server[rc].protocol == IPPROTO_UDP) {
                 int bmode = 1;
 
                 /* Set socket to non-blocking */
@@ -177,7 +171,7 @@ void start_agent(int is_startup)
 
         /* Read until our reply comes back */
         while (attempts <= 5) {
-            if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
+            if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
 
                 switch (wnet_select(agt->sock, timeout)) {
                 case -1:
@@ -217,7 +211,7 @@ void start_agent(int is_startup)
 
                 /* Send message again (after three attempts) */
                 if (attempts >= 3 || recv_b == OS_SOCKTERR) {
-                    if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
+                    if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
                         if (!connect_server(agt->rip_id)) {
                             continue;
                         }
@@ -226,7 +220,7 @@ void start_agent(int is_startup)
                     }
                 }
 
-                if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
+                if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
                     send_msg(msg, -1);
                 }
 
@@ -246,7 +240,7 @@ void start_agent(int is_startup)
                     available_server = time(0);
 
                     minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
-                            agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == UDP_PROTO ? "udp" : "tcp");
+                            agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
 
                     if (is_startup) {
                         /* Send log message about start up */

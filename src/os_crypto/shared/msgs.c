@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -62,7 +62,7 @@ int doEncryptByMethod(const char *input, char *output, const char *charkey,
     }
 }
 
-/* Set the agent crypto method readed from the ossec.conf file */
+/* Set the agent crypto method read from the ossec.conf file */
 void os_set_agent_crypto_method(keystore * keys,const int method){
     keys->keyentries[0]->crypto_method = method;
 }

@@ -4,7 +4,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -115,7 +115,7 @@ int write_state() {
         "# State file for %s\n"
         "\n"
         "# Agent status:\n"
-        "# - pending:      waiting for get connected.\n"
+        "# - pending:      waiting to get connected.\n"
         "# - connected:    connection established with manager in the last %d seconds.\n"
         "# - disconnected: connection lost or no ACK received in the last %d seconds.\n"
         "status='%s'\n"

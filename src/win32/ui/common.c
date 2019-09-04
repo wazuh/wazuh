@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -323,19 +323,11 @@ int get_ossec_server()
             success = 1;
             goto ret;
         } else {
-            /* If we don't find the IP, try the server hostname */
-            char *s_ip;
-            s_ip = OS_GetHost(str, 0);
-            if (s_ip) {
-                /* Clear the host memory */
-                free(s_ip);
-
-                /* Assign the hostname to the server info */
-                config_inst.server_type = SERVER_HOST_USED;
-                config_inst.server = str;
-                success = 1;
-                goto ret;
-            }
+            /* If we don't find the IP, get the server hostname */
+            config_inst.server_type = SERVER_HOST_USED;
+            config_inst.server = str;
+            success = 1;
+            goto ret;
         }
     }
     if (str = OS_GetOneContentforElement(&xml, xml_serverip), str) {
@@ -347,15 +339,10 @@ int get_ossec_server()
         }
     }
     if (str = OS_GetOneContentforElement(&xml, xml_serverhost), str) {
-        char *s_ip;
-        s_ip = OS_GetHost(str, 0);
-        if (s_ip) {
-            free(s_ip);
-            config_inst.server_type = SERVER_HOST_USED;
-            config_inst.server = str;
-            success = 1;
-            goto ret;
-        }
+        config_inst.server_type = SERVER_HOST_USED;
+        config_inst.server = str;
+        success = 1;
+        goto ret;
     }
 
     /* Set up final server name when not available */
@@ -428,17 +415,13 @@ int set_ossec_server(char *ip, HWND hwnd)
 
     /* Verify IP Address */
     if (OS_IsValidIP(ip, NULL) != 1) {
-        char *s_ip;
-        s_ip = OS_GetHost(ip, 0);
 
-        if (!s_ip) {
-            MessageBox(hwnd, "Invalid Server IP Address.\r\n"
-                       "It must be the valid IPv4 address of the "
-                       "OSSEC server or the resolvable hostname.",
-                       "Error -- Failure Setting IP", MB_OK);
+        if (strchr(ip, '/')) {
+            MessageBox(hwnd,
+                       "A valid hostname cannot contain the following character: /",
+                       "Cannot save hostname", MB_OK | MB_ICONERROR);
             return (0);
         }
-        free(s_ip);
         config_inst.server_type = SERVER_HOST_USED;
         xml_pt = xml_serveraddr;
     } else {

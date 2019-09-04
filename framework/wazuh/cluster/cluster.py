@@ -1,30 +1,32 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-import itertools
-from wazuh.utils import md5, mkdir_with_mode
-from wazuh.exception import WazuhException
-from wazuh.agent import Agent
-from wazuh.manager import status, restart
-from wazuh.configuration import get_ossec_conf
-from wazuh.InputValidator import InputValidator
-from wazuh import common
-from datetime import datetime, timedelta
-from time import time
-from os import path, listdir, stat, remove
-from subprocess import check_output
-from shutil import rmtree
-from operator import eq, setitem, add
-import json
-import os
 import ast
-from random import random
-from functools import reduce
-import zipfile
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+import itertools
+from wazuh.cluster.utils import get_cluster_status, manager_restart, read_cluster_config
+import json
 import logging
+import os
+import zipfile
+from datetime import datetime, timedelta
+from functools import reduce, lru_cache
+from operator import eq, setitem, add
+from os import path, listdir, stat, remove
+from random import random
+from shutil import rmtree
+from subprocess import check_output
+from time import time
+
+from wazuh import common
+from wazuh.InputValidator import InputValidator
+from wazuh.agent import Agent
+from wazuh.exception import WazuhException
+from wazuh.utils import md5, mkdir_with_mode
 from wazuh.wlogging import WazuhLogger
 
 logger = logging.getLogger('wazuh')
+
 
 #
 # Cluster
@@ -60,6 +62,7 @@ def check_cluster_config(config):
         raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
 
 
+@lru_cache()
 def get_cluster_items():
     try:
         with open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)) as f:
@@ -83,68 +86,14 @@ def get_cluster_items_worker_intervals():
     return get_cluster_items()['intervals']['worker']
 
 
+@lru_cache()
 def read_config(config_file=common.ossec_conf):
-    cluster_default_configuration = {
-        'disabled': False,
-        'node_type': 'master',
-        'name': 'wazuh',
-        'node_name': 'node01',
-        'key': '',
-        'port': 1516,
-        'bind_addr': '0.0.0.0',
-        'nodes': ['NODE_IP'],
-        'hidden': 'no'
-    }
+    """
+    Returns the cluster configuration.
 
-    try:
-        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file)
-    except WazuhException as e:
-        if e.code == 1106:
-            # if no cluster configuration is present in ossec.conf, return default configuration but disabling it.
-            cluster_default_configuration['disabled'] = True
-            return cluster_default_configuration
-        else:
-            raise WazuhException(3006, e.message)
-    except Exception as e:
-        raise WazuhException(3006, str(e))
-
-    # if any value is missing from user's cluster configuration, add the default one:
-    for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
-        config_cluster[value_name] = cluster_default_configuration[value_name]
-
-    if isinstance(config_cluster['port'], str) and not config_cluster['port'].isdigit():
-        raise WazuhException(3004, "Cluster port must be an integer.")
-
-    config_cluster['port'] = int(config_cluster['port'])
-    if config_cluster['disabled'] == 'no':
-        config_cluster['disabled'] = False
-    elif config_cluster['disabled'] == 'yes':
-        config_cluster['disabled'] = True
-    elif not isinstance(config_cluster['disabled'], bool):
-        raise WazuhException(3004, "Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'".format(
-            config_cluster['disabled']))
-
-    # if config_cluster['node_name'].upper() == '$HOSTNAME':
-    #     # The HOSTNAME environment variable is not always available in os.environ so use socket.gethostname() instead
-    #     config_cluster['node_name'] = gethostname()
-
-    # if config_cluster['node_name'].upper() == '$NODE_NAME':
-    #     if 'NODE_NAME' in environ:
-    #         config_cluster['node_name'] = environ['NODE_NAME']
-    #     else:
-    #         raise WazuhException(3006, 'Unable to get the $NODE_NAME environment variable')
-
-    # if config_cluster['node_type'].upper() == '$NODE_TYPE':
-    #     if 'NODE_TYPE' in environ:
-    #         config_cluster['node_type'] = environ['NODE_TYPE']
-    #     else:
-    #         raise WazuhException(3006, 'Unable to get the $NODE_TYPE environment variable')
-
-    if config_cluster['node_type'] == 'client':
-        logger.info("Deprecated node type 'client'. Using 'worker' instead.")
-        config_cluster['node_type'] = 'worker'
-
-    return config_cluster
+    return: Dictionary with cluster configuration
+    """
+    return read_cluster_config(config_file=common.ossec_conf)
 
 
 def get_node():
@@ -166,8 +115,12 @@ def check_cluster_status():
 
 
 def get_status_json():
-    return {"enabled": "no" if check_cluster_status() else "yes",
-            "running": "yes" if status()['wazuh-clusterd'] == 'running' else "no"}
+    """
+    Returns the cluster status
+
+    :return: Dictionary with the cluster status.
+    """
+    return get_cluster_status()
 
 
 #
@@ -271,7 +224,7 @@ def compress_files(name, list_path, cluster_control_json=None):
     return zip_file_path
 
 
-def decompress_files(zip_path, ko_files_name="cluster_control.json"):
+async def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     ko_files = ""
     zip_dir = zip_path + 'dir'
     mkdir_with_mode(zip_dir)
@@ -372,8 +325,8 @@ def restart_all_nodes():
 
     :return: Confirmation message.
     """
-    restart()
-    return "Restarting cluster"
+    manager_restart()
+    return "Restart request sent"
 
 
 #
@@ -412,7 +365,7 @@ def merge_agent_info(merge_type, node_name, files=None, file_type="", time_limit
     files_to_send = 0
     files = "all" if files is None else {path.basename(f) for f in files}
 
-    with open(common.ossec_path + output_file, 'w') as o_f:
+    with open(common.ossec_path + output_file, 'wb') as o_f:
         for filename in os.listdir(merge_path):
             if files != "all" and filename not in files:
                 continue
@@ -425,14 +378,14 @@ def merge_agent_info(merge_type, node_name, files=None, file_type="", time_limit
 
             files_to_send += 1
             if o_f is None:
-                o_f = open(common.ossec_path + output_file, 'w')
+                o_f = open(common.ossec_path + output_file, 'wb')
 
             header = "{} {} {}".format(stat_data.st_size, filename.replace(common.ossec_path, ''),
                                        datetime.utcfromtimestamp(stat_data.st_mtime))
-            with open(full_path, 'r') as f:
+            with open(full_path, 'rb') as f:
                 data = f.read()
 
-            o_f.write(header + '\n' + data)
+            o_f.write((header + '\n').encode() + data)
 
     return files_to_send, output_file
 

@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -116,6 +116,10 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
     send_msg(key->id, msg_ack, -1);
 
+    /* Filter UTF-8 characters */
+    char * clean = w_utf8_filter(r_msg, true);
+    r_msg = clean;
+
     if (strcmp(r_msg, HC_STARTUP) == 0) {
         mdebug1("Agent %s sent HC_STARTUP from %s.", key->name, inet_ntoa(key->peer_info.sin_addr));
         is_startup = 1;
@@ -129,6 +133,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             *r_msg = '\0';
         } else {
             mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
+            free(clean);
             return;
         }
     }
@@ -151,6 +156,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 w_mutex_unlock(&lastmsg_mutex);
 
                 free(data);
+                free(clean);
                 return;
             }
         }
@@ -235,6 +241,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             }
         }
     }
+
+    free(clean);
 }
 
 void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir) {
@@ -246,6 +254,8 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
     char file[PATH_MAX + 1];
     unsigned int i;
     remote_files_group *r_group = NULL;
+
+    *merged_tmp = '\0';
 
     /* Create merged file */
     os_calloc(2, sizeof(file_sum *), f_sum);
@@ -431,7 +441,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 os_calloc(1, sizeof(file_sum), f_sum[f_size]);
                 strncpy(f_sum[f_size]->sum, md5sum, 32);
                 os_strdup(files[i], f_sum[f_size]->name);
-                
+
                 if (!logr.nocmerged) {
                     MergeAppendFile(merged_tmp, file, NULL, -1);
                 }
@@ -926,7 +936,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
             return (-1);
         }
 
-        if (logr.proto[logr.position] == UDP_PROTO) {
+        if (logr.proto[logr.position] == IPPROTO_UDP) {
             /* Sleep 1 every 30 messages -- no flood */
             if (i > 30) {
                 sleep(1);
@@ -965,6 +975,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
     }
 
     mdebug2("read_controlmsg(): reading '%s'", msg);
+    memset(&tmp_sum, 0, sizeof(os_md5));
 
     // Skip agent-info and label data
 
@@ -1062,7 +1073,9 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             // Copy sum before unlock mutex
-            memcpy(tmp_sum, f_sum[0]->sum, sizeof(tmp_sum));
+            if (f_sum[0]->sum) {
+                memcpy(tmp_sum, f_sum[0]->sum, sizeof(tmp_sum));
+            }
 
             /* Unlock mutex */
             w_mutex_unlock(&files_mutex);
@@ -1177,7 +1190,9 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
         // Mark message as dispatched
         w_mutex_lock(&lastmsg_mutex);
-        data->changed = 0;
+        if (data) {
+            data->changed = 0;
+        }
         w_mutex_unlock(&lastmsg_mutex);
 
         free(msg);

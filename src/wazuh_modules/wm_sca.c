@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * January 25, 2019.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -48,9 +48,9 @@ static int wm_sca_start(wm_sca_t * data);  // Start
 static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result,char *reason);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
-static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan, int *checks_number);  // Do scan
-static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);  // Send summary
-static int wm_sca_check_policy(cJSON *policy, cJSON *profiles);
+static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan, int *checks_number);
+static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);
+static int wm_sca_check_policy(cJSON *policy, cJSON *profiles, OSHash *global_check_list);
 static int wm_sca_check_requirements(cJSON *requirements);
 static void wm_sca_summary_increment_passed();
 static void wm_sca_summary_increment_failed();
@@ -78,7 +78,9 @@ static char * wm_sca_get_pattern(char *value); // Get pattern
 static int wm_sca_check_file(char * const file, char * const pattern, char **reason); // Check file
 static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, char **reason); // Read command output
 static int wm_sca_pt_matches(const char * const str, const char * const pattern); // Check pattern match
-static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, char **reason); // Check dir
+static int wm_sca_check_dir(const char * const dir, const char * const file, char * const pattern, char **reason); // Check dir
+static int wm_sca_check_dir_existence(const char * const dir, char **reason);
+static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list, char * const file, char * const pattern, char **reason);
 static int wm_sca_is_process(char *value, OSList *p_list); // Check process
 
 #ifdef WIN32
@@ -399,6 +401,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
     /* Read every policy monitoring file */
     if(data->profile){
+        OSHash *check_list = OSHash_Create();
         for(i = 0; data->profile[i]; i++) {
             if(!data->profile[i]->enabled){
                 continue;
@@ -432,6 +435,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 mwarn("Policy file not found: '%s'. Skipping it.",path);
                 goto next;
             }
+            w_file_cloexec(fp);
 
             /* Yaml parsing */
             yaml_document_t document;
@@ -455,7 +459,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             cJSON *requirements = cJSON_GetObjectItem(object, "requirements");
             cJSON_AddItemReferenceToArray(requirements_array, requirements);
 
-            if(wm_sca_check_policy(policy, profiles)) {
+            if(wm_sca_check_policy(policy, profiles, check_list)) {
                 mwarn("Validating policy file: '%s'. Skipping it.", path);
                 goto next;
             }
@@ -558,7 +562,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 minfo("Starting evaluation of policy: '%s'", data->profile[i]->profile);
 
                 if (wm_sca_do_scan(profiles,vars,data,id,policy,0,cis_db_index,data->profile[i]->remote,first_scan,&checks_number) != 0) {
-                    merror("Evaluating the policy file: '%s. Set debug mode for more detailed information.", data->profile[i]->profile);
+                    merror("Error while evaluating the policy '%s'", data->profile[i]->profile);
                 }
                 mdebug1("Calculating hash for scanned results.");
                 char * integrity_hash = wm_sca_hash_integrity(cis_db_index);
@@ -579,7 +583,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 minfo("Evaluation finished for policy '%s'.",data->profile[i]->profile);
                 wm_sca_reset_summary();
-                
+
                 w_rwlock_unlock(&dump_rwlock);
             }
 
@@ -601,11 +605,13 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
         }
         first_scan = 0;
+        OSHash_Clean(check_list, free);
     }
 }
 
-static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
-    int retval, i;
+static int wm_sca_check_policy(cJSON * policy, cJSON * profiles, OSHash *global_check_list)
+{
+    int retval;
     cJSON *id;
     cJSON *name;
     cJSON *file;
@@ -631,6 +637,12 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
     if(!id->valuestring){
         mwarn("Invalid format for field 'id'.");
         return retval;
+    }
+
+    char *coincident_policy_file;
+    if((coincident_policy_file = OSHash_Get(global_check_list,id->valuestring)), coincident_policy_file) {
+        mwarn("Duplicated policy ID: %s. File '%s' contains the same ID.", id->valuestring, coincident_policy_file);
+        return 1;
     }
 
     name = cJSON_GetObjectItem(policy, "name");
@@ -683,13 +695,30 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
                 mwarn("Check ID not found.");
                 free(read_id);
                 return retval;
-            } else if (check_id->valueint <= 0) {
+            }
+            if (check_id->valueint <= 0) {
                 // Invalid ID
                 mwarn("Invalid check ID: %d", check_id->valueint);
                 free(read_id);
                 return retval;
             }
 
+            char *coincident_policy;
+            char *key_id;
+            size_t key_length = snprintf(NULL, 0, "%d", check_id->valueint);
+            os_malloc(key_length + 1, key_id);
+            snprintf(key_id, key_length + 1, "%d", check_id->valueint);
+
+            if((coincident_policy = (char *)OSHash_Get(global_check_list, key_id)), coincident_policy){
+                // Invalid ID
+                mwarn("Duplicated check ID: %d. First appearance at policy '%s'", check_id->valueint, coincident_policy);
+                os_free(key_id);
+                os_free(read_id);
+                return 1;
+            }
+            os_free(key_id);
+
+            int i;
             for (i = 0; read_id[i] != 0; i++) {
                 if (check_id->valueint == read_id[i]) {
                     // Duplicated ID
@@ -756,11 +785,24 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
 
             rules_n = 0;
         }
+
+        int i;
+        char *policy_file = NULL;
+        os_strdup(file->valuestring, policy_file);
+        OSHash_Add(global_check_list, id->valuestring, policy_file);
+        for (i = 0; read_id[i] != 0; ++i) {
+            char *local_id;
+            size_t key_length = snprintf(NULL, 0, "%d", read_id[i]);
+            os_malloc(key_length + 1, local_id);
+            snprintf(local_id, key_length + 1, "%d", read_id[i]);
+            char *policy_id = NULL;
+            os_strdup(id->valuestring, policy_id);
+            OSHash_Add(global_check_list, local_id, policy_id);
+            os_free(local_id);
+        }
         free(read_id);
     }
-
-    retval = 0;
-    return retval;
+    return 0;
 }
 
 static int wm_sca_check_requirements(cJSON *requirements) {
@@ -812,9 +854,59 @@ static int wm_sca_check_requirements(cJSON *requirements) {
     return retval;
 }
 
-static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan,int *checks_number) {
+static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list,
+    char * const file, char * const pattern, char **reason)
+{
+    char *f_value_copy;
+    os_strdup(dir_list, f_value_copy);
+    char *f_value_copy_ref = f_value_copy;
+    int found = 0;
+    char *dir = NULL;
+    mdebug2("Exploring directories [%s]", f_value_copy);
+    while ((dir = w_strtok_r_str_delim(",", &f_value_copy_ref))) {
+        short is_nfs = IsNFS(dir);
+        mdebug2("Checking directory '%s' => is_nfs=%d, skip_nfs=%d", dir, is_nfs, data->skip_nfs);
+        if(data->skip_nfs && is_nfs == 1) {
+            mdebug2("Directory '%s' flagged as NFS and skip_nfs is enabled.", dir);
+            if (*reason == NULL) {
+                os_malloc(OS_MAXSTR, *reason);
+                sprintf(*reason,"Directory '%s' flagged as NFS and skip_nfs is enabled", dir);
+            }
+            found = 2;
+        } else {
+            int check_result = 0;
+            if (file == NULL) {
+                check_result = wm_sca_check_dir_existence(dir, reason);
+            } else {
+                check_result = wm_sca_check_dir(dir, file, pattern, reason);
+            }
 
-    int type = 0, condition = 0;
+            if (check_result == 1) {
+                found = 1;
+                mdebug2("Found match in directory '%s'", dir);
+            } else if (check_result == 2) {
+                found = 2;
+                mdebug2("Check returned not applicable for directory '%s'", dir);
+            }
+        }
+
+        char _b_msg[OS_SIZE_1024 + 1];
+        _b_msg[OS_SIZE_1024] = '\0';
+        snprintf(_b_msg, OS_SIZE_1024, " Directory: %s", dir);
+        append_msg_to_vm_scat(data, _b_msg);
+
+        if (found == 1) {
+            break;
+        }
+    }
+    os_free(f_value_copy);
+    return found;
+}
+
+static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, int id,cJSON *policy,
+    int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number)
+{
+    int type = 0;
     char *nbuf = NULL;
     char buf[OS_SIZE_1024 + 2];
     char root_dir[OS_SIZE_1024 + 2];
@@ -870,6 +962,7 @@ static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int
         }
 
         /* Get condition */
+        int condition = 0;
         if(c_condition) {
             if(!c_condition->valuestring) {
                 mdebug1("Field 'condition' must be a string.");
@@ -991,11 +1084,9 @@ static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int
                         if (reason == NULL) {
                             os_malloc(OS_MAXSTR, reason);
                             sprintf(reason,"Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled", f_value);
-                            found = 2;
                         }
-                    }
-
-                    if (found != 2) {
+                        found = 2;
+                    } else {
                         /* Get any variable */
                         if (value[0] == '$') {
                             f_value = (char *) OSStore_Get(vars, value);
@@ -1014,11 +1105,12 @@ static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int
                             mdebug2("Command returned not found.");
                             found = 2;
                         }
-                        char _b_msg[OS_SIZE_1024 + 1];
-                        _b_msg[OS_SIZE_1024] = '\0';
-                        snprintf(_b_msg, OS_SIZE_1024, " Command: %s", f_value);
-                        append_msg_to_vm_scat(data, _b_msg);
                     }
+
+                    char _b_msg[OS_SIZE_1024 + 1];
+                    _b_msg[OS_SIZE_1024] = '\0';
+                    snprintf(_b_msg, OS_SIZE_1024, " Command: %s", f_value);
+                    append_msg_to_vm_scat(data, _b_msg);
                 }
 
     #ifdef WIN32
@@ -1034,19 +1126,10 @@ static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int
     #endif
                 /* Check for a directory */
                 else if (type == WM_SCA_TYPE_DIR) {
-                    char *file = NULL;
-                    char *pattern = NULL;
+                    mdebug2("Processing directory rule '%s'", value);
+                    char * const file = wm_sca_get_pattern(value);
+
                     char *f_value = NULL;
-                    char *dir = NULL;
-
-                    file = wm_sca_get_pattern(value);
-                    if (!file) {
-                        merror(WM_SCA_INVALID_RKCL_VAR, value);
-                        continue;
-                    }
-
-                    pattern = wm_sca_get_pattern(file);
-
                     /* Get any variable */
                     if (value[0] == '$') {
                         f_value = (char *) OSStore_Get(vars, value);
@@ -1058,56 +1141,10 @@ static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int
                         f_value = value;
                     }
 
-                    /* Check for multiple comma separated directories */
-                    dir = f_value;
-                    f_value = strchr(dir, ',');
-                    if (f_value) {
-                        *f_value = '\0';
-                    }
-
-                    while (dir) {
-                        mdebug2("Checking dir: %s", dir);
-
-                        short is_nfs = IsNFS(dir);
-                        if( is_nfs == 1 && data->skip_nfs ) {
-                            mdebug2("Directory '%s' flagged as NFS when skip_nfs is enabled.", dir);
-                            if (reason == NULL) {
-                                os_malloc(OS_MAXSTR, reason);
-                                sprintf(reason,"Directory '%s' flagged as NFS when skip_nfs is enabled", dir);
-                            }
-                            found = 2;
-                        } else {
-                            mdebug2("%s => is_nfs=%d, skip_nfs=%d", dir, is_nfs, data->skip_nfs);
-                            int val = wm_sca_check_dir(dir, file, pattern, &reason);
-                            if (val == 1) {
-                                mdebug2("Found dir.");
-                                found = 1;
-                            } else if (val == 2) {
-                                found = 2;
-                                break;
-                            }
-                        }
-
-                        char _b_msg[OS_SIZE_1024 + 1];
-                        _b_msg[OS_SIZE_1024] = '\0';
-                        snprintf(_b_msg, OS_SIZE_1024, " Directory: %s", dir);
-                        append_msg_to_vm_scat(data, _b_msg);
-                        if (f_value) {
-                            *f_value = ',';
-                            f_value++;
-
-                            dir = f_value;
-
-                            f_value = strchr(dir, ',');
-                            if (f_value) {
-                                *f_value = '\0';
-                            }
-                        } else {
-                            dir = NULL;
-                        }
-                    }
+                    char * const pattern = wm_sca_get_pattern(file);
+                    found = wm_sca_check_dir_list(data, f_value, file, pattern, &reason);
+                    mdebug2("Check directory rule result: %d", found);
                 }
-
                 /* Check for a process */
                 else if (type == WM_SCA_TYPE_PROCESS) {
                     if (!p_list) {
@@ -1167,7 +1204,7 @@ static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int
                         g_found = -1;
                     }
                 }
-                
+
                 if (g_found != 2) {
                     os_free(reason);
                 }
@@ -1391,6 +1428,10 @@ static char *wm_sca_get_value(char *buf, int *type)
 
 static char *wm_sca_get_pattern(char *value)
 {
+    if (value == NULL) {
+        return NULL;
+    }
+
     while (*value != '\0') {
         if ((*value == ' ') && (value[1] == '-') &&
                 (value[2] == '>') && (value[3] == ' ')) {
@@ -1421,7 +1462,7 @@ static int wm_sca_check_file(char * const file, char * const pattern, char **rea
         }
         return 2;
     }
-    
+
     char *pattern_ref = pattern;
 
     /* by default, assume a negative rule, i.e, an NIN rule */
@@ -1447,7 +1488,7 @@ static int wm_sca_check_file(char * const file, char * const pattern, char **rea
         } else {
             merror("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
             return 0;
-        }   
+        }
     }
 
     int result_accumulator = pattern_ref ? 0 : 1;
@@ -1485,7 +1526,7 @@ static int wm_sca_check_file(char * const file, char * const pattern, char **rea
         }
     }
 
-    mdebug2("Result for %s(%s) -> %d", pattern, file, result_accumulator);
+    mdebug2("Result for %s(%s) -> %d", pattern ? pattern : "EXISTS", file, result_accumulator);
     mdebug2("%s %d", in_operation ? "IN":"NIN", result_accumulator);
     os_free(file_list);
     return in_operation ? result_accumulator : !result_accumulator;
@@ -1503,25 +1544,33 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
 
     char *cmd_output = NULL;
     int result_code;
-
-    if( wm_exec(command,&cmd_output,&result_code,data->commands_timeout,NULL) < 0 )  {
-        if (*reason == NULL){
+    switch (wm_exec(command, &cmd_output, &result_code, data->commands_timeout, NULL)) {
+    case 0:
+        mdebug1("Command '%s' returned code %d.", command, result_code);
+        break;
+    case WM_ERROR_TIMEOUT:
+        os_free(cmd_output);
+        mdebug1("Timeout overtaken running command '%s'", command);
+        if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
-            if (result_code == EXECVE_ERROR) {
-                mdebug1("Invalid path or permissions running command '%s'",command);
-                sprintf(*reason, "Invalid path or permissions running command '%s'",command);
-            } else if (result_code == 1) {
-                mdebug1("Timeout overtaken running command '%s'", command);
-                sprintf(*reason, "Timeout overtaken running command '%s'", command);
-            } else {
-                mdebug1("Internal error running command '%s'", command);
-                sprintf(*reason, "Internal error running command '%s'", command);
+            sprintf(*reason, "Timeout overtaken running command '%s'", command);
+        }
+        return 2;
+    default:
+        if (result_code == EXECVE_ERROR) {
+            mdebug1("Invalid path or wrong permissions to run command '%s'", command);
+            if (*reason == NULL) {
+                os_malloc(OS_MAXSTR, *reason);
+                sprintf(*reason, "Invalid path or wrong permissions to run command '%s'", command);
+            }
+        } else {
+            mdebug1("Failed to run command '%s'. Returned code %d.", command, result_code);
+            if (*reason == NULL) {
+                os_malloc(OS_MAXSTR, *reason);
+                sprintf(*reason, "Failed to run command '%s'. Returned code %d.", command, result_code);
             }
         }
-        os_free(cmd_output);
         return 2;
-    } else if (result_code != 0) {
-        mdebug1("Command (%s) returned code %d.", command, result_code);
     }
 
     if(!cmd_output) {
@@ -1552,8 +1601,10 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
         /*a single negated minterm is a NIN rule*/
         if (strchr(pattern_ref, '!')) {
            in_operation = 0;
+           pattern_ref++;
            mdebug2("Negation found, is a NIN rule");
         } else {
+            in_operation = 1;
             mdebug2("Negation not found, is an IN rule");
         }
     } else {
@@ -1657,31 +1708,49 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
     return test_result;
 }
 
-static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, char **reason)
+static int wm_sca_check_dir_existence(const char * const dir, char **reason)
 {
-    int result_accumulator = 0;
-    struct dirent *entry;
-
-    mdebug2("Checking directory %s", dir);
-
     DIR *dp = opendir(dir);
-
-    if (!dp && file != NULL){
-        if (*reason == NULL){
-            os_malloc(OS_MAXSTR, *reason);
-            sprintf(*reason, "Directory %s not found", dir);
-        }
-        return 2;
+    const int open_dir_errno = errno;
+    if (dp) {
+        mdebug2("Existence check for directory '%s': found.", dir);
+        closedir(dp);
+        return 1;
     }
 
-    if (!dp) {
+    if (open_dir_errno == ENOENT) {
+        mdebug2("Existence check for directory '%s': not found. Reason: %s", dir, strerror(open_dir_errno));
         return 0;
     }
 
+    if (*reason == NULL) {
+        os_malloc(OS_MAXSTR, *reason);
+        sprintf(*reason, "Could not open '%s': %s", dir, strerror(open_dir_errno));
+    }
+    mdebug2("Could not open '%s': %s", dir, strerror(open_dir_errno));
+    return 2;
+}
+
+static int wm_sca_check_dir(const char * const dir, const char * const file, char * const pattern, char **reason)
+{
+    mdebug2("Checking directory '%s' -> '%s' -> '%s'", dir, file, pattern);
+
+    DIR *dp = opendir(dir);
+    if (!dp) {
+        const int open_dir_errno = errno;
+        if (*reason == NULL) {
+            os_malloc(OS_MAXSTR, *reason);
+            sprintf(*reason, "Could not open '%s': %s", dir, strerror(open_dir_errno));
+        }
+        mdebug2("Could not open '%s': %s", dir, strerror(open_dir_errno));
+        return 2;
+    }
+
+    int result_accumulator = 0;
+    struct dirent *entry;
     while ((entry = readdir(dp)) != NULL) {
         /* Ignore . and ..  */
-        if ((strcmp(entry->d_name, ".") == 0) ||
-                (strcmp(entry->d_name, "..") == 0)) {
+        if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
             continue;
         }
 
@@ -1890,7 +1959,7 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
         return 2;
     }
 
-    /* If the key does exists, a test for existance succeeds  */
+    /* If the key does exists, a test for existence succeeds  */
     int ret_val = 1;
 
     /* If option is set, set test_result as the value of query key */
@@ -2081,9 +2150,9 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                 } else {
                     merror("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
                     return 0;
-                }   
+                }
             }
-            
+
             int result = wm_sca_pt_matches(var_storage, pattern_ref);
             if (result){
                 mdebug2("Result for %s(%s) -> 1", reg_value, var_storage);
@@ -2278,6 +2347,10 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
 
         cJSON_ArrayForEach(compliance,compliances)
         {
+            if(!compliance->child) {
+                continue;
+            }
+
             if(compliance->child->valuestring){
                 cJSON_AddStringToObject(add_compliances,compliance->child->string,compliance->child->valuestring);
             } else if(compliance->child->valuedouble) {

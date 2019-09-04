@@ -1,7 +1,8 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import fcntl
 import json
 import random
 import re
@@ -10,53 +11,36 @@ import subprocess
 import time
 from collections import OrderedDict
 from datetime import datetime
-from glob import glob
 from os import remove, chmod
 from os.path import exists, join
-from shutil import move, Error
+from shutil import Error
 from typing import Dict
 from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
-from typing import Dict
-import fcntl
 
+from wazuh import Wazuh
 from wazuh import common
-from wazuh.exception import WazuhException
-from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
 from wazuh import configuration
+from wazuh.agent import Agent
+from wazuh.cluster.utils import get_manager_status, get_cluster_status, manager_restart, read_cluster_config
+from wazuh.exception import WazuhError, WazuhInternalError
+from wazuh.results import WazuhResult
+from wazuh.utils import filter_array_by_query
+from wazuh.utils import previous_month, tail, load_wazuh_xml, safe_move
+from wazuh.utils import process_array
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
-execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
+execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")
 
 
 def status() -> Dict:
     """
     Returns the Manager processes that are running.
+
     :return: Dictionary (keys: status, daemon).
     """
 
-    processes = ['ossec-agentlessd', 'ossec-analysisd', 'ossec-authd', 'ossec-csyslogd', 'ossec-dbd', 'ossec-monitord',
-                 'ossec-execd', 'ossec-integratord', 'ossec-logcollector', 'ossec-maild', 'ossec-remoted',
-                 'ossec-reportd', 'ossec-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-db']
-
-    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), join(common.ossec_path, 'var/run')
-    for process in processes:
-        pidfile = glob(join(run_dir, f"{process}-*.pid"))
-        if exists(join(run_dir, f'{process}.failed')):
-            data[process] = 'failed'
-        elif exists(join(run_dir, f'.restart')):
-            data[process] = 'restarting'
-        elif exists(join(run_dir, f'{process}.start')):
-            data[process] = 'starting'
-        elif pidfile:
-            process_pid = pidfile_regex.match(pidfile[0]).group(1)
-            # if a pidfile exists but the process is not running, it means the process crashed and
-            # wasn't able to remove its own pidfile.
-            data[process] = 'running' if exists(join('/proc', process_pid)) else 'failed'
-        else:
-            data[process] = 'stopped'
-
-    return data
+    return get_manager_status()
 
 
 def __get_ossec_log_fields(log):
@@ -79,17 +63,19 @@ def __get_ossec_log_fields(log):
     return datetime.strptime(date, '%Y/%m/%d %H:%M:%S'), category, type_log.lower(), description
 
 
-def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort=None, search=None):
-    """
-    Gets logs from ossec.log.
+def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort_by=None,
+              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
+    """Gets logs from ossec.log.
 
-    :param type_log: Filters by log type: all, error or info.
-    :param category: Filters by log category (i.e. ossec-remoted).
     :param months: Returns logs of the last n months. By default is 3 months.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param search: Looks for items with the specified string.
+    :param sort_by: Fields to sort the items by
+    :param sort_ascending: Sort in ascending (true) or descending (false) order
+    :param search_text: Text to search
+    :param complementary_search: Find items without the text to search
+    :param search_in_fields: Fields to search in
+    :param q: Defines query to filter.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     logs = []
@@ -112,7 +98,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
                 else:
                     continue
 
-            log_line = {'timestamp': str(log_date), 'tag': log_category, 'level': level, 'description': description}
+            log_line = {'timestamp': log_date, 'tag': log_category, 'level': level, 'description': description}
             if type_log == 'all':
                 logs.append(log_line)
             elif type_log.lower() == level.lower():
@@ -129,24 +115,14 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
             if logs and line and log_category == logs[-1]['tag'] and level == logs[-1]['level']:
                 logs[-1]['description'] += "\n" + line
 
-    if search:
-        logs = search_array(logs, search['value'], search['negation'])
-
-    if sort:
-        if sort['fields']:
-            logs = sort_array(logs, order=sort['order'], sort_by=sort['fields'])
-        else:
-            logs = sort_array(logs, order=sort['order'], sort_by=['timestamp'])
-    else:
-        logs = sort_array(logs, order='desc', sort_by=['timestamp'])
-
-    return {'items': cut_array(logs, offset, limit), 'totalItems': len(logs)}
+    return process_array(logs, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit, q=q)
 
 
 def ossec_log_summary(months=3):
     """
     Summary of ossec.log.
-
     :param months: Check logs of the last n months. By default is 3 months.
     :return: Dictionary by categories.
     """
@@ -180,47 +156,30 @@ def ossec_log_summary(months=3):
                 categories[category][log_type] += 1
             else:
                 continue
+
     return categories
 
 
-def upload_file(tmp_file, path, content_type, overwrite=False):
+def upload_file(path=None, content=None, overwrite=False):
     """
     Updates a group file
-
-    :param tmp_file: Relative path of file name from origin
     :param path: Path of destination of the new file
-    :param content_type: Content type of file from origin
+    :param content: Content of file to be uploaded
     :param overwrite: True for updating existing files, False otherwise
     :return: Confirmation message in string
     """
-    try:
-        # if file already exists and overwrite is False, raise exception
-        if not overwrite and exists(join(common.ossec_path, path)):
-            raise WazuhException(1905)
+    # if file already exists and overwrite is False, raise exception
+    if not overwrite and exists(join(common.ossec_path, path)):
+        raise WazuhError(1905)
 
-        try:
-            with open(join(common.ossec_path, tmp_file)) as f:
-                file_data = f.read()
-        except IOError:
-            raise WazuhException(1005)
-        except Exception:
-            raise WazuhException(1000)
+    if len(content) == 0:
+        raise WazuhError(1112)
 
-        if len(file_data) == 0:
-            raise WazuhException(1112)
+    # for CDB lists
+    if re.match(r'^etc/lists', path):
+        return upload_list(content, path)
 
-        if content_type == 'application/xml':
-            return upload_xml(file_data, path)
-        elif content_type == 'application/octet-stream':
-            return upload_list(file_data, path)
-        else:
-            raise WazuhException(1016)
-    finally:
-        # delete temporary file from API
-        try:
-            remove(join(common.ossec_path, tmp_file))
-        except OSError:
-            raise WazuhException(1903)
+    return upload_xml(content, path)
 
 
 def upload_xml(xml_file, path):
@@ -248,31 +207,27 @@ def upload_xml(xml_file, path):
             # delete two first spaces of each line
             final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
             tmp_file.write(final_xml)
-        chmod(tmp_file_path, 0o640)
+        chmod(tmp_file_path, 0o660)
     except IOError:
-        raise WazuhException(1005)
+        raise WazuhInternalError(1005)
     except ExpatError:
-        raise WazuhException(1113)
-    except Exception as e:
-        raise WazuhException(1000, str(e))
+        raise WazuhError(1113)
 
     try:
         # check xml format
         try:
             load_wazuh_xml(tmp_file_path)
         except Exception as e:
-            raise WazuhException(1113, str(e))
+            raise WazuhError(1113, str(e))
 
         # move temporary file to group folder
         try:
             new_conf_path = join(common.ossec_path, path)
-            move(tmp_file_path, new_conf_path)
+            safe_move(tmp_file_path, new_conf_path, permissions=0o660)
         except Error:
-            raise WazuhException(1016)
-        except Exception:
-            raise WazuhException(1000)
+            raise WazuhInternalError(1016)
 
-        return 'File updated successfully'
+        return WazuhResult({'message': 'File updated successfully'})
 
     except Exception as e:
         # remove created temporary file if an exception happens
@@ -301,20 +256,20 @@ def upload_list(list_file, path):
                 tmp_file.write(element.strip() + '\n')
         chmod(tmp_file_path, 0o640)
     except IOError:
-        raise WazuhException(1005)
-    except Exception:
-        raise WazuhException(1000)
+        raise WazuhInternalError(1005)
+
+    # validate CDB list
+    if not validate_cdb_list(tmp_file_path):
+        raise WazuhError(1802)
 
     # move temporary file to group folder
     try:
         new_conf_path = join(common.ossec_path, path)
-        move(tmp_file_path, new_conf_path)
+        safe_move(tmp_file_path, new_conf_path, permissions=0o660)
     except Error:
-        raise WazuhException(1016)
-    except Exception:
-        raise WazuhException(1000)
+        raise WazuhInternalError(1016)
 
-    return 'File updated successfully'
+    return WazuhResult({'message': 'File updated successfully'})
 
 
 def get_file(path, validation=False):
@@ -328,19 +283,23 @@ def get_file(path, validation=False):
 
     # validate CDB lists files
     if validation and re.match(r'^etc/lists', path) and not validate_cdb_list(path):
-        raise WazuhException(1800, {'path': path})
+        raise WazuhError(1800, {'path': path})
 
     # validate XML files
     if validation and not validate_xml(path):
-        raise WazuhException(1113)
+        raise WazuhError(1113)
+
+    # check if file exists
+    if not exists(full_path):
+        raise WazuhError(1006)
 
     try:
         with open(full_path) as f:
             output = f.read()
     except IOError:
-        raise WazuhException(1005)
+        raise WazuhInternalError(1005)
 
-    return output
+    return WazuhResult({'contents': output})
 
 def validate_xml(path):
     """
@@ -353,7 +312,7 @@ def validate_xml(path):
         with open(full_path) as f:
             parseString('<root>' + f.read() + '</root>')
     except IOError:
-        raise WazuhException(1005)
+        raise WazuhInternalError(1005)
     except ExpatError:
         return False
 
@@ -376,7 +335,7 @@ def validate_cdb_list(path):
                 if not re.match(regex_cdb, line):
                     return False
     except IOError:
-        raise WazuhException(1005)
+        raise WazuhInternalError(1005)
 
     return True
 
@@ -384,7 +343,6 @@ def validate_cdb_list(path):
 def delete_file(path):
     """
     Deletes a file.
-
     Returns a confirmation message if success, otherwise it raises
     a WazuhException
     :param path: Relative path of the file to be deleted
@@ -396,52 +354,25 @@ def delete_file(path):
         try:
             remove(full_path)
         except IOError:
-            raise WazuhException(1907)
+            raise WazuhError(1907)
     else:
-        raise WazuhException(1906)
+        raise WazuhError(1906)
 
-    return 'File was deleted'
+    return WazuhResult({'message': 'File was deleted'})
 
 
 def restart():
     """
-    Restart Wazuh manager.
+    Wrapper for 'restart_manager' function due to interdependencies with cluster module
 
     :return: Confirmation message.
     """
-    lock_file = open(execq_lockfile, 'a+')
-    fcntl.lockf(lock_file, fcntl.LOCK_EX)
-    try:
-        # execq socket path
-        socket_path = common.EXECQ
-        # msg for restarting Wazuh manager
-        msg = 'restart-wazuh '
-        # initialize socket
-        if exists(socket_path):
-            try:
-                conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-                conn.connect(socket_path)
-            except socket.error:
-                raise WazuhException(1902)
-        else:
-            raise WazuhException(1901)
-
-        try:
-            conn.send(msg.encode())
-            conn.close()
-        except socket.error as e:
-            raise WazuhException(1014, str(e))
-    finally:
-        fcntl.lockf(lock_file, fcntl.LOCK_UN)
-        lock_file.close()
-
-    return "Restarting manager"
+    return manager_restart()
 
 
 def _check_wazuh_xml(files):
     """
     Check Wazuh XML format from a list of files.
-
     :param files: List of files to check.
     :return: None
     """
@@ -458,22 +389,22 @@ def _check_wazuh_xml(files):
             # '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
                                               r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
-            raise WazuhException(1114, ' '.join(output_regex))
+            raise WazuhError(1114, ' '.join(output_regex))
         except Exception as e:
-            raise WazuhException(1743, str(e))
+            raise WazuhError(1743, str(e))
 
 
 def validation():
     """
     Check if Wazuh configuration is OK.
-
     :return: Confirmation message.
     """
     lock_file = open(execq_lockfile, 'a+')
     fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
         # sockets path
-        api_socket_path = join(common.ossec_path, 'queue/alerts/execa')
+        api_socket_relative_path = join('queue', 'alerts', 'execa')
+        api_socket_path = join(common.ossec_path, api_socket_relative_path)
         execq_socket_path = common.EXECQ
         # msg for checking Wazuh configuration
         execq_msg = 'check-manager-configuration '
@@ -483,7 +414,8 @@ def validation():
             remove(api_socket_path)
         except OSError as e:
             if exists(api_socket_path):
-                raise WazuhException(1014, str(e))
+                extra_msg = f'Socket: WAZUH_PATH/{api_socket_relative_path}. Error: {e.strerror}'
+                raise WazuhInternalError(1014, extra_message=extra_msg)
 
         # up API socket
         try:
@@ -491,25 +423,27 @@ def validation():
             api_socket.bind(api_socket_path)
             # timeout
             api_socket.settimeout(5)
-        except socket.error:
-            raise WazuhException(1013)
+        except OSError as e:
+            extra_msg = f'Socket: WAZUH_PATH/{api_socket_relative_path}. Error: {e.strerror}'
+            raise WazuhInternalError(1013, extra_message=extra_msg)
 
         # connect to execq socket
         if exists(execq_socket_path):
             try:
                 execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
                 execq_socket.connect(execq_socket_path)
-            except socket.error:
-                raise WazuhException(1013)
+            except OSError as e:
+                extra_msg = f'Socket: WAZUH_PATH/queue/alerts/execq. Error {e.strerror}'
+                raise WazuhInternalError(1013, extra_message=extra_msg)
         else:
-            raise WazuhException(1901)
+            raise WazuhInternalError(1901)
 
         # send msg to execq socket
         try:
             execq_socket.send(execq_msg.encode())
             execq_socket.close()
         except socket.error as e:
-            raise WazuhException(1014, str(e))
+            raise WazuhInternalError(1014, extra_message=str(e))
         finally:
             execq_socket.close()
 
@@ -520,7 +454,7 @@ def validation():
             datagram = api_socket.recv(4096)
             buffer.extend(datagram)
         except socket.timeout as e:
-            raise WazuhException(1014, str(e))
+            raise WazuhInternalError(1014, extra_message=str(e))
         finally:
             api_socket.close()
             # remove api_socket
@@ -530,12 +464,12 @@ def validation():
         try:
             response = _parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
         except (KeyError, json.decoder.JSONDecodeError) as e:
-            raise WazuhException(1904, str(e))
+            raise WazuhInternalError(1904, extra_message=str(e))
     finally:
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
 
-    return response
+    return WazuhResult(response)
 
 
 def _parse_execd_output(output: str) -> Dict:
@@ -554,7 +488,7 @@ def _parse_execd_output(output: str) -> Dict:
             if match:
                 errors.append(match.group(1))
         errors = list(OrderedDict.fromkeys(errors))
-        response = {'status': 'KO', 'details': errors}
+        raise WazuhError(1908, extra_message=errors)
     else:
         response = {'status': 'OK'}
 
@@ -566,3 +500,29 @@ def get_config(component, config):
     Returns active configuration loaded in manager
     """
     return configuration.get_active_configuration(agent_id='000', component=component, configuration=config)
+
+
+def get_info() -> Dict:
+    """
+    Returns manager configuration with cluster details
+
+    :return: Dictionary with information about manager and cluster
+    """
+    # get name from agent 000
+    manager = Agent(id=0)
+    manager._load_info_from_DB()
+
+    # read cluster configuration
+    cluster_config = read_cluster_config()
+
+    # get manager status
+    cluster_info = get_cluster_status()
+    # add 'name', 'node_name' and 'node_type' to cluster_info
+    for name in ('name', 'node_name', 'node_type'):
+        cluster_info[name] = cluster_config[name]
+
+    # merge manager information into an unique dictionary
+    manager_info = {**Wazuh().to_dict(),
+                    **{'name': manager.name, 'cluster': cluster_info}}
+
+    return manager_info

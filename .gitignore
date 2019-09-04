@@ -87,14 +87,11 @@ src/win32/REVISION
 *.gcda
 src/coverage-report/
 src/ossec.test
-src/tap_os_crypto
-src/tap_os_net
-src/tap_os_regex
-src/tap_os_xml
-src/tap_os_zlib
-src/test_shared
-src/tap_shared
+src/tap_*
 etc/preloaded-vars.conf
 
 # Old firewall-drop.sh (moved to default-firewall-drop.sh)
 active-response/firewall-drop.sh
+
+# Databases commits
+framework/wazuh/rbac/migrations/versions/*
