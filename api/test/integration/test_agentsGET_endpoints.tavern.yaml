@@ -1,3 +1,4 @@
+---
 test_name: GET /agents
 
 marks:
@@ -245,7 +246,7 @@ stages:
    request:
      <<: *get_agents
      params:
-       os_platform: "{expected_os_platform:s}"
+       os.platform: "{expected_os_platform:s}"
    response:
      status_code: 200
      body:
@@ -257,7 +258,7 @@ stages:
    request:
      <<: *get_agents
      params:
-       os_platform: test_platform
+       os.platform: test_platform
    response:
      status_code: 200
      body:
@@ -269,7 +270,7 @@ stages:
    request:
      <<: *get_agents
      params:
-       os_platform: test_%_platform
+       os.platform: test_%_platform
    response:
      status_code: 400
      body:
@@ -279,7 +280,7 @@ stages:
    request:
      <<: *get_agents
      params:
-       os_version: "{expected_os_version:s}"
+       os.version: "{expected_os_version:s}"
    response:
      status_code: 200
      body:
@@ -291,7 +292,7 @@ stages:
    request:
      <<: *get_agents
      params:
-       os_version: test_version
+       os.version: test_version
    response:
      status_code: 200
      body:
@@ -303,7 +304,7 @@ stages:
    request:
      <<: *get_agents
      params:
-       os_version: test_version_%
+       os.version: test_version_%
    response:
      status_code: 400
      body:
@@ -313,7 +314,7 @@ stages:
    request:
      <<: *get_agents
      params:
-       os_name: "{expected_os_name:s}"
+       os.name: "{expected_os_name:s}"
    response:
      status_code: 200
      body:
@@ -325,7 +326,7 @@ stages:
    request:
      <<: *get_agents
      params:
-       os_name: test_name
+       os.name: test_name
    response:
      status_code: 200
      body:
@@ -337,7 +338,7 @@ stages:
    request:
      <<: *get_agents
      params:
-       os_name: test_name_%
+       os.name: test_name_%
    response:
      status_code: 400
      body:

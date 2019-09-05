@@ -4,9 +4,9 @@ test_name: GET /syscollector/{agent_id}/os
 includes:
   - !include common.yaml
 
-#marks:
-#  - usefixtures:
-#    - syscollector_tests
+marks:
+  - usefixtures:
+    - syscollector_tests
 
 stages:
   - type: ref
@@ -58,6 +58,7 @@ stages:
         status: !anyint
         title: !anystr
         type: !anystr
+
 ---
 test_name: GET /syscollector/{agent_id}/os?{select}
 
@@ -78,12 +79,8 @@ marks:
         - scan.time
         - sysname
         - version
-includes:
-  - !include common.yaml
 
 stages:
-  - type: ref
-    id: login_get_token
 
   - name: OS of an agent, select
     request:
@@ -102,13 +99,7 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/hardware
 
-includes:
-  - !include common.yaml
-
 stages:
-
-  - type: ref
-    id: login_get_token
 
   - name: Hardware of an agent
     request: &hardware_request_000
@@ -163,13 +154,7 @@ marks:
         - scan.id
         - scan.time
 
-includes:
-  - !include common.yaml
-
 stages:
-
-  - type: ref
-    id: login_get_token
 
   - name: Hardware of an agent, select
     request:
@@ -188,13 +173,7 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/packages
 
-includes:
-  - !include common.yaml
-
 stages:
-
-  - type: ref
-    id: login_get_token
 
   - name: Packages of an agent, no limit
     request: &packages_request_000
@@ -369,19 +348,19 @@ stages:
             - <<: *packages_response
             - <<: *packages_response
 
-#  - name: Filter sort 2
-#    request:
-#      <<: *packages_request_000
-#      params:
-#        sort: +name
-#        limit: 2
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *packages_response
-#            - <<: *packages_response
+  - name: Filter sort 2
+    request:
+      <<: *packages_request_000
+      params:
+        sort: +name
+        limit: 2
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+            - <<: *packages_response
 
   - name: Wrong sort
     request:
@@ -436,3826 +415,3425 @@ stages:
           items:
             - <<: *packages_response
 
-#  - name: Filter by vendor
-#    request:
-#      <<: *packages_request_000
-#      params:
-#        vendor: "Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com>"
-#        limit: 1
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *packages_response
-#
-#  - name: Search an expected name
-#
-#    request:
-#      <<: *packages_request_000
-#      params:
-#        name: "binutils"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *packages_response
-#      save:
-#        body:
-#          name: data.items.0.name
-#
-#  - name: Filter by name
-#
-#    request:
-#      <<: *packages_request_000
-#      params:
-#        name: "{expected_name}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *packages_response
-#      save:
-#        body:
-#          architecture: data.items.0.architecture
-#
-#  - name: Filter by architecture
-#
-#    request:
-#      <<: *packages_request_000
-#      params:
-#        architecture: "{expected_architecture}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *packages_response
-#      save:
-#        body:
-#          expected_format: data.items.0.format
-#          expected_vendor: data.items.0.vendor
-#
-#  - name: Filter by format
-#
-#    request:
-#      <<: *packages_request_000
-#      params:
-#        format: "{expected_format}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *packages_response
-#
-#  - name: Filter by version
-#
-#    request:
-#      <<: *packages_request_000
-#      params:
-#        version: "{expected_version}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *packages_response
-#
-#  - name: Wrong filter
-#
-#    request:
-#      <<: *packages_request_000
-#      params:
-#        format: "{expected_format}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *packages_response
-#---
-#test_name: GET /syscollector/{agent_id}/packages?{select}
-#
-#marks:
-#  - parametrize:
-#      key: field
-#      vals:
-#        - architecture
-#        - description
-#        - format
-#        - name
-#        - priority
-#        - scan.id
-#        - scan.time
-#        - section
-#        - size
-#        - vendor
-#        - version
-#includes:
-#  - !include common.yaml
-#
-#stages:
-#  - type: ref
-#    id: login_get_token
-#  - name: Packages of an agent, select
-#
-#    request:
-#      <<: *packages_request_000
-#      params:
-#        select: "{field}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        $ext:
-#          # Check response item keys are the selected keys
-#          function: tavern_utils:test_select_key
-#          extra_kwargs:
-#            select_key: "{field:s}"
-#---
-#test_name: GET /syscollector/{agent_id}/processes
-#
-#includes:
-#  - !include common.yaml
-#
-#stages:
-#  - type: ref
-#    id: login_get_token
-#  - name: Processes of an agent, no limit
-#
-#    request: &processes_request_000
-#      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/processes"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      method: GET
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: !anyint
-#
-#  - name: Processes of an agent with limit = 1
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: &processes_response_000
-#            -
-#              cmd: !anystr
-#              egroup: !anystr
-#              euser: !anystr
-#              fgroup: !anystr
-#              name: !anystr
-#              nice: !anyint
-#              nlwp: !anyint
-#              pgrp: !anyint
-#              pid: !anystr
-#              ppid: !anyint
-#              priority: !anyint
-#              processor: !anyint
-#              resident: !anyint
-#              rgroup: !anystr
-#              ruser: !anystr
-#              scan:
-#                id: !anyint
-#                time: !anystr
-#              session: !anyint
-#              sgroup: !anystr
-#              share: !anyint
-#              size: !anyint
-#              start_time: !anyint
-#              state: !anystr
-#              stime: !anyint
-#              suser: !anystr
-#              tgid: !anyint
-#              tty: !anyint
-#              utime: !anyint
-#              vm_size: !anyint
-#      save:
-#        body:
-#          expected_tty: data.items.0.tty
-#          expected_sgroup: data.items.0.sgroup
-#          expected_share: data.items.0.share
-#          expected_session: data.items.0.session
-#          expected_scan_id: data.items.0.scan.id
-#          expected_pid: data.items.0.pid
-#          expected_ppid: data.items.0.ppid
-#          expected_state: data.items.0.state
-#          expected_egroup: data.items.0.egroup
-#          expected_euser: data.items.0.euser
-#          expected_ruser: data.items.0.ruser
-#          expected_suser: data.items.0.suser
-#          expected_fgroup: data.items.0.fgroup
-#          expected_rgroup: data.items.0.rgroup
-#          expected_name: data.items.0.name
-#          expected_nlwp: data.items.0.nlwp
-#          expected_pgrp: data.items.0.pgrp
-#          expected_priority: data.items.0.priority
-#
-#  - name: Filter by pid
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        pid: "{expected_pid}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - pid: "{expected_pid}"
-#
-#  - name: Filter by ppid
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        ppid: "{expected_ppid}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - ppid: !int "{expected_ppid}"
-#
-#  - name: Filter by state
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        state: "{expected_state}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - state: "{expected_state}"
-#
-#  - name: Filter by egroup
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        egroup: "{expected_egroup}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - egroup: "{expected_egroup}"
-#
-#  - name: Filter by fgroup
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        fgroup: "{expected_fgroup}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - fgroup: "{expected_fgroup}"
-#
-#  - name: Filter by sgroup
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        sgroup: "{expected_sgroup}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - sgroup: "{expected_sgroup}"
-#
-#  - name: Filter by rgroup
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        rgroup: "{expected_rgroup}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - rgroup: "{expected_rgroup}"
-#
-#  - name: Filter by euser
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        euser: "{expected_euser}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - euser: "{expected_euser}"
-#
-#  - name: Filter by ruser
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        ruser: "{expected_ruser}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - ruser: "{expected_ruser}"
-#
-#  - name: Filter by suser
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        suser: "{expected_suser}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - suser: "{expected_suser}"
-#
-#  - name: Filter by nlwp
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        nlwp: "{expected_nlwp}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - nlwp: !int "{expected_nlwp}"
-#
-#  - name: Filter by pgrp
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        pgrp: "{expected_pgrp}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - pgrp: !int "{expected_pgrp}"
-#
-#  - name: Filter by priority
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        priority: "{expected_priority}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - priority: !int "{expected_priority}"
-#
-#  - name: Filter by name
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        name: "{expected_name}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - name: "{expected_name}"
-#
-#  - name: Select by
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        select: tty,sgroup,share,session,scan_id
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            -
-#              scan:
-#                id: !int "{expected_scan_id}"
-#              session: !int "{expected_session}"
-#              sgroup: "{expected_sgroup}"
-#              share: !int "{expected_share}"
-#              tty: !int "{expected_tty}"
-#
-#  - name: Wrong param
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        select: wrongParam
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_remediation_response
-#
-#  - name: offset and limit
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        offset: 0
-#        limit: 2
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *processes_response_000
-#            - <<: *processes_response_000
-#      save:
-#        body:
-#          offset_test_cmd: data.items.1.cmd
-#          offset_test_egroup: data.items.1.egroup
-#          offset_test_euser: data.items.1.euser
-#          offset_test_fgroup: data.items.1.fgroup
-#          offset_test_name: data.items.1.name
-#          offset_test_nice: data.items.1.nice
-#          offset_test_nlwp: data.items.1.nlwp
-#          offset_test_pgrp: data.items.1.pgrp
-#          offset_test_pid: data.items.1.pid
-#          offset_test_ppid: data.items.1.ppid
-#          offset_test_priority: data.items.1.priority
-#          offset_test_processor: data.items.1.processor
-#          offset_test_resident: data.items.1.resident
-#          offset_test_rgroup: data.items.1.rgroup
-#          offset_test_ruser: data.items.1.ruser
-#          offset_test_scan_id: data.items.1.scan.id
-#          offset_test_scan_time: data.items.1.scan.time
-#          offset_test_session: data.items.1.session
-#          offset_test_sgroup: data.items.1.sgroup
-#          offset_test_share: data.items.1.share
-#          offset_test_size: data.items.1.size
-#          offset_test_start_time: data.items.1.start_time
-#          offset_test_state: data.items.1.state
-#          offset_test_stime: data.items.1.stime
-#          offset_test_suser: data.items.1.suser
-#          offset_test_tgid: data.items.1.tgid
-#          offset_test_tty: data.items.1.tty
-#          offset_test_utime: data.items.1.utime
-#          offset_test_vm_size: data.items.1.vm_size
-#
-#  - name: offset and limit check
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        offset: 1
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      strict: false
-#      body:
-#        data:
-#          items:
-#            - cmd: "{offset_test_cmd}"
-#              egroup: "{offset_test_egroup}"
-#              euser: "{offset_test_euser}"
-#              fgroup: "{offset_test_fgroup}"
-#              name: "{offset_test_name}"
-#              nice: !int "{offset_test_nice}"
-#              nlwp: !int "{offset_test_nlwp}"
-#              pgrp: !int "{offset_test_pgrp}"
-#              pid: "{offset_test_pid}"
-#              ppid: !int "{offset_test_ppid}"
-#              priority: !int "{offset_test_priority}"
-#              processor: !int "{offset_test_processor}"
-#              resident: !int "{offset_test_resident}"
-#              rgroup: "{offset_test_rgroup}"
-#              ruser: "{offset_test_ruser}"
-#              scan:
-#                id: !int "{offset_test_scan_id}"
-#                time: "{offset_test_scan_time}"
-#              session: !int "{offset_test_session}"
-#              sgroup: "{offset_test_sgroup}"
-#              share: !int "{offset_test_share}"
-#              size: !int "{offset_test_size}"
-#              start_time: !int "{offset_test_start_time}"
-#              state: "{offset_test_state}"
-#              stime: !int "{offset_test_stime}"
-#              suser: "{offset_test_suser}"
-#              tgid: !int "{offset_test_tgid}"
-#              tty: !int "{offset_test_tty}"
-#              utime: !int "{offset_test_utime}"
-#              vm_size: !int "{offset_test_vm_size}"
-#
-#  - name: Wrong limit
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        limit: 0
-#
-#    response:
-#      status_code: 400
-#      body: &error_spec
-#        detail: !anystr
-#        status: !anyint
-#        title: !anything
-#        type: !anystr
-#---
-#test_name: GET /syscollector/{agent_id}/processes?{sort,select}
-#
-#marks:
-#  - parametrize:
-#      key: field
-#      vals:
-#        - argvs
-#        - cmd
-#        - egroup
-#        - euser
-#        - fgroup
-#        - name
-#        - nice
-#        - nlwp
-#        - pgrp
-#        - pid
-#        - ppid
-#        - priority
-#        - processor
-#        - resident
-#        - rgroup
-#        - ruser
-#        - scan_id
-#        - session
-#        - sgroup
-#        - share
-#        - size
-#        - start_time
-#        - state
-#        - stime
-#        - suser
-#        - tgid
-#        - tty
-#        - utime
-#        - vm_size
-#
-#stages:
-#
-#  - name: Processes of an agent, sort
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        sort: "{field}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: !anyint
-#
-#  - name: Processes of an agent, select
-#
-#    request:
-#      <<: *processes_request_000
-#      params:
-#        select: "{field}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        $ext:
-#          # Check response item keys are the selected keys
-#          function: tavern_utils:test_select_key
-#          extra_kwargs:
-#            select_key: "{field:s}"
-#        data:
-#          totalItems: !anyint
-#
-#---
-#test_name: GET /syscollector/{agent_id}/ports
-#
-#includes:
-#  - !include common.yaml
-#
-#stages:
-#  - type: ref
-#    id: login_get_token
-#  - name: Ports of an agent
-#
-#    request: &port_request_000
-#      method: GET
-#      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/ports"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: !anyint
-#
-#  - name: Ports of an agent, limit
-#
-#    request:
-#      <<: *port_request_000
-#      params:
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: &port_response
-#            - inode: !anyint
-#              local:
-#                ip: !anystr
-#                port: !anyint
-#              protocol: !anystr
-#              remote:
-#                ip: !anystr
-#                port: !anyint
-#              rx_queue: !anyint
-#              scan:
-#                id: !anyint
-#                time: !anystr
-#              state: !anystr
-#              tx_queue: !anyint
-#      save:
-#        body:
-#          expected_protocol: data.items.0.protocol
-#          expected_local_ip: data.items.0.local.ip
-#          expected_local_port: data.items.0.local.port
-#          expected_remote_ip: data.items.0.remote.ip
-#          expected_tx_queue: data.items.0.tx_queue
-#          expected_state: data.items.0.state
-#
-#  - name: Filter protocol
-#
-#    request:
-#      <<: *port_request_000
-#      params:
-#        protocol: "{expected_protocol}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *port_response
-#
-#  - name: Filter local_ip
-#
-#    request:
-#      <<: *port_request_000
-#      params:
-#        local_ip: "{expected_local_ip}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *port_response
-#
-#  - name: Filter local port
-#
-#    request:
-#      <<: *port_request_000
-#      params:
-#        local_port: "{expected_local_port}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *port_response
-#
-#  - name: Filter remote_ip
-#
-#    request:
-#      <<: *port_request_000
-#      params:
-#        remote_ip: "{expected_remote_ip}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *port_response
-#
-#  - name: Filter tx_queue
-#
-#    request:
-#      <<: *port_request_000
-#      params:
-#        tx_queue: "{expected_tx_queue}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *port_response
-#
-#  - name: Filter status
-#    request:
-#      <<: *port_request_000
-#      params:
-#        state: "{expected_state}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *port_response
-#
-## # This test cannot be performed because the column adapter exists in the database, however in the output of this endpoint never comes
-##  - name: Filter pid
-##    request:
-##      <<: *port_request_000
-##      params:
-##        pid: "???"
-##
-##    response:
-##      status_code: 200
-#
-#  - name: Not allowed selector
-#
-#    request:
-#      <<: *port_request_000
-#      params:
-#        select: wrong
-#
-#    response:
-#      <<: *error_response
-#
-#  - name: Wrong limit
-#
-#    request:
-#      <<: *port_request_000
-#      params:
-#        limit: 0
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Wrong filter
-#
-#    request:
-#      <<: *port_request_000
-#      params:
-#        wrongFilter: true
-#
-#    response:
-#      status_code: 400
-#
-#  - name: Invalid sort
-#
-#    request:
-#      <<: *port_request_000
-#      params:
-#        select: wrong
-#
-#    response:
-#      <<: *error_response
-#---
-#test_name: GET /syscollector/{agent_id}/port?{sort,select}
-#
-#marks:
-#  - parametrize:
-#      key: field
-#      vals:
-#        - inode
-#        - local_ip
-#        - local_port
-#        - protocol
-#        - remote_ip
-#        - remote_port
-#        - rx_queue
-#        - scan_id
-#        - scan_time
-#        - state
-#        - tx_queue
-#
-#includes:
-#  - !include common.yaml
-#
-#stages:
-#  - type: ref
-#    id: login_get_token
-#  - name: Port of an agent, select
-#
-#    request:
-#      <<: *port_request_000
-#      params:
-#        select: "{field}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        $ext:
-#          # Check response item keys are the selected keys
-#          function: tavern_utils:test_select_key
-#          extra_kwargs:
-#            select_key: "{field:s}"
-#        data:
-#          totalItems: !anyint
-#
-#  - name: Port of an agent, sort
-#
-#    request:
-#      <<: *port_request_000
-#      params:
-#        sort: "{field}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: !anyint
-#
-#---
-#test_name: GET /syscollector/{agent_id}/netaddr
-#
-#stages:
-#
-#  - name: Netaddress of an agent
-#
-#    request: &netaddr_request_000
-#      method: GET
-#      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netaddr"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      params:
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: &netaddr_response
-#            - address: !anystr
-#              broadcast: !anystr
-#              iface: !anystr
-#              netmask: !anystr
-#              proto: !anystr
-#              scan:
-#                id: !anyint
-#          totalItems: !anyint
-#      save:
-#        body:
-#          expected_broadcast: data.items.0.broadcast
-#          expected_proto: data.items.0.proto
-#          expected_address: data.items.0.address
-#          expected_netmask: data.items.0.netmask
-#          expected_iface: data.items.0.iface
-#
-#  - name: Filter by iface
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        iface: "{expected_iface}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netaddr_response
-#
-#  - name: Filter by iface (incorrect)
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        iface: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-#  - name: Filter by netmask
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        netmask: "{expected_netmask}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netaddr_response
-#
-#  - name: Filter by netmask (incorrect)
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        netmask: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-#  - name: Filter by address
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        address: "{expected_address}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netaddr_response
-#
-#  - name: Filter by address (incorrect)
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        address: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-#  - name: Filter by proto
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        proto: "{expected_proto}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netaddr_response
-#
-#  - name: Filter by proto (incorrect)
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        proto: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-#  - name: Filter by broadcast
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        broadcast: "{expected_broadcast}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netaddr_response
-#
-#  - name: Filter by broadcast (incorrect)
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        broadcast: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-#  - name: Search broadcast
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        search: "{expected_broadcast}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - broadcast: "{expected_broadcast}"
-#
-#  - name: Search protocol
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        search: "{expected_proto}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - proto: "{expected_proto}"
-#
-#  - name: Search address
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        search: "{expected_address}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - address: "{expected_address}"
-#
-#  - name: Search netmask
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        search: "{expected_netmask}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - netmask: "{expected_netmask}"
-#
-#  - name: Search iface
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        search: "{expected_iface}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - iface: "{expected_iface}"
-#
-#  - name: Select proto, netmask, broadcast
-#
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        select: proto,broadcast,netmask
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - proto: !anystr
-#              netmask: !anystr
-#              broadcast: !anystr
-#
-#  - name: Not allowed selector
-#
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        select: wrongSelector
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_remediation_response
-#
-#  - name: Pagination
-#
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        limit: 1
-#        offset: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 1
-#
-#  - name: Wrong limit
-#
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        limit: 0
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Wrong param
-#
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        wrong: 0
-#
-#    response:
-#      status_code: 400
-#
-#  - name: Sort
-#
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        sort: +proto
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netaddr_response
-#
-#  - name: Invalid sort
-#
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        sort: -wrong
-#
-#    response:
-#      <<: *error_response
-#---
-#test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
-#
-#marks:
-#  - parametrize:
-#      key: field
-#      vals:
-#        - address
-#        - broadcast
-#        - iface
-#        - netmask
-#        - proto
-#        - scan_id
-#
-#stages:
-#
-#  - name: Netaddress of an agent, select
-#
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        select: "{field}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        $ext:
-#          # Check response item keys are the selected keys
-#          function: tavern_utils:test_select_key
-#          extra_kwargs:
-#            select_key: "{field:s}"
-#        data:
-#          totalItems: !anyint
-#
-#  - name: Netaddress of an agent, sort
-#
-#    request:
-#      <<: *netaddr_request_000
-#      params:
-#        sort: "{field}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: !anyint
-#---
-#test_name: GET /syscollector/{agent_id}/netproto
-#
-#stages:
-#
-#  - name: Netprotocol of an agent
-#
-#    request: &netproto_request_000
-#      method: GET
-#      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netproto"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      params:
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: &netproto_response_000
-#            - dhcp: !anystr
-#              gateway: !anystr
-#              iface: !anystr
-#              type: !anystr
-#              scan:
-#                id: !anyint
-#          totalItems: !anyint
-#      save:
-#        body:
-#          expected_dhcp: data.items.0.dhcp
-#          expected_gateway: data.items.0.gateway
-#          expected_type: data.items.0.type
-#          expected_scan_id: data.items.0.scan.id
-#          expected_iface: data.items.0.iface
-#
-#  - name: Filter by iface
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        iface: "{expected_iface}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netproto_response_000
-#
-#  - name: Filter by iface (incorrect)
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        iface: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-#  - name: Filter by type
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        type: "{expected_type}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netproto_response_000
-#
-#  - name: Filter by type (incorrect)
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        type: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-#  - name: Filter by gateway
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        gateway: "{expected_gateway}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netproto_response_000
-#
-#  - name: Filter by gateway (incorrect)
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        gateway: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-##  - name: Filter by dhcp
-##    request:
-##      <<: *netproto_request_000
-##      params:
-##        dhcp: "{expected_dhcp}"
-##
-##    response:
-##      status_code: 200
-##      body:
-##        data:
-##          items:
-##            - <<: *netproto_response_000
-#
-#  - name: Filter by dhcp (incorrect)
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        dhcp: "invalid"
-#
-#    response:
-#      status_code: 400
-#
-#  - name: Select proto, netmask, broadcast
-#
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        select: iface,gateway,dhcp
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - iface: !anystr
-#              gateway: !anystr
-#              dhcp: !anystr
-#
-#  - name: Search dhcp
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        search: "{expected_dhcp}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - dhcp: "{expected_dhcp}"
-#
-#  - name: Search gateway
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        search: "{expected_gateway}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - gateway: "{expected_gateway}"
-#
-#  - name: Search type
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        search: "{expected_type}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - type: "{expected_type}"
-#
-#  - name: Search scan_id
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        search: "{expected_scan_id}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - scan:
-#                id: !int "{expected_scan_id}"
-#
-#  - name: Search iface
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        search: "{expected_iface}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - iface: "{expected_iface}"
-#
-#  - name: Not allowed selector
-#
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        select: wrongSelector
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_remediation_response
-#
-#  - name: Wrong limit
-#
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        limit: 0
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Wrong param
-#
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        wrong: 0
-#
-#    response:
-#      status_code: 400
-#
-#  - name: Sort
-#
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        sort: +dhcp
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netproto_response_000
-#
-#  - name: Invalid sort
-#
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        sort: -wrong
-#
-#    response:
-#      <<: *error_response
-#---
-#test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
-#
-#marks:
-#  - parametrize:
-#      key: field
-#      vals:
-#        - dhcp
-#        - gateway
-#        - iface
-#        - scan_id
-#        - type
-#
-#stages:
-#
-#  - name: Netprotocol of an agent, select
-#
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        select: "{field}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        $ext:
-#          # Check response item keys are the selected keys
-#          function: tavern_utils:test_select_key
-#          extra_kwargs:
-#            select_key: "{field:s}"
-#        data:
-#          totalItems: !anyint
-#
-#  - name: Netprotocol of an agent, sort
-#
-#    request:
-#      <<: *netproto_request_000
-#      params:
-#        sort: "{field}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: !anyint
-#---
-#test_name: GET /syscollector/{agent_id}/netiface
-#
-#stages:
-#
-#  - name: Netiface of an agent
-#
-#    request: &netiface_request_000
-#      method: GET
-#      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netiface"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      params:
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: &netiface_response_000
-#            - mac: !anystr
-#              mtu: !anyint
-#              name: !anystr
-#              rx:
-#                bytes: !anyint
-#                dropped: !anyint
-#                errors: !anyint
-#                packets: !anyint
-#              scan:
-#                id: !anyint
-#                time: !anystr
-#              state: !anystr
-#              tx:
-#                bytes: !anyint
-#                dropped: !anyint
-#                errors: !anyint
-#                packets: !anyint
-#              type: !anystr
-#          totalItems: !anyint
-#      save:
-#        body:
-#          expected_mac: data.items.0.mac
-#          expected_rx_bytes: data.items.0.rx.bytes
-#          expected_tx_bytes: data.items.0.tx.bytes
-#          expected_tx_errors: data.items.0.tx.errors
-#          expected_rx_errors: data.items.0.rx.errors
-#          expected_rx_packets: data.items.0.rx.packets
-#          expected_tx_dropped: data.items.0.tx.dropped
-#          expected_rx_dropped: data.items.0.rx.dropped
-#          expected_tx_packets: data.items.0.tx.packets
-#          expected_type: data.items.0.type
-#          expected_mtu: data.items.0.mtu
-#          expected_name: data.items.0.name
-#          expected_state: data.items.0.state
-#
-#  - name: Select type, rx_bytes, tx_errors, tx_dropped, mac
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        select: type,rx_bytes,tx_errors,tx_dropped,mac
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - type: !anystr
-#              rx_bytes: !anyint
-#              tx:
-#                errors: !anyint
-#                dropped: !anyint
-#              mac: !anystr
-#
-#  - name: Search mac
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        search: "{expected_mac}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - mac: "{expected_mac}"
-#
-#  - name: Search rx_bytes
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        search: "{expected_rx_bytes}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - rx:
-#                bytes: !int "{expected_rx_bytes}"
-#
-#  - name: Search tx_errors
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        search: !int "{expected_tx_errors}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - tx:
-#                errors: !int "{expected_tx_errors}"
-#
-#  - name: Search tx_dropped
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        search: "{expected_tx_dropped}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - tx:
-#                dropped: !int "{expected_tx_dropped}"
-#
-#  - name: Not allowed selector
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        select: wrongSelector
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_remediation_response
-#
-#  - name: Wrong limit
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        limit: 0
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Wrong param
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        wrong: 0
-#
-#    response:
-#      status_code: 400
-#
-#  - name: Sort
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        sort: +type
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response_000
-#
-#  - name: Invalid sort
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        sort: -wrong
-#
-#    response:
-#      <<: *error_response
-#
-#  - name: Offset and limit
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        limit: 1
-#        offset: 0
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response_000
-#          totalItems: !anyint
-#
-#  - name: Offset = 1 and limit = 1
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        limit: 1
-#        offset: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: !anyint
-#
-#  - name: Filter mtu
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        mtu: "{expected_mtu}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response_000
-#          totalItems: !anyint
-#
-## This test cannot be performed because the column adapter exists in the database, however in the output of this endpoint never comes
-##  - name: Filter adapter
-##
-##    request:
-##      <<: *netiface_request_000
-##      params:
-##        adapter: "???"
-##
-##    response:
-##      status_code: 200
-#
-#  - name: Filter name
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        name: "{expected_name}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response_000
-#          totalItems: !anyint
-#
-#  - name: Filter type
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        type: "{expected_type}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response_000
-#          totalItems: !anyint
-#
-#  - name: Filter state
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        state: "{expected_state}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response_000
-#          totalItems: !anyint
-#
-#  - name: Filter tx_packets
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        tx_packets: "{expected_tx_packets}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response_000
-#          totalItems: !anyint
-#
-#  - name: Filter rx_packets
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        rx_packets: "{expected_rx_packets}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response_000
-#          totalItems: !anyint
-#
-#  - name: Filter tx_dropped
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        tx_dropped: "{expected_tx_dropped}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response_000
-#          totalItems: !anyint
-#
-#  - name: Filter rx_dropped
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        rx_dropped: "{expected_rx_dropped}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response_000
-#          totalItems: !anyint
-#
-#  - name: Filter tx_bytes
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        tx_bytes: "{expected_tx_bytes}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response_000
-#          totalItems: !anyint
-#
-#  - name: Filter rx_bytes
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        rx_bytes: "{expected_rx_bytes}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response_000
-#          totalItems: !anyint
-#
-#  - name: Filter tx_errors
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        tx_errors: "{expected_tx_errors}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response_000
-#          totalItems: !anyint
-#
-#  - name: Filter rx_errors
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        rx_errors: "{expected_rx_errors}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response_000
-#          totalItems: !anyint
-#
-#  - name: Filter invalid tx_packets
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        tx_packets: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid tx_packets
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        tx_packets: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#
-#  - name: Filter invalid rx_packets
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        rx_packets: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid rx_packets
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        rx_packets: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#
-#  - name: Filter invalid tx_dropped
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        tx_dropped: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid tx_dropped
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        tx_dropped: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#
-#  - name: Filter invalid rx_dropped
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        rx_dropped: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid rx_dropped
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        rx_dropped: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#
-#  - name: Filter invalid tx_bytes
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        tx_bytes: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid tx_bytes
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        tx_bytes: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#
-#  - name: Filter invalid rx_bytes
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        rx_bytes: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid rx_bytes
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        rx_bytes: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#
-#  - name: Filter invalid tx_errors
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        tx_errors: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid tx_errors
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        tx_errors: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#
-#  - name: Filter invalid rx_errors
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        rx_errors: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid rx_errors
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        rx_errors: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#---
-#test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
-#
-#marks:
-#  - parametrize:
-#      key: field
-#      vals:
-#        - mac
-#        - mtu
-#        - name
-#        - rx_bytes
-#        - rx_dropped
-#        - rx_errors
-#        - rx_packets
-#        - scan_id
-#        - scan_time
-#        - state
-#        - tx_bytes
-#        - tx_dropped
-#        - tx_errors
-#        - tx_packets
-#        - type
-#
-#includes:
-#  - !include common.yaml
-#
-#stages:
-#  - type: ref
-#    id: login_get_token
-#  - name: Netiface of an agent, select
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        select: "{field}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        $ext:
-#          # Check response item keys are the selected keys
-#          function: tavern_utils:test_select_key
-#          extra_kwargs:
-#            select_key: "{field:s}"
-#        data:
-#          totalItems: !anyint
-#
-#  - name: Netiface of an agent, sort
-#
-#    request:
-#      <<: *netiface_request_000
-#      params:
-#        sort: "{field}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: !anyint
-#---
-#test_name: GET /syscollector/{agent_id}/os
-#
-#stages:
-#
-#  - name: Get the OS of an agent
-#
-#    request: &os_request
-#      method: GET
-#      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/os"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          architecture: !anystr
-#          hostname: !anystr
-#          os:
-#            codename: !anystr
-#            major: !anystr
-#            minor: !anystr
-#            name: !anystr
-#            platform: !anystr
-#            version: !anystr
-#          release: !anystr
-#          scan:
-#            id: !anyint
-#            time: !anystr
-#          sysname: !anystr
-#          version: !anystr
-#      save:
-#        body:
-#          os_version: data.os.version
-#          release: data.release
-#          sysname: data.sysname
-#
-#  - name: Invalid selector
-#
-#    request:
-#      <<: *os_request
-#      params:
-#        select: wrongParam
-#
-#    response:
-#      <<: *error_response
-#---
-#test_name: GET /syscollector/{agent_id}/os?{select}
-#
-#marks:
-#  - parametrize:
-#      key: field
-#      vals:
-#        - architecture
-#        - hostname
-#        - os_codename
-#        - os_major
-#        - os_minor
-#        - os_name
-#        - os_platform
-#        - os_version
-#        - release
-#        - scan_id
-#        - scan_time
-#        - sysname
-#        - version
-#
-#stages:
-#
-#  - name: OS of an agent, select
-#
-#    request:
-#      <<: *os_request
-#      params:
-#        select: "{field}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        $ext:
-#          # Check response item keys are the selected keys
-#          function: tavern_utils:test_select_key_no_items
-#          extra_kwargs:
-#            select_key: "{field:s}"
-#
-#---
-#test_name: GET /syscollector/{agent_id}/hardware
-#
-#stages:
-#
-#  - name: Hardware of an agent
-#
-#    request: &hardware_request
-#      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/hardware"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      method: GET
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          board_serial: !anything
-#          cpu:
-#            cores: !anything
-#            mhz: !anything
-#            name: !anything
-#          ram:
-#            free: !anything
-#            total: !anything
-#            usage: !anything
-#          scan:
-#            id: !anything
-#            time: !anything
-#      save:
-#        body:
-#          board_serial: data.board_serial
-#          cpu_name: data.cpu.name
-#          ram_total: data.ram.total
-#
-#  - name: Not allowed selector
-#
-#    request:
-#      <<: *hardware_request
-#      params:
-#        select: wrongParam
-#
-#    response:
-#      <<: *error_response
-#---
-#test_name: GET /syscollector/{agent_id}/hardware?{select}
-#
-#marks:
-#  - parametrize:
-#      key: field
-#      vals:
-#        - board_serial
-#        - cpu_cores
-#        - cpu_mhz
-#        - cpu_name
-#        - ram_free
-#        - ram_total
-#        - ram_usage
-#        - scan_id
-#        - scan_time
-#
-#stages:
-#
-#  - name: Hardware of an agent, select
-#
-#    request:
-#      <<: *hardware_request
-#      params:
-#        select: "{field}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        $ext:
-#          # Check response item keys are the selected keys
-#          function: tavern_utils:test_select_key_no_items
-#          extra_kwargs:
-#            select_key: "{field:s}"
-#---
-#test_name: GET /syscollector/{agent_id}/netaddr
-#
-#stages:
-#
-#  - name: Netaddress of an agent
-#
-#    request: &netaddr_request
-#      method: GET
-#      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netaddr"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      params:
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netaddr_response
-#          totalItems: !anyint
-#      save:
-#        body:
-#          expected_broadcast: data.items.0.broadcast
-#          expected_proto: data.items.0.proto
-#          expected_address: data.items.0.address
-#          expected_netmask: data.items.0.netmask
-#          expected_iface: data.items.0.iface
-#
-#  - name: Filter by iface
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        iface: "{expected_iface}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netaddr_response
-#
-#  - name: Filter by iface (incorrect)
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        iface: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-#  - name: Filter by netmask
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        netmask: "{expected_netmask}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netaddr_response
-#
-#  - name: Filter by netmask (incorrect)
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        netmask: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-#  - name: Filter by address
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        address: "{expected_address}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netaddr_response
-#
-#  - name: Filter by address (incorrect)
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        address: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-#  - name: Filter by proto
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        proto: "{expected_proto}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netaddr_response
-#
-#  - name: Filter by proto (incorrect)
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        proto: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-#  - name: Filter by broadcast
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        broadcast: "{expected_broadcast}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netaddr_response
-#
-#  - name: Filter by broadcast (incorrect)
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        broadcast: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-#  - name: Search broadcast
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        search: "{expected_broadcast}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - broadcast: "{expected_broadcast}"
-#
-#  - name: Search protocol
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        search: "{expected_proto}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - proto: "{expected_proto}"
-#
-#  - name: Search address
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        search: "{expected_address}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - address: "{expected_address}"
-#
-#  - name: Search netmask
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        search: "{expected_netmask}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - netmask: "{expected_netmask}"
-#
-#  - name: Search iface
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        search: "{expected_iface}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - iface: "{expected_iface}"
-#
-#  - name: Select proto, netmask, broadcast
-#
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        select: proto,broadcast,netmask
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - proto: !anystr
-#              netmask: !anystr
-#              broadcast: !anystr
-#
-#  - name: Not allowed selector
-#
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        select: wrongSelector
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_remediation_response
-#
-#  - name: Pagination
-#
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        limit: 1
-#        offset: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 1
-#
-#  - name: Wrong limit
-#
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        limit: 0
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Wrong param
-#
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        wrong: 0
-#
-#    response:
-#      status_code: 400
-#
-#  - name: Sort
-#
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        sort: +proto
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netaddr_response
-#
-#  - name: Invalid sort
-#
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        sort: -wrong
-#
-#    response:
-#      <<: *error_response
-#---
-#test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
-#
-#marks:
-#  - parametrize:
-#      key: field
-#      vals:
-#        - address
-#        - broadcast
-#        - iface
-#        - netmask
-#        - proto
-#        - scan_id
-#
-#includes:
-#  - !include common.yaml
-#
-#stages:
-#  - type: ref
-#    id: login_get_token
-#  - name: Netaddress of an agent, select
-#
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        select: "{field}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        $ext:
-#          # Check response item keys are the selected keys
-#          function: tavern_utils:test_select_key
-#          extra_kwargs:
-#            select_key: "{field:s}"
-#        data:
-#          totalItems: !anyint
-#
-#  - name: Netaddress of an agent, sort
-#
-#    request:
-#      <<: *netaddr_request
-#      params:
-#        sort: "{field}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: !anyint
-#---
-#test_name: GET /syscollector/{agent_id}/netproto
-#
-#stages:
-#
-#  - name: Netprotocol of an agent
-#
-#    request: &netproto_request
-#      method: GET
-#      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netproto"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      params:
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: &netproto_response
-#            - dhcp: !anystr
-#              gateway: !anystr
-#              iface: !anystr
-#              scan:
-#                id: !anyint
-#              type: !anystr
-#          totalItems: !anyint
-#      save:
-#        body:
-#          expected_dhcp: data.items.0.dhcp
-#          expected_gateway: data.items.0.gateway
-#          expected_type: data.items.0.type
-#          expected_scan_id: data.items.0.scan.id
-#          expected_iface: data.items.0.iface
-#
-#  - name: Filter by iface
-#    request:
-#      <<: *netproto_request
-#      params:
-#        iface: "{expected_iface}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netproto_response
-#
-#  - name: Filter by iface (incorrect)
-#    request:
-#      <<: *netproto_request
-#      params:
-#        iface: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-#  - name: Filter by type
-#    request:
-#      <<: *netproto_request
-#      params:
-#        type: "{expected_type}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netproto_response
-#
-#  - name: Filter by type (incorrect)
-#    request:
-#      <<: *netproto_request
-#      params:
-#        type: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-#  - name: Filter by gateway
-#    request:
-#      <<: *netproto_request
-#      params:
-#        gateway: "{expected_gateway}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netproto_response
-#
-#  - name: Filter by gateway (incorrect)
-#    request:
-#      <<: *netproto_request
-#      params:
-#        gateway: "invalid"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-#
-##  - name: Filter by dhcp
-##    request:
-##      <<: *netproto_request
-##      params:
-##        dhcp: "{expected_dhcp}"
-##
-##    response:
-##      status_code: 200
-##      body:
-##        data:
-##          items:
-##            - <<: *netproto_response
-#
-#  - name: Filter by dhcp (incorrect)
-#    request:
-#      <<: *netproto_request
-#      params:
-#        dhcp: "invalid"
-#
-#    response:
-#      status_code: 400
-#
-#  - name: Select proto, netmask, broadcast
-#
-#    request:
-#      <<: *netproto_request
-#      params:
-#        select: iface,gateway,dhcp
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - iface: !anystr
-#              gateway: !anystr
-#              dhcp: !anystr
-#
-#  - name: Search dhcp
-#    request:
-#      <<: *netproto_request
-#      params:
-#        search: "{expected_dhcp}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - dhcp: "{expected_dhcp}"
-#
-#  - name: Search gateway
-#    request:
-#      <<: *netproto_request
-#      params:
-#        search: "{expected_gateway}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - gateway: "{expected_gateway}"
-#
-#  - name: Search type
-#    request:
-#      <<: *netproto_request
-#      params:
-#        search: "{expected_type}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - type: "{expected_type}"
-#
-#  - name: Search scan_id
-#    request:
-#      <<: *netproto_request
-#      params:
-#        search: "{expected_scan_id}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - scan:
-#                id: !int "{expected_scan_id}"
-#
-#  - name: Search iface
-#    request:
-#      <<: *netproto_request
-#      params:
-#        search: "{expected_iface}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - iface: "{expected_iface}"
-#
-#  - name: Not allowed selector
-#
-#    request:
-#      <<: *netproto_request
-#      params:
-#        select: wrongSelector
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_remediation_response
-#
-#  - name: Wrong limit
-#
-#    request:
-#      <<: *netproto_request
-#      params:
-#        limit: 0
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Wrong param
-#
-#    request:
-#      <<: *netproto_request
-#      params:
-#        wrong: 0
-#
-#    response:
-#      status_code: 400
-#
-#  - name: Sort
-#
-#    request:
-#      <<: *netproto_request
-#      params:
-#        sort: +dhcp
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netproto_response
-#
-#  - name: Invalid sort
-#
-#    request:
-#      <<: *netproto_request
-#      params:
-#        sort: -wrong
-#
-#    response:
-#      <<: *error_response
-#---
-#test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
-#
-#marks:
-#  - parametrize:
-#      key: field
-#      vals:
-#        - dhcp
-#        - gateway
-#        - iface
-#        - scan_id
-#        - type
-#
-#stages:
-#
-#  - name: Netprotocol of an agent, select
-#
-#    request:
-#      <<: *netproto_request
-#      params:
-#        select: "{field}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        $ext:
-#          # Check response item keys are the selected keys
-#          function: tavern_utils:test_select_key
-#          extra_kwargs:
-#            select_key: "{field:s}"
-#        data:
-#          totalItems: !anyint
-#
-#  - name: Netprotocol of an agent, sort
-#
-#    request:
-#      <<: *netproto_request
-#      params:
-#        sort: "{field}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: !anyint
-#---
-#test_name: GET /syscollector/{agent_id}/netiface
-#
-#stages:
-#
-#  - name: Netiface of an agent
-#
-#    request: &netiface_request
-#      method: GET
-#      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netiface"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      params:
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: &netiface_response
-#            - mac: !anystr
-#              mtu: !anyint
-#              name: !anystr
-#              rx:
-#                bytes: !anyint
-#                dropped: !anyint
-#                errors: !anyint
-#                packets: !anyint
-#              scan:
-#                id: !anyint
-#                time: !anystr
-#              state: !anystr
-#              tx:
-#                bytes: !anyint
-#                dropped: !anyint
-#                errors: !anyint
-#                packets: !anyint
-#              type: !anystr
-#          totalItems: !anyint
-#      save:
-#        body:
-#          expected_mac: data.items.0.mac
-#          expected_rx_bytes: data.items.0.rx.bytes
-#          expected_tx_bytes: data.items.0.tx.bytes
-#          expected_tx_errors: data.items.0.tx.errors
-#          expected_rx_errors: data.items.0.rx.errors
-#          expected_rx_packets: data.items.0.rx.packets
-#          expected_tx_dropped: data.items.0.tx.dropped
-#          expected_rx_dropped: data.items.0.rx.dropped
-#          expected_tx_packets: data.items.0.tx.packets
-#          expected_type: data.items.0.type
-#          expected_mtu: data.items.0.mtu
-#          expected_name: data.items.0.name
-#          expected_state: data.items.0.state
-#
-#  - name: Select type, rx_bytes, tx_errors, tx_dropped, mac
-#
+  - name: Filter by vendor
+    request:
+      <<: *packages_request_000
+      params:
+        vendor: "Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+
+  - name: Search an expected name
+
+    request:
+      <<: *packages_request_000
+      params:
+        name: "binutils"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+      save:
+        body:
+          name: data.items.0.name
+
+  - name: Filter by name
+    request:
+      <<: *packages_request_000
+      params:
+        name: "{expected_name}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+      save:
+        body:
+          architecture: data.items.0.architecture
+
+  - name: Filter by architecture
+    request:
+      <<: *packages_request_000
+      params:
+        architecture: "{expected_architecture}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+      save:
+        body:
+          expected_format: data.items.0.format
+          expected_vendor: data.items.0.vendor
+
+  - name: Filter by format
+    request:
+      <<: *packages_request_000
+      params:
+        format: "{expected_format}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+
+  - name: Filter by version
+    request:
+      <<: *packages_request_000
+      params:
+        version: "{expected_version}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+
+  - name: Filter by format
+    request:
+      <<: *packages_request_000
+      params:
+        format: "{expected_format}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+
+---
+test_name: GET /syscollector/{agent_id}/packages?{select}
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - architecture
+        - description
+        - format
+        - name
+        - priority
+        - scan.id
+        - scan.time
+        - section
+        - size
+        - vendor
+        - version
+
+stages:
+
+  - name: Packages of an agent, select
+    request:
+      <<: *packages_request_000
+      params:
+        select: "{field:s}"
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key
+          extra_kwargs:
+            select_key: "{field:s}"
+
+---
+test_name: GET /syscollector/{agent_id}/processes
+
+stages:
+
+  - name: Processes of an agent, no limit
+    request: &processes_request_000
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/processes"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Processes of an agent with limit = 1
+    request:
+      <<: *processes_request_000
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &processes_response_000
+            -
+              cmd: !anystr
+              egroup: !anystr
+              euser: !anystr
+              fgroup: !anystr
+              name: !anystr
+              nice: !anyint
+              nlwp: !anyint
+              pgrp: !anyint
+              pid: !anystr
+              ppid: !anyint
+              priority: !anyint
+              processor: !anyint
+              resident: !anyint
+              rgroup: !anystr
+              ruser: !anystr
+              scan:
+                id: !anyint
+                time: !anystr
+              session: !anyint
+              sgroup: !anystr
+              share: !anyint
+              size: !anyint
+              start_time: !anyint
+              state: !anystr
+              stime: !anyint
+              suser: !anystr
+              tgid: !anyint
+              tty: !anyint
+              utime: !anyint
+              vm_size: !anyint
+      save:
+        body:
+          expected_tty: data.items.0.tty
+          expected_sgroup: data.items.0.sgroup
+          expected_share: data.items.0.share
+          expected_session: data.items.0.session
+          expected_scan_id: data.items.0.scan.id
+          expected_pid: data.items.0.pid
+          expected_ppid: data.items.0.ppid
+          expected_state: data.items.0.state
+          expected_egroup: data.items.0.egroup
+          expected_euser: data.items.0.euser
+          expected_ruser: data.items.0.ruser
+          expected_suser: data.items.0.suser
+          expected_fgroup: data.items.0.fgroup
+          expected_rgroup: data.items.0.rgroup
+          expected_name: data.items.0.name
+          expected_nlwp: data.items.0.nlwp
+          expected_pgrp: data.items.0.pgrp
+          expected_priority: data.items.0.priority
+
+  - name: Filter by pid
+    request:
+      <<: *processes_request_000
+      params:
+        pid: "{expected_pid}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - pid: "{expected_pid}"
+
+  - name: Filter by ppid
+    request:
+      <<: *processes_request_000
+      params:
+        ppid: "{expected_ppid}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - ppid: !int "{expected_ppid}"
+
+  - name: Filter by state
+    request:
+      <<: *processes_request_000
+      params:
+        state: "{expected_state}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - state: "{expected_state}"
+
+  - name: Filter by egroup
+    request:
+      <<: *processes_request_000
+      params:
+        egroup: "{expected_egroup}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - egroup: "{expected_egroup}"
+
+  - name: Filter by fgroup
+    request:
+      <<: *processes_request_000
+      params:
+        fgroup: "{expected_fgroup}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - fgroup: "{expected_fgroup}"
+
+  - name: Filter by sgroup
+    request:
+      <<: *processes_request_000
+      params:
+        sgroup: "{expected_sgroup}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - sgroup: "{expected_sgroup}"
+
+  - name: Filter by rgroup
+    request:
+      <<: *processes_request_000
+      params:
+        rgroup: "{expected_rgroup}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - rgroup: "{expected_rgroup}"
+
+  - name: Filter by euser
+    request:
+      <<: *processes_request_000
+      params:
+        euser: "{expected_euser}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - euser: "{expected_euser}"
+
+  - name: Filter by ruser
+    request:
+      <<: *processes_request_000
+      params:
+        ruser: "{expected_ruser}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - ruser: "{expected_ruser}"
+
+  - name: Filter by suser
+    request:
+      <<: *processes_request_000
+      params:
+        suser: "{expected_suser}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - suser: "{expected_suser}"
+
+  - name: Filter by nlwp
+    request:
+      <<: *processes_request_000
+      params:
+        nlwp: "{expected_nlwp}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - nlwp: !int "{expected_nlwp}"
+
+  - name: Filter by pgrp
+    request:
+      <<: *processes_request_000
+      params:
+        pgrp: "{expected_pgrp}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - pgrp: !int "{expected_pgrp}"
+
+  - name: Filter by priority
+    request:
+      <<: *processes_request_000
+      params:
+        priority: "{expected_priority}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - priority: !int "{expected_priority}"
+
+  - name: Filter by name
+    request:
+      <<: *processes_request_000
+      params:
+        name: "{expected_name}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - name: "{expected_name}"
+
+  - name: Select by
+    request:
+      <<: *processes_request_000
+      params:
+        select: tty,sgroup,share,session,scan.id
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            -
+              scan:
+                id: !int "{expected_scan_id}"
+              session: !int "{expected_session}"
+              sgroup: "{expected_sgroup}"
+              share: !int "{expected_share}"
+              tty: !int "{expected_tty}"
+
+  - name: Wrong param
+    request:
+      <<: *processes_request_000
+      params:
+        select: wrongParam
+    response:
+      status_code: 400
+      body:
+        <<: *error_remediation_response
+
+  - name: offset and limit
+    request:
+      <<: *processes_request_000
+      params:
+        offset: 0
+        limit: 2
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *processes_response_000
+            - <<: *processes_response_000
+      save:
+        body:
+          offset_test_cmd: data.items.1.cmd
+          offset_test_egroup: data.items.1.egroup
+          offset_test_euser: data.items.1.euser
+          offset_test_fgroup: data.items.1.fgroup
+          offset_test_name: data.items.1.name
+          offset_test_nice: data.items.1.nice
+          offset_test_nlwp: data.items.1.nlwp
+          offset_test_pgrp: data.items.1.pgrp
+          offset_test_pid: data.items.1.pid
+          offset_test_ppid: data.items.1.ppid
+          offset_test_priority: data.items.1.priority
+          offset_test_processor: data.items.1.processor
+          offset_test_resident: data.items.1.resident
+          offset_test_rgroup: data.items.1.rgroup
+          offset_test_ruser: data.items.1.ruser
+          offset_test_scan_id: data.items.1.scan.id
+          offset_test_scan_time: data.items.1.scan.time
+          offset_test_session: data.items.1.session
+          offset_test_sgroup: data.items.1.sgroup
+          offset_test_share: data.items.1.share
+          offset_test_size: data.items.1.size
+          offset_test_start_time: data.items.1.start_time
+          offset_test_state: data.items.1.state
+          offset_test_stime: data.items.1.stime
+          offset_test_suser: data.items.1.suser
+          offset_test_tgid: data.items.1.tgid
+          offset_test_tty: data.items.1.tty
+          offset_test_utime: data.items.1.utime
+          offset_test_vm_size: data.items.1.vm_size
+
+  - name: offset and limit check
+    request:
+      <<: *processes_request_000
+      params:
+        offset: 1
+        limit: 1
+    response:
+      status_code: 200
+      strict: false
+      body:
+        data:
+          items:
+            - cmd: "{offset_test_cmd}"
+              egroup: "{offset_test_egroup}"
+              euser: "{offset_test_euser}"
+              fgroup: "{offset_test_fgroup}"
+              name: "{offset_test_name}"
+              nice: !int "{offset_test_nice}"
+              nlwp: !int "{offset_test_nlwp}"
+              pgrp: !int "{offset_test_pgrp}"
+              pid: "{offset_test_pid}"
+              ppid: !int "{offset_test_ppid}"
+              priority: !int "{offset_test_priority}"
+              processor: !int "{offset_test_processor}"
+              resident: !int "{offset_test_resident}"
+              rgroup: "{offset_test_rgroup}"
+              ruser: "{offset_test_ruser}"
+              scan:
+                id: !int "{offset_test_scan_id}"
+                time: "{offset_test_scan_time}"
+              session: !int "{offset_test_session}"
+              sgroup: "{offset_test_sgroup}"
+              share: !int "{offset_test_share}"
+              size: !int "{offset_test_size}"
+              start_time: !int "{offset_test_start_time}"
+              state: "{offset_test_state}"
+              stime: !int "{offset_test_stime}"
+              suser: "{offset_test_suser}"
+              tgid: !int "{offset_test_tgid}"
+              tty: !int "{offset_test_tty}"
+              utime: !int "{offset_test_utime}"
+              vm_size: !int "{offset_test_vm_size}"
+
+  - name: Wrong limit
+    request:
+      <<: *processes_request_000
+      params:
+        limit: 0
+    response:
+      status_code: 400
+      body: &error_spec
+        detail: !anystr
+        status: !anyint
+        title: !anything
+        type: !anystr
+
+---
+test_name: GET /syscollector/{agent_id}/processes?{sort,select}
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - argvs
+        - cmd
+        - egroup
+        - euser
+        - fgroup
+        - name
+        - nice
+        - nlwp
+        - pgrp
+        - pid
+        - ppid
+        - priority
+        - processor
+        - resident
+        - rgroup
+        - ruser
+        - scan.id
+        - session
+        - sgroup
+        - share
+        - size
+        - start_time
+        - state
+        - stime
+        - suser
+        - tgid
+        - tty
+        - utime
+        - vm_size
+
+stages:
+
+  - name: Processes of an agent, sort
+    request:
+      <<: *processes_request_000
+      params:
+        sort: "{field}"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Processes of an agent, select
+    request:
+      <<: *processes_request_000
+      params:
+        select: "{field}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key
+          extra_kwargs:
+            select_key: "{field:s}"
+        data:
+          totalItems: !anyint
+
+---
+test_name: GET /syscollector/{agent_id}/ports
+
+stages:
+
+  - name: Ports of an agent
+    request: &port_request_000
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/ports"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Ports of an agent, limit
+    request:
+      <<: *port_request_000
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &port_response
+            - inode: !anyint
+              local:
+                ip: !anystr
+                port: !anyint
+              protocol: !anystr
+              remote:
+                ip: !anystr
+                port: !anyint
+              rx_queue: !anyint
+              scan:
+                id: !anyint
+                time: !anystr
+              state: !anystr
+              tx_queue: !anyint
+      save:
+        body:
+          expected_protocol: data.items.0.protocol
+          expected_local_ip: data.items.0.local.ip
+          expected_local_port: data.items.0.local.port
+          expected_remote_ip: data.items.0.remote.ip
+          expected_tx_queue: data.items.0.tx_queue
+          expected_state: data.items.0.state
+
+  - name: Filter protocol
+    request:
+      <<: *port_request_000
+      params:
+        protocol: "{expected_protocol}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *port_response
+
+  - name: Filter local.ip
+    request:
+      <<: *port_request_000
+      params:
+        local.ip: "{expected_local_ip}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *port_response
+
+  - name: Filter local.port
+    request:
+      <<: *port_request_000
+      params:
+        local.port: "{expected_local_port}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *port_response
+
+  - name: Filter remote.ip
+    request:
+      <<: *port_request_000
+      params:
+        remote.ip: "{expected_remote_ip}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *port_response
+
+  - name: Filter tx_queue
+    request:
+      <<: *port_request_000
+      params:
+        tx_queue: "{expected_tx_queue}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *port_response
+
+  - name: Filter status
+    request:
+      <<: *port_request_000
+      params:
+        state: "{expected_state}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *port_response
+
+  - name: Filter pid
+    skip: True # This test cannot be performed as usual because the column adapter exists in the database but the field is always empty
+    request:
+      <<: *port_request_000
+      params:
+        pid: "???"
+    response:
+      status_code: 200
+
+  - name: Not allowed selector
+    request:
+      <<: *port_request_000
+      params:
+        select: wrong
+    response:
+      <<: *error_response
+
+  - name: Wrong limit
+    request:
+      <<: *port_request_000
+      params:
+        limit: 0
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Wrong filter
+    request:
+      <<: *port_request_000
+      params:
+        wrongFilter: true
+    response:
+      status_code: 400
+
+  - name: Invalid sort
+    request:
+      <<: *port_request_000
+      params:
+        select: wrong
+    response:
+      <<: *error_response
+
+---
+test_name: GET /syscollector/{agent_id}/port?{sort,select}
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - inode
+        - local.ip
+        - local.port
+        - protocol
+        - remote.ip
+        - remote.port
+        - rx_queue
+        - scan.id
+        - scan.time
+        - state
+        - tx_queue
+
+stages:
+
+  - name: Port of an agent, select
+    request:
+      <<: *port_request_000
+      params:
+        select: "{field}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key
+          extra_kwargs:
+            select_key: "{field:s}"
+        data:
+          totalItems: !anyint
+
+  - name: Port of an agent, sort
+    request:
+      <<: *port_request_000
+      params:
+        sort: "{field}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+---
+test_name: GET /syscollector/{agent_id}/netaddr
+
+stages:
+
+  - name: Netaddress of an agent
+    request: &netaddr_request_000
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netaddr"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &netaddr_response
+            - address: !anystr
+              broadcast: !anystr
+              iface: !anystr
+              netmask: !anystr
+              proto: !anystr
+              scan:
+                id: !anyint
+          totalItems: !anyint
+      save:
+        body:
+          expected_broadcast: data.items.0.broadcast
+          expected_proto: data.items.0.proto
+          expected_address: data.items.0.address
+          expected_netmask: data.items.0.netmask
+          expected_iface: data.items.0.iface
+
+  - name: Filter by iface
+    request:
+      <<: *netaddr_request_000
+      params:
+        iface: "{expected_iface}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Filter by iface (incorrect)
+    request:
+      <<: *netaddr_request_000
+      params:
+        iface: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by netmask
+    request:
+      <<: *netaddr_request_000
+      params:
+        netmask: "{expected_netmask}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Filter by netmask (incorrect)
+    request:
+      <<: *netaddr_request_000
+      params:
+        netmask: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by address
+    request:
+      <<: *netaddr_request_000
+      params:
+        address: "{expected_address}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Filter by address (incorrect)
+    request:
+      <<: *netaddr_request_000
+      params:
+        address: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by proto
+    request:
+      <<: *netaddr_request_000
+      params:
+        proto: "{expected_proto}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Filter by proto (incorrect)
+    request:
+      <<: *netaddr_request_000
+      params:
+        proto: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by broadcast
+    request:
+      <<: *netaddr_request_000
+      params:
+        broadcast: "{expected_broadcast}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Filter by broadcast (incorrect)
+    request:
+      <<: *netaddr_request_000
+      params:
+        broadcast: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Search broadcast
+    request:
+      <<: *netaddr_request_000
+      params:
+        search: "{expected_broadcast}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - broadcast: "{expected_broadcast}"
+
+  - name: Search protocol
+    request:
+      <<: *netaddr_request_000
+      params:
+        search: "{expected_proto}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - proto: "{expected_proto}"
+
+  - name: Search address
+    request:
+      <<: *netaddr_request_000
+      params:
+        search: "{expected_address}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - address: "{expected_address}"
+
+  - name: Search netmask
+    request:
+      <<: *netaddr_request_000
+      params:
+        search: "{expected_netmask}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - netmask: "{expected_netmask}"
+
+  - name: Search iface
+    request:
+      <<: *netaddr_request_000
+      params:
+        search: "{expected_iface}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - iface: "{expected_iface}"
+
+  - name: Select proto, netmask, broadcast
+    request:
+      <<: *netaddr_request_000
+      params:
+        select: proto,broadcast,netmask
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - proto: !anystr
+              netmask: !anystr
+              broadcast: !anystr
+
+  - name: Not allowed selector
+    request:
+      <<: *netaddr_request_000
+      params:
+        select: wrongSelector
+    response:
+      status_code: 400
+      body:
+        <<: *error_remediation_response
+
+  - name: Pagination
+    request:
+      <<: *netaddr_request_000
+      params:
+        limit: 1
+        offset: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 1
+
+  - name: Wrong limit
+    request:
+      <<: *netaddr_request_000
+      params:
+        limit: 0
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Wrong param
+    request:
+      <<: *netaddr_request_000
+      params:
+        wrong: 0
+    response:
+      status_code: 400
+
+  - name: Sort
+    request:
+      <<: *netaddr_request_000
+      params:
+        sort: +proto
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Invalid sort
+    request:
+      <<: *netaddr_request_000
+      params:
+        sort: -wrong
+    response:
+      <<: *error_response
+
+---
+test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - address
+        - broadcast
+        - iface
+        - netmask
+        - proto
+        - scan.id
+
+stages:
+
+  - name: Netaddress of an agent, select
+
+    request:
+      <<: *netaddr_request_000
+      params:
+        select: "{field}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key
+          extra_kwargs:
+            select_key: "{field:s}"
+        data:
+          totalItems: !anyint
+
+  - name: Netaddress of an agent, sort
+    request:
+      <<: *netaddr_request_000
+      params:
+        sort: "{field}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+---
+test_name: GET /syscollector/{agent_id}/netproto
+
+stages:
+
+  - name: Netprotocol of an agent
+    request: &netproto_request_000
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netproto"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &netproto_response_000
+            - dhcp: !anystr
+              gateway: !anystr
+              iface: !anystr
+              type: !anystr
+              scan:
+                id: !anyint
+          totalItems: !anyint
+      save:
+        body:
+          expected_dhcp: data.items.0.dhcp
+          expected_gateway: data.items.0.gateway
+          expected_type: data.items.0.type
+          expected_scan_id: data.items.0.scan.id
+          expected_iface: data.items.0.iface
+
+  - name: Filter by iface
+    request:
+      <<: *netproto_request_000
+      params:
+        iface: "{expected_iface}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netproto_response_000
+
+  - name: Filter by iface (incorrect)
+    request:
+      <<: *netproto_request_000
+      params:
+        iface: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by type
+    request:
+      <<: *netproto_request_000
+      params:
+        type: "{expected_type}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netproto_response_000
+
+  - name: Filter by type (incorrect)
+    request:
+      <<: *netproto_request_000
+      params:
+        type: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by gateway
+    request:
+      <<: *netproto_request_000
+      params:
+        gateway: "{expected_gateway}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netproto_response_000
+
+  - name: Filter by gateway (incorrect)
+    request:
+      <<: *netproto_request_000
+      params:
+        gateway: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by dhcp
+    request:
+      <<: *netproto_request_000
+      params:
+        dhcp: "{expected_dhcp}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netproto_response_000
+
+  - name: Filter by dhcp (incorrect)
+    request:
+      <<: *netproto_request_000
+      params:
+        dhcp: "invalid"
+    response:
+      status_code: 400
+
+  - name: Select proto, netmask, broadcast
+    request:
+      <<: *netproto_request_000
+      params:
+        select: iface,gateway,dhcp
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - iface: !anystr
+              gateway: !anystr
+              dhcp: !anystr
+
+  - name: Search dhcp
+    request:
+      <<: *netproto_request_000
+      params:
+        search: "{expected_dhcp}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - dhcp: "{expected_dhcp}"
+
+  - name: Search gateway
+    request:
+      <<: *netproto_request_000
+      params:
+        search: "{expected_gateway}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - gateway: "{expected_gateway}"
+
+  - name: Search type
+    request:
+      <<: *netproto_request_000
+      params:
+        search: "{expected_type}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - type: "{expected_type}"
+
+  - name: Search scan.id
+    request:
+      <<: *netproto_request_000
+      params:
+        search: "{expected_scan_id}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - scan:
+                id: !int "{expected_scan_id}"
+
+  - name: Search iface
+    request:
+      <<: *netproto_request_000
+      params:
+        search: "{expected_iface}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - iface: "{expected_iface}"
+
+  - name: Not allowed selector
+    request:
+      <<: *netproto_request_000
+      params:
+        select: wrongSelector
+    response:
+      status_code: 400
+      body:
+        <<: *error_remediation_response
+
+  - name: Wrong limit
+    request:
+      <<: *netproto_request_000
+      params:
+        limit: 0
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Wrong param
+    request:
+      <<: *netproto_request_000
+      params:
+        wrong: 0
+    response:
+      status_code: 400
+
+  - name: Sort
+    request:
+      <<: *netproto_request_000
+      params:
+        sort: +dhcp
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netproto_response_000
+
+  - name: Invalid sort
+    request:
+      <<: *netproto_request_000
+      params:
+        sort: -wrong
+    response:
+      <<: *error_response
+
+---
+test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - dhcp
+        - gateway
+        - iface
+        - scan.id
+        - type
+
+stages:
+
+  - name: Netprotocol of an agent, select
+    request:
+      <<: *netproto_request_000
+      params:
+        select: "{field}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key
+          extra_kwargs:
+            select_key: "{field:s}"
+        data:
+          totalItems: !anyint
+
+  - name: Netprotocol of an agent, sort
+
+    request:
+      <<: *netproto_request_000
+      params:
+        sort: "{field}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+---
+test_name: GET /syscollector/{agent_id}/netiface
+
+stages:
+
+  - name: Netiface of an agent
+    request: &netiface_request_000
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netiface"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &netiface_response_000
+            - mac: !anystr
+              mtu: !anyint
+              name: !anystr
+              rx:
+                bytes: !anyint
+                dropped: !anyint
+                errors: !anyint
+                packets: !anyint
+              scan:
+                id: !anyint
+                time: !anystr
+              state: !anystr
+              tx:
+                bytes: !anyint
+                dropped: !anyint
+                errors: !anyint
+                packets: !anyint
+              type: !anystr
+          totalItems: !anyint
+      save:
+        body:
+          expected_mac: data.items.0.mac
+          expected_rx_bytes: data.items.0.rx.bytes
+          expected_tx_bytes: data.items.0.tx.bytes
+          expected_tx_errors: data.items.0.tx.errors
+          expected_rx_errors: data.items.0.rx.errors
+          expected_rx_packets: data.items.0.rx.packets
+          expected_tx_dropped: data.items.0.tx.dropped
+          expected_rx_dropped: data.items.0.rx.dropped
+          expected_tx_packets: data.items.0.tx.packets
+          expected_type: data.items.0.type
+          expected_mtu: data.items.0.mtu
+          expected_name: data.items.0.name
+          expected_state: data.items.0.state
+
+  - name: Select type, rx.bytes, tx.errors, tx.dropped, mac
+    request:
+      <<: *netiface_request_000
+      params:
+        select: type,rx.bytes,tx.errors,tx.dropped,mac
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - type: !anystr
+              rx:
+                bytes: !anyint
+              tx:
+                errors: !anyint
+                dropped: !anyint
+              mac: !anystr
+
+  - name: Search mac
+    request:
+      <<: *netiface_request_000
+      params:
+        search: "{expected_mac}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - mac: "{expected_mac}"
+
+  - name: Search rx.bytes
+    request:
+      <<: *netiface_request_000
+      params:
+        search: "{expected_rx_bytes}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - rx:
+                bytes: !int "{expected_rx_bytes}"
+
+  - name: Search tx.errors
+    request:
+      <<: *netiface_request_000
+      params:
+        search: !int "{expected_tx_errors}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - tx:
+                errors: !int "{expected_tx_errors}"
+
+  - name: Search tx.dropped
+    request:
+      <<: *netiface_request_000
+      params:
+        search: "{expected_tx_dropped}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - tx:
+                dropped: !int "{expected_tx_dropped}"
+
+  - name: Not allowed selector
+    request:
+      <<: *netiface_request_000
+      params:
+        select: wrongSelector
+    response:
+      status_code: 400
+      body:
+        <<: *error_remediation_response
+
+  - name: Wrong limit
+    request:
+      <<: *netiface_request_000
+      params:
+        limit: 0
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Wrong param
+    request:
+      <<: *netiface_request_000
+      params:
+        wrong: 0
+    response:
+      status_code: 400
+
+  - name: Sort
+    request:
+      <<: *netiface_request_000
+      params:
+        sort: +type
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response_000
+
+  - name: Invalid sort
+    request:
+      <<: *netiface_request_000
+      params:
+        sort: -wrong
+    response:
+      <<: *error_response
+
+  - name: Offset and limit
+    request:
+      <<: *netiface_request_000
+      params:
+        limit: 1
+        offset: 0
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response_000
+          totalItems: !anyint
+
+  - name: Offset = 1 and limit = 1
+    request:
+      <<: *netiface_request_000
+      params:
+        limit: 1
+        offset: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: !anyint
+
+  - name: Filter mtu
+    request:
+      <<: *netiface_request_000
+      params:
+        mtu: "{expected_mtu}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response_000
+          totalItems: !anyint
+
+  - name: Filter adapter
+    skip: True # This test cannot be performed as usual because the column adapter exists in the database but the field is always empty
+    request:
+      <<: *netiface_request_000
+      params:
+        adapter: "???"
+    response:
+      status_code: 200
+
+  - name: Filter name
+    request:
+      <<: *netiface_request_000
+      params:
+        name: "{expected_name}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response_000
+          totalItems: !anyint
+
+  - name: Filter type
+    request:
+      <<: *netiface_request_000
+      params:
+        type: "{expected_type}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response_000
+          totalItems: !anyint
+
+  - name: Filter state
+    request:
+      <<: *netiface_request_000
+      params:
+        state: "{expected_state}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response_000
+          totalItems: !anyint
+
+  - name: Filter tx.packets
+    request:
+      <<: *netiface_request_000
+      params:
+        tx.packets: "{expected_tx_packets}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response_000
+          totalItems: !anyint
+
+  - name: Filter rx.packets
+    request:
+      <<: *netiface_request_000
+      params:
+        rx.packets: "{expected_rx_packets}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response_000
+          totalItems: !anyint
+
+  - name: Filter tx.dropped
+    request:
+      <<: *netiface_request_000
+      params:
+        tx.dropped: "{expected_tx_dropped}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response_000
+          totalItems: !anyint
+
+  - name: Filter rx.dropped
+    request:
+      <<: *netiface_request_000
+      params:
+        rx.dropped: "{expected_rx_dropped}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response_000
+          totalItems: !anyint
+
+  - name: Filter tx.bytes
+    request:
+      <<: *netiface_request_000
+      params:
+        tx.bytes: "{expected_tx_bytes}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response_000
+          totalItems: !anyint
+
+  - name: Filter rx.bytes
+    request:
+      <<: *netiface_request_000
+      params:
+        rx.bytes: "{expected_rx_bytes}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response_000
+          totalItems: !anyint
+
+  - name: Filter tx.errors
+    request:
+      <<: *netiface_request_000
+      params:
+        tx.errors: "{expected_tx_errors}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response_000
+          totalItems: !anyint
+
+  - name: Filter rx.errors
+    request:
+      <<: *netiface_request_000
+      params:
+        rx.errors: "{expected_rx_errors}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response_000
+          totalItems: !anyint
+
+  - name: Filter invalid tx.packets
+    request:
+      <<: *netiface_request_000
+      params:
+        tx.packets: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid tx.packets
+    request:
+      <<: *netiface_request_000
+      params:
+        tx.packets: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+  - name: Filter invalid rx.packets
+    request:
+      <<: *netiface_request_000
+      params:
+        rx.packets: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid rx.packets
+    request:
+      <<: *netiface_request_000
+      params:
+        rx.packets: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+  - name: Filter invalid tx.dropped
+    request:
+      <<: *netiface_request_000
+      params:
+        tx.dropped: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid tx.dropped
+    request:
+      <<: *netiface_request_000
+      params:
+        tx.dropped: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+  - name: Filter invalid rx.dropped
+    request:
+      <<: *netiface_request_000
+      params:
+        rx.dropped: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid rx.dropped
+    request:
+      <<: *netiface_request_000
+      params:
+        rx.dropped: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+  - name: Filter invalid tx.bytes
+    request:
+      <<: *netiface_request_000
+      params:
+        tx.bytes: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid tx.bytes
+    request:
+      <<: *netiface_request_000
+      params:
+        tx.bytes: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+  - name: Filter invalid rx.bytes
+    request:
+      <<: *netiface_request_000
+      params:
+        rx.bytes: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid rx.bytes
+    request:
+      <<: *netiface_request_000
+      params:
+        rx.bytes: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+  - name: Filter invalid tx.errors
+    request:
+      <<: *netiface_request_000
+      params:
+        tx.errors: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid tx.errors
+    request:
+      <<: *netiface_request_000
+      params:
+        tx.errors: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+  - name: Filter invalid rx.errors
+    request:
+      <<: *netiface_request_000
+      params:
+        rx.errors: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid rx.errors
+    request:
+      <<: *netiface_request_000
+      params:
+        rx.errors: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+---
+test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - mac
+        - mtu
+        - name
+        - rx.bytes
+        - rx.dropped
+        - rx.errors
+        - rx.packets
+        - scan.id
+        - scan.time
+        - state
+        - tx.bytes
+        - tx.dropped
+        - tx.errors
+        - tx.packets
+        - type
+
+stages:
+
+  - name: Netiface of an agent, select
+    request:
+      <<: *netiface_request_000
+      params:
+        select: "{field}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key
+          extra_kwargs:
+            select_key: "{field:s}"
+        data:
+          totalItems: !anyint
+
+  - name: Netiface of an agent, sort
+    request:
+      <<: *netiface_request_000
+      params:
+        sort: "{field}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+---
+test_name: GET /syscollector/{agent_id}/os
+
+stages:
+
+  - name: Get the OS of an agent
+    request: &os_request
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/os"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          architecture: !anystr
+          hostname: !anystr
+          os:
+            codename: !anystr
+            major: !anystr
+            minor: !anystr
+            name: !anystr
+            platform: !anystr
+            version: !anystr
+          release: !anystr
+          scan:
+            id: !anyint
+            time: !anystr
+          sysname: !anystr
+          version: !anystr
+      save:
+        body:
+          os_version: data.os.version
+          release: data.release
+          sysname: data.sysname
+
+  - name: Invalid selector
+    request:
+      <<: *os_request
+      params:
+        select: wrongParam
+    response:
+      <<: *error_response
+
+---
+test_name: GET /syscollector/{agent_id}/os?{select}
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - architecture
+        - hostname
+        - os.codename
+        - os.major
+        - os.minor
+        - os.name
+        - os.platform
+        - os.version
+        - release
+        - scan.id
+        - scan.time
+        - sysname
+        - version
+
+stages:
+
+  - name: OS of an agent, select
+
+    request:
+      <<: *os_request
+      params:
+        select: "{field}"
+
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key_no_items
+          extra_kwargs:
+            select_key: "{field:s}"
+
+---
+test_name: GET /syscollector/{agent_id}/hardware
+
+stages:
+
+  - name: Hardware of an agent
+    request: &hardware_request
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/hardware"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      body:
+        data:
+          board_serial: !anything
+          cpu:
+            cores: !anything
+            mhz: !anything
+            name: !anything
+          ram:
+            free: !anything
+            total: !anything
+            usage: !anything
+          scan:
+            id: !anything
+            time: !anything
+      save:
+        body:
+          board_serial: data.board_serial
+          cpu_name: data.cpu.name
+          ram_total: data.ram.total
+
+  - name: Not allowed selector
+    request:
+      <<: *hardware_request
+      params:
+        select: wrongParam
+    response:
+      <<: *error_response
+
+---
+test_name: GET /syscollector/{agent_id}/hardware?{select}
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - board_serial
+        - cpu.cores
+        - cpu.mhz
+        - cpu.name
+        - ram.free
+        - ram.total
+        - ram.usage
+        - scan.id
+        - scan.time
+
+stages:
+
+  - name: Hardware of an agent, select
+    request:
+      <<: *hardware_request
+      params:
+        select: "{field}"
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key_no_items
+          extra_kwargs:
+            select_key: "{field:s}"
+
+---
+test_name: GET /syscollector/{agent_id}/netaddr
+
+stages:
+
+  - name: Netaddress of an agent
+    request: &netaddr_request
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netaddr"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+          totalItems: !anyint
+      save:
+        body:
+          expected_broadcast: data.items.0.broadcast
+          expected_proto: data.items.0.proto
+          expected_address: data.items.0.address
+          expected_netmask: data.items.0.netmask
+          expected_iface: data.items.0.iface
+
+  - name: Filter by iface
+    request:
+      <<: *netaddr_request
+      params:
+        iface: "{expected_iface}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Filter by iface (incorrect)
+    request:
+      <<: *netaddr_request
+      params:
+        iface: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by netmask
+    request:
+      <<: *netaddr_request
+      params:
+        netmask: "{expected_netmask}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Filter by netmask (incorrect)
+    request:
+      <<: *netaddr_request
+      params:
+        netmask: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by address
+    request:
+      <<: *netaddr_request
+      params:
+        address: "{expected_address}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Filter by address (incorrect)
+    request:
+      <<: *netaddr_request
+      params:
+        address: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by proto
+    request:
+      <<: *netaddr_request
+      params:
+        proto: "{expected_proto}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Filter by proto (incorrect)
+    request:
+      <<: *netaddr_request
+      params:
+        proto: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by broadcast
+    request:
+      <<: *netaddr_request
+      params:
+        broadcast: "{expected_broadcast}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Filter by broadcast (incorrect)
+    request:
+      <<: *netaddr_request
+      params:
+        broadcast: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Search broadcast
+    request:
+      <<: *netaddr_request
+      params:
+        search: "{expected_broadcast}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - broadcast: "{expected_broadcast}"
+
+  - name: Search protocol
+    request:
+      <<: *netaddr_request
+      params:
+        search: "{expected_proto}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - proto: "{expected_proto}"
+
+  - name: Search address
+    request:
+      <<: *netaddr_request
+      params:
+        search: "{expected_address}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - address: "{expected_address}"
+
+  - name: Search netmask
+    request:
+      <<: *netaddr_request
+      params:
+        search: "{expected_netmask}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - netmask: "{expected_netmask}"
+
+  - name: Search iface
+    request:
+      <<: *netaddr_request
+      params:
+        search: "{expected_iface}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - iface: "{expected_iface}"
+
+  - name: Select proto, netmask, broadcast
+    request:
+      <<: *netaddr_request
+      params:
+        select: proto,broadcast,netmask
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - proto: !anystr
+              netmask: !anystr
+              broadcast: !anystr
+
+  - name: Not allowed selector
+    request:
+      <<: *netaddr_request
+      params:
+        select: wrongSelector
+    response:
+      status_code: 400
+      body:
+        <<: *error_remediation_response
+
+  - name: Pagination
+    request:
+      <<: *netaddr_request
+      params:
+        limit: 1
+        offset: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 1
+
+  - name: Wrong limit
+    request:
+      <<: *netaddr_request
+      params:
+        limit: 0
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Wrong param
+    request:
+      <<: *netaddr_request
+      params:
+        wrong: 0
+    response:
+      status_code: 400
+
+  - name: Sort
+    request:
+      <<: *netaddr_request
+      params:
+        sort: +proto
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Invalid sort
+    request:
+      <<: *netaddr_request
+      params:
+        sort: -wrong
+    response:
+      <<: *error_response
+
+---
+test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - address
+        - broadcast
+        - iface
+        - netmask
+        - proto
+        - scan.id
+
+stages:
+
+  - name: Netaddress of an agent, select
+    request:
+      <<: *netaddr_request
+      params:
+        select: "{field}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key
+          extra_kwargs:
+            select_key: "{field:s}"
+        data:
+          totalItems: !anyint
+
+  - name: Netaddress of an agent, sort
+    request:
+      <<: *netaddr_request
+      params:
+        sort: "{field}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+---
+test_name: GET /syscollector/{agent_id}/netproto
+
+stages:
+
+  - name: Netprotocol of an agent
+    request: &netproto_request
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netproto"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &netproto_response
+            - dhcp: !anystr
+              gateway: !anystr
+              iface: !anystr
+              scan:
+                id: !anyint
+              type: !anystr
+          totalItems: !anyint
+      save:
+        body:
+          expected_dhcp: data.items.0.dhcp
+          expected_gateway: data.items.0.gateway
+          expected_type: data.items.0.type
+          expected_scan_id: data.items.0.scan.id
+          expected_iface: data.items.0.iface
+
+  - name: Filter by iface
+    request:
+      <<: *netproto_request
+      params:
+        iface: "{expected_iface}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netproto_response
+
+  - name: Filter by iface (incorrect)
+    request:
+      <<: *netproto_request
+      params:
+        iface: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by type
+    request:
+      <<: *netproto_request
+      params:
+        type: "{expected_type}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netproto_response
+
+  - name: Filter by type (incorrect)
+    request:
+      <<: *netproto_request
+      params:
+        type: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by gateway
+    request:
+      <<: *netproto_request
+      params:
+        gateway: "{expected_gateway}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netproto_response
+
+  - name: Filter by gateway (incorrect)
+    request:
+      <<: *netproto_request
+      params:
+        gateway: "invalid"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by dhcp
+    request:
+      <<: *netproto_request
+      params:
+        dhcp: "{expected_dhcp}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netproto_response
+
+  - name: Filter by dhcp (incorrect)
+    request:
+      <<: *netproto_request
+      params:
+        dhcp: "invalid"
+    response:
+      status_code: 400
+
+  - name: Select proto, netmask, broadcast
+    request:
+      <<: *netproto_request
+      params:
+        select: iface,gateway,dhcp
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - iface: !anystr
+              gateway: !anystr
+              dhcp: !anystr
+
+  - name: Search dhcp
+    request:
+      <<: *netproto_request
+      params:
+        search: "{expected_dhcp}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - dhcp: "{expected_dhcp}"
+
+  - name: Search gateway
+    request:
+      <<: *netproto_request
+      params:
+        search: "{expected_gateway}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - gateway: "{expected_gateway}"
+
+  - name: Search type
+    request:
+      <<: *netproto_request
+      params:
+        search: "{expected_type}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - type: "{expected_type}"
+
+  - name: Search scan.id
+    request:
+      <<: *netproto_request
+      params:
+        search: "{expected_scan_id}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - scan:
+                id: !int "{expected_scan_id}"
+
+  - name: Search iface
+    request:
+      <<: *netproto_request
+      params:
+        search: "{expected_iface}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - iface: "{expected_iface}"
+
+  - name: Not allowed selector
+    request:
+      <<: *netproto_request
+      params:
+        select: wrongSelector
+    response:
+      status_code: 400
+      body:
+        <<: *error_remediation_response
+
+  - name: Wrong limit
+    request:
+      <<: *netproto_request
+      params:
+        limit: 0
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Wrong param
+    request:
+      <<: *netproto_request
+      params:
+        wrong: 0
+    response:
+      status_code: 400
+
+  - name: Sort
+    request:
+      <<: *netproto_request
+      params:
+        sort: +dhcp
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netproto_response
+
+  - name: Invalid sort
+    request:
+      <<: *netproto_request
+      params:
+        sort: -wrong
+    response:
+      <<: *error_response
+
+---
+test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - dhcp
+        - gateway
+        - iface
+        - scan.id
+        - type
+
+stages:
+
+  - name: Netprotocol of an agent, select
+    request:
+      <<: *netproto_request
+      params:
+        select: "{field}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key
+          extra_kwargs:
+            select_key: "{field:s}"
+        data:
+          totalItems: !anyint
+
+  - name: Netprotocol of an agent, sort
+    request:
+      <<: *netproto_request
+      params:
+        sort: "{field}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+---
+test_name: GET /syscollector/{agent_id}/netiface
+
+stages:
+
+  - name: Netiface of an agent
+    request: &netiface_request
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netiface"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &netiface_response
+            - mac: !anystr
+              mtu: !anyint
+              name: !anystr
+              rx:
+                bytes: !anyint
+                dropped: !anyint
+                errors: !anyint
+                packets: !anyint
+              scan:
+                id: !anyint
+                time: !anystr
+              state: !anystr
+              tx:
+                bytes: !anyint
+                dropped: !anyint
+                errors: !anyint
+                packets: !anyint
+              type: !anystr
+          totalItems: !anyint
+      save:
+        body:
+          expected_mac: data.items.0.mac
+          expected_rx_bytes: data.items.0.rx.bytes
+          expected_tx_bytes: data.items.0.tx.bytes
+          expected_tx_errors: data.items.0.tx.errors
+          expected_rx_errors: data.items.0.rx.errors
+          expected_rx_packets: data.items.0.rx.packets
+          expected_tx_dropped: data.items.0.tx.dropped
+          expected_rx_dropped: data.items.0.rx.dropped
+          expected_tx_packets: data.items.0.tx.packets
+          expected_type: data.items.0.type
+          expected_mtu: data.items.0.mtu
+          expected_name: data.items.0.name
+          expected_state: data.items.0.state
+
+  - name: Select type, rx.bytes, tx.errors, tx.dropped, mac
+    request:
+      <<: *netiface_request
+      params:
+        select: type,rx.bytes,tx.errors,tx.dropped,mac
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - type: !anystr
+              rx:
+                bytes: !anyint
+              tx:
+                errors: !anyint
+                dropped: !anyint
+              mac: !anystr
+
+  - name: Search mac
+    request:
+      <<: *netiface_request
+      params:
+        search: "{expected_mac}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - mac: "{expected_mac}"
+
+  - name: Search rx.bytes
+    request:
+      <<: *netiface_request
+      params:
+        search: "{expected_rx_bytes}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - rx:
+                bytes: !int "{expected_rx_bytes}"
+
+  - name: Search tx.errors
+    request:
+      <<: *netiface_request
+      params:
+        search: !int "{expected_tx_errors}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - tx:
+                errors: !int "{expected_tx_errors}"
+
+  - name: Search tx.dropped
+    request:
+      <<: *netiface_request
+      params:
+        search: "{expected_tx_dropped}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - tx:
+                dropped: !int "{expected_tx_dropped}"
+
+  - name: Not allowed selector
+    request:
+      <<: *netiface_request
+      params:
+        select: wrongSelector
+    response:
+      status_code: 400
+      body:
+        <<: *error_remediation_response
+
+  - name: Wrong limit
+    request:
+      <<: *netiface_request
+      params:
+        limit: 0
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Wrong param
+    request:
+      <<: *netiface_request
+      params:
+        wrong: 0
+    response:
+      status_code: 400
+
+  - name: Sort
+    request:
+      <<: *netiface_request
+      params:
+        sort: -type
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+
+  - name: Invalid sort
+    request:
+      <<: *netiface_request
+      params:
+        sort: -wrong
+    response:
+      <<: *error_response
+
+  - name: Offset and limit
+    request:
+      <<: *netiface_request
+      params:
+        limit: 1
+        offset: 0
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Offset = 1 and limit = 1
+    request:
+      <<: *netiface_request
+      params:
+        limit: 1
+        offset: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: !anyint
+
+  - name: Filter mtu
+    request:
+      <<: *netiface_request
+      params:
+        mtu: "{expected_mtu}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+#  - name: Filter adapter
+#    skip: True # This test cannot be performed as usual because the column adapter exists in the database but the field is always empty
 #    request:
 #      <<: *netiface_request
 #      params:
-#        select: type,rx_bytes,tx_errors,tx_dropped,mac
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - type: !anystr
-#              rx_bytes: !anyint
-#              tx:
-#                errors: !anyint
-#                dropped: !anyint
-#              mac: !anystr
-#
-#  - name: Search mac
-#    request:
-#      <<: *netiface_request
-#      params:
-#        search: "{expected_mac}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - mac: "{expected_mac}"
-#
-#  - name: Search rx_bytes
-#    request:
-#      <<: *netiface_request
-#      params:
-#        search: "{expected_rx_bytes}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - rx:
-#                bytes: !int "{expected_rx_bytes}"
-#
-#  - name: Search tx_errors
-#    request:
-#      <<: *netiface_request
-#      params:
-#        search: !int "{expected_tx_errors}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - tx:
-#                errors: !int "{expected_tx_errors}"
-#
-#  - name: Search tx_dropped
-#    request:
-#      <<: *netiface_request
-#      params:
-#        search: "{expected_tx_dropped}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - tx:
-#                dropped: !int "{expected_tx_dropped}"
-#
-#  - name: Not allowed selector
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        select: wrongSelector
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_remediation_response
-#
-#  - name: Wrong limit
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        limit: 0
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Wrong param
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        wrong: 0
-#
-#    response:
-#      status_code: 400
-#
-#  - name: Sort
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        sort: -type
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response
-#
-#  - name: Invalid sort
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        sort: -wrong
-#
-#    response:
-#      <<: *error_response
-#
-#  - name: Offset and limit
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        limit: 1
-#        offset: 0
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response
-#          totalItems: !anyint
-#
-#  - name: Offset = 1 and limit = 1
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        limit: 1
-#        offset: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: !anyint
-#
-#  - name: Filter mtu
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        mtu: "{expected_mtu}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response
-#          totalItems: !anyint
-#
-## This test cannot be performed because the column adapter exists in the database, however in the output of this endpoint never comes
-##  - name: Filter adapter
-##
-##    request:
-##      <<: *netiface_request
-##      params:
-##        adapter: "???"
-##
-##    response:
-##      status_code: 200
-#
-#  - name: Filter name
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        name: "{expected_name}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response
-#          totalItems: !anyint
-#
-#  - name: Filter type
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        type: "{expected_type}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response
-#          totalItems: !anyint
-#
-#  - name: Filter state
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        state: "{expected_state}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response
-#          totalItems: !anyint
-#
-#  - name: Filter tx_packets
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        tx_packets: "{expected_tx_packets}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response
-#          totalItems: !anyint
-#
-#  - name: Filter rx_packets
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        rx_packets: "{expected_rx_packets}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response
-#          totalItems: !anyint
-#
-#  - name: Filter tx_dropped
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        tx_dropped: "{expected_tx_dropped}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response
-#          totalItems: !anyint
-#
-#  - name: Filter rx_dropped
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        rx_dropped: "{expected_rx_dropped}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response
-#          totalItems: !anyint
-#
-#  - name: Filter tx_bytes
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        tx_bytes: "{expected_tx_bytes}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response
-#          totalItems: !anyint
-#
-#  - name: Filter rx_bytes
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        rx_bytes: "{expected_rx_bytes}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response
-#          totalItems: !anyint
-#
-#  - name: Filter tx_errors
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        tx_errors: "{expected_tx_errors}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response
-#          totalItems: !anyint
-#
-#  - name: Filter rx_errors
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        rx_errors: "{expected_rx_errors}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *netiface_response
-#          totalItems: !anyint
-#
-#  - name: Filter invalid tx_packets
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        tx_packets: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid tx_packets
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        tx_packets: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#
-#  - name: Filter invalid rx_packets
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        rx_packets: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid rx_packets
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        rx_packets: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#
-#  - name: Filter invalid tx_dropped
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        tx_dropped: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid tx_dropped
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        tx_dropped: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#
-#  - name: Filter invalid rx_dropped
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        rx_dropped: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid rx_dropped
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        rx_dropped: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#
-#  - name: Filter invalid tx_bytes
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        tx_bytes: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid tx_bytes
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        tx_bytes: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#
-#  - name: Filter invalid rx_bytes
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        rx_bytes: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid rx_bytes
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        rx_bytes: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#
-#  - name: Filter invalid tx_errors
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        tx_errors: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid tx_errors
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        tx_errors: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#
-#  - name: Filter invalid rx_errors
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        rx_errors: -1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#
-#  - name: Filter invalid rx_errors
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        rx_errors: 999999
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: 0
-#---
-#test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
-#
-#marks:
-#  - parametrize:
-#      key: field
-#      vals:
-#        - mac
-#        - mtu
-#        - name
-#        - rx_bytes
-#        - rx_dropped
-#        - rx_errors
-#        - rx_packets
-#        - scan_id
-#        - scan_time
-#        - state
-#        - tx_bytes
-#        - tx_dropped
-#        - tx_errors
-#        - tx_packets
-#        - type
-#
-#includes:
-#  - !include common.yaml
-#
-#stages:
-#  - type: ref
-#    id: login_get_token
-#  - name: Netiface of an agent, select
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        select: "{field}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        $ext:
-#          # Check response item keys are the selected keys
-#          function: tavern_utils:test_select_key
-#          extra_kwargs:
-#            select_key: "{field:s}"
-#        data:
-#          totalItems: !anyint
-#
-#  - name: Netiface of an agent, sort
-#
-#    request:
-#      <<: *netiface_request
-#      params:
-#        sort: "{field}"
-#        limit: 1
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: !anyint
+#        adapter: "{expected_adapter}"
+#      response:
+#        status_code: 200
+
+  - name: Filter name
+    request:
+      <<: *netiface_request
+      params:
+        name: "{expected_name}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter type
+    request:
+      <<: *netiface_request
+      params:
+        type: "{expected_type}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter state
+    request:
+      <<: *netiface_request
+      params:
+        state: "{expected_state}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter tx.packets
+    request:
+      <<: *netiface_request
+      params:
+        tx.packets: "{expected_tx_packets}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter rx_packets
+    request:
+      <<: *netiface_request
+      params:
+        rx.packets: "{expected_rx_packets}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter tx.dropped
+    request:
+      <<: *netiface_request
+      params:
+        tx.dropped: "{expected_tx_dropped}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter rx.dropped
+    request:
+      <<: *netiface_request
+      params:
+        rx.dropped: "{expected_rx_dropped}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter tx.bytes
+    request:
+      <<: *netiface_request
+      params:
+        tx.bytes: "{expected_tx_bytes}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter rx.bytes
+    request:
+      <<: *netiface_request
+      params:
+        rx.bytes: "{expected_rx_bytes}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter tx.errors
+    request:
+      <<: *netiface_request
+      params:
+        tx.errors: "{expected_tx_errors}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter rx.errors
+    request:
+      <<: *netiface_request
+      params:
+        rx.errors: "{expected_rx_errors}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter invalid tx.packets
+    request:
+      <<: *netiface_request
+      params:
+        tx.packets: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid tx.packets
+    request:
+      <<: *netiface_request
+      params:
+        tx.packets: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+  - name: Filter invalid rx.packets
+    request:
+      <<: *netiface_request
+      params:
+        rx.packets: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid rx.packets
+    request:
+      <<: *netiface_request
+      params:
+        rx.packets: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+  - name: Filter invalid tx.dropped
+    request:
+      <<: *netiface_request
+      params:
+        tx.dropped: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid tx.dropped
+    request:
+      <<: *netiface_request
+      params:
+        tx.dropped: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+  - name: Filter invalid rx.dropped
+    request:
+      <<: *netiface_request
+      params:
+        rx.dropped: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid rx.dropped
+    request:
+      <<: *netiface_request
+      params:
+        rx.dropped: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+  - name: Filter invalid tx.bytes
+    request:
+      <<: *netiface_request
+      params:
+        tx.bytes: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid tx.bytes
+    request:
+      <<: *netiface_request
+      params:
+        tx.bytes: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+  - name: Filter invalid rx.bytes
+    request:
+      <<: *netiface_request
+      params:
+        rx.bytes: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid rx.bytes
+    request:
+      <<: *netiface_request
+      params:
+        rx.bytes: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+  - name: Filter invalid tx.errors
+    request:
+      <<: *netiface_request
+      params:
+        tx.errors: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid tx.errors
+    request:
+      <<: *netiface_request
+      params:
+        tx.errors: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+  - name: Filter invalid rx.errors
+    request:
+      <<: *netiface_request
+      params:
+        rx.errors: -1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid rx.errors
+    request:
+      <<: *netiface_request
+      params:
+        rx.errors: 999999
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+---
+test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - mac
+        - mtu
+        - name
+        - rx.bytes
+        - rx.dropped
+        - rx.errors
+        - rx.packets
+        - scan.id
+        - scan.time
+        - state
+        - tx.bytes
+        - tx.dropped
+        - tx.errors
+        - tx.packets
+        - type
+
+stages:
+
+  - name: Netiface of an agent, select
+    request:
+      <<: *netiface_request
+      params:
+        select: "{field}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key
+          extra_kwargs:
+            select_key: "{field:s}"
+        data:
+          totalItems: !anyint
+
+  - name: Netiface of an agent, sort
+    request:
+      <<: *netiface_request
+      params:
+        sort: "{field}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint

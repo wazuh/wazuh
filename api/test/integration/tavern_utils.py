@@ -18,8 +18,8 @@ def test_select_key(response, select_key):
     :return: True if request response item key matches used select param
     """
     if '.' in select_key:
-        assert list(response.json()["data"])[0] == select_key.split('.')[0]
-        assert list(response.json()["data"][select_key.split('.')[0]])[0] == select_key.split('.')[1]
+        assert list(response.json()["data"]["items"][0])[0] == select_key.split('.')[0]
+        assert list(response.json()["data"]["items"][0][select_key.split('.')[0]])[0] == select_key.split('.')[1]
     else:
         assert list(response.json()["data"]["items"][0])[0] == select_key
     return
@@ -46,6 +46,7 @@ def calc_agents(response, total):
     :return: Number - 1
     """
     return {"totalAgents": str(int(total)-1)}
+
 
 def test_affected_items_response(response, affected_items):
     """
