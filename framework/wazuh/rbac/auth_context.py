@@ -197,6 +197,11 @@ class RBAChecker:
                 "actions": ["active_response:command"],
                 "resources": ["agent:id:001"],
                 "effect": "allow"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
             }
         ]
 
