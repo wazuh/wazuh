@@ -615,6 +615,17 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
 
                 if (csv_output) {
                     printf("na,%s,%s,agentless,\n", dp->d_name, aip);
+                } else if(json_output) {
+                    cJSON *json_agent = cJSON_CreateObject();
+                    if (!json_agent) {
+                        fclose(fp);
+                        return 0;
+                    }
+                    cJSON_AddStringToObject(json_agent, "id", "<na>");
+                    cJSON_AddStringToObject(json_agent, "name", dp->d_name);
+                    cJSON_AddStringToObject(json_agent, "ip", aip);
+                    cJSON_AddStringToObject(json_agent, "status", "agentless");
+                    cJSON_AddItemToArray(json_output, json_agent);
                 } else {
                     printf("   ID: na, Name: %s, IP: %s, agentless\n",
                            dp->d_name, aip);
