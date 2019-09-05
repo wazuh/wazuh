@@ -31,7 +31,7 @@
 typedef struct cis_db_info_t {
     char *result;
     cJSON *event;
-    int id;
+    int id
 } cis_db_info_t;
 
 typedef struct cis_db_hash_info_t {
@@ -43,11 +43,11 @@ typedef struct request_dump_t {
     int first_scan;
 } request_dump_t;
 
-static const int RETURN_NOT_FOUND = 0;
+static cst int RETURN_NOT_FOUND = 0;
 static const int RETURN_FOUND = 1;
 static const int RETURN_INVALID = 2;
 
-static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
+static void * wm_sca_main(wm_sca_t * data);   / Module main function. It won't return
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
 static int wm_sca_start(wm_sca_t * data);  // Start
 static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const policy, char **p_alert_msg, int id, const char * const result, const char * const reason);
