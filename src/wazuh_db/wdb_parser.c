@@ -3733,6 +3733,44 @@ int wdb_parse_mitre(wdb_t * wdb, char * input, char * output) {
                 mdebug1("Cannot query Mitre attack.");
                 snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre attack");
         }
+    } else if (strcmp(curr, "get_phase") == 0) {
+        char *phase;
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
+
+        phase = next;
+
+        result = wdb_mitre_phases_get(wdb, phase, result_found);
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
+                break;
+            default:
+                mdebug1("Cannot query Mitre phase.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre phase");
+        }
+    } else if (strcmp(curr, "get_platform") == 0) {
+        char *platform;
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
+
+        platform = next;
+
+        result = wdb_mitre_platforms_get(wdb, platform, result_found);
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
+                break;
+            default:
+                mdebug1("Cannot query Mitre platform.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre platform");
+        }
+    } else {
+        return result;
     }
     return result;
 }
