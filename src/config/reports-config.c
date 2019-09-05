@@ -116,12 +116,10 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                 mon_config->reports[s]->r_filter.show_alerts = 1;
             }
         } else if (strcmp(node[i]->element, xml_categories) == 0) {
-            int result;
-
             _filter_arg(node[i]->content);
 
-            if (result = os_report_configfilter("group", node[i]->content,
-                                       &mon_config->reports[s]->r_filter, REPORT_FILTER), result < 0) {
+            if (os_report_configfilter("group", node[i]->content,
+                                       &mon_config->reports[s]->r_filter, REPORT_FILTER)) {
                 merror(CONFIG_ERROR, "user argument");
             }
         } else if ((strcmp(node[i]->element, xml_group) == 0) ||
@@ -130,7 +128,6 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                    (strcmp(node[i]->element, xml_location) == 0) ||
                    (strcmp(node[i]->element, xml_srcip) == 0) ||
                    (strcmp(node[i]->element, xml_user) == 0)) {
-            int result;
             int reportf = REPORT_FILTER;
             _filter_arg(node[i]->content);
 
@@ -152,8 +149,8 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                 }
             }
 
-            if (result = os_report_configfilter(node[i]->element, node[i]->content,
-                                       &mon_config->reports[s]->r_filter, reportf), result < 0) {
+            if (os_report_configfilter(node[i]->element, node[i]->content,
+                                       &mon_config->reports[s]->r_filter, reportf)) {
                 merror("Invalid filter: %s:%s (ignored).", node[i]->element, node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_email) == 0) {

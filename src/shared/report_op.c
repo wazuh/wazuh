@@ -83,7 +83,7 @@ static int _os_report_str_int_compare(const char *str, int id)
             }
             pt_check = 1;
         } else {
-            return (-1);
+            return -1;
         }
     } while (*str++ != '\0');
 
@@ -195,7 +195,7 @@ static int _report_filter_value(const char *filter_by, int prev_filter)
         return (prev_filter);
     } else {
         merror("Invalid relation '%s'.", filter_by);
-        return (-1);
+        return -1;
     }
 }
 
@@ -665,7 +665,7 @@ int os_report_configfilter(const char *filter_by, const char *filter_value,
                            report_filter *r_filter, int arg_type)
 {
     if (!filter_by || !filter_value) {
-        return (-1);
+        return -1;
     }
 
     if (arg_type == REPORT_FILTER) {
@@ -685,7 +685,7 @@ int os_report_configfilter(const char *filter_by, const char *filter_value,
             os_strdup(filter_value, r_filter->files);
         } else {
             merror("Invalid filter '%s'.", filter_by);
-            return (-1);
+            return -1;
         }
     } else {
         if (strcmp(filter_by, "group") == 0) {
@@ -693,56 +693,55 @@ int os_report_configfilter(const char *filter_by, const char *filter_value,
                 _report_filter_value(filter_value, r_filter->related_group);
 
             if (r_filter->related_group == -1) {
-                return (-1);
+                return -1;
             }
         } else if (strcmp(filter_by, "rule") == 0) {
             r_filter->related_rule =
                 _report_filter_value(filter_value, r_filter->related_rule);
 
             if (r_filter->related_rule == -1) {
-                return (-1);
+                return -1;
             }
         } else if (strcmp(filter_by, "level") == 0) {
             r_filter->related_level =
                 _report_filter_value(filter_value, r_filter->related_level);
 
             if (r_filter->related_level == -1) {
-                return (-1);
+                return -1;
             }
         } else if (strcmp(filter_by, "location") == 0) {
             r_filter->related_location =
                 _report_filter_value(filter_value, r_filter->related_location);
 
             if (r_filter->related_location == -1) {
-                return (-1);
+                return -1;
             }
         } else if (strcmp(filter_by, "srcip") == 0) {
             r_filter->related_srcip =
                 _report_filter_value(filter_value, r_filter->related_srcip);
 
             if (r_filter->related_srcip == -1) {
-                return (-1);
+                return -1;
             }
         } else if (strcmp(filter_by, "user") == 0) {
             r_filter->related_user =
                 _report_filter_value(filter_value, r_filter->related_user);
 
             if (r_filter->related_user == -1) {
-                return (-1);
+                return -1;
             }
         } else if (strcmp(filter_by, "filename") == 0) {
             r_filter->related_file =
                 _report_filter_value(filter_value, r_filter->related_file);
 
             if (r_filter->related_file == -1) {
-                return (-1);
+                return -1;
             }
         } else {
             merror("Invalid related entry '%s'.", filter_by);
-            return (-1);
+            return -1;
         }
-        return 1;
     }
 
-    return (0);
+    return 0;
 }
