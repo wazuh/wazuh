@@ -9,6 +9,14 @@ from wazuh.exception import WazuhError
 
 
 def create_message(command, custom, arguments):
+    """Create the message that will be sent
+
+    :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of
+    a command name
+    :param custom: Whether the specified command is a custom command or not
+    :param arguments: Command arguments
+    :return: WazuhResult.
+    """
     if not command:
         raise WazuhError(1650)
 
@@ -23,6 +31,7 @@ def create_message(command, custom, arguments):
 
 
 def get_commands():
+    """Gets the available commands"""
     ar_conf_path = '{0}/etc/shared/ar.conf'.format(common.ossec_path)
 
     commands = list()
@@ -35,7 +44,12 @@ def get_commands():
 
 
 def shell_escape(command):
-    """Escapes some characters in the command before sending it"""
+    """Escapes some characters in the command before sending it
+
+    :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of
+    a command name
+    :return: Command with escapes characters
+    """
     shell_escapes = \
         ['"', '\'', '\t', ';', '`', '>', '<', '|', '#', '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')']
     for shell_esc_char in shell_escapes:
@@ -45,6 +59,13 @@ def shell_escape(command):
 
 
 def send_command(msg_queue, agent_id=None):
+    """Send the message to the agent
+
+    :param msg_queue: Message previously created, contains what is necessary to launch the active response command
+    in the agent.
+    :param agent_id: Run AR command in the agent.
+    :return: WazuhResult.
+    """
     oq = OssecQueue(common.ARQUEUE)
     ret_msg = oq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=OssecQueue.AR_TYPE)
     oq.close()
