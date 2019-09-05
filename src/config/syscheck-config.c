@@ -394,8 +394,11 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts |= CHECK_ATTRS;
 #endif
                 } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM
-                            | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_ATTRS);
+                    opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM | CHECK_SIZE
+                            | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_ATTRS);
+#ifdef WIN32
+                    opts &= ~ CHECK_ATTRS;
+#endif
                 } else {
                     merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
@@ -405,11 +408,9 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             /* Check sum */
             else if (strcmp(*attrs, xml_check_sum) == 0) {
                 if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_MD5SUM;
-                    opts |= CHECK_SHA1SUM;
-                    opts |= CHECK_SHA256SUM;
+                    opts |= CHECK_ALLHASHES;
                 } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM);
+                    opts &= ~ CHECK_ALLHASHES;
                 } else {
                     merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
@@ -800,7 +801,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_ignore = "ignore";
     const char *xml_registry_ignore = "registry_ignore";
     const char *xml_auto_ignore = "auto_ignore";
-    const char *xml_alert_new_files = "alert_new_files";
+    const char *xml_alert_new_files = "alert_new_files"; // TODO: Deprecated since 3.11.0
     const char *xml_remove_old_diff = "remove_old_diff"; // Deprecated since 3.8.0
     const char *xml_disabled = "disabled";
     const char *xml_scan_on_start = "scan_on_start";
@@ -1366,6 +1367,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         CHECK_FOLLOW,
         REALTIME_ACTIVE,
         WHODATA_ACTIVE,
+        SCHEDULED_ACTIVE,
 	    0
 	};
     char *check_strings[] = {
@@ -1383,6 +1385,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "follow_symbolic_links",
         "realtime",
         "whodata",
+        "scheduled",
 	    NULL
 	};
 

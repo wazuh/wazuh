@@ -230,7 +230,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 #if defined INOTIFY_ENABLED || defined WIN32
     minfo("Real-time start");
 #else
-    mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
+    mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
     pthread_exit(NULL);
 #endif
 
@@ -299,6 +299,13 @@ void set_priority_windows_thread() {
 
 int fim_whodata_initialize() {
     int i = 0;
+#if defined INOTIFY_ENABLED || defined WIN32
+    minfo("Real-time start");
+#else
+    mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
+    pthread_exit(NULL);
+#endif
+
 #ifdef WIN32
     set_priority_windows_thread();
 #endif
@@ -306,11 +313,7 @@ int fim_whodata_initialize() {
     while(syscheck.dir[i]) {
         if (syscheck.opts[i] & WHODATA_ACTIVE) {
             //minfo("~~ Adding '%s' to WHODATA", syscheck.dir[i]);
-#if defined INOTIFY_ENABLED || defined WIN32
             realtime_adddir(syscheck.dir[i], i + 1);
-#else
-            mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
-#endif
         }
         i++;
     }

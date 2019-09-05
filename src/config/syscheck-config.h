@@ -28,21 +28,23 @@
 #define SYSCHECK_WAIT   1
 
 /* Checking options */
-#define CHECK_SIZE          0000001
-#define CHECK_PERM          0000002
-#define CHECK_OWNER         0000004
-#define CHECK_GROUP         0000010
-#define CHECK_MTIME         0000020
-#define CHECK_INODE         0000040
-#define CHECK_MD5SUM        0000100
-#define CHECK_SHA1SUM       0000200
-#define CHECK_SHA256SUM     0000400
-#define CHECK_ATTRS         0001000
-#define CHECK_SEECHANGES    0002000
-#define CHECK_FOLLOW        0004000
-#define REALTIME_ACTIVE     0010000
-#define WHODATA_ACTIVE      0020000
-#define SCHEDULED_ACTIVE    0040000
+#define CHECK_SIZE          00000001
+#define CHECK_PERM          00000002
+#define CHECK_OWNER         00000004
+#define CHECK_GROUP         00000010
+#define CHECK_MTIME         00000020
+#define CHECK_INODE         00000040
+#define CHECK_MD5SUM        00000100
+#define CHECK_SHA1SUM       00000200
+#define CHECK_SHA256SUM     00000400
+// 0001000 0002000 0004000 Reserved for future hash functions
+#define CHECK_ALLHASHES     00000700
+#define CHECK_ATTRS         00010000
+#define CHECK_SEECHANGES    00020000
+#define CHECK_FOLLOW        00040000
+#define REALTIME_ACTIVE     00100000
+#define WHODATA_ACTIVE      00200000
+#define SCHEDULED_ACTIVE    00400000
 
 #define ARCH_32BIT          0
 #define ARCH_64BIT          1
@@ -203,6 +205,7 @@ typedef struct fim_entry_data {
     // Options
     int mode;
     int options;
+    time_t last_event;
     unsigned int scanned;
     unsigned int level0;
     unsigned int level1;
