@@ -3677,8 +3677,8 @@ tags:
   - name: summary
     description: 'Summary of Wazuh'
 
-#security:
-  #- jwt: []
+security:
+  - jwt: []
 
 paths:
   /:

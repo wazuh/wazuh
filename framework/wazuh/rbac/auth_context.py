@@ -161,10 +161,43 @@ class RBAChecker:
 
         return False
 
-    # Main loop, in which the process starts, a list will be filled with the names of the roles that the user has.
-    def run(self):
+    # A list will be filled with the names of the roles that the user has.
+    def get_user_roles(self):
         list_roles = list()
         for role in self.roles_list:
-            list_roles.append(role.name) if self.check_rule(role.rule) else None
+            list_roles.append([role.id, role.name]) if self.check_rule(role.rule) else None
 
         return list_roles
+
+    def run(self):
+        user_roles = self.get_user_roles()
+        user_policies = []
+        with orm.RolesPoliciesManager() as rpm:
+            for role in user_roles:
+                user_policies.append(policy for policy in rpm.get_all_policies_from_role(role[0]))
+            user_policies = set(user_policies)
+
+        return user_policies
+
+    # This is for TESTING. This method returns a list of hardcoded policies for testing
+    @staticmethod
+    def run_testing():
+        policies = [
+            {
+                "actions": ["syscheck:put", "syscheck:get", "syscheck:delete"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["lists:get"],
+                "resources": ["list:path:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:id:001"],
+                "effect": "allow"
+            }
+        ]
+
+        return policies
