@@ -233,7 +233,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 
             snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s:%s:%c %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", silent, file_name);
             send_syscheck_msg(alert_msg);
-            fim_delete_hashes(strdup(file_name));
+            fim_delete_hashes(file_name);
 
             os_free(alert_msg);
             os_free(wd_sum);
@@ -1134,7 +1134,7 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
 
 #endif
 
-int fim_delete_hashes(char *file_name) {
+int fim_delete_hashes(const char * const file_name) {
     syscheck_node *data;
 
     if (data = OSHash_Delete_ex(syscheck.fp, file_name), data) {
