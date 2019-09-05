@@ -31,7 +31,7 @@ static void init_conf()
     mond.interval_rotate = 0;
     mond.interval_units = 's';
     mond.size_units = 'B';
-    mond.keep_log_days = 31;
+    mond.maxage = 31;
     mond.day_wait = 10;
     mond.daily_rotations = 12;
     mond.log_level = 0;
@@ -55,7 +55,7 @@ static void read_internal()
     if ((aux = getDefine_Int("monitord", "day_wait", 0, MAX_DAY_WAIT)) != INT_OPT_NDEF)
         mond.day_wait = (short) aux;
     if ((aux = getDefine_Int("monitord", "keep_log_days", 0, 500)) != INT_OPT_NDEF)
-        mond.keep_log_days = aux;
+        mond.maxage = aux;
     if ((aux = getDefine_Int("monitord", "daily_rotations", 1, 256)) != INT_OPT_NDEF)
         mond.daily_rotations = aux;
     if ((aux = getDefine_Int("monitord", "debug", 0, 2)) != INT_OPT_NDEF)
@@ -132,9 +132,9 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                 /* Daily rotation and compression of ossec.log/ossec.json */
                 if(mond.ossec_log_plain) {
                     if(mond.log_list_plain && mond.log_list_plain->last) {
-                        new_path = w_rotate_log(path, mond.compress_rotation, mond.keep_log_days, 1, 0, mond.daily_rotations, mond.log_list_plain->last->second_value);
+                        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, 1, 0, mond.daily_rotations, mond.log_list_plain->last->second_value);
                     } else {
-                        new_path = w_rotate_log(path, mond.compress_rotation, mond.keep_log_days, 1, 0, mond.daily_rotations, -1);
+                        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, 1, 0, mond.daily_rotations, -1);
                     }
                     if(new_path) {
                         add_new_rotation_node(mond.log_list_plain, new_path, mond.rotate);
@@ -143,9 +143,9 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                 }
                 if(mond.ossec_log_json) {
                     if(mond.log_list_json && mond.log_list_json->last) {
-                        new_path = w_rotate_log(path_json, mond.compress_rotation, mond.keep_log_days, 1, 1, mond.daily_rotations, mond.log_list_json->last->second_value);
+                        new_path = w_rotate_log(path_json, mond.compress_rotation, mond.maxage, 1, 1, mond.daily_rotations, mond.log_list_json->last->second_value);
                     } else {
-                        new_path = w_rotate_log(path_json, mond.compress_rotation, mond.keep_log_days, 1, 1, mond.daily_rotations, -1);
+                        new_path = w_rotate_log(path_json, mond.compress_rotation, mond.maxage, 1, 1, mond.daily_rotations, -1);
                     }
                     if(new_path) {
                         add_new_rotation_node(mond.log_list_json, new_path, mond.rotate);
@@ -161,9 +161,9 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                         /* If log file reachs maximum size, rotate ossec.log */
                         if ( (long) size >= final_size) {
                             if(mond.log_list_plain && mond.log_list_plain->last) {
-                                new_path = w_rotate_log(path, mond.compress_rotation, mond.keep_log_days, 0, 0, mond.daily_rotations, mond.log_list_plain->last->second_value);
+                                new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, 0, 0, mond.daily_rotations, mond.log_list_plain->last->second_value);
                             } else {
-                                new_path = w_rotate_log(path, mond.compress_rotation, mond.keep_log_days, 0, 0, mond.daily_rotations, -1);
+                                new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, 0, 0, mond.daily_rotations, -1);
                             }
                             if(new_path) {
                                 add_new_rotation_node(mond.log_list_plain, new_path, mond.rotate);
@@ -177,9 +177,9 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                         /* If log file reachs maximum size, rotate ossec.json */
                         if ( (long) size >= final_size) {
                             if(mond.log_list_json && mond.log_list_json->last) {
-                                new_path = w_rotate_log(path_json, mond.compress_rotation, mond.keep_log_days, 0, 1, mond.daily_rotations, mond.log_list_json->last->second_value);
+                                new_path = w_rotate_log(path_json, mond.compress_rotation, mond.maxage, 0, 1, mond.daily_rotations, mond.log_list_json->last->second_value);
                             } else{
-                                new_path = w_rotate_log(path_json, mond.compress_rotation, mond.keep_log_days, 0, 1, mond.daily_rotations, -1);
+                                new_path = w_rotate_log(path_json, mond.compress_rotation, mond.maxage, 0, 1, mond.daily_rotations, -1);
                             }
                             if(new_path) {
                                 add_new_rotation_node(mond.log_list_json, new_path, mond.rotate);
@@ -192,9 +192,9 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                 if (mond.rotation_enabled && mond.interval > 0 && m_timespec - __ossec_rsec > mond.interval) {
                     if(mond.ossec_log_plain) {
                         if(mond.log_list_plain && mond.log_list_plain->last) {
-                            new_path = w_rotate_log(path, mond.compress_rotation, mond.keep_log_days, 0, 0, mond.daily_rotations, mond.log_list_plain->last->second_value);
+                            new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, 0, 0, mond.daily_rotations, mond.log_list_plain->last->second_value);
                         } else {
-                            new_path = w_rotate_log(path, mond.compress_rotation, mond.keep_log_days, 0, 0, mond.daily_rotations, -1);
+                            new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, 0, 0, mond.daily_rotations, -1);
                         }
                         if(new_path) {
                             add_new_rotation_node(mond.log_list_plain, new_path, mond.rotate);
@@ -204,9 +204,9 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                     }
                     if(mond.ossec_log_json) {
                         if(mond.log_list_json && mond.log_list_json->last) {
-                            new_path = w_rotate_log(path_json, mond.compress_rotation, mond.keep_log_days, 0, 1, mond.daily_rotations, mond.log_list_json->last->second_value);
+                            new_path = w_rotate_log(path_json, mond.compress_rotation, mond.maxage, 0, 1, mond.daily_rotations, mond.log_list_json->last->second_value);
                         } else {
-                            new_path = w_rotate_log(path_json, mond.compress_rotation, mond.keep_log_days, 0, 1, mond.daily_rotations, -1);
+                            new_path = w_rotate_log(path_json, mond.compress_rotation, mond.maxage, 0, 1, mond.daily_rotations, -1);
                         }
                         if(new_path) {
                             add_new_rotation_node(mond.log_list_json, new_path, mond.rotate);

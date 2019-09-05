@@ -53,7 +53,7 @@ static void init_conf()
     mond.interval_rotate = 0;
     mond.interval_units = 's';
     mond.size_units = 'B';
-    mond.keep_log_days = 31;
+    mond.maxage = 31;
     mond.day_wait = mond.day_wait == -1 ? 10 : mond.day_wait;
     mond.daily_rotations = 12;
     mond.log_level = 0;
@@ -77,7 +77,7 @@ static void read_internal()
     if ((aux = getDefine_Int("monitord", "day_wait", 0, MAX_DAY_WAIT)) != INT_OPT_NDEF)
         mond.day_wait = (short) aux;
     if ((aux = getDefine_Int("monitord", "keep_log_days", 0, 500)) != INT_OPT_NDEF)
-        mond.keep_log_days = aux;
+        mond.maxage = aux;
     if ((aux = getDefine_Int("monitord", "daily_rotations", 1, 256)) != INT_OPT_NDEF)
         mond.daily_rotations = aux;
     if ((aux = getDefine_Int("monitord", "debug", 0, 2)) != INT_OPT_NDEF)

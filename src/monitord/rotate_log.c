@@ -31,11 +31,11 @@ static const char * MONTHS[] = {
     "Dec"
 };
 
-static void remove_old_logs(const char *base_dir, int keep_log_days);
+static void remove_old_logs(const char *base_dir, int maxage);
 static void remove_old_logs_y(const char * base_dir, int year, time_t threshold);
 static void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold);
 
-char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations, int last_counter) {
+char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int rotate_json, int daily_rotations, int last_counter) {
     char year_dir[PATH_MAX];
     char month_dir[PATH_MAX];
     char new_path[PATH_MAX];
@@ -168,7 +168,7 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
 
     minfo("Starting new log after rotation.");
     // Remove old compressed files
-    remove_old_logs(log_dir, keep_log_days);
+    remove_old_logs(log_dir, maxage);
     os_free(dir);
     if(rotate_json)
         return strdup(new_path_json);
@@ -176,8 +176,8 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
         return strdup(new_path);
 }
 
-void remove_old_logs(const char *base_dir, int keep_log_days) {
-    time_t threshold = time(NULL) - (keep_log_days + 1) * 86400;
+void remove_old_logs(const char *base_dir, int maxage) {
+    time_t threshold = time(NULL) - (maxage + 1) * 86400;
     char path[PATH_MAX];
     int year;
     DIR *dir;

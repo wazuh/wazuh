@@ -31,7 +31,7 @@ typedef struct _monitor_config {
     unsigned int rotate_log:1;
     unsigned int delete_old_agents:1;
     int a_queue;
-    int keep_log_days;
+    int maxage;
     int keep_rotated_files;
     unsigned long size_rotate;      // This is the value that we put in the configuration (not converted to bytes). We need it to show the configuration.
     unsigned long interval_rotate;  // This is the value that we put in the configuration (not converted to seconds). We need it to show the configuration.

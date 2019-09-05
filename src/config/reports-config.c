@@ -407,13 +407,13 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_keep) == 0) {
                             char *end;
-                            rotation_config->keep_log_days = strtol(rotation_children[k]->content, &end, 10);
-                            if (rotation_config->keep_log_days < 0) {
+                            rotation_config->maxage = strtol(rotation_children[k]->content, &end, 10);
+                            if (rotation_config->maxage < 0) {
                                 merror("The minimum allowed value for '%s' is 0 (disabled).", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return (OS_INVALID);
-                            }  else if (rotation_config->keep_log_days > 500) {
+                            }  else if (rotation_config->maxage > 500) {
                                 mwarn("Maximum value for 'keep' in <logs> not allowed. It will be set to 500 days.");
                                 rotation_config->interval = 500;
                             }
