@@ -33,6 +33,7 @@ typedef struct group_t {
 } group_t;
 
 static OSHash *invalid_files;
+static sd_config_t *shared_download_config;
 
 /* Internal functions prototypes */
 static void read_controlmsg(const char *agent_id, char *msg);
@@ -253,7 +254,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
     char merged[PATH_MAX + 1];
     char file[PATH_MAX + 1];
     unsigned int i;
-    remote_files_group *r_group = NULL;
+    sd_group_t *shared_download_group = NULL;
 
     /* Create merged file */
     os_calloc(2, sizeof(file_sum *), f_sum);
@@ -266,9 +267,10 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
 
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, SHAREDCFG_FILENAME);
 
-    if (!logr.nocmerged && (r_group = w_parser_get_group(group), r_group)) {
-        if(r_group->current_polling_time <= 0){
-            r_group->current_polling_time = r_group->poll;
+    if (!logr.nocmerged && (shared_download_group = sd_get_group(shared_download_config, group), shared_download_group)) {
+
+        if(shared_download_group->current_polling_time <= 0){
+            shared_download_group->current_polling_time = shared_download_group->poll;
 
             char *file_url;
             char *file_name;
@@ -277,17 +279,17 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             int downloaded;
 
             // Check if we have merged.mg file in this group
-            if(r_group->merge_file_index >= 0){
-                file_url = r_group->files[r_group->merge_file_index].url;
+            if(shared_download_group->merge_file_index >= 0){
+                file_url = shared_download_group->files[shared_download_group->merge_file_index].url;
                 file_name = SHAREDCFG_FILENAME;
                 snprintf(destination_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
                 mdebug1("Downloading shared file '%s' from '%s'", merged, file_url);
                 downloaded = wurl_request(file_url,destination_path);
                 w_download_status(downloaded,file_url,destination_path);
-                r_group->merged_is_downloaded = !downloaded;
+                shared_download_group->merged_is_downloaded = !downloaded;
 
                 // Validate the file
-                if(r_group->merged_is_downloaded){
+                if(shared_download_group->merged_is_downloaded){
 
                     // File is invalid
                     if(!TestUnmergeFiles(destination_path,OS_TEXT))
@@ -307,12 +309,12 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             }
             else{ // Download all files
                 int i;
-
-                if(r_group->files){
-                    for(i = 0; r_group->files[i].name; i++)
+                merror("Nos descargamos los files jaja");
+                if(shared_download_group->files){
+                    for(i = 0; shared_download_group->files[i].name; i++)
                     {
-                        file_url = r_group->files[i].url;
-                        file_name = r_group->files[i].name;
+                        file_url = shared_download_group->files[i].url;
+                        file_name = shared_download_group->files[i].name;
                         snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, file_name);
                         snprintf(download_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
                         mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
@@ -326,13 +328,13 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             }
         }
         else{
-            r_group->current_polling_time -= poll_interval_time;
+            shared_download_group->current_polling_time -= poll_interval_time;
         }
     }
 
     f_size++;
 
-    if(r_group && r_group->merged_is_downloaded){
+    if(shared_download_group && shared_download_group->merged_is_downloaded){
 
         // Validate the file
         if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
@@ -965,7 +967,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
     file_sum **f_sum = NULL;
     os_md5 tmp_sum;
     char *end;
-    agent_group *agt_group;
+    sd_agent_t *shared_download_agent = NULL;
 
     if (!groups) {
         /* Nothing to share with agent */
@@ -983,10 +985,9 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
     for (msg++; (*msg == '\"' || *msg == '!') && (end = strchr(msg, '\n')); msg = end + 1);
 
-
     // Get agent group
-    if (agt_group = w_parser_get_agent(agent_id), agt_group) {
-        strncpy(group, agt_group->group, OS_SIZE_65536);
+    if (shared_download_agent = sd_get_agent(shared_download_config, agent_id), shared_download_agent) {
+        strncpy(group, shared_download_agent->group, OS_SIZE_65536);
         group[OS_SIZE_65536 - 1] = '\0';
         set_agent_group(agent_id, group);
     } else if (get_agent_group(agent_id, group, OS_SIZE_65536) < 0) {
@@ -1224,9 +1225,9 @@ void *update_shared_files(__attribute__((unused)) void *none) {
 
         if ((_ctime - _stime) >= INTERVAL) {
             // Check if the yaml file has changed and reload it
-            if(w_yaml_file_has_changed()){
-                w_yaml_file_update_structs();
-                w_yaml_create_groups();
+            if(sd_file_changed(shared_download_config)){
+                sd_reload(&shared_download_config);
+                sd_create_groups(shared_download_config->groups);
             }
 
             c_files();
@@ -1332,9 +1333,11 @@ void manager_init()
     _clean_time = time(0);
     m_hash = OSHash_Create();
     invalid_files = OSHash_Create();
+    sd_init(&shared_download_config); 
+    sd_load(&shared_download_config);
     mdebug1("Running manager_init");
     c_files();
-    w_yaml_create_groups();
+    sd_create_groups(shared_download_config->groups);
     memset(pending_queue, 0, MAX_AGENTS * 9);
     pending_data = OSHash_Create();
 
