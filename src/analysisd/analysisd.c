@@ -60,7 +60,7 @@ int DecodeSyscollector(Eventinfo *lf,int *socket);
 int DecodeCiscat(Eventinfo *lf, int *socket);
 int DecodeWinevt(Eventinfo *lf);
 int DecodeSCA(Eventinfo *lf,int *socket);
-void DispatchDBSync(Eventinfo * lf, int * sock);
+void DispatchDBSync(dbsync_context_t * ctx, Eventinfo * lf);
 
 // Init sdb and decoder struct
 void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder);
@@ -2199,7 +2199,7 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args){
 void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
     char * msg;
     Eventinfo * lf;
-    int sock = -1;
+    dbsync_context_t ctx = { -1, -1 };
 
     for (;;) {
         msg = queue_pop_ex(dispatch_dbsync_input);
@@ -2216,7 +2216,7 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
             continue;
         }
 
-        DispatchDBSync(lf, &sock);
+        DispatchDBSync(&ctx, lf);
         w_inc_dbsync_dispatched_messages();
         Free_Eventinfo(lf);
     }

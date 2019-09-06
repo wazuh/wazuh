@@ -16,15 +16,194 @@
  */
 
 #include "../eventinfo.h"
+#include "wazuhdb_op.h"
 
-void DispatchDBSync(Eventinfo * lf, int * sock) {
-    cJSON * root = cJSON_Parse(lf->log);
+static void dispatch_send_local(dbsync_context_t * ctx, const char * query) {
+    int sock;
 
-    if (root == NULL) {
-        merror(" -- Cannot parse JSON: %s", lf->log);
+    if (strcmp(ctx->component, "syscheck") == 0) {
+        sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
+    } else {
+        merror("dbsync: unknown location '%s'", ctx->component);
         return;
     }
 
-    minfo(" -- [%s] %s", lf->location, lf->log);
+    if (sock == -1) {
+        merror("dbsync: cannot connect to %s: %s (%d)", ctx->component, strerror(errno), errno);
+        return;
+    }
+
+    OS_SendSecureTCP(sock, strlen(query), query);
+    close(sock);
+}
+
+static void dispatch_send_remote(dbsync_context_t * ctx, const char * query, unsigned attempts) {
+    if (ctx->ar_sock == -1) {
+        ctx->ar_sock = connect_to_remoted();
+
+        if (ctx->ar_sock == -1) {
+            return;
+        }
+    }
+
+    char * buffer;
+    os_malloc(OS_MAXSTR, buffer);
+    snprintf(buffer, OS_MAXSTR, "%s %s", ctx->component, query);
+
+    if (send_msg_to_agent(ctx->ar_sock, buffer, ctx->agent_id, NULL) == -1) {
+        os_free(buffer);
+        close(ctx->ar_sock);
+        ctx->ar_sock = -1;
+
+        if (attempts > 0) {
+            dispatch_send_remote(ctx, query, attempts - 1);
+        }
+    }
+
+    os_free(buffer);
+}
+
+static void dispatch_answer(dbsync_context_t * ctx, const char * result) {
+    cJSON_DeleteItemFromObject(ctx->data, "tail");
+    cJSON_DeleteItemFromObject(ctx->data, "checksum");
+
+    char * data_plain = cJSON_PrintUnformatted(ctx->data);
+    char * query;
+    os_malloc(OS_MAXSTR, query);
+
+    // Sample: 'dbsync checksum_fail {"begin":"/a","end":"/z"}'
+    if (snprintf(query, OS_MAXSTR, "dbsync %s %s", result, data_plain) >= OS_MAXSTR) {
+        merror("dbsync: Cannot build query for agent: query is too long.");
+        goto end;
+    }
+
+    if (strcmp(ctx->agent_id, "000") == 0) {
+        dispatch_send_local(ctx, query);
+    } else {
+        dispatch_send_remote(ctx, query, 1);
+    }
+
+end:
+    free(data_plain);
+    free(query);
+}
+
+static void dispatch_check(dbsync_context_t * ctx) {
+    char * data_plain = cJSON_PrintUnformatted(ctx->data);
+    char * query;
+    char * response;
+    char * arg;
+
+    os_malloc(OS_MAXSTR, query);
+    os_malloc(OS_MAXSTR, response);
+
+    if (snprintf(query, OS_MAXSTR, "agent %s %s range_checksum %s", ctx->agent_id, ctx->component, data_plain) >= OS_MAXSTR) {
+        merror("dbsync: Cannot build query: input is too long.");
+        goto end;
+    }
+
+    switch (wdbc_query_ex(&ctx->db_sock, query, response, OS_MAXSTR)) {
+    case -2:
+        merror("dbsync: Cannot communicate with database.");
+        goto end;
+    case -1:
+        merror("dbsync: Cannot get response from database.");
+        goto end;
+    }
+
+    switch (wdbc_parse_result(response, &arg)) {
+    case WDBC_OK:
+        break;
+    case WDBC_ERROR:
+        merror("dbsync: Bad response from database: %s", arg);
+        // Fallthrough
+    default:
+        goto end;
+    }
+
+    if (*arg) {
+        dispatch_answer(ctx, arg);
+    }
+
+end:
+    free(query);
+    free(response);
+}
+
+static void dispatch_save(dbsync_context_t * ctx) {
+    char * data_plain = cJSON_PrintUnformatted(ctx->data);
+    char * query;
+    char * response;
+    char * arg;
+
+    os_malloc(OS_MAXSTR, query);
+    os_malloc(OS_MAXSTR, response);
+
+    if (snprintf(query, OS_MAXSTR, "agent %s %s save2 %s", ctx->agent_id, ctx->component, data_plain) >= OS_MAXSTR) {
+        merror("dbsync: Cannot build query: input is too long.");
+        goto end;
+    }
+
+    switch (wdbc_query_ex(&ctx->db_sock, query, response, OS_MAXSTR)) {
+    case -2:
+        merror("dbsync: Cannot communicate with database.");
+        goto end;
+    case -1:
+        merror("dbsync: Cannot get response from database.");
+        goto end;
+    }
+
+    switch (wdbc_parse_result(response, &arg)) {
+    case WDBC_OK:
+        break;
+    case WDBC_ERROR:
+        merror("dbsync: Bad response from database: %s", arg);
+        // Fallthrough
+    default:
+        goto end;
+    }
+
+end:
+    free(query);
+    free(response);
+}
+
+void DispatchDBSync(dbsync_context_t * ctx, Eventinfo * lf) {
+    ctx->agent_id = lf->agent_id;
+
+    cJSON * root = cJSON_Parse(lf->log);
+
+    if (root == NULL) {
+        merror("dbsync: Cannot parse JSON: %s", lf->log);
+        return;
+    }
+
+    ctx->component = cJSON_GetStringValue(cJSON_GetObjectItem(root, "component"));
+    if (ctx->component == NULL) {
+        merror("dbsync: Corrupt message: cannot get component member.");
+        goto end;
+    }
+
+    char * mtype = cJSON_GetStringValue(cJSON_GetObjectItem(root, "type"));
+    if (mtype == NULL) {
+        merror("dbsync: Corrupt message: cannot get type member.");
+        goto end;
+    }
+
+    ctx->data = cJSON_GetObjectItem(root, "data");
+    if (ctx->data == NULL) {
+        merror("dbsync: Corrupt message: cannot get data member.");
+        goto end;
+    }
+
+    if (strcmp(mtype, "check") == 0) {
+        dispatch_check(ctx);
+    } else if (strcmp(mtype, "save") == 0) {
+        dispatch_save(ctx);
+    } else {
+        merror("dbsync: Wrong message type '%s' received from agent %s.", mtype, ctx->agent_id);
+    }
+
+end:
     cJSON_Delete(root);
 }

@@ -61,6 +61,16 @@ typedef struct _OSDecoderNode {
     OSDecoderInfo *osdecoder;
 } OSDecoderNode;
 
+typedef struct dbsync_context_t {
+    // Persistent data (per dispatcher)
+    int db_sock;
+    int ar_sock;
+    // Ephimeral data (per message)
+    char * agent_id;
+    char * component;
+    cJSON * data;
+} dbsync_context_t;
+
 /* Functions to Create the list, add a osdecoder to the
  * list and to get the first osdecoder
  */

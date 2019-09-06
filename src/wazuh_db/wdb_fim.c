@@ -466,15 +466,39 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
 }
 
 int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
+    char * path = cJSON_GetStringValue(cJSON_GetObjectItem(data, "path"));
+
+    if (path == NULL) {
+        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        return -1;
+    }
+
+    cJSON * timestamp = cJSON_GetObjectItem(data, "timestamp");
+
+    if (!cJSON_IsNumber(timestamp)) {
+        merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
+        return -1;
+    }
+
+    cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
+
+    if (!cJSON_IsObject(attributes)) {
+        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        return -1;
+    }
+
     if (wdb_stmt_cache(wdb, WDB_STMT_FIM_INSERT_ENTRY2) < 0) {
         merror("DB(%s) Can't cache statement", wdb->agent_id);
         return -1;
     }
 
     sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_FIM_INSERT_ENTRY2];
+    sqlite3_bind_text(stmt, 1, path, -1, NULL);
+    sqlite3_bind_int64(stmt, 2, (long)timestamp->valuedouble);
+
     cJSON * element;
 
-    cJSON_ArrayForEach(element, data) {
+    cJSON_ArrayForEach(element, attributes) {
         if (element->string == NULL) {
             return -1;
         }
@@ -496,25 +520,21 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
             break;
 
         case cJSON_String:
-            if (strcmp(element->string, "file") == 0) {
-                sqlite3_bind_text(stmt, 1, element->valuestring, -1, NULL);
-            } else if (strcmp(element->string, "type") == 0) {
+            if (strcmp(element->string, "type") == 0) {
                 sqlite3_bind_text(stmt, 2, element->valuestring, -1, NULL);
-            } else if (strcmp(element->string, "win_perm") == 0) {
-                sqlite3_bind_text(stmt, 4, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "uid") == 0) {
                 sqlite3_bind_text(stmt, 5, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "gid") == 0) {
                 sqlite3_bind_text(stmt, 6, element->valuestring, -1, NULL);
-            } else if (strcmp(element->string, "md5") == 0) {
+            } else if (strcmp(element->string, "hash_md5") == 0) {
                 sqlite3_bind_text(stmt, 7, element->valuestring, -1, NULL);
-            } else if (strcmp(element->string, "sha1") == 0) {
+            } else if (strcmp(element->string, "hash_sha1") == 0) {
                 sqlite3_bind_text(stmt, 8, element->valuestring, -1, NULL);
-            } else if (strcmp(element->string, "uname") == 0) {
+            } else if (strcmp(element->string, "user_name") == 0) {
                 sqlite3_bind_text(stmt, 9, element->valuestring, -1, NULL);
-            } else if (strcmp(element->string, "gname") == 0) {
+            } else if (strcmp(element->string, "group_name") == 0) {
                 sqlite3_bind_text(stmt, 10, element->valuestring, -1, NULL);
-            } else if (strcmp(element->string, "sha256") == 0) {
+            } else if (strcmp(element->string, "hash_sha256") == 0) {
                 sqlite3_bind_text(stmt, 13, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "symbolic_path") == 0) {
                 sqlite3_bind_text(stmt, 15, element->valuestring, -1, NULL);

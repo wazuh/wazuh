@@ -27,8 +27,8 @@ static const char *SQL_COMMIT = "COMMIT;";
 static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_LOAD] = "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE file = ?;",
     [WDB_STMT_FIM_FIND_ENTRY] = "SELECT 1 FROM fim_entry WHERE file = ?",
-    [WDB_STMT_FIM_INSERT_ENTRY] = "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_FIM_INSERT_ENTRY2] = "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [WDB_STMT_FIM_INSERT_ENTRY] = "INSERT INTO fim_entry (file, type, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [WDB_STMT_FIM_INSERT_ENTRY2] = "INSERT OR REPLACE INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_FIM_UPDATE_ENTRY] = "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ?, attributes = ?, symbolic_path = ? WHERE file = ?;",
     [WDB_STMT_FIM_DELETE] = "DELETE FROM fim_entry WHERE file = ?;",
     [WDB_STMT_FIM_UPDATE_DATE] = "UPDATE fim_entry SET date = strftime('%s', 'now') WHERE file = ?;",
