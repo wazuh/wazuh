@@ -59,7 +59,7 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents='all', purg
 @exception_handler
 def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
                    status=None, q='', older_than=None, manager=None, version=None, group=None, node_name=None,
-                   name=None, ip=None, registerip=None):
+                   name=None, ip=None):
     """Get all agents
 
     Returns a list with the available agents.
@@ -76,16 +76,12 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;Active&amp;quot;
     :param older_than: Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
     ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date.
-    :param os_platform: Filters by OS platform.
-    :param os_version: Filters by OS version.
-    :param os_name: Filters by OS name.
     :param manager: Filters by manager hostname to which agents are connected.
     :param version: Filters by agents version.
     :param group: Filters by group of agents.
     :param node_name: Filters by node name.
     :param name: Filters by agent name.
     :param ip: Filters by agent IP
-    :param registerIP: Filters by agent register IP
     :return: AllAgents
     """
     f_kwargs = {'offset': offset,
@@ -102,17 +98,14 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                     'node_name': node_name,
                     'name': name,
                     'ip': ip,
-                    'registerIP': registerip
+                    'registerIP': connexion.request.args.get('registerIP', None)
                 },
                 'q': q
                 }
     # Add nested fields to kwargs filters
     nested = ['os.version', 'os.name', 'os.platform']
     for field in nested:
-        try:
-            f_kwargs['filters'][field] = connexion.request.args[field]
-        except KeyError:
-            f_kwargs['filters'][field] = None
+        f_kwargs['filters'][field] = connexion.request.args.get(field, None)
 
     dapi = DistributedAPI(f=Agent.get_agents_overview,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
