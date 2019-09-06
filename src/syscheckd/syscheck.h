@@ -150,6 +150,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 
 int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
+void fim_send_sync_msg(const char * msg);
 
 /* Return the version with symbolic link */
 void replace_linked_path(const char *file_name, int dir_position, char *linked_file);

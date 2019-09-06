@@ -445,6 +445,7 @@ void fim_get_checksum (fim_entry_data * data) {
     // TODO: Check time difference between functions OS_SHA1_Str and OS_SHA1_Str2
 
     OS_SHA1_Str(checksum, sizeof(checksum), data->checksum);
+    free(checksum);
 }
 
 

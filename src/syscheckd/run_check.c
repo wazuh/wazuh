@@ -34,11 +34,9 @@ static void set_priority_windows_thread();
 //static void send_silent_del(char *path);
 #endif
 
-
-/* Send a message related to syscheck change/addition */
-int send_syscheck_msg(const char *msg)
-{
-    if (SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ) < 0) {
+/* Send a message */
+static void fim_send_msg(char mq, const char * location, const char * msg) {
+    if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
         merror(QUEUE_SEND);
 
         if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
@@ -46,8 +44,19 @@ int send_syscheck_msg(const char *msg)
         }
 
         /* Try to send it again */
-        SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ);
+        SendMSG(syscheck.queue, msg, location, mq);
     }
+}
+
+/* Send a data synchronization control message */
+void fim_send_sync_msg(const char * msg) {
+    fim_send_msg(DBSYNC_MQ, SYSCHECK, msg);
+}
+
+/* Send a message related to syscheck change/addition */
+int send_syscheck_msg(const char *msg)
+{
+    fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
     return (0);
 }
 
@@ -55,16 +64,7 @@ int send_syscheck_msg(const char *msg)
 /* Send a message related to rootcheck change/addition */
 int send_rootcheck_msg(const char *msg)
 {
-    if (SendMSG(syscheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
-        merror(QUEUE_SEND);
-
-        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-        }
-
-        /* Try to send it again */
-        SendMSG(syscheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ);
-    }
+    fim_send_msg(ROOTCHECK_MQ, ROOTCHECK, msg);
     return (0);
 }
 
