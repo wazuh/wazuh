@@ -153,7 +153,7 @@ def generate_token(user_id):
     :return: string jwt formatted string
     """
     # Add dummy rbac_policies for developing here
-    rbac_policies = auth_context.RBAChecker.run_testing()
+    rbac_policies = auth_context.RBAChecker.optimize_resources()
 
     timestamp = int(time())
     payload = {
