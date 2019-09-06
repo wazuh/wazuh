@@ -215,7 +215,7 @@ checks:
    title: "Ensure bootloader password is set"
    description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters"
    rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off SELinux at boot time)."
-   remediation: "Create an encrypted password with grub-mkpasswd-pbkdf2 : # grub2-mkpasswd-pbkdf2. The final message is 'Your PBKDF2 is <encrypted-password>'. Add the following into /etc/grub.d/01_users or a custom /etc/grub.d configuration file: cat <<EOF set superusers=\"<username>\" password_pbkdf2 <username> <encrypted-password> EOF    Run the following command to update the grub2 configuration: # grub2-mkconfig > /boot/grub2/grub.cfg    Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your old_environment enact equivalent settings."
+   remediation: "Create an encrypted password with grub-mkpasswd-pbkdf2 : # grub2-mkpasswd-pbkdf2. The final message is 'Your PBKDF2 is <encrypted-password>'. Add the following into /etc/grub.d/01_users or a custom /etc/grub.d configuration file: cat <<EOF set superusers=\"<username>\" password_pbkdf2 <username> <encrypted-password> EOF    Run the following command to update the grub2 configuration: # grub2-mkconfig > /boot/grub2/grub.cfg    Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
    compliance:
     - cis: "1.4.2"
     - cis_csc: "5.1"
@@ -437,7 +437,7 @@ checks:
      - 'f:/usr/lib/systemd/system/dhcpd.service -> r:Exec;'
  - id: 7533
    title: "Ensure NFS and RPC are not enabled"
-   description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX old_environment. It provides the ability for systems to mount file systems of other servers through the network."
+   description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
    rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be disabled to reduce remote attack surface."
    remediation: "Run the following commands to disable nfs and rpcbind : # systemctl disable nfs # systemctl disable rpcbind"
    compliance:

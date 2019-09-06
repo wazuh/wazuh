@@ -8,7 +8,7 @@ set -e
 # configuration variables
 OSSEC_HIDS_TMP_DIR="/tmp/ossec-hids"
 
-# old_environment configuration
+# environment configuration
 if [ ! -d ${OSSEC_HIDS_TMP_DIR} ]; then
   mkdir ${OSSEC_HIDS_TMP_DIR}
 fi

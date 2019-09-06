@@ -49,7 +49,7 @@ def pyDaemon():
     os.dup2(so.fileno(), sys.stdout.fileno())
     os.dup2(se.fileno(), sys.stderr.fileno())
 
-    # Decouple from parent old_environment
+    # Decouple from parent environment
     os.chdir('/')
 
 def create_pid(name, pid):

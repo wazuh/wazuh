@@ -144,7 +144,7 @@ checks:
   - id: 9508
     title: "Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'"
     description: "The Peer Name Resolution Protocol (PNRP) allows for distributed resolution of a name to an IPv6 address and port number."
-    rationale: "This setting enhances the security of the old_environment and reduces the overall risk exposure related to peer-to-peer networking."
+    rationale: "This setting enhances the security of the environment and reduces the overall risk exposure related to peer-to-peer networking."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Microsoft Peer-to-Peer Networking Services\\Turn off Microsoft Peer-to-Peer Networking Services"
     compliance:
       - cis: "18.5.10.2"
@@ -169,7 +169,7 @@ checks:
   - id: 9510
     title: "Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled'"
     description: "This policy setting allows the configuration of wireless settings using Windows Connect Now (WCN)."
-    rationale: "This setting enhances the security of the old_environment and reduces the overall risk exposure related to user configuration of wireless settings."
+    rationale: "This setting enhances the security of the environment and reduces the overall risk exposure related to user configuration of wireless settings."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Windows Connect Now\\Configuration of wireless settings using Windows Connect Now"
     compliance:
       - cis: "18.5.20.1"
@@ -239,7 +239,7 @@ checks:
   - id: 9515
     title: "Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'"
     description: "This policy setting specifies whether the Internet Connection Wizard can connect to Microsoft to download a list of Internet Service Providers (ISPs)."
-    rationale: "In an enterprise managed old_environment we want to lower the risk of a user unknowingly exposing sensitive data."
+    rationale: "In an enterprise managed environment we want to lower the risk of a user unknowingly exposing sensitive data."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com"
     compliance:
       - cis: "18.8.22.1.4"
@@ -251,7 +251,7 @@ checks:
   - id: 9516
     title: "Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'"
     description: "This policy setting specifies whether the Windows Registration Wizard connects to Microsoft.com for online registration."
-    rationale: "Users in an enterprise managed old_environment should not be registering their own copies of Windows, providing their own PII in the process."
+    rationale: "Users in an enterprise managed environment should not be registering their own copies of Windows, providing their own PII in the process."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Registration if URL connection is referring to Microsoft.com"
     compliance:
       - cis: "18.8.22.1.7"
@@ -275,7 +275,7 @@ checks:
   - id: 9518
     title: "Ensure 'Turn off the \"Order Prints\" picture task' is set to 'Enabled'"
     description: "This policy setting specifies whether the \"Order Prints Online\" task is available from Picture Tasks in Windows folders."
-    rationale: "In an enterprise managed old_environment we want to lower the risk of a user unknowingly exposing sensitive data."
+    rationale: "In an enterprise managed environment we want to lower the risk of a user unknowingly exposing sensitive data."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off the \"Order Prints\" picture task"
     compliance:
       - cis: 18.8.22.1.9"
@@ -323,7 +323,7 @@ checks:
   - id: 9522
     title: "Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'"
     description: "This policy setting controls whether or not errors are reported to Microsoft."
-    rationale: "If a Windows Error occurs in a secure, enterprise managed old_environment, the error should be reported directly to IT staff for troubleshooting and remediation."
+    rationale: "If a Windows Error occurs in a secure, enterprise managed environment, the error should be reported directly to IT staff for troubleshooting and remediation."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Windows Error Reporting"
     compliance:
       - cis: "18.8.22.1.13"
@@ -415,7 +415,7 @@ checks:
   - id: 9529
     title: "Ensure 'Enable Windows NTP Server' is set to 'Disabled'"
     description: "This policy setting allows you to specify whether the Windows NTP Server is enabled."
-    rationale: "The configuration of proper time synchronization is critically important in an enterprise managed old_environment both due to the sensitivity of Kerberos authentication timestamps and also to ensure accurate security logging."
+    rationale: "The configuration of proper time synchronization is critically important in an enterprise managed environment both due to the sensitivity of Kerberos authentication timestamps and also to ensure accurate security logging."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Windows Time Service\\Time Providers\\Enable Windows NTP Server"
     compliance:
       - cis: "18.8.49.1.2"
@@ -465,7 +465,7 @@ checks:
   - id: 9533
     title: "Ensure 'Do not allow COM port redirection' is set to 'Enabled'"
     description: "This policy setting specifies whether to prevent the redirection of data to client COM ports from the remote computer in a Remote Desktop Services session."
-    rationale: "In a more security-sensitive old_environment, it is desirable to reduce the possible attack surface."
+    rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow COM port redirection"
     compliance:
       - cis: "18.9.58.3.3.1"
@@ -477,7 +477,7 @@ checks:
   - id: 9534
     title: "Ensure 'Do not allow LPT port redirection' is set to 'Enabled'"
     description: "This policy setting specifies whether to prevent the redirection of data to client LPT ports during a Remote Desktop Services session."
-    rationale: "In a more security-sensitive old_environment, it is desirable to reduce the possible attack surface."
+    rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow LPT port redirection"
     compliance:
       - cis: "18.9.58.3.3.3"
@@ -489,7 +489,7 @@ checks:
   - id: 9535
     title: "Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'"
     description: "This policy setting allows you to control the redirection of supported Plug and Play devices, such as Windows Portable Devices, to the remote computer in a Remote Desktop Services session."
-    rationale: "In a more security-sensitive old_environment, it is desirable to reduce the possible attack surface."
+    rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow supported Plug and Play device redirection"
     compliance:
       - cis: "18.9.58.3.3.4"

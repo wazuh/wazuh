@@ -26,7 +26,7 @@ def find_wazuh_path():
     """
     Gets the path where Wazuh is installed dinamically
 
-    :return: str path where Wazuh is installed or empty string if there is no framework in the old_environment
+    :return: str path where Wazuh is installed or empty string if there is no framework in the environment
     """
     abs_path = os.path.abspath(os.path.dirname(__file__))
     allparts = []

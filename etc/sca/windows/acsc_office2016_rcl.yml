@@ -417,7 +417,7 @@ checks:
 # ACSC - Protected View
  - id: 10042
    title: "Ensure Do not open files from the Internet zone in Protected View is set to 'Disabled' in Microsoft Excel"
-   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed old_environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
    references:
     - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
    condition: any
@@ -426,7 +426,7 @@ checks:
      - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\protectedview -> !disableinternetfilesinpv;'
  - id: 10043
    title: "Ensure Do not open files in unsafe locations in Protected View is set to 'Disabled' in Microsoft Excel"
-   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed old_environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
    references:
     - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
    condition: any
@@ -435,7 +435,7 @@ checks:
      - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\protectedview -> !disableunsafelocationsinpv;'
  - id: 10044
    title: "Ensure Set document behaviour if file validation fails is set to 'Enabled' (Block files) in Microsoft Excel"
-   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed old_environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
    references:
     - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
    condition: any
@@ -444,7 +444,7 @@ checks:
      - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\filevalidation -> !openinprotectedview;'
  - id: 10045
    title: "Ensure Turn off Protected View for attachments opened from Outlook is set to 'Disabled' in Microsoft Excel"
-   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed old_environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
    references:
     - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
    condition: any
@@ -453,7 +453,7 @@ checks:
      - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\protectedview -> !disableattachmentsinpv;'
  - id: 10046
    title: "Ensure Do not open files from the Internet zone in Protected View is set to 'Disabled' in Microsoft PowerPoint"
-   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed old_environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
    references:
     - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
    condition: any
@@ -462,7 +462,7 @@ checks:
      - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\protectedview -> !disableinternetfilesinpv;'
  - id: 10047
    title: "Ensure Do not open files in unsafe locations in Protected View is set to 'Disabled' in Microsoft PowerPoint"
-   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed old_environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
    references:
     - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
    condition: any
@@ -471,7 +471,7 @@ checks:
      - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\protectedview -> !disableunsafelocationsinpv;'
  - id: 10048
    title: "Ensure Set document behaviour if file validation fails is set to 'Enabled' (Block files) in Microsoft PowerPoint"
-   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed old_environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
    references:
     - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
    condition: any
@@ -480,7 +480,7 @@ checks:
      - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\filevalidation -> !openinprotectedview;'
  - id: 10049
    title: "Ensure Turn off Protected View for attachments opened from Outlook is set to 'Disabled' in Microsoft PowerPoint"
-   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed old_environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
    references:
     - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
    condition: any
@@ -489,7 +489,7 @@ checks:
      - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\protectedview -> !disableattachmentsinpv;'
  - id: 10050
    title: "Ensure Do not open files from the Internet zone in Protected View is set to 'Disabled' in Microsoft Word"
-   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed old_environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
    references:
     - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
    condition: any
@@ -498,7 +498,7 @@ checks:
      - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\protectedview -> disableinternetfilesinpv;'
  - id: 10051
    title: "Ensure Do not open files in unsafe locations in Protected View  is set to 'Disabled' in Microsoft Word"
-   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed old_environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
    references:
     - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
    condition: any
@@ -507,7 +507,7 @@ checks:
      - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\protectedview -> !disableunsafelocationsinpv;'
  - id: 10052
    title: "Ensure Set document behaviour if file validation fails is set to 'Enable' (Block files) in Microsoft Word"
-   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed old_environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
    references:
     - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
    condition: any
@@ -516,7 +516,7 @@ checks:
      - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\filevalidation -> !openinprotectedview;'
  - id: 10053
    title: "Ensure Turn off Protected View for attachments opened from Outlook is set to 'Disabled' in Microsoft Word"
-   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed old_environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
    references:
     - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
    condition: any

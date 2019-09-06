@@ -1024,7 +1024,7 @@ main()
     fi
 
 
-    # Setting up the old_environment
+    # Setting up the environment
     setEnv
 
 

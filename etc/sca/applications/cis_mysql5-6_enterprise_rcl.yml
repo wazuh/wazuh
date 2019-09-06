@@ -36,7 +36,7 @@ checks:
    title: "Disable MySQL Command History"
    description: "On Linux/UNIX, the MySQL client logs statements executed interactively to a history file. By default, this file is named .mysql_history in the user's home directory. Most interactive commands run in the MySQL client application are saved to a history file. The MySQL command history should be disabled."
    rationale: "Disabling the MySQL command history reduces the probability of exposing sensitive information, such as passwords and encryption keys."
-   remediation: "Perform the folowwing steps: 1. Remove .mysql_history if it exists. And 2. Set the MYSQL_HISTFILE old_environment variable to /dev/null. This will need to be placed in the shell's startup script. Or Create $HOME/.mysql_history as a symbolic to /dev/null."
+   remediation: "Perform the folowwing steps: 1. Remove .mysql_history if it exists. And 2. Set the MYSQL_HISTFILE environment variable to /dev/null. This will need to be placed in the shell's startup script. Or Create $HOME/.mysql_history as a symbolic to /dev/null."
    compliance:
     - cis: "1.3"
    references:
@@ -57,13 +57,13 @@ checks:
      - 'f:/etc/passwd -> NIN r:^mysql && r:\.*/bin/false$|/sbin/nologin$;'
  - id: 4502
    title: "Verify That 'MYSQL_PWD' Is Not Set In Users' Profiles"
-   description: "MySQL can read a default database password from an old_environment variable called MYSQL_PWD."
-   rationale: "The use of the MYSQL_PWD old_environment variable implies the clear text storage of MySQL credentials. Avoiding this may increase assurance that the confidentiality of MySQL credentials is preserved."
+   description: "MySQL can read a default database password from an environment variable called MYSQL_PWD."
+   rationale: "The use of the MYSQL_PWD environment variable implies the clear text storage of MySQL credentials. Avoiding this may increase assurance that the confidentiality of MySQL credentials is preserved."
    remediation: "Check which users and/or scripts are setting MYSQL_PWD and change them to use a more secure method."
    compliance:
     - cis: "1.6"
    references:
-    - https://dev.mysql.com/doc/refman/5.6/en/old_environment-variables.html
+    - https://dev.mysql.com/doc/refman/5.6/en/environment-variables.html
    condition: any
    rules:
      - 'f:$enviroment_files -> r:\.*MYSQL_PWD\.*;'

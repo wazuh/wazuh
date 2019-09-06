@@ -51,7 +51,7 @@ class InitAgent:
 
     def __init__(self):
         """
-        Sets up necessary test old_environment for agents:
+        Sets up necessary test environment for agents:
             * One active agent.
             * One pending agent.
             * One never connected agent.
