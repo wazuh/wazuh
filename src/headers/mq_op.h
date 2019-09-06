@@ -18,9 +18,9 @@
 #define SYSLOG_MQ       '2'
 #define HOSTINFO_MQ     '3'
 #define SECURE_MQ       '4'
+#define DBSYNC_MQ       '5'
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'
-#define EVENT_MQ        '10'
 #define SCA_MQ          'p'
 
 
