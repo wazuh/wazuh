@@ -240,9 +240,9 @@ checks:
     remediation: "Java 6 can be removed completely or, if required Java applications will only work with Java 6, a custom path can be used. Apple is likely to finally pull the plug on Java 6 in upcoming macOS versions so any applications that still require Java 6 will likely soon be unavailable."
     compliance:
       - cis: ["2.11"]
-    condition: all
+    condition: any
     rules:
-      - 'c:/usr/bin/libexec/java_home'
+      - 'c:/usr/libexec/java_home -> r:No Java runtime present'
       - 'not c:java -version -> r:1.6.0'
 
 # 3.1 Enable security auditing (Scored)
