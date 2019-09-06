@@ -320,3 +320,8 @@ in `dapi_errors` key
 ## Version
 ### GET /version 
 * Removed endpoint
+
+## Summary
+### GET /summary/agents
+* Endpoint **/summary/agents** renamed to **/overview/agents**
+

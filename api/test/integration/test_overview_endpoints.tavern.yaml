@@ -1,4 +1,4 @@
-test_name: GET /summary/agents
+test_name: GET /overview/agents
 
 includes:
  - !include common.yaml
@@ -8,9 +8,9 @@ stages:
  - type: ref
    id: login_get_token
 
- - name: Get full summary of agents
+ - name: Get overview of agents
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/summary/agents"
+     url: "{protocol:s}://{host:s}:{port:d}/overview/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
