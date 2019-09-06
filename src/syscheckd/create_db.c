@@ -233,15 +233,8 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 
             snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s:%s:%c %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", silent, file_name);
             send_syscheck_msg(alert_msg);
-#ifndef WIN32
-            fim_delete_hashes(strdup(file_name));
-#else
-            // Delete from hash table
-            if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
-                os_free(s_node->checksum);
-                os_free(s_node);
-            }
-#endif
+            fim_delete_hashes(file_name);
+
             os_free(alert_msg);
             os_free(wd_sum);
             free(esc_linked_file);
@@ -829,6 +822,8 @@ int run_dbcheck()
 
     os_calloc(OS_SIZE_6144, sizeof(char), alert_msg);
 
+    mdebug2(FIM_MONITORING_FILES_COUNT, "before", OSHash_Get_Elem_ex(syscheck.fp));
+
     __counter = 0;
     while (syscheck.dir[i] != NULL) {
         char *clink;
@@ -861,11 +856,9 @@ int run_dbcheck()
 
         // Send messages for deleted files
         OSHashNode *curr_node;
-        unsigned int *i;
+        unsigned int i;
 
-        os_calloc(1, sizeof(unsigned int), i);
-
-        for (curr_node = OSHash_Begin(last_backup, i); curr_node && curr_node->data; curr_node = OSHash_Next(last_backup, i, curr_node)) {
+        for (curr_node = OSHash_Begin(last_backup, &i); curr_node && curr_node->data; curr_node = OSHash_Next(last_backup, &i, curr_node)) {
             char *esc_linked_file = NULL;
             if (pos = find_dir_pos(curr_node->key, 1, 0, 0), pos >= 0) {
                 *linked_file = '\0';
@@ -883,12 +876,10 @@ int run_dbcheck()
                 send_syscheck_msg(alert_msg);
             }
 
-#ifndef WIN32
-            fim_delete_hashes(strdup(curr_node->key));
-#endif
+            fim_delete_hashes(curr_node->key);
+
             OSHash_Delete_ex(syscheck.last_check, curr_node->key);
         }
-        os_free(i);
 
         last_backup->free_data_function = NULL;
         OSHash_Free(last_backup);
@@ -898,6 +889,7 @@ int run_dbcheck()
     }
 
     free(alert_msg);
+    mdebug2(FIM_MONITORING_FILES_COUNT, "after", OSHash_Get_Elem_ex(syscheck.fp));
 
     return (0);
 }
@@ -1140,51 +1132,47 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
     return 0;
 }
 
-int fim_delete_hashes(char *file_name) {
-    char *checksum_inode;
-    char *inode_str;
-    char *w_inode;
-    OSHashNode *s_inode;
-    char * inode_path;
+#endif
+
+int fim_delete_hashes(const char * const file_name) {
     syscheck_node *data;
 
     if (data = OSHash_Delete_ex(syscheck.fp, file_name), data) {
-        os_strdup(data->checksum, checksum_inode);
+#ifndef WIN32
+        char *inode_str;
 
-        if(inode_str = get_attr_from_checksum(checksum_inode, SK_INODE), !inode_str || *inode_str == '\0') {
-            unsigned int *inode_it;
-            os_calloc(1, sizeof(unsigned int), inode_it);
+        if(inode_str = get_attr_from_checksum(data->checksum, SK_INODE), !inode_str || *inode_str == '\0') {
+            unsigned int inode_it;
+            OSHashNode *s_inode;
 
             //Looking for inode if check_inode = no
-            for (s_inode = OSHash_Begin(syscheck.inode_hash, inode_it); s_inode && s_inode->data; s_inode = OSHash_Next(syscheck.inode_hash, inode_it, s_inode)) {
+            for (s_inode = OSHash_Begin(syscheck.inode_hash, &inode_it); s_inode && s_inode->data; s_inode = OSHash_Next(syscheck.inode_hash, &inode_it, s_inode)) {
                 if(!strcmp(s_inode->data, file_name)){
                     inode_str = s_inode->key;
                     break;
                 }
             }
-            os_free(inode_it);
         }
+
+        char * inode_path;
 
         if(inode_str) {
             if (inode_path = OSHash_Get_ex(syscheck.inode_hash, inode_str), inode_path) {
                 if(!strcmp(inode_path, file_name)) {
+                    char *w_inode;
                     if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str), w_inode) {
                         os_free(w_inode);
                     }
                 }
             }
         }
-
-        os_free(checksum_inode);
+#endif
         os_free(data->checksum);
         os_free(data);
     }
-    os_free(file_name);
 
     return 0;
 }
-
-#endif
 
 void replace_linked_path(const char *file_name, int dir_position, char *linked_file) {
     char *dir_path;
