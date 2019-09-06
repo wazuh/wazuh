@@ -16,7 +16,6 @@ else
     chown root:ossec /var/ossec/etc/ossec.conf
     chown root:ossec /var/ossec/etc/client.keys
     chown -R ossec:ossec /var/ossec/queue/agent-groups
-    chown -R ossecr:ossec /var/ossec/var/multigroups
     chown -R ossec:ossec /var/ossec/etc/shared
     chown root:ossec /var/ossec/etc/shared/ar.conf
     chown -R ossecr:ossec /var/ossec/queue/agent-info

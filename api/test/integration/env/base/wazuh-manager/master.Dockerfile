@@ -18,7 +18,6 @@ RUN /wazuh/install.sh
 ONBUILD COPY configurations/base/wazuh-master/config/ossec.conf /var/ossec/etc/ossec.conf
 ONBUILD COPY configurations/base/wazuh-master/config/test.keys /var/ossec/etc/client.keys
 ONBUILD COPY configurations/base/wazuh-master/config/agent-groups /var/ossec/queue/agent-groups
-ONBUILD COPY configurations/base/wazuh-master/config/multigroups /var/ossec/var/multigroups
 ONBUILD COPY configurations/base/wazuh-master/config/shared /var/ossec/etc/shared
 ONBUILD COPY configurations/base/wazuh-master/config/agent-info /var/ossec/queue/agent-info
 ONBUILD COPY configurations/base/wazuh-master/healthcheck/healthcheck.py /tmp/healthcheck.py

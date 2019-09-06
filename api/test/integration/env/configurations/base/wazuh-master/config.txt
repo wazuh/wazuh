@@ -2,7 +2,6 @@ This configuration is composed of:
 
 12 agents (ids 001 to 012 and names wazuh-agent1 to wazuh-agent12)
 3 groups (group1, group2, group3)
-7 multigroups, all possible combinations of previous groups and default
 
 Statuses:
 
