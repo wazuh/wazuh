@@ -133,7 +133,7 @@ int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output){
     }
 }
 
-int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output){
+int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output, struct opt_param *params){
     w_mutex_lock(&wdb->mutex);
     
     int r;
@@ -151,6 +151,8 @@ int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output){
     stmt = wdb->stmt[WDB_STMT_MITRE_PHASE_GET];
 
     sqlite3_bind_text(stmt, 1, phase_name, -1, NULL);
+    sqlite3_bind_int(stmt, 2, params->limit);
+    sqlite3_bind_int(stmt, 3, params->offset);
 
     data = cJSON_CreateArray();
 
@@ -194,7 +196,7 @@ int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output){
     return 1;
 }
 
-int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output){
+int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output, struct opt_param *params){
     w_mutex_lock(&wdb->mutex);
     
     int r;
@@ -212,6 +214,8 @@ int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output){
     stmt = wdb->stmt[WDB_STMT_MITRE_PLATFORM_GET];
 
     sqlite3_bind_text(stmt, 1, platform_name, -1, NULL);
+    sqlite3_bind_int(stmt, 2, params->limit);
+    sqlite3_bind_int(stmt, 3, params->offset);
 
     data = cJSON_CreateArray();
 

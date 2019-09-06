@@ -97,8 +97,8 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_MITRE_PLATFORM_INSERT] = "INSERT INTO has_platform (attack_id, platform_name) VALUES (?,?);",
     [WDB_STMT_MITRE_ATTACK_UPDATE] = "UPDATE attack SET json = ? WHERE id = ?;",
     [WDB_STMT_MITRE_ATTACK_GET] = "SELECT json FROM attack WHERE id = ?;",
-    [WDB_STMT_MITRE_PHASE_GET] = "SELECT json FROM attack JOIN has_phase ON id = attack_id WHERE phase_name = ?;",
-    [WDB_STMT_MITRE_PLATFORM_GET] = "SELECT json FROM attack JOIN has_platform ON id = attack_id WHERE platform_name = ?;",
+    [WDB_STMT_MITRE_PHASE_GET] = "SELECT json FROM attack JOIN has_phase ON id = attack_id WHERE phase_name = ? LIMIT ? OFFSET ?;",
+    [WDB_STMT_MITRE_PLATFORM_GET] = "SELECT json FROM attack JOIN has_platform ON id = attack_id WHERE platform_name = ? LIMIT ? OFFSET ?;",
     [WDB_STMT_MITRE_ATTACK_DELETE] = "DELETE FROM attack WHERE id = ?;",
     [WDB_STMT_MITRE_PHASE_DELETE] = "DELETE FROM has_phase WHERE attack_id = ?;",
     [WDB_STMT_MITRE_PLATFORM_DELETE] = "DELETE FROM has_platform WHERE attack_id = ?;"

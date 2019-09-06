@@ -12,6 +12,80 @@
 #include "wdb.h"
 #include "external/cJSON/cJSON.h"
 
+int wdb_param_parse(char *input, struct opt_param *s){
+    char * next;
+    char * limit;
+    char * offset;
+    char * n;
+    int limit_n;
+    int offset_n;
+    int result;
+
+    /* Example: [limit 10 offset 0] */
+
+    // Clean string
+    while (*input == ' ' || *input == '\n' || *input == '[') {
+        input++;
+    }
+
+    if (next = wstr_chr(input, ' '), !next) {
+        mdebug1("Invalid parameters parse syntax");
+        mdebug2("DB query: %s", input);
+        merror("err Invalid parameters parse syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    limit = input;
+    *next++ = '\0';
+
+    if (strcmp(limit, "limit") == 0) {
+        n = next;
+
+        if (next = wstr_chr(n, ' '), !next) {
+            mdebug1("Invalid parameter 'limit' parse syntax.");
+            mdebug2("limit parameter error near: %s", n);
+            merror("err Invalid parameter 'limit' parse syntax, near '%.32s'", input);
+            return -1;
+        }
+
+        *next++ = '\0';
+        offset = next;
+
+        if (limit_n = strtol(n, &next, 10), *next) {
+            mdebug1("Invalid limit number: '%s'", n);
+            merror("err Invalid parameter 'limit' parse syntax, near '%.32s'", input);
+            return -1;
+        }
+        s->limit = limit_n;
+        if (next = wstr_chr(offset, ' '), next) {
+            *next++ = '\0';
+        }
+
+        if (strcmp(offset, "offset") == 0) {
+            n = next;
+
+            if (next = wstr_chr(n, ']'), !next) {
+                mdebug1("Invalid parameter 'offset' syntax.");
+                mdebug2("offset parameter error near: %s", n);
+                merror("err Invalid parameter 'offset' parse syntax, near '%.32s'", input);
+                return -1;
+            }
+
+            if (offset_n = strtol(n, &next, 10), *next) {
+                mdebug1("Invalid offset number '%s'", n);
+                merror("err Invalid parameter 'offset' parse syntax, near '%.32s'", input);
+                return -1;
+            }
+            s->offset = offset_n;
+            result = 0;
+        } else {
+            return -1;
+        }
+    } else {
+        return -1;
+    }
+    return result;
+}
 
 int wdb_parse(char * input, char * output) {
     char * actor;
@@ -26,9 +100,26 @@ int wdb_parse(char * input, char * output) {
     char * out;
     int result = 0;
 
+    struct opt_param params;
+
     if (!input) {
         mdebug1("Empty input query.");
         return -1;
+    }
+
+    if (*input == '['){
+        input++;
+        if(wdb_param_parse(input, &params) == -1){
+            mdebug1("Invalid parameters parse syntax: %s", input);
+            mdebug2("DB query: %s", input);
+            return -1; 
+        } else {
+            mdebug1("Parameters parsered correctly");
+        }
+        while (*input != ']'){
+            input++;
+        }
+        input++;
     }
 
     // Clean string
@@ -338,7 +429,7 @@ int wdb_parse(char * input, char * output) {
                 result = -1;
             } else {
                 wdb_mitre_load(db_global);
-                if(wdb_parse_mitre(db_global, next, output) > 0){
+                if(wdb_parse_mitre(db_global, next, output, &params) > 0){
                     mdebug2("Mitre - attack json found correctly");
                 } else {
                     merror("Mitre - attack json not found");
@@ -3698,7 +3789,7 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
     }
 }
 
-int wdb_parse_mitre(wdb_t * wdb, char * input, char * output) {
+int wdb_parse_mitre(wdb_t * wdb, char * input, char * output, struct opt_param *params) {
     char * curr;
     char * next;
     int result = -1;
@@ -3718,9 +3809,7 @@ int wdb_parse_mitre(wdb_t * wdb, char * input, char * output) {
         char *attack_id;
         char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
-        curr = next;
-        attack_id = curr;
-
+        attack_id = next;
         result = wdb_mitre_attack_get(wdb, attack_id, result_found);
         switch (result) {
             case 0:
@@ -3738,8 +3827,7 @@ int wdb_parse_mitre(wdb_t * wdb, char * input, char * output) {
         char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         phase = next;
-
-        result = wdb_mitre_phases_get(wdb, phase, result_found);
+        result = wdb_mitre_phases_get(wdb, phase, result_found, params);
         switch (result) {
             case 0:
                 snprintf(output, OS_MAXSTR + 1, "ok not found");
@@ -3756,8 +3844,7 @@ int wdb_parse_mitre(wdb_t * wdb, char * input, char * output) {
         char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         platform = next;
-
-        result = wdb_mitre_platforms_get(wdb, platform, result_found);
+        result = wdb_mitre_platforms_get(wdb, platform, result_found, params);
         switch (result) {
             case 0:
                 snprintf(output, OS_MAXSTR + 1, "ok not found");

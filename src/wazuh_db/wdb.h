@@ -145,6 +145,11 @@ typedef struct wdb_config {
     int open_db_limit;
 } wdb_config;
 
+struct opt_param {
+        int limit;
+        int offset;
+    };
+
 /* Global SQLite database */
 extern sqlite3 *wdb_global;
 extern wdb_t * db_global;
@@ -428,14 +433,14 @@ int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output);
  * @brief It gets an array string of the phase(s) from the has_phase table
  * @return An string array of the phase(s)
  */
-int wdb_mitre_phases_get(wdb_t *wdb, char *id, char *output);
+int wdb_mitre_phases_get(wdb_t *wdb, char *id, char *output, struct opt_param *s);
 
 /**
  * @date 8 Aug 2019
  * @brief It gets an array string of the platform(s) from the has_platform table
  * @return An string array of the platform(s)
  */
-int wdb_mitre_platforms_get(wdb_t *wdb, char *id, char *output);
+int wdb_mitre_platforms_get(wdb_t *wdb, char *id, char *output, struct opt_param *s);
 
 /**
  * @date 2 Sep 2019
@@ -644,6 +649,13 @@ int wdb_stmt_cache(wdb_t * wdb, int index);
 
 int wdb_parse(char * input, char * output);
 
+/**
+ * @brief This function parses limit and offset parameters and store in struc opt_param
+ * 
+ * @return Return -1 if error
+ */
+int wdb_param_parse(char *input, struct opt_param *s);
+
 int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output);
@@ -674,7 +686,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
  * @param output: json, platforms or phases string
  * @return int: -1 if error
  */
-int wdb_parse_mitre(wdb_t * wdb, char * input, char * output);
+int wdb_parse_mitre(wdb_t * wdb, char * input, char * output, struct opt_param *params);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
