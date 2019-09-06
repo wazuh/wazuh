@@ -113,8 +113,13 @@ void start_daemon()
 
 #ifndef WIN32
     /* Launch Real-time thread */
-    w_create_thread(fim_run_integrity, &syscheck);
     w_create_thread(fim_run_realtime, &syscheck);
+
+    /* Launch inventory synchronization thread, if enabled */
+    if (syscheck.enable_inventory) {
+        w_create_thread(fim_run_integrity, &syscheck);
+    }
+
 #else
     if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fim_run_integrity,
             &syscheck, 0, NULL) == NULL) {
@@ -344,7 +349,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
     while (1) {
         minfo("~~~ starting integrity thread");
         fim_sync_checksum();
-        sleep(600);
+        sleep(syscheck.sync_interval);
     }
 }
 

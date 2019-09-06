@@ -802,6 +802,42 @@ out_free:
     return ret;
 }
 
+static void parse_inventory(syscheck_config * syscheck, XML_NODE node) {
+    const char *xml_enabled = "enabled";
+    const char *xml_sync_interval = "sync_interval";
+    const char *xml_response_timeout = "response_timeout";
+
+    for (int i = 0; node[i]; i++) {
+        if (strcmp(node[i]->element, xml_enabled) == 0) {
+            int r = w_parse_bool(node[i]->content);
+
+            if (r < 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscheck->enable_inventory = r;
+            }
+        } else if (strcmp(node[i]->element, xml_sync_interval) == 0) {
+            long t = w_parse_time(node[i]->content);
+
+            if (t == -1) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscheck->sync_interval = t;
+            }
+        } else if (strcmp(node[i]->element, xml_response_timeout) == 0) {
+            long t = w_parse_time(node[i]->content);
+
+            if (t == -1) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscheck->sync_response_timeout = t;
+            }
+        } else {
+            mwarn(XML_INVELEM, node[i]->element);
+        }
+    }
+}
+
 int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
@@ -837,6 +873,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_audit_key = "audit_key";
     const char *xml_audit_hc = "startup_healthcheck";
     const char *xml_process_priority = "process_priority";
+    const char *xml_inventory = "inventory";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -855,7 +892,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     if(!syscheck->audit_key) {
         os_calloc(1, sizeof(char *), syscheck->audit_key);
     }
-    while (node && node[i]) {
+    for (i = 0; node && node[i]; i++) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
             return (OS_INVALID);
@@ -1287,7 +1324,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         else if (strcmp(node[i]->element, xml_whodata_options) == 0) {
 
             if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
-                i++;
                 continue;
             }
 
@@ -1350,11 +1386,19 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+        } else if (strcmp(node[i]->element, xml_inventory) == 0) {
+            children = OS_GetElementsbyNode(xml, node[i]);
+
+            if (children == NULL) {
+                continue;
+            }
+
+            parse_inventory(syscheck, children);
+            OS_ClearNode(children);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }
-        i++;
     }
 
     return (0);

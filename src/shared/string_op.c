@@ -637,3 +637,43 @@ const char * find_string_in_array(char * const string_array[], size_t array_len,
     }
     return NULL;
 }
+
+// Parse boolean string
+
+int w_parse_bool(const char * string) {
+    return (strcmp(string, "yes") == 0) ? 1 : (strcmp(string, "no") == 0) ? 0 : -1;
+}
+
+// Parse positive time string into seconds
+
+long w_parse_time(const char * string) {
+    char * end;
+    long seconds = strtol(string, &end, 10);
+
+    if (seconds < 0 || (seconds == LONG_MAX && errno == ERANGE)) {
+        return -1;
+    }
+
+    switch (*end) {
+    case '\0':
+        break;
+    case 'd':
+        seconds *= 86400;
+        break;
+    case 'h':
+        seconds *= 3600;
+        break;
+    case 'm':
+        seconds *= 60;
+        break;
+    case 's':
+        break;
+    case 'w':
+        seconds *= 604800;
+        break;
+    default:
+        return -1;
+    }
+
+    return seconds >= 0 ? seconds : -1;
+}

@@ -37,6 +37,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.scan_time      = NULL;
     syscheck.dir            = NULL;
     syscheck.opts           = NULL;
+    syscheck.enable_inventory = 1;
     syscheck.restart_audit  = 1;
     syscheck.enable_whodata = 0;
     syscheck.realtime       = NULL;
@@ -52,6 +53,8 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.max_fd_win_rt  = 0;
 #endif
     syscheck.prefilter_cmd  = NULL;
+    syscheck.sync_interval = 600;
+    syscheck.sync_response_timeout = 60;
 
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
 
@@ -305,6 +308,12 @@ cJSON *getSyscheckConfig(void) {
     if (syscheck.prefilter_cmd) {
         cJSON_AddStringToObject(syscfg,"prefilter_cmd",syscheck.prefilter_cmd);
     }
+
+    cJSON * inventory = cJSON_CreateObject();
+    cJSON_AddStringToObject(inventory, "enabled", syscheck.enable_inventory ? "yes" : "no");
+    cJSON_AddNumberToObject(inventory, "sync_interval", syscheck.sync_interval);
+    cJSON_AddNumberToObject(inventory, "response_timeout", syscheck.sync_response_timeout);
+    cJSON_AddItemToObject(root, "inventory", inventory);
 
     cJSON_AddItemToObject(root,"syscheck",syscfg);
 

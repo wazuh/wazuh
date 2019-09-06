@@ -229,6 +229,7 @@ typedef struct _config {
     int queue;                      /* file descriptor of socket to write to queue */
     unsigned int restart_audit:1;   /* Allow Syscheck restart Auditd */
     unsigned int enable_whodata:1;  /* At less one directory configured with whodata */
+    unsigned int enable_inventory:1;    /* Enable database synchronization */
 
     int *opts;                      /* attributes set in the <directories> tag element */
 
@@ -250,6 +251,9 @@ typedef struct _config {
     int *recursion_level;
 
     char **tag;                     /* array of tags for each directory */
+
+    long sync_interval;             /* Synchronization interval (seconds) */
+    long sync_response_timeout;     /* Minimum time between receiving a sync response and starting a new sync session */
 
     /* Windows only registry checking */
 #ifdef WIN32
