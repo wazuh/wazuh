@@ -71,7 +71,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         time(&current_time);
  #endif
         /* If time is outside the timeframe, return */
-        if ((current_time - lf->generate_time) > rule->timeframe) {
+        if (((current_time - lf->generate_time) > rule->timeframe) && (strcmp(lf->agent_id, my_lf->agent_id))) {
             lf = NULL;
             goto end;
         }
@@ -291,7 +291,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         time(&current_time);
 #endif
         /* If time is outside the timeframe, return */
-        if ((current_time - lf->generate_time) > rule->timeframe) {
+        if (((current_time - lf->generate_time) > rule->timeframe)  && (strcmp(lf->agent_id, my_lf->agent_id))) {
             lf = NULL;
             goto end;
         }
@@ -500,7 +500,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         time(&current_time);
 #endif
         /* If time is outside the timeframe, return */
-        if ((current_time - lf->generate_time) > rule->timeframe) {
+        if (((current_time - lf->generate_time) > rule->timeframe) && (strcmp(lf->agent_id, my_lf->agent_id))) {
             lf = NULL;
             goto end;
         }
