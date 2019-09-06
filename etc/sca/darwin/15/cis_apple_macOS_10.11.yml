@@ -254,9 +254,10 @@ checks:
     remediation: "Java 6 can be removed completely or, if necessary Java applications will only work with Java 6, a custom path can be used."
     compliance:
       - cis: ["2.11"]
-    condition: none
+    condition: all
     rules:
-      - 'c:java -version -> r:1.6.0'
+      - 'c:/usr/bin/libexec/java_home'
+      - 'not c:java -version -> r:1.6.0'
 
 # 3.2 Enable security auditing (Scored)
   - id: 7518
