@@ -91,6 +91,7 @@ ifeq (${uname_S},Linux)
 #		OSSEC_LDFLAGS+=-lmagic
 		CFLAGS+=-Wl,--start-group
 		USE_AUDIT=yes
+		OSSEC_CFLAGS+=-std=gnu99
 ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
 		CFLAGS+=-I$(EXTERNAL_AUDIT)lib
 endif
