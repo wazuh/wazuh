@@ -219,20 +219,6 @@ int OS_AddRule(RuleInfo *read_rule);
 int OS_AddChild(RuleInfo *read_rule);
 
 /**
- * @brief Remove rule and childs
- * @param sid_parent Rule parent
- * @param sid_rule Rule
- */
-void removeRule(RuleNode *parent, int sid_rule);
-
-/**
- * @brief Get root node
- * @param category Rule category
- * @return node pointer to rule node
- */
-RuleNode *getInitialNode(u_int8_t category);
-
-/**
  * @brief Update rule info for overwritten ones
  * @param r_node Rule to modify
  * @param newrule The new values of the rule
@@ -257,8 +243,17 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule);
  */
 int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule);
 
-/* Get first rule */
+/**
+ * @brief Get first rule
+ */
 RuleNode *OS_GetFirstRule(void);
+
+/**
+ * @brief Get category node
+ * @param category Rule category
+ * @return node pointer to rule node
+ */
+RuleNode *getCategoryRule(u_int8_t category);
 
 void Rules_OP_CreateRules(void);
 

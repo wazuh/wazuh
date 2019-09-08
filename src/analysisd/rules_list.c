@@ -19,9 +19,13 @@ RuleNode *rulenode;
 static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule);
 static int _AddtoRule(int sid, int level, int none, const char *group,
                RuleNode *r_node, RuleInfo *read_rule);
-/* Internal functions to copy and remove rules */
-static void _remove_rules (RuleNode *array);
-static RuleNode *_copy_rule(RuleNode *orig);
+
+/* Internal functions to add, remove and copy rules */
+static void _remove_arrayRuleNode(RuleNode *array);
+static void _remove_ruleNode(RuleNode *parent, int sid_rule);
+static void _free_ruleInfo(RuleInfo *r_info);
+static RuleNode *_copy_rule(RuleNode *orig, RuleNode *copy);
+static void _add_rules(RuleNode *r_node);
 
 
 /* Create the RuleList */
@@ -36,6 +40,17 @@ RuleNode *OS_GetFirstRule()
 {
     RuleNode *rulenode_pt = rulenode;
     return (rulenode_pt);
+}
+
+/* Get initial node */
+RuleNode *getCategoryRule(u_int8_t category)
+{
+    RuleNode *node = rulenode;
+
+    while(node != NULL && node->ruleinfo->category != category)
+        node = node->next;
+
+    return node;
 }
 
 /* Search all rules, including children */
@@ -255,82 +270,10 @@ int OS_AddRule(RuleInfo *read_rule)
     return (0);
 }
 
-/**
- * @brief Remove an array of rules and child arrays
- * @param array Array of rule childs.
- */
-void _remove_rules (RuleNode *array)
-{
-    RuleNode *tmp = NULL;
-
-    if (array->child){
-        _remove_rules(array->child);
-    }
-
-    while (array){
-        tmp = array;
-        array = array->next;
-        free(tmp);
-    }
-}
-
-/* Remove rule */
-void removeRule (RuleNode *parent, int sid_rule)
-{
-    RuleNode *tmp = parent->child;
-    RuleNode *prev = parent->child;
-    bool removed = false;
-
-    if (tmp->ruleinfo->sigid == sid_rule){
-        parent->child = tmp->next;
-        tmp->next = NULL;
-        _remove_rules(tmp);
-        tmp = parent->child;
-        prev = parent->child;
-    }
-
-    while(tmp){
-
-        if (tmp->ruleinfo->sigid == sid_rule) {
-            prev->next = tmp->next;
-            tmp->next = NULL;
-            _remove_rules(tmp);
-            removed = true;
-        }
-        else if (tmp->child){
-            removeRule(tmp, sid_rule);
-        }
-
-        if(removed){
-            tmp = prev->next;
-            removed = false;
-        } else {
-            prev = tmp;
-            tmp = tmp->next;
-        }
-
-    }
-}
-
-RuleNode *_copy_rule(RuleNode *orig)
-{
-
-}
-
-/* Get initial node */
-RuleNode *getInitialNode(u_int8_t category)
-{
-    RuleNode *node = rulenode;
-
-    while(node != NULL && node->ruleinfo->category != category)
-        node = node->next;
-
-    return node;
-}
-
 /* Add an overwrite rule */
 int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
 {
+
     /* If no r_node is given, get first node */
     if (r_node == NULL) {
         r_node = OS_GetFirstRule();
@@ -341,14 +284,21 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
     }
 
     while (r_node) {
+
         /* Check if the sigid matches */
         if (r_node->ruleinfo->sigid == sid) {
 
-            removeRule(rulenode, sid);
+            RuleNode *aux = NULL;
+
+            aux = _copy_rule(r_node, aux);
+            _remove_ruleNode(rulenode, sid);
+            OS_AddChild(newrule, NULL);
+            _add_rules(aux->child);
+            _free_ruleInfo(aux->ruleinfo);
+            _remove_arrayRuleNode(aux);
 
             return (1);
         }
-
 
         /* Check if the child has a rule */
         if (r_node->child) {
@@ -439,4 +389,251 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
     }
 
     return (0);
+}
+
+/**
+ * @brief Search rule and remove this and childs
+ * @param sid_parent Rule parent
+ * @param sid_rule Rule
+ *
+ * @note Does not remove RuleInfo
+ */
+static void _remove_ruleNode (RuleNode *parent, int sid_rule)
+{
+    RuleNode *tmp = parent->child;
+    RuleNode *prev = parent->child;
+    bool removed = false;
+
+    if (tmp->ruleinfo->sigid == sid_rule){
+        parent->child = tmp->next;
+        tmp->next = NULL;
+        _remove_arrayRuleNode(tmp);
+        tmp = parent->child;
+        prev = parent->child;
+    }
+
+    while(tmp){
+
+        if (tmp->ruleinfo->sigid == sid_rule) {
+            prev->next = tmp->next;
+            tmp->next = NULL;
+            _remove_arrayRuleNode(tmp);
+            removed = true;
+        }
+        else if (tmp->child){
+            _remove_ruleNode(tmp, sid_rule);
+        }
+
+        if(removed){
+            tmp = prev->next;
+            removed = false;
+        } else {
+            prev = tmp;
+            tmp = tmp->next;
+        }
+
+    }
+}
+
+/**
+ * @brief Remove an array of rules and child arrays
+ * @param array Array of rule childs.
+ *
+ * @note Does not remove RuleInfo
+ */
+static void _remove_arrayRuleNode (RuleNode *array)
+{
+    RuleNode *tmp = NULL;
+
+    if (array->child){
+        _remove_arrayRuleNode(array->child);
+    }
+
+    while (array){
+        tmp = array;
+        array = array->next;
+        free(tmp);
+    }
+}
+
+/**
+ * @brief Remove RuleInfo structure.
+ * @param r_info RuleInfo structure to remove.
+ */
+static void _free_ruleInfo(RuleInfo *r_info)
+{
+
+    if (r_info->ignore_fields)
+        free(r_info->ignore_fields);
+
+    if (r_info->ckignore_fields)
+        free(r_info->ckignore_fields);
+
+    if (r_info->sid_prev_matched)
+        OSList_DeleteList(r_info->sid_prev_matched);
+
+    if (r_info->sid_search)
+        OSList_DeleteList(r_info->sid_search);
+
+    if (r_info->group_prev_matched)
+        OSList_DeleteList(r_info->group_prev_matched);
+
+    if (r_info->group_search)
+        OSList_DeleteList(r_info->group_search);
+
+    if (r_info->group)
+        free(r_info->group);
+
+    if (r_info->match)
+        OSMatch_FreePattern(r_info->match);
+
+    if (r_info->regex)
+        OSRegex_FreePattern(r_info->regex);
+
+    if (r_info->day_time)
+        free(r_info->day_time);
+
+    if (r_info->week_day)
+        free(r_info->week_day);
+
+    /*free(r_info->srcip);
+    free(r_info->dstip);*/
+
+    if (r_info->srcgeoip)
+        OSMatch_FreePattern(r_info->srcgeoip);
+
+    if (r_info->dstgeoip)
+        OSMatch_FreePattern(r_info->dstgeoip);
+
+    if (r_info->srcport)
+        OSMatch_FreePattern(r_info->srcport);
+
+    if (r_info->dstport)
+        OSMatch_FreePattern(r_info->dstport);
+
+    if (r_info->user)
+        OSMatch_FreePattern(r_info->user);
+
+    if (r_info->url)
+        OSMatch_FreePattern(r_info->url);
+
+    if (r_info->id)
+        OSMatch_FreePattern(r_info->id);
+
+    if (r_info->status)
+        OSMatch_FreePattern(r_info->status);
+
+    if (r_info->hostname)
+        OSMatch_FreePattern(r_info->hostname);
+
+    if (r_info->program_name)
+        OSMatch_FreePattern(r_info->program_name);
+
+    if (r_info->extra_data)
+        OSMatch_FreePattern(r_info->extra_data);
+
+    if (r_info->location)
+        OSMatch_FreePattern(r_info->location);
+
+    int i = 0;
+    while (r_info->fields[i]){
+        free(r_info->fields[i]->name);
+        OSRegex_FreePattern(r_info->fields[0]->regex);
+        free(r_info->fields[0]);
+        i++;
+    }
+
+    if (r_info->action)
+        free(r_info->action);
+
+    if (r_info->comment)
+        free(r_info->comment);
+
+    if (r_info->info)
+        free(r_info->info);
+
+    if (r_info->cve)
+        free(r_info->cve);
+
+    // free(r_info->info_details);
+
+    // free(r_info->lists);
+
+    if (r_info->if_sid)
+        free(r_info->if_sid);
+
+    if (r_info->if_level)
+        free(r_info->if_level);
+
+    if (r_info->if_group)
+        free(r_info->if_group);
+
+    if (r_info->if_matched_regex)
+        OSRegex_FreePattern(r_info->if_matched_regex);
+
+    if (r_info->if_matched_group)
+        OSMatch_FreePattern(r_info->if_matched_group);
+
+    if (r_info->ar)
+        free(r_info->ar);
+
+    if (r_info->file)
+        free(r_info->file);
+
+    if (r_info->same_fields)
+        free(r_info->same_fields);
+
+    if (r_info->not_same_fields)
+        free(r_info->not_same_fields);
+
+    free(r_info);
+
+}
+
+/**
+ * @brief Copy rule and rules child
+ * @param orig Original rule node
+ * @param copy Copy rule node
+ */
+static RuleNode *_copy_rule(RuleNode *orig, RuleNode *copy)
+{
+    if (copy) {
+        RuleNode *tmp = orig;
+
+        while (tmp) {
+            OS_AddChild(tmp->ruleinfo, copy);
+
+            if (tmp->child) {
+                _copy_rule(tmp->child, copy);
+            }
+
+            tmp = tmp->next;
+        }
+    }
+    else {
+        copy = _OS_AddRule(copy, orig->ruleinfo);
+
+        if(orig->child){
+            _copy_rule(orig->child, copy);
+        }
+    }
+
+    return copy;
+}
+
+/**
+ * @brief Add rules to rulenode structure
+ * @param r_node rules to add
+ */
+static void _add_rules(RuleNode *r_node)
+{
+    while (r_node) {
+        OS_AddChild(r_node->ruleinfo, NULL);
+
+        if (r_node->child){
+            _add_rules(r_node->child);
+        }
+
+        r_node = r_node->next;
+    }
 }

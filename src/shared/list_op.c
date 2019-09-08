@@ -263,6 +263,27 @@ void OSList_DeleteCurrentlyNode(OSList *list)
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
 }
 
+/* Delete list */
+void OSList_DeleteList(OSList *list)
+{
+    OSListNode *tmp1 = list->first_node;
+    OSListNode *tmp2 = NULL;
+
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_mutex_lock((pthread_mutex_t *)&list->mutex);
+
+    while(tmp1){
+        tmp2 = tmp1->next;
+        free(tmp1);
+        tmp1 = tmp2;
+    }
+
+    w_mutex_unlock((pthread_mutex_t *)&list->mutex);
+    w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
+
+    free(list);
+}
+
 /* Add data to the list
  * Returns 1 on success and 0 on failure
  */
