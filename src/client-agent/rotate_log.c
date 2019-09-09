@@ -78,11 +78,6 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     int final_size = 0;
     time_t m_timespec;
 
-    mwarn("The following internal options will be deprecated in the next version: compress, keep_log_days, day_wait, size_rotate_read and daily_rotations."
-          "Please, use the 'logging' configuration block instead.");
-
-    mdebug1("Log rotating thread started.");
-
     localtime_r(&now, &tm);
     today = tm.tm_mday;
 
@@ -113,6 +108,17 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     }
 
     read_internal();
+
+    // If module is disabled, exit
+    if (mond.rotation_enabled) {
+        mdebug1("Log rotating thread started.");
+    } else {
+        mdebug1("Log rotating disabled. Exiting.");
+        pthread_exit(NULL);
+    }
+
+    mwarn("The following internal options will be deprecated in the next version: compress, keep_log_days, day_wait, size_rotate_read and daily_rotations."
+          "Please, use the 'logging' configuration block instead.");
 
     // Initializes the rotation lists
     mond.log_list_plain = get_rotation_list("logs", ".log");

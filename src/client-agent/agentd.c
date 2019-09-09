@@ -126,10 +126,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     /* Launch rotation thread */
 
-    rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
-    if (rotate_log) {
-        w_create_thread(w_rotate_log_thread, (void *)NULL);
-    }
+    w_create_thread(w_rotate_log_thread, (void *)NULL);
 
     /* Launch dispatch thread */
     if (agt->buffer){
