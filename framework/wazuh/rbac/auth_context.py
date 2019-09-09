@@ -15,7 +15,9 @@ class RBAChecker:
     _initial_index_for_regex = 2
 
     # If we don't pass it the role to check, it will take all of the system.
-    def __init__(self, auth_context, role=None):
+    def __init__(self, auth_context, role=None, testing=False):
+        if testing:
+            return
         self.authorization_context = json.loads(auth_context)
         if role is None:
             with orm.RolesManager() as rm:
@@ -161,10 +163,139 @@ class RBAChecker:
 
         return False
 
-    # Main loop, in which the process starts, a list will be filled with the names of the roles that the user has.
-    def run(self):
+    # A list will be filled with the names of the roles that the user has.
+    def get_user_roles(self):
         list_roles = list()
         for role in self.roles_list:
-            list_roles.append(role.name) if self.check_rule(role.rule) else None
+            list_roles.append([role.id, role.name]) if self.check_rule(role.rule) else None
 
         return list_roles
+
+    def run(self):
+        user_roles = self.get_user_roles()
+        user_policies = []
+        with orm.RolesPoliciesManager() as rpm:
+            for role in user_roles:
+                user_policies.append(policy for policy in rpm.get_all_policies_from_role(role[0]))
+            user_policies = set(user_policies)
+
+        return user_policies
+
+    # This is for TESTING. This method returns a list of hardcoded policies for testing
+    def run_testing(self):
+        policies = [
+            {
+                "actions": ["syscheck:put", "syscheck:get", "syscheck:delete"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["lists:get"],
+                "resources": ["list:path:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:id:001"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:id:001"],
+                "effect": "deny"
+            }
+            # {
+            #     "actions": ["active_response:command"],
+            #     "resources": ["agent:id:*"],
+            #     "effect": "deny"
+            # }
+        ]
+
+        return policies
+
+    @staticmethod
+    def convert_to_json_serializable(optimize_policies):
+        for key, value in optimize_policies.items():
+            for key_resource, value_resource in value.items():
+                for key_effect, key_value in value_resource.items():
+                    optimize_policies[key][key_resource][key_effect] = list(key_value)
+
+        return optimize_policies
+
+    @staticmethod
+    def create_initial_dict(mode, resource, odict):
+        if mode == 'white':
+            odict[resource] = {
+                'allow': set(),
+                'deny': {'*'}
+            }
+        elif mode == 'black':
+            odict[resource] = {
+                'allow': {'*'},
+                'deny': set()
+            }
+
+        return odict
+
+    @staticmethod
+    def white_process(resource_value, effect, odict):
+        if effect == 'allow':
+            odict['allow'].add(resource_value)
+            if resource_value in odict['deny']:
+                odict['deny'].remove(resource_value)
+        elif effect == 'deny':
+            odict['deny'].add(resource_value)
+            if resource_value in odict['allow']:
+                odict['allow'].remove(resource_value)
+
+    @staticmethod
+    def black_process(resource_value, effect, odict):
+        if effect == 'deny':
+            odict['deny'].add(resource_value)
+            if resource_value in odict['allow']:
+                odict['allow'].remove(resource_value)
+        elif effect == 'allow':
+            odict['allow'].add(resource_value)
+            if resource_value in odict['deny']:
+                odict['deny'].remove(resource_value)
+
+    @staticmethod
+    def modify_odict(mode, action, resources, effect, odict):
+        for resource in resources:
+            resource_name = ':'.join(resource.split(':')[0:-1])
+            resource_value = resource.split(':')[-1]
+            if resource_name not in odict[action].keys():
+                RBAChecker.create_initial_dict(mode, resource_name, odict[action])
+
+            if mode == 'white':
+                RBAChecker.white_process(resource_value, effect, odict[action][resource_name])
+            elif mode == 'black':
+                RBAChecker.black_process(resource_value, effect, odict[action][resource_name])
+
+    @staticmethod
+    def process_policy(mode, policy, odict):
+        for action in policy['actions']:
+            if action not in odict.keys():
+                odict[action] = dict()
+            RBAChecker.modify_odict(mode, action, policy['resources'], policy['effect'], odict)
+
+    def optimize_resources(self, mode='white'):
+        # For production, change run_testing() for run()
+        policies = self.run_testing()
+        odict = dict()
+
+        for policy in policies:
+            RBAChecker.process_policy(mode, policy, odict)
+        RBAChecker.convert_to_json_serializable(odict)
+
+        return odict

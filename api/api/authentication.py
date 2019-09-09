@@ -13,6 +13,7 @@ from sqlalchemy import create_engine, Column, String
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from wazuh.rbac import auth_context
 from werkzeug.exceptions import Unauthorized
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -152,18 +153,9 @@ def generate_token(user_id):
     :return: string jwt formatted string
     """
     # Add dummy rbac_policies for developing here
-    rbac_policies = [
-        # {
-        #     "actions": ["syscheck:put", "syscheck:get", "syscheck:delete"],
-        #     "resources": ["agent:id:*"],
-        #     "effect": "allow"
-        # },
-        # {
-        #     "actions": ["lists:get"],
-        #     "resources": ["list:path:*"],
-        #     "effect": "allow"
-        # },
-    ]
+    rbac = auth_context.RBAChecker(auth_context='Testing', testing=True)
+    rbac_policies = rbac.optimize_resources()
+
     timestamp = int(time())
     payload = {
         "iss": JWT_ISSUER,
