@@ -8,6 +8,7 @@ import logging
 import connexion
 
 import wazuh.active_response as active_response
+from api.authentication import get_permissions
 from api.models.active_response_model import ActiveResponse
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
 from wazuh.cluster.dapi.dapi import DistributedAPI
@@ -28,7 +29,9 @@ def run_command(pretty=False, wait_for_complete=False, agent_id=None):
     # Get body parameters
     active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
 
-    f_kwargs = {**{'agent_id': agent_id}, **active_response_model.to_dict()}
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs = {'rbac': rbac, **{'agent_id': agent_id}, **active_response_model.to_dict()}
+
     dapi = DistributedAPI(f=active_response.run_command,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -44,7 +47,7 @@ def run_command(pretty=False, wait_for_complete=False, agent_id=None):
 
 @exception_handler
 def run_command_all(pretty=False, wait_for_complete=False):
-    """ Runs an Active Response command on all agents
+    """Runs an Active Response command on a specified agent
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -53,7 +56,9 @@ def run_command_all(pretty=False, wait_for_complete=False):
     # Get body parameters
     active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
 
-    f_kwargs = {**active_response_model.to_dict()}
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs = {'rbac': rbac, **active_response_model.to_dict()}
+
     dapi = DistributedAPI(f=active_response.run_command_all,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',

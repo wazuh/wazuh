@@ -67,17 +67,17 @@ def test_run_command(cmd_patch, agent_patch, queue_patch, expected_exception, ag
     (None, 'valid_cmd', [], False),
     (None, 'valid_cmd', ["arg1", "arg2"], False)
 ])
-def test_run_command_all(cmd_patch, queue_patch, expected_exception, command, arguments, custom):
+def test_run_command(cmd_patch, queue_patch, expected_exception, command, arguments, custom):
     """
-    Tests run_command_all function
+    Tests run_command function
     """
     queue_patch.AR_TYPE = "AR"
 
     if expected_exception is not None:
         with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-            active_response.run_command_all(command=command, arguments=arguments, custom=custom)
+            active_response.run_command(command=command, arguments=arguments, custom=custom)
     else:
-        ret = active_response.run_command_all(command=command, arguments=arguments, custom=custom)
+        ret = active_response.run_command(command=command, arguments=arguments, custom=custom)
         assert ret == {'message': 'Command sent to all agents.'}
         handle = queue_patch()
         msg = f'{"!" if custom else ""}{command} {"- -" if not arguments else " ".join(arguments)}'

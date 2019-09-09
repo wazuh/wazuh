@@ -32,7 +32,7 @@ def _get_groups_resources(agent_id):
     result = conn.fetch_all()
 
     for group in result:
-        groups.append('{0}:{1}'.format('agent:group', group[0]))
+        groups.append('{0}:{1}'.format('agent:group', group['name']))
 
     return groups
 
