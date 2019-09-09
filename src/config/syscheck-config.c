@@ -672,6 +672,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 #ifdef WIN32
         if(!ExpandEnvironmentStrings(tmp_dir, expandedpath, sizeof(expandedpath) - 1)){
             merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
+            os_free(restrictfile);
+            os_free(tag);
             continue;
         }
 
@@ -904,6 +906,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
                 while(node[i]->attributes[j]) {
                     if (strcmp(node[i]->attributes[j], xml_tag) == 0) {
+                        os_free(tag);
                         os_strdup(node[i]->values[j], tag);
                     } else if (strcmp(node[i]->attributes[j], xml_arch) == 0) {
                         if (strcmp(node[i]->values[j], xml_32bit) == 0) {
@@ -913,12 +916,12 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             snprintf(arch, 6, "%s", "both");
                         } else {
                             merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
-                            free(tag);
+                            os_free(tag);
                             return OS_INVALID;
                         }
                     } else {
                         merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
-                        free(tag);
+                        os_free(tag);
                         return OS_INVALID;
                     }
                     j++;

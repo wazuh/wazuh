@@ -349,7 +349,7 @@ void OS_FreeKey(keyentry *key) {
         fclose(key->fp);
     }
 
-    pthread_mutex_destroy(&key->mutex);
+    w_mutex_destroy(&key->mutex);
     free(key);
 }
 

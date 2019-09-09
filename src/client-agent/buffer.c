@@ -35,8 +35,8 @@ struct{
 } buff;
 
 static char ** buffer;
-static pthread_mutex_t mutex_lock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t cond_no_empty = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t mutex_lock;
+static pthread_cond_t cond_no_empty;
 
 static time_t start, end;
 
@@ -52,6 +52,9 @@ void buffer_init(){
     warn_level = getDefine_Int("agent", "warn_level", 1, 100);
     normal_level = getDefine_Int("agent", "normal_level", 0, warn_level-1);
     tolerance = getDefine_Int("agent", "tolerance", 0, 600);
+
+    w_mutex_init(&mutex_lock, NULL);
+    w_cond_init(&cond_no_empty, NULL);
 
     if (tolerance == 0)
         mwarn(TOLERANCE_TIME);
@@ -134,7 +137,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         w_mutex_lock(&mutex_lock);
 
         while(empty(i, j)){
-            mdebug2("Agent buffer empty.");
             w_cond_wait(&cond_no_empty, &mutex_lock);
         }
         /* Check if buffer usage reaches any lower level */

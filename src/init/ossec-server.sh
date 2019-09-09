@@ -189,7 +189,7 @@ disable()
     elif [ "X$2" = "Xintegrator" ]; then
         echo "$INTEGRATOR_MSG";
     elif [ "X$2" = "Xdebug" ]; then
-        echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
+        echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid disable option."
