@@ -2818,8 +2818,7 @@ components:
       in: query
       name: select
       description: |
-        Select which fields to return (separated by comma). Use '_' for nested fields. For example, "{field1: field2}"
-        may be selected with "field1_field2".
+        Select which fields to return (separated by comma). Use '.' for nested fields. For example, "{field1: field2}" may be selected with "field1.field2".
       schema:
         type: array
         items:
@@ -2831,8 +2830,7 @@ components:
       name: sort
       description: |
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
-        Use '_' for nested fields. For example, "{field1: field2}"
-            may be selected with "field1_field2".
+        Use '.' for nested fields. For example, "{field1: field2}" may be selected with "field1.field2".
       schema:
         type: string
         format: sort
@@ -3296,66 +3294,66 @@ components:
         type: integer
         format: int32
         minimum: 0
-    tx_packets:
+    tx.packets:
       in: query
-      name: tx_packets
-      description: Filters by tx_packets.
+      name: tx.packets
+      description: Filters by tx.packets.
       schema:
         type: integer
         format: int32
         minimum: 0
-    rx_packets:
+    rx.packets:
       in: query
-      name: rx_packets
-      description: Filters by rx_packets.
+      name: rx.packets
+      description: Filters by rx.packets.
       schema:
         type: integer
         format: int32
         minimum: 0
-    tx_bytes:
+    tx.bytes:
       in: query
-      name: tx_bytes
-      description: Filters by tx_bytes.
+      name: tx.bytes
+      description: Filters by tx.bytes.
       schema:
         type: integer
         format: int32
         minimum: 0
-    rx_bytes:
+    rx.bytes:
       in: query
-      name: rx_bytes
-      description: Filters by rx_bytes.
+      name: rx.bytes
+      description: Filters by rx.bytes.
       schema:
         type: integer
         format: int32
         minimum: 0
-    tx_errors:
+    tx.errors:
       in: query
-      name: tx_errors
-      description: Filters by tx_errors.
+      name: tx.errors
+      description: Filters by tx.errors.
       schema:
         type: integer
         format: int32
         minimum: 0
-    rx_errors:
+    rx.errors:
       in: query
-      name: rx_errors
-      description: Filters by rx_errors.
+      name: rx.errors
+      description: Filters by rx.errors.
       schema:
         type: integer
         format: int32
         minimum: 0
-    tx_dropped:
+    tx.dropped:
       in: query
-      name: tx_dropped
-      description: Filters by tx_dropped.
+      name: tx.dropped
+      description: Filters by tx.dropped.
       schema:
         type: integer
         format: int32
         minimum: 0
-    rx_dropped:
+    rx.dropped:
       in: query
-      name: rx_dropped
-      description: Filters by rx_dropped.
+      name: rx.dropped
+      description: Filters by rx.dropped.
       schema:
         type: integer
         format: int32
@@ -3379,20 +3377,17 @@ components:
       name: dhcp
       description: Filters by network dhcp (enabled or disabled).
       schema:
-        type: string
-        enum:
-          - enabled
-          - disabled
-    os_name:
+          $ref: '#/components/schemas/DHCPStatus'
+    os.name:
       in: query
-      name: os_name
-      description: "Filters by os_name. Example: Ubuntu, Windows..."
+      name: os.name
+      description: Filters by OS name.
       schema:
         type: string
         format: alphanumeric
-    os_platform:
+    os.platform:
       in: query
-      name: os_platform
+      name: os.platform
       description: Filters by OS platform.
       schema:
         type: string
@@ -3404,10 +3399,10 @@ components:
       schema:
         type: string
         format: alphanumeric
-    os_version:
+    os.version:
       in: query
-      name: os_version
-      description: Filters by os_version.
+      name: os.version
+      description: Filters by OS version.
       schema:
         type: string
         format: alphanumeric
@@ -3424,7 +3419,6 @@ components:
       description: Filters by vendor.
       schema:
         type: string
-        format: alphanumeric
     pid:
       in: query
       name: pid
@@ -3447,23 +3441,23 @@ components:
       schema:
         type: string
         format: etc_path
-    local_ip:
+    local.ip:
       in: query
-      name: local_ip
+      name: local.ip
       description: Filters by Local IP.
       schema:
         type: string
         format: alphanumeric
-    local_port:
+    local.port:
       in: query
-      name: local_port
+      name: local.port
       description: Filters by Local Port.
       schema:
         type: string
         format: numbers
-    remote_ip:
+    remote.ip:
       in: query
-      name: remote_ip
+      name: remote.ip
       description: Filters by Remote IP.
       schema:
         type: string
@@ -3579,7 +3573,6 @@ components:
       description: Filters by version name.
       schema:
         type: string
-        format: alphanumeric
     older_than:
       in: query
       name: older_than
@@ -3677,8 +3670,8 @@ tags:
   - name: summary
     description: 'Summary of Wazuh'
 
-#security:
-  #- jwt: []
+security:
+  - jwt: []
 
 paths:
   /:
@@ -3814,9 +3807,9 @@ paths:
         - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/olderThanParam'
-        - $ref: '#/components/parameters/os_platform'
-        - $ref: '#/components/parameters/os_version'
-        - $ref: '#/components/parameters/os_name'
+        - $ref: '#/components/parameters/os.platform'
+        - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/manager_host'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -9240,14 +9233,14 @@ paths:
         - $ref: '#/components/parameters/type_syscollector'
         - $ref: '#/components/parameters/state'
         - $ref: '#/components/parameters/mtu'
-        - $ref: '#/components/parameters/tx_packets'
-        - $ref: '#/components/parameters/rx_packets'
-        - $ref: '#/components/parameters/tx_bytes'
-        - $ref: '#/components/parameters/rx_bytes'
-        - $ref: '#/components/parameters/tx_errors'
-        - $ref: '#/components/parameters/rx_errors'
-        - $ref: '#/components/parameters/tx_dropped'
-        - $ref: '#/components/parameters/rx_dropped'
+        - $ref: '#/components/parameters/tx.packets'
+        - $ref: '#/components/parameters/rx.packets'
+        - $ref: '#/components/parameters/tx.bytes'
+        - $ref: '#/components/parameters/rx.bytes'
+        - $ref: '#/components/parameters/tx.errors'
+        - $ref: '#/components/parameters/rx.errors'
+        - $ref: '#/components/parameters/tx.dropped'
+        - $ref: '#/components/parameters/rx.dropped'
       responses:
         '200':
           description: "Return a list of agent's network interfaces results"
@@ -9382,9 +9375,9 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/os_name'
+        - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/architecture'
-        - $ref: '#/components/parameters/os_version'
+        - $ref: '#/components/parameters/os.version'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/release'
       responses:
@@ -9536,9 +9529,9 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/pid'
         - $ref: '#/components/parameters/protocol'
-        - $ref: '#/components/parameters/local_ip'
-        - $ref: '#/components/parameters/local_port'
-        - $ref: '#/components/parameters/remote_ip'
+        - $ref: '#/components/parameters/local.ip'
+        - $ref: '#/components/parameters/local.port'
+        - $ref: '#/components/parameters/remote.ip'
         - $ref: '#/components/parameters/tx_queue'
         - $ref: '#/components/parameters/state'
         - $ref: '#/components/parameters/process'
@@ -9813,7 +9806,7 @@ paths:
     get:
       tags:
         - syscollector
-      summary: 'Get network interface info of an agents'
+      summary: 'Get network interface info of an agent'
       description: "Returns the agent's network interface info. This information include rx, scan, tx info and some network information among others."
       operationId: api.controllers.syscollector_controller.get_network_interface_info
       parameters:
@@ -9830,14 +9823,14 @@ paths:
         - $ref: '#/components/parameters/typesys'
         - $ref: '#/components/parameters/state'
         - $ref: '#/components/parameters/mtu'
-        - $ref: '#/components/parameters/tx_packets'
-        - $ref: '#/components/parameters/rx_packets'
-        - $ref: '#/components/parameters/tx_bytes'
-        - $ref: '#/components/parameters/rx_bytes'
-        - $ref: '#/components/parameters/tx_errors'
-        - $ref: '#/components/parameters/rx_errors'
-        - $ref: '#/components/parameters/tx_dropped'
-        - $ref: '#/components/parameters/rx_dropped'
+        - $ref: '#/components/parameters/tx.packets'
+        - $ref: '#/components/parameters/rx.packets'
+        - $ref: '#/components/parameters/tx.bytes'
+        - $ref: '#/components/parameters/rx.bytes'
+        - $ref: '#/components/parameters/tx.errors'
+        - $ref: '#/components/parameters/rx.errors'
+        - $ref: '#/components/parameters/tx.dropped'
+        - $ref: '#/components/parameters/rx.dropped'
       responses:
         '200':
           description: "Return a list of agent's network interfaces results"
@@ -9958,7 +9951,7 @@ paths:
     get:
       tags:
         - syscollector
-      summary: 'Get OS info'
+      summary: 'Get OS info of an agent'
       description: "Returns the agent's OS info. This information include os information, architecture information among others of all agents."
       operationId: api.controllers.syscollector_controller.get_os_info
       parameters:
@@ -10002,7 +9995,7 @@ paths:
     get:
       tags:
         - syscollector
-      summary: 'Get packages info'
+      summary: 'Get packages info of an agent'
       description: "Returns the agent's packages info. This information include name, section, size, priority information of all packages among others."
       operationId: api.controllers.syscollector_controller.get_packages_info
       parameters:
@@ -10075,7 +10068,7 @@ paths:
     get:
       tags:
         - syscollector
-      summary: 'Get ports info of an agents'
+      summary: 'Get ports info of an agent'
       description: "Returns the agent's ports info. This information include local IP, Remote IP, protocol information among others."
       operationId: api.controllers.syscollector_controller.get_ports_info
       parameters:
@@ -10089,9 +10082,9 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/pid'
         - $ref: '#/components/parameters/protocol'
-        - $ref: '#/components/parameters/local_ip'
-        - $ref: '#/components/parameters/local_port'
-        - $ref: '#/components/parameters/remote_ip'
+        - $ref: '#/components/parameters/local.ip'
+        - $ref: '#/components/parameters/local.port'
+        - $ref: '#/components/parameters/remote.ip'
         - $ref: '#/components/parameters/tx_queue'
         - $ref: '#/components/parameters/state'
       responses:
@@ -10152,7 +10145,7 @@ paths:
     get:
       tags:
         - syscollector
-      summary: 'Get processes info'
+      summary: 'Get processes info an agent'
       description: "Returns the agent's processes info."
       operationId: api.controllers.syscollector_controller.get_processes_info
       parameters:

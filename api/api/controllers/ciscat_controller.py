@@ -37,26 +37,34 @@ def get_agents_ciscat_results(agent_id: str, pretty: bool = False, wait_for_comp
     :param search: Looks for elements with the specified string
     :param benchmark: Filters by benchmark type.
     :param profile: Filters by evaluated profile.
-    :param pass: Filters by passed checks
     :param fail: Filters by failed checks
     :param error: Filters by encountered errors
     :param notchecked: Filters by not checked
     :param unknown: Filters by unknown results.
     :param score: Filters by final score
     """
-
-    # We get pass param using connexion as pass is a python reserved keyword
+    # We get param using connexion as it is a python reserved keyword
     try:
         pass_ = connexion.request.args['pass']
     except KeyError:
         pass_ = None
 
     f_kwargs = {
-        'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
-        'search': parse_api_param(search, 'search'), 'select': select, 'agent_id': agent_id,
+        'offset': offset,
+        'limit': limit,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'select': select,
+        'agent_id': agent_id,
         'filters': {
-            'benchmark': benchmark, 'profile': profile, 'pass': pass_, 'fail': fail, 'error': error,
-            'notchecked': notchecked, 'unknown': unknown, 'score': score
+            'benchmark': benchmark,
+            'profile': profile,
+            'pass': pass_,
+            'fail': fail,
+            'error': error,
+            'notchecked': notchecked,
+            'unknown': unknown,
+            'score': score
                 }
             }
 
