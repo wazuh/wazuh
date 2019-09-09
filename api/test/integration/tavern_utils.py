@@ -17,7 +17,11 @@ def test_select_key(response, select_key):
     :param select_key: Parametrized key used for select param in request
     :return: True if request response item key matches used select param
     """
-    assert list(response.json()["data"]["items"][0])[0] == select_key
+    if '.' in select_key:
+        assert list(response.json()["data"]["items"][0])[0] == select_key.split('.')[0]
+        assert list(response.json()["data"]["items"][0][select_key.split('.')[0]])[0] == select_key.split('.')[1]
+    else:
+        assert list(response.json()["data"]["items"][0])[0] == select_key
     return
 
 
@@ -27,8 +31,13 @@ def test_select_key_no_items(response, select_key):
     :param select_key: Parametrized key used for select param in request
     :return: True if request response item key matches used select param
     """
-    assert list(response.json()["data"])[0] == select_key
+    if '.' in select_key:
+        assert list(response.json()["data"])[0] == select_key.split('.')[0]
+        assert list(response.json()["data"][select_key.split('.')[0]])[0] == select_key.split('.')[1]
+    else:
+        assert list(response.json()["data"])[0] == select_key
     return
+
 
 def calc_agents(response, total):
     """
@@ -37,6 +46,7 @@ def calc_agents(response, total):
     :return: Number - 1
     """
     return {"totalAgents": str(int(total)-1)}
+
 
 def test_affected_items_response(response, affected_items):
     """

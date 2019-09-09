@@ -72,7 +72,7 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
         },
         "cors": True,
         "cache": {
-            "enabled": True,
+            "enabled": False,
             "debug": False,
             "time": 750
         },

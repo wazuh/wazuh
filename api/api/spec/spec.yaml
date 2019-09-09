@@ -7639,7 +7639,7 @@ paths:
   /manager/configuration/{component}/{configuration}:
     get:
       tags:
-        - cluster
+        - manager
       summary: Get active configuration in manager for one component [on demand]
       description: Returns the requested configuration in JSON format.
       operationId: api.controllers.manager_controller.get_manager_config_ondemand

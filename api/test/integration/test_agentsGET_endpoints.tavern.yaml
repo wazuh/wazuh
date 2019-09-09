@@ -1,25 +1,25 @@
+---
 test_name: GET /agents
 
-#marks:
- #- usefixtures:
-     #- agents_test
+marks:
+  - usefixtures:
+    - base_tests
 
 includes:
  - !include common.yaml
 
 stages:
-   # Authentication stage
+
+ # Authentication stage
  - type: ref
    id: login_get_token
 
  - name: Basic response agents
-
    request: &get_agents
      url: "{protocol:s}://{host:s}:{port:d}/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body: &basic_response
@@ -28,13 +28,11 @@ stages:
          totalItems: !anyint
 
  - name: Pagination
-
    request:
      <<: *get_agents
      params:
        offset: 0
        limit: 2
-
    response:
      status_code: 200
      save:
@@ -57,12 +55,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with offset -1
-
    request:
      <<: *get_agents
      params:
        offset: -1
-
    response:
      status_code: 400
      body: &error_spec
@@ -72,72 +68,60 @@ stages:
        type: !anystr
 
  - name: Try show agents with offset not integer value
-
    request:
      <<: *get_agents
      params:
        offset: wrong_offset
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
-
    request:
      <<: *get_agents
      params:
        offset: 9999999999999999999
-
    response:
      status_code: 400
      body:
        code: 2003
 
  - name: Try show agents with limit 0
-
    request:
      <<: *get_agents
      params:
        limit: 0
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
-
    request:
      <<: *get_agents
      params:
        limit: wrong_limit
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
-
    request:
      <<: *get_agents
      params:
        limit: 9999
-
    response:
      status_code: 400
      body:
        code: 1405
 
  - name: Sort
-
    request:
      <<: *get_agents
      params:
        sort: -id
-
    response:
      status_code: 200
      body:
@@ -146,24 +130,20 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with wrong sort
-
    request:
      <<: *get_agents
      params:
        sort: -wrong_sort
-
    response:
      status_code: 400
      body:
        code: 1403
 
  - name: Search
-
    request:
      <<: *get_agents
      params:
        search: '000'
-
    response:
      status_code: 200
      body:
@@ -173,12 +153,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with wrong search
-
    request:
      <<: *get_agents
      params:
        search: wrong_search
-
    response:
      status_code: 200
      body:
@@ -187,12 +165,10 @@ stages:
          totalItems: 0
 
  - name: Filter select one field
-
    request:
      <<: *get_agents
      params:
        select: 'os.platform'
-
    response:
      status_code: 200
      body:
@@ -201,12 +177,10 @@ stages:
          totalItems: !anyint
 
  - name: Filter select multiple fields
-
    request:
      <<: *get_agents
      params:
        select: 'dateAdd,mergedSum'
-
    response:
      status_code: 200
      body:
@@ -215,36 +189,30 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with not allowed selector
-
    request:
      <<: *get_agents
      params:
        select: param_test
-
    response:
      status_code: 400
      body:
        code: 1724
 
  - name: Try show agents with not allowed selector (invalid character)
-
    request:
      <<: *get_agents
      params:
        select: param_%_test
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Filter by agent version
-
    request:
      <<: *get_agents
      params:
        version: 'Wazuhv3.9.0'
-
    response:
      status_code: 200
      body:
@@ -253,12 +221,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with not existed version
-
    request:
      <<: *get_agents
      params:
        version: 'TestVersion'
-
    response:
      status_code: 200
      body:
@@ -267,24 +233,20 @@ stages:
          totalItems: 0
 
  - name: Try show agents with not existed version (invalid character)
-
    request:
      <<: *get_agents
      params:
        version: 'Test%Version'
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Filter by agent OS Platform
-
    request:
      <<: *get_agents
      params:
-       os_platform: "{expected_os_platform:s}"
-
+       os.platform: "{expected_os_platform:s}"
    response:
      status_code: 200
      body:
@@ -293,12 +255,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with not existed OS Platform
-
    request:
      <<: *get_agents
      params:
-       os_platform: test_platform
-
+       os.platform: test_platform
    response:
      status_code: 200
      body:
@@ -307,24 +267,20 @@ stages:
          totalItems: 0
 
  - name: Try show agents with not existed OS Platform (invalid character)
-
    request:
      <<: *get_agents
      params:
-       os_platform: test_%_platform
-
+       os.platform: test_%_platform
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Filter by agent OS Version
-
    request:
      <<: *get_agents
      params:
-       os_version: "{expected_os_version:s}"
-
+       os.version: "{expected_os_version:s}"
    response:
      status_code: 200
      body:
@@ -333,12 +289,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with not existed OS Version
-
    request:
      <<: *get_agents
      params:
-       os_version: test_version
-
+       os.version: test_version
    response:
      status_code: 200
      body:
@@ -347,24 +301,20 @@ stages:
          totalItems: 0
 
  - name: Try show agents with not existed OS Version (invalid character)
-
    request:
      <<: *get_agents
      params:
-       os_version: test_version_%
-
+       os.version: test_version_%
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Filter by agent OS Name
-
    request:
      <<: *get_agents
      params:
-       os_name: "{expected_os_name:s}"
-
+       os.name: "{expected_os_name:s}"
    response:
      status_code: 200
      body:
@@ -373,12 +323,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with not existed OS Name
-
    request:
      <<: *get_agents
      params:
-       os_name: test_name
-
+       os.name: test_name
    response:
      status_code: 200
      body:
@@ -387,24 +335,20 @@ stages:
          totalItems: 0
 
  - name: Try show agents with not existed OS Name (invalid character)
-
    request:
      <<: *get_agents
      params:
-       os_name: test_name_%
-
+       os.name: test_name_%
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Filter by agent Node Name
-
    request:
      <<: *get_agents
      params:
        node_name: "{expected_node_name:s}"
-
    response:
      status_code: 200
      body:
@@ -413,12 +357,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with not existed Node Name
-
    request:
      <<: *get_agents
      params:
        node_name: test_node_name
-
    response:
      status_code: 200
      body:
@@ -427,24 +369,20 @@ stages:
          totalItems: 0
 
  - name: Try show agents with not existed Node Name (invalid character)
-
    request:
      <<: *get_agents
      params:
        node_name: test_node_name_%
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Filter by agent name
-
    request:
      <<: *get_agents
      params:
        name: "{expected_name:s}"
-
    response:
      status_code: 200
      body:
@@ -453,12 +391,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with not existed agent name
-
    request:
      <<: *get_agents
      params:
        name: test_name
-
    response:
      status_code: 200
      body:
@@ -467,24 +403,20 @@ stages:
          totalItems: 0
 
  - name: Try show agents with not existed agent name (invalid character)
-
    request:
      <<: *get_agents
      params:
        name: test_name_%
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Filter by agent IP
-
    request:
      <<: *get_agents
      params:
        ip: "{expected_ip:s}"
-
    response:
      status_code: 200
      body:
@@ -493,12 +425,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with not existed IP
-
    request:
      <<: *get_agents
      params:
        ip: test_ip
-
    response:
      status_code: 200
      body:
@@ -507,24 +437,20 @@ stages:
          totalItems: 0
 
  - name: Try show agents with not existed IP (invalid character)
-
    request:
      <<: *get_agents
      params:
        ip: test_ip_%
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Filter by agent ManagerHost
-
    request:
      <<: *get_agents
      params:
        manager: expected_manager_host
-
    response:
      status_code: 200
      body:
@@ -533,12 +459,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with not existed ManagerHost
-
    request:
      <<: *get_agents
      params:
        manager: test_manager
-
    response:
      status_code: 200
      body:
@@ -547,24 +471,20 @@ stages:
          totalItems: 0
 
  - name: Try show agents with not existed ManagerHost (invalid character)
-
    request:
      <<: *get_agents
      params:
        manager: test_manager_%
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Filter by agent status
-
    request:
      <<: *get_agents
      params:
        status: active
-
    response:
      status_code: 200
      body:
@@ -573,12 +493,10 @@ stages:
          totalItems: !anyint
 
  - name: Filter by agent status 2
-
    request:
      <<: *get_agents
      params:
        status: active,neverconnected
-
    response:
      status_code: 200
      body:
@@ -587,24 +505,20 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with not existed status
-
    request:
      <<: *get_agents
      params:
        status: test_status
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Filter agents by group
-
    request:
      <<: *get_agents
      params:
        group: default
-
    response:
      status_code: 200
      body:
@@ -613,12 +527,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with not existed group
-
    request:
      <<: *get_agents
      params:
        group: test_group
-
    response:
      status_code: 200
      body:
@@ -627,24 +539,20 @@ stages:
          totalItems: 0
 
  - name: Try show agents with not existed group (invalid character)
-
    request:
      <<: *get_agents
      params:
        group: test_group_%
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Filter agents by query
-
    request:
      <<: *get_agents
      params:
        q: group=default;lastKeepAlive<1d
-
    response:
      status_code: 200
      body:
@@ -653,36 +561,30 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with bad query
-
    request:
      <<: *get_agents
      params:
        q: group=default;lastKeepAe<1d
-
    response:
      status_code: 400
      body:
        code: 1408
 
  - name: Try show agents with bad query (invalid character)
-
    request:
      <<: *get_agents
      params:
        q: group=default;lastKeep%<1d
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Filter agents by older param
-
    request:
      <<: *get_agents
      params:
        older_than: 10s
-
    response:
      status_code: 200
      body:
@@ -691,12 +593,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with bad older_than
-
    request:
      <<: *get_agents
      params:
        older_than: bad_time
-
    response:
      status_code: 400
      body:
@@ -706,6 +606,7 @@ stages:
 test_name: GET /agents/:agent_id
 
 stages:
+
   # GET /agents/000
  - name: Basic response agent
    request: &get_agent
@@ -713,7 +614,6 @@ stages:
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -745,7 +645,6 @@ stages:
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
@@ -758,7 +657,6 @@ stages:
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
@@ -770,7 +668,6 @@ stages:
      <<: *get_agent
      params:
        select: 'os.platform'
-
    response:
      status_code: 200
      body:
@@ -784,7 +681,6 @@ stages:
      <<: *get_agent
      params:
        select: 'dateAdd,status'
-
    response:
      status_code: 200
      body:
@@ -798,7 +694,6 @@ stages:
      <<: *get_agent
      params:
        select: param_test
-
    response:
      status_code: 400
      body:
@@ -810,7 +705,6 @@ stages:
      <<: *get_agent
      params:
        select: param_%_test
-
    response:
      status_code: 400
      body:
@@ -915,6 +809,8 @@ stages:
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/agentless/agentless"
      method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
 
    response:
      status_code: 200
@@ -2389,6 +2285,7 @@ stages:
      method: PUT
      headers:
        content-type: "application/xml"
+       Authorization: "Bearer {test_login_token}"
      data:
        "{file_xml:s}"
 

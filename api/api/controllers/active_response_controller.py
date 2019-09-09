@@ -22,7 +22,7 @@ def run_command(pretty=False, wait_for_complete=False, agent_id=None):
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID. All posible values since 000 onwards
+    :param agent_id: Agent ID. All possible values since 000 onwards
     :return: message
     """
     # Get body parameters
