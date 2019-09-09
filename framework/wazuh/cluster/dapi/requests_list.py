@@ -666,6 +666,11 @@ functions = {
         'is_async': False
     },
 
+    # Summary
+    '/summary/agents': {
+        'function': Agent.get_full_summary,
+        'type': 'local_master',
+        'is_async': False
+    },
 
 }
-

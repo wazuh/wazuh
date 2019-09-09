@@ -60,15 +60,15 @@ int CreateThread(void * (*function_pointer)(void *), void *data)
     pthread_t lthread;
 
     if (CreateThreadJoinable(&lthread, function_pointer, data) < 0) {
-        return -1;
+        return 0;
     }
 
     if (pthread_detach(lthread) != 0) {
         merror(THREAD_ERROR " Cannot detach thread.");
-        return -1;
+        return 0;
     }
 
-    return (0);
+    return 1;
 }
 
 #endif /* !WIN32 */

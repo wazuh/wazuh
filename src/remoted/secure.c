@@ -167,7 +167,7 @@ void HandleSecure()
                 if (fd == logr.sock) {
                     sock_client = accept(logr.sock, (struct sockaddr *)&peer_info, &logr.peer_size);
                     if (sock_client < 0) {
-                        merror_exit(ACCEPT_ERROR);
+                        merror_exit(ACCEPT_ERROR, strerror(errno), errno);
                     }
 
                     nb_open(&netbuffer, sock_client, &peer_info);
@@ -341,7 +341,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
         if (agentid < 0) {
             key_unlock();
-            mwarn(DENYIP_WARN, srcip);
+            mwarn(DENYIP_WARN " Source agent ID is unknown.", srcip);
 
             // Send key request by ip
             push_request(srcip,"ip");

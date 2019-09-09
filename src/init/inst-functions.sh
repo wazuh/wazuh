@@ -34,7 +34,7 @@ CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
-SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca_generic.template"
+SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.template"
 
 ##########
 # WriteSyscheck()
@@ -184,9 +184,6 @@ WriteConfigurationAssessment()
     # Adding to the config file
     if [ "X$SECURITY_CONFIGURATION_ASSESSMENT" = "Xyes" ]; then
       SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "sca.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      if [ "$SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "sca_generic.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      fi
       cat ${SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
     fi
@@ -201,7 +198,7 @@ InstallOpenSCAPFiles()
     OPENSCAP_FILES_PATH=$(GetTemplate "openscap.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     cd ./src
     if [ "$OPENSCAP_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
-        echo "SCAP security policies not available for this OS version."
+        echo "SCAP security policies are not available for this OS version."
     else
         echo "Installing SCAP security policies..."
         OPENSCAP_FILES=$(cat .$OPENSCAP_FILES_PATH)
@@ -222,22 +219,38 @@ InstallSecurityConfigurationAssessmentFiles()
 {
 
     cd ..
+
+    CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "sca.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+
     if [ "X$1" = "Xmanager" ]; then
-        CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "sca.$1.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    else
-        CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "sca.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+        CONFIGURATION_ASSESSMENT_MANAGER_FILES_PATH=$(GetTemplate "sca.$1.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
     cd ./src
     if [ "$CONFIGURATION_ASSESSMENT_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
-        echo "SCA policies not available for this OS version ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER}."
+        echo "SCA policies are not available for this OS version ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER}."
     else
+        echo "Removing old SCA policies..."
+        rm -f ${PREFIX}/ruleset/sca/*
+
         echo "Installing SCA policies..."
         CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_FILES_PATH)
-        for file in $CONFIGURATION_ASSESSMENT_FILES; do
-            if [ -f "../etc/sca/$file" ]; then
-                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$file ${PREFIX}/ruleset/sca
+        for FILE in $CONFIGURATION_ASSESSMENT_FILES; do
+            if [ -f "../etc/sca/$FILE" ]; then
+                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$FILE ${PREFIX}/ruleset/sca
             else
-                echo "ERROR: SCA policy not found: ./etc/sca/$file"
+                echo "ERROR: SCA policy not found: ./etc/sca/$FILE"
+            fi
+        done
+    fi
+
+    if [ "X$1" = "Xmanager" ]; then
+        echo "Installing additional SCA policies..."
+        CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_MANAGER_FILES_PATH)
+        for FILE in $CONFIGURATION_ASSESSMENT_FILES; do
+            FILENAME=$(basename $FILE)
+            if [ -f "../etc/sca/$FILE" ] && [ ! -f "${PREFIX}/ruleset/sca/$FILENAME" ]; then
+                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$FILE ${PREFIX}/ruleset/sca/
+                mv ${PREFIX}/ruleset/sca/$FILENAME ${PREFIX}/ruleset/sca/$FILENAME.disabled
             fi
         done
     fi
@@ -949,7 +962,7 @@ InstallLocal()
     chmod 640 ${PREFIX}/logs/integrations.log
     chown ${OSSEC_USER_MAIL}:${OSSEC_GROUP} ${PREFIX}/logs/integrations.log
 
-    if [ "X${OPTIMIZE_CPYTHON}" == "Xy" ]; then
+    if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
         CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
     fi
 

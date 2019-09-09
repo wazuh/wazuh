@@ -54,8 +54,8 @@ void req_free(req_node_t * node) {
         free(node->target);
         free(node->buffer);
         free(node->counter);
-        pthread_mutex_destroy(&node->mutex);
-        pthread_cond_destroy(&node->available);
+        w_mutex_destroy(&node->mutex);
+        w_cond_destroy(&node->available);
         free(node);
     }
 }

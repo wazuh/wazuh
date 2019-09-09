@@ -54,7 +54,7 @@ def previous_month(n=1):
     :return: First date of the previous n month.
     """
 
-    date = datetime.today().replace(day=1)  # First day of current month
+    date = datetime.utcnow().replace(day=1)  # First day of current month
 
     for i in range(0, int(n)):
         date = (date - timedelta(days=1)).replace(day=1)  # (first_day - 1) = previous month
@@ -359,12 +359,12 @@ def safe_move(source, target, ownership=(common.ossec_uid(), common.ossec_gid())
     :param time: tuple in the form (addition_timestamp, modified_timestamp)
     :param permissions: string mask in octal notation. I.e.: '0o640'
     """
-    # Create temp file
+    # Create temp file. Move between 
     tmp_target = f"{target}.tmp"
     shutil.move(source, tmp_target, copy_function=shutil.copyfile)
 
     # Overwrite the file atomically
-    rename(tmp_target, target)
+    shutil.move(tmp_target, target, copy_function=shutil.copyfile)
 
     # Set up metadata
     chown(target, *ownership)
@@ -1005,10 +1005,10 @@ class WazuhDBQuery(object):
         if date_filter['value'].isdigit() or re.match(r'\d+[dhms]', date_filter['value']):
             query_operator = '>' if date_filter['operator'] == '<' or date_filter['operator'] == '=' else '<'
             self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
-            self.query += "({0} IS NOT NULL AND CAST(strftime('%s', {0}) AS INTEGER) {1}" \
-                          " CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :{2}) ".format(self.fields[filter_db_name],
-                                                                                                 query_operator,
-                                                                                                 date_filter['field'])
+            self.query += "({0} IS NOT NULL AND {0} {1}" \
+                          " strftime('%s', 'now') - :{2}) ".format(self.fields[filter_db_name],
+                                                                   query_operator,
+                                                                   date_filter['field'])
         elif re.match(r'\d{4}-\d{2}-\d{2}', date_filter['value']):
             self.query += "{0} IS NOT NULL AND {0} {1} :{2}".format(self.fields[filter_db_name], date_filter['operator'], date_filter['field'])
             self.request[date_filter['field']] = date_filter['value']

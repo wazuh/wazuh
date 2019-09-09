@@ -8,7 +8,7 @@ import operator
 
 import socket
 from base64 import b64encode
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from functools import reduce
 from glob import glob
 from json import loads
@@ -65,9 +65,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
     def _filter_status(self, status_filter):
         # set the status value to lowercase in case it's a string. If not, the value will be return unmodified.
         status_filter['value'] = getattr(status_filter['value'], 'lower', lambda: status_filter['value'])()
-        result = datetime.now() - timedelta(seconds=common.limit_seconds)
-        self.request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
-
+        result = datetime.utcnow() - timedelta(seconds=common.limit_seconds)
+        self.request['time_active'] = result.replace(tzinfo=timezone.utc).timestamp()
         if status_filter['operator'] == '!=':
             self.query += 'NOT '
 
@@ -115,12 +114,14 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                 return Agent.calculate_status(lastKeepAlive, version is None, today)
             elif field_name == 'group':
                 return value.split(',')
+            elif field_name in ['dateAdd', 'lastKeepAlive']:
+                return datetime.utcfromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
             else:
                 return value
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-        today = datetime.today()
+        today = datetime.utcnow()
 
         # compute 'status' field, format id with zero padding and remove non-user-requested fields.
         # Also remove, extra fields (internal key and registration IP)
@@ -239,18 +240,15 @@ class Agent:
 
 
     @staticmethod
-    def calculate_status(last_keep_alive, pending, today=datetime.today()):
+    def calculate_status(last_keep_alive, pending, today=datetime.utcnow()):
         """
         Calculates state based on last keep alive
         """
         if not last_keep_alive:
             return "Never connected"
         else:
-            # divide date in format YY:mm:dd HH:MM:SS to create a datetime object.
-            last_date = datetime(year=int(last_keep_alive[:4]), month=int(last_keep_alive[5:7]), day=int(last_keep_alive[8:10]),
-                                hour=int(last_keep_alive[11:13]), minute=int(last_keep_alive[14:16]), second=int(last_keep_alive[17:19]))
+            last_date = datetime.utcfromtimestamp(last_keep_alive)
             difference = (today - last_date).total_seconds()
-
             return "Disconnected" if difference > common.limit_seconds else ("Pending" if pending else "Active")
 
 
@@ -754,7 +752,6 @@ class Agent:
 
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, query=q, count=True, get_data=True)
 
         data = db_query.run()
@@ -1148,7 +1145,7 @@ class Agent:
                 remove_agent = True
             else:
                 last_date = datetime.strptime(agent_info['lastKeepAlive'], '%Y-%m-%d %H:%M:%S')
-                difference = (datetime.now() - last_date).total_seconds()
+                difference = (datetime.utcnow() - last_date).total_seconds()
                 if difference >= seconds:
                     remove_agent = True
 
@@ -2535,3 +2532,29 @@ class Agent:
             raise WazuhException(1710)
 
         return configuration.upload_group_file(group_id, tmp_file, file_name)
+
+    @staticmethod
+    def get_full_summary() -> Dict:
+        """Get information about agents.
+        :return: Dictionary with information about agents
+        """
+        # get information from different methods of Agent class
+        stats_distinct_node = Agent.get_distinct_agents(fields={'fields': ['node_name']})
+        groups = Agent.get_all_groups()
+        stats_distinct_os = Agent.get_distinct_agents(fields={'fields': ['os.name',
+                                                      'os.platform', 'os.version']})
+        stats_version = Agent.get_distinct_agents(fields={'fields': ['version']})
+        summary = Agent.get_agents_summary()
+        try:
+            last_registered_agent = Agent.get_agents_overview(limit=1,
+                                                              sort={'fields': ['dateAdd'], 'order': 'desc'},
+                                                              q='id!=000').get('items')[0]
+        except IndexError:  # an IndexError could happen if there are not registered agents
+            last_registered_agent = {}
+        # combine results in an unique dictionary
+        result = {'nodes': stats_distinct_node, 'groups': groups,
+                  'agent_os': stats_distinct_os, 'agent_status': summary,
+                  'agent_version': stats_version,
+                  'last_registered_agent': last_registered_agent}
+
+        return result
