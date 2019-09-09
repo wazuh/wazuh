@@ -84,43 +84,38 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     """
     mode = rbac[0]
     user_permissions = rbac[1]
+    allow_match = False
     # We run through all required permissions for the request
     for req_action, req_resources in req_permissions.items():
         for req_resource in req_resources:
-            # allow_match is used to keep track when a required permission is matched by a policy with an allowed effect
-            allow_match = False
             # We run through the user permissions to find a match with the required permissions
-            for policy in user_permissions:
-                # We find if action matches
-                action_match = req_action in policy['actions']
-                if action_match:
-                    # We find resource name to add * if not already there
-                    m = re.search(r'^(\w+\:\w+:)([\w\-\.\/]+|\*)$', req_resource)
-                    res_match = False
-                    # We find if resource matches
-                    if m.group(1) == 'agent:id:':
-                        reqs = [req_resource]
-                        reqs.extend(_get_groups_resources(m.group(2)))
-                        for req in reqs:
-                            res_match = res_match or (req in policy['resources'])
-                    elif m.group(2) != '*':
-                        req_asterisk = '{0}{1}'.format(m.group(1), '*')
-                        res_match = (req_resource in policy['resources']) or (req_asterisk in policy['resources'])
-                    else:
-                        res_match = req_resource in policy['resources']
-                    # When any policy with a deny effect matches, we deny the request directly
-                    if res_match and policy['effect'] == "deny":
-                        return False
-                    # When any policy with an allow effect matches, we set a match in allow_match and
-                    # break out to continue with required permissions
-                    elif res_match and policy['effect'] == "allow":
-                        allow_match = True
-                        break
-            # If we are using white list mode and no match is found for the required permission we deny the request.
-            if not allow_match and not mode:
-                return False
+            try:
+                user_resources = user_permissions[req_action]
+                # We find resource name to add * if not already there
+                m = re.search(r'^(\w+\:\w+)(:)([\w\-\.\/]+|\*)$', req_resource)
+                # We find if resource matches
+                if m.group(1) == 'agent:id':
+                    reqs = [req_resource]
+                    reqs.extend(_get_groups_resources(m.group(3)))
+                    for req in reqs:
+                        split_req = req.split(':')[-1]
+                        if split_req in user_resources[m.group(1)]['allow'] and \
+                                split_req not in user_resources[m.group(1)]['deny']:
+                            allow_match = True
+                            break
+                        elif split_req in user_resources[m.group(1)]['deny']:
+                            break
+                elif m.group(3) != '*':
+                    allow_match = (m.group(3) in user_resources[m.group(1)]['allow']) or \
+                                ('*' in user_resources[m.group(1)]['allow'])
+                else:
+                    allow_match = '*' in user_resources[m.group(1)]['allow']
+            except KeyError:
+                if mode:  # For black mode
+                    allow_match = True
+                    break
     # If we don't find a deny match or we find an allow match for all policies in white list mode we allow the request
-    return True
+    return allow_match
 
 
 def expose_resources(actions: list = None, resources: str = None):

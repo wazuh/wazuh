@@ -154,7 +154,8 @@ def generate_token(user_id):
     """
     # Add dummy rbac_policies for developing here
     rbac = auth_context.RBAChecker(auth_context='Testing', testing=True)
-    rbac_policies = rbac.optimize_resources()
+    rbac_policies = rbac.optimize_resources('white')
+    mode = False  # White
 
     timestamp = int(time())
     payload = {
@@ -163,7 +164,7 @@ def generate_token(user_id):
         "exp": int(timestamp + JWT_LIFETIME_SECONDS),
         "sub": str(user_id),
         "rbac_policies": rbac_policies,
-        "mode": False  # True if black_list, False if white_list , needs to be replaced with a function to get the mode
+        "mode": mode  # True if black_list, False if white_list , needs to be replaced with a function to get the mode
     }
 
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
