@@ -21,7 +21,6 @@ void mitre_load(){
     size_t size;
     char * buffer = NULL;
     char ** phases_string;
-    char ** platforms_string;
     FILE *fp;
     cJSON *type = NULL;
     cJSON *source_name = NULL;
@@ -36,11 +35,7 @@ void mitre_load(){
     cJSON *kill_chain_phase = NULL;
     cJSON *chain_phase = NULL;
     cJSON *platforms = NULL;
-    cJSON *platform = NULL;
-    cJSON *arrayplatforms = NULL;
     cJSON *arrayphases = NULL;
-
-
 
     /* Create hash table */
     mitre_table = OSHash_Create();
@@ -48,7 +43,7 @@ void mitre_load(){
     /* Load Json File */
     /* Reading enterprise-attack json file */
     fp = fopen("../ruleset/mitre/enterprise-attack.json", "r");
-    //fp = fopen("../../etc/mitre/enterprise-attack.json", "r"); 
+  
     if(!fp)
     {
         merror("Error at mitre_load() function. Mitre Json File not found");
@@ -115,25 +110,18 @@ void mitre_load(){
 
                             /* Storing the item 'x_mitre_platforms' */
                             platforms = cJSON_GetObjectItem(object, "x_mitre_platforms");
-                            cJSON_ArrayForEach(platform, platforms){
-                                os_realloc(platforms_string, (platforms_size + 2) * sizeof(char *), platforms_string);
-                                os_strdup(platform->valuestring, platforms_string[platforms_size]);
-                                platforms_string[platforms_size + 1] = NULL;
-                                platforms_size++;  
-                            }
-                            arrayplatforms = cJSON_CreateStringArray(platforms_string, cJSON_GetArraySize(platforms));
                             
                             /* A new object with the items we want to add */
                             cJSON_AddStringToObject(object_out, "id", ext_id->valuestring);
                             cJSON_AddStringToObject(object_out, "name", name->valuestring);
                             cJSON_AddItemToObject(object_out, "phases", arrayphases);
-                            cJSON_AddItemToObject(object_out, "platforms", arrayplatforms);
+                            cJSON_AddItemToObject(object_out, "platforms", cJSON_Duplicate(platforms,1));
 
                             /* Creating and filling the Mitre Hash table */
                             hashcheck = OSHash_Add(mitre_table, ext_id->valuestring, cJSON_Duplicate(object_out,1));
                             if(hashcheck == 0){
                                 merror("Error: Check the OSHash Mitre configuration. Exiting.");
-                                exit(-1);
+                                exit(1);
                             }
                             else if (hashcheck == 1){
                                 minfo("Warning: the value wasn't added to mitre hash table because duplicated key.");
@@ -146,11 +134,6 @@ void mitre_load(){
                             cJSON_DeleteItemFromObject(object_out, "platforms");
 
                             /* Free memory */
-                            for (i=0; platforms_string[i] != NULL; i++){
-                                os_free (platforms_string[i]);                            
-                            }
-                            os_free(platforms_string);
-                            
                             for (i=0; phases_string[i] != NULL; i++){
                                 os_free (phases_string[i]);                            
                             }
