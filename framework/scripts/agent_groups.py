@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from sys import exit, argv
 from os.path import basename
@@ -20,7 +20,11 @@ debug = False
 
 # Functions
 def get_stdin(msg):
-    stdin = input(msg)
+    try:
+        stdin = raw_input(msg)
+    except:
+        # Python 3
+        stdin = input(msg)
     return stdin
 
 
@@ -285,9 +289,6 @@ def main():
 
 
 if __name__ == "__main__":
-    # Initialize framework
-    myWazuh = Wazuh(get_init=True)
-
     logger = logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
     try:

@@ -7,7 +7,7 @@
 from setuptools import setup, find_packages
 
 NAME = "api"
-VERSION = "3.9.0"
+VERSION = "3.11.0"
 
 # To install the library, run the following
 #
@@ -26,7 +26,9 @@ REQUIRES = ["connexion[swagger-ui]==2.2.0",
             "setuptools>=21.0.0",
             "sqlalchemy==1.3.0",
             "uWSGI==2.0.18",
-            "defusedxml>=0.6.0"
+            "defusedxml==0.6.0",
+            "flask-sqlalchemy==2.4.0",
+            "flask-migrate==2.5.1"
             ]
 
 setup(

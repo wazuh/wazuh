@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -144,6 +144,10 @@ int mon_send_agent_msg(char *agent, char *msg) {
 
     while (found = strchr(found, '-'), found) {
         ag_ip = ++found;
+    }
+
+    if (!ag_ip) {
+        return 1;
     }
 
     if (name_size = strlen(agent) - strlen(ag_ip), name_size > OS_SIZE_128) {

@@ -1,14 +1,21 @@
 ---
 test_name: GET /
 
+marks:
+  - usefixtures:
+      - base_tests
+
 includes:
   - !include common.yaml
 
 stages:
+
+    # Authentication stage
   - type: ref
     id: login_get_token
-  - name: Try to get default API information
 
+    # GET /
+  - name: Get default API information
     request:
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/"

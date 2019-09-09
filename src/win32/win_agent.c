@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -126,6 +126,7 @@ int main(int argc, char **argv)
 int local_start()
 {
     int debug_level;
+    int rc;
     char *cfg = DEFAULTCPATH;
     WSADATA wsaData;
     DWORD  threadID;
@@ -171,6 +172,17 @@ int local_start()
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
     minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
+
+    // Resolve hostnames
+    rc = 0;
+    while (rc < agt->rip_id) {
+        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
+            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
+            resolveHostname(&agt->server[rc].rip, 5);
+            mdebug2("Server hostname resolved: %s", agt->server[rc].rip);
+        }
+        rc++;
+    }
 
     /* Read logcollector config file */
     mdebug1("Reading logcollector configuration.");
@@ -469,7 +481,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
                     }
                 }
 
-                minfo(AG_CONNECTED, agt->server[agt->rip_id].rip, agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == UDP_PROTO ? "udp" : "tcp");
+                minfo(AG_CONNECTED, agt->server[agt->rip_id].rip, agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
                 minfo(SERVER_UP);
                 update_status(GA_STATUS_ACTIVE);
             }
@@ -626,7 +638,8 @@ char *get_win_agent_ip(){
                     string = get_network_xp(pCurrAddresses, AdapterInfo, 0, NULL);
                 }
 
-                cJSON *object = cJSON_Parse(string);
+                const char *jsonErrPtr;
+                cJSON *object = cJSON_ParseWithOpts(string, &jsonErrPtr, 0);
                 cJSON *iface = cJSON_GetObjectItem(object, "iface");
                 cJSON *ipv4 = cJSON_GetObjectItem(iface, "IPv4");
                 if(ipv4){
@@ -675,7 +688,7 @@ void send_win32_info(time_t curr_time)
     char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 2];
     char tmp_labels[OS_MAXSTR - OS_HEADER_SIZE] = { '\0' };
     char *agent_ip;
-    char label_ip[30];
+    char label_ip[60];
 
     agent_ip = get_win_agent_ip();
 
@@ -726,7 +739,7 @@ void send_win32_info(time_t curr_time)
 
     /* Create message */
     if(agent_ip){
-        snprintf(label_ip,30,"#\"_agent_ip\":%s",agent_ip);
+        snprintf(label_ip,sizeof label_ip,"#\"_agent_ip\":%s",agent_ip);
         /* In case there is an agent IP the message has a new line at the end to emulate the random string generated in Linux agents
            to avoid the delete of the agent IP */
         if (File_DateofChange(AGENTCONFIGINT) > 0) {

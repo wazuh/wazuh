@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -41,10 +41,13 @@ typedef struct agent_state_t {
     unsigned int msg_sent;
 } agent_state_t;
 
+/* Resolve hostname */
+void resolveHostname(char **hostname, int attempts);
+
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getClientConfig(void);
 cJSON *getBufferConfig(void);
 cJSON *getLabelsConfig(void);

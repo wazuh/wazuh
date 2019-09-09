@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -204,6 +204,13 @@ cJSON *getSyscheckConfig(void) {
         }
         cJSON_AddItemToObject(syscfg,"ignore",igns);
     }
+    if (syscheck.ignore_regex) {
+        cJSON *igns = cJSON_CreateArray();
+        for (i=0;syscheck.ignore_regex[i];i++) {
+            cJSON_AddItemToArray(igns, cJSON_CreateString(syscheck.ignore_regex[i]->raw));
+        }
+        cJSON_AddItemToObject(syscfg,"ignore_sregex",igns);
+    }
 #ifndef WIN32
     cJSON *whodata = cJSON_CreateObject();
     if (syscheck.restart_audit) {
@@ -229,31 +236,74 @@ cJSON *getSyscheckConfig(void) {
     }
     cJSON_AddItemToObject(syscfg,"whodata",whodata);
 #endif
+
 #ifdef WIN32
-    cJSON_AddNumberToObject(syscfg,"windows_audit_interval",syscheck.wdata.interval_scan);
+    cJSON_AddNumberToObject(syscfg, "windows_audit_interval", syscheck.wdata.interval_scan);
+
     if (syscheck.registry) {
         cJSON *rg = cJSON_CreateArray();
-        for (i=0;syscheck.registry[i].entry;i++) {
+
+        for (i=0; syscheck.registry[i].entry; i++) {
             cJSON *pair = cJSON_CreateObject();
-            cJSON_AddStringToObject(pair,"entry",syscheck.registry[i].entry);
-            if (syscheck.registry[i].arch == 0) cJSON_AddStringToObject(pair,"arch","32bit"); else cJSON_AddStringToObject(pair,"arch","64bit");
-            if (syscheck.registry[i].tag) cJSON_AddStringToObject(pair,"tags",syscheck.registry[i].tag);
+
+            cJSON_AddStringToObject(pair, "entry", syscheck.registry[i].entry);
+
+            if (syscheck.registry[i].arch == 0) {
+                cJSON_AddStringToObject(pair, "arch", "32bit");
+            } else {
+                cJSON_AddStringToObject(pair, "arch", "64bit");
+            }
+
+            if (syscheck.registry[i].tag) {
+                cJSON_AddStringToObject(pair, "tags", syscheck.registry[i].tag);
+            }
+
             cJSON_AddItemToArray(rg, pair);
         }
-        cJSON_AddItemToObject(syscfg,"registry",rg);
+        cJSON_AddItemToObject(syscfg, "registry", rg);
     }
+
     if (syscheck.registry_ignore) {
         cJSON *rgi = cJSON_CreateArray();
-        for (i=0;syscheck.registry_ignore[i].entry;i++) {
+
+        for (i=0; syscheck.registry_ignore[i].entry; i++) {
             cJSON *pair = cJSON_CreateObject();
-            cJSON_AddStringToObject(pair,"entry",syscheck.registry_ignore[i].entry);
-            if (syscheck.registry_ignore[i].arch == 0) cJSON_AddStringToObject(pair,"arch","32bit"); else cJSON_AddStringToObject(pair,"arch","64bit");
+
+            cJSON_AddStringToObject(pair, "entry", syscheck.registry_ignore[i].entry);
+
+            if (syscheck.registry_ignore[i].arch == 0) {
+                cJSON_AddStringToObject(pair,"arch","32bit");
+            } else {
+                cJSON_AddStringToObject(pair,"arch","64bit");
+            }
+
             cJSON_AddItemToArray(rgi, pair);
         }
-        cJSON_AddItemToObject(syscfg,"registry_ignore",rgi);
+        cJSON_AddItemToObject(syscfg, "registry_ignore", rgi);
+    }
+
+    if (syscheck.registry_ignore_regex) {
+        cJSON *rgi = cJSON_CreateArray();
+
+        for (i=0;syscheck.registry_ignore_regex[i].regex;i++) {
+            cJSON *pair = cJSON_CreateObject();
+
+            cJSON_AddStringToObject(pair,"entry",syscheck.registry_ignore_regex[i].regex->raw);
+
+            if (syscheck.registry_ignore_regex[i].arch == 0) {
+                cJSON_AddStringToObject(pair,"arch","32bit");
+            } else {
+                cJSON_AddStringToObject(pair,"arch","64bit");
+            }
+
+            cJSON_AddItemToArray(rgi, pair);
+        }
+        cJSON_AddItemToObject(syscfg,"registry_ignore_sregex",rgi);
     }
 #endif
-    if (syscheck.prefilter_cmd) cJSON_AddStringToObject(syscfg,"prefilter_cmd",syscheck.prefilter_cmd);
+    if (syscheck.prefilter_cmd) {
+        cJSON_AddStringToObject(syscfg,"prefilter_cmd",syscheck.prefilter_cmd);
+    }
 
     cJSON_AddItemToObject(root,"syscheck",syscfg);
 

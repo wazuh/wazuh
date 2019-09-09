@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 3, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -48,7 +48,7 @@ int wurl_get(const char * url, const char * dest){
         res = curl_easy_perform(curl);
 
         if(res){
-            mwarn("CURL ERROR %s",errbuf);
+            mdebug1("CURL ERROR %s",errbuf);
             curl_easy_cleanup(curl);
             fclose(fp);
             unlink(dest);
@@ -211,7 +211,7 @@ char * wurl_http_get(const char * url) {
         res = curl_easy_perform(curl);
 
         if(res){
-            mwarn("CURL ERROR %s",errbuf);
+            mdebug1("CURL ERROR %s",errbuf);
             curl_easy_cleanup(curl);
             free(chunk.memory);
             return NULL;

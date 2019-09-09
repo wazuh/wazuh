@@ -4,7 +4,7 @@
   -  Updated by Wazuh, Inc.
   -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  -  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <var name="MS_FREQ">8</var>
@@ -901,7 +901,7 @@
     <if_sid>18107</if_sid>
     <id>^4624$</id>
     <match>Logon Type:   8</match>
-    <description>MS Exchange Logon Success.</description>
+    <description>IIS NetworkCleartext Logon Success</description>
     <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
   </rule>
 

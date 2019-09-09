@@ -2,11 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-
-from typing import Dict, List, Tuple
-from defusedxml import ElementTree as ET
 import os
 import re
+from typing import Dict, List
+
+from defusedxml import ElementTree as ET
 from jsonschema import draft4_format_checker
 
 from wazuh import common
@@ -19,18 +19,22 @@ _boolean = re.compile(r'^true$|^false$')
 _cdb_list = re.compile(r'^#?[\w\s-]+:{1}(#?[\w\s-]+|)$')
 _dates = re.compile(r'^\d{8}$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
-_hashes = re.compile(r'^[\da-fA-F]{32}(?:[\da-fA-F]{8})?$|(?:[\da-fA-F]{32})?$')
+_hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{56})?$|(?:[\da-fA-F]{64})?$|(?:[\da-fA-F]{96})?$|(?:[\da-fA-F]{128})?$')
 _ips = re.compile(
     r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2])){0,1}$|^any$|^ANY$')
+_iso8601_date = (r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])$')
+_iso8601_date_time = (
+    r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])[tT](2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?([zZ]|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$')
 _names = re.compile(r'^[\w\-\.]+$')
 _numbers = re.compile(r'^\d+$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _paths = re.compile(r'^[\w\-\.\\\/:]+$')
 _query_param = re.compile(r"^(?:[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)(?:(?:;|,)[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)*$")
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$')
-_etc_path = re.compile(
-    r'(^etc\/ossec.conf$)|((^etc\/rules\/|^etc\/decoders\/)[\w\-\/]+\.{1}xml$|(^etc\/lists\/)[\w\-\.\/]+)$')
-_ruleset_path = re.compile(r'(^ruleset\/rules$)|(^ruleset\/decoders$)|(^etc\/rules$)|(^etc\/decoders$)$')
+_etc_file_path = re.compile(r'^etc\/(ossec\.conf|(rules|decoders)\/[\w\-\/]+\.xml|lists\/[\w\-\.\/]+)$')
+_etc_and_ruleset_file_path = re.compile(
+    r'(^etc\/ossec\.conf$)|(^(etc|ruleset)\/(decoders|rules)\/[\w\-\/]+\.{1}xml$)|(^etc\/lists\/[\w\-\.\/]+)$')
+_etc_and_ruleset_path = re.compile(r'(^(etc|ruleset)\/(decoders|rules))$')
 _search_param = re.compile(r'^[^;\|&\^*>]+$')
 _sort_param = re.compile(r'^[\w_\-\,\s\+\.]+$')
 _timeframe_type = re.compile(r'^(\d{1,}[d|h|m|s]?){1}$')
@@ -118,29 +122,44 @@ def format_base64(value):
     return check_exp(value, _base64)
 
 
-@draft4_format_checker.checks("etc_path")
-def format_etc_path(relative_path):
+@draft4_format_checker.checks("etc_file_path")
+def format_etc_file_path(relative_path):
     """
-    Function to check if a relative path is allowed (for uploading files)
-    :param relative_path: XML string to check
-    :return: True if XML is OK, False otherwise
+    Function to check if a relative path file is allowed
+    :param relative_path: file path string to check
+    :return: True if path is OK, False otherwise
     """
     if not is_safe_path(relative_path):
         return False
 
-    return check_exp(relative_path, _etc_path)
+    return check_exp(relative_path, _etc_file_path)
 
-@draft4_format_checker.checks("ruleset_path")
-def format_relative_ruleset_path(relative_path):
+
+@draft4_format_checker.checks("etc_and_ruleset_file_path")
+def format_etc_and_ruleset_file_path(relative_path):
+    """
+    Function to check if a relative path file is allowed
+    :param relative_path: file path string to check
+    :return: True if path is OK, False otherwise
+    """
+    if not is_safe_path(relative_path):
+        return False
+
+    return check_exp(relative_path, _etc_and_ruleset_file_path)
+
+
+@draft4_format_checker.checks("etc_and_ruleset_path")
+def format_edit_files_path(relative_path):
     """
     Function to check if a relative path is allowed
-    :param relative_path: string to check
-    :return: True if is OK, False otherwise
+    :param relative_path: path string to check
+    :return: True if path is OK, False otherwise
     """
     if not is_safe_path(relative_path):
         return False
 
-    return check_exp(relative_path, _ruleset_path)
+    return check_exp(relative_path, _etc_and_ruleset_path)
+
 
 @draft4_format_checker.checks("hash")
 def format_hash(value):
@@ -190,3 +209,33 @@ def format_timeframe(value):
 @draft4_format_checker.checks("wazuh_key")
 def format_wazuh_key(value):
     return check_exp(value, _wazuh_key)
+
+
+@draft4_format_checker.checks("date")
+def format_date(value):
+    return check_exp(value, _iso8601_date)
+
+
+@draft4_format_checker.checks("date-time")
+def format_datetime(value):
+    return check_exp(value, _iso8601_date_time)
+
+
+@draft4_format_checker.checks("hash_or_empty")
+def format_hash_or_empty(value):
+    return True if value == "" else format_hash(value)
+
+
+@draft4_format_checker.checks("names_or_empty")
+def format_names_or_empty(value):
+    return True if value == "" else format_names(value)
+
+
+@draft4_format_checker.checks("numbers_or_empty")
+def format_numbers_or_empty(value):
+    return True if value == "" else format_numbers(value)
+
+
+@draft4_format_checker.checks("date-time_or_empty")
+def format_datetime_or_empty(value):
+    return True if value == "" else format_datetime(value)

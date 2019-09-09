@@ -4,7 +4,7 @@
   -  Updated by Wazuh, Inc.
   -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  -  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <group name="syslog,mailscanner,">
@@ -30,7 +30,7 @@
     <if_matched_sid>3702</if_matched_sid>
     <same_source_ip />
     <description>mailscanner: Multiple attempts of spam.</description>
-    <group>multiple_spam,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,</group>
+    <group>multiple_spam,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="3752" level="0">

@@ -3,7 +3,7 @@
   -  Author: Julio Camargo <julio.camargo@trustux.com.br>
   -  Updated by Wazuh, Inc.
   -  Copyright (C) 2015-2019, Wazuh Inc.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  -  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <!-- ID: 81800 - 81899 -->
@@ -21,7 +21,7 @@
         <if_sid>81800</if_sid>
         <match>Peer Connection Initiated with</match>
         <description>OpenVPN: User logged in</description>
-        <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
+        <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <rule id="81802" level="3" frequency="3" timeframe="60">

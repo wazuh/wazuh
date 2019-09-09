@@ -1,15 +1,15 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-import re
-from glob import glob
-from xml.etree.ElementTree import fromstring
-import wazuh.configuration as configuration
-from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
-from wazuh import common
-from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import os
-from sys import version_info
+from glob import glob
+
+import wazuh.configuration as configuration
+from wazuh import common
+from wazuh.exception import WazuhInternalError, WazuhError
+from wazuh.utils import load_wazuh_xml, filter_array_by_query
+from wazuh.utils import process_array
+
 
 class Rule:
     """
@@ -30,7 +30,10 @@ class Rule:
         self.status = None
         self.groups = []
         self.pci = []
+        self.gpg13 = []
         self.gdpr = []
+        self.hipaa = []
+        self.nist_800_53 = []
         self.details = {}
 
     def __str__(self):
@@ -60,11 +63,10 @@ class Rule:
         else:
             raise WazuhInternalError(1204)
 
-
     def to_dict(self):
-        return {'file': self.file, 'path': self.path, 'id': self.id, 'level': self.level, 'description': self.description,
-                'status': self.status, 'groups': self.groups, 'pci': self.pci, 'gdpr': self.gdpr, 'details': self.details}
-
+        return {'file': self.file, 'path': self.path, 'id': self.id, 'description': self.description,
+                'level': self.level, 'status': self.status, 'groups': self.groups, 'pci': self.pci, 'gdpr': self.gdpr,
+                'hipaa': self.hipaa, 'nist-800-53': self.nist_800_53, 'gpg13': self.gpg13, 'details': self.details}
 
     def set_group(self, group):
         """
@@ -74,7 +76,6 @@ class Rule:
 
         Rule.__add_unique_element(self.groups, group)
 
-
     def set_pci(self, pci):
         """
         Adds a pci requirement to the pci list.
@@ -83,6 +84,13 @@ class Rule:
 
         Rule.__add_unique_element(self.pci, pci)
 
+    def set_gpg13(self, gpg13):
+        """
+        Adds a gpg13 requirement to the gpg13 list.
+        :param gpg13: Requirement to add (string or list).
+        """
+
+        Rule.__add_unique_element(self.gpg13, gpg13)
 
     def set_gdpr(self, gdpr):
         """
@@ -91,6 +99,19 @@ class Rule:
         """
         Rule.__add_unique_element(self.gdpr, gdpr)
 
+    def set_hipaa(self, hipaa):
+        """
+        Adds a hipaa requirement to the hipaa list.
+        :param hipaa: Requirement to add (string or list).
+        """
+        Rule.__add_unique_element(self.hipaa, hipaa)
+
+    def set_nist_800_53(self, nist_800_53):
+        """
+        Adds a nist_800_53 requirement to the nist_800_53 list.
+        :param nist_800_53: Requirement to add (string or list).
+        """
+        Rule.__add_unique_element(self.nist_800_53, nist_800_53)
 
     def add_detail(self, detail, value):
         """
@@ -109,7 +130,6 @@ class Rule:
         else:
             self.details[detail] = value
 
-
     @staticmethod
     def __add_unique_element(src_list, element):
         new_list = []
@@ -125,7 +145,6 @@ class Rule:
                 if i not in src_list:
                     src_list.append(i)
 
-
     @staticmethod
     def __check_status(status):
         if status is None:
@@ -135,26 +154,27 @@ class Rule:
         else:
             raise WazuhError(1202)
 
-
     @staticmethod
-    def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Gets a list of the rule files.
+    def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort_by=None,
+                        sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+        """Gets a list of the rule files.
 
         :param status: Filters by status: enabled, disabled, all.
         :param path: Filters by path.
         :param file: Filters by filename.
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        data = []
         status = Rule.__check_status(status)
 
         # Rules configuration
-        ruleset_conf = configuration.get_ossec_conf(section='ruleset')
+        ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
         if not ruleset_conf:
             raise WazuhError(1200)
 
@@ -211,36 +231,27 @@ class Rule:
                 data.remove(d)
                 continue
 
-        if search:
-            data = search_array(data, search['value'], search['negation'])
-
-        if sort:
-            data = sort_array(data, sort['fields'], sort['order'])
-        else:
-            data = sort_array(data, ['file'], 'asc')
-
-        return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
-
+        return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             offset=offset, limit=limit)
 
     @staticmethod
-    def get_rules(status=None, group=None, pci=None, gdpr=None, path=None, file=None, id=None, level=None, offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Gets a list of rules.
+    def get_rules(status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None, path=None,
+                  file=None, id=None, level=None, offset=0, limit=common.database_limit, sort_by=None,
+                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
+        """Gets a list of rules.
 
-        :param status: Filters by status: enabled, disabled, all.
-        :param group: Filters by group.
-        :param pci: Filters by pci requirement.
-        :param gdpr: Filter by gdpr requirement.
-        :param file: Filters by file of the rule.
-        :param path: Filters by file of the path.
-        :param id: Filters by rule ID.
-        :param level: Filters by level. It can be an integer or an range (i.e. '2-4' that means levels from 2 to 4).
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
+        :param q: Defines query to filter.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+
         all_rules = []
 
         if level:
@@ -259,7 +270,16 @@ class Rule:
             elif pci and pci not in r.pci:
                 rules.remove(r)
                 continue
+            elif gpg13 and gpg13 not in r.gpg13:
+                rules.remove(r)
+                continue
             elif gdpr and gdpr not in r.gdpr:
+                rules.remove(r)
+                continue
+            elif hipaa and hipaa not in r.hipaa:
+                rules.remove(r)
+                continue
+            elif nist_800_53 and nist_800_53 not in r.nist_800_53:
                 rules.remove(r)
                 continue
             elif path and path != r.path:
@@ -280,26 +300,22 @@ class Rule:
                     rules.remove(r)
                     continue
 
-        if search:
-            rules = search_array(rules, search['value'], search['negation'])
-
-        if sort:
-            rules = sort_array(rules, sort['fields'], sort['order'], Rule.SORT_FIELDS)
-        else:
-            rules = sort_array(rules, ['id'], 'asc')
-
-        return {'items': cut_array(rules, offset, limit), 'totalItems': len(rules)}
-
+        return process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             allowed_sort_fields=Rule.SORT_FIELDS, offset=offset, limit=limit, q=q)
 
     @staticmethod
-    def get_groups(offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Get all the groups used in the rules.
+    def get_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True, search_text=None,
+                   complementary_search=False, search_in_fields=None):
+        """Get all the groups used in the rules.
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         groups = set()
@@ -308,72 +324,35 @@ class Rule:
             for group in rule.groups:
                 groups.add(group)
 
-        if search:
-            groups = search_array(groups, search['value'], search['negation'])
-
-        if sort:
-            groups = sort_array(groups, order=sort['order'])
-        else:
-            groups = sort_array(groups)
-
-        return {'items': cut_array(groups, offset, limit), 'totalItems': len(groups)}
-
+        return process_array(groups, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             offset=offset, limit=limit)
 
     @staticmethod
-    def _get_requirement(offset, limit, sort, search, requirement):
-        """
-        Get the requirements used in the rules
+    def get_requirement(requirement, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
+                        search_text=None, complementary_search=False, search_in_fields=None):
+        """Get the requirements used in the rules
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :param requirement: requirement to get (pci or dgpr)
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
+        :param requirement: Requirement to get
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        if requirement != 'pci' and requirement != 'gdpr':
-            raise WazuhError(1205, extra_message=requirement)
+        valid_requirements = ['pci', 'gdpr', 'hipaa', 'nist-800-53', 'gpg13']
+
+        if requirement not in valid_requirements:
+            raise WazuhError(1205, extra_message=requirement, extra_remediation=valid_requirements)
 
         req = list({req for rule in Rule.get_rules(limit=None)['items'] for req in rule.to_dict()[requirement]})
 
-        if search:
-            req = search_array(req, search['value'], search['negation'])
-
-        if sort:
-            req = sort_array(req, order=sort['order'])
-        else:
-            req = sort_array(req)
-
-        return {'items': cut_array(req, offset, limit), 'totalItems': len(req)}
-
-
-    @staticmethod
-    def get_pci(offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Get all the PCI requirements used in the rules.
-
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        return Rule._get_requirement(offset, limit, sort, search, 'pci')
-
-
-    @staticmethod
-    def get_gdpr(offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Get all the GDPR requirements used in the rules.
-
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        return Rule._get_requirement(offset, limit, sort, search, 'gdpr')
-
+        return process_array(req, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             offset=offset, limit=limit)
 
     @staticmethod
     def __load_rules_from_file(rule_file, rule_path, rule_status):
@@ -427,19 +406,31 @@ class Rule:
                             groups.extend(general_groups)
 
                             pci_groups = []
+                            gpg13_groups = []
                             gdpr_groups = []
+                            hippa_groups = []
+                            nist_800_53_groups = []
                             ossec_groups = []
                             for g in groups:
                                 if 'pci_dss_' in g:
                                     pci_groups.append(g.strip()[8:])
+                                elif 'gpg13_' in g:
+                                    gpg13_groups.append(g.strip()[6:])
                                 elif 'gdpr_' in g:
                                     gdpr_groups.append(g.strip()[5:])
+                                elif 'hipaa_' in g:
+                                    hippa_groups.append(g.strip()[6:])
+                                elif 'nist_800_53_' in g:
+                                    nist_800_53_groups.append(g.strip()[12:])
                                 else:
                                     ossec_groups.append(g)
 
-                            rule.set_group(ossec_groups)
                             rule.set_pci(pci_groups)
+                            rule.set_gpg13(gpg13_groups)
                             rule.set_gdpr(gdpr_groups)
+                            rule.set_hipaa(hippa_groups)
+                            rule.set_nist_800_53(nist_800_53_groups)
+                            rule.set_group(ossec_groups)
 
                             rules.append(rule)
         except OSError as e:
@@ -454,12 +445,11 @@ class Rule:
 
     @staticmethod
     def get_file(filename=None):
-        """
-        Reads content of specified file
+        """Reads content of specified file
+
         :param filename: File name to read content from
         :return: File contents
         """
-
         data = Rule.get_rules_files(file=filename)
         files = data['items']
 

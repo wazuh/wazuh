@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * Feb 7, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -47,7 +47,7 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     }
     logf[pl].name = NULL;
     logf[pl].location = NULL;
-    logf[pl].mode = UDP_PROTO;
+    logf[pl].mode = IPPROTO_UDP;
     logf[pl].prefix = NULL;
     logf[pl].socket = -1;
 
@@ -72,9 +72,9 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             os_strdup(node[i]->content, logf[pl].location);
         } else if (!strcmp(node[i]->element, socket_mode)) {
             if (strcasecmp(node[i]->content, "tcp") == 0) {
-                logf[pl].mode = TCP_PROTO;
+                logf[pl].mode = IPPROTO_TCP;
             } else if (strcasecmp(node[i]->content, "udp") == 0) {
-                logf[pl].mode = UDP_PROTO;
+                logf[pl].mode = IPPROTO_UDP;
             } else {
                 merror("Socket type '%s' is not valid at <%s>. Should be 'udp' or 'tcp'.", node[i]->content, node[i]->element);
                 return OS_INVALID;

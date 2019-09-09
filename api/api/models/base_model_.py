@@ -44,11 +44,11 @@ class Model(object):
             elif isinstance(value, dict):
                 result[attr] = dict(map(
                     lambda item: (item[0], item[1].to_dict())
-                    if hasattr(item[1], "to_dict") else item,
+                    if hasattr(item[1], "to_dict") else util.serialize(item),
                     value.items()
                 ))
             else:
-                result[attr] = value
+                result[attr] = util.serialize(value)
 
         return result
 

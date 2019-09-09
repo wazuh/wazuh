@@ -16,8 +16,9 @@ from api import validator  # To register custom validators (do not remove)
 from api.api_exception import APIException
 from api.constants import CONFIG_FILE_PATH
 from api.util import to_relative_path
-from wazuh import Wazuh
+
 from wazuh import common
+from wazuh.cluster.cluster import read_config
 
 
 #
@@ -29,8 +30,7 @@ def set_logging(foreground_mode=False, debug_mode='info'):
     return api_logger
 
 
-my_wazuh = Wazuh(get_init=True)
-
+cluster_config = read_config()
 configuration = configuration.read_api_config()
 cache_conf = configuration['cache']
 cors = configuration['cors']
@@ -39,7 +39,7 @@ main_logger = set_logging(debug_mode=configuration['logs']['level'])
 
 # set correct permissions on api.log file
 if os.path.exists('{0}/logs/api.log'.format(common.ossec_path)):
-    os.chown('{0}/logs/api.log'.format(common.ossec_path), common.ossec_uid, common.ossec_gid)
+    os.chown('{0}/logs/api.log'.format(common.ossec_path), common.ossec_uid(), common.ossec_gid())
     os.chmod('{0}/logs/api.log'.format(common.ossec_path), 0o660)
 
 app = connexion.App(__name__, specification_dir=os.path.join(api_path[0], 'spec'))

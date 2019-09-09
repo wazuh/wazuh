@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -19,11 +19,10 @@ int Read_Client_Server(XML_NODE node, agent *logr);
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
-    char f_ip[128];
+    char f_ip[128] = {'\0'};
     char * rip = NULL;
-    char * s_ip;
     int port = DEFAULT_SECURE;
-    int protocol = UDP_PROTO;
+    int protocol = IPPROTO_UDP;
 
     /* XML definitions */
     const char *xml_client_server = "server";
@@ -76,15 +75,14 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             rip = node[i]->content;
         } else if (strcmp(node[i]->element, xml_client_hostname) == 0) {
             mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_client_hostname);
-
-            if (s_ip = OS_GetHost(node[i]->content, 5), !s_ip) {
+            if (strchr(node[i]->content, '/') ==  NULL) {
+                snprintf(f_ip, 127, "%s/", node[i]->content);
+                rip = f_ip;
+            } else {
                 merror(AG_INV_HOST, node[i]->content);
                 return (OS_INVALID);
             }
 
-            snprintf(f_ip, 127, "%s/%s", node[i]->content, s_ip);
-            rip = f_ip;
-            free(s_ip);
         } else if (strcmp(node[i]->element, xml_client_port) == 0) {
             mwarn("The <%s> tag is deprecated, please use <server><port> instead.", xml_client_port);
 
@@ -156,14 +154,14 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             mwarn("The <%s> tag is deprecated, please use <server><protocol> instead.", xml_protocol);
 
             if (strcmp(node[i]->content, "tcp") == 0) {
-                protocol = TCP_PROTO;
+                protocol = IPPROTO_TCP;
             } else if (strcmp(node[i]->content, "udp") == 0) {
-                protocol = UDP_PROTO;
+                protocol = IPPROTO_UDP;
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-        }else if(strcmp(node[i]->element, xml_crypto_method) == 0){
+        } else if(strcmp(node[i]->element, xml_crypto_method) == 0){
             if(strcmp(node[i]->content, "blowfish") == 0){
                 logr->crypto_method = W_METH_BLOWFISH;
             }
@@ -215,7 +213,7 @@ int Read_Client_Server(XML_NODE node, agent * logr)
     char f_ip[128];
     char * rip = NULL;
     int port = DEFAULT_SECURE;
-    int protocol = UDP_PROTO;
+    int protocol = IPPROTO_UDP;
 
     /* Get parameters for each configurated server*/
 
@@ -229,14 +227,11 @@ int Read_Client_Server(XML_NODE node, agent * logr)
         }
         /* Get server address (IP or hostname) */
         else if (strcmp(node[j]->element, xml_client_addr) == 0) {
-            char * s_ip;
-
             if (OS_IsValidIP(node[j]->content, NULL) == 1) {
                 rip = node[j]->content;
-            } else if (s_ip = OS_GetHost(node[j]->content, 5), s_ip) {
-                snprintf(f_ip, sizeof(f_ip), "%s/%s", node[j]->content, s_ip);
+            } else if (strchr(node[j]->content, '/') ==  NULL) {
+                snprintf(f_ip, 127, "%s", node[j]->content);
                 rip = f_ip;
-                free(s_ip);
             } else {
                 merror(AG_INV_HOST, node[j]->content);
                 return (OS_INVALID);
@@ -253,9 +248,9 @@ int Read_Client_Server(XML_NODE node, agent * logr)
             }
         } else if (strcmp(node[j]->element, xml_protocol) == 0) {
             if (strcmp(node[j]->content, "tcp") == 0) {
-                protocol = TCP_PROTO;
+                protocol = IPPROTO_TCP;
             } else if (strcmp(node[j]->content, "udp") == 0) {
-                protocol = UDP_PROTO;
+                protocol = IPPROTO_UDP;
             } else {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 return (OS_INVALID);

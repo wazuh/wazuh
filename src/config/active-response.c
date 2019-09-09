@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -164,7 +164,10 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     if (ar_flag == -1) {
         /* reset ar_flag, the next ar command may not be disabled */
         ar_flag = 0;
-        mdebug1("active response command '%s' is disabled", tmp_ar->command);
+        if (tmp_ar->command) {
+            mdebug1("active response command '%s' is disabled", tmp_ar->command);
+            free(tmp_ar->command);
+        }
         fclose(fp);
         free(tmp_ar);
         free(tmp_location);

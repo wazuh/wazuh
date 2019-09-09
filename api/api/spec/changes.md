@@ -10,33 +10,40 @@ a human readable message is shown, the new field `message` will be used instead.
 * Changed search negation from `!` to `-`.
 
 ## Active Response
-### /active-response/:agent_id
+### PUT /active-response
+* New endpoint that provides the old functionality of PUT /active-response/all
+* Parameters **command**, **Custom** and **Arguments** must be in body.
+
+### PUT /active-response/:agent_id
 * Parameters **command**, **Custom** and **Arguments** must be in body.
 * **command** description changed.
 * In response, `data` key is now moved to new `message` key
+* Option to send command to all agents removed
 
 ## Agents
-
-
 ### DELETE /agents
 * Parameter **ids** must be in query, not in body because DELETE operations can't have a requestBody in OpenAPI 3
-* Parameter **status** renamed to **agent_status**
 * In response, `msg` key is now moved to new `message` key
 
 ### GET /agents
-* Parameter **status** renamed to **agent_status**
 * Parameter **os.name** renamed to **os_name**
 * Parameter **os.platform** renamed to **os_platform**
 * Parameter **os.version** renamed to **os_version**
 
 ### GET /agents/groups/{group_id}
-* Parameter **status** renamed to **agent_status**
 
-### POST /agents/groups/{group_id}
+### GET /agents/groups/{group_id}/configuration
+* In response, `filter` key is now moved to new `filters` key
+
+### PUT /agents/groups/{group_id}
 * In response, `msg` key is now moved to new `message` key
+* Verb changed to POST
 
 ### POST /agents
 * Changed parameter **force** name to **force_time**
+
+### POST /agents/:agent_id
+* Verb changed to POST
 
 ### DELETE /agents/:agent_id
 * Error: parameter **purge** type must be *boolean*, not *string*
@@ -49,6 +56,9 @@ a human readable message is shown, the new field `message` will be used instead.
 * Parameter **agent_id** must be in query, not in body because DELETE operations can't have a requestBody in OpenAPI 3
 * Changed parameter **agent_id** name to **list_agents**
 * In response, `msg` key is now moved to new `message` key
+
+### PUT /agents/group/:group_id
+* Verb changed to PUT
 
 ### DELETE /agents/{agent_id}/group/{group_id}
 * In response, `data` key is now moved to new `message` key
@@ -64,14 +74,22 @@ a human readable message is shown, the new field `message` will be used instead.
 ### DELETE /agents/groups/:group_id
 * In response, `msg` key is now moved to new `message` key
 
+### POST /agents/groups/:group_id
+* In response, now when group don't exists return a WazuhError and when agent don't exists return error infomation in failed_items section.
+
 ### PUT /agents/groups/:group_id
 * In response, `data` key is now moved to new `message` key
 
-### POST /agents/groups/:group_id/configuration
+### PUT /agents/groups/:group_id/configuration
 * In response, `data` key is now moved to new `message` key
+* Verb changed to PUT
 
-### POST /agents/groups/{group_id}/files/{file_name}
+### GET /agents/groups/{group_id}/files/{file_name}
+* This endpoint has been split into 2 new endpoints (`GET /agents/groups/{group_id}/files/{file_name}/json` & `GET /agents/groups/{group_id}/files/{file_name}/xml`) because the response changes depending on the format.
+
+### PUT /agents/groups/{group_id}/files/{file_name}
 * In response, `data` key is now moved to new `message` key
+* Verb changed to PUT
 
 ### PUT /agents/{agent_id}/upgrade
 * Changed parameter type **force** from integer to boolean
@@ -92,8 +110,9 @@ a human readable message is shown, the new field `message` will be used instead.
 ### GET/agents/:agent_id/key
 * Response structure changed from `{"data": "agent_key"}` to `{"data": {"key": "agent_key"}}`
 
-### POST/agents/restart
+### PUT/agents/restart
 * In response, `msg` key is now moved to new `message` key
+* Verb changed to PUT
 
 ### PUT/agents/restart
 * In response, `data` key is now moved to new `message` key
@@ -105,8 +124,18 @@ a human readable message is shown, the new field `message` will be used instead.
 ### GET /cache/config 
 * All cache endpoints have been removed
 
+## Lists
 ### GET /lists
-* Parameter **status** renamed to **list_status**
+* Parameter **status** removed (It was not implemented)
+* Changed parameter **path** functionality to a filter
+
+### GET /list
+* This endpoint provides the old functionality of GET /lists?**path**
+* Parameter **path** is required
+
+### GET /list/files
+* This endpoint now returns **folder** substituting old **path**
+* **path** parameter now returns folder/file 
 
 ## Cluster
 ### GET /cluster/{node_id}/stats
@@ -115,8 +144,9 @@ a human readable message is shown, the new field `message` will be used instead.
 ### GET /cluster/{node_id}/files
 * Now file contents are return in a structure like `{"data": {"contents": "file contents"}}`
 
-### POST /cluster/{node_id}/files
+### PUT /cluster/{node_id}/files
 * In response, `data` key is now moved to new `message` key
+* Verb changed to PUT
 
 ### DELETE /cluster/{node_id}/files
 * In response, `data` key is now moved to new `message` key
@@ -128,10 +158,12 @@ a human readable message is shown, the new field `message` will be used instead.
 * In response, `data` key is now moved to new `message` key
 
 ### GET /cluster/configuration/validation
-* Now errors are shown in a different schema with a HTTP status 400. See spec for more details.
+* Now errors are shown in a different schema with a HTTP status 400. Errors follow the generic error format and are shown
+in `dapi_errors` key
 
 ### GET /cluster/{node_id}/configuration/validation
-* Now errors are shown in a different schema with a HTTP status 400. See spec for more details.
+* Now errors are shown in a different schema with a HTTP status 400. Errors follow the generic error format and are shown
+in `dapi_errors` key
 
 ## Decoders
 ### GET /decoders
@@ -179,8 +211,9 @@ a human readable message is shown, the new field `message` will be used instead.
 ### GET /manager/files
 * Now file contents are return in a structure like `{"data": {"contents": "file contents"}}`
 
-### POST /manager/files
+### PUT /manager/files
 * In response, `data` key is now moved to new `message` key
+* Verb changed to PUT
 
 ### DELETE /manager/files
 * In response, `data` key is now moved to new `message` key
@@ -197,6 +230,9 @@ a human readable message is shown, the new field `message` will be used instead.
 ### GET/manager/stats/weekly
 * Parameter **hours** changed to **averages**.
 
+### GET/manager/configuration
+* Output now always follow the same structure. See spec schema response carefully.
+
 ## Rootcheck
 ### PUT/rootcheck
 * In response, `data` key is now moved to new `message` key
@@ -210,6 +246,7 @@ a human readable message is shown, the new field `message` will be used instead.
 ### DELETE/rootcheck/:agent_id
 * In response, `data` key is now moved to new `message` key
 
+## Rules
 ### GET/rules/files
 * Parameter **download** removed
 
@@ -226,12 +263,68 @@ a human readable message is shown, the new field `message` will be used instead.
 ### DELETE/syscheck/{agent_id}
 * In response, `data` key is now moved to new `message` key
 
-## Syscollectior
+## Syscollector
 ### /syscollector/:agent_id/netaddr
 * Added **agent_id** parameter.
 
 ### /syscollector/:agent_id/netiface
 * Added **agent_id** parameter.
+
+### /syscollector/:agent_id/netiface
+* Added **agent_id** parameter.
+
+### /syscollector/:agent_id/netaddr
+* Parameter **iface_name** renamed to **iface**
+* Removed parameter **iface_name** from all endpoints
+
+
+## Security
+* These endpoints provide the functionality of RBAC and authentication
+
+### GET /security/user/authenticate
+* New endpoint
+
+### GET /security/roles
+* New endpoint
+
+### GET /security/roles/{role_id}
+* New endpoint
+
+### GET /security/policies
+* New endpoint
+
+### GET /security/policies/{policy_id}
+* New endpoint
+
+### POST /security/roles
+* New endpoint
+
+### POST /security/policies
+* New endpoint
+
+### DELETE /security/roles
+* New endpoint
+
+### DELETE /security/policies
+* New endpoint
+
+### PUT /security/roles/{role_id}
+* New endpoint
+
+### PUT /security/policies/{policy_id}
+* New endpoint
+
+### DELETE /security/roles/{role_id}
+* New endpoint
+
+### DELETE /security/policies/{policy_id}
+* New endpoint
+
+### PUT /security/roles/{role_id}/policies/{policy_id}
+* New endpoint
+
+### DELETE /security/roles/{role_id}/policies/{policy_id}
+* New endpoint
 
 ## Version
 ### GET /version 
