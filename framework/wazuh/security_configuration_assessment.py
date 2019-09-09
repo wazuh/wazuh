@@ -122,8 +122,6 @@ def get_sca_checks(policy_id=None, agent_id=None, q="", offset=0, limit=common.d
 
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    # import pydevd_pycharm
-    # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
     fields_translation = {**fields_translation_sca_check,
                           **fields_translation_sca_check_compliance,
                           **fields_translation_sca_check_rule}
