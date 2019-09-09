@@ -34,6 +34,7 @@ int ClientConf(const char *cfgfile)
     agt->rip_id = 0;
     agt->execdq = 0;
     agt->cfgadq = -1;
+    agt->syscheck_sock = -1;
     agt->profile = NULL;
     agt->buffer = 1;
     agt->buflength = 5000;

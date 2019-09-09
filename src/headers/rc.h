@@ -37,5 +37,6 @@
 #define HC_FIM_DB_SS        "fim-db-start-scan"
 #define HC_FIM_DB_ES        "fim-db-end-scan"
 #define CFGA_DB_DUMP        "sca-dump"
+#define HC_SK               "syscheck "
 
 #endif

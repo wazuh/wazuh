@@ -146,8 +146,8 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 }
 
                 /* Restart syscheck */
-                else if (strcmp(tmp_msg, HC_SK_RESTART) == 0) {
-                    os_set_restart_syscheck();
+                else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0) {
+                    ag_send_syscheck(&agt->syscheck_sock, tmp_msg + strlen(HC_SK), 1);
                     continue;
                 }
 
