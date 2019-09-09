@@ -2,7 +2,7 @@
 * Copyright (C) 2015-2019, Wazuh Inc.
 * April 18, 2017.
 *
-* This program is a free software; you can redistribute it
+* This program is free software; you can redistribute it
 * and/or modify it under the terms of the GNU General Public
 * License (version 2) as published by the FSF - Free Software
 * Foundation.
@@ -383,17 +383,18 @@ void *JSON_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *d
     if (!input) {
         mdebug1("JSON decoder: null input (offset = %hu)", lf->decoder_info->plugin_offset);
     }
+    else {
+        mdebug2("Decoding JSON: '%.32s'", input);
 
-    mdebug2("Decoding JSON: '%.32s'", input);
-
-    const char *jsonErrPtr;
-    logJSON = cJSON_ParseWithOpts(input, &jsonErrPtr, 0);
-    if (!logJSON)
-        mdebug2("Malformed JSON string '%s'", input);
-    else
-    {
-        readJSON (logJSON, NULL, lf);
-        cJSON_Delete (logJSON);
+        const char *jsonErrPtr;
+        logJSON = cJSON_ParseWithOpts(input, &jsonErrPtr, 0);
+        if (!logJSON)
+            mdebug2("Malformed JSON string '%s'", input);
+        else
+        {
+            readJSON (logJSON, NULL, lf);
+            cJSON_Delete (logJSON);
+        }
     }
     return (NULL);
 }

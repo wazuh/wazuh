@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -97,5 +97,37 @@ char *w_strtok_r_str_delim(const char *delim, char **remaining_str);
 
 // Returns the characters number of the string source if, only if, source is included completely in str, 0 in other case.
 int w_compare_str(char * source, char * str);
+const char * find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len);
+
+/**
+ * @brief Parse boolean string
+ *
+ * @param string Input string.
+ * @pre string is not null.
+ * @retval 1 True.
+ * @retval 0 False.
+ * @retval -1 Cannot parse string.
+ */
+int w_parse_bool(const char * string);
+
+/**
+ * @brief Parse positive time string into seconds
+ *
+ * Format: ^[0-9]+(s|m|h|d|w)?
+ *
+ * s: seconds
+ * m: minutes
+ * h: hours
+ * d: days
+ * w: weeks
+ *
+ * Any character after the first byte is ignored.
+ *
+ * @param string Input string.
+ * @pre string is not null.
+ * @return Time represented in seconds.
+ * @retval -1 Cannot parse string, or value is negative.
+ */
+long w_parse_time(const char * string);
 
 #endif

@@ -5,7 +5,7 @@
  * Copyright (C) 2014 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -34,18 +34,12 @@
 
 struct file_system_type {
     const char *name;
-#ifdef WIN32
-    const unsigned __int32 f_type;
-#elif defined(Linux) || defined(FreeBSD)
-    // Same type as statfs.f_type
-    const typeof(((struct statfs *)0)->f_type) f_type;
-#else
-	const int f_type;
-#endif
-    const int flag;
+    long f_type;
+    int flag;
 };
 
 extern const struct file_system_type network_file_systems[];
+extern const struct file_system_type skip_file_systems[];
 
 short IsNFS(const char *file)  __attribute__((nonnull));
 short skipFS(const char *file)  __attribute__((nonnull));

@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -89,7 +89,7 @@ void free_syscheck_node_data(fim_entry_data *data) {
 // Initialize syscheck data
 int fim_initialize() {
     // Create store data
-    syscheck.fim_entry = OSHash_Create();
+    syscheck.fim_entry = rbtree_init();
     syscheck.n_entries = 0;
 
     // To manage events in whodata mode
@@ -110,11 +110,6 @@ int fim_initialize() {
         merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "realtime_adddir()", strerror(errno));
     }
 
-    if (!OSHash_setSize_ex(syscheck.fim_entry, OS_SIZE_16)) {
-        merror(LIST_ERROR);
-        return (0);
-    }
-
 #ifndef WIN32
     if (!OSHash_setSize(syscheck.fim_inode, OS_SIZE_16)) {
         merror(LIST_ERROR);
@@ -127,7 +122,7 @@ int fim_initialize() {
         return (0);
     }
 
-    OSHash_SetFreeDataPointer(syscheck.fim_entry, (void (*)(void *))free_syscheck_node_data);
+    rbtree_set_dispose(syscheck.fim_entry, (void (*)(void *))free_syscheck_node_data);
     pthread_mutex_init(&syscheck.fim_entry_mutex, NULL);
 
     return 0;

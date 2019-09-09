@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * October, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -40,7 +40,7 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
     int attempts = 0;
 
     wm_docker_setup(docker_conf);
-    mtinfo(WM_DOCKER_LOGTAG, "Module docker-listener started");
+    mtinfo(WM_DOCKER_LOGTAG, "Module docker-listener started.");
 
     // First sleeping
 
@@ -57,7 +57,7 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
         // Running the docker listener script
 
-        mtdebug1(WM_DOCKER_LOGTAG, "Launching command '%s'.", command);
+        mtdebug1(WM_DOCKER_LOGTAG, "Launching command '%s'", command);
 
         wfd_t * wfd = wpopenl(command, W_BIND_STDERR | W_APPEND_POOL, command, NULL);
 
@@ -102,7 +102,7 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 }
 
 
-// Get readed data
+// Get read data
 
 cJSON *wm_docker_dump(const wm_docker_t *docker_conf) {
 

@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -22,8 +22,7 @@
 
 // Add events into sqlite DB for FIM
 static int fim_db_search (char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *sdb);
-// Send msg to wazuh-db
-static int send_query_wazuhdb (char *wazuhdb_query, char **output, _sdb *sdb);
+
 // Build FIM alert
 static int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb);
 // Build fileds whodata alert
@@ -44,10 +43,10 @@ void sdb_clean(_sdb *localsdb);
 int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb);
 
 // Process fim alert
-static int fim_process_alert(Eventinfo *lf, cJSON * event);
+static int fim_process_alert(_sdb *sdb, Eventinfo *lf, cJSON *event);
 
 // Generate fim alert
-static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
+static int fim_generate_alert(_sdb *sdb, Eventinfo *lf, char *mode, char *event_type,
         time_t event_time, cJSON *attributes, cJSON *old_attributes, cJSON *audit);
 
 // Mutexes
@@ -268,7 +267,8 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
     snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck load %s", lf->agent_id, f_name);
 
-    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+    os_calloc(OS_SIZE_6144, sizeof(char), response);
+    db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
     // Fail trying load info from DDBB
 
@@ -322,9 +322,8 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                     lf->agent_id,
                     f_name
             );
-            os_free(response);
-            response = NULL;
-            db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+
+            db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
             switch (db_result) {
             case -2:
@@ -374,9 +373,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                     f_name
             );
             os_free(sym_path);
-            os_free(response);
-            response = NULL;
-            db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+            db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
             switch (db_result) {
             case -2:
@@ -467,89 +464,6 @@ exit_fail:
     os_free(old_check_sum);
     os_free(wazuhdb_query);
     return (-1);
-}
-
-
-int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
-    char response[OS_SIZE_6144];
-    fd_set fdset;
-    struct timeval timeout = {0, 1000};
-    int size = strlen(wazuhdb_query);
-    int retval = -2;
-    int attempts;
-
-    // Connect to socket if disconnected
-    if (sdb->socket < 0) {
-        for (attempts = 1; attempts <= FIM_MAX_WAZUH_DB_ATTEMPS && (sdb->socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144)) < 0; attempts++) {
-            switch (errno) {
-            case ENOENT:
-                mtinfo(ARGV0, "FIM decoder: Cannot find '%s'. Waiting %d seconds to reconnect.", WDB_LOCAL_SOCK, attempts);
-                break;
-            default:
-                mtinfo(ARGV0, "FIM decoder: Cannot connect to '%s': %s (%d). Waiting %d seconds to reconnect.", WDB_LOCAL_SOCK, strerror(errno), errno, attempts);
-            }
-            sleep(attempts);
-        }
-
-        if (sdb->socket < 0) {
-            mterror(ARGV0, "FIM decoder: Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
-            return retval;
-        }
-    }
-
-    // Send query to Wazuh DB
-    if (OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query) != 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            mterror(ARGV0, "FIM decoder: database socket is full");
-        } else if (errno == EPIPE) {
-            // Retry to connect
-            mterror(ARGV0, "FIM decoder: Connection with wazuh-db lost. Reconnecting.");
-            close(sdb->socket);
-
-            if (sdb->socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144), sdb->socket < 0) {
-                switch (errno) {
-                case ENOENT:
-                    mterror(ARGV0, "FIM decoder: Cannot find '%s'. Please check that Wazuh DB is running.", WDB_LOCAL_SOCK);
-                    break;
-                default:
-                    mterror(ARGV0, "FIM decoder: Cannot connect to '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
-                }
-                return retval;
-            }
-
-            if (OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query)) {
-                mterror(ARGV0, "FIM decoder: in send reattempt (%d) '%s'.", errno, strerror(errno));
-                return retval;
-            }
-        } else {
-            mterror(ARGV0, "FIM decoder: in send (%d) '%s'.", errno, strerror(errno));
-        }
-    }
-
-    // Wait for socket
-    FD_ZERO(&fdset);
-    FD_SET(sdb->socket, &fdset);
-
-    if (select(sdb->socket + 1, &fdset, NULL, NULL, &timeout) < 0) {
-        mterror(ARGV0, "FIM decoder: in select (%d) '%s'.", errno, strerror(errno));
-        return retval;
-    }
-    retval = -1;
-
-    // Receive response from socket
-    if (OS_RecvSecureTCP(sdb->socket, response, OS_SIZE_6144 - 1) > 0) {
-        os_strdup(response, *output);
-
-        if (response[0] == 'o' && response[1] == 'k') {
-            retval = 0;
-        } else {
-            mterror(ARGV0, "FIM decoder: Bad response '%s'.", response);
-        }
-    } else {
-        mterror(ARGV0, "FIM decoder: no response from wazuh-db.");
-    }
-
-    return retval;
 }
 
 int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb) {
@@ -940,7 +854,8 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
                 (long int)value
         );
 
-        db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+        os_calloc(OS_SIZE_6144, sizeof(char), response);
+        db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
         switch (db_result) {
         case -2:
@@ -986,8 +901,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
                     (long int)value
             );
 
-            os_free(response);
-            db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+            db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
             switch (db_result) {
             case -2:
@@ -1028,7 +942,8 @@ int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb) {
             file
     );
 
-    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+    os_calloc(OS_SIZE_6144, sizeof(char), response);
+    db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
     switch (db_result) {
     case -2:
@@ -1059,7 +974,8 @@ int fim_database_clean (Eventinfo *lf, _sdb *sdb) {
             lf->agent_id
     );
 
-    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+    os_calloc(OS_SIZE_6144, sizeof(char), response);
+    db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
     switch (db_result) {
     case -2:
@@ -1091,7 +1007,8 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
             lf->agent_id
     );
 
-    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+    os_calloc(OS_SIZE_6144, sizeof(char), response);
+    db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
     switch (db_result) {
     case -2:
@@ -1116,7 +1033,7 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
 }
 
 
-int decode_fim_event(Eventinfo *lf) {
+int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
     cJSON *root_json = NULL;
     cJSON *type = NULL;
     cJSON *event = NULL;
@@ -1137,7 +1054,7 @@ int decode_fim_event(Eventinfo *lf) {
 
     if (type && type->string) {
         if (strcmp(type->string, "event")) {
-            fim_process_alert(lf, event);
+            fim_process_alert(sdb, lf, event);
             retval = 1;
         }
         if (strcmp(type->string, "scan_info")) {
@@ -1154,7 +1071,7 @@ int decode_fim_event(Eventinfo *lf) {
 }
 
 
-static int fim_process_alert(Eventinfo *lf, cJSON *event) {
+static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     cJSON *attributes = NULL;
     cJSON *old_attributes = NULL;
     cJSON *audit = NULL;
@@ -1209,13 +1126,13 @@ static int fim_process_alert(Eventinfo *lf, cJSON *event) {
     old_attributes = cJSON_GetObjectItem(event, "old_attributes");
     audit = cJSON_GetObjectItem(event, "audit");
 
-    fim_generate_alert(lf, mode, event_type, event_time, attributes, old_attributes, audit);
+    fim_generate_alert(sdb, lf, mode, event_type, event_time, attributes, old_attributes, audit);
 
     return 0;
 }
 
 
-static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
+static int fim_generate_alert(_sdb * sdb, Eventinfo *lf, char *mode, char *event_type,
         time_t event_time, cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
 
     cJSON *object = NULL;
@@ -1467,10 +1384,9 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
             //lf->fields[FIM_SYM_PATH].value
     );
 
-    char *wdb_query = NULL;
-    char *response = NULL;
+    char wdb_query[6144];
+    char response[6144];
 
-    os_calloc(OS_SIZE_6144, sizeof(char), wdb_query);
     snprintf(wdb_query, OS_SIZE_6144, "agent %s syscheck save file "
             "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s!0:%ld:%s: %s",
             lf->agent_id,
@@ -1491,19 +1407,15 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
             lf->filename
     );
 
-    db_result = wdb_send_query(wdb_query, &response);
+    db_result = wdbc_query_ex(&sdb->socket, wdb_query, response, sizeof(response) - 1);
 
     switch (db_result) {
     case -2:
         merror("FIM decoder: Bad save/update query: '%s'.", wdb_query);
         // Fallthrough
     case -1:
-        os_free(response);
-        os_free(wdb_query);
         return -1;
     }
 
-    os_free(response);
-    os_free(wdb_query);
     return 0;
 }

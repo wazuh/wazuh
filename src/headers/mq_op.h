@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -18,9 +18,9 @@
 #define SYSLOG_MQ       '2'
 #define HOSTINFO_MQ     '3'
 #define SECURE_MQ       '4'
+#define DBSYNC_MQ       '5'
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'
-#define EVENT_MQ        '10'
 #define SCA_MQ          'p'
 
 

@@ -2,7 +2,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * May 31, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -54,8 +54,8 @@ void req_free(req_node_t * node) {
         free(node->target);
         free(node->buffer);
         free(node->counter);
-        pthread_mutex_destroy(&node->mutex);
-        pthread_cond_destroy(&node->available);
+        w_mutex_destroy(&node->mutex);
+        w_cond_destroy(&node->available);
         free(node);
     }
 }

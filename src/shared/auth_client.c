@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * May 30, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -22,7 +22,7 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
     char *output;
     char wdbquery[OS_SIZE_128];
     char *wdboutput;
-    int result;
+    int result = -1;
     ssize_t length;
     cJSON *response;
     cJSON *error;
@@ -68,17 +68,23 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
                 message = cJSON_GetObjectItem(response, "message");
                 merror("ERROR %d: %s", error->valueint, message ? message->valuestring : "(undefined)");
             }
-
-            result = -1;
         } else {
-            result = 0;
+            int wdb_sock = -1;
+            int error;
 
             snprintf(wdbquery, OS_SIZE_128, "agent %s remove", id);
-            wdb_send_query(wdbquery, &wdboutput);
-
-            if (wdboutput) {
-                os_free(wdboutput);
+            os_calloc(OS_SIZE_6144, sizeof(char), wdboutput);
+            if (error = wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, OS_SIZE_6144), error) {
+                merror("Could not remove the agent %s. Error: %d.", id, error);
+            } else {
+                result = 0;
             }
+
+            if (wdb_sock >= 0) {
+                close(wdb_sock);
+            }
+
+            os_free(wdboutput);
         }
 
         cJSON_Delete(response);

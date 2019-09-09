@@ -2,7 +2,7 @@
  * Copyright (C) 2010 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -34,11 +34,9 @@ static void set_priority_windows_thread();
 //static void send_silent_del(char *path);
 #endif
 
-
-/* Send a message related to syscheck change/addition */
-int send_syscheck_msg(const char *msg)
-{
-    if (SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ) < 0) {
+/* Send a message */
+static void fim_send_msg(char mq, const char * location, const char * msg) {
+    if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
         merror(QUEUE_SEND);
 
         if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
@@ -46,8 +44,19 @@ int send_syscheck_msg(const char *msg)
         }
 
         /* Try to send it again */
-        SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ);
+        SendMSG(syscheck.queue, msg, location, mq);
     }
+}
+
+/* Send a data synchronization control message */
+void fim_send_sync_msg(const char * msg) {
+    fim_send_msg(DBSYNC_MQ, SYSCHECK, msg);
+}
+
+/* Send a message related to syscheck change/addition */
+int send_syscheck_msg(const char *msg)
+{
+    fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
     return (0);
 }
 
@@ -55,16 +64,7 @@ int send_syscheck_msg(const char *msg)
 /* Send a message related to rootcheck change/addition */
 int send_rootcheck_msg(const char *msg)
 {
-    if (SendMSG(syscheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
-        merror(QUEUE_SEND);
-
-        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-        }
-
-        /* Try to send it again */
-        SendMSG(syscheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ);
-    }
+    fim_send_msg(ROOTCHECK_MQ, ROOTCHECK, msg);
     return (0);
 }
 
@@ -80,7 +80,7 @@ void start_daemon()
     struct tm *p;
 
     // A higher nice value means a low priority.
-#if defined _BSD_SOURCE || defined _SVID_SOURCE || defined _XOPEN_SOURCE
+#ifndef WIN32
     mdebug1(FIM_PROCESS_PRIORITY, syscheck.process_priority);
     nice(syscheck.process_priority);
 #endif
@@ -121,8 +121,13 @@ void start_daemon()
 
 #ifndef WIN32
     /* Launch Real-time thread */
-    w_create_thread(fim_run_integrity, &syscheck);
     w_create_thread(fim_run_realtime, &syscheck);
+
+    /* Launch inventory synchronization thread, if enabled */
+    if (syscheck.enable_inventory) {
+        w_create_thread(fim_run_integrity, &syscheck);
+    }
+
 #else
     if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fim_run_integrity,
             &syscheck, 0, NULL) == NULL) {
@@ -344,7 +349,8 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
     while (1) {
         minfo("~~~ starting integrity thread");
-        sleep(600);
+        fim_sync_checksum();
+        sleep(syscheck.sync_interval);
     }
 }
 

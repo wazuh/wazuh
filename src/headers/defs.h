@@ -2,7 +2,7 @@
  * Copyright (C) 2009-2012 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -62,10 +62,11 @@
 #define KEEPALIVE_SIZE  700             /* Random keepalive string size     */
 #define MAX_DYN_STR     4194304         /* Max message size received 4MiB   */
 #define DATE_LENGTH     64              /* Format date time %D %T           */
+#define MAX_DYN_STR     4194304         /* Max message size received 4MiB */
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.9.4"
+#define __ossec_version "v3.10.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -407,6 +408,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #ifndef DEFAULT_SYSLOG
 #define DEFAULT_SYSLOG 514 /* Default syslog port - udp */
+#endif
+
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
 #endif
 
 /* XML global elements */

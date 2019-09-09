@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * June 22, 2018
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -20,7 +20,7 @@ extern unsigned int s_events_decoded;
 extern unsigned int s_events_processed;
 extern unsigned int s_events_dropped;
 extern volatile unsigned int s_events_received;
-extern unsigned int s_alerts_written; 
+extern unsigned int s_alerts_written;
 extern unsigned int s_firewall_written;
 extern unsigned int s_fts_written;
 
@@ -32,6 +32,7 @@ extern float s_hostinfo_queue;
 extern float s_event_queue;
 extern float s_process_event_queue;
 extern float s_winevt_queue;
+extern float s_dbsync_message_queue;
 
 extern unsigned int s_syscheck_queue_size;
 extern unsigned int s_syscollector_queue_size;
@@ -41,6 +42,7 @@ extern unsigned int s_hostinfo_queue_size;
 extern unsigned int s_event_queue_size;
 extern unsigned int s_process_event_queue_size;
 extern unsigned int s_winevt_queue_size;
+extern unsigned int s_dbsync_message_queue_size;
 
 extern float s_writer_alerts_queue;
 extern float s_writer_archives_queue;
@@ -67,7 +69,7 @@ void w_inc_alerts_written();
 void w_inc_firewall_written();
 void w_inc_fts_written();
 void w_inc_winevt_decoded_events();
+void w_inc_dbsync_dispatched_messages();
 void w_reset_stats();
 
 #endif /* _STATE_A__H */
-

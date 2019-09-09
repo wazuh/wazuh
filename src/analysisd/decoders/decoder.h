@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -76,7 +76,6 @@ void RootcheckInit(void);
 void SyscollectorInit(void);
 void CiscatInit(void);
 void WinevtInit(void);
-int sc_send_db(char * msg,int *sock);
 void SecurityConfigurationAssessmentInit(void);
 int ReadDecodeXML(const char *file);
 

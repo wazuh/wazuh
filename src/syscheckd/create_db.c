@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -182,7 +182,7 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
     }
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    if (saved_data = (fim_entry_data *) OSHash_Get(syscheck.fim_entry, file_name), !saved_data) {
+    if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file_name), !saved_data) {
         // New entry. Insert into hash table
         if (fim_insert (file_name, entry_data) == -1) {
             free_entry_data(entry_data);
@@ -435,13 +435,14 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, in
     data->mode = mode;
     data->options = options;
     data->last_event = time(NULL);
+    fim_get_checksum(data);
 
     return data;
 }
 
 
 // Returns checksum string
-char * fim_get_checksum (fim_entry_data * data) {
+void fim_get_checksum (fim_entry_data * data) {
     char *checksum = NULL;
     int size;
 
@@ -484,35 +485,21 @@ char * fim_get_checksum (fim_entry_data * data) {
                 data->hash_sha256);
     }
 
-    // TODO: Check time difference between functions OS_SHA1_Str and OS_SHA1_Str2
-
-    // minfo("checksum '%s'\n", checksum);
-    char * output;
-    os_calloc(1, sizeof(os_sha1), output);
-    OS_SHA1_Str(checksum, sizeof(checksum), output);
-    // minfo("var 1 SHA1 '%s'\n", output);
-    // OS_SHA1_Str2(checksum, sizeof(checksum), output);
-    // minfo("var 2 SHA1 '%s'\n", output);
-    os_free(checksum);
-
-    return output;
+    OS_SHA1_Str(checksum, sizeof(checksum), data->checksum);
+    free(checksum);
 }
 
 
 // Inserts a file in the syscheck hash table structure (inodes and paths)
 int fim_insert (char * file, fim_entry_data * data) {
     char * inode_key = NULL;
-    int result;
 
-    if (result = OSHash_Add_fim(syscheck.fim_entry, file, data, 0), result == 0) {
-        merror("Unable to add file to db: '%s'", file);
-        return (-1);
-    } else if (result == 1) {
-        minfo("Duplicated path: '%s'", file);
+    if (rbtree_insert(syscheck.fim_entry, file, data) == NULL) {
+        minfo("Duplicate path: '%s'", file);
         return (-1);
     }
-    syscheck.n_entries++;
 
+    syscheck.n_entries++;
 
 #ifndef WIN32
     fim_inode_data * inode_data;
@@ -586,7 +573,7 @@ int fim_update (char * file, fim_entry_data * data) {
         // TODO: Consider if we should exit here. Change to debug message
     }
 
-    if (OSHash_Update(syscheck.fim_entry, file, data) == 0) {
+    if (rbtree_replace(syscheck.fim_entry, file, data) == NULL) {
         merror("Unable to update file to db, key not found: '%s'", file);
         os_free(inode_key);
         return (-1);
@@ -601,7 +588,7 @@ int fim_delete (char * file_name) {
     fim_entry_data * saved_data;
     char * file_to_delete = NULL;
 
-    if (saved_data = OSHash_Get(syscheck.fim_entry, file_name), saved_data) {
+    if (saved_data = rbtree_get(syscheck.fim_entry, file_name), saved_data) {
         os_strdup(file_name, file_to_delete);
 #ifndef WIN32
         char * inode = NULL;
@@ -610,7 +597,7 @@ int fim_delete (char * file_name) {
         delete_inode_item(inode, file_to_delete);
         // TODO: Send alert to manager (send_msg())
 #endif
-        OSHash_Delete(syscheck.fim_entry, file_to_delete);
+        rbtree_delete(syscheck.fim_entry, file_to_delete);
         free_entry_data(saved_data);
         os_free(saved_data);
 #ifndef WIN32
@@ -624,38 +611,28 @@ int fim_delete (char * file_name) {
 
 
 // Deletes a path from the syscheck hash table structure and sends a deletion event on scheduled scans
-int check_deleted_files() {
-    OSHashNode * hash_node;
-    fim_entry_data * fim_entry_data;
-    unsigned int * inode_it;
-    char * key;
+void check_deleted_files() {
+    int i;
+    char ** keys = rbtree_keys(syscheck.fim_entry);
 
-    os_calloc(1, sizeof(unsigned int), inode_it);
-
-    hash_node = OSHash_Begin(syscheck.fim_entry, inode_it);
-    while(hash_node) {
-        fim_entry_data = hash_node->data;
+    for (i = 0; keys[i] != NULL; i++) {
+        fim_entry_data * data = rbtree_get(syscheck.fim_entry, keys[i]);
+        assert(data != NULL);
 
         // File doesn't exist so we have to delete it from the
         // hash tables and send a deletion event.
-        if(!fim_entry_data->scanned && fim_entry_data->mode == FIM_SCHEDULED) {
-            minfo("File '%s' has been deleted.", hash_node->key);
-            os_strdup(hash_node->key, key);
-            // We must save the next node before deteling the current one
-            hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
-            fim_delete(key);
-            os_free(key);
-            continue;
+        if (!data->scanned && data->mode == FIM_SCHEDULED) {
+            minfo("File '%s' has been deleted.", keys[i]);
+            fim_delete(keys[i]);
+        } else {
+             // File still exists. We only need to reset the scanned flag.
+            data->scanned = 0;
         }
-        // File still exists. We only need to reset the scanned flag.
-        else {
-            fim_entry_data->scanned = 0;
-        }
-
-        hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
     }
-    os_free(inode_it);
-    return 0;
+
+    free_strarray(keys);
+
+    return;
 }
 
 
@@ -713,19 +690,17 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
 cJSON * fim_json_alert(char * file_name, fim_entry_data * data, int dir_position, int type, int mode, whodata_evt * w_evt) {
     cJSON * response = NULL;
     cJSON * fim_attributes = NULL;
-    cJSON * extra_data = NULL;
     cJSON * fim_audit = NULL;
-    char * checksum = NULL;
     char * tags = syscheck.tag[dir_position];
     char * diff = NULL;
 
-    checksum = fim_get_checksum(data);
     response = cJSON_CreateObject();
 
     cJSON_AddStringToObject(response, "path", file_name);
     cJSON_AddStringToObject(response, "mode", FIM_ALERT_MODE[mode]);
     cJSON_AddStringToObject(response, "type", FIM_ALERT[type]);
     cJSON_AddNumberToObject(response, "timestamp", data->last_event);
+    cJSON_AddStringToObject(response, "integrity", data->checksum);
     if (tags != NULL) {
         cJSON_AddStringToObject(response, "tags", tags);
     }
@@ -757,7 +732,7 @@ cJSON * fim_json_alert(char * file_name, fim_entry_data * data, int dir_position
     cJSON_AddNumberToObject(fim_attributes, "win_attributes", w_get_file_attrs(file_name));
 #endif
 
-    extra_data = cJSON_CreateObject();
+    cJSON_AddItemToObject(response, "attributes", fim_attributes);
 
     if (w_evt) {
         fim_audit = cJSON_CreateObject();
@@ -779,15 +754,8 @@ cJSON * fim_json_alert(char * file_name, fim_entry_data * data, int dir_position
         cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
         cJSON_AddNumberToObject(fim_audit, "mask", w_evt->mask);
 #endif
-    }
-
-    cJSON_AddItemToObject(response, "attributes", fim_attributes);
-    cJSON_AddItemToObject(response, "extra_data", extra_data);
-
-    if (w_evt) {
         cJSON_AddItemToObject(response, "audit", fim_audit);
     }
-    os_free(checksum);
 
     return response;
 }
@@ -796,9 +764,7 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
     cJSON * response = NULL;
     cJSON * fim_attributes = NULL;
     cJSON * fim_old_attributes = NULL;
-    cJSON * extra_data = NULL;
     cJSON * fim_audit = NULL;
-    char * checksum = NULL;
     char * tags = syscheck.tag[dir_position];
     char * diff = NULL;
     char * changed_attributes = NULL;
@@ -867,7 +833,6 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
     }
 
     if (report_alert) {
-        checksum = fim_get_checksum(new_data);
         response = cJSON_CreateObject();
 
         cJSON_AddStringToObject(response, "path", file_name);
@@ -875,6 +840,7 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         cJSON_AddStringToObject(response, "type", FIM_ALERT[type]);
         cJSON_AddNumberToObject(response, "timestamp", new_data->last_event);
         cJSON_AddStringToObject(response, "changed_attributes", changed_attributes);
+        cJSON_AddStringToObject(response, "integrity", new_data->checksum);
         if (tags != NULL) {
             cJSON_AddStringToObject(response, "tags", tags);
         }
@@ -906,6 +872,9 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         cJSON_AddNumberToObject(fim_attributes, "win_attributes", w_get_file_attrs(file_name));
 #endif
 
+        cJSON_AddItemToObject(response, "attributes", fim_attributes);
+        cJSON_AddItemToObject(response, "old_attributes", fim_old_attributes);
+
         if (w_evt) {
             fim_audit = cJSON_CreateObject();
             cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
@@ -926,16 +895,8 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
             cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
             cJSON_AddNumberToObject(fim_audit, "mask", w_evt->mask);
 #endif
-        }
-
-        cJSON_AddItemToObject(response, "attributes", fim_attributes);
-        cJSON_AddItemToObject(response, "old_attributes", fim_old_attributes);
-        cJSON_AddItemToObject(response, "extra_data", extra_data);
-
-        if (w_evt) {
             cJSON_AddItemToObject(response, "audit", fim_audit);
         }
-        os_free(checksum);
     } else {
         minfo("~~ File without changes: '%s'", file_name);
         cJSON_Delete(fim_old_attributes);
@@ -983,27 +944,6 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
     }
 
     return (0);
-}
-
-
-// Get and set index of the integrity levels in data structure
-void set_integrity_index(char * file_name, fim_entry_data * data) {
-    unsigned int rows = syscheck.fim_entry->rows;
-    unsigned int tl2 = cbrt(rows);
-    unsigned int tl1 = tl2 * tl2;
-    unsigned int div = rows / tl1;
-    unsigned int rest = rows % tl1;
-    unsigned int aux = (rest * (div + 1));
-
-    data->level0 = OSHash_GetIndex(syscheck.fim_entry, file_name);
-
-    if (data->level0 <= aux) {
-        data->level1 = data->level0 / (div + 1);
-    } else {
-        data->level1 = ((data->level0 - aux) / div) + rest;
-    }
-
-    data->level2 = data->level1 / tl2;
 }
 
 
@@ -1074,48 +1014,46 @@ static void print_file_info(struct stat path_stat) {
 
 
 int print_hash_tables() {
-    OSHashNode * hash_node;
-    fim_entry_data * fim_entry_data;
     char * files = NULL;
-    unsigned int * inode_it;
     int element_sch = 0;
     int element_rt = 0;
     int element_wd = 0;
     int element_total = 0;
+    char ** keys = rbtree_keys(syscheck.fim_entry);
+    int i;
 
-    os_calloc(1, sizeof(unsigned int), inode_it);
+    for (i = 0; keys[i]; i++) {
+        fim_entry_data * data = rbtree_get(syscheck.fim_entry, keys[i]);
+        assert(data != NULL);
 
-    hash_node = OSHash_Begin(syscheck.fim_entry, inode_it);
-    while(hash_node) {
-        fim_entry_data = hash_node->data;
-        //minfo("ENTRY (%d) => '%s'->'%lu' scanned:'%u' L0:'%d' L1:'%d' L2:'%d'\n", element_total, (char*)hash_node->key, fim_entry_data->inode, fim_entry_data->scanned, fim_entry_data->level0, fim_entry_data->level1, fim_entry_data->level2);
-        switch(fim_entry_data->mode) {
+        minfo("ENTRY (%d) => '%s'->'%lu' scanned:'%u'\n", element_total, keys[i], data->inode, data->scanned);
+
+        switch(data->mode) {
             case FIM_SCHEDULED: element_sch++; break;
             case FIM_REALTIME: element_rt++; break;
             case FIM_WHODATA: element_wd++; break;
         }
-        hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
 
         element_total++;
     }
 
-    *inode_it = 0;
     element_total = 0;
+
 #ifndef WIN32
-    fim_inode_data * fim_inode_data;
-    int i;
-    hash_node = OSHash_Begin(syscheck.fim_inode, inode_it);
-    while(hash_node) {
-        fim_inode_data = hash_node->data;
+    OSHashNode * hash_node;
+    unsigned int inode_it = 0;
+
+    for (hash_node = OSHash_Begin(syscheck.fim_inode, &inode_it); hash_node; hash_node = OSHash_Next(syscheck.fim_inode, &inode_it, hash_node)) {
+        fim_inode_data * data = hash_node->data;
         os_free(files);
         os_calloc(1, sizeof(char), files);
         *files = '\0';
-        for(i = 0; i < fim_inode_data->items; i++) {
-            wm_strcat(&files, fim_inode_data->paths[i], ',');
-        }
-        //minfo("INODE (%u) => '%s'->(%d)'%s'\n", element_total, (char*)hash_node->key, fim_inode_data->items, files);
-        hash_node = OSHash_Next(syscheck.fim_inode, inode_it, hash_node);
 
+        for (i = 0; i < data->items; i++) {
+            wm_strcat(&files, data->paths[i], ',');
+        }
+
+        minfo("INODE (%u) => '%s'->(%d)'%s'\n", element_total, (char*)hash_node->key, data->items, files);
         element_total++;
     }
 #endif
@@ -1123,8 +1061,8 @@ int print_hash_tables() {
     minfo("RT '%d'", element_rt);
     minfo("WD '%d'", element_wd);
 
-    os_free(inode_it);
     os_free(files);
+    free_strarray(keys);
 
     return 0;
 }

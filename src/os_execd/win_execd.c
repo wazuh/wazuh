@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -56,18 +56,12 @@ static void WinExecd_Shutdown()
 int WinExecd_Start()
 {
     int c;
-    int test_config = 0;
     char *cfg = DEFAULTCPATH;
     winexec_queue = queue_init(OS_SIZE_128);
 
     /* Read config */
     if ((c = ExecdConfig(cfg)) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
-    }
-
-    /* Exit if test_config */
-    if (test_config) {
-        return (0);
     }
 
     /* Active response disabled */
@@ -90,10 +84,8 @@ int WinExecd_Start()
     /* Start up message */
     minfo(STARTUP_MSG, getpid());
 
-    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)win_exec_main,
-            winexec_queue, 0, NULL) == NULL) {
-        merror(THREAD_ERROR);
-    }
+    w_create_thread(NULL, 0, (LPTHREAD_START_ROUTINE)win_exec_main,
+            winexec_queue, 0, NULL);
 
     return (1);
 }

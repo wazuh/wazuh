@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -56,7 +56,7 @@ void start_daemon(void) __attribute__((noreturn));
 /* Read the XML config */
 int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getSyscheckConfig(void);
 cJSON *getSyscheckInternalOptions(void);
 
@@ -87,7 +87,7 @@ int fim_check_depth(char * path, int dir_position);
 fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, int mode, int options);
 
 //
-char * fim_get_checksum (fim_entry_data * data);
+void fim_get_checksum (fim_entry_data * data);
 
 //
 int fim_insert (char *file_name, fim_entry_data * data);
@@ -99,7 +99,7 @@ int fim_update (char * file, fim_entry_data * data);
 int fim_delete (char * file_name);
 
 //
-int check_deleted_files();
+void check_deleted_files();
 
 //
 void delete_inode_item(char *inode, char *file_name);
@@ -153,6 +153,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 
 int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
+void fim_send_sync_msg(const char * msg);
 
 /* Return the version with symbolic link */
 void replace_linked_path(const char *file_name, int dir_position, char *linked_file);
@@ -218,5 +219,8 @@ int fim_delete_hashes(char *file_name);
 #ifdef WIN32
 #define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })
 #endif
+
+void fim_sync_checksum();
+void fim_sync_checksum_split(const char * start, const char * top);
 
 #endif

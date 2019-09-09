@@ -2,7 +2,7 @@
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -561,7 +561,7 @@ int main(int argc, char **argv)
                 }
             }
 
-            pthread_mutex_lock(&mutex_pool);
+            w_mutex_lock(&mutex_pool);
 
             if (full(pool_i, pool_j)) {
                 merror("Too many connections. Rejecting.");
@@ -1117,7 +1117,8 @@ void* run_writer(__attribute__((unused)) void *arg) {
     struct keynode *next;
     time_t cur_time;
     char wdbquery[OS_SIZE_128];
-    char *wdboutput;
+    char wdboutput[128];
+    int wdb_sock = -1;
 
     authd_sigblock();
 
@@ -1171,8 +1172,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_BackupAgentInfo(cur->id, cur->name, cur->ip);
 
             snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
-            wdb_send_query(wdbquery, &wdboutput);
-            os_free(wdboutput);
+            wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
             free(cur->id);
             free(cur->name);
@@ -1190,8 +1190,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_RemoveAgentGroup(cur->id);
 
             snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
-            wdb_send_query(wdbquery, &wdboutput);
-            os_free(wdboutput);
+            wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
             free(cur->id);
             free(cur->name);

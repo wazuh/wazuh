@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -207,9 +207,7 @@ typedef struct fim_entry_data {
     int options;
     time_t last_event;
     unsigned int scanned;
-    unsigned int level0;
-    unsigned int level1;
-    unsigned int level2;
+    os_sha1 checksum;
 } fim_entry_data;
 
 typedef struct fim_inode_data {
@@ -234,6 +232,7 @@ typedef struct _config {
     int queue;                      /* file descriptor of socket to write to queue */
     unsigned int restart_audit:1;   /* Allow Syscheck restart Auditd */
     unsigned int enable_whodata:1;  /* At less one directory configured with whodata */
+    unsigned int enable_inventory:1;    /* Enable database synchronization */
 
     int *opts;                      /* attributes set in the <directories> tag element */
 
@@ -256,6 +255,9 @@ typedef struct _config {
 
     char **tag;                     /* array of tags for each directory */
 
+    long sync_interval;             /* Synchronization interval (seconds) */
+    long sync_response_timeout;     /* Minimum time between receiving a sync response and starting a new sync session */
+
     /* Windows only registry checking */
 #ifdef WIN32
     registry *registry_ignore;                  /* list of registry entries to ignore */
@@ -277,7 +279,7 @@ typedef struct _config {
     OSHash *local_hash;
     OSHash *inode_hash;
 
-    OSHash * fim_entry;
+    rb_tree * fim_entry;
     OSHash * fim_inode;
     unsigned int n_entries;
     unsigned int n_inodes;

@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -21,7 +21,7 @@ volatile int audit_db_consistency_flag;
 #include "syscheck.h"
 #include "syscheck_op.h"
 
-pthread_mutex_t adddir_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t adddir_mutex;
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
@@ -33,6 +33,10 @@ pthread_mutex_t adddir_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* Start real time monitoring using inotify */
 int realtime_start()
 {
+    minfo(FIM_REALTIME_STARTING);
+
+    w_mutex_init(&adddir_mutex, NULL);
+
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
     if (syscheck.realtime == NULL) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
@@ -277,6 +281,10 @@ void free_win32rtfim_data(win32rtfim *data) {
 
 int realtime_start()
 {
+    minfo(FIM_REALTIME_STARTING);
+
+    w_mutex_init(&adddir_mutex, NULL);
+
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
 
     syscheck.realtime->dirtb = OSHash_Create();

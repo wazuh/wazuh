@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "read-agents.h"
 #include "os_net/os_net.h"
+#include "wazuhdb_op.h"
 
 #ifndef WIN32
 static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, int csv_output, cJSON *json_output,
@@ -1343,125 +1344,29 @@ char **get_agents(int flag,int mon_time)
 }
 
 #ifndef WIN32
-int query_wazuhdb(const char *wazuhdb_query, const char *source, char **output) {
-    char response[OS_SIZE_6144];
-    fd_set fdset;
-    struct timeval timeout = {0, 1000};
-    int wdb_socket = -1;
-    int size = strlen(wazuhdb_query);
-    int retval = -2;
-
-    // Connect to socket
-    if (wdb_socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144),
-            wdb_socket < 0) {
-        switch (errno) {
-        case ENOENT:
-            merror("%s: Cannot find '%s'.", source, WDB_LOCAL_SOCK);
-            break;
-        default:
-            merror("%s: Cannot connect to '%s': %s (%d).",
-                    source, WDB_LOCAL_SOCK, strerror(errno), errno);
-        }
-        return -2;
-    }
-
-    // Send query to Wazuh DB
-    if (OS_SendSecureTCP(wdb_socket, size + 1, wazuhdb_query) != 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            merror("%s: database socket is full", source);
-        } else if (errno == EPIPE) {
-            // Retry to connect
-            mwarn("%s: Connection with wazuh-db lost. Reconnecting.", source);
-            close(wdb_socket);
-
-            if (wdb_socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144),
-                    wdb_socket < 0) {
-                switch (errno) {
-                case ENOENT:
-                    merror("%s: Cannot find '%s'. Please check that Wazuh DB is running.",
-                            source, WDB_LOCAL_SOCK);
-                    break;
-                default:
-                    merror("%s: Cannot connect to '%s': %s (%d)",
-                            source, WDB_LOCAL_SOCK, strerror(errno), errno);
-                }
-                return (-2);
-            }
-
-            if (OS_SendSecureTCP(wdb_socket, size + 1, wazuhdb_query)) {
-                merror("%s: in send reattempt (%d) '%s'.", source, errno, strerror(errno));
-                close(wdb_socket);
-                return (-2);
-            }
-        } else {
-            merror("%s: in send (%d) '%s'.", source, errno, strerror(errno));
-        }
-    }
-
-    // Wait for socket
-    FD_ZERO(&fdset);
-    FD_SET(wdb_socket, &fdset);
-
-    if (select(wdb_socket + 1, &fdset, NULL, NULL, &timeout) < 0) {
-        merror("%s: in select (%d) '%s'.", source, errno, strerror(errno));
-        close(wdb_socket);
-        return (-2);
-    }
-
-    // Receive response from socket
-    if (OS_RecvSecureTCP(wdb_socket, response, OS_SIZE_6144 - 1) > 0) {
-        os_strdup(response, *output);
-
-        if (response[0] == 'o' && response[1] == 'k') {
-            retval = 0;
-        } else {
-            merror("%s: Bad response '%s'.", source, response);
-        }
-    } else {
-        merror("%s: no response from wazuh-db.", source);
-    }
-
-    close(wdb_socket);
-    return retval;
-}
-
 time_t scantime_fim (const char *agent_id, const char *scan) {
     char *wazuhdb_query = NULL;
     char *response = NULL;
-    char *output;
-    int db_result;
-    time_t ts;
+    char *message;
+    time_t ts = -1;
+    int wdb_socket = -1;
 
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
+    os_calloc(OS_SIZE_6144, sizeof(char), response);
 
     snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck scan_info_get %s",
             agent_id, scan
     );
 
-    db_result = query_wazuhdb(wazuhdb_query, "Read Agents", &response);
-
-    switch (db_result) {
-    case -2:
-        merror("FIM decoder: Bad result getting scan date '%s'.", wazuhdb_query);
-        // Fallthrough
-    case -1:
-        os_free(wazuhdb_query);
-        os_free(response);
-        return (-1);
+    if (wdbc_query_ex(&wdb_socket, wazuhdb_query, response, OS_SIZE_6144) == 0) {
+        if (wdbc_parse_result(response, &message) == WDBC_OK) {
+            ts = atol(message);
+            mdebug2("Agent '%s' FIM '%s' timestamp:'%ld'", agent_id, scan, (long int)ts);
+        }
     }
 
-    output = strchr(response, ' ');
-    if(output) {
-        ts = atol(output);
-        *(output++) = '\0';
-    } else {
-        ts = -1;
-    }
-
-    mdebug2("Agent '%s' FIM '%s' timestamp:'%ld'", agent_id, scan, (long int)ts);
-
-    os_free(wazuhdb_query);
-    os_free(response);
+    free(wazuhdb_query);
+    free(response);
     return (ts);
 }
 #endif

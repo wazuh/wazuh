@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -159,9 +159,11 @@ char * w_strtrim(char * string) {
     char *c;
     char *d;
 
-    string = &string[strspn(string, " ")];
-    for (c = string + strcspn(string, " "); *(d = c + strspn(c, " ")); c = d + strcspn(d, " "));
-    *c = '\0';
+    if(string != NULL) {
+        string = &string[strspn(string, " ")];
+        for (c = string + strcspn(string, " "); *(d = c + strspn(c, " ")); c = d + strcspn(d, " "));
+        *c = '\0';
+    }
     return string;
 }
 
@@ -418,9 +420,7 @@ int wstr_find_in_folder(char *path,const char *str,int strip_new_line){
 
         fp = fopen(file,"r");
 
-        if(!fp){
-            closedir(dp);
-            dp = NULL;
+        if (!fp) {
             continue;
         }
 
@@ -621,4 +621,59 @@ int w_compare_str(char * source, char * str) {
     matching = strncmp(source, str, source_lenght);
 
     return matching == 0 ? source_lenght : 0;
+}
+
+const char * find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
+{
+    if (!string_array || !str){
+        return NULL;
+    }
+
+    size_t i;
+    for (i = 0; i < array_len; ++i) {
+        if (strncmp(str, string_array[i], str_len) == 0) {
+            return string_array[i];
+        }
+    }
+    return NULL;
+}
+
+// Parse boolean string
+
+int w_parse_bool(const char * string) {
+    return (strcmp(string, "yes") == 0) ? 1 : (strcmp(string, "no") == 0) ? 0 : -1;
+}
+
+// Parse positive time string into seconds
+
+long w_parse_time(const char * string) {
+    char * end;
+    long seconds = strtol(string, &end, 10);
+
+    if (seconds < 0 || (seconds == LONG_MAX && errno == ERANGE)) {
+        return -1;
+    }
+
+    switch (*end) {
+    case '\0':
+        break;
+    case 'd':
+        seconds *= 86400;
+        break;
+    case 'h':
+        seconds *= 3600;
+        break;
+    case 'm':
+        seconds *= 60;
+        break;
+    case 's':
+        break;
+    case 'w':
+        seconds *= 604800;
+        break;
+    default:
+        return -1;
+    }
+
+    return seconds >= 0 ? seconds : -1;
 }

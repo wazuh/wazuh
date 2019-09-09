@@ -2,7 +2,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * June 13, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -438,7 +438,6 @@ end:
 int restore_audit_policies() {
     char command[OS_SIZE_1024];
     int result_code;
-    char *output;
     snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_BACKUP_FILE);
 
     if (IsFile(WPOL_BACKUP_FILE)) {
@@ -446,8 +445,23 @@ int restore_audit_policies() {
         return 1;
     }
     // Get the current policies
-    if (wm_exec(command, &output, &result_code, 5, NULL), result_code) {
-        merror(FIM_ERROR_WHODATA_AUDITPOL, output);
+    char *cmd_output = NULL;
+    const int wm_exec_ret_code = wm_exec(command, &cmd_output, &result_code, 5, NULL);
+
+    if (wm_exec_ret_code < 0) {
+        merror(FIM_ERROR_WHODATA_AUDITPOL, "failed to execute command");
+        return 1;
+    }
+
+    if (wm_exec_ret_code == 1) {
+        merror(FIM_ERROR_WHODATA_AUDITPOL, "time overtaken while running the command");
+        os_free(cmd_output);
+        return 1;
+    }
+
+    if (!wm_exec_ret_code && result_code) {
+        mterror(FIM_ERROR_WHODATA_AUDITPOL, "command returned failure. Output: %s", cmd_output);
+        os_free(cmd_output);
         return 1;
     }
 
@@ -939,7 +953,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                     }
                 }
             } else {
-                minfo(FIM_WHODATA_DELETE, syscheck.dir[i]);
+                mdebug1(FIM_WHODATA_DELETE, syscheck.dir[i]);
                 d_status->status &= ~WD_STATUS_EXISTS;
                 d_status->object_type = WD_STATUS_UNK_TYPE;
             }
@@ -965,11 +979,10 @@ whodata_event_node *whodata_list_add(char *id) {
     }
     os_calloc(sizeof(whodata_event_node), 1, node);
     if (syscheck.w_clist.last) {
-        node->next = NULL;
         node->prev = syscheck.w_clist.last;
+        syscheck.w_clist.last->next = node;
         syscheck.w_clist.last = node;
     } else {
-        node->next = node->prev = NULL;
         syscheck.w_clist.last = syscheck.w_clist.first = node;
     }
     node->id = id;
@@ -991,23 +1004,19 @@ void whodata_list_remove_multiple(size_t quantity) {
 }
 
 void whodata_clist_remove(whodata_event_node *node) {
-    if (!(node->next || node->prev)) {
+    if (!node->next && !node->prev) { // Single node
         syscheck.w_clist.first = syscheck.w_clist.last = NULL;
-    } else {
+    } else { // Multiple nodes
         if (node->next) {
-            if (node->prev) {
-                node->next->prev = node->prev;
-            } else {
-                node->next->prev = NULL;
+            node->next->prev = node->prev;
+            if (!node->prev) {
                 syscheck.w_clist.first = node->next;
             }
         }
 
         if (node->prev) {
-            if (node->next) {
-                node->prev->next = node->next;
-            } else {
-                node->prev->next = NULL;
+            node->prev->next = node->next;
+            if (!node->next) {
                 syscheck.w_clist.last = node->prev;
             }
         }
@@ -1063,7 +1072,6 @@ void whodata_list_set_values() {
 }
 
 int set_policies() {
-    char *output = NULL;
     int result_code = 0;
     FILE *f_backup = NULL;
     FILE *f_new = NULL;
@@ -1081,13 +1089,11 @@ int set_policies() {
     snprintf(command, OS_SIZE_1024, WPOL_BACKUP_COMMAND, WPOL_BACKUP_FILE);
 
     // Get the current policies
-    if (wm_exec(command, &output, &result_code, 5, NULL), result_code) {
+    int wm_exec_ret_code = wm_exec(command, NULL, &result_code, 5, NULL);
+    if (wm_exec_ret_code || result_code) {
         retval = 2;
         goto end;
     }
-
-    free(output);
-    output = NULL;
 
     if (f_backup = fopen (WPOL_BACKUP_FILE, "r"), !f_backup) {
         merror(FIM_ERROR_WPOL_BACKUP_FILE_OPEN, WPOL_BACKUP_FILE, strerror(errno), errno);
@@ -1112,7 +1118,8 @@ int set_policies() {
     snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_NEW_FILE);
 
     // Set the new policies
-    if (wm_exec(command, &output, &result_code, 5, NULL), result_code) {
+    wm_exec_ret_code = wm_exec(command, NULL, &result_code, 5, NULL);
+    if (wm_exec_ret_code || result_code) {
         retval = 2;
         goto end;
     }
@@ -1120,7 +1127,6 @@ int set_policies() {
     retval = 0;
     restore_policies = 1;
 end:
-    free(output);
     if (f_backup) {
         fclose(f_backup);
     }
