@@ -263,6 +263,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
             /* Check the change */
             str_lowercase(final_path);
+            minfo("callback(%d)'%s'", FIM_REALTIME, final_path);
             fim_process_event(final_path, FIM_REALTIME, NULL);
         } while (pinfo->NextEntryOffset != 0);
     }
@@ -388,6 +389,7 @@ int realtime_adddir(const char *dir, int whodata)
     }
     else {
         os_calloc(1, sizeof(win32rtfim), rtlocald);
+        minfo("~~ add dirtb ->(%d) '%s'", whodata, wdchar);
 
         rtlocald->h = CreateFile(dir,
                                 FILE_LIST_DIRECTORY,

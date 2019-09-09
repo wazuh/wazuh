@@ -1076,8 +1076,8 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     cJSON *old_attributes = NULL;
     cJSON *audit = NULL;
     cJSON *object = NULL;
-    char *event_type = NULL;
     char *mode = NULL;
+    char *event_type = NULL;
     time_t event_time;
 
     object = cJSON_GetObjectItem(event, "path");
@@ -1107,8 +1107,12 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     }
 
     object = cJSON_GetObjectItem(event, "changed_attributes");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_CHFIELDS].value);
+    if (object && object->child) {
+        cJSON *item;
+
+        cJSON_ArrayForEach(item, object) {
+            wm_strcat(&lf->fields[FIM_CHFIELDS].value, item->valuestring, ',');
+        }
     }
 
     object = cJSON_GetObjectItem(event, "tags");

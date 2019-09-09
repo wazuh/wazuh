@@ -110,12 +110,7 @@ int fim_directory (char * path, int dir_position, whodata_evt * w_evt) {
 
     if (options & REALTIME_ACTIVE) {
         mode = FIM_REALTIME;
-#ifdef INOTIFY_ENABLED
         realtime_adddir(path, 0);
-#elif defined WIN32
-        realtime_adddir(path, dir_position + 1);
-#endif
-
     } else if (options & WHODATA_ACTIVE) {
         mode = FIM_WHODATA;
     } else {
@@ -765,48 +760,49 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
     cJSON * fim_attributes = NULL;
     cJSON * fim_old_attributes = NULL;
     cJSON * fim_audit = NULL;
+    cJSON * changed_attributes = NULL;
     char * tags = syscheck.tag[dir_position];
     char * diff = NULL;
-    char * changed_attributes = NULL;
     int report_alert = 0;
 
     fim_old_attributes = cJSON_CreateObject();
+    changed_attributes = cJSON_CreateArray();
     if ( (old_data->size != new_data->size) && (old_data->options & CHECK_SIZE) ) {
         cJSON_AddNumberToObject(fim_old_attributes, "size", old_data->size);
-        wm_strcat(&changed_attributes, "size", ',');
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
         report_alert = 1;
     }
 
     if ( (old_data->perm != new_data->perm) && (old_data->options & CHECK_PERM) ) {
         cJSON_AddNumberToObject(fim_old_attributes, "perm", old_data->perm);
-        wm_strcat(&changed_attributes, "permission", ',');
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
         report_alert = 1;
     }
 
     if ( (old_data->uid != new_data->uid) && (old_data->options & CHECK_OWNER) ) {
         cJSON_AddNumberToObject(fim_old_attributes, "uid", old_data->uid);
         cJSON_AddStringToObject(fim_old_attributes, "user_name", old_data->user_name);
-        wm_strcat(&changed_attributes, "uid", ',');
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
         report_alert = 1;
     }
 
     if ( (old_data->gid != new_data->gid) && (old_data->options & CHECK_GROUP) ) {
         cJSON_AddNumberToObject(fim_old_attributes, "gid", old_data->gid);
         cJSON_AddStringToObject(fim_old_attributes, "group_name", old_data->group_name);
-        wm_strcat(&changed_attributes, "gid", ',');
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("gid"));
         report_alert = 1;
     }
 
     if ( (old_data->mtime != new_data->mtime) && (old_data->options & CHECK_MTIME) ) {
         cJSON_AddNumberToObject(fim_old_attributes, "mtime", old_data->mtime);
-        wm_strcat(&changed_attributes, "mtime", ',');
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
         report_alert = 1;
     }
 
 #ifdef __linux__
     if ( (old_data->inode != new_data->inode) && (old_data->options & CHECK_INODE) ) {
         cJSON_AddNumberToObject(fim_old_attributes, "inode", old_data->inode);
-        wm_strcat(&changed_attributes, "inode", ',');
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
         report_alert = 1;
     }
 #endif
@@ -814,21 +810,21 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
     if ( (strcmp(old_data->hash_md5, new_data->hash_md5) != 0) &&
             (old_data->options & CHECK_MD5SUM) ) {
         cJSON_AddStringToObject(fim_old_attributes, "hash_md5", old_data->hash_md5);
-        wm_strcat(&changed_attributes, "md5", ',');
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("md5"));
         report_alert = 1;
     }
 
     if ( (strcmp(old_data->hash_sha1, new_data->hash_sha1) != 0) &&
             (old_data->options & CHECK_SHA1SUM) ) {
         cJSON_AddStringToObject(fim_old_attributes, "hash_sha1", old_data->hash_sha1);
-        wm_strcat(&changed_attributes, "sha1", ',');
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha1"));
         report_alert = 1;
     }
 
     if ( (strcmp(old_data->hash_sha256, new_data->hash_sha256) != 0) &&
             (old_data->options & CHECK_SHA256SUM) ) {
         cJSON_AddStringToObject(fim_old_attributes, "hash_sha256", old_data->hash_sha256);
-        wm_strcat(&changed_attributes, "sha256", ',');
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha256"));
         report_alert = 1;
     }
 
@@ -839,7 +835,7 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         cJSON_AddStringToObject(response, "mode", FIM_ALERT_MODE[mode]);
         cJSON_AddStringToObject(response, "type", FIM_ALERT[type]);
         cJSON_AddNumberToObject(response, "timestamp", new_data->last_event);
-        cJSON_AddStringToObject(response, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(response, "changed_attributes", changed_attributes);
         cJSON_AddStringToObject(response, "integrity", new_data->checksum);
         if (tags != NULL) {
             cJSON_AddStringToObject(response, "tags", tags);
@@ -900,6 +896,7 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
     } else {
         minfo("~~ File without changes: '%s'", file_name);
         cJSON_Delete(fim_old_attributes);
+        cJSON_Delete(changed_attributes);
     }
 
     return response;

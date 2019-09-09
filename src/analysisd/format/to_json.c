@@ -328,6 +328,19 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             }
         }
 
+        if (lf->fields[FIM_CHFIELDS].value && strcmp(lf->fields[FIM_CHFIELDS].value, "") != 0) {
+            cJSON *changed_attributes = cJSON_CreateArray();
+            cJSON_AddItemToObject(file_diff, "changed_attributes", changed_attributes);
+            char * changed;
+            char * aux_cha;
+            os_strdup(lf->fields[FIM_CHFIELDS].value, aux_cha);
+            changed = strtok_r(aux_cha, ",", &saveptr);
+            while (changed != NULL) {
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString(changed));
+                changed = strtok_r(NULL, ",", &saveptr);
+            }
+        }
+
         switch (lf->event_type) {
         case FIM_ADDED:
             cJSON_AddStringToObject(file_diff, "event", "added");
