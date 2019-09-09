@@ -25,7 +25,8 @@ typedef struct wm_control_t {
 
 wmodule *wm_control_read();
 char *getPrimaryIP();
-
+int looking_for_cfgfile(const char *buffer, char *filepath, size_t n);
+void msg_to_json(char * output, int peer);
 
 #endif
 #endif

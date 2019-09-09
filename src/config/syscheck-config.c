@@ -1425,7 +1425,8 @@ int Test_Syscheck(const char * path){
     int fail = 0;
     syscheck_config test_syscheck = { .tsleep = 0 };
 
-    if (ReadConfig(CAGENT_CONFIG | CSYSCHECK, path, &test_syscheck, NULL) < 0) {
+    // if (ReadConfig(CAGENT_CONFIG | CSYSCHECK, path, &test_syscheck, NULL) < 0) {
+    if (ReadConfig(CSYSCHECK, path, &test_syscheck, NULL) < 0) {
 		merror(RCONFIG_ERROR,"Syscheck", path);
 		fail = 1;
 	}

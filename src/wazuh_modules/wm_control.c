@@ -22,9 +22,9 @@ static void *wm_control_main();
 static void wm_control_destroy();
 cJSON *wm_control_dump(void);
 
-static int verify_manager_conf(const char * path);
-static int verify_agent_conf(const char * path, char *output);
-extern int Test_DBD(const char * path);
+static int verify_manager_conf(const char * path, char * output);
+static int verify_agent_conf(const char * path, char * output);
+// extern int Test_DBD(const char * path);
 
 const wm_context WM_CONTROL_CONTEXT = {
     "control",
@@ -145,7 +145,6 @@ char* getPrimaryIP(){
     return agent_ip;
 }
 
-
 void *wm_control_main(){
     int sock, peer;
     char *buffer = NULL, *output = NULL;
@@ -211,23 +210,34 @@ void *wm_control_main(){
                         OS_SendUnix(peer,"Err",4);
                     }
                 }
-                else if(strstr(buffer, "check-manager-configuration")) {
-                    minfo("Hey, Now I am able to check the manager config file!");
-                }
-                else if(strstr(buffer, "check-agent-configuration -f")) {
-                    char aux[PATH_MAX] = {0,};
-                    char file[PATH_MAX] = {0,};
-                    sscanf(buffer, "%*s%*s%s", aux);
-                    sprintf(file, "%s/%s", DEFAULTDIR, aux);
-                    minfo("YOUR FILE :%s", file);
-                    minfo("Looking for the file provided...");
-                    char *output_msg = NULL;
-                    if(access(file, F_OK) == 0) {
-                        minfo("Checking your agent configuration file...");
-                        verify_agent_conf(file, output_msg);
+                else if(strstr(buffer, "check-manager-configuration -f")) {
+                    char filepath[PATH_MAX] = {0,};
+                    char msg[OS_MAXSTR] = {0,};
+                    if(looking_for_cfgfile(buffer, filepath, sizeof(filepath))) {
+                        if(verify_manager_conf(filepath, msg) > 0) {
+                            msg_to_json("ok", peer);
+                        }
+                        else {
+                            msg_to_json(msg, peer);
+                        }
                     }
                     else {
-                        mterror(WM_CONTROL_LOGTAG, "The file provided does not exist");
+                        mterror(WM_CONTROL_LOGTAG, "\nThe file provided could not be found\n");
+                    }
+                }
+                else if(strstr(buffer, "check-agent-configuration -f")) {
+                    char filepath[PATH_MAX] = {0,};
+                    char msg[OS_MAXSTR] = {0,};
+                    if(looking_for_cfgfile(buffer, filepath, sizeof(filepath))) {
+                        if(verify_agent_conf(filepath, msg) > 0) {
+                            msg_to_json("ok", peer);
+                        }
+                        else {
+                            msg_to_json(msg, peer);
+                        }
+                    }
+                    else {
+                        mterror(WM_CONTROL_LOGTAG, "\nThe file provided could not be found\n");
                     }
                 }
                 else {
@@ -239,6 +249,7 @@ void *wm_control_main(){
                 break;
         }
         free(buffer);
+        buffer = NULL;
     }
 
 
@@ -265,7 +276,8 @@ cJSON *wm_control_dump(void) {
     return root;
 }
 
-int verify_manager_conf(const char * path) {
+int verify_manager_conf(const char * path, char * output) {
+
     if(Test_Authd(path) < 0) {
         return -1;
     }
@@ -309,9 +321,9 @@ int verify_manager_conf(const char * path) {
     return 0;
 }
 
-int verify_agent_conf(const char * path, char *output) {
+int verify_agent_conf(const char * path, char * output) {
     /*
-     * Get ready for achieving a output message
+     * Get ready for retrieving a output message
      * which will be sent to api_sock
      *
      * Similar to : wm_exec fuction in wm_exec.c
@@ -322,29 +334,100 @@ int verify_agent_conf(const char * path, char *output) {
      *
      */
 
-
     if (Test_Syscheck(path) < 0) {
         return -1;
-    } else if (Test_Rootcheck(path) < 0) {
+    } 
+    else if (Test_Rootcheck(path) < 0) {
         return -1;
-    } else if (Test_Localfile(path) < 0) {          // Test Localfile and Socket
-        return -1;
-    } else if (Test_Client(path) < 0) {
-        return -1;
-    } else if (Test_ClientBuffer(path) < 0) {
-        return -1;
-    } else if (Test_WModule(path) < 0) {            // Test WModules, SCA and FluentForwarder
-        return -1;
-    } else if (Test_Labels(path) < 0) {
-        return -1;
-    } else if (Test_ActiveResponse(path) < 0) {
+    } 
+    else if (Test_Localfile(path) < 0) {          // Test Localfile and Socket
         return -1;
     }
-
+    else if (Test_Client(path) < 0) {
+        return -1;
+    } 
+    else if (Test_ClientBuffer(path) < 0) {
+        return -1;
+    }
+    else if (Test_WModule(path) < 0) {            // Test WModules, SCA and FluentForwarder
+        return -1;
+    }
+    else if (Test_Labels(path) < 0) {
+        return -1;
+    }
+    else if (Test_ActiveResponse(path) < 0) {
+        return -1;
+    }
 
     return 0;
 }
 
+int looking_for_cfgfile(const char *buffer, char *filepath, size_t n) {
+    char aux[PATH_MAX] = {0,};
+    char file[PATH_MAX] = {0,};
+    sscanf(buffer, "%*s%*s%s", aux);
+    sprintf(file, "%s/%s", DEFAULTDIR, aux);
+    minfo("\nFile to be checked :%s\n", file);
 
+    if(access(file, F_OK) == 0) {
+        strncpy(filepath, file, n-1);
+        filepath[n-1] = '\0';
+        return 1;
+    }
+
+    return 0;
+}
+
+void msg_to_json(char * output, int peer) {
+    cJSON *result_obj = cJSON_CreateObject();
+
+    char *json_output = NULL;
+    char error_msg[OS_SIZE_4096 - 27] = {0};
+    snprintf(error_msg, OS_SIZE_4096 - 27, "%s", output);
+
+    if(strcmp(output, "ok") == 0) {
+        cJSON_AddNumberToObject(result_obj, "error", 0);
+        cJSON_AddStringToObject(result_obj, "message", "ok");
+    }
+    else {
+        cJSON_AddNumberToObject(result_obj, "error", 1);
+        cJSON_AddStringToObject(result_obj, "message", error_msg);
+    }
+
+    os_free(json_output);
+    json_output = cJSON_PrintUnformatted(result_obj);
+
+    cJSON_Delete(result_obj);
+    mdebug1("Sending configuration check: %s", json_output);
+
+    /* Start api socket */
+    // int rc, api_sock;
+    // if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE)) < 0) {
+    //     merror(QUEUE_ERROR, EXECQUEUEPATHAPI, strerror(errno));
+    //     os_free(json_output);
+    //     continue;
+    // }
+
+    // if ((rc = OS_SendUnix(api_sock, json_output, 0)) < 0) {
+    //     /* Error on the socket */
+    //     if (rc == OS_SOCKTERR) {
+    //         merror("socketerr (not available).");
+    //         os_free(json_output);
+    //         close(api_sock);
+    //         continue;
+    //     }
+
+    //     /* Unable to send. Socket busy */
+    //     mdebug2("Socket busy, discarding message.");
+    // }
+    // close(api_sock);
+
+    minfo("JSON OUTPUT:\n\n%s\n\n", json_output);
+    if(OS_SendUnix(peer, json_output, 0) < 0) {
+        merror("Control socket not available!");
+    }
+
+    os_free(json_output);
+}
 
 #endif

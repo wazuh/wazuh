@@ -15,6 +15,7 @@
 #include "syscheckd/syscheck.h"
 #include "rootcheck/rootcheck.h"
 #include "os_net/os_net.h"
+#include "config/config.h"
 
 
 char **wcom_ca_store;
