@@ -64,18 +64,14 @@ int wdb_param_parse(char *input, struct opt_param *s){
         if (strcmp(offset, "offset") == 0) {
             n = next;
 
-            if (next = wstr_chr(n, ']'), !next) {
+            if (next = wstr_chr(n, ' '), !next) {
                 mdebug1("Invalid parameter 'offset' syntax.");
                 mdebug2("offset parameter error near: %s", n);
                 merror("err Invalid parameter 'offset' parse syntax, near '%.32s'", input);
                 return -1;
             }
 
-            if (offset_n = strtol(n, &next, 10), *next) {
-                mdebug1("Invalid offset number '%s'", n);
-                merror("err Invalid parameter 'offset' parse syntax, near '%.32s'", input);
-                return -1;
-            }
+            offset_n = strtol(n, &next, 10);
             s->offset = offset_n;
             result = 0;
         } else {
@@ -113,8 +109,6 @@ int wdb_parse(char * input, char * output) {
             mdebug1("Invalid parameters parse syntax: %s", input);
             mdebug2("DB query: %s", input);
             return -1; 
-        } else {
-            mdebug1("Parameters parsered correctly");
         }
         while (*input != ']'){
             input++;
