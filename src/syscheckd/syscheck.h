@@ -219,5 +219,7 @@ int fim_delete_hashes(char *file_name);
 
 void fim_sync_checksum();
 void fim_sync_checksum_split(const char * start, const char * top);
+void fim_sync_send_list(const char * start, const char * top);
+void fim_sync_dispatch(char * payload);
 
 #endif

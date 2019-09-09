@@ -152,7 +152,7 @@
 #define FIM_AUDIT_HEALTHCHECK_START         "(6279): Whodata health-check: Starting..."
 #define FIM_AUDIT_HEALTHCHECK_FILE          "(6280): Couldn't create audit health check file."
 
-#define FIM_SYSCOM_ARGUMENTS                "(6281): SYSCOM getconfig needs arguments."
+#define FIM_SYSCOM_ARGUMENTS                "(6281): SYSCOM %s needs arguments."
 #define FIM_SYSCOM_UNRECOGNIZED_COMMAND     "(6282): SYSCOM Unrecognized command '%s'."
 #define FIM_SYSCOM_FAIL_GETCONFIG           "(6283): At SYSCOM getconfig: Could not get '%s' section"
 #define FIM_SYSCOM_REQUEST_READY            "(6284): Local requests thread ready."
@@ -186,5 +186,12 @@
 #define FIM_CHECKSUM_MSG                    "(6310): Sending msg to the server: '%s'."
 #define FIM_PATH_EXEED_MAX                  "(6311): The path exeed maximum permited (%d): '%s'."
 #define FIM_PROCESS_PRIORITY                    "(6201): Setting process priority to: '%d'"
+
+#define FIM_DBSYNC_NO_ARGUMENT              "(6312): Data synchronization command '%s' with no argument."
+#define FIM_DBSYNC_UNKNOWN_CMD              "(6313): Unknown data synchronization command: %s."
+#define FIM_DBSYNC_INVALID_ARGUMENT         "(6314): Invalid data synchronization argument: %s."
+#define FIM_DBSYNC_DEC_ID                   "(6315): Setting global ID back to lower message ID (%ld)."
+#define FIM_DBSYNC_DROP_MESSAGE             "(6316): Dropping message with id (%ld) greater than global id (%ld)."
+#define FIM_DBSYNC_SEND_FILE                "(6317): Sending file entry '%s'."
 
 #endif
