@@ -105,10 +105,13 @@ void start_daemon()
         /* At least once a week */
         syscheck.time = 604800;
     }
+
     char *diff_dir;
+
     os_calloc(PATH_MAX, sizeof(char), diff_dir);
     snprintf(diff_dir, PATH_MAX, "%s/local/", DIFF_DIR_PATH);
-    minfo("deleting contento of '%s'", diff_dir);
+
+    minfo("~~ Deleting content of '%s'", diff_dir);
     cldir_ex(diff_dir);
 
     if (!syscheck.disabled) {
@@ -228,11 +231,6 @@ void start_daemon()
 void * fim_run_realtime(__attribute__((unused)) void * args) {
 
 #if defined INOTIFY_ENABLED || defined WIN32
-    minfo("Real-time start");
-#else
-    mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
-    pthread_exit(NULL);
-#endif
 
 #ifdef WIN32
     set_priority_windows_thread();
@@ -275,6 +273,12 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 #endif
         }
     }
+
+#else
+    mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
+    pthread_exit(NULL);
+#endif
+
 }
 
 
@@ -300,11 +304,6 @@ void set_priority_windows_thread() {
 int fim_whodata_initialize() {
     int i = 0;
 #if defined INOTIFY_ENABLED || defined WIN32
-    minfo("Real-time start");
-#else
-    mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
-    pthread_exit(NULL);
-#endif
 
 #ifdef WIN32
     set_priority_windows_thread();
@@ -329,6 +328,11 @@ int fim_whodata_initialize() {
     }
 #elif ENABLE_AUDIT
     audit_set_db_consistency();
+#endif
+
+#else
+    mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
+    pthread_exit(NULL);
 #endif
 
     return 0;

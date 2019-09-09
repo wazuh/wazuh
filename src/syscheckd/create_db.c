@@ -113,7 +113,7 @@ int fim_directory (char * path, int dir_position, whodata_evt * w_evt) {
 #ifdef INOTIFY_ENABLED
         realtime_adddir(path, 0);
 #elif defined WIN32
-        realtime_adddir(path, i + 1);
+        realtime_adddir(path, dir_position + 1);
 #endif
 
     } else if (options & WHODATA_ACTIVE) {
@@ -724,8 +724,8 @@ cJSON * fim_json_alert(char * file_name, fim_entry_data * data, int dir_position
 
     cJSON_AddStringToObject(response, "path", file_name);
     cJSON_AddStringToObject(response, "mode", FIM_ALERT_MODE[mode]);
-    cJSON_AddStringToObject(response, "event_type", FIM_ALERT[type]);
-    cJSON_AddNumberToObject(response, "event_time", data->last_event);
+    cJSON_AddStringToObject(response, "type", FIM_ALERT[type]);
+    cJSON_AddNumberToObject(response, "timestamp", data->last_event);
     if (tags != NULL) {
         cJSON_AddStringToObject(response, "tags", tags);
     }
@@ -872,8 +872,8 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
 
         cJSON_AddStringToObject(response, "path", file_name);
         cJSON_AddStringToObject(response, "mode", FIM_ALERT_MODE[mode]);
-        cJSON_AddStringToObject(response, "event_type", FIM_ALERT[type]);
-        cJSON_AddNumberToObject(response, "event_time", new_data->last_event);
+        cJSON_AddStringToObject(response, "type", FIM_ALERT[type]);
+        cJSON_AddNumberToObject(response, "timestamp", new_data->last_event);
         cJSON_AddStringToObject(response, "changed_attributes", changed_attributes);
         if (tags != NULL) {
             cJSON_AddStringToObject(response, "tags", tags);

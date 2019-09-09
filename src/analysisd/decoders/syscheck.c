@@ -47,7 +47,8 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb);
 static int fim_process_alert(Eventinfo *lf, cJSON * event);
 
 // Generate fim alert
-static int fim_generate_alert(Eventinfo *lf, char *path, char *mode, char *event_type, time_t event_time, char *changed_attributes, char *tags, char *content_changes, cJSON * attributes, cJSON * old_attributes, cJSON * audit, cJSON * extra_data);
+static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
+        time_t event_time, cJSON *attributes, cJSON *old_attributes, cJSON *audit);
 
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -82,13 +83,16 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[FIM_GID] = "gid";
     fim_decoder->fields[FIM_MD5] = "md5";
     fim_decoder->fields[FIM_SHA1] = "sha1";
-    fim_decoder->fields[FIM_SHA256] = "sha256";
-    fim_decoder->fields[FIM_ATTRS] = "attributes";
     fim_decoder->fields[FIM_UNAME] = "uname";
     fim_decoder->fields[FIM_GNAME] = "gname";
-    fim_decoder->fields[FIM_INODE] = "inode";
     fim_decoder->fields[FIM_MTIME] = "mtime";
+    fim_decoder->fields[FIM_INODE] = "inode";
+    fim_decoder->fields[FIM_SHA256] = "sha256";
+    fim_decoder->fields[FIM_DIFF] = "changed_content";
+    fim_decoder->fields[FIM_ATTRS] = "win_attributes";
     fim_decoder->fields[FIM_CHFIELDS] = "changed_fields";
+    fim_decoder->fields[FIM_TAG] = "tag";
+    fim_decoder->fields[FIM_SYM_PATH] = "symbolic_path";
 
     fim_decoder->fields[FIM_USER_ID] = "user_id";
     fim_decoder->fields[FIM_USER_NAME] = "user_name";
@@ -101,8 +105,6 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[FIM_EFFECTIVE_NAME] = "effective_name";
     fim_decoder->fields[FIM_PPID] = "ppid";
     fim_decoder->fields[FIM_PROC_ID] = "process_id";
-    fim_decoder->fields[FIM_TAG] = "tag";
-    fim_decoder->fields[FIM_SYM_PATH] = "symbolic_path";
 }
 
 // Initialize the necessary information to process the syscheck information
@@ -224,7 +226,8 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     lf->data = strchr(f_name, '\n');
     if (lf->data) {
         *(lf->data++) = '\0';
-        os_strdup(lf->data, lf->data);
+        os_strdup(lf->data, lf->diff);
+        os_strdup(lf->data, lf->fields[FIM_DIFF].value);
     }
 
     // Checksum is at the beginning of the log
@@ -551,7 +554,6 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
 
 int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb) {
     int changes = 0;
-    int comment_buf = 0;
     char msg_type[OS_FLSIZE];
 
     switch (lf->event_type) {
@@ -761,15 +763,9 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     }
 
     // Provide information about the file
-    comment_buf = snprintf(localsdb->comment, OS_MAXSTR, "File"
+    snprintf(localsdb->comment, OS_MAXSTR, "File"
             " '%.756s' "
             "%s\n"
-            "%s"
-            "%s"
-            "%s"
-            "%s"
-            "%s"
-            "%s"
             "%s"
             "%s"
             "%s"
@@ -793,26 +789,13 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             localsdb->sha256,
             localsdb->attrs,
             localsdb->mtime,
-            localsdb->inode,
-            localsdb->user_name,
-            localsdb->audit_name,
-            localsdb->effective_name,
-            localsdb->group_name,
-            localsdb->process_id,
-            localsdb->process_name
+            localsdb->inode
     );
     if(!changes) {
         os_free(lf->data);
         return(-1);
     } else {
         wm_strcat(&lf->fields[FIM_CHFIELDS].value, ",", '\0');
-    }
-
-    if(lf->data) {
-        snprintf(localsdb->comment+comment_buf, OS_MAXSTR-comment_buf, "%s",
-                lf->data);
-        lf->diff = lf->data;
-        lf->data = NULL;
     }
 
     // Create a new log message
@@ -1171,23 +1154,19 @@ int decode_fim_event(Eventinfo *lf) {
 }
 
 
-static int fim_process_alert(Eventinfo *lf, cJSON * event) {
+static int fim_process_alert(Eventinfo *lf, cJSON *event) {
     cJSON *attributes = NULL;
     cJSON *old_attributes = NULL;
     cJSON *audit = NULL;
-    cJSON *extra_data = NULL;
     cJSON *object = NULL;
-    char *path = NULL;
     char *event_type = NULL;
     char *mode = NULL;
     time_t event_time;
-    char *changed_attributes = NULL;
-    char *tags = NULL;
-    char *content_changes = NULL;
 
     object = cJSON_GetObjectItem(event, "path");
     if (object && object->valuestring) {
-        path = object->valuestring;
+        os_strdup(object->valuestring, lf->filename);
+        os_strdup(object->valuestring, lf->fields[FIM_FILE].value);
     }
 
     object = cJSON_GetObjectItem(event, "mode");
@@ -1195,54 +1174,69 @@ static int fim_process_alert(Eventinfo *lf, cJSON * event) {
         mode = object->valuestring;
     }
 
-    object = cJSON_GetObjectItem(event, "event_type");
+    object = cJSON_GetObjectItem(event, "type");
     if (object && object->valuestring) {
         event_type = object->valuestring;
     }
 
-    object = cJSON_GetObjectItem(event, "event_time");
+    object = cJSON_GetObjectItem(event, "timestamp");
     if (object) {
         event_time = object->valueint;
     }
 
+    object = cJSON_GetObjectItem(event, "symbolic_path");
+    if (object && object->valuestring) {
+        os_strdup(object->valuestring, lf->fields[FIM_SYM_PATH].value);
+    }
+
     object = cJSON_GetObjectItem(event, "changed_attributes");
     if (object && object->valuestring) {
-        changed_attributes = object->valuestring;
+        os_strdup(object->valuestring, lf->fields[FIM_CHFIELDS].value);
     }
 
     object = cJSON_GetObjectItem(event, "tags");
     if (object && object->valuestring) {
-        tags = object->valuestring;
+        os_strdup(object->valuestring, lf->fields[FIM_TAG].value);
+        os_strdup(object->valuestring, lf->sk_tag);
     }
 
     object = cJSON_GetObjectItem(event, "content_changes");
     if (object && object->valuestring) {
-        content_changes = object->valuestring;
+        os_strdup(object->valuestring, lf->fields[FIM_DIFF].value);
     }
 
     attributes = cJSON_GetObjectItem(event, "attributes");
     old_attributes = cJSON_GetObjectItem(event, "old_attributes");
     audit = cJSON_GetObjectItem(event, "audit");
-    extra_data = cJSON_GetObjectItem(event, "extra_data");
 
-    fim_generate_alert(lf, path, mode, event_type, event_time, changed_attributes, tags, content_changes, attributes, old_attributes, audit, extra_data);
+    fim_generate_alert(lf, mode, event_type, event_time, attributes, old_attributes, audit);
 
     return 0;
 }
 
 
-static int fim_generate_alert(Eventinfo *lf, char *path, char *mode, char *event_type, time_t event_time, char *changed_attributes, char *tags, char *content_changes, cJSON * attributes, cJSON * old_attributes, cJSON * audit, cJSON * extra_data) {
+static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
+        time_t event_time, cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
+
     cJSON *object = NULL;
+    char change_size[OS_FLSIZE + 1] = {'\0'};
+    char change_perm[OS_SIZE_20480 + 1] = {'\0'};
+    char change_owner[OS_FLSIZE + 1] = {'\0'};
+    char change_gowner[OS_FLSIZE + 1] = {'\0'};
+    char change_md5[OS_FLSIZE + 1] = {'\0'};
+    char change_sha1[OS_FLSIZE + 1] = {'\0'};
+    char change_sha256[OS_FLSIZE + 1] = {'\0'};
+    char change_mtime[OS_FLSIZE + 1] = {'\0'};
+    char change_inode[OS_FLSIZE + 1] = {'\0'};
+    char change_win_attributes[OS_SIZE_256 + 1] = {'\0'};
+    char *new_perm = NULL;
+    char *old_perm = NULL;
     int db_result = 0;
     int it;
-
-    os_strdup(path, lf->filename);
-    os_strdup(path, lf->fields[FIM_FILE].value);
 
     /* Dynamic Fields */
     lf->nfields = FIM_NFIELDS;
     for (it = 0; it < FIM_NFIELDS; it++) {
-        minfo("os_strdup: %s  %s", lf->decoder_info->fields[it], lf->fields[it].key);
         os_strdup(lf->decoder_info->fields[it], lf->fields[it].key);
     }
 
@@ -1250,110 +1244,168 @@ static int fim_generate_alert(Eventinfo *lf, char *path, char *mode, char *event
     if (object) {
         os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_SIZE].value);
         snprintf(lf->fields[FIM_SIZE].value, OS_SIZE_16, "%d", object->valueint);
+        os_strdup(lf->fields[FIM_SIZE].value, lf->size_after);
     }
 
     object = cJSON_GetObjectItem(old_attributes, "size");
     if (object) {
-        os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_SIZE].value);
-        snprintf(lf->fields[FIM_SIZE].value, OS_SIZE_16, "%d", object->valueint);
+        os_calloc(OS_SIZE_16, sizeof(char), lf->size_before);
+        snprintf(lf->size_before, OS_SIZE_16, "%d", object->valueint);
+        snprintf(change_size, OS_FLSIZE + 1, "Size changed from '%s' to '%s'\n",
+                lf->size_before, lf->size_after);
     }
 
     object = cJSON_GetObjectItem(attributes, "perm");
     if (object) {
-        os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_PERM].value);
-        snprintf(lf->fields[FIM_PERM].value, OS_SIZE_16, "%d", object->valueint);
+        new_perm = agent_file_perm(object->valueint);
+        lf->perm_after = object->valueint;
+        if (new_perm) {
+            os_calloc(strlen(new_perm), sizeof(char), lf->fields[FIM_PERM].value);
+            snprintf(lf->fields[FIM_PERM].value, strlen(new_perm), "%9.9s", new_perm);
+        }
     }
+
     object = cJSON_GetObjectItem(old_attributes, "perm");
     if (object) {
-        os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_PERM].value);
-        snprintf(lf->fields[FIM_PERM].value, OS_SIZE_16, "%d", object->valueint);
+        old_perm = agent_file_perm(object->valueint);
+        lf->perm_before = object->valueint;
+        if (old_perm) {
+            os_calloc(strlen(old_perm), sizeof(char), lf->fields[FIM_PERM].value);
+        }
+        snprintf(change_perm, OS_SIZE_20480 + 1, "Permissions changed from "
+                "'%9.9s' to '%9.9s'\n", old_perm ? old_perm : "", new_perm ? new_perm : "");
     }
 
     object = cJSON_GetObjectItem(attributes, "uid");
     if (object) {
         os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_UID].value);
         snprintf(lf->fields[FIM_UID].value, OS_SIZE_16, "%d", object->valueint);
+        os_strdup(lf->fields[FIM_UID].value, lf->owner_after);
     }
+
     object = cJSON_GetObjectItem(old_attributes, "uid");
     if (object) {
-        os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_UID].value);
-        snprintf(lf->fields[FIM_UID].value, OS_SIZE_16, "%d", object->valueint);
+        os_calloc(OS_SIZE_16, sizeof(char), lf->owner_before);
+        snprintf(lf->owner_before, OS_SIZE_16, "%d", object->valueint);
     }
+
     object = cJSON_GetObjectItem(attributes, "user_name");
     if (object && object->valuestring) {
         os_strdup(object->valuestring, lf->fields[FIM_UNAME].value);
+        os_strdup(object->valuestring, lf->uname_after);
     }
+
     object = cJSON_GetObjectItem(old_attributes, "user_name");
     if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_UNAME].value);
+        os_strdup(object->valuestring, lf->uname_before);
+        snprintf(change_owner, OS_FLSIZE + 1, "Ownership was '%s (%s)', now it is '%s (%s)'\n",
+                lf->uname_before, lf->owner_before, lf->uname_after, lf->owner_after);
     }
 
     object = cJSON_GetObjectItem(attributes, "gid");
     if (object) {
         os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_GID].value);
         snprintf(lf->fields[FIM_GID].value, OS_SIZE_16, "%d", object->valueint);
+        os_strdup(lf->fields[FIM_GID].value, lf->gowner_after);
     }
+
     object = cJSON_GetObjectItem(old_attributes, "gid");
     if (object) {
-        os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_GID].value);
-        snprintf(lf->fields[FIM_GID].value, OS_SIZE_16, "%d", object->valueint);
+        os_calloc(OS_SIZE_16, sizeof(char), lf->gowner_before);
+        snprintf(lf->gowner_before, OS_SIZE_16, "%d", object->valueint);
     }
+
     object = cJSON_GetObjectItem(attributes, "group_name");
     if (object && object->valuestring) {
         os_strdup(object->valuestring, lf->fields[FIM_GNAME].value);
+        os_strdup(object->valuestring, lf->gname_after);
     }
+
     object = cJSON_GetObjectItem(old_attributes, "group_name");
     if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_GNAME].value);
+        os_strdup(object->valuestring, lf->gname_before);
+        snprintf(change_gowner, OS_FLSIZE + 1, "Group ownership was '%s (%s)', now it is '%s (%s)'\n",
+                lf->gname_before, lf->gowner_before, lf->gname_after, lf->gowner_after);
+    }
+
+    object = cJSON_GetObjectItem(attributes, "hash_md5");
+    if (object && object->valuestring) {
+        os_strdup(object->valuestring, lf->fields[FIM_MD5].value);
+        os_strdup(object->valuestring, lf->md5_after);
+    }
+
+    object = cJSON_GetObjectItem(old_attributes, "hash_md5");
+    if (object && object->valuestring) {
+        os_strdup(object->valuestring, lf->md5_before);
+        snprintf(change_md5, OS_FLSIZE + 1, "Old md5sum was: '%s'\nNew md5sum is : '%s'\n",
+                lf->md5_before, lf->md5_after);
+    }
+
+    object = cJSON_GetObjectItem(attributes, "hash_sha1");
+    if (object && object->valuestring) {
+        os_strdup(object->valuestring, lf->fields[FIM_SHA1].value);
+        os_strdup(object->valuestring, lf->sha1_after);
+    }
+
+    object = cJSON_GetObjectItem(old_attributes, "hash_sha1");
+    if (object && object->valuestring) {
+        os_strdup(object->valuestring, lf->sha1_before);
+        snprintf(change_sha1, OS_FLSIZE + 1, "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n",
+                lf->sha1_before, lf->sha1_after);
+    }
+
+    object = cJSON_GetObjectItem(attributes, "hash_sha256");
+    if (object && object->valuestring) {
+        os_strdup(object->valuestring, lf->fields[FIM_SHA256].value);
+        os_strdup(object->valuestring, lf->sha256_after);
+    }
+
+    object = cJSON_GetObjectItem(old_attributes, "hash_sha256");
+    if (object && object->valuestring) {
+        os_strdup(object->valuestring, lf->sha256_before);
+        snprintf(change_sha256, OS_FLSIZE + 1, "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n",
+                lf->sha256_before, lf->sha256_after);
     }
 
     object = cJSON_GetObjectItem(attributes, "mtime");
     if (object) {
         os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_MTIME].value);
         snprintf(lf->fields[FIM_MTIME].value, OS_SIZE_16, "%d", object->valueint);
+        lf->mtime_after = object->valueint;
     }
+
     object = cJSON_GetObjectItem(old_attributes, "mtime");
     if (object) {
-        os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_MTIME].value);
-        snprintf(lf->fields[FIM_MTIME].value, OS_SIZE_16, "%d", object->valueint);
+        lf->mtime_before = object->valueint;
+        snprintf(change_mtime, OS_FLSIZE, "Old modification time was: '%ld', now it is '%ld'\n",
+                lf->mtime_before, lf->mtime_after);
     }
 
     object = cJSON_GetObjectItem(attributes, "inode");
     if (object) {
         os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_INODE].value);
-        snprintf(lf->fields[FIM_INODE].value, OS_SIZE_16, "%d", object->valueint);
+        snprintf(lf->fields[FIM_INODE].value, OS_SIZE_16, "%f", object->valuedouble);
+        lf->inode_after = object->valuedouble;
     }
     object = cJSON_GetObjectItem(old_attributes, "inode");
     if (object) {
-        os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_INODE].value);
-        snprintf(lf->fields[FIM_INODE].value, OS_SIZE_16, "%d", object->valueint);
+        lf->inode_before = object->valuedouble;
+        snprintf(change_inode, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n",
+                lf->inode_before, lf->inode_after);
     }
 
-    object = cJSON_GetObjectItem(attributes, "hash_md5");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_MD5].value);
-    }
-    object = cJSON_GetObjectItem(old_attributes, "hash_md5");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_MD5].value);
+    object = cJSON_GetObjectItem(attributes, "win_attributes");
+    if (object) {
+        os_calloc(OS_SIZE_256 + 1, sizeof(char), lf->win_perm_after);
+        decode_win_attributes(lf->win_perm_after, object->valueint);
     }
 
-    object = cJSON_GetObjectItem(attributes, "hash_sha1");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_SHA1].value);
-    }
-    object = cJSON_GetObjectItem(old_attributes, "hash_sha1");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_SHA1].value);
-    }
-
-    object = cJSON_GetObjectItem(attributes, "hash_sha256");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_SHA256].value);
-    }
-    object = cJSON_GetObjectItem(old_attributes, "hash_sha256");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_SHA256].value);
+    object = cJSON_GetObjectItem(old_attributes, "win_attributes");
+    if (object) {
+        os_calloc(OS_SIZE_256 + 1, sizeof(char), lf->win_perm_before);
+        decode_win_attributes(lf->win_perm_before, object->valueint);
+        snprintf(change_win_attributes, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n",
+                lf->win_perm_before, lf->win_perm_after);
     }
 
     if(audit) {
@@ -1388,38 +1440,31 @@ static int fim_generate_alert(Eventinfo *lf, char *path, char *mode, char *event
         }
     }
 
-    if(extra_data) {
-        object = cJSON_GetObjectItem(extra_data, "changed_attributes");
-        if (object && object->valuestring) {
-            os_strdup(object->valuestring, lf->fields[FIM_CHFIELDS].value);
-        }
-
-        object = cJSON_GetObjectItem(extra_data, "tags");
-        if (object && object->valuestring) {
-            os_strdup(object->valuestring, lf->fields[FIM_TAG].value);
-        }
-
-        object = cJSON_GetObjectItem(extra_data, "diff");
-        if (object && object->valuestring) {
-            os_strdup(object->valuestring, lf->data);
-        }
-    }
-
     // TODO: format comment
     // Provide information about the file
-    char str_time[20];
-    strftime(str_time, 20, "%Y-%m-%d %H:%M:%S", localtime(&event_time));
+    char str_time[DATE_LENGTH];
+    strftime(str_time, sizeof(str_time), "%D %T", localtime(&event_time));
     snprintf(lf->full_log, OS_MAXSTR,
             "File '%.756s' %s\n"
-            "Event %s, %s"
-            "Previous attributes: %s\n"
-            "%s\n"
-            "%s\n",
-            path, event_type,
-            mode, str_time,
-            changed_attributes,
-            tags,
-            content_changes
+            "Mode:  %s\n"
+            "Event time: %s\n"
+            "Changed attributes: %s\n"
+            "%s%s%s%s%s%s%s%s%s%s\n",
+            lf->fields[FIM_FILE].value, event_type,
+            mode,
+            str_time,
+            lf->fields[FIM_CHFIELDS].value,
+            change_size,
+            change_perm,
+            change_owner,
+            change_gowner,
+            change_md5,
+            change_sha1,
+            change_sha256,
+            change_mtime,
+            change_inode,
+            change_win_attributes
+            //lf->fields[FIM_SYM_PATH].value
     );
 
     char *wdb_query = NULL;
@@ -1427,23 +1472,23 @@ static int fim_generate_alert(Eventinfo *lf, char *path, char *mode, char *event
 
     os_calloc(OS_SIZE_6144, sizeof(char), wdb_query);
     snprintf(wdb_query, OS_SIZE_6144, "agent %s syscheck save file "
-            "%s:%d:%s:%s:%s:%s:%lu:%lu:%s:%s:%s!0:%ld: %s",
+            "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s!0:%ld:%s: %s",
             lf->agent_id,
             //ttype,
-            lf->size_after,
-            lf->perm_after,
-            lf->owner_after,
-            lf->gowner_after,
-            lf->uname_after,
-            lf->gname_after,
-            lf->mtime_after,
-            lf->inode_after,
-            lf->md5_after,
-            lf->sha1_after,
-            lf->sha256_after,
+            lf->fields[FIM_SIZE].value,
+            lf->fields[FIM_PERM].value,
+            lf->fields[FIM_UID].value,
+            lf->fields[FIM_GID].value,
+            lf->fields[FIM_UNAME].value,
+            lf->fields[FIM_GNAME].value,
+            lf->fields[FIM_MTIME].value,
+            lf->fields[FIM_INODE].value,
+            lf->fields[FIM_MD5].value,
+            lf->fields[FIM_SHA1].value,
+            lf->fields[FIM_SHA256].value,
             lf->time.tv_sec,
-            //sym_path ? sym_path : "",
-            path
+            lf->fields[FIM_SYM_PATH].value ? lf->fields[FIM_SYM_PATH].value : "",
+            lf->filename
     );
 
     db_result = wdb_send_query(wdb_query, &response);
