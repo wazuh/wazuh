@@ -226,12 +226,6 @@ void *receiver_thread(__attribute__((unused)) void *none)
                     /* No error */
                     os_md5 currently_md5;
 
-                    /* Close for the rename to work */
-                    if (fp) {
-                        fclose(fp);
-                        fp = NULL;
-                    }
-
                     if (file[0] == '\0') {
                         /* Nothing to be done */
                     }

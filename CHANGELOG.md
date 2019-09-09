@@ -3,17 +3,65 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.10.0]
 
+### Added
+
+- Add framework function to obtain full summary of agents. ([#3842](https://github.com/wazuh/wazuh/pull/3842))
+- SCA improvements. ([#3286](https://github.com/wazuh/wazuh/pull/3286))
+  - Refactor de SCA internal logic and policy syntax. ([#3249](https://github.com/wazuh/wazuh/issues/3249))
+  - Support to follow symbolic links. ([#3228](https://github.com/wazuh/wazuh/issues/3228))
+  - Add numerical comparator for SCA rules. ([#3374](https://github.com/wazuh/wazuh/issues/3374))
+  - Add SCA decoded events count to global stats. ([#3623](https://github.com/wazuh/wazuh/issues/3623))
+- Extend duplicate file detection for LogCollector. ([#3867](https://github.com/wazuh/wazuh/pull/3867))
+- Add HIPAA and NIST 800 53 compliance mapping as rule groups.([#3411](https://github.com/wazuh/wazuh/pull/3411) & [#3420](https://github.com/wazuh/wazuh/pull/3420))
+- Add SCA compliance groups to rule groups in alerts. ([#3427](https://github.com/wazuh/wazuh/pull/3427))
+- Add IPv6 loopback address to localhost list in DB output module (by @aquerubin). ([#3140](https://github.com/wazuh/wazuh/pull/3140))
+- Accept `]` and `>` as terminal prompt characters for Agentless. ([#3209](https://github.com/wazuh/wazuh/pull/3209))
+
 ### Changed
 
-- Improved error message when some of required Wazuh daemons are down. Allow restarting cluster nodes except when `ossec-execd` is down ([#3496](https://github.com/wazuh/wazuh/pull/3496))
-- Allow existing aws_profile argument to work with vpcflowlogs in AWS wodle configuration. Thanks to Adam Williams. ([#3729](https://github.com/wazuh/wazuh/pull/3729))
+- Modify logs for agent authentication issues by Remoted. ([#3662](https://github.com/wazuh/wazuh/pull/3662))
+- Make Syscollector logging messages more user-friendly. ([#3397](https://github.com/wazuh/wazuh/pull/3397))
+- Make SCA load by default all present policies at the default location. ([#3607](https://github.com/wazuh/wazuh/pull/3607))
+- Increase IPSIZE definition for IPv6 compatibility (by @aquerubin). ([#3259](https://github.com/wazuh/wazuh/pull/3259))
+- Replace local protocol definitions with Socket API definitions (by @aquerubin). ([#3260](https://github.com/wazuh/wazuh/pull/3260))
+- Improved error message when some of required Wazuh daemons are down. Allow restarting cluster nodes except when `ossec-execd` is down. ([#3496](https://github.com/wazuh/wazuh/pull/3496))
+- Allow existing aws_profile argument to work with vpcflowlogs in AWS wodle configuration. Thanks to Adam Williams (@awill1988). ([#3729](https://github.com/wazuh/wazuh/pull/3729))
 
 ### Fixed
 
+- Fix exception handling when using an invalid bucket in AWS wodle ([#3652](https://github.com/wazuh/wazuh/pull/3652))
+- Fix error message when an AWS bucket is empty ([#3743](https://github.com/wazuh/wazuh/pull/3743))
+- Fix error when getting profiles in custom AWS buckets ([#3786](https://github.com/wazuh/wazuh/pull/3786))
+- Fix SCA integrity check when switching between manager nodes. ([#3884](https://github.com/wazuh/wazuh/pull/3884))
+- Fix alert email sending when no_full_log option is set in a rule. ([#3174](https://github.com/wazuh/wazuh/pull/3174))
+- Fix error in Windows who-data when handling the directories list. ([#3883](https://github.com/wazuh/wazuh/pull/3883))
+- Fix error in the hardware inventory collector for PowerPC architectures. ([#3624](https://github.com/wazuh/wazuh/pull/3624))
+- Fix the use of mutexes in the `OS_Regex` library. ([#3533](https://github.com/wazuh/wazuh/pull/3533))
+- Fix invalid read in the `OS_Regex` library. ([#3815](https://github.com/wazuh/wazuh/pull/3815))
+- Fix compilation error on FreeBSD 13 and macOS 10.14. ([#3832](https://github.com/wazuh/wazuh/pull/3832))
+- Fix typo in the license of the files. ([#3779](https://github.com/wazuh/wazuh/pull/3779))
+- Fix error in `execd` when upgrading agents remotely while auto-restarting. ([#3437](https://github.com/wazuh/wazuh/pull/3437))
+- Prevent integrations from inheriting descriptors. ([#3514](https://github.com/wazuh/wazuh/pull/3514))
+- Overwrite rules label fix and rules features tests. ([#3414](https://github.com/wazuh/wazuh/pull/3414))
+- Fix typo: replace `readed` with `read`. ([#3328](https://github.com/wazuh/wazuh/pull/3328))
+- Introduce global mutex for Rootcheck decoder. ([#3530](https://github.com/wazuh/wazuh/pull/3530))
+- Fix errors reported by scan-build. ([#3452](https://github.com/wazuh/wazuh/pull/3452) & [#3785](https://github.com/wazuh/wazuh/pull/3785))
+- Fix the handling of `wm_exec()` output.([#3486](https://github.com/wazuh/wazuh/pull/3486))
+- Fix FIM duplicated entries in Windows. ([#3504](https://github.com/wazuh/wazuh/pull/3504))
+- Remove socket deletion from epoll. ([#3432](https://github.com/wazuh/wazuh/pull/3432))
+- Let the sources installer support NetBSD. ([#3444](https://github.com/wazuh/wazuh/pull/3444))
+- Fix error message from openssl v1.1.1. ([#3413](https://github.com/wazuh/wazuh/pull/3413))
+- Fix compilation issue for local installation. ([#3339](https://github.com/wazuh/wazuh/pull/3339))
 - Fix exception handling when /tmp have no permissions and tell the user the problem. ([#3401](https://github.com/wazuh/wazuh/pull/3401))
 
+## [v3.9.5] - 2019-08-08
 
-## [v3.9.4]
+### Fixed
+
+- Fixed a bug in the Framework that prevented Cluster and API from handling the file _client.keys_ if it's mounted as a volume on Docker.
+- Fixed a bug in Analysisd that printed the millisecond part of the alerts' timestamp without zero-padding. That prevented Elasticsearch 7 from indexing those alerts. ([#3814](https://github.com/wazuh/wazuh/issues/3814))
+
+## [v3.9.4] - 2019-08-07
 
 ### Changed
 
@@ -33,7 +81,8 @@ All notable changes to this project will be documented in this file.
 - Cluster could fail synchronizing some files located in Docker volumes. ([#3669](https://github.com/wazuh/wazuh/issues/3669))
 - Fix a handler leak in the FIM whodata engine for Windows. ([#3690](https://github.com/wazuh/wazuh/issues/3690))
 - The Docker listener module was storing and ignoring the output of the integration. ([#3768](https://github.com/wazuh/wazuh/issues/3768))
-
+- Fixed memory leaks in Syscollector for macOS agents. ([#3795](https://github.com/wazuh/wazuh/pull/3795))
+- Fix dangerous mutex initialization in Windows hosts. ([#3805](https://github.com/wazuh/wazuh/issues/3805))
 
 ## [v3.9.3] - 2019-07-08
 

@@ -232,5 +232,8 @@ void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddr
 // Create the interface list
 int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr);
 
+// Initialize hw_info struct values
+void init_hw_info(hw_info *info);
+
 #endif
 #endif

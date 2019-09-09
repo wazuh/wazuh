@@ -1,26 +1,426 @@
 {
   "order": 0,
-  "index_patterns": ["wazuh-alerts-3.x-*", "wazuh-archives-3.x-*"],
+  "index_patterns": [
+    "wazuh-alerts-3.x-*",
+    "wazuh-archives-3.x-*"
+  ],
   "settings": {
     "index.refresh_interval": "5s",
     "index.number_of_shards": "3",
     "index.number_of_replicas": "0",
     "index.auto_expand_replicas": "0-1",
-    "index.mapping.total_fields.limit": 2000,
-    "index.query.default_field": ["GeoLocation.city_name","GeoLocation.country_name","GeoLocation.country_name","GeoLocation.ip","GeoLocation.real_region_name","GeoLocation.region_name","agent.id","agent.ip","agent.labels.agent.group","agent.name","cluster.name","cluster.node","command","data.EventChannel.EventData.AuthenticationPackageName","data.EventChannel.EventData.IpAddress","data.EventChannel.EventData.IpPort","data.EventChannel.EventData.LmPackageName","data.EventChannel.EventData.LogonGuid","data.EventChannel.EventData.LogonProcessName","data.EventChannel.EventData.LogonType","data.EventChannel.EventData.ProcessId","data.EventChannel.EventData.ProcessName","data.EventChannel.EventData.SubjectDomainName","data.EventChannel.EventData.SubjectLogonId","data.EventChannel.EventData.SubjectUserName","data.EventChannel.EventData.SubjectUserSid","data.EventChannel.EventData.TargetDomainName","data.EventChannel.EventData.TargetLogonId","data.EventChannel.EventData.TargetUserName","data.EventChannel.EventData.TargetUserSid","data.EventChannel.EventData.TransmittedServices","data.EventChannel.EventData.WorkstationName","data.EventChannel.System.Computer","data.EventChannel.System.EventID","data.EventChannel.System.EventRecordID","data.EventChannel.System.EventSourceName","data.EventChannel.System.Keywords","data.EventChannel.System.Message","data.EventChannel.System.ProcessID","data.EventChannel.System.ProviderGuid","data.EventChannel.System.ProviderName","data.EventChannel.System.SecurityUserID","data.EventChannel.System.Task","data.EventChannel.System.ThreadID","data.EventChannel.System.UserID","data.action","data.alert.action","data.alert.category","data.alert.gid","data.alert.metadata.affected_product","data.alert.metadata.attack_target","data.alert.metadata.cve","data.alert.metadata.deployment","data.alert.metadata.former_category","data.alert.metadata.malware_family","data.alert.metadata.tag","data.alert.signature","data.alert.signature_id","data.app_proto","data.app_proto_tc","data.app_proto_ts","data.arch","data.audit.acct","data.audit.arch","data.audit.auid","data.audit.command","data.audit.cwd","data.audit.dev","data.audit.directory.mode","data.audit.directory.name","data.audit.egid","data.audit.euid","data.audit.exe","data.audit.exit","data.audit.file.mode","data.audit.file.name","data.audit.fsgid","data.audit.fsuid","data.audit.gid","data.audit.id","data.audit.key","data.audit.list","data.audit.pid","data.audit.ppid","data.audit.session","data.audit.sgid","data.audit.srcip","data.audit.subj","data.audit.suid","data.audit.syscall","data.audit.tty","data.audit.type","data.audit.uid","data.aws.accountId","data.aws.account_id","data.aws.action","data.aws.actor","data.aws.additionalEventData.AuthenticationMethod","data.aws.additionalEventData.CipherSuite","data.aws.additionalEventData.LoginTo","data.aws.additionalEventData.configRuleArn","data.aws.additionalEventData.configRuleInputParameters","data.aws.additionalEventData.configRuleName","data.aws.additionalEventData.managedRuleIdentifier","data.aws.alert-arn","data.aws.arn","data.aws.awsRegion","data.aws.aws_account_id","data.aws.description","data.aws.dstaddr","data.aws.dstport","data.aws.errorMessage","data.aws.eventID","data.aws.eventName","data.aws.eventSource","data.aws.eventType","data.aws.id","data.aws.interface_id","data.aws.log_info.aws_account_alias","data.aws.log_info.log_file","data.aws.log_info.s3bucket","data.aws.log_status","data.aws.name","data.aws.notification-type","data.aws.partition","data.aws.protocol","data.aws.recipientAccountId","data.aws.region","data.aws.requestID","data.aws.requestParameters.AccessControlPolicy.Owner.DisplayName","data.aws.requestParameters.AccessControlPolicy.Owner.ID","data.aws.requestParameters.AssociateIamInstanceProfileRequest.IamInstanceProfile.Name","data.aws.requestParameters.AssociateIamInstanceProfileRequest.InstanceId","data.aws.requestParameters.AssociateVpcCidrBlockRequest.CidrBlock","data.aws.requestParameters.AssociateVpcCidrBlockRequest.VpcId","data.aws.requestParameters.BucketLoggingStatus.LoggingEnabled.TargetBucket","data.aws.requestParameters.CreateNatGatewayRequest.SubnetId","data.aws.requestParameters.DeleteNatGatewayRequest.NatGatewayId","data.aws.requestParameters.DeleteVpcEndpointsRequest.VpcEndpointId.content","data.aws.requestParameters.DeleteVpcEndpointsRequest.VpcEndpointId.tag","data.aws.requestParameters.DisassociateVpcCidrBlockRequest.AssociationId","data.aws.requestParameters.LifecycleConfiguration.Rule.ID","data.aws.requestParameters.LifecycleConfiguration.Rule.Status","data.aws.requestParameters.NotificationConfiguration.CloudFunctionConfiguration.Filter.S3Key.FilterRule.Name","data.aws.requestParameters.NotificationConfiguration.CloudFunctionConfiguration.Filter.S3Key.FilterRule.Value","data.aws.requestParameters.NotificationConfiguration.CloudFunctionConfiguration.Id","data.aws.requestParameters.accessKeyId","data.aws.requestParameters.allocationId","data.aws.requestParameters.amazonProvidedIpv6CidrBlock","data.aws.requestParameters.architecture","data.aws.requestParameters.associationId","data.aws.requestParameters.attachment.attachmentId","data.aws.requestParameters.attachment.deleteOnTermination","data.aws.requestParameters.attachmentId","data.aws.requestParameters.attributes.key","data.aws.requestParameters.attributes.value","data.aws.requestParameters.autoScalingGroupName","data.aws.requestParameters.availabilityZone","data.aws.requestParameters.blockDeviceMapping.items.deviceName","data.aws.requestParameters.blockDeviceMapping.items.ebs.snapshotId","data.aws.requestParameters.bucketName","data.aws.requestParameters.bucketPolicy.Statement.Action","data.aws.requestParameters.bucketPolicy.Statement.Effect","data.aws.requestParameters.bucketPolicy.Statement.Principal.AWS","data.aws.requestParameters.bucketPolicy.Statement.Resource","data.aws.requestParameters.bucketPolicy.Statement.Sid","data.aws.requestParameters.capabilities","data.aws.requestParameters.capacityReservationSpecification.capacityReservationPreference","data.aws.requestParameters.certificateArn","data.aws.requestParameters.certificateBody","data.aws.requestParameters.certificates.certificateArn","data.aws.requestParameters.changeBatch.changes.action","data.aws.requestParameters.changeBatch.changes.resourceRecordSet.aliasTarget.dNSName","data.aws.requestParameters.changeBatch.changes.resourceRecordSet.aliasTarget.evaluateTargetHealth","data.aws.requestParameters.changeBatch.changes.resourceRecordSet.aliasTarget.hostedZoneId","data.aws.requestParameters.changeBatch.changes.resourceRecordSet.name","data.aws.requestParameters.changeBatch.changes.resourceRecordSet.type","data.aws.requestParameters.changeBatch.comment","data.aws.requestParameters.changeToken","data.aws.requestParameters.chefConfiguration.manageBerkshelf","data.aws.requestParameters.cidrBlock","data.aws.requestParameters.clientToken","data.aws.requestParameters.configurationManager.name","data.aws.requestParameters.customCookbooksSource.sshKey","data.aws.requestParameters.customCookbooksSource.type","data.aws.requestParameters.customCookbooksSource.url","data.aws.requestParameters.customJson","data.aws.requestParameters.dBInstanceIdentifier","data.aws.requestParameters.dBName","data.aws.requestParameters.dBSubnetGroupDescription","data.aws.requestParameters.dBSubnetGroupName","data.aws.requestParameters.defaultActions.targetGroupArn","data.aws.requestParameters.defaultActions.type","data.aws.requestParameters.defaultAvailabilityZone","data.aws.requestParameters.defaultInstanceProfileArn","data.aws.requestParameters.defaultRootDeviceType","data.aws.requestParameters.defaultSshKeyName","data.aws.requestParameters.defaultSubnetId","data.aws.requestParameters.deleteAutomatedBackups","data.aws.requestParameters.deleteOnTermination","data.aws.requestParameters.deletionProtection","data.aws.requestParameters.description","data.aws.requestParameters.destinationCidrBlock","data.aws.requestParameters.destinationRegion","data.aws.requestParameters.device","data.aws.requestParameters.deviceIndex","data.aws.requestParameters.disableRollback","data.aws.requestParameters.domain","data.aws.requestParameters.domainName","data.aws.requestParameters.domainValidationOptions.domainName","data.aws.requestParameters.domainValidationOptions.validationDomain","data.aws.requestParameters.encryptionContext.aws:acm:arn","data.aws.requestParameters.encryptionContext.aws:cloudfront:arn","data.aws.requestParameters.encryptionContext.aws:s3:arn","data.aws.requestParameters.engine","data.aws.requestParameters.evaluations.complianceResourceId","data.aws.requestParameters.evaluations.complianceResourceType","data.aws.requestParameters.evaluations.complianceType","data.aws.requestParameters.externalId","data.aws.requestParameters.finalDBSnapshotIdentifier","data.aws.requestParameters.gatewayId","data.aws.requestParameters.groupDescription","data.aws.requestParameters.groupId","data.aws.requestParameters.groupName","data.aws.requestParameters.groupSet.items.groupId","data.aws.requestParameters.healthCheckProtocol","data.aws.requestParameters.hibernationOptions.configured","data.aws.requestParameters.host","data.aws.requestParameters.hostedZoneId","data.aws.requestParameters.hostnameTheme","data.aws.requestParameters.iPSetId","data.aws.requestParameters.iamInstanceProfile.arn","data.aws.requestParameters.iamInstanceProfile.name","data.aws.requestParameters.idempotencyToken","data.aws.requestParameters.imageManifest","data.aws.requestParameters.imageTag","data.aws.requestParameters.instanceId","data.aws.requestParameters.instanceInitiatedShutdownBehavior","data.aws.requestParameters.instanceProfileName","data.aws.requestParameters.instanceTenancy","data.aws.requestParameters.instanceType","data.aws.requestParameters.instances.instanceId","data.aws.requestParameters.instancesSet.items.imageId","data.aws.requestParameters.instancesSet.items.instanceId","data.aws.requestParameters.instancesSet.items.keyName","data.aws.requestParameters.internetGatewayId","data.aws.requestParameters.ipPermissions.items.ipProtocol","data.aws.requestParameters.keyId","data.aws.requestParameters.keyName","data.aws.requestParameters.keySpec","data.aws.requestParameters.listenerArn","data.aws.requestParameters.listeners.instancePort","data.aws.requestParameters.listeners.instanceProtocol","data.aws.requestParameters.listeners.loadBalancerPort","data.aws.requestParameters.listeners.protocol","data.aws.requestParameters.listeners.sSLCertificateId","data.aws.requestParameters.loadBalancerArn","data.aws.requestParameters.loadBalancerAttributes.accessLog.s3BucketName","data.aws.requestParameters.loadBalancerAttributes.accessLog.s3BucketPrefix","data.aws.requestParameters.loadBalancerName","data.aws.requestParameters.loadBalancerPorts","data.aws.requestParameters.logGroupName","data.aws.requestParameters.logStreamName","data.aws.requestParameters.masterUsername","data.aws.requestParameters.multiAZ","data.aws.requestParameters.name","data.aws.requestParameters.natGatewayId","data.aws.requestParameters.networkAclId","data.aws.requestParameters.networkInterfaceId","data.aws.requestParameters.networkInterfaceSet.items.associatePublicIpAddress","data.aws.requestParameters.networkInterfaceSet.items.deleteOnTermination","data.aws.requestParameters.networkInterfaceSet.items.description","data.aws.requestParameters.networkInterfaceSet.items.deviceIndex","data.aws.requestParameters.networkInterfaceSet.items.networkInterfaceId","data.aws.requestParameters.networkInterfaceSet.items.privateIpAddress","data.aws.requestParameters.networkInterfaceSet.items.subnetId","data.aws.requestParameters.path","data.aws.requestParameters.peerVpcId","data.aws.requestParameters.policyArn","data.aws.requestParameters.policyDocument","data.aws.requestParameters.policyName","data.aws.requestParameters.policyType","data.aws.requestParameters.port","data.aws.requestParameters.privateIpAddress","data.aws.requestParameters.protocol","data.aws.requestParameters.region","data.aws.requestParameters.registryId","data.aws.requestParameters.repositoryName","data.aws.requestParameters.resourcesSet.items.resourceId","data.aws.requestParameters.roleArn","data.aws.requestParameters.roleName","data.aws.requestParameters.roleSessionName","data.aws.requestParameters.routeTableId","data.aws.requestParameters.ruleAction","data.aws.requestParameters.scalingAdjustment","data.aws.requestParameters.securityGroups","data.aws.requestParameters.serverCertificateName","data.aws.requestParameters.serviceRoleArn","data.aws.requestParameters.shouldDecrementDesiredCapacity","data.aws.requestParameters.skipFinalSnapshot","data.aws.requestParameters.sourceDestCheck.value","data.aws.requestParameters.sourceRegion","data.aws.requestParameters.sourceSnapshotId","data.aws.requestParameters.sslPolicy","data.aws.requestParameters.stackId","data.aws.requestParameters.stackName","data.aws.requestParameters.status","data.aws.requestParameters.storageType","data.aws.requestParameters.subnetId","data.aws.requestParameters.subnetIds","data.aws.requestParameters.subnetMappings.subnetId","data.aws.requestParameters.tagSet.items.value","data.aws.requestParameters.tagSpecificationSet.items.resourceType","data.aws.requestParameters.tags.key","data.aws.requestParameters.tags.value","data.aws.requestParameters.targetGroupArn","data.aws.requestParameters.targetType","data.aws.requestParameters.targets.id","data.aws.requestParameters.targets.port","data.aws.requestParameters.templateURL","data.aws.requestParameters.type","data.aws.requestParameters.updates.action","data.aws.requestParameters.updates.iPSetDescriptor.type","data.aws.requestParameters.updates.iPSetDescriptor.value","data.aws.requestParameters.uploadId","data.aws.requestParameters.userData","data.aws.requestParameters.userName","data.aws.requestParameters.validationDomain","data.aws.requestParameters.validationMethod","data.aws.requestParameters.volumeId","data.aws.requestParameters.volumeType","data.aws.requestParameters.vpcId","data.aws.requestParameters.vpcPeeringConnectionId","data.aws.requestParameters.vpcSecurityGroupIds","data.aws.requestParameters.zone","data.aws.resource.accessKeyDetails.accessKeyId","data.aws.resource.accessKeyDetails.principalId","data.aws.resource.accessKeyDetails.userName","data.aws.resource.accessKeyDetails.userType","data.aws.resource.instanceDetails.availabilityZone","data.aws.resource.instanceDetails.iamInstanceProfile","data.aws.resource.instanceDetails.iamInstanceProfile.arn","data.aws.resource.instanceDetails.iamInstanceProfile.id","data.aws.resource.instanceDetails.imageDescription","data.aws.resource.instanceDetails.imageId","data.aws.resource.instanceDetails.instanceId","data.aws.resource.instanceDetails.instanceState","data.aws.resource.instanceDetails.instanceType","data.aws.resource.instanceDetails.networkInterfaces.networkInterfaceId","data.aws.resource.instanceDetails.networkInterfaces.privateDnsName","data.aws.resource.instanceDetails.networkInterfaces.privateIpAddress","data.aws.resource.instanceDetails.networkInterfaces.publicDnsName","data.aws.resource.instanceDetails.networkInterfaces.publicIp","data.aws.resource.instanceDetails.networkInterfaces.subnetId","data.aws.resource.instanceDetails.networkInterfaces.vpcId","data.aws.resource.instanceDetails.platform","data.aws.resource.instanceDetails.tags.key","data.aws.resource.instanceDetails.tags.value","data.aws.resource.resourceType","data.aws.resources.ARN","data.aws.resources.accountId","data.aws.resources.type","data.aws.responseElements.AssociateIamInstanceProfileResponse.iamInstanceProfileAssociation.associationId","data.aws.responseElements.AssociateIamInstanceProfileResponse.iamInstanceProfileAssociation.iamInstanceProfile.arn","data.aws.responseElements.AssociateIamInstanceProfileResponse.iamInstanceProfileAssociation.iamInstanceProfile.id","data.aws.responseElements.AssociateIamInstanceProfileResponse.iamInstanceProfileAssociation.instanceId","data.aws.responseElements.AssociateIamInstanceProfileResponse.iamInstanceProfileAssociation.state","data.aws.responseElements.AssociateIamInstanceProfileResponse.requestId","data.aws.responseElements.AssociateVpcCidrBlockResponse.cidrBlockAssociation.associationId","data.aws.responseElements.AssociateVpcCidrBlockResponse.cidrBlockAssociation.cidrBlock","data.aws.responseElements.AssociateVpcCidrBlockResponse.cidrBlockAssociation.cidrBlockState.state","data.aws.responseElements.AssociateVpcCidrBlockResponse.requestId","data.aws.responseElements.AssociateVpcCidrBlockResponse.vpcId","data.aws.responseElements.ConsoleLogin","data.aws.responseElements.CreateNatGatewayResponse.clientToken","data.aws.responseElements.CreateNatGatewayResponse.natGateway.natGatewayAddressSet.item.allocationId","data.aws.responseElements.CreateNatGatewayResponse.natGateway.natGatewayId","data.aws.responseElements.CreateNatGatewayResponse.natGateway.state","data.aws.responseElements.CreateNatGatewayResponse.natGateway.subnetId","data.aws.responseElements.CreateNatGatewayResponse.natGateway.vpcId","data.aws.responseElements.CreateNatGatewayResponse.requestId","data.aws.responseElements.DeleteNatGatewayResponse.natGatewayId","data.aws.responseElements.DeleteNatGatewayResponse.requestId","data.aws.responseElements.DeleteVpcEndpointsResponse.requestId","data.aws.responseElements.DisassociateVpcCidrBlockResponse.cidrBlockAssociation.associationId","data.aws.responseElements.DisassociateVpcCidrBlockResponse.cidrBlockAssociation.cidrBlock","data.aws.responseElements.DisassociateVpcCidrBlockResponse.requestId","data.aws.responseElements.DisassociateVpcCidrBlockResponse.vpcId","data.aws.responseElements.Message","data.aws.responseElements.accessKey.accessKeyId","data.aws.responseElements.accessKey.status","data.aws.responseElements.accessKey.userName","data.aws.responseElements.activity.activityId","data.aws.responseElements.activity.autoScalingGroupName","data.aws.responseElements.activity.cause","data.aws.responseElements.activity.description","data.aws.responseElements.activity.details","data.aws.responseElements.allocationId","data.aws.responseElements.associationId","data.aws.responseElements.assumedRoleUser.arn","data.aws.responseElements.assumedRoleUser.assumedRoleId","data.aws.responseElements.attachmentId","data.aws.responseElements.availabilityZone","data.aws.responseElements.cACertificateIdentifier","data.aws.responseElements.certificateArn","data.aws.responseElements.changeInfo.comment","data.aws.responseElements.changeInfo.status","data.aws.responseElements.changeToken","data.aws.responseElements.copyTagsToSnapshot","data.aws.responseElements.credentials.accessKeyId","data.aws.responseElements.credentials.sessionToken","data.aws.responseElements.dBInstanceArn","data.aws.responseElements.dBInstanceIdentifier","data.aws.responseElements.dBInstanceStatus","data.aws.responseElements.dBName","data.aws.responseElements.dBParameterGroups.dBParameterGroupName","data.aws.responseElements.dBSubnetGroup.dBSubnetGroupDescription","data.aws.responseElements.dBSubnetGroup.dBSubnetGroupName","data.aws.responseElements.dBSubnetGroup.subnetGroupStatus","data.aws.responseElements.dBSubnetGroup.vpcId","data.aws.responseElements.dBSubnetGroupArn","data.aws.responseElements.dBSubnetGroupDescription","data.aws.responseElements.dBSubnetGroupName","data.aws.responseElements.dNSName","data.aws.responseElements.dbInstancePort","data.aws.responseElements.dbiResourceId","data.aws.responseElements.description","data.aws.responseElements.device","data.aws.responseElements.domain","data.aws.responseElements.endpoint.address","data.aws.responseElements.endpoint.hostedZoneId","data.aws.responseElements.endpoint.port","data.aws.responseElements.group.arn","data.aws.responseElements.group.groupId","data.aws.responseElements.group.groupName","data.aws.responseElements.group.path","data.aws.responseElements.groupId","data.aws.responseElements.image.imageId.imageDigest","data.aws.responseElements.image.imageId.imageTag","data.aws.responseElements.image.registryId","data.aws.responseElements.image.repositoryName","data.aws.responseElements.instanceId","data.aws.responseElements.instanceProfile.arn","data.aws.responseElements.instanceProfile.instanceProfileId","data.aws.responseElements.instanceProfile.instanceProfileName","data.aws.responseElements.instanceProfile.path","data.aws.responseElements.instances.instanceId","data.aws.responseElements.instancesSet.items.amiLaunchIndex","data.aws.responseElements.instancesSet.items.architecture","data.aws.responseElements.instancesSet.items.clientToken","data.aws.responseElements.instancesSet.items.currentState.name","data.aws.responseElements.instancesSet.items.dnsName","data.aws.responseElements.instancesSet.items.hypervisor","data.aws.responseElements.instancesSet.items.iamInstanceProfile.arn","data.aws.responseElements.instancesSet.items.iamInstanceProfile.id","data.aws.responseElements.instancesSet.items.imageId","data.aws.responseElements.instancesSet.items.instanceId","data.aws.responseElements.instancesSet.items.instanceState.name","data.aws.responseElements.instancesSet.items.instanceType","data.aws.responseElements.instancesSet.items.ipAddress","data.aws.responseElements.instancesSet.items.kernelId","data.aws.responseElements.instancesSet.items.keyName","data.aws.responseElements.instancesSet.items.monitoring.state","data.aws.responseElements.instancesSet.items.placement.availabilityZone","data.aws.responseElements.instancesSet.items.placement.tenancy","data.aws.responseElements.instancesSet.items.platform","data.aws.responseElements.instancesSet.items.privateDnsName","data.aws.responseElements.instancesSet.items.privateIpAddress","data.aws.responseElements.instancesSet.items.rootDeviceName","data.aws.responseElements.instancesSet.items.rootDeviceType","data.aws.responseElements.instancesSet.items.sourceDestCheck","data.aws.responseElements.instancesSet.items.stateReason.message","data.aws.responseElements.instancesSet.items.subnetId","data.aws.responseElements.instancesSet.items.virtualizationType","data.aws.responseElements.instancesSet.items.vpcId","data.aws.responseElements.internetGateway.internetGatewayId","data.aws.responseElements.keyFingerprint","data.aws.responseElements.keyMaterial","data.aws.responseElements.keyName","data.aws.responseElements.kmsKeyId","data.aws.responseElements.licenseModel","data.aws.responseElements.listeners.listenerArn","data.aws.responseElements.listeners.loadBalancerArn","data.aws.responseElements.listeners.port","data.aws.responseElements.listeners.protocol","data.aws.responseElements.listeners.sslPolicy","data.aws.responseElements.loadBalancerAttributes.accessLog.s3BucketName","data.aws.responseElements.loadBalancerAttributes.accessLog.s3BucketPrefix","data.aws.responseElements.loadBalancerName","data.aws.responseElements.loadBalancers.canonicalHostedZoneId","data.aws.responseElements.loadBalancers.dNSName","data.aws.responseElements.loadBalancers.ipAddressType","data.aws.responseElements.loadBalancers.loadBalancerArn","data.aws.responseElements.loadBalancers.loadBalancerName","data.aws.responseElements.loadBalancers.type","data.aws.responseElements.loadBalancers.vpcId","data.aws.responseElements.loginProfile.userName","data.aws.responseElements.masterUsername","data.aws.responseElements.multiAZ","data.aws.responseElements.networkAcl.networkAclId","data.aws.responseElements.networkAcl.vpcId","data.aws.responseElements.networkInterface.availabilityZone","data.aws.responseElements.networkInterface.description","data.aws.responseElements.networkInterface.groupSet.items.groupId","data.aws.responseElements.networkInterface.groupSet.items.groupName","data.aws.responseElements.networkInterface.interfaceType","data.aws.responseElements.networkInterface.networkInterfaceId","data.aws.responseElements.networkInterface.ownerId","data.aws.responseElements.networkInterface.privateDnsName","data.aws.responseElements.networkInterface.privateIpAddress","data.aws.responseElements.networkInterface.privateIpAddressesSet.item.primary","data.aws.responseElements.networkInterface.privateIpAddressesSet.item.privateDnsName","data.aws.responseElements.networkInterface.privateIpAddressesSet.item.privateIpAddress","data.aws.responseElements.networkInterface.requesterId","data.aws.responseElements.networkInterface.requesterManaged","data.aws.responseElements.networkInterface.sourceDestCheck","data.aws.responseElements.networkInterface.status","data.aws.responseElements.networkInterface.subnetId","data.aws.responseElements.networkInterface.vpcId","data.aws.responseElements.optionGroupMemberships.optionGroupName","data.aws.responseElements.optionGroupMemberships.status","data.aws.responseElements.ownerId","data.aws.responseElements.policy.arn","data.aws.responseElements.policy.path","data.aws.responseElements.policy.policyId","data.aws.responseElements.policy.policyName","data.aws.responseElements.policyARN","data.aws.responseElements.publicIp","data.aws.responseElements.registryId","data.aws.responseElements.repositoryName","data.aws.responseElements.requestId","data.aws.responseElements.requesterId","data.aws.responseElements.reservationId","data.aws.responseElements.role.arn","data.aws.responseElements.role.assumeRolePolicyDocument","data.aws.responseElements.role.description","data.aws.responseElements.role.path","data.aws.responseElements.role.roleId","data.aws.responseElements.role.roleName","data.aws.responseElements.role.tags.key","data.aws.responseElements.role.tags.value","data.aws.responseElements.routeTable.routeSet.items.destinationCidrBlock","data.aws.responseElements.routeTable.routeSet.items.gatewayId","data.aws.responseElements.routeTable.routeSet.items.origin","data.aws.responseElements.routeTable.routeSet.items.state","data.aws.responseElements.routeTable.routeTableId","data.aws.responseElements.routeTable.vpcId","data.aws.responseElements.serverCertificateMetadata.arn","data.aws.responseElements.serverCertificateMetadata.path","data.aws.responseElements.serverCertificateMetadata.serverCertificateId","data.aws.responseElements.serverCertificateMetadata.serverCertificateName","data.aws.responseElements.serverCertificateMetadata.uploadDate","data.aws.responseElements.snapshotId","data.aws.responseElements.stackId","data.aws.responseElements.status","data.aws.responseElements.storageType","data.aws.responseElements.subnet.availabilityZone","data.aws.responseElements.subnet.availabilityZoneId","data.aws.responseElements.subnet.ownerId","data.aws.responseElements.subnet.state","data.aws.responseElements.subnet.subnetArn","data.aws.responseElements.subnet.subnetId","data.aws.responseElements.subnet.vpcId","data.aws.responseElements.subnetGroupStatus","data.aws.responseElements.targetGroups.healthCheckEnabled","data.aws.responseElements.targetGroups.healthCheckPort","data.aws.responseElements.targetGroups.healthCheckProtocol","data.aws.responseElements.targetGroups.loadBalancerArns","data.aws.responseElements.targetGroups.port","data.aws.responseElements.targetGroups.protocol","data.aws.responseElements.targetGroups.targetGroupArn","data.aws.responseElements.targetGroups.targetGroupName","data.aws.responseElements.targetGroups.targetType","data.aws.responseElements.targetGroups.vpcId","data.aws.responseElements.uploadId","data.aws.responseElements.url","data.aws.responseElements.user.arn","data.aws.responseElements.user.path","data.aws.responseElements.user.userId","data.aws.responseElements.user.userName","data.aws.responseElements.volumeId","data.aws.responseElements.volumeType","data.aws.responseElements.vpc.dhcpOptionsId","data.aws.responseElements.vpc.instanceTenancy","data.aws.responseElements.vpc.ownerId","data.aws.responseElements.vpc.state","data.aws.responseElements.vpc.vpcId","data.aws.responseElements.vpcId","data.aws.responseElements.vpcPeeringConnection.accepterVpcInfo.ownerId","data.aws.responseElements.vpcPeeringConnection.accepterVpcInfo.region","data.aws.responseElements.vpcPeeringConnection.accepterVpcInfo.vpcId","data.aws.responseElements.vpcPeeringConnection.requesterVpcInfo.cidrBlock","data.aws.responseElements.vpcPeeringConnection.requesterVpcInfo.cidrBlockSet.items.cidrBlock","data.aws.responseElements.vpcPeeringConnection.requesterVpcInfo.ownerId","data.aws.responseElements.vpcPeeringConnection.requesterVpcInfo.region","data.aws.responseElements.vpcPeeringConnection.requesterVpcInfo.vpcId","data.aws.responseElements.vpcPeeringConnection.status.message","data.aws.responseElements.vpcPeeringConnection.vpcPeeringConnectionId","data.aws.responseElements.vpcSecurityGroups.status","data.aws.responseElements.vpcSecurityGroups.vpcSecurityGroupId","data.aws.responseElements.zone","data.aws.service.action.actionType","data.aws.service.action.awsApiCallAction.remoteIpDetails.city.cityName","data.aws.service.action.awsApiCallAction.remoteIpDetails.country.countryName","data.aws.service.action.awsApiCallAction.remoteIpDetails.ipAddressV4","data.aws.service.action.awsApiCallAction.remoteIpDetails.organization.asn","data.aws.service.action.awsApiCallAction.remoteIpDetails.organization.asnOrg","data.aws.service.action.awsApiCallAction.remoteIpDetails.organization.isp","data.aws.service.action.awsApiCallAction.remoteIpDetails.organization.org","data.aws.service.action.awsApiCallAction.serviceName","data.aws.service.action.networkConnectionAction.connectionDirection","data.aws.service.action.networkConnectionAction.localPortDetails.port","data.aws.service.action.networkConnectionAction.localPortDetails.portName","data.aws.service.action.networkConnectionAction.remoteIpDetails.city.cityName","data.aws.service.action.networkConnectionAction.remoteIpDetails.country.countryName","data.aws.service.action.networkConnectionAction.remoteIpDetails.ipAddressV4","data.aws.service.action.networkConnectionAction.remoteIpDetails.organization.asn","data.aws.service.action.networkConnectionAction.remoteIpDetails.organization.asnOrg","data.aws.service.action.networkConnectionAction.remoteIpDetails.organization.isp","data.aws.service.action.networkConnectionAction.remoteIpDetails.organization.org","data.aws.service.action.networkConnectionAction.remotePortDetails.port","data.aws.service.action.networkConnectionAction.remotePortDetails.portName","data.aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port","data.aws.service.action.portProbeAction.portProbeDetails.localPortDetails.portName","data.aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.city.cityName","data.aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.country.countryName","data.aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4","data.aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.organization.asn","data.aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.organization.asnOrg","data.aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.organization.isp","data.aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.organization.org","data.aws.service.additionalInfo.localPort","data.aws.service.additionalInfo.threatListName","data.aws.service.additionalInfo.threatName","data.aws.service.detectorId","data.aws.service.resourceRole","data.aws.service.serviceName","data.aws.sharedEventID","data.aws.source","data.aws.sourceIPAddress","data.aws.source_ip_address","data.aws.srcaddr","data.aws.srcport","data.aws.summary.ACL.resources.wazuh.com.Owner.DisplayName","data.aws.summary.ACL.resources.wazuh.com.Owner.ID","data.aws.summary.Description","data.aws.summary.Location.us-east-1","data.aws.summary.Source ARN","data.aws.tags","data.aws.tags.value","data.aws.title","data.aws.type","data.aws.url","data.aws.userAgent","data.aws.userIdentity.accessKeyId","data.aws.userIdentity.accountId","data.aws.userIdentity.arn","data.aws.userIdentity.invokedBy","data.aws.userIdentity.principalId","data.aws.userIdentity.sessionContext.sessionIssuer.accountId","data.aws.userIdentity.sessionContext.sessionIssuer.arn","data.aws.userIdentity.sessionContext.sessionIssuer.principalId","data.aws.userIdentity.sessionContext.sessionIssuer.type","data.aws.userIdentity.sessionContext.sessionIssuer.userName","data.aws.userIdentity.type","data.aws.userIdentity.userName","data.aws.vpcEndpointId","data.cis.description","data.cis.error","data.cis.group","data.cis.hostname","data.cis.rationale","data.cis.remediation","data.cis.rule_id","data.cis.rule_title","data.columns.cpu_brand","data.columns.gid","data.columns.hostname","data.columns.mode","data.columns.path","data.columns.type","data.columns.uid","data.command","data.data","data.decorations.host_uuid","data.decorations.username","data.dest_ip","data.dest_port","data.docker.Action","data.docker.Actor.Attributes.container","data.docker.Actor.Attributes.destination","data.docker.Actor.Attributes.driver","data.docker.Actor.Attributes.image","data.docker.Actor.Attributes.maintainer","data.docker.Actor.Attributes.name","data.docker.Actor.Attributes.read/write","data.docker.Actor.Attributes.type","data.docker.Actor.ID","data.docker.Type","data.docker.id","data.docker.message","data.docker.scope","data.docker.status","data.dpkg_status","data.dstip","data.dstport","data.dstuser","data.euid","data.file","data.flow_id","data.gid","data.hardware.cpu_name","data.hardware.serial","data.home","data.hostIdentifier","data.http.hostname","data.http.http_port","data.http.http_refer","data.http.http_user_agent","data.http.protocol","data.http.status","data.http.url","data.id","data.in_iface","data.integration","data.name","data.netinfo.iface.adapter","data.netinfo.iface.ipv4.address","data.netinfo.iface.ipv4.broadcast","data.netinfo.iface.ipv4.dhcp","data.netinfo.iface.ipv4.gateway","data.netinfo.iface.ipv4.metric","data.netinfo.iface.ipv6.address","data.netinfo.iface.ipv6.broadcast","data.netinfo.iface.ipv6.dhcp","data.netinfo.iface.ipv6.gateway","data.netinfo.iface.ipv6.metric","data.netinfo.iface.mtu","data.netinfo.iface.name","data.netinfo.iface.state","data.netinfo.iface.type","data.os.architecture","data.os.build","data.os.hostname","data.os.major","data.os.name","data.os.platform","data.os.release","data.os.sysname","data.oscap.check.description","data.oscap.check.id","data.oscap.check.identifiers","data.oscap.check.oval.id","data.oscap.check.references","data.oscap.check.title","data.oscap.scan.content","data.oscap.scan.id","data.oscap.scan.profile.id","data.oscap.scan.profile.title","data.osquery.action","data.osquery.columns.address","data.osquery.columns.arch","data.osquery.columns.build_distro","data.osquery.columns.build_platform","data.osquery.columns.cmdline","data.osquery.columns.command","data.osquery.columns.cwd","data.osquery.columns.description","data.osquery.columns.device","data.osquery.columns.device_alias","data.osquery.columns.directory","data.osquery.columns.dst_ip","data.osquery.columns.events","data.osquery.columns.extensions","data.osquery.columns.family","data.osquery.columns.filter_name","data.osquery.columns.gid","data.osquery.columns.history_file","data.osquery.columns.host","data.osquery.columns.instance_id","data.osquery.columns.interface","data.osquery.columns.local_address","data.osquery.columns.local_port","data.osquery.columns.md5","data.osquery.columns.name","data.osquery.columns.net_namespace","data.osquery.columns.outiface","data.osquery.columns.output_register","data.osquery.columns.path","data.osquery.columns.permissions","data.osquery.columns.pid","data.osquery.columns.policy","data.osquery.columns.port","data.osquery.columns.pseudo","data.osquery.columns.release","data.osquery.columns.remote_address","data.osquery.columns.remote_port","data.osquery.columns.root","data.osquery.columns.sha1","data.osquery.columns.shell","data.osquery.columns.source","data.osquery.columns.src_ip","data.osquery.columns.status","data.osquery.columns.target","data.osquery.columns.tty","data.osquery.columns.type","data.osquery.columns.uid","data.osquery.columns.used_by","data.osquery.columns.user","data.osquery.columns.username","data.osquery.hostIdentifier","data.osquery.name","data.osquery.pack","data.package","data.port.local_ip","data.port.local_port","data.port.pid","data.port.process","data.port.protocol","data.port.remote_ip","data.port.remote_port","data.port.state","data.process.args","data.process.cmd","data.process.egroup","data.process.euser","data.process.fgroup","data.process.name","data.process.nice","data.process.nlwp","data.process.pgrp","data.process.pid","data.process.ppid","data.process.processor","data.process.resident","data.process.rgroup","data.process.ruser","data.process.session","data.process.sgroup","data.process.share","data.process.state","data.process.suser","data.process.tgid","data.process.tty","data.program.architecture","data.program.description","data.program.format","data.program.location","data.program.multiarch","data.program.name","data.program.section","data.program.source","data.program.vendor","data.proto","data.protocol","data.sca.check.compliance.cis","data.sca.check.compliance.cis_csc","data.sca.check.compliance.pci_dss","data.sca.check.description","data.sca.check.directory","data.sca.check.file","data.sca.check.id","data.sca.check.process","data.sca.check.rationale","data.sca.check.reason","data.sca.check.references","data.sca.check.registry","data.sca.check.remediation","data.sca.check.status","data.sca.check.title","data.sca.description","data.sca.file","data.sca.invalid","data.sca.name","data.sca.policy","data.sca.policy_id","data.sca.scan_id","data.sca.type","data.scan_id","data.src_ip","data.src_port","data.srcip","data.srcport","data.srcuser","data.status","data.system_name","data.title","data.tls.fingerprint","data.tls.issuerdn","data.tls.serial","data.tls.sni","data.tls.subject","data.type","data.uid","data.url","data.virustotal.description","data.virustotal.error","data.virustotal.malicious","data.virustotal.permalink","data.virustotal.sha1","data.virustotal.source.agent.name","data.virustotal.source.alert_id","data.virustotal.source.file","data.virustotal.source.md5","data.virustotal.source.sha1","data.vulnerability.advisories","data.vulnerability.bugzilla_reference","data.vulnerability.cve","data.vulnerability.cvss.cvss_scoring_vector","data.vulnerability.cwe_reference","data.vulnerability.package.name","data.vulnerability.package.patch","data.vulnerability.rationale","data.vulnerability.reference","data.vulnerability.state","data.vulnerability.title","data.win.eventdata.auditPolicyChanges","data.win.eventdata.auditPolicyChangesId","data.win.eventdata.authenticationPackageName","data.win.eventdata.category","data.win.eventdata.categoryId","data.win.eventdata.elevatedToken","data.win.eventdata.ipAddress","data.win.eventdata.ipPort","data.win.eventdata.keyName","data.win.eventdata.keyType","data.win.eventdata.library","data.win.eventdata.lmPackageName","data.win.eventdata.operation","data.win.eventdata.processId","data.win.eventdata.processName","data.win.eventdata.providerName","data.win.eventdata.resourceManager","data.win.eventdata.restrictedAdminMode","data.win.eventdata.service","data.win.eventdata.status","data.win.eventdata.subStatus","data.win.eventdata.subcategory","data.win.eventdata.subcategoryGuid","data.win.eventdata.subcategoryId","data.win.eventdata.subjectDomainName","data.win.eventdata.subjectLogonId","data.win.eventdata.subjectUserName","data.win.eventdata.subjectUserSid","data.win.eventdata.targetDomainName","data.win.eventdata.targetLinkedLogonId","data.win.eventdata.targetLogonId","data.win.eventdata.targetUserName","data.win.eventdata.targetUserSid","data.win.eventdata.transactionId","data.win.eventdata.virtualAccount","data.win.eventdata.win32Error","data.win.eventdata.workstationName","data.win.rmSessionEvent.rmSessionId","data.win.system.computer","data.win.system.eventID","data.win.system.eventRecordID","data.win.system.eventSourceName","data.win.system.keywords","data.win.system.message","data.win.system.processID","data.win.system.providerGuid","data.win.system.providerName","data.win.system.securityUserID","data.win.system.task","data.win.system.threadID","data.win.system.userID","full_log","host","id","input.type","location","manager.name","message","path","program_name","prospector.type","rule.cis","rule.cve","rule.description","rule.frequency","rule.gdpr","rule.gpg13","rule.groups","rule.id","rule.info","rule.mail","rule.pci_dss","source","syscheck.audit.audit_name","syscheck.audit.audit_uid","syscheck.audit.changed_fields","syscheck.audit.effective_user.id","syscheck.audit.effective_user.name","syscheck.audit.group.id","syscheck.audit.group.name","syscheck.audit.login_user.id","syscheck.audit.login_user.name","syscheck.audit.process.id","syscheck.audit.process.name","syscheck.audit.process.ppid","syscheck.audit.user.id","syscheck.audit.user.name","syscheck.diff","syscheck.event","syscheck.path","syscheck.tags","timestamp","title","type"]
+    "index.mapping.total_fields.limit": 10000,
+    "index.query.default_field": [
+      "GeoLocation.city_name",
+      "GeoLocation.continent_code",
+      "GeoLocation.country_code2",
+      "GeoLocation.country_code3",
+      "GeoLocation.country_name",
+      "GeoLocation.ip",
+      "GeoLocation.postal_code",
+      "GeoLocation.real_region_name",
+      "GeoLocation.region_name",
+      "GeoLocation.timezone",
+      "agent.id",
+      "agent.ip",
+      "agent.name",
+      "cluster.name",
+      "cluster.node",
+      "command",
+      "data",
+      "data.action",
+      "data.audit",
+      "data.audit.acct",
+      "data.audit.arch",
+      "data.audit.auid",
+      "data.audit.command",
+      "data.audit.cwd",
+      "data.audit.dev",
+      "data.audit.directory.inode",
+      "data.audit.directory.mode",
+      "data.audit.directory.name",
+      "data.audit.egid",
+      "data.audit.enforcing",
+      "data.audit.euid",
+      "data.audit.exe",
+      "data.audit.execve.a0",
+      "data.audit.execve.a1",
+      "data.audit.execve.a2",
+      "data.audit.execve.a3",
+      "data.audit.exit",
+      "data.audit.file.inode",
+      "data.audit.file.mode",
+      "data.audit.file.name",
+      "data.audit.fsgid",
+      "data.audit.fsuid",
+      "data.audit.gid",
+      "data.audit.id",
+      "data.audit.key",
+      "data.audit.list",
+      "data.audit.old-auid",
+      "data.audit.old-ses",
+      "data.audit.old_enforcing",
+      "data.audit.old_prom",
+      "data.audit.op",
+      "data.audit.pid",
+      "data.audit.ppid",
+      "data.audit.prom",
+      "data.audit.res",
+      "data.audit.session",
+      "data.audit.sgid",
+      "data.audit.srcip",
+      "data.audit.subj",
+      "data.audit.success",
+      "data.audit.suid",
+      "data.audit.syscall",
+      "data.audit.tty",
+      "data.audit.uid",
+      "data.aws.accountId",
+      "data.aws.account_id",
+      "data.aws.action",
+      "data.aws.actor",
+      "data.aws.aws_account_id",
+      "data.aws.description",
+      "data.aws.dstport",
+      "data.aws.errorCode",
+      "data.aws.errorMessage",
+      "data.aws.eventID",
+      "data.aws.eventName",
+      "data.aws.eventSource",
+      "data.aws.eventType",
+      "data.aws.id",
+      "data.aws.name",
+      "data.aws.requestParameters.accessKeyId",
+      "data.aws.requestParameters.bucketName",
+      "data.aws.requestParameters.gatewayId",
+      "data.aws.requestParameters.groupDescription",
+      "data.aws.requestParameters.groupId",
+      "data.aws.requestParameters.groupName",
+      "data.aws.requestParameters.host",
+      "data.aws.requestParameters.hostedZoneId",
+      "data.aws.requestParameters.instanceId",
+      "data.aws.requestParameters.instanceProfileName",
+      "data.aws.requestParameters.loadBalancerName",
+      "data.aws.requestParameters.loadBalancerPorts",
+      "data.aws.requestParameters.masterUserPassword",
+      "data.aws.requestParameters.masterUsername",
+      "data.aws.requestParameters.name",
+      "data.aws.requestParameters.natGatewayId",
+      "data.aws.requestParameters.networkAclId",
+      "data.aws.requestParameters.path",
+      "data.aws.requestParameters.policyName",
+      "data.aws.requestParameters.port",
+      "data.aws.requestParameters.stackId",
+      "data.aws.requestParameters.stackName",
+      "data.aws.requestParameters.subnetId",
+      "data.aws.requestParameters.subnetIds",
+      "data.aws.requestParameters.volumeId",
+      "data.aws.requestParameters.vpcId",
+      "data.aws.resource.accessKeyDetails.accessKeyId",
+      "data.aws.resource.accessKeyDetails.principalId",
+      "data.aws.resource.accessKeyDetails.userName",
+      "data.aws.resource.instanceDetails.instanceId",
+      "data.aws.resource.instanceDetails.instanceState",
+      "data.aws.resource.instanceDetails.networkInterfaces.privateDnsName",
+      "data.aws.resource.instanceDetails.networkInterfaces.publicDnsName",
+      "data.aws.resource.instanceDetails.networkInterfaces.subnetId",
+      "data.aws.resource.instanceDetails.networkInterfaces.vpcId",
+      "data.aws.resource.instanceDetails.tags.value",
+      "data.aws.responseElements.AssociateVpcCidrBlockResponse.vpcId",
+      "data.aws.responseElements.description",
+      "data.aws.responseElements.instanceId",
+      "data.aws.responseElements.instances.instanceId",
+      "data.aws.responseElements.instancesSet.items.instanceId",
+      "data.aws.responseElements.listeners.port",
+      "data.aws.responseElements.loadBalancerName",
+      "data.aws.responseElements.loadBalancers.vpcId",
+      "data.aws.responseElements.loginProfile.userName",
+      "data.aws.responseElements.networkAcl.vpcId",
+      "data.aws.responseElements.ownerId",
+      "data.aws.responseElements.publicIp",
+      "data.aws.responseElements.user.userId",
+      "data.aws.responseElements.user.userName",
+      "data.aws.responseElements.volumeId",
+      "data.aws.service.serviceName",
+      "data.aws.severity",
+      "data.aws.source",
+      "data.aws.sourceIPAddress",
+      "data.aws.srcport",
+      "data.aws.userIdentity.accessKeyId",
+      "data.aws.userIdentity.accountId",
+      "data.aws.userIdentity.userName",
+      "data.aws.vpcEndpointId",
+      "data.command",
+      "data.data",
+      "data.docker.Actor.Attributes.container",
+      "data.docker.Actor.Attributes.image",
+      "data.docker.Actor.Attributes.name",
+      "data.docker.Actor.ID",
+      "data.docker.id",
+      "data.docker.message",
+      "data.docker.status",
+      "data.dstip",
+      "data.dstport",
+      "data.dstuser",
+      "data.hardware.serial",
+      "data.id",
+      "data.integration",
+      "data.netinfo.iface.adapter",
+      "data.netinfo.iface.ipv4.address",
+      "data.netinfo.iface.ipv6.address",
+      "data.netinfo.iface.mac",
+      "data.netinfo.iface.name",
+      "data.os.architecture",
+      "data.os.build",
+      "data.os.codename",
+      "data.os.hostname",
+      "data.os.major",
+      "data.os.minor",
+      "data.os.name",
+      "data.os.platform",
+      "data.os.release",
+      "data.os.release_version",
+      "data.os.sysname",
+      "data.os.version",
+      "data.oscap.check.description",
+      "data.oscap.check.id",
+      "data.oscap.check.identifiers",
+      "data.oscap.check.oval.id",
+      "data.oscap.check.rationale",
+      "data.oscap.check.references",
+      "data.oscap.check.result",
+      "data.oscap.check.severity",
+      "data.oscap.check.title",
+      "data.oscap.scan.benchmark.id",
+      "data.oscap.scan.content",
+      "data.oscap.scan.id",
+      "data.oscap.scan.profile.id",
+      "data.oscap.scan.profile.title",
+      "data.osquery.columns.address",
+      "data.osquery.columns.command",
+      "data.osquery.columns.description",
+      "data.osquery.columns.dst_ip",
+      "data.osquery.columns.gid",
+      "data.osquery.columns.hostname",
+      "data.osquery.columns.md5",
+      "data.osquery.columns.path",
+      "data.osquery.columns.sha1",
+      "data.osquery.columns.sha256",
+      "data.osquery.columns.src_ip",
+      "data.osquery.columns.user",
+      "data.osquery.columns.username",
+      "data.osquery.name",
+      "data.osquery.pack",
+      "data.port.process",
+      "data.port.protocol",
+      "data.port.state",
+      "data.process.args",
+      "data.process.cmd",
+      "data.process.egroup",
+      "data.process.euser",
+      "data.process.fgroup",
+      "data.process.name",
+      "data.process.rgroup",
+      "data.process.ruser",
+      "data.process.sgroup",
+      "data.process.state",
+      "data.process.suser",
+      "data.program.architecture",
+      "data.program.description",
+      "data.program.format",
+      "data.program.location",
+      "data.program.multiarch",
+      "data.program.name",
+      "data.program.priority",
+      "data.program.section",
+      "data.program.source",
+      "data.program.vendor",
+      "data.program.version",
+      "data.protocol",
+      "data.pwd",
+      "data.sca",
+      "data.sca.check.compliance.cis",
+      "data.sca.check.compliance.cis_csc",
+      "data.sca.check.compliance.pci_dss",
+      "data.sca.check.compliance.hipaa",
+      "data.sca.check.compliance.nist_800_53",
+      "data.sca.check.description",
+      "data.sca.check.directory",
+      "data.sca.check.file",
+      "data.sca.check.id",
+      "data.sca.check.previous_result",
+      "data.sca.check.process",
+      "data.sca.check.rationale",
+      "data.sca.check.reason",
+      "data.sca.check.references",
+      "data.sca.check.registry",
+      "data.sca.check.remediation",
+      "data.sca.check.result",
+      "data.sca.check.status",
+      "data.sca.check.title",
+      "data.sca.description",
+      "data.sca.file",
+      "data.sca.invalid",
+      "data.sca.name",
+      "data.sca.policy",
+      "data.sca.policy_id",
+      "data.sca.scan_id",
+      "data.sca.total_checks",
+      "data.script",
+      "data.src_ip",
+      "data.src_port",
+      "data.srcip",
+      "data.srcport",
+      "data.srcuser",
+      "data.status",
+      "data.system_name",
+      "data.title",
+      "data.tty",
+      "data.uid",
+      "data.url",
+      "data.virustotal.description",
+      "data.virustotal.error",
+      "data.virustotal.found",
+      "data.virustotal.permalink",
+      "data.virustotal.scan_date",
+      "data.virustotal.sha1",
+      "data.virustotal.source.alert_id",
+      "data.virustotal.source.file",
+      "data.virustotal.source.md5",
+      "data.virustotal.source.sha1",
+      "data.vulnerability.advisories",
+      "data.vulnerability.bugzilla_reference",
+      "data.vulnerability.cve",
+      "data.vulnerability.cwe_reference",
+      "data.vulnerability.package.condition",
+      "data.vulnerability.package.name",
+      "data.vulnerability.package.version",
+      "data.vulnerability.reference",
+      "data.vulnerability.severity",
+      "data.vulnerability.state",
+      "data.vulnerability.title",
+      "data.win.eventdata.auditPolicyChanges",
+      "data.win.eventdata.auditPolicyChangesId",
+      "data.win.eventdata.binary",
+      "data.win.eventdata.category",
+      "data.win.eventdata.categoryId",
+      "data.win.eventdata.data",
+      "data.win.eventdata.image",
+      "data.win.eventdata.ipAddress",
+      "data.win.eventdata.ipPort",
+      "data.win.eventdata.keyName",
+      "data.win.eventdata.logonGuid",
+      "data.win.eventdata.logonProcessName",
+      "data.win.eventdata.operation",
+      "data.win.eventdata.parentImage",
+      "data.win.eventdata.processId",
+      "data.win.eventdata.processName",
+      "data.win.eventdata.providerName",
+      "data.win.eventdata.returnCode",
+      "data.win.eventdata.service",
+      "data.win.eventdata.status",
+      "data.win.eventdata.subcategory",
+      "data.win.eventdata.subcategoryGuid",
+      "data.win.eventdata.subcategoryId",
+      "data.win.eventdata.subjectDomainName",
+      "data.win.eventdata.subjectLogonId",
+      "data.win.eventdata.subjectUserName",
+      "data.win.eventdata.subjectUserSid",
+      "data.win.eventdata.targetDomainName",
+      "data.win.eventdata.targetLinkedLogonId",
+      "data.win.eventdata.targetLogonId",
+      "data.win.eventdata.targetUserName",
+      "data.win.eventdata.targetUserSid",
+      "data.win.eventdata.workstationName",
+      "data.win.system.channel",
+      "data.win.system.computer",
+      "data.win.system.eventID",
+      "data.win.system.eventRecordID",
+      "data.win.system.eventSourceName",
+      "data.win.system.keywords",
+      "data.win.system.level",
+      "data.win.system.message",
+      "data.win.system.opcode",
+      "data.win.system.processID",
+      "data.win.system.providerGuid",
+      "data.win.system.providerName",
+      "data.win.system.securityUserID",
+      "data.win.system.severityValue",
+      "data.win.system.userID",
+      "decoder.ftscomment",
+      "decoder.name",
+      "decoder.parent",
+      "full_log",
+      "host",
+      "id",
+      "input",
+      "location",
+      "manager.name",
+      "message",
+      "offset",
+      "predecoder.hostname",
+      "predecoder.program_name",
+      "previous_log",
+      "previous_output",
+      "program_name",
+      "rule.cis",
+      "rule.cve",
+      "rule.description",
+      "rule.gdpr",
+      "rule.gpg13",
+      "rule.groups",
+      "rule.id",
+      "rule.info",
+      "rule.pci_dss",
+      "syscheck.audit.effective_user.id",
+      "syscheck.audit.effective_user.name",
+      "syscheck.audit.group.id",
+      "syscheck.audit.group.name",
+      "syscheck.audit.login_user.id",
+      "syscheck.audit.login_user.name",
+      "syscheck.audit.process.id",
+      "syscheck.audit.process.name",
+      "syscheck.audit.process.ppid",
+      "syscheck.audit.user.id",
+      "syscheck.audit.user.name",
+      "syscheck.diff",
+      "syscheck.event",
+      "syscheck.gid_after",
+      "syscheck.gid_before",
+      "syscheck.gname_after",
+      "syscheck.gname_before",
+      "syscheck.inode_after",
+      "syscheck.inode_before",
+      "syscheck.md5_after",
+      "syscheck.md5_before",
+      "syscheck.path",
+      "syscheck.perm_after",
+      "syscheck.perm_before",
+      "syscheck.sha1_after",
+      "syscheck.sha1_before",
+      "syscheck.sha256_after",
+      "syscheck.sha256_before",
+      "syscheck.tags",
+      "syscheck.uid_after",
+      "syscheck.uid_before",
+      "syscheck.uname_after",
+      "syscheck.uname_before",
+      "title",
+      "type"
+    ]
   },
   "mappings": {
     "dynamic_templates": [
       {
         "string_as_keyword": {
-          "match_mapping_type": "string",
           "mapping": {
-            "type": "keyword",
-            "doc_values": "true"
-          }
+            "type": "keyword"
+          },
+          "match_mapping_type": "string"
         }
       }
     ],
+    "date_detection": false,
     "properties": {
       "@timestamp": {
         "type": "date"
@@ -35,38 +435,32 @@
       "agent": {
         "properties": {
           "ip": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "id": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "name": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           }
         }
       },
       "manager": {
         "properties": {
           "name": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           }
         }
       },
       "cluster": {
         "properties": {
           "name": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
+          },
+          "node": {
+            "type": "keyword"
           }
         }
-      },
-      "AlertsFile": {
-        "type": "keyword",
-        "doc_values": "true"
       },
       "full_log": {
         "type": "text"
@@ -80,8 +474,7 @@
             "type": "long"
           },
           "city_name": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "continent_code": {
             "type": "text"
@@ -96,15 +489,13 @@
             "type": "text"
           },
           "country_name": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "dma_code": {
             "type": "long"
           },
           "ip": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "latitude": {
             "type": "double"
@@ -119,12 +510,10 @@
             "type": "keyword"
           },
           "real_region_name": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "region_name": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "timezone": {
             "type": "text"
@@ -132,110 +521,151 @@
         }
       },
       "host": {
-        "type": "keyword",
-        "doc_values": "true"
+        "type": "keyword"
       },
       "syscheck": {
         "properties": {
           "path": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "sha1_before": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "sha1_after": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "uid_before": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "uid_after": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "gid_before": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "gid_after": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "perm_before": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "perm_after": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "md5_after": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "md5_before": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "gname_after": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "gname_before": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "inode_after": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "inode_before": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "mtime_after": {
             "type": "date",
-            "format": "dateOptionalTime",
-            "doc_values": "true"
+            "format": "date_optional_time"
           },
           "mtime_before": {
             "type": "date",
-            "format": "dateOptionalTime",
-            "doc_values": "true"
+            "format": "date_optional_time"
           },
           "uname_after": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "uname_before": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "size_before": {
-            "type": "long",
-            "doc_values": "true"
+            "type": "long"
           },
           "size_after": {
-            "type": "long",
-            "doc_values": "true"
+            "type": "long"
           },
           "diff": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "event": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
+          },
+          "audit": {
+            "properties": {
+              "effective_user": {
+                "properties": {
+                  "id": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "group": {
+                "properties": {
+                  "id": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "login_user": {
+                "properties": {
+                  "id": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "process": {
+                "properties": {
+                  "id": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "type": "keyword"
+                  },
+                  "ppid": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "user": {
+                "properties": {
+                  "id": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "type": "keyword"
+                  }
+                }
+              }
+            }
+          },
+          "sha256_after": {
+            "type": "keyword"
+          },
+          "sha256_before": {
+            "type": "keyword"
+          },
+          "tags": {
+            "type": "keyword"
           }
         }
       },
       "location": {
-        "type": "keyword",
-        "doc_values": "true"
+        "type": "keyword"
       },
       "message": {
         "type": "text"
@@ -246,562 +676,441 @@
       "rule": {
         "properties": {
           "description": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "groups": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "level": {
-            "type": "long",
-            "doc_values": "true"
+            "type": "long"
           },
           "id": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "cve": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "info": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "frequency": {
-            "type": "long",
-            "doc_values": "true"
+            "type": "long"
           },
           "firedtimes": {
-            "type": "long",
-            "doc_values": "true"
+            "type": "long"
           },
           "cis": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "pci_dss": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "gdpr": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "gpg13": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "hipaa": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "nist_800_53": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
+          },
+          "mail": {
+            "type": "boolean"
           }
         }
       },
       "predecoder": {
         "properties": {
           "program_name": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "timestamp": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
+          },
+          "hostname": {
+            "type": "keyword"
           }
         }
       },
       "decoder": {
         "properties": {
           "parent": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "name": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "ftscomment": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "fts": {
-            "type": "long",
-            "doc_values": "true"
+            "type": "long"
           },
           "accumulate": {
-            "type": "long",
-            "doc_values": "true"
+            "type": "long"
           }
         }
       },
       "data": {
         "properties": {
-          "protocol": {
-            "type": "keyword",
-            "doc_values": "true"
-          },
-          "action": {
-            "type": "keyword",
-            "doc_values": "true"
-          },
-          "srcip": {
-            "type": "keyword",
-            "doc_values": "true"
-          },
-          "dstip": {
-            "type": "keyword",
-            "doc_values": "true"
-          },
-          "srcport": {
-            "type": "keyword",
-            "doc_values": "true"
-          },
-          "dstport": {
-            "type": "keyword",
-            "doc_values": "true"
-          },
-          "srcuser": {
-            "type": "keyword",
-            "doc_values": "true"
-          },
-          "dstuser": {
-            "type": "keyword",
-            "doc_values": "true"
-          },
-          "id": {
-            "type": "keyword",
-            "doc_values": "true"
-          },
-          "status": {
-            "type": "keyword",
-            "doc_values": "true"
-          },
-          "data": {
-            "type": "keyword",
-            "doc_values": "true"
-          },
-          "system_name": {
-            "type": "keyword",
-            "doc_values": "true"
-          },
-          "url": {
-            "type": "keyword",
-            "doc_values": "true"
-          },
-          "oscap": {
-            "properties": {
-              "check.title": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "check.id": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "check.result": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "check.severity": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "check.description": {
-                "type": "text"
-              },
-              "check.rationale": {
-                "type": "text"
-              },
-              "check.references": {
-                "type": "text"
-              },
-              "check.identifiers": {
-                "type": "text"
-              },
-              "check.oval.id": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "scan.id": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "scan.content": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "scan.benchmark.id": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "scan.profile.title": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "scan.profile.id": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "scan.score": {
-                "type": "double",
-                "doc_values": "true"
-              },
-              "scan.return_code": {
-                "type": "long",
-                "doc_values": "true"
-              }
-            }
-          },
           "audit": {
             "properties": {
-              "type": {
-                "type": "keyword",
-                "doc_values": "true"
+              "acct": {
+                "type": "keyword"
               },
-              "id": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "syscall": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "exit": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "ppid": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "pid": {
-                "type": "keyword",
-                "doc_values": "true"
+              "arch": {
+                "type": "keyword"
               },
               "auid": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "uid": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "gid": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "euid": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "suid": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "fsuid": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "egid": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "sgid": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "fsgid": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "tty": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "session": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "command": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "exe": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "key": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "cwd": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "directory.name": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "directory.inode": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "directory.mode": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "file.name": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "file.inode": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "file.mode": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "acct": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "dev": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
-              "enforcing": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "list": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "old-auid": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "old-ses": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "old_enforcing": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "old_prom": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "op": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "prom": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "res": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "srcip": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "subj": {
-                "type": "keyword",
-                "doc_values": "true"
-              },
-              "success": {
-                "type": "keyword",
-                "doc_values": "true"
-              }
-            }
-          },
-          "aws": {
-            "properties": {
-              "bytes": {
-                "type": "long",
-                "doc_values": "true"
-              },
-              "dstaddr": {
-                "type": "ip",
-                "doc_values": "true"
-              },
-              "srcaddr": {
-                "type": "ip",
-                "doc_values": "true"
-              },
-              "end": {
-                "type": "date",
-                "doc_values": "true"
-              },
-              "start": {
-                "type": "date",
-                "doc_values": "true"
-              },
-              "source_ip_address": {
-                "type": "ip",
-                "doc_values": "true"
-              },
-              "resource.instanceDetails.networkInterfaces": {
+              "directory": {
                 "properties": {
-                  "privateIpAddress": {
-                    "type": "ip",
-                    "doc_values": "true"
+                  "inode": {
+                    "type": "keyword"
                   },
-                  "publicIp": {
-                    "type": "ip",
-                    "doc_values": "true"
+                  "mode": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "type": "keyword"
                   }
                 }
               },
-              "service": {
+              "egid": {
+                "type": "keyword"
+              },
+              "enforcing": {
+                "type": "keyword"
+              },
+              "euid": {
+                "type": "keyword"
+              },
+              "exe": {
+                "type": "keyword"
+              },
+              "execve": {
                 "properties": {
-                  "count": {
-                    "type": "long",
-                    "doc_values": "true"
+                  "a0": {
+                    "type": "keyword"
                   },
-                  "action.networkConnectionAction.remoteIpDetails": {
+                  "a1": {
+                    "type": "keyword"
+                  },
+                  "a2": {
+                    "type": "keyword"
+                  },
+                  "a3": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "exit": {
+                "type": "keyword"
+              },
+              "file": {
+                "properties": {
+                  "inode": {
+                    "type": "keyword"
+                  },
+                  "mode": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "fsgid": {
+                "type": "keyword"
+              },
+              "fsuid": {
+                "type": "keyword"
+              },
+              "gid": {
+                "type": "keyword"
+              },
+              "id": {
+                "type": "keyword"
+              },
+              "key": {
+                "type": "keyword"
+              },
+              "list": {
+                "type": "keyword"
+              },
+              "old-auid": {
+                "type": "keyword"
+              },
+              "old-ses": {
+                "type": "keyword"
+              },
+              "old_enforcing": {
+                "type": "keyword"
+              },
+              "old_prom": {
+                "type": "keyword"
+              },
+              "op": {
+                "type": "keyword"
+              },
+              "pid": {
+                "type": "keyword"
+              },
+              "ppid": {
+                "type": "keyword"
+              },
+              "prom": {
+                "type": "keyword"
+              },
+              "res": {
+                "type": "keyword"
+              },
+              "session": {
+                "type": "keyword"
+              },
+              "sgid": {
+                "type": "keyword"
+              },
+              "srcip": {
+                "type": "keyword"
+              },
+              "subj": {
+                "type": "keyword"
+              },
+              "success": {
+                "type": "keyword"
+              },
+              "suid": {
+                "type": "keyword"
+              },
+              "syscall": {
+                "type": "keyword"
+              },
+              "tty": {
+                "type": "keyword"
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "uid": {
+                "type": "keyword"
+              }
+            }
+          },
+          "protocol": {
+            "type": "keyword"
+          },
+          "action": {
+            "type": "keyword"
+          },
+          "srcip": {
+            "type": "keyword"
+          },
+          "dstip": {
+            "type": "keyword"
+          },
+          "srcport": {
+            "type": "keyword"
+          },
+          "dstport": {
+            "type": "keyword"
+          },
+          "srcuser": {
+            "type": "keyword"
+          },
+          "dstuser": {
+            "type": "keyword"
+          },
+          "id": {
+            "type": "keyword"
+          },
+          "status": {
+            "type": "keyword"
+          },
+          "data": {
+            "type": "keyword"
+          },
+          "system_name": {
+            "type": "keyword"
+          },
+          "url": {
+            "type": "keyword"
+          },
+          "oscap": {
+            "properties": {
+              "check": {
+                "properties": {
+                  "description": {
+                    "type": "text"
+                  },
+                  "id": {
+                    "type": "keyword"
+                  },
+                  "identifiers": {
+                    "type": "text"
+                  },
+                  "oval": {
                     "properties": {
-                      "ipAddressV4": {
-                        "type": "ip",
-                        "doc_values": "true"
-                      },
-                      "geoLocation": {
-                        "type": "geo_point",
-                        "doc_values": "true"
+                      "id": {
+                        "type": "keyword"
                       }
                     }
+                  },
+                  "rationale": {
+                    "type": "text"
+                  },
+                  "references": {
+                    "type": "text"
+                  },
+                  "result": {
+                    "type": "keyword"
+                  },
+                  "severity": {
+                    "type": "keyword"
+                  },
+                  "title": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "scan": {
+                "properties": {
+                  "benchmark": {
+                    "properties": {
+                      "id": {
+                        "type": "keyword"
+                      }
+                    }
+                  },
+                  "content": {
+                    "type": "keyword"
+                  },
+                  "id": {
+                    "type": "keyword"
+                  },
+                  "profile": {
+                    "properties": {
+                      "id": {
+                        "type": "keyword"
+                      },
+                      "title": {
+                        "type": "keyword"
+                      }
+                    }
+                  },
+                  "return_code": {
+                    "type": "long"
+                  },
+                  "score": {
+                    "type": "double"
                   }
                 }
               }
             }
           },
           "type": {
-            "type": "keyword",
-            "doc_values": "true"
+            "type": "keyword"
           },
           "netinfo": {
             "properties": {
               "iface": {
                 "properties": {
                   "name": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "mac": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "adapter": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "type": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "state": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "mtu": {
-                    "type": "long",
-                    "doc_values": "true"
+                    "type": "long"
                   },
                   "tx_bytes": {
-                    "type": "long",
-                    "doc_values": "true"
+                    "type": "long"
                   },
                   "rx_bytes": {
-                    "type": "long",
-                    "doc_values": "true"
+                    "type": "long"
                   },
                   "tx_errors": {
-                    "type": "long",
-                    "doc_values": "true"
+                    "type": "long"
                   },
                   "rx_errors": {
-                    "type": "long",
-                    "doc_values": "true"
+                    "type": "long"
                   },
                   "tx_dropped": {
-                    "type": "long",
-                    "doc_values": "true"
+                    "type": "long"
                   },
                   "rx_dropped": {
-                    "type": "long",
-                    "doc_values": "true"
+                    "type": "long"
                   },
                   "tx_packets": {
-                    "type": "long",
-                    "doc_values": "true"
+                    "type": "long"
                   },
                   "rx_packets": {
-                    "type": "long",
-                    "doc_values": "true"
+                    "type": "long"
                   },
                   "ipv4": {
                     "properties": {
                       "gateway": {
-                        "type": "keyword",
-                        "doc_values": "true"
+                        "type": "keyword"
                       },
                       "dhcp": {
-                        "type": "keyword",
-                        "doc_values": "true"
+                        "type": "keyword"
                       },
                       "address": {
-                        "type": "keyword",
-                        "doc_values": "true"
+                        "type": "keyword"
                       },
                       "netmask": {
-                        "type": "keyword",
-                        "doc_values": "true"
+                        "type": "keyword"
                       },
                       "broadcast": {
-                        "type": "keyword",
-                        "doc_values": "true"
+                        "type": "keyword"
                       },
                       "metric": {
-                        "type": "long",
-                        "doc_values": "true"
+                        "type": "long"
                       }
                     }
                   },
                   "ipv6": {
                     "properties": {
                       "gateway": {
-                        "type": "keyword",
-                        "doc_values": "true"
+                        "type": "keyword"
                       },
                       "dhcp": {
-                        "type": "keyword",
-                        "doc_values": "true"
+                        "type": "keyword"
                       },
                       "address": {
-                        "type": "keyword",
-                        "doc_values": "true"
+                        "type": "keyword"
                       },
                       "netmask": {
-                        "type": "keyword",
-                        "doc_values": "true"
+                        "type": "keyword"
                       },
                       "broadcast": {
-                        "type": "keyword",
-                        "doc_values": "true"
+                        "type": "keyword"
                       },
                       "metric": {
-                        "type": "long",
-                        "doc_values": "true"
+                        "type": "long"
                       }
                     }
                   }
@@ -812,630 +1121,523 @@
           "os": {
             "properties": {
               "hostname": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "architecture": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "name": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "version": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "codename": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "major": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "minor": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "build": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "platform": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "sysname": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "release": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "release_version": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               }
             }
           },
           "port": {
             "properties": {
               "protocol": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "local_ip": {
-                "type": "ip",
-                "doc_values": "true"
+                "type": "ip"
               },
               "local_port": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "remote_ip": {
-                "type": "ip",
-                "doc_values": "true"
+                "type": "ip"
               },
               "remote_port": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "tx_queue": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "rx_queue": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "inode": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "state": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "pid": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "process": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               }
             }
           },
           "hardware": {
             "properties": {
               "serial": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "cpu_name": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "cpu_cores": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "cpu_mhz": {
-                "type": "double",
-                "doc_values": "true"
+                "type": "double"
               },
               "ram_total": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "ram_free": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "ram_usage": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               }
             }
           },
           "program": {
             "properties": {
               "format": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "name": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "priority": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "section": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "size": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "vendor": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "install_time": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "version": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "architecture": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "multiarch": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "source": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "description": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "location": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               }
             }
           },
           "process": {
             "properties": {
               "pid": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "name": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "state": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "ppid": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "utime": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "stime": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "cmd": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "args": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "euser": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "ruser": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "suser": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "egroup": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "sgroup": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "fgroup": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "rgroup": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "priority": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "nice": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "size": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "vm_size": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "resident": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "share": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "start_time": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "pgrp": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "session": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "nlwp": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "tgid": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "tty": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "processor": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               }
             }
           },
           "sca": {
             "properties": {
               "type": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "scan_id": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "policy": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "name": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "file": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "description": {
-                "type": "keyword",
-                "doc_values": "true"
+                "type": "keyword"
               },
               "passed": {
-                "type": "integer",
-                "doc_values": "true"
+                "type": "integer"
               },
               "failed": {
-                "type": "integer",
-                "doc_values": "true"
+                "type": "integer"
               },
               "score": {
-                "type": "long",
-                "doc_values": "true"
+                "type": "long"
               },
               "check": {
                 "properties": {
                   "id": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "title": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "description": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "rationale": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "remediation": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "compliance": {
                     "properties": {
                       "cis": {
-                        "type": "keyword",
-                        "doc_values": "true"
+                        "type": "keyword"
                       },
                       "cis_csc": {
-                        "type": "keyword",
-                        "doc_values": "true"
+                        "type": "keyword"
                       },
                       "pci_dss": {
-                        "type": "keyword",
-                        "doc_values": "true"
+                        "type": "keyword"
+                      },
+                      "hipaa": {
+                        "type": "keyword"
+                      },
+                      "nist_800_53": {
+                        "type": "keyword"
                       }
                     }
                   },
                   "references": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "file": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "directory": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "registry": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "process": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "result": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   },
                   "previous_result": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
+                  },
+                  "reason": {
+                    "type": "keyword"
+                  },
+                  "status": {
+                    "type": "keyword"
                   }
                 }
+              },
+              "invalid": {
+                "type": "keyword"
+              },
+              "policy_id": {
+                "type": "keyword"
+              },
+              "total_checks": {
+                "type": "keyword"
               }
             }
           },
-          "win": {
+          "command": {
+            "type": "keyword"
+          },
+          "integration": {
+            "type": "keyword"
+          },
+          "timestamp": {
+            "type": "date"
+          },
+          "title": {
+            "type": "keyword"
+          },
+          "uid": {
+            "type": "keyword"
+          },
+          "virustotal": {
             "properties": {
-              "system": {
+              "description": {
+                "type": "keyword"
+              },
+              "error": {
+                "type": "keyword"
+              },
+              "found": {
+                "type": "keyword"
+              },
+              "malicious": {
+                "type": "keyword"
+              },
+              "permalink": {
+                "type": "keyword"
+              },
+              "positives": {
+                "type": "keyword"
+              },
+              "scan_date": {
+                "type": "keyword"
+              },
+              "sha1": {
+                "type": "keyword"
+              },
+              "source": {
                 "properties": {
-                  "providerName": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                  "alert_id": {
+                    "type": "keyword"
                   },
-                  "providerGuid": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                  "file": {
+                    "type": "keyword"
                   },
-                  "eventSourceName": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                  "md5": {
+                    "type": "keyword"
                   },
-                  "securityUserID": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                  "sha1": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "total": {
+                "type": "keyword"
+              }
+            }
+          },
+          "vulnerability": {
+            "properties": {
+              "advisories": {
+                "type": "keyword"
+              },
+              "bugzilla_reference": {
+                "type": "keyword"
+              },
+              "cve": {
+                "type": "keyword"
+              },
+              "cvss": {
+                "properties": {
+                  "cvss3_score": {
+                    "type": "keyword"
                   },
-                  "userID": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                  "cvss_score": {
+                    "type": "keyword"
                   },
-                  "eventID": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                  "cvss_scoring_vector": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "cwe_reference": {
+                "type": "keyword"
+              },
+              "package": {
+                "properties": {
+                  "condition": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "type": "keyword"
                   },
                   "version": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "level": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "task": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "opcode": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "keywords": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "systemTime": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "eventRecordID": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "processID": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "threadID": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "channel": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "computer": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "severityValue": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "message": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                    "type": "keyword"
                   }
                 }
               },
-              "eventdata": {
+              "published": {
+                "type": "date"
+              },
+              "reference": {
+                "type": "keyword"
+              },
+              "severity": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              },
+              "title": {
+                "type": "keyword"
+              }
+            }
+          },
+          "aws": {
+            "properties": {
+              "bytes": {
+                "type": "long"
+              },
+              "dstaddr": {
+                "type": "ip"
+              },
+              "srcaddr": {
+                "type": "ip"
+              },
+              "end": {
+                "type": "date"
+              },
+              "start": {
+                "type": "date"
+              },
+              "source_ip_address": {
+                "type": "ip"
+              },
+              "service": {
                 "properties": {
-                  "subjectUserSid": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                  "count": {
+                    "type": "long"
                   },
-                  "subjectUserName": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                  "action.networkConnectionAction.remoteIpDetails": {
+                    "properties": {
+                      "ipAddressV4": {
+                        "type": "ip"
+                      },
+                      "geoLocation": {
+                        "type": "geo_point"
+                      }
+                    }
                   },
-                  "subjectDomainName": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                  "eventFirstSeen": {
+                    "type": "date"
                   },
-                  "subjectLogonId": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "targetUserSid": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "targetUserName": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "targetDomainName": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "targetLogonId": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "logonType": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "logonProcessName": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "authenticationPackageName": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "logonGuid": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "keyLength": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "impersonationLevel": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "transactionId": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "newState": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "resourceManager": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "processId": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "processName": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "data": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "image": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "binary": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "parentImage": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "categoryId": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "subcategoryId": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "subcategoryGuid": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "auditPolicyChangesId": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "category": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "subcategory": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
-                  "auditPolicyChanges": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                  "eventLastSeen": {
+                    "type": "date"
                   }
                 }
               },
-              "rmSessionEvent": {
+              "createdAt": {
+                "type": "date"
+              },
+              "updatedAt": {
+                "type": "date"
+              },
+              "resource.instanceDetails": {
                 "properties": {
-                  "rmSessionId": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                  "launchTime": {
+                    "type": "date"
                   },
-                  "uTCStartTime": {
-                    "type": "keyword",
-                    "doc_values": "true"
+                  "networkInterfaces": {
+                    "properties": {
+                      "privateIpAddress": {
+                        "type": "ip"
+                      },
+                      "publicIp": {
+                        "type": "ip"
+                      }
+                    }
                   }
                 }
               }
@@ -1444,27 +1646,31 @@
         }
       },
       "program_name": {
-        "type": "keyword",
-        "doc_values": "true"
+        "type": "keyword"
       },
       "command": {
-        "type": "keyword",
-        "doc_values": "true"
+        "type": "keyword"
       },
       "type": {
         "type": "text"
       },
       "title": {
-        "type": "keyword",
-        "doc_values": "true"
+        "type": "keyword"
       },
-      "event": {
+      "id": {
+        "type": "keyword"
+      },
+      "input": {
         "properties": {
-          "dataset": {
+          "type": {
             "type": "keyword"
           }
         }
+      },
+      "previous_output": {
+        "type": "keyword"
       }
     }
-  }
+  },
+  "version": 1
 }

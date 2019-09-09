@@ -28,7 +28,7 @@ void key_lock_init()
     pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
 #endif
 
-    pthread_rwlock_init(&keyupdate_rwlock, &attr);
+    w_rwlock_init(&keyupdate_rwlock, &attr);
     pthread_rwlockattr_destroy(&attr);
 }
 
