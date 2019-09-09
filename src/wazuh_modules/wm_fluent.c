@@ -477,8 +477,6 @@ static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * he
         unsigned char md[SHA512_DIGEST_LENGTH];
         SHA512_CTX ctx;
 
-        assert(fluent->user_name && fluent->user_pass);
-
         /* Compute password hex digest */
 
         SHA512_Init(&ctx);
@@ -604,14 +602,6 @@ static int wm_fluent_handshake(wm_fluent_t * fluent) {
         if (!helo) {
             merror("Cannot receive HELO message from server");
             return -1;
-        }
-
-        if (helo->auth_size > 0) {
-            if (!strcmp(fluent->user_name, "") && !strcmp(fluent->user_pass, "")) {
-                mdebug1("Fluent server requires user name and password, but they are undefined.");
-            }
-        } else if (fluent->user_name || fluent->user_pass) {
-            mdebug1("The Fluent server does not require user authentication. Ignoring user name and pass.");
         }
 
         if (wm_fluent_send_ping(fluent, helo) < 0) {
@@ -742,8 +732,8 @@ cJSON *wm_fluent_dump(const wm_fluent_t *fluent) {
     if (fluent->port) cJSON_AddNumberToObject(wm_wd, "port", fluent->port);
     if (fluent->shared_key) cJSON_AddStringToObject(wm_wd, "shared_key", fluent->shared_key);
     if (fluent->certificate) cJSON_AddStringToObject(wm_wd, "ca_file", fluent->certificate);
-    if (fluent->user_name) cJSON_AddStringToObject(wm_wd, "user", fluent->user_name);
-    if (fluent->user_pass) cJSON_AddStringToObject(wm_wd, "password", fluent->user_pass);
+    cJSON_AddStringToObject(wm_wd, "user", fluent->user_name);
+    cJSON_AddStringToObject(wm_wd, "password", fluent->user_pass);
     cJSON_AddNumberToObject(wm_wd, "timeout", fluent->timeout);
 
     cJSON_AddItemToObject(root,"fluent-forward",wm_wd);
