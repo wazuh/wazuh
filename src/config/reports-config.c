@@ -215,7 +215,6 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
     const char *xml_compress = "compress";
     const char *xml_maxage = "maxage";
     const char *xml_day_wait = "day_wait";
-    const char *xml_daily_rotations = "daily_rotations";
 
     XML_NODE children = NULL;
     XML_NODE rotation_children = NULL;
@@ -427,18 +426,6 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                 return (OS_INVALID);
                             }  else if (rotation_config->day_wait > 600) {
                                 mwarn("Maximum value for 'day_wait' in <logs> not allowed. It will be set to 600 seconds.");
-                                rotation_config->interval = 500;
-                            }
-                        } else if(strcmp(rotation_children[k]->element, xml_daily_rotations) == 0) {
-                            char *end;
-                            rotation_config->daily_rotations = strtol(rotation_children[k]->content, &end, 10);
-                            if (rotation_config->daily_rotations < 1) {
-                                merror("The minimum allowed value for '%s' is 1.", rotation_children[k]->element);
-                                OS_ClearNode(rotation_children);
-                                OS_ClearNode(children);
-                                return (OS_INVALID);
-                            }  else if (rotation_config->daily_rotations > 256) {
-                                mwarn("Maximum value for 'day_wait' in <logs> not allowed. It will be set to 256 seconds.");
                                 rotation_config->interval = 500;
                             }
                         } else {

@@ -278,7 +278,6 @@ cJSON *getMonitorLogging(void) {
     char *size_rotation = "size_rotation";
     char *maxage = "maxage";
     char *day_wait = "day_wait";
-    char *daily_rotations = "daily_rotations";
     cJSON *root;
     cJSON *logging;
     char aux[50];
@@ -301,7 +300,6 @@ cJSON *getMonitorLogging(void) {
             cJSON_AddStringToObject(logging, size_rotation, mond.size_rotate ? aux : "no");
             cJSON_AddNumberToObject(logging, maxage, mond.maxage);
             cJSON_AddNumberToObject(logging, day_wait, mond.day_wait);
-            cJSON_AddNumberToObject(logging, daily_rotations, mond.daily_rotations);
         }
     }
 

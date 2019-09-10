@@ -33,7 +33,6 @@ static void init_conf()
     mond.size_units = 'B';
     mond.maxage = 31;
     mond.day_wait = 10;
-    mond.daily_rotations = 12;
     mond.log_level = 0;
 
     return;
@@ -56,8 +55,6 @@ static void read_internal()
         mond.day_wait = (short) aux;
     if ((aux = getDefine_Int("monitord", "keep_log_days", 0, 500)) != INT_OPT_NDEF)
         mond.maxage = aux;
-    if ((aux = getDefine_Int("monitord", "daily_rotations", 1, 256)) != INT_OPT_NDEF)
-        mond.daily_rotations = aux;
     if ((aux = getDefine_Int("monitord", "debug", 0, 2)) != INT_OPT_NDEF)
         mond.log_level = aux;
 

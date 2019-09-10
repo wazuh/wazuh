@@ -173,7 +173,6 @@ cJSON *getAgentInternalOptions(void) {
     cJSON_AddNumberToObject(monitord, "maxage", mond.maxage);
     cJSON_AddNumberToObject(monitord, "day_wait", mond.day_wait);
     cJSON_AddNumberToObject(monitord, "size_rotation", mond.max_size);
-    cJSON_AddNumberToObject(monitord, "daily_rotations", mond.daily_rotations);
 
     cJSON_AddItemToObject(internals, "monitord", monitord);
 
