@@ -25,12 +25,39 @@ public function config()
 ' Custom parameters
 strArgs = Session.Property("CustomActionData")
 args = Split(strArgs, ",")
-home_dir        = Replace(args(0), Chr(34), "") 'APPLICATIONFOLDER
-address         = Replace(args(1), Chr(34), "") 'ADDRESS
-server_port     = Replace(args(2), Chr(34), "") 'SERVER_PORT
-protocol        = Replace(args(3), Chr(34), "") 'PROTOCOL
-notify_time     = Replace(args(4), Chr(34), "") 'NOTIFY_TIME
+home_dir        = Replace(args(0), Chr(34), "")
+address         = Replace(args(1), Chr(34), "")
+server_port     = Replace(args(2), Chr(34), "")
+protocol        = Replace(args(3), Chr(34), "")
+notify_time     = Replace(args(4), Chr(34), "")
 time_reconnect  = Replace(args(5), Chr(34), "")
+
+wazuh_address         = Replace(args(6), Chr(34), "")
+wazuh_server_port     = Replace(args(7), Chr(34), "")
+wazuh_protocol        = Replace(args(8), Chr(34), "")
+wazuh_notify_time     = Replace(args(9), Chr(34), "")
+wazuh_time_reconnect  = Replace(args(10), Chr(34), "")
+
+If address = "" Then
+    address = wazuh_address
+End If
+
+If server_port = "" Then
+    server_port = wazuh_server_port
+End If
+
+If protocol = "" Then
+    protocol = wazuh_protocol
+End If
+
+If notify_time = "" Then
+    notify_time = wazuh_notify_time
+End If
+
+If time_reconnect = "" Then
+    time_reconnect = wazuh_time_reconnect
+End If
+
 ' Only try to set the configuration if variables are setted
 
 Set objFSO = CreateObject("Scripting.FileSystemObject")

@@ -19,3 +19,9 @@ For questions related to the user experience, please refer:
 
 Please fill the table above. Feel free to extend it at your convenience.
 -->
+
+<!--
+
+You may want to set debug options `<component>.debug=2` (see https://documentation.wazuh.com/current/user-manual/reference/internal-options.html) to get verbose logs. This may help investigate the issue.
+
+-->

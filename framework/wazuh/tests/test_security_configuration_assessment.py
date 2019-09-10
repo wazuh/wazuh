@@ -46,7 +46,8 @@ cols_returned_from_db_sca = [field.split(' as ')[1] if ' as ' in field else fiel
 cols_returned_from_db_sca_check = [field.replace('`', '').replace('sca.', '') for field in fields_translation_sca_check.keys()]
 
 
-@patch("wazuh.security_configuration_assessment.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+
+@patch("wazuh.security_configuration_assessment.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
 class TestPolicyMonitoring(TestCase):
 
     @patch('socket.socket')
