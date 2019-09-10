@@ -9,6 +9,7 @@
  */
 
 #include "syscheck_op.h"
+#include "os_net/os_net.h"
 
 #ifdef WIN32
 #include <sddl.h>
