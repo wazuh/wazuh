@@ -113,24 +113,15 @@ def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False, 
     :param mtu: Filters by mtu
     :return: Data
     """
-    # We get param using connexion as it is a python reserved keyword
-    try:
-        type_ = connexion.request.args['type']
-    except KeyError:
-        type_ = None
-
     filters = {'adapter': adapter,
-               'type': type_,
+               'type': connexion.request.args.get('type', None),
                'state': state,
                'name': name,
                'mtu': mtu}
     # Add nested fields to kwargs filters
     nested = ['tx.packets', 'rx.packets', 'tx.bytes', 'rx.bytes', 'tx.errors', 'rx.errors', 'tx.dropped', 'rx.dropped']
     for field in nested:
-        try:
-            filters[field] = connexion.request.args[field]
-        except KeyError:
-            filters[field] = None
+        filters[field] = connexion.request.args.get(field, None)
 
     f_kwargs = {'agent_id': agent_id,
                 'offset': offset,
@@ -173,14 +164,8 @@ def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=False, o
     :param dhcp: Filters by dhcp
     :return: Data
     """
-    # We get param using connexion as it is a python reserved keyword
-    try:
-        type_ = connexion.request.args['type']
-    except KeyError:
-        type_ = None
-
     filters = {'iface': iface,
-               'type': type_,
+               'type': connexion.request.args.get('type', None),
                'gateway': gateway,
                'dhcp': dhcp}
 
@@ -253,16 +238,10 @@ def get_packages_info(agent_id, pretty=False, wait_for_complete=False, offset=0,
     :param version: Filters by version
     :return: Data
     """
-    # We get param using connexion as it is a python reserved keyword
-    try:
-        format_ = connexion.request.args['format']
-    except KeyError:
-        format_ = None
-
     filters = {'vendor': vendor,
                'name': name,
                'architecture': architecture,
-               'format': format_,
+               'format': connexion.request.args.get('format', None),
                'version': version}
 
     f_kwargs = {'agent_id': agent_id,
@@ -289,7 +268,7 @@ def get_packages_info(agent_id, pretty=False, wait_for_complete=False, offset=0,
 
 @exception_handler
 def get_ports_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None,
-                   search=None, pid=None, protocol=None, tx_queue=None, state=None):
+                   search=None, pid=None, protocol=None, tx_queue=None, state=None, process=None):
     """ Get ports info of an agent
 
     :param agent_id: Agent ID
@@ -305,6 +284,7 @@ def get_ports_info(agent_id, pretty=False, wait_for_complete=False, offset=0, li
     :param protocol: Filters by protocol
     :param tx_queue: Filters by tx_queue
     :param state: Filters by state
+    :param process: Filters by process
     :return: Data
     """
     filters = {'pid': pid,
@@ -314,10 +294,7 @@ def get_ports_info(agent_id, pretty=False, wait_for_complete=False, offset=0, li
     # Add nested fields to kwargs filters
     nested = ['local.ip', 'local.port', 'remote.ip']
     for field in nested:
-        try:
-            filters[field] = connexion.request.args[field]
-        except KeyError:
-            filters[field] = None
+        filters[field] = connexion.request.args.get(field, None)
 
     f_kwargs = {'agent_id': agent_id,
                 'offset': offset,
