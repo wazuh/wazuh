@@ -221,7 +221,7 @@ class RBAChecker:
             },
             {
                 "actions": ["active_response:command"],
-                "resources": ["agent:id:001", "agent:id:002", "agent:id:003"],
+                "resources": ["agent:id:001", "agent:id:002", "agent:id:*", "agent:id:002", "agent:id:003"],
                 "effect": "deny"
             }
         ]
@@ -257,18 +257,19 @@ class RBAChecker:
         if effect == 'allow':
             if resource_value in odict['deny']:
                 odict['deny'].remove(resource_value)
-            elif resource_value == '*':
+            if resource_value == '*':
                 odict['deny'].clear()
                 odict['allow'].clear()
-            odict['allow'].add(resource_value)
+            if '*' not in odict['allow']:
+                odict['allow'].add(resource_value)
         elif effect == 'deny':
-            odict['deny'].add(resource_value)
             if resource_value in odict['allow']:
                 odict['allow'].remove(resource_value)
-            elif resource_value == '*':
+            if resource_value == '*':
                 odict['deny'].clear()
                 odict['allow'].clear()
-            odict['deny'].add(resource_value)
+            if '*' not in odict['deny']:
+                odict['deny'].add(resource_value)
 
     @staticmethod
     def black_process(resource_value, effect, odict):
@@ -278,14 +279,16 @@ class RBAChecker:
             elif resource_value == '*':
                 odict['allow'].clear()
                 odict['deny'].clear()
-            odict['deny'].add(resource_value)
+            if '*' not in odict['deny']:
+                odict['deny'].add(resource_value)
         elif effect == 'allow':
             if resource_value in odict['deny']:
                 odict['deny'].remove(resource_value)
             elif resource_value == '*':
                 odict['allow'].clear()
                 odict['deny'].clear()
-            odict['allow'].add(resource_value)
+            if '*' not in odict['allow']:
+                odict['allow'].add(resource_value)
 
     @staticmethod
     def modify_odict(mode, action, resources, effect, odict):
