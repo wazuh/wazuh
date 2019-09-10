@@ -3807,10 +3807,10 @@ int wdb_parse_mitre(wdb_t * wdb, char * input, char * output, struct opt_param *
         result = wdb_mitre_attack_get(wdb, attack_id, result_found);
         switch (result) {
             case 0:
-                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                snprintf(output, OS_MAXSTR + 1, "err not found");
                 break;
             case 1:
-                snprintf(output, OS_MAXSTR + 1, "ok found %s", result_found);
+                snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
                 break;
             default:
                 mdebug1("Cannot query Mitre attack.");
@@ -3824,7 +3824,7 @@ int wdb_parse_mitre(wdb_t * wdb, char * input, char * output, struct opt_param *
         result = wdb_mitre_phases_get(wdb, phase, result_found, params);
         switch (result) {
             case 0:
-                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                snprintf(output, OS_MAXSTR + 1, "err not found");
                 break;
             case 1:
                 snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
@@ -3841,7 +3841,7 @@ int wdb_parse_mitre(wdb_t * wdb, char * input, char * output, struct opt_param *
         result = wdb_mitre_platforms_get(wdb, platform, result_found, params);
         switch (result) {
             case 0:
-                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                snprintf(output, OS_MAXSTR + 1, "err not found");
                 break;
             case 1:
                 snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
@@ -3851,7 +3851,10 @@ int wdb_parse_mitre(wdb_t * wdb, char * input, char * output, struct opt_param *
                 snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre platform");
         }
     } else {
-        return result;
+        mdebug1("Invalid Mitre query syntax.");
+        mdebug2("DB query error near: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Mitre query syntax, near '%.32s'", curr);
+        return -1;
     }
     return result;
 }
