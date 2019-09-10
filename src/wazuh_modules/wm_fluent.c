@@ -57,6 +57,7 @@ static wm_fluent_pong_t * wm_fluent_recv_pong(wm_fluent_t * fluent);
 static int wm_fluent_handshake(wm_fluent_t * fluent);
 static int wm_fluent_send(wm_fluent_t * fluent, const char * str, size_t size);
 static int wm_fluent_check_config(wm_fluent_t * fluent);
+static void wm_fluent_check_connection(wm_fluent_t * fluent, int recv_b);
 
 const wm_context WM_FLUENT_CONTEXT = {
     FLUENT_WM_NAME,
@@ -89,7 +90,9 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
     SSL_library_init();
 
     /* Listen socket */
-    server_sock = OS_BindUnixDomain(fluent->sock_path, SOCK_DGRAM, OS_MAXSTR);
+    //server_sock = OS_BindUnixDomain(fluent->sock_path, SOCK_DGRAM, OS_MAXSTR);
+    server_sock = OS_SetRecvTimeout(fluent->sock_path, 10, 0);
+
     if (server_sock < 0) {
         merror("Unable to bind to socket '%s': (%d) %s.", WM_LOCAL_SOCK, errno, strerror(errno));
         pthread_exit(NULL);
@@ -106,14 +109,7 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
     while (1) {
         recv_b = recv(server_sock, buffer, OS_MAXSTR - 1, 0);
 
-        switch (recv_b) {
-        case -1:
-            merror("Cannot receive data from '%s': %s (%d)", fluent->sock_path, strerror(errno), errno);
-            continue;
-        case 0:
-            merror("Empty string received from '%s'", fluent->sock_path);
-            continue;
-        default:
+        if (recv_b > 0) {
             if (wm_fluent_send(fluent, buffer, recv_b) < 0) {
                 mwarn("Cannot send data to '%s': %s (%d). Reconnecting...", fluent->address, strerror(errno), errno);
 
@@ -125,6 +121,8 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
                 minfo("Connected to %s:%hu", fluent->address, fluent->port);
                 wm_fluent_send(fluent, buffer, recv_b);
             }
+        } else {
+            wm_fluent_check_connection(fluent, recv_b);
         }
     }
 
@@ -134,6 +132,25 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
 // Destroy data
 void wm_fluent_destroy(wm_fluent_t * fluent) {
     os_free(fluent);
+}
+
+static void wm_fluent_check_connection(wm_fluent_t * fluent, int recv_b) {
+    switch (recv_b) {
+        case -1:
+            if (errno == EAGAIN) {
+                break;
+            } else {
+                merror("Cannot receive data from '%s': %s (%d)", fluent->sock_path, strerror(errno), errno);
+            }
+        case 0:
+            while (wm_fluent_handshake(fluent) < 0) {
+                mdebug2("Handshake failed. Waiting 30 seconds.");
+                sleep(30);
+            }
+            break;
+        default:
+            mdebug1("Something wrong happened");
+    }
 }
 
 static char * wm_fluent_strdup(const msgpack_object_str * str) {
