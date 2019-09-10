@@ -286,7 +286,7 @@ void fim_sync_checksum_split(const char * start, const char * top) {
         }
     }
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (n > 0) {
         if (entry_data == NULL) {

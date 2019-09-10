@@ -1162,3 +1162,34 @@ const char *get_group(__attribute__((unused)) int gid) {
 }
 
 #endif
+
+/* Send a one-way message to Syscheck */
+#ifndef WIN32
+void ag_send_syscheck(int * sock, char * message, unsigned attempts) {
+
+    if (*sock == -1) {
+        *sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
+
+        if (*sock == -1) {
+            merror("dbsync: cannot connect to syscheck: %s (%d)", strerror(errno), errno);
+            return;
+        }
+    }
+
+    if (OS_SendSecureTCP(*sock, strlen(message), message) < 0) {
+        merror("Cannot send message to syscheck: %s (%d)", strerror(errno), errno);
+        close(*sock);
+        *sock = -1;
+
+        if (attempts > 0) {
+            ag_send_syscheck(sock, message, attempts - 1);
+        }
+    }
+}
+#else
+void ag_send_syscheck(__attribute__((unused)) int * sock, char * message, __attribute__((unused)) unsigned attempts) {
+    char * response = NULL;
+    syscom_dispatch(message, &response);
+    free(response);
+}
+#endif

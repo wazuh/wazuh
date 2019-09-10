@@ -225,4 +225,13 @@ char *escape_perm_sum(char *sum);
 
 #endif
 
+/**
+ * @brief Send a one-way message to Syscheck
+ *
+ * @param sock Pointer to a socket descriptor. If the pointed value is -1, this function will connect.
+ * @param message Payload.
+ * @param attempts Number of attempts to send.
+ */
+void ag_send_syscheck(int * sock, char * message, unsigned attempts);
+
 #endif
