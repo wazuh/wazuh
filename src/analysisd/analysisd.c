@@ -2205,7 +2205,7 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args){
 void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
     char * msg;
     Eventinfo * lf;
-    dbsync_context_t ctx = { -1, -1 };
+    dbsync_context_t ctx = { .db_sock = -1, .ar_sock = -1 };
 
     for (;;) {
         msg = queue_pop_ex(dispatch_dbsync_input);

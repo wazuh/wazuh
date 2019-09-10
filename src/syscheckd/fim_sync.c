@@ -21,6 +21,7 @@
 #include "integrity_op.h"
 
 static long fim_sync_cur_id;
+static long fim_sync_last_msg_time;
 
 char * dbsync_check_msg(const char * component, long id, const char * start, const char * top, const char * tail, const char * checksum) {
     cJSON * root = cJSON_CreateObject();
@@ -286,7 +287,7 @@ void fim_sync_checksum_split(const char * start, const char * top) {
         }
     }
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (n > 0) {
         if (entry_data == NULL) {
@@ -371,6 +372,8 @@ void fim_sync_dispatch(char * payload) {
         goto end;
     }
 
+    fim_sync_last_msg_time = time(NULL);
+
     // Discard command if (data.id > global_id)
     // Decrease global ID if (data.id < global_id)
 
@@ -400,4 +403,8 @@ void fim_sync_dispatch(char * payload) {
 
 end:
     cJSON_Delete(root);
+}
+
+long fim_sync_last_message() {
+    return fim_sync_last_msg_time;
 }

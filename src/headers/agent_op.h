@@ -11,15 +11,22 @@
 #ifndef __AGENT_OP_H
 #define __AGENT_OP_H
 
-/* Check if syscheck is to be executed/restarted
- * Returns 1 on success or 0 on failure (shouldn't be executed now)
+/**
+ * @brief Check if syscheck is to be executed/restarted
+ * @return 1 on success or 0 on failure (shouldn't be executed now).
  */
 int os_check_restart_syscheck(void);
 
-/* Set syscheck to be restarted
- * Returns 1 on success or 0 on failure
+/**
+ * @brief Check if rootcheck is to be executed/restarted
+ * @return 1 on success or 0 on failure (shouldn't be executed now).
  */
-int os_set_restart_syscheck(void);
+int os_check_restart_rootcheck(void);
+
+/**
+ * @brief Set syscheck and rootcheck to be restarted
+ */
+void os_set_restart_syscheck(void);
 
 /* Read the agent name for the current agent
  * Returns NULL on error
@@ -88,14 +95,5 @@ char * get_agent_id_from_name(const char *agent_name);
 #if defined (__linux__) || defined (__MACH__)
 int control_check_connection();
 #endif
-
-/**
- * @brief Send a one-way message to Syscheck
- *
- * @param sock Pointer to a socket descriptor. If the pointed value is -1, this function will connect.
- * @param message Payload.
- * @param attempts Number of attempts to send.
- */
-void ag_send_syscheck(int * sock, const char * message, unsigned attempts);
 
 #endif /* __AGENT_OP_H */

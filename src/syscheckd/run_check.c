@@ -344,10 +344,19 @@ int fim_whodata_initialize() {
 }
 
 
-// Starting Real-time thread
+// Starting data synchronization thread
 void * fim_run_integrity(__attribute__((unused)) void * args) {
 
     while (1) {
+        long lapse;
+
+        // Wait for sync_response_timeout seconds since the last message received.
+
+        while ((lapse = fim_sync_last_message() + syscheck.sync_response_timeout - time(NULL)) > 0) {
+            mdebug2("Sync: sleeping %ld seconds (response timeout).", lapse);
+            sleep(lapse);
+        }
+
         minfo("~~~ starting integrity thread");
         fim_sync_checksum();
         sleep(syscheck.sync_interval);
