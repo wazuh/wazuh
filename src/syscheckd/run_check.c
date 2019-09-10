@@ -106,6 +106,14 @@ void start_daemon()
         syscheck.time = 604800;
     }
 
+    char *diff_dir;
+
+    os_calloc(PATH_MAX, sizeof(char), diff_dir);
+    snprintf(diff_dir, PATH_MAX, "%s/local/", DIFF_DIR_PATH);
+
+    minfo("~~ Deleting content of '%s'", diff_dir);
+    cldir_ex(diff_dir);
+
     if (!syscheck.disabled) {
         minfo(FIM_FREQUENCY_TIME, syscheck.time);
         fim_scan();
@@ -226,26 +234,11 @@ void start_daemon()
 
 // Starting Real-time thread
 void * fim_run_realtime(__attribute__((unused)) void * args) {
-    int i = 0;
-#ifdef WIN32
-    set_priority_windows_thread();
-#endif
 
 #if defined INOTIFY_ENABLED || defined WIN32
-    while(syscheck.dir[i]) {
-        if (syscheck.opts[i] & REALTIME_ACTIVE) {
-            if (IsNFS(syscheck.dir[i])) {
-                mwarn(FIM_WARN_NFS_INOTIFY, syscheck.dir[i]);
-            } else {
-                minfo("Adding '%s' to realtime", syscheck.dir[i]);
-                realtime_adddir(syscheck.dir[i], 0);
-            }
-        }
-        i++;
-    }
-#else
-    mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
-    pthread_exit(NULL);
+
+#ifdef WIN32
+    set_priority_windows_thread();
 #endif
 
     while (1) {
@@ -285,6 +278,12 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 #endif
         }
     }
+
+#else
+    mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
+    pthread_exit(NULL);
+#endif
+
 }
 
 
@@ -309,18 +308,16 @@ void set_priority_windows_thread() {
 
 int fim_whodata_initialize() {
     int i = 0;
+#if defined INOTIFY_ENABLED || defined WIN32
+
 #ifdef WIN32
     set_priority_windows_thread();
 #endif
 
     while(syscheck.dir[i]) {
         if (syscheck.opts[i] & WHODATA_ACTIVE) {
-            minfo("Adding '%s' to WHODATA", syscheck.dir[i]);
-#if defined INOTIFY_ENABLED || defined WIN32
+            //minfo("~~ Adding '%s' to WHODATA", syscheck.dir[i]);
             realtime_adddir(syscheck.dir[i], i + 1);
-#else
-            mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
-#endif
         }
         i++;
     }
@@ -328,7 +325,6 @@ int fim_whodata_initialize() {
 #ifdef WIN_WHODATA
     HANDLE t_hdle;
     long unsigned int t_id;
-    minfo("~~~~ syscheck.wdata.whodata_setup '%d'", syscheck.wdata.whodata_setup);
     if (syscheck.wdata.whodata_setup && !run_whodata_scan()) {
         if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
             merror(FIM_ERROR_CHECK_THREAD);
@@ -337,6 +333,11 @@ int fim_whodata_initialize() {
     }
 #elif ENABLE_AUDIT
     audit_set_db_consistency();
+#endif
+
+#else
+    mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
+    pthread_exit(NULL);
 #endif
 
     return 0;

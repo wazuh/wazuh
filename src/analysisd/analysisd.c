@@ -54,6 +54,8 @@ static void LoopRule(RuleNode *curr_node, FILE *flog);
 /* For decoders */
 void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match);
 int DecodeSyscheck(Eventinfo *lf, _sdb *sdb);
+// Decode events in json format
+int decode_fim_event(_sdb *sdb, Eventinfo *lf);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf,int *socket);
@@ -1902,6 +1904,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
 
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_syscheck_input), msg) {
+            int res = 0;
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
 
@@ -1923,15 +1926,18 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             w_inc_syscheck_decoded_events();
             lf->decoder_info = fim_decoder;
 
-            if (DecodeSyscheck(lf, &sdb) != 1) {
+            // If the event comes in JSON format agent version is >= 3.10. Therefore we decode, alert and update DB entry.
+            if (*lf->log == '{') {
+                res = decode_fim_event(&sdb, lf);
+            } else {
+                res = DecodeSyscheck(lf, &sdb);
+            }
+
+            if (res == 1 && queue_push_ex_block(decode_queue_event_output,lf) == 0) {
+                continue;
+            } else {
                 /* We don't process syscheck events further */
                 w_free_event_info(lf);
-                continue;
-            }
-            else{
-                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
-                    w_free_event_info(lf);
-                }
             }
         }
     }

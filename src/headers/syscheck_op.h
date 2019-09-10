@@ -64,23 +64,6 @@
 #define FILE_READ_ATTRIBUTES                    0x00000080
 #define FILE_WRITE_ATTRIBUTES                   0x00000100
 
-/* Checking options */
-#define CHECK_SIZE          0000001
-#define CHECK_PERM          0000002
-#define CHECK_OWNER         0000004
-#define CHECK_GROUP         0000010
-#define CHECK_MTIME         0000020
-#define CHECK_INODE         0000040
-#define CHECK_MD5SUM        0000100
-#define CHECK_SHA1SUM       0000200
-#define CHECK_SHA256SUM     0000400
-#define CHECK_ATTRS         0001000
-#define CHECK_SEECHANGES    0002000
-#define CHECK_FOLLOW        0004000
-#define REALTIME_ACTIVE     0010000
-#define WHODATA_ACTIVE      0020000
-#define SCHEDULED_ACTIVE    0040000
-
 #else
 
 #include "shared.h"
@@ -93,39 +76,38 @@
 
 // Number of attributes in checksum
 #define FIM_NATTR 11
-// Number of options in checksum hash table
-#define FIM_NOPTS 10
 /* Fields for rules */
-typedef enum sk_syscheck {
-    SK_FILE,
-    SK_SIZE,
-    SK_PERM,
-    SK_UID,
-    SK_GID,
-    SK_MD5,
-    SK_SHA1,
-    SK_UNAME,
-    SK_GNAME,
-    SK_MTIME,
-    SK_INODE,
-    SK_SHA256,
-    SK_ATTRS,
-    SK_CHFIELDS,
-    SK_USER_ID,
-    SK_USER_NAME,
-    SK_GROUP_ID,
-    SK_GROUP_NAME,
-    SK_PROC_NAME,
-    SK_AUDIT_ID,
-    SK_AUDIT_NAME,
-    SK_EFFECTIVE_UID,
-    SK_EFFECTIVE_NAME,
-    SK_PPID,
-    SK_PROC_ID,
-    SK_TAG,
-    SK_SYM_PATH,
-    SK_NFIELDS
-} sk_syscheck;
+typedef enum fim_fields {
+    FIM_FILE,
+    FIM_SIZE,
+    FIM_PERM,
+    FIM_UID,
+    FIM_GID,
+    FIM_MD5,
+    FIM_SHA1,
+    FIM_UNAME,
+    FIM_GNAME,
+    FIM_MTIME,
+    FIM_INODE,
+    FIM_SHA256,
+    FIM_DIFF,
+    FIM_ATTRS,
+    FIM_CHFIELDS,
+    FIM_USER_ID,
+    FIM_USER_NAME,
+    FIM_GROUP_ID,
+    FIM_GROUP_NAME,
+    FIM_PROC_NAME,
+    FIM_AUDIT_ID,
+    FIM_AUDIT_NAME,
+    FIM_EFFECTIVE_UID,
+    FIM_EFFECTIVE_NAME,
+    FIM_PPID,
+    FIM_PROC_ID,
+    FIM_TAG,
+    FIM_SYM_PATH,
+    FIM_NFIELDS
+} fim_fields;
 
 typedef struct __sdb {
     char comment[OS_MAXSTR + 1];
