@@ -13,42 +13,37 @@
 #include "../os_net/os_net.h"
 #include "../addagent/manage_agents.h"
 
+/// Pending restart bit field
+static struct {
+    unsigned syscheck:1;
+    unsigned rootcheck:1;
+} os_restart;
 
 /* Check if syscheck is to be executed/restarted
  * Returns 1 on success or 0 on failure (shouldn't be executed now)
  */
 int os_check_restart_syscheck()
 {
-    /* If the restart is not present, return 0 */
-    if (isChroot()) {
-        if (unlink(SYSCHECK_RESTART) == -1) {
-            return (0);
-        }
-    } else {
-        if (unlink(SYSCHECK_RESTART_PATH) == -1) {
-            return (0);
-        }
-    }
-    return (1);
+    int current = os_restart.syscheck;
+    os_restart.syscheck = 0;
+    return current;
 }
 
-/* Set syscheck to be restarted
- * Returns 1 on success or 0 on failure
+/* Check if rootcheck is to be executed/restarted
+ * Returns 1 on success or 0 on failure (shouldn't be executed now)
  */
-int os_set_restart_syscheck()
+int os_check_restart_rootcheck()
 {
-    FILE *fp;
+    int current = os_restart.rootcheck;
+    os_restart.rootcheck = 0;
+    return current;
+}
 
-    fp = fopen(SYSCHECK_RESTART, "w");
-    if (!fp) {
-        merror(FOPEN_ERROR, SYSCHECK_RESTART, errno, strerror(errno));
-        return (0);
-    }
-
-    fprintf(fp, "%s\n", SYSCHECK_RESTART);
-    fclose(fp);
-
-    return (1);
+/* Set syscheck and rootcheck to be restarted */
+void os_set_restart_syscheck()
+{
+    os_restart.syscheck = 1;
+    os_restart.rootcheck = 1;
 }
 
 /* Read the agent name for the current agent
