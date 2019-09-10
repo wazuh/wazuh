@@ -33,6 +33,7 @@ typedef struct _monitor_config {
     int a_queue;
     int maxage;
     int keep_rotated_files;
+    unsigned long min_size_rotate;  // This is the value that we put in the configuration (not converted to bytes). We need it to show the configuration.
     unsigned long size_rotate;      // This is the value that we put in the configuration (not converted to bytes). We need it to show the configuration.
     unsigned long interval_rotate;  // This is the value that we put in the configuration (not converted to seconds). We need it to show the configuration.
     int daily_rotations;
@@ -48,6 +49,8 @@ typedef struct _monitor_config {
     unsigned int ossec_log_plain:1;
     unsigned int ossec_log_json:1;
     OSList *ossec_rotation_files;
+    long int min_size;
+    char min_size_units;    // Character that indicates the units of the log file size (Bytes, KBytes, MBytes, GBytes)
     long int max_size;
     char size_units;        // Character that indicates the units of the log file size (Bytes, KBytes, MBytes, GBytes)
     long int interval;

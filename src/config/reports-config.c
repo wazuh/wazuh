@@ -210,6 +210,7 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
     const char *xml_format = "format";
     const char *xml_rotation = "rotation";
     const char *xml_max_size = "max_size";
+    const char *xml_min_size = "min_size";
     const char *xml_interval = "interval";
     const char *xml_rotate = "rotate";
     const char *xml_compress = "compress";
@@ -318,6 +319,53 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                     return (OS_INVALID);
                             }
                             if (rotation_config->max_size < 1048576) {
+                                merror("The minimum allowed value for '%s' is 1 MB.", rotation_children[k]->element);
+                                OS_ClearNode(rotation_children);
+                                OS_ClearNode(children);
+                                return (OS_INVALID);
+                            }
+                        } else if (strcmp(rotation_children[k]->element, xml_min_size) == 0) {
+                            char *end;
+                            char c;
+                            rotation_config->min_size_rotate = strtol(rotation_children[k]->content, &end, 10);
+                            switch (sscanf(rotation_children[k]->content, "%ld%c", &rotation_config->min_size, &c)) {
+                                case 1:
+                                    break;
+                                case 2:
+                                    switch (c) {
+                                        case 'G':
+                                        case 'g':
+                                            rotation_config->min_size *= 1073741824;
+                                            rotation_config->min_size_units = 'G';
+                                            break;
+                                        case 'M':
+                                        case 'm':
+                                            rotation_config->min_size *= 1048576;
+                                            rotation_config->min_size_units = 'M';
+                                            break;
+                                        case 'K':
+                                        case 'k':
+                                            rotation_config->min_size *= 1024;
+                                            rotation_config->min_size_units = 'K';
+                                            break;
+                                        case 'B':
+                                        case 'b':
+                                            rotation_config->min_size_units = 'B';
+                                            break;
+                                        default:
+                                            merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                            OS_ClearNode(rotation_children);
+                                            OS_ClearNode(children);
+                                            return (OS_INVALID);
+                                    }
+                                    break;
+                                default:
+                                    merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                    OS_ClearNode(rotation_children);
+                                    OS_ClearNode(children);
+                                    return (OS_INVALID);
+                            }
+                            if (rotation_config->min_size < 1048576) {
                                 merror("The minimum allowed value for '%s' is 1 MB.", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
