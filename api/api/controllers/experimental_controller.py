@@ -97,7 +97,7 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
 
 @exception_handler
 def get_hardware_info(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
-                      ram_free=None, ram_total=None, cpu_cores=None, cpu_mhz=None, cpu_name=None, board_serial=None):
+                      board_serial=None):
     """ Get hardware info from all agents.
 
     :param pretty: Show results in human-readable format
@@ -108,28 +108,23 @@ def get_hardware_info(pretty=False, wait_for_complete=False, offset=0, limit=Non
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
-    :param ram_free: Filters by ram_free
-    :param ram_total: Filters by ram_total
-    :param cpu_cores: Filters by cpu_cores
-    :param cpu_mhz: Filters by cpu_mhz
-    :param cpu_name: Filters by cpu_name
     :param board_serial: Filters by board_serial
     :return: Data
     """
+    filters = {
+        'board_serial': board_serial
+        }
+    # Add nested fields to kwargs filters
+    nested = ['ram.free', 'ram.total', 'cpu.cores', 'cpu.mhz', 'cpu.name']
+    for field in nested:
+        filters[field] = connexion.request.args.get(field, None)
     f_kwargs = {
         'offset': offset,
         'limit': limit,
         'select': select,
         'sort': parse_api_param(sort, 'sort'),
         'search': parse_api_param(search, 'search'),
-        'filters': {
-            'ram_free': ram_free,
-            'ram_total': ram_total,
-            'cpu_cores': cpu_cores,
-            'cpu_mhz': cpu_mhz,
-            'cpu_name': cpu_name,
-            'board_serial': board_serial
-                }
+        'filters': filters,
         }
 
     dapi = DistributedAPI(f=syscollector.get_hardware,

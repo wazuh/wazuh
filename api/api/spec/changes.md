@@ -185,9 +185,12 @@ in `dapi_errors` key
 ### DELETE /experimental/syscheck
 * In response, `data` key is now moved to new `message` key
 
+### GET /experimental/syscollector/hardware
+* Parameters **ram_free**, **ram_total**, **cpu_cores**, **cpu_mhz**, **cpu_name** renamed to **ram.free**, **ram.total**, **cpu.cores**, **cpu.mhz**, **cpu.name**
+
 ### GET /experimental/syscollector/netiface
 * Parameters **tx_packets**, **rx_packets**, **tx_bytes**, **rx_bytes**, **tx_errors**, **rx_errors**, **tx_dropped** and **rx_dropped** renamed to **tx.packets**, **rx.packets**, **tx.bytes**, **rx.bytes**, **tx.errors**, **rx.errors**, **tx.dropped** and **rx.dropped**
-* Changed **mtu**, **tx_packets**, **rx_packets**, **tx_bytes**, **rx_bytes**, **tx_errors**, **rx_errors**, **tx_dropped** and **rx_dropped** parameters to type integer.
+* Changed **mtu**, **tx.packets**, **rx.packets**, **tx.bytes**, **rx.bytes**, **tx.errors**, **rx.errors**, **tx.dropped** and **rx.dropped** parameters to type integer.
 
 
 ### GET /experimental/syscollector/processes
