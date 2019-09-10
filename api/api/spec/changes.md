@@ -8,6 +8,7 @@
 * `data` is never showing a human readable message. To be consistent, it will only contain an object or list of objects. In case
 a human readable message is shown, the new field `message` will be used instead.
 * Changed search negation from `!` to `-`.
+* Changed nested fields from `a_b` to `a.b`
 
 ## Active Response
 ### PUT /active-response
@@ -24,11 +25,6 @@ a human readable message is shown, the new field `message` will be used instead.
 ### DELETE /agents
 * Parameter **ids** must be in query, not in body because DELETE operations can't have a requestBody in OpenAPI 3
 * In response, `msg` key is now moved to new `message` key
-
-### GET /agents
-* Parameter **os.name** renamed to **os_name**
-* Parameter **os.platform** renamed to **os_platform**
-* Parameter **os.version** renamed to **os_version**
 
 ### GET /agents/groups/{group_id}
 
@@ -190,16 +186,20 @@ in `dapi_errors` key
 * In response, `data` key is now moved to new `message` key
 
 ### GET /experimental/syscollector/netiface
+* Parameters **tx_packets**, **rx_packets**, **tx_bytes**, **rx_bytes**, **tx_errors**, **rx_errors**, **tx_dropped** and **rx_dropped** renamed to **tx.packets**, **rx.packets**, **tx.bytes**, **rx.bytes**, **tx.errors**, **rx.errors**, **tx.dropped** and **rx.dropped**
 * Changed **mtu**, **tx_packets**, **rx_packets**, **tx_bytes**, **rx_bytes**, **tx_errors**, **rx_errors**, **tx_dropped** and **rx_dropped** parameters to type integer.
+
 
 ### GET /experimental/syscollector/processes
 * Parameter **pid** renamed to **process_pid**
 * Parameter **status** renamed to **process_status**
 * Parameter **name** renamed to **process_name**
 
-
 ### GET /experimental/syscollector/packages
 * Parameter **format** renamed to **package_format**
+
+### GET /experimental/syscollector/ports
+* Parameters **local_ip**, **local_port**, **remote_ip** renamed to **local.ip**, **local.port**, **remote.ip** 
 
 ## Manager
 
@@ -264,6 +264,7 @@ in `dapi_errors` key
 
 ### GET /syscollector/:agent_id/netiface
 * Added **agent_id** parameter.
+* Parameters **tx_packets**, **rx_packets**, **tx_bytes**, **rx_bytes**, **tx_errors**, **rx_errors**, **tx_dropped** and **rx_dropped** renamed to **tx.packets**, **rx.packets**, **tx.bytes**, **rx.bytes**, **tx.errors**, **rx.errors**, **tx.dropped** and **rx.dropped**
 
 ### GET /syscollector/:agent_id/netproto
 * Added **agent_id** parameter.
@@ -275,6 +276,9 @@ in `dapi_errors` key
 * Parameter **pid** renamed to **process_pid**
 * Parameter **status** renamed to **process_status**
 * Parameter **name** renamed to **process_name**
+
+### GET /syscollector/:agent_id/ports
+* Parameters **local_ip**, **local_port**, **remote_ip** renamed to **local.ip**, **local.port**, **remote.ip** 
 
 ## Security
 * These endpoints provide the functionality of RBAC and authentication
