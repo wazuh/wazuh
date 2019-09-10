@@ -71,9 +71,13 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         time(&current_time);
  #endif
         /* If time is outside the timeframe, return */
-        if (((current_time - lf->generate_time) > rule->timeframe) && (strcmp(lf->agent_id, my_lf->agent_id))) {
+        if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
             goto end;
+        }
+
+        if (strcmp(lf->agent_id, my_lf->agent_id)){
+            continue;
         }
 
         /* Check for same ID */
@@ -291,9 +295,13 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         time(&current_time);
 #endif
         /* If time is outside the timeframe, return */
-        if (((current_time - lf->generate_time) > rule->timeframe)  && (strcmp(lf->agent_id, my_lf->agent_id))) {
+        if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
             goto end;
+        }
+
+        if (strcmp(lf->agent_id, my_lf->agent_id)){
+            continue;
         }
 
         /* Check for same ID */
@@ -500,13 +508,17 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         time(&current_time);
 #endif
         /* If time is outside the timeframe, return */
-        if (((current_time - lf->generate_time) > rule->timeframe) && (strcmp(lf->agent_id, my_lf->agent_id))) {
+        if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
             goto end;
         }
 
+        if (strcmp(lf->agent_id, my_lf->agent_id)){
+            continue;
+        }
+
         /* The category must be the same */
-        else if (lf->decoder_info->type != my_lf->decoder_info->type) {
+        if (lf->decoder_info->type != my_lf->decoder_info->type) {
             goto next_it;
         }
 
