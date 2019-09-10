@@ -13,14 +13,10 @@
 static OSHash *mitre_table;
 
 void mitre_load(){
-    int phases_size;
-    int platforms_size;
     int hashcheck;
-    int i = 0;
     size_t n;
     size_t size;
     char * buffer = NULL;
-    char ** phases_string;
     FILE *fp;
     cJSON *type = NULL;
     cJSON *source_name = NULL;
@@ -85,8 +81,6 @@ void mitre_load(){
                     if (cJSON_GetObjectItem(reference, "source_name") && cJSON_GetObjectItem(reference, "external_id")){
                         source_name = cJSON_GetObjectItem(reference, "source_name");
                         if (strcmp(source_name->valuestring, "mitre-attack") == 0){
-                            phases_size = 0;
-                            platforms_size = 0;
                             /* All the conditions have been met */
                             /* Storing the item 'external_id' */
                             ext_id = cJSON_GetObjectItem(reference, "external_id");
@@ -95,18 +89,15 @@ void mitre_load(){
                             name = cJSON_GetObjectItem(object, "name");
 
                             /* Storing the item 'phase_name' of 'kill_chain_phases' */
+                            arrayphases = cJSON_CreateArray();
                             kill_chain_phases = cJSON_GetObjectItem(object, "kill_chain_phases");
                             cJSON_ArrayForEach(kill_chain_phase, kill_chain_phases){
                                 cJSON_ArrayForEach(chain_phase, kill_chain_phase){
                                     if(strcmp(chain_phase->string,"phase_name") == 0){
-                                        os_realloc(phases_string, (phases_size + 2) * sizeof(char *), phases_string);
-                                        os_strdup(chain_phase->valuestring, phases_string[phases_size]);
-                                        phases_string[phases_size + 1] = NULL;
-                                        phases_size++;
+                                        cJSON_AddItemToArray(arrayphases, cJSON_Duplicate(chain_phase,1));
                                     }
                                 }  
                             }
-                            arrayphases = cJSON_CreateStringArray(phases_string, phases_size);
 
                             /* Storing the item 'x_mitre_platforms' */
                             platforms = cJSON_GetObjectItem(object, "x_mitre_platforms");
@@ -124,7 +115,7 @@ void mitre_load(){
                                 exit(1);
                             }
                             else if (hashcheck == 1){
-                                minfo("Warning: the value wasn't added to mitre hash table because duplicated key.");
+                                mdebug1("Warning: the value wasn't added to mitre hash table because duplicated key.");
                             }
 
                             /* Deleting items from the object. Replacing items is another option */
@@ -132,12 +123,6 @@ void mitre_load(){
                             cJSON_DeleteItemFromObject(object_out, "name");
                             cJSON_DeleteItemFromObject(object_out, "phases");
                             cJSON_DeleteItemFromObject(object_out, "platforms");
-
-                            /* Free memory */
-                            for (i=0; phases_string[i] != NULL; i++){
-                                os_free (phases_string[i]);                            
-                            }
-                            os_free(phases_string);
                         }
                     }    
                 }

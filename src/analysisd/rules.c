@@ -135,7 +135,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
     const char *xml_options = "options";
 
-    const char *xml_compliance = "compliance";
+    //const char *xml_compliance = "compliance";
     const char *xml_mitre = "mitre";
 
     char *rulepath = NULL;
