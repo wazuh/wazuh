@@ -14,7 +14,7 @@ from api.models.token_response import TokenResponse
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc, parse_api_param
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
-from wazuh.security import Role, Policy, RolePolicy
+from wazuh import security
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -52,7 +52,7 @@ def get_roles(pretty=False, wait_for_complete=False, offset=0, limit=None, searc
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
                 }
 
-    dapi = DistributedAPI(f=Role.get_roles,
+    dapi = DistributedAPI(f=security.get_roles,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -77,7 +77,7 @@ def get_role(role_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'role_id': role_id}
 
-    dapi = DistributedAPI(f=Role.get_role,
+    dapi = DistributedAPI(f=security.get_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -110,7 +110,7 @@ def add_role(pretty=False, wait_for_complete=False):
     # f_kwargs = {'role_id': role_id, **{}, **role_added_model.to_dict()}
     f_kwargs = role_added_model
 
-    dapi = DistributedAPI(f=Role.add_role,
+    dapi = DistributedAPI(f=security.add_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -134,7 +134,7 @@ def remove_role(role_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'role_id': role_id}
 
-    dapi = DistributedAPI(f=Role.remove_role,
+    dapi = DistributedAPI(f=security.remove_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -159,7 +159,7 @@ def remove_roles(list_roles=None, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'list_roles': list_roles}
 
-    dapi = DistributedAPI(f=Role.remove_roles,
+    dapi = DistributedAPI(f=security.remove_roles,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -195,7 +195,7 @@ def update_role(role_id, pretty=False, wait_for_complete=False):
     role_added_model['role_id'] = role_id
     f_kwargs = role_added_model
 
-    dapi = DistributedAPI(f=Role.update_role,
+    dapi = DistributedAPI(f=security.update_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -228,7 +228,7 @@ def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None, se
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
                 }
 
-    dapi = DistributedAPI(f=Policy.get_policies,
+    dapi = DistributedAPI(f=security.get_policies,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -253,7 +253,7 @@ def get_policy(policy_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'policy_id': policy_id}
 
-    dapi = DistributedAPI(f=Policy.get_policy,
+    dapi = DistributedAPI(f=security.get_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -284,7 +284,7 @@ def add_policy(pretty=False, wait_for_complete=False):
 
     f_kwargs = policy_added_model
 
-    dapi = DistributedAPI(f=Policy.add_policy,
+    dapi = DistributedAPI(f=security.add_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -308,7 +308,7 @@ def remove_policy(policy_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'policy_id': policy_id}
 
-    dapi = DistributedAPI(f=Policy.remove_policy,
+    dapi = DistributedAPI(f=security.remove_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -333,7 +333,7 @@ def remove_policies(list_policies=None, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'list_policies': list_policies}
 
-    dapi = DistributedAPI(f=Policy.remove_policies,
+    dapi = DistributedAPI(f=security.remove_policies,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -367,7 +367,7 @@ def update_policy(policy_id, pretty=False, wait_for_complete=False):
     policy_added_model['policy_id'] = policy_id
     f_kwargs = policy_added_model
 
-    dapi = DistributedAPI(f=Policy.update_policy,
+    dapi = DistributedAPI(f=security.update_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -392,7 +392,7 @@ def set_role_policy(role_id, policies_ids, pretty=False, wait_for_complete=False
     """
     f_kwargs = {'role_id': role_id, 'policies_ids': policies_ids}
 
-    dapi = DistributedAPI(f=RolePolicy.set_role_policy,
+    dapi = DistributedAPI(f=security.set_role_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -417,7 +417,7 @@ def remove_role_policy(role_id, policies_ids, pretty=False, wait_for_complete=Fa
     """
     f_kwargs = {'role_id': role_id, 'policies_ids': policies_ids}
 
-    dapi = DistributedAPI(f=RolePolicy.remove_role_policy,
+    dapi = DistributedAPI(f=security.remove_role_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
