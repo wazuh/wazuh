@@ -11,7 +11,11 @@
 #ifndef PTHREADS_OP_H
 #define PTHREADS_OP_H
 
-#define w_create_thread(x, y) if (CreateThread((void * (*) (void *))x, y)) exit(1)
+#ifndef WIN32
+#define w_create_thread(x, y) if (!CreateThread((void * (*) (void *))x, y)) merror_exit(THREAD_ERROR);
+#else
+#define w_create_thread(x, y, z, a, b, c) ({HANDLE hd; if (!(hd = CreateThread(x,y,z,a,b,c))) merror_exit(THREAD_ERROR); hd;})
+#endif
 #define w_mutex_init(x, y) { int error = pthread_mutex_init(x, y); if (error) merror_exit("At pthread_mutex_init(): %s", strerror(error)); }
 #define w_mutex_lock(x) { int error = pthread_mutex_lock(x); if (error) merror_exit("At pthread_mutex_lock(): %s", strerror(error)); }
 #define w_mutex_unlock(x) { int error = pthread_mutex_unlock(x); if (error) merror_exit("At pthread_mutex_unlock(): %s", strerror(error)); }
@@ -22,7 +26,7 @@
 #define w_cond_destroy(x) { int error = pthread_cond_destroy(x); if (error) merror_exit("At pthread_cond_destroy(): %s", strerror(error)); }
 #define w_rwlock_init(x, y) { int error = pthread_rwlock_init(x, y); if (error) merror_exit("At pthread_rwlock_init(): %s", strerror(error)); }
 #define w_rwlock_rdlock(x) { int error = pthread_rwlock_rdlock(x); if (error) merror_exit("At pthread_rwlock_rdlock(): %s", strerror(error)); }
-#define w_rwlock_wrlock(x) { int error = pthread_rwlock_wrlock(x); if (error) merror_exit("At pthread_rdlock_wrlock(): %s", strerror(error)); }
+#define w_rwlock_wrlock(x) { int error = pthread_rwlock_wrlock(x); if (error) merror_exit("At pthread_rwlock_wrlock(): %s", strerror(error)); }
 #define w_rwlock_unlock(x) { int error = pthread_rwlock_unlock(x); if (error) merror_exit("At pthread_rwlock_unlock(): %s", strerror(error)); }
 #define w_mutexattr_init(x) { int error = pthread_mutexattr_init(x); if (error) merror_exit("At pthread_mutexattr_init(): %s", strerror(error)); }
 #define w_mutexattr_settype(x, y) { int error = pthread_mutexattr_settype(x, y); if (error) merror_exit("At pthread_mutexattr_settype(): %s", strerror(error)); }

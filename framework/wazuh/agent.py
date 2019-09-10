@@ -9,7 +9,7 @@ import ipaddress
 import operator
 import socket
 from base64 import b64encode
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from functools import reduce
 from glob import glob
 from json import loads
@@ -69,9 +69,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
     def _filter_status(self, status_filter):
         # set the status value to lowercase in case it's a string. If not, the value will be return unmodified.
         status_filter['value'] = getattr(status_filter['value'], 'lower', lambda: status_filter['value'])()
-        result = datetime.now() - timedelta(seconds=common.limit_seconds)
-        self.request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
-
+        result = datetime.utcnow() - timedelta(seconds=common.limit_seconds)
+        self.request['time_active'] = result.replace(tzinfo=timezone.utc).timestamp()
         if status_filter['operator'] == '!=':
             self.query += 'NOT '
 
@@ -117,12 +116,14 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                 return Agent.calculate_status(lastKeepAlive, version is None, today)
             elif field_name == 'group':
                 return value.split(',')
+            elif field_name in ['dateAdd', 'lastKeepAlive']:
+                return datetime.utcfromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
             else:
                 return value
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-        today = datetime.today()
+        today = datetime.utcnow()
 
         # compute 'status' field, format id with zero padding and remove non-user-requested fields.
         # Also remove, extra fields (internal key and registration IP)
@@ -244,19 +245,16 @@ class Agent:
         return dictionary
 
     @staticmethod
-    def calculate_status(last_keep_alive, pending, today=datetime.today()):
+    def calculate_status(last_keep_alive, pending, today=datetime.utcnow()):
         """Calculates state based on last keep alive
         """
         if not last_keep_alive:
             return "neverconnected"
         else:
-            # divide date in format YY:mm:dd HH:MM:SS to create a datetime object.
-            last_date = datetime(year=int(last_keep_alive[:4]), month=int(last_keep_alive[5:7]),
-                                 day=int(last_keep_alive[8:10]), hour=int(last_keep_alive[11:13]),
-                                 minute=int(last_keep_alive[14:16]), second=int(last_keep_alive[17:19]))
+            last_date = datetime.utcfromtimestamp(last_keep_alive)
             difference = (today - last_date).total_seconds()
+            return "Disconnected" if difference > common.limit_seconds else ("Pending" if pending else "Active")
 
-            return "disconnected" if difference > common.limit_seconds else ("pending" if pending else "active")
 
     def _load_info_from_DB(self, select=None):
         """Gets attributes of existing agent.
@@ -885,6 +883,21 @@ class Agent:
             return result
 
     @staticmethod
+    def restart_agents_by_group(group_id: str) -> Dict:
+        """Restart all the agents which belong to a group.
+
+        :param group_id: Name of the group
+        :return: Confirmation message
+        """
+        # list with agent IDs to restart. Contains key-value pairs.
+        agent_list = Agent.get_agent_group(group_id=group_id,
+                                           select={'fields': ['id']}).get('items')
+        # format agent_list as a list with strings of agent IDs
+        agent_list = [elem.get('id') for elem in agent_list]
+
+        return Agent.restart_agents(agent_id=agent_list)
+
+    @staticmethod
     def get_agent_by_name(agent_name, select=None):
         """Gets an existing agent called agent_name.
 
@@ -1166,7 +1179,7 @@ class Agent:
                 remove_agent = True
             else:
                 last_date = datetime.strptime(agent_info['lastKeepAlive'], '%Y-%m-%d %H:%M:%S')
-                difference = (datetime.now() - last_date).total_seconds()
+                difference = (datetime.utcnow() - last_date).total_seconds()
                 if difference >= seconds:
                     remove_agent = True
 

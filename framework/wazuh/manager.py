@@ -10,7 +10,7 @@ import socket
 import subprocess
 import time
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timezone
 from os import remove, chmod
 from os.path import exists, join
 from shutil import Error
@@ -25,7 +25,6 @@ from wazuh.agent import Agent
 from wazuh.cluster.utils import get_manager_status, get_cluster_status, manager_restart, read_cluster_config
 from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult
-from wazuh.utils import filter_array_by_query
 from wazuh.utils import previous_month, tail, load_wazuh_xml, safe_move
 from wazuh.utils import process_array
 
@@ -63,7 +62,7 @@ def __get_ossec_log_fields(log):
     return datetime.strptime(date, '%Y/%m/%d %H:%M:%S'), category, type_log.lower(), description
 
 
-def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort_by=None,
+def ossec_log(filters=None, months=3, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
     """Gets logs from ossec.log.
 
@@ -78,6 +77,11 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
     :param q: Defines query to filter.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
+    # set default values to 'type_log' and 'category' parameters
+    filters = filters if filters is not None else {}
+    type_log = filters.get('type_log', 'all')
+    category = filters.get('category', 'all')
+
     logs = []
 
     first_date = previous_month(months)
@@ -98,7 +102,10 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
                 else:
                     continue
 
-            log_line = {'timestamp': log_date, 'tag': log_category, 'level': level, 'description': description}
+            # We transform local time (ossec.log) to UTC maintaining time integrity and log format
+            log_line = {'timestamp': log_date.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
+                        'tag': log_category, 'level': level, 'description': description}
+
             if type_log == 'all':
                 logs.append(log_line)
             elif type_log.lower() == level.lower():

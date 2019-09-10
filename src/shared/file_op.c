@@ -1225,21 +1225,11 @@ int mkstemp_ex(char *tmp_path)
     PSID pSystemGroupSID = NULL;
     SID_IDENTIFIER_AUTHORITY SIDAuthNT = {SECURITY_NT_AUTHORITY};
 
-#if defined(_MSC_VER) && _MSC_VER >= 1500
-    result = _mktemp_s(tmp_path, strlen(tmp_path) + 1);
 
-    if (result != 0) {
-        mferror("Could not create temporary file (%s) which returned (%d)", tmp_path, result);
-
+    if (result = _mktemp_s(tmp_path, strlen(tmp_path) + 1), result) {
+        mferror("Could not create temporary file (%s) which returned %d [(%d)-(%s)].", tmp_path, result, errno, strerror(errno));
         return (-1);
     }
-#else
-    if (_mktemp(tmp_path) == NULL) {
-        mferror("Could not create temporary file (%s) which returned [(%d)-(%s)]", tmp_path, errno, strerror(errno));
-
-        return (-1);
-    }
-#endif
 
     /* Create SID for the BUILTIN\Administrators group */
     result = AllocateAndInitializeSid(
@@ -2953,15 +2943,17 @@ int64_t w_ftell (FILE *x) {
 }
 
 /* Prevent children processes from inheriting a file pointer */
-void w_file_cloexec(FILE * fp) {
+void w_file_cloexec(__attribute__((unused)) FILE * fp) {
 #ifndef WIN32
     w_descriptor_cloexec(fileno(fp));
 #endif
 }
 
 /* Prevent children processes from inheriting a file descriptor */
-void w_descriptor_cloexec(int fd){
+void w_descriptor_cloexec(__attribute__((unused)) int fd){
 #ifndef WIN32
-    fcntl(fd, F_SETFD, FD_CLOEXEC);
+    if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) {
+        mwarn("Cannot set close-on-exec flag to the descriptor: %s (%d)", strerror(errno), errno);
+    }
 #endif
 }

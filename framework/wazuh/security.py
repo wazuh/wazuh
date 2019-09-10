@@ -68,7 +68,7 @@ class Role:
         :param search_text: Text to search
         :param complementary_search: Find items without the text to search
         :param search_in_fields: Fields to search in
-        :return Roles information.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         data = list()
 
@@ -225,7 +225,7 @@ class Policy:
         :param search_text: Text to search
         :param complementary_search: Find items without the text to search
         :param search_in_fields: Fields to search in
-        :return Policies information.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         data = list()
         with orm.PoliciesManager() as pm:

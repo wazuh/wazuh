@@ -45,8 +45,7 @@ def get_roles(pretty=False, wait_for_complete=False, offset=0, limit=None, searc
     :param search: Looks for elements with the specified string
     :return Roles information
     """
-    f_kwargs = {'offset': offset,
-                'limit': limit,
+    f_kwargs = {'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
@@ -222,8 +221,7 @@ def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None, se
     :param search: Looks for elements with the specified string
     :return Policies information
     """
-    f_kwargs = {'offset': offset,
-                'limit': limit,
+    f_kwargs = {'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,

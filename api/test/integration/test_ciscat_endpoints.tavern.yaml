@@ -9,6 +9,7 @@ marks:
     - ciscat_tests
 
 stages:
+
     # Authentication stage
   - type: ref
     id: login_get_token

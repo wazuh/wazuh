@@ -1,9 +1,9 @@
 ---
 test_name: DELETE /agents/{agent_id}/group/{group_id}
 
-#marks:
-#  - usefixtures:
-#      - agent_tests
+marks:
+  - usefixtures:
+    - base_tests
 
 includes:
   - !include common.yaml
@@ -28,7 +28,6 @@ stages:
 
     # DELETE /agents/999/group/group1
   - name: Try to remove non existing agent from group1
-
     request:
       url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/group1"
       method: DELETE
