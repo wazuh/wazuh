@@ -126,29 +126,31 @@ cJSON *getLabelsConfig(void) {
         return NULL;
     }
 
-    unsigned int i;
     cJSON *root = cJSON_CreateObject();
-    cJSON *label_s = cJSON_CreateArray();
-    cJSON *label = cJSON_CreateObject();
     cJSON *labels = cJSON_CreateArray();
+    cJSON *label_block = cJSON_CreateObject();
+    cJSON *label_all = cJSON_CreateArray();
 
     if (agt->labels) {
-        for (i=0;agt->labels[i].key;i++) {
-            cJSON *label_k = cJSON_CreateObject();
-            cJSON_AddStringToObject(label_k,"value", agt->labels[i].value);
-            cJSON_AddStringToObject(label_k,"key", agt->labels[i].key);
-            if (agt->labels[i].flags.hidden)
-                cJSON_AddStringToObject(label_k,"hidden", "yes");
-            if (agt->labels[i].flags.system)
-                cJSON_AddStringToObject(label_k,"system", "yes");
-            cJSON_AddItemToObject(label_s,"",label_k);
-            free(label_k);
+        unsigned int i;
+        for (i=0; agt->labels[i].key; i++) {
+            cJSON *label = cJSON_CreateObject();
+            cJSON_AddStringToObject(label, "value", agt->labels[i].value);
+            cJSON_AddStringToObject(label, "key", agt->labels[i].key);
+
+            if (agt->labels[i].flags.hidden) {
+                cJSON_AddStringToObject(label, "hidden", "yes");
+            }
+            else {
+                cJSON_AddStringToObject(label, "hidden", "no");
+            }
+            cJSON_AddItemToObject(labels, "", label);
         }
-        cJSON_AddItemToObject(label, "label", label_s);
+        cJSON_AddItemToObject(label_block, "label", labels);
     }
     
-    cJSON_AddItemToObject(labels,"", label);
-    cJSON_AddItemToObject(root,"labels",labels);
+    cJSON_AddItemToObject(label_all, "", label_block);
+    cJSON_AddItemToObject(root, "labels", label_all);
 
     return root;
 }
