@@ -46,8 +46,11 @@ def get_roles(pretty=False, wait_for_complete=False, offset=0, limit=None, searc
     :return Roles information
     """
     f_kwargs = {'offset': offset, 'limit': limit,
-                'search': parse_api_param(search, 'search'),
-                'sort': parse_api_param(sort, 'sort')}
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
+                }
 
     dapi = DistributedAPI(f=Role.get_roles,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -219,8 +222,11 @@ def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None, se
     :return Policies information
     """
     f_kwargs = {'offset': offset, 'limit': limit,
-                'search': parse_api_param(search, 'search'),
-                'sort': parse_api_param(sort, 'sort')}
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
+                }
 
     dapi = DistributedAPI(f=Policy.get_policies,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import os
 from io import StringIO
 
 from wazuh import common
@@ -28,7 +29,6 @@ def totals(year, month, day, date=False):
     :param date: True if date is not today, False otherwise
     :return: Array of dictionaries. Each dictionary represents an hour.
     """
-
     try:
         year = int(year)
         day = int(day)
@@ -55,7 +55,8 @@ def totals(year, month, day, date=False):
             raise WazuhError(1307)
 
     try:
-        stat_filename = common.stats_path + "/totals/" + str(year) + '/' + month + "/ossec-totals-" + day + ".log"
+        stat_filename = os.path.join(
+            common.stats_path, "totals", str(year), str(month), ("ossec-totals-" + str(day) + ".log"))
         stats = open(stat_filename, 'r')
     except IOError:
         if date:

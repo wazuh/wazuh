@@ -1,10 +1,15 @@
 ---
 test_name: GET /lists
 
+marks:
+  - usefixtures:
+    - base_tests
+
 includes:
   - !include common.yaml
 
 stages:
+
     # Authentication stage
   - type: ref
     id: login_get_token
@@ -51,7 +56,6 @@ stages:
       save:
         body:
           returned_path: data.items.0.path
-          returned_items: data.items.0.items
 
     # We implement a dual stage to check offset parameter behaviour
     # GET /lists?limit=2&offset=0
@@ -72,7 +76,7 @@ stages:
       # Save second item to check offset in next stage
       save:
         body:
-          offset_item: data.items.1
+          offset_item_path: data.items.1.path
 
     # GET /lists?limit=1&offset=1
   - name: Try to get lists using limit and offset parameter
@@ -88,7 +92,7 @@ stages:
           items:
               # Check offset matches with previous request
             - items: !anything
-              path: "{offset_item.path}"
+              path: "{offset_item_path}"
           totalItems: !anyint
 
     # GET /lists?limit=1&search={returned_path:s}
@@ -307,7 +311,9 @@ stages:
       # Save second item to check offset in next stage
       save:
         body:
-          offset_item: data.items.1
+          offset_item_folder: data.items.1.folder
+          offset_item_name: data.items.1.name
+          offset_item_path: data.items.1.path
 
     # GET /lists/files?limit=1&offset=1
   - name: Try to get paths from all CDB lists using limit and offset parameter
@@ -322,9 +328,9 @@ stages:
         data:
           items:
               # Check offset matches with previous request
-            - folder: "{offset_item.folder}"
-              name: "{offset_item.name}"
-              path: "{offset_item.path}"
+            - folder: "{offset_item_folder}"
+              name: "{offset_item_name}"
+              path: "{offset_item_path}"
           totalItems: !anyint
 
     # GET /lists/files?limit=1&search={returned_path:s}
