@@ -127,6 +127,7 @@ int realtime_process()
     buf[REALTIME_EVENT_BUFFER] = '\0';
 
     len = read(syscheck.realtime->fd, buf, REALTIME_EVENT_BUFFER);
+    minfo("~~~ buffer '%s'", buf);
     if (len < 0) {
         merror(FIM_ERROR_REALTIME_READ_BUFFER);
     } else if (len > 0) {
@@ -154,6 +155,7 @@ int realtime_process()
                                 entry,
                                 event->name);
                     }
+                    minfo("~~~ event '%s'", final_name);
                     /* Need a sleep here to avoid triggering on vim
                     * (and finding the file removed)
                     */

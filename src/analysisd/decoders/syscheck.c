@@ -1364,17 +1364,21 @@ static int fim_generate_alert(_sdb * sdb, Eventinfo *lf, char *mode, char *event
     // TODO: format comment
     // Provide information about the file
     char str_time[DATE_LENGTH];
+    char changed_attributes[OS_SIZE_256];
+
     strftime(str_time, sizeof(str_time), "%D %T", localtime(&event_time));
+    snprintf(changed_attributes, OS_SIZE_256, "Changed attributes: %s", lf->fields[FIM_CHFIELDS].value);
+
     snprintf(lf->full_log, OS_MAXSTR,
             "File '%.756s' %s\n"
-            "Mode:  %s\n"
+            "Mode: %s\n"
             "Event time: %s\n"
-            "Changed attributes: %s\n"
+            "%s\n"
             "%s%s%s%s%s%s%s%s%s%s\n",
             lf->fields[FIM_FILE].value, event_type,
             mode,
             str_time,
-            lf->fields[FIM_CHFIELDS].value,
+            lf->fields[FIM_CHFIELDS].value ? changed_attributes : "",
             change_size,
             change_perm,
             change_owner,

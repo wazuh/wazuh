@@ -168,32 +168,36 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
     if (w_stat(file_name, &file_stat) < 0) {
         delete_target_file(file_name);
         deleted_flag = 1;
-    }
-
-    //File attributes
-    if (entry_data = fim_get_data(file_name, file_stat, mode, options), !entry_data) {
-        merror("Couldn't get attributes for file: '%s'", file_name);
-        return OS_INVALID;
+    } else {
+        //File attributes
+        if (entry_data = fim_get_data(file_name, file_stat, mode, options), !entry_data) {
+            merror("Couldn't get attributes for file: '%s'", file_name);
+            return OS_INVALID;
+        }
     }
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
     if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file_name), !saved_data) {
         // New entry. Insert into hash table
-        if (fim_insert (file_name, entry_data) == -1) {
-            free_entry_data(entry_data);
-            os_free(entry_data);
-            w_mutex_unlock(&syscheck.fim_entry_mutex);
-            return OS_INVALID;
-        }
+        if (!deleted_flag) {
+            if (fim_insert (file_name, entry_data) == -1) {
+                free_entry_data(entry_data);
+                w_mutex_unlock(&syscheck.fim_entry_mutex);
+                return OS_INVALID;
+            }
 
-        if (_base_line) {
-            json_event = fim_json_event(file_name, NULL, entry_data, dir_position, FIM_ADD, mode, w_evt);
+            if (_base_line) {
+                json_event = fim_json_event(file_name, NULL, entry_data, dir_position, FIM_ADD, mode, w_evt);
+            }
+        } else {
+            // TODO: Delete this msg
+            merror("~~~~ deleted before add");
         }
     } else {
         // Delete file. Sending alert.
         if (deleted_flag) {
-            fim_delete (file_name);
             json_event = fim_json_event (file_name, NULL, saved_data, dir_position, FIM_DELETE, mode, w_evt);
+            fim_delete (file_name);
             // minfo("Deleting file '%s' checksum: '%s'", file_name, checksum);
         // Checking for changes
         } else {
@@ -201,14 +205,12 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
             if (json_event = fim_json_event(file_name, saved_data, entry_data, dir_position, FIM_MODIFICATION, mode, w_evt), json_event) {
                 if (fim_update (file_name, entry_data) == -1) {
                     free_entry_data(entry_data);
-                    os_free(entry_data);
                     w_mutex_unlock(&syscheck.fim_entry_mutex);
                     return OS_INVALID;
                 }
                 //set_integrity_index(file_name, entry_data);
             } else {
                 free_entry_data(entry_data);
-                os_free(entry_data);
             }
         }
     }
@@ -590,14 +592,9 @@ int fim_delete (char * file_name) {
         os_calloc(OS_SIZE_16, sizeof(char), inode);
         snprintf(inode, OS_SIZE_16, "%ld", saved_data->inode);
         delete_inode_item(inode, file_to_delete);
-        // TODO: Send alert to manager (send_msg())
-#endif
-        rbtree_delete(syscheck.fim_entry, file_to_delete);
-        free_entry_data(saved_data);
-        os_free(saved_data);
-#ifndef WIN32
         os_free(inode);
 #endif
+        rbtree_delete(syscheck.fim_entry, file_to_delete);
         os_free(file_to_delete);
     }
 
@@ -947,6 +944,7 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
 void free_entry_data(fim_entry_data * data) {
     os_free(data->user_name);
     os_free(data->group_name);
+    os_free(data);
 }
 
 
