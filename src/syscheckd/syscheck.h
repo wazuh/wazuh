@@ -66,7 +66,7 @@ cJSON *getSyscheckInternalOptions(void);
 int fim_scan();
 
 //
-int fim_directory (char * path, int dir_position, whodata_evt * w_evt);
+int fim_directory (char * path, int dir_position, int mode, whodata_evt * w_evt);
 
 //
 int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * w_evt);
