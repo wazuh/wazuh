@@ -276,6 +276,8 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
                 merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
             }
 #endif
+        } else {
+            sleep(SYSCHECK_WAIT);
         }
     }
 
