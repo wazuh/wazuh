@@ -189,10 +189,6 @@ extern const char *__local_name;
 
 #define w_strdup(x,y) ({ int retstr = 0; if (x) { os_strdup(x, y);} else retstr = 1; retstr;})
 
-#ifdef WIN32
-#define readdir_r(x, y, z) (*z = readdir(x), (void *)y, 0)
-#endif
-
 #ifdef CLIENT
 #define isAgent 1
 #else
