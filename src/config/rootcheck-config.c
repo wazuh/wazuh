@@ -271,11 +271,11 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
     return (0);
 }
 
-int Test_Rootcheck(const char * path){
+int Test_Rootcheck(const char * path, int type){
     int fail = 0;
     rkconfig test_rootcheck = { .workdir = 0 };
 
-    if (ReadConfig(CAGENT_CONFIG | CROOTCHECK, path, &test_rootcheck, NULL) < 0) {
+    if (ReadConfig(CROOTCHECK | type, path, &test_rootcheck, NULL) < 0) {
         merror(RCONFIG_ERROR,"Rootcheck", path);
 		fail = 1;
 	}

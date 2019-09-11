@@ -492,9 +492,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     return (0);
 }
 
-int Test_Localfile(const char * path){
+int Test_Localfile(const char * path, int type){
     int fail = 0;
-    int maximum_lines = 0, maximum_files = 0;
+    int maximum_lines = getDefine_Int("logcollector", "max_lines", 0, 1000000);
 
     if (maximum_lines > 0 && maximum_lines < 100) {
         merror("Definition 'logcollector.max_lines' must be 0 or 100..1000000.");
@@ -511,8 +511,7 @@ int Test_Localfile(const char * path){
 
     logreader_config test_localfile = { .agent_cfg = 0 };
 
-    // if (ReadConfig(CAGENT_CONFIG | CLOCALFILE | CSOCKET, path, &test_localfile, NULL) < 0) {
-    if (ReadConfig(CAGENT_CONFIG | CLOCALFILE, path, &test_localfile, NULL) < 0) {
+    if (ReadConfig(CLOCALFILE | type, path, &test_localfile, NULL) < 0) {
         merror(RCONFIG_ERROR,"Localfile", path);
         fail = 1;
     }

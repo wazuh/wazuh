@@ -94,11 +94,11 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
     return (0);
 }
 
-int Test_ClientBuffer(const char * path){
+int Test_ClientBuffer(const char * path, int type){
     int fail = 0;
     agent test_clientBuffer = { .server = 0 };
 
-    if (ReadConfig(CAGENT_CONFIG | CBUFFER, path, NULL, &test_clientBuffer) < 0) {
+    if (ReadConfig(CBUFFER | type, path, NULL, &test_clientBuffer) < 0) {
 		merror(RCONFIG_ERROR,"ClientBuffer", path);
 		fail = 1;
 	}

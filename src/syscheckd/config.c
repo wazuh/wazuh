@@ -64,7 +64,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     mdebug1(FIM_CLIENT_CONFIGURATION, cfgfile);
 
     /* Read shared config */
-    modules |= CAGENT_CONFIG;
+    modules |= CRMOTE_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
 #endif
 

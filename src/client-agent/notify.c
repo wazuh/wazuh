@@ -139,8 +139,7 @@ void run_notify()
 
     for (i = SOCK_ATTEMPTS; i > 0; --i) {
         if (sock = control_check_connection(), sock >= 0) {
-            // if (OS_SendUnix(sock, agent_ip, IPSIZE) < 0) {
-            if (OS_SendUnix(sock, "get-notify-ip", 0) < 0) {
+            if (OS_SendUnix(sock, agent_ip, IPSIZE) < 0) {
                 merror("Error sending msg to control socket (%d) %s", errno, strerror(errno));
             }
             else{

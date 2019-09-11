@@ -191,16 +191,6 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Send first notification */
     run_notify();
 
-    /* Testing other wm_control functions */
-    int sock = 0;
-
-    if (sock = control_check_connection(), sock >= 0) {
-        if(OS_SendUnix(sock, "check-agent-configuration -f /configtest.conf", 0) < 0) {
-            minfo("Error checking the agent config");
-        }
-        close(sock);
-    }
-
     /* Maxfd must be higher socket +1 */
     maxfd++;
 

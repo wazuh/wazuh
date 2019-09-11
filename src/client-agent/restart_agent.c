@@ -78,25 +78,25 @@ int verifyRemoteConf(){
 		configPath = AGENTCONFIG;
 	}
 
-	if (Test_Syscheck(configPath) < 0) {
+	if (Test_Syscheck(configPath, CRMOTE_CONFIG) < 0) {
 		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "syscheck");
 		goto fail;
-	} else if (Test_Rootcheck(configPath) < 0) {
+	} else if (Test_Rootcheck(configPath, CRMOTE_CONFIG) < 0) {
 		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "rootcheck");
 		goto fail;
-    } else if (Test_Localfile(configPath) < 0) {
+    } else if (Test_Localfile(configPath, CRMOTE_CONFIG) < 0) {
 		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "localfile");
 		goto fail;
-    } else if (Test_Client(configPath) < 0) {
+    } else if (Test_Client(configPath, CRMOTE_CONFIG) < 0) {
 		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "client");
 		goto fail;
-	} else if (Test_ClientBuffer(configPath) < 0) {
+	} else if (Test_ClientBuffer(configPath, CRMOTE_CONFIG) < 0) {
 		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "client_buffer");
 		goto fail;
-    } else if (Test_WModule(configPath) < 0) {
+    } else if (Test_WModule(configPath, CRMOTE_CONFIG) < 0) {
 		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "wodle");
 		goto fail;
-    } else if (Test_Labels(configPath) < 0) {
+    } else if (Test_Labels(configPath, CRMOTE_CONFIG) < 0) {
 		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "labels");
 		goto fail;
     }

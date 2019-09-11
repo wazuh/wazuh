@@ -1,4 +1,4 @@
-/*
+    /*
  * Wazuh Module Manager
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 22, 2016.

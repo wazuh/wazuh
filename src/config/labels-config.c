@@ -96,11 +96,11 @@ error:
     return OS_INVALID;
 }
 
-int Test_Labels(const char * path) {
+int Test_Labels(const char * path, int type) {
     int fail = 0;
     wlabel_t *test_labels = NULL;
 
-    if (ReadConfig(CAGENT_CONFIG | CLABELS, path, &test_labels, NULL) < 0) {
+    if (ReadConfig(CLABELS | type, path, &test_labels, NULL) < 0) {
         merror(RCONFIG_ERROR,"Labels", path);
         fail = 1;
     } else {

@@ -83,7 +83,7 @@ int LogCollectorConfig(const char *cfgfile)
     }
 
 #ifdef CLIENT
-    modules |= CAGENT_CONFIG;
+    modules |= CRMOTE_CONFIG;
     log_config.agent_cfg = 1;
     ReadConfig(modules, AGENTCONFIG, &log_config, NULL);
     log_config.agent_cfg = 0;

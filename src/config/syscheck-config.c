@@ -1421,12 +1421,11 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
     return buf;
 }
 
-int Test_Syscheck(const char * path){
+int Test_Syscheck(const char * path, int type){
     int fail = 0;
     syscheck_config test_syscheck = { .tsleep = 0 };
 
-    // if (ReadConfig(CAGENT_CONFIG | CSYSCHECK, path, &test_syscheck, NULL) < 0) {
-    if (ReadConfig(CSYSCHECK, path, &test_syscheck, NULL) < 0) {
+    if (ReadConfig(CSYSCHECK | type, path, &test_syscheck, NULL) < 0) {
 		merror(RCONFIG_ERROR,"Syscheck", path);
 		fail = 1;
 	}

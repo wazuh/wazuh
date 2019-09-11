@@ -276,11 +276,11 @@ int Read_Client_Server(XML_NODE node, agent * logr)
     return (0);
 }
 
-int Test_Client(const char * path){
+int Test_Client(const char * path, int type){
     int fail = 0;
     agent test_client = { .server = NULL };
 
-    if (ReadConfig(CAGENT_CONFIG | CCLIENT, path, &test_client, NULL) < 0) {
+    if (ReadConfig(CCLIENT | type, path, &test_client, NULL) < 0) {
 		merror(RCONFIG_ERROR,"Client", path);
 		fail = 1;
 	}

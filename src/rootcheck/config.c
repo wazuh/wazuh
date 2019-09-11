@@ -27,7 +27,7 @@ int Read_Rootcheck_Config(const char *cfgfile)
 
 #ifdef CLIENT
     /* Read shared config */
-    modules |= CAGENT_CONFIG;
+    modules |= CRMOTE_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &rootcheck, NULL);
 #endif
 

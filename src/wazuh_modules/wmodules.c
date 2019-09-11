@@ -38,14 +38,19 @@ int wm_config() {
         return -1;
     }
 
-    wmodule *module;
-
+    
 #ifdef CLIENT
     // Read configuration: agent.conf
     agent_cfg = 1;
-    ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
-
+    ReadConfig(CWMODULE | CRMOTE_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
+#if defined (__linux__) || (__MACH__)
+    wmodule *module;
+    module = wm_control_read();
+    wm_add(module);
+#endif
 #else
+    wmodule *module;
+    
     // The database module won't be available on agents
     if ((module = wm_database_read()))
         wm_add(module);
@@ -54,11 +59,6 @@ int wm_config() {
     if ((module = wm_download_read()))
         wm_add(module);
 
-#endif
-
-#if defined (__linux__) || (__MACH__)
-    module = wm_control_read();
-    wm_add(module);
 #endif
 
     return 0;

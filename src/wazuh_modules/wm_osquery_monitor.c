@@ -417,7 +417,7 @@ int wm_osquery_decorators(wm_osquery_monitor_t * osquery)
         goto end;
 
 #ifdef CLIENT
-    ReadConfig(CLABELS | CAGENT_CONFIG, AGENTCONFIG, &labels, NULL);
+    ReadConfig(CLABELS | CRMOTE_CONFIG, AGENTCONFIG, &labels, NULL);
 #endif
 
     // Do we have labels defined?
