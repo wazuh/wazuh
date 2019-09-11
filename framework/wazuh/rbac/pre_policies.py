@@ -30,42 +30,19 @@ def create_initial_dict(mode, resource, odict):
     return odict
 
 
-def white_process(resource_value, effect, odict):
+def list_manager(resource_value, effect, odict):
     if effect == 'allow':
-        if resource_value in odict['deny']:
-            odict['deny'].remove(resource_value)
-        if resource_value == '*':
-            odict['deny'].clear()
-            odict['allow'].clear()
-        if '*' not in odict['allow']:
-            odict['allow'].add(resource_value)
-    elif effect == 'deny':
-        if resource_value in odict['allow']:
-            odict['allow'].remove(resource_value)
-        if resource_value == '*':
-            odict['deny'].clear()
-            odict['allow'].clear()
-        if '*' not in odict['deny']:
-            odict['deny'].add(resource_value)
+        inverted_effect = 'deny'
+    else:
+        inverted_effect = 'allow'
 
-
-def black_process(resource_value, effect, odict):
-    if effect == 'deny':
-        if resource_value in odict['allow']:
-            odict['allow'].remove(resource_value)
-        elif resource_value == '*':
-            odict['allow'].clear()
-            odict['deny'].clear()
-        if '*' not in odict['deny']:
-            odict['deny'].add(resource_value)
-    elif effect == 'allow':
-        if resource_value in odict['deny']:
-            odict['deny'].remove(resource_value)
-        elif resource_value == '*':
-            odict['allow'].clear()
-            odict['deny'].clear()
-        if '*' not in odict['allow']:
-            odict['allow'].add(resource_value)
+    if resource_value in odict[inverted_effect]:
+        odict[inverted_effect].remove(resource_value)
+    if resource_value == '*':
+        odict[inverted_effect].clear()
+        odict[effect].clear()
+    if '*' not in odict[effect]:
+        odict[effect].add(resource_value)
 
 
 def modify_odict(mode, action, resources, effect, odict):
@@ -75,10 +52,7 @@ def modify_odict(mode, action, resources, effect, odict):
         if resource_name not in odict[action].keys():
             create_initial_dict(mode, resource_name, odict[action])
 
-        if mode:
-            black_process(resource_value, effect, odict[action][resource_name])
-        else:
-            white_process(resource_value, effect, odict[action][resource_name])
+        list_manager(resource_value, effect, odict[action][resource_name])
 
 
 def process_policy(mode, policy, odict):
