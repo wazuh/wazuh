@@ -1094,6 +1094,13 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     object = cJSON_GetObjectItem(event, "type");
     if (object && object->valuestring) {
         event_type = object->valuestring;
+        if (strcmp("added", event_type) == 0) {
+            lf->event_type = FIM_ADDED;
+        } else if (strcmp("modified", event_type) == 0) {
+            lf->event_type = FIM_MODIFIED;
+        } else if (strcmp("deleted", event_type) == 0) {
+            lf->event_type = FIM_DELETED;
+        }
     }
 
     object = cJSON_GetObjectItem(event, "timestamp");
@@ -1367,14 +1374,14 @@ static int fim_generate_alert(_sdb * sdb, Eventinfo *lf, char *mode, char *event
     char changed_attributes[OS_SIZE_256];
 
     strftime(str_time, sizeof(str_time), "%D %T", localtime(&event_time));
-    snprintf(changed_attributes, OS_SIZE_256, "Changed attributes: %s", lf->fields[FIM_CHFIELDS].value);
+    snprintf(changed_attributes, OS_SIZE_256, "Changed attributes: %s\n", lf->fields[FIM_CHFIELDS].value);
 
     snprintf(lf->full_log, OS_MAXSTR,
             "File '%.756s' %s\n"
             "Mode: %s\n"
             "Event time: %s\n"
-            "%s\n"
-            "%s%s%s%s%s%s%s%s%s%s\n",
+            "%s"
+            "%s%s%s%s%s%s%s%s%s%s",
             lf->fields[FIM_FILE].value, event_type,
             mode,
             str_time,
