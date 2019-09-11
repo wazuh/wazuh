@@ -145,7 +145,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     char *w_sum = NULL;
     char *f_name;
 
-    /* Every syscheck message must be in the following format:
+    /* Every syscheck message must be in the following format (OSSEC - Wazuh v3.10):
      * 'checksum' 'filename'
      * or
      * 'checksum'!'extradata' 'filename'
@@ -154,47 +154,6 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
      *                                             |->         |->    |->           |->   |->                  |->
      * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tags:symbolic_path:silent filename\nreportdiff"
      *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^^^^^^^^^^^extradata^^^^^^^^^^^^^^^^ filename\n^^^diff^^^
-     * or in JSON format v3.11
-     * {
-     *           "type": "alert",
-     *           "event": {
-     *               "data": {
-     *                   "path": "/root/test/syscheck",
-     *                   "options": 5631,
-     *                   "alert": "Modified",
-     *                   "level0": 15,
-     *                   "level1": 3,
-     *                   "level2": 1,
-     *                   "integrity": "f841bbd8d20f789880fed352d3e1e4cf80eb4e97"
-     *               },
-     *               "attributes": {
-     *                   "old_size": 10,
-     *                   "new_size": 15,
-     *                   "old_perm": 33188,
-     *                   "new_perm": 33188,
-     *                   "old_uid": 0,
-     *                   "new_uid": 0,
-     *                   "old_gid": 0,
-     *                   "new_gid": 0,
-     *                   "old_user_name": "root",
-     *                   "new_user_name": "root",
-     *                   "old_mtime": 1563878403,
-     *                   "new_mtime": 1563878478,
-     *                   "old_inode": 2629377,
-     *                   "new_inode": 2629377,
-     *                   "old_hash_md5": "f4c2f2d317aba97ea722b726928c582c",
-     *                   "new_hash_md5": "7e295b583e29fcf4c60b06306826be32",
-     *                   "old_hash_sha1": "ef0c02a3de0e9690cb617052dd04cbe4f35dd4df",
-     *                   "new_hash_sha1": "b886a9b578a7cf6afb4a5958d309d45dd08ca794",
-     *                   "old_hash_sha256": "38e963bb135b4be90fca83050b302bf0644a1417ac3fa69bbda16c031637f48e",
-     *                   "new_hash_sha256": "17339b257498dbd330a6a7e8252fabe0384127c04e390919cafad846ab36df61"
-     *               },
-     *               "extra_data": {
-     *                   "tags": "alert_tag",
-     *                   "diff": "2a3\n> aaaa\n"
-     *               }
-     *           }
-     *       }
      */
 
     sdb_clean(sdb);
@@ -513,19 +472,16 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     wm_strcat(&lf->fields[FIM_CHFIELDS].value, "perm", ',');
                     char opstr[10];
                     char npstr[10];
-                    char *old_perm =  agent_file_perm(oldsum->perm);
+                    lf->perm_before =  agent_file_perm(oldsum->perm);
                     char *new_perm =  agent_file_perm(newsum->perm);
 
-                    strncpy(opstr, old_perm, sizeof(opstr) - 1);
+                    strncpy(opstr, lf->perm_before, sizeof(opstr) - 1);
                     strncpy(npstr, new_perm, sizeof(npstr) - 1);
-                    free(old_perm);
                     free(new_perm);
 
                     opstr[9] = npstr[9] = '\0';
                     snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed from "
                              "'%9.9s' to '%9.9s'\n", opstr, npstr);
-
-                    lf->perm_before = oldsum->perm;
                 }
             } else if (oldsum->win_perm && newsum->win_perm) { // Check for Windows permissions
                 if (!strcmp(oldsum->win_perm, newsum->win_perm)) {
@@ -1034,10 +990,81 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
 
 
 int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
+    /* Every syscheck message must be in the following JSON format, as of agent version v3.11
+     * {
+     *   type:                  "event"
+     *   data: {
+     *     path:                string
+     *     mode:                "scheduled"|"real-time"|"whodata"
+     *     type:                "added"|"deleted"|"modified"
+     *     timestamp:           number
+     *     changed_attributes: [
+     *       "size"
+     *       "permission"
+     *       "uid"
+     *       "user_name"
+     *       "gid"
+     *       "group_name"
+     *       "mtime"
+     *       "inode"
+     *       "md5"
+     *       "sha1"
+     *       "sha256"
+     *     ]
+     *     tags:                string
+     *     content_changes:     string
+     *     old_attributes: {
+     *       type:              "file"|"registry"
+     *       size:              number
+     *       perm:              string
+     *       user_name:         string
+     *       group_name:        string
+     *       uid:               string
+     *       gid:               string
+     *       inode:             number
+     *       mtime:             number
+     *       hash_md5:          string
+     *       hash_sha1:         string
+     *       hash_sha256:       string
+     *       win_attributes:    string
+     *       symlink_path:      string
+     *       checksum:          string
+     *     }
+     *     attributes: {
+     *       type:              "file"|"registry"
+     *       size:              number
+     *       perm:              string
+     *       user_name:         string
+     *       group_name:        string
+     *       uid:               string
+     *       gid:               string
+     *       inode:             number
+     *       mtime:             number
+     *       hash_md5:          string
+     *       hash_sha1:         string
+     *       hash_sha256:       string
+     *       win_attributes:    string
+     *       symlink_path:      string
+     *       checksum:          string
+     *     }
+     *     audit: {
+     *       user_id:           string
+     *       user_name:         string
+     *       group_id:          string
+     *       group_name:        string
+     *       process_name:      string
+     *       audit_uid:         string
+     *       audit_name:        string
+     *       effective_uid:     string
+     *       effective_name:    string
+     *       ppid:              number
+     *       process_id:        number
+     *     }
+     *   }
+     * }
+     */
+
     cJSON *root_json = NULL;
-    cJSON *type = NULL;
-    cJSON *event = NULL;
-    char * json_formated;
     int retval = 0;
 
     if (root_json = cJSON_Parse(lf->log), !root_json) {
@@ -1045,19 +1072,17 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
         return retval;
     }
 
-    json_formated = cJSON_PrintUnformatted(root_json);
-    minfo("%s", json_formated);
-    os_free(json_formated);
+    minfo("%s", lf->log);
 
-    type = cJSON_GetObjectItem(root_json, "type");
-    event = cJSON_GetObjectItem(root_json, "event");
+    char * type = cJSON_GetStringValue(cJSON_GetObjectItem(root_json, "type"));
+    cJSON * data = cJSON_GetObjectItem(root_json, "data");
 
-    if (type && type->string) {
-        if (strcmp(type->string, "event")) {
-            fim_process_alert(sdb, lf, event);
+    if (type != NULL && data != NULL) {
+        if (strcmp(type, "event") == 0) {
+            fim_process_alert(sdb, lf, data);
             retval = 1;
         }
-        if (strcmp(type->string, "scan_info")) {
+        if (strcmp(type, "scan_info") == 0) {
             // process scan info message
             retval = 1;
         }
@@ -1080,55 +1105,60 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     char *event_type = NULL;
     time_t event_time;
 
-    object = cJSON_GetObjectItem(event, "path");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->filename);
-        os_strdup(object->valuestring, lf->fields[FIM_FILE].value);
-    }
+    cJSON_ArrayForEach(object, event) {
+        if (object->string == NULL) {
+            mdebug1("FIM event contains an item with no key.");
+            return -1;
+        }
 
-    object = cJSON_GetObjectItem(event, "mode");
-    if (object && object->valuestring) {
-        mode = object->valuestring;
-    }
+        switch (object->type) {
+        case cJSON_Number:
+            if (strcmp(object->string, "timestamp") == 0) {
+                event_time = (time_t)object->valuedouble;
+            }
 
-    object = cJSON_GetObjectItem(event, "type");
-    if (object && object->valuestring) {
-        event_type = object->valuestring;
-    }
+            break;
 
-    object = cJSON_GetObjectItem(event, "timestamp");
-    if (object) {
-        event_time = object->valueint;
-    }
+        case cJSON_String:
+            if (strcmp(object->string, "path") == 0) {
+                os_strdup(object->valuestring, lf->filename);
+                os_strdup(object->valuestring, lf->fields[FIM_FILE].value);
+            } else if (strcmp(object->string, "mode") == 0) {
+                mode = object->valuestring;
+            } else if (strcmp(object->string, "type") == 0) {
+                event_type = object->valuestring;
+            } else if (strcmp(object->string, "tags") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_TAG].value);
+                os_strdup(object->valuestring, lf->sk_tag);
+            } else if (strcmp(object->string, "content_changes") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_DIFF].value);
+            }
 
-    object = cJSON_GetObjectItem(event, "symbolic_path");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_SYM_PATH].value);
-    }
+            break;
 
-    object = cJSON_GetObjectItem(event, "changed_attributes");
-    if (object && object->child) {
-        cJSON *item;
+        case cJSON_Array:
+            if (strcmp(object->string, "changed_attributes") == 0) {
+                cJSON *item;
 
-        cJSON_ArrayForEach(item, object) {
-            wm_strcat(&lf->fields[FIM_CHFIELDS].value, item->valuestring, ',');
+                cJSON_ArrayForEach(item, object) {
+                    wm_strcat(&lf->fields[FIM_CHFIELDS].value, item->valuestring, ',');
+                }
+            }
+
+            break;
+
+        case cJSON_Object:
+            if (strcmp(object->string, "attributes") == 0) {
+                attributes = object;
+            } else if (strcmp(object->string, "old_attributes") == 0) {
+                old_attributes = object;
+            } else if (strcmp(object->string, "audit") == 0) {
+                audit = object;
+            }
+
+            break;
         }
     }
-
-    object = cJSON_GetObjectItem(event, "tags");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_TAG].value);
-        os_strdup(object->valuestring, lf->sk_tag);
-    }
-
-    object = cJSON_GetObjectItem(event, "content_changes");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_DIFF].value);
-    }
-
-    attributes = cJSON_GetObjectItem(event, "attributes");
-    old_attributes = cJSON_GetObjectItem(event, "old_attributes");
-    audit = cJSON_GetObjectItem(event, "audit");
 
     fim_generate_alert(sdb, lf, mode, event_type, event_time, attributes, old_attributes, audit);
 
@@ -1137,7 +1167,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
 
 
 static int fim_generate_alert(_sdb * sdb, Eventinfo *lf, char *mode, char *event_type,
-        time_t event_time, cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
+    time_t event_time, cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
 
     cJSON *object = NULL;
     char change_size[OS_FLSIZE + 1] = {'\0'};
@@ -1150,8 +1180,6 @@ static int fim_generate_alert(_sdb * sdb, Eventinfo *lf, char *mode, char *event
     char change_mtime[OS_FLSIZE + 1] = {'\0'};
     char change_inode[OS_FLSIZE + 1] = {'\0'};
     char change_win_attributes[OS_SIZE_256 + 1] = {'\0'};
-    char *new_perm = NULL;
-    char *old_perm = NULL;
     int db_result = 0;
     int it;
 
@@ -1161,205 +1189,158 @@ static int fim_generate_alert(_sdb * sdb, Eventinfo *lf, char *mode, char *event
         os_strdup(lf->decoder_info->fields[it], lf->fields[it].key);
     }
 
-    object = cJSON_GetObjectItem(attributes, "size");
-    if (object) {
-        os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_SIZE].value);
-        snprintf(lf->fields[FIM_SIZE].value, OS_SIZE_16, "%d", object->valueint);
-        os_strdup(lf->fields[FIM_SIZE].value, lf->size_after);
-    }
+    cJSON_ArrayForEach(object, attributes) {
+        if (object->string == NULL) {
+            mdebug1("FIM attribute set contains an item with no key.");
+            return -1;
+        }
 
-    object = cJSON_GetObjectItem(old_attributes, "size");
-    if (object) {
-        os_calloc(OS_SIZE_16, sizeof(char), lf->size_before);
-        snprintf(lf->size_before, OS_SIZE_16, "%d", object->valueint);
-        snprintf(change_size, OS_FLSIZE + 1, "Size changed from '%s' to '%s'\n",
-                lf->size_before, lf->size_after);
-    }
+        switch (object->type) {
+        case cJSON_Number:
+            if (strcmp(object->string, "size") == 0) {
+                os_calloc(OS_SIZE_32, sizeof(char), lf->fields[FIM_SIZE].value);
+                snprintf(lf->fields[FIM_SIZE].value, OS_SIZE_32, "%ld", (long)object->valuedouble);
+                os_strdup(lf->fields[FIM_SIZE].value, lf->size_after);
+            } else if (strcmp(object->string, "inode") == 0) {
+                os_calloc(OS_SIZE_32, sizeof(char), lf->fields[FIM_INODE].value);
+                snprintf(lf->fields[FIM_INODE].value, OS_SIZE_32, "%ld", (long)object->valuedouble);
+                lf->inode_after = (long)object->valuedouble;
+            } else if (strcmp(object->string, "mtime") == 0) {
+                os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_MTIME].value);
+                snprintf(lf->fields[FIM_MTIME].value, OS_SIZE_16, "%d", object->valueint);
+                lf->mtime_after = (long)object->valuedouble;
+            }
 
-    object = cJSON_GetObjectItem(attributes, "perm");
-    if (object) {
-        new_perm = agent_file_perm(object->valueint);
-        lf->perm_after = object->valueint;
-        if (new_perm) {
-            os_calloc(strlen(new_perm), sizeof(char), lf->fields[FIM_PERM].value);
-            snprintf(lf->fields[FIM_PERM].value, strlen(new_perm), "%9.9s", new_perm);
+            break;
+
+        case cJSON_String:
+            if (strcmp(object->string, "perm") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_PERM].value);
+                os_strdup(object->valuestring, lf->perm_after);
+            } else if (strcmp(object->string, "user_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_UNAME].value);
+                os_strdup(object->valuestring, lf->uname_after);
+            } else if (strcmp(object->string, "group_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_GNAME].value);
+                os_strdup(object->valuestring, lf->gname_after);
+            } else if (strcmp(object->string, "uid") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_UID].value);
+                os_strdup(object->valuestring, lf->owner_after);
+            } else if (strcmp(object->string, "gid") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_GID].value);
+                os_strdup(object->valuestring, lf->gowner_after);
+            } else if (strcmp(object->string, "hash_md5") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_MD5].value);
+                os_strdup(object->valuestring, lf->md5_after);
+            } else if (strcmp(object->string, "hash_sha1") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_SHA1].value);
+                os_strdup(object->valuestring, lf->sha1_after);
+            } else if (strcmp(object->string, "hash_sha256") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_SHA256].value);
+                os_strdup(object->valuestring, lf->sha256_after);
+            } else if (strcmp(object->string, "win_attributes") == 0) {
+                os_strdup(object->valuestring, lf->win_perm_after);
+            } else if (strcmp(object->string, "symlink_path") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_SYM_PATH].value);
+            }
         }
     }
 
-    object = cJSON_GetObjectItem(old_attributes, "perm");
-    if (object) {
-        old_perm = agent_file_perm(object->valueint);
-        lf->perm_before = object->valueint;
-        if (old_perm) {
-            os_calloc(strlen(old_perm), sizeof(char), lf->fields[FIM_PERM].value);
-        }
-        snprintf(change_perm, OS_SIZE_20480 + 1, "Permissions changed from "
-                "'%9.9s' to '%9.9s'\n", old_perm ? old_perm : "", new_perm ? new_perm : "");
-    }
-
-    object = cJSON_GetObjectItem(attributes, "uid");
-    if (object) {
-        os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_UID].value);
-        snprintf(lf->fields[FIM_UID].value, OS_SIZE_16, "%d", object->valueint);
-        os_strdup(lf->fields[FIM_UID].value, lf->owner_after);
-    }
-
-    object = cJSON_GetObjectItem(old_attributes, "uid");
-    if (object) {
-        os_calloc(OS_SIZE_16, sizeof(char), lf->owner_before);
-        snprintf(lf->owner_before, OS_SIZE_16, "%d", object->valueint);
-    }
-
-    object = cJSON_GetObjectItem(attributes, "user_name");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_UNAME].value);
-        os_strdup(object->valuestring, lf->uname_after);
-    }
-
-    object = cJSON_GetObjectItem(old_attributes, "user_name");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->uname_before);
-        snprintf(change_owner, OS_FLSIZE + 1, "Ownership was '%s (%s)', now it is '%s (%s)'\n",
-                lf->uname_before, lf->owner_before, lf->uname_after, lf->owner_after);
-    }
-
-    object = cJSON_GetObjectItem(attributes, "gid");
-    if (object) {
-        os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_GID].value);
-        snprintf(lf->fields[FIM_GID].value, OS_SIZE_16, "%d", object->valueint);
-        os_strdup(lf->fields[FIM_GID].value, lf->gowner_after);
-    }
-
-    object = cJSON_GetObjectItem(old_attributes, "gid");
-    if (object) {
-        os_calloc(OS_SIZE_16, sizeof(char), lf->gowner_before);
-        snprintf(lf->gowner_before, OS_SIZE_16, "%d", object->valueint);
-    }
-
-    object = cJSON_GetObjectItem(attributes, "group_name");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_GNAME].value);
-        os_strdup(object->valuestring, lf->gname_after);
-    }
-
-    object = cJSON_GetObjectItem(old_attributes, "group_name");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->gname_before);
-        snprintf(change_gowner, OS_FLSIZE + 1, "Group ownership was '%s (%s)', now it is '%s (%s)'\n",
-                lf->gname_before, lf->gowner_before, lf->gname_after, lf->gowner_after);
-    }
-
-    object = cJSON_GetObjectItem(attributes, "hash_md5");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_MD5].value);
-        os_strdup(object->valuestring, lf->md5_after);
-    }
-
-    object = cJSON_GetObjectItem(old_attributes, "hash_md5");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->md5_before);
-        snprintf(change_md5, OS_FLSIZE + 1, "Old md5sum was: '%s'\nNew md5sum is : '%s'\n",
-                lf->md5_before, lf->md5_after);
-    }
-
-    object = cJSON_GetObjectItem(attributes, "hash_sha1");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_SHA1].value);
-        os_strdup(object->valuestring, lf->sha1_after);
-    }
-
-    object = cJSON_GetObjectItem(old_attributes, "hash_sha1");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->sha1_before);
-        snprintf(change_sha1, OS_FLSIZE + 1, "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n",
-                lf->sha1_before, lf->sha1_after);
-    }
-
-    object = cJSON_GetObjectItem(attributes, "hash_sha256");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->fields[FIM_SHA256].value);
-        os_strdup(object->valuestring, lf->sha256_after);
-    }
-
-    object = cJSON_GetObjectItem(old_attributes, "hash_sha256");
-    if (object && object->valuestring) {
-        os_strdup(object->valuestring, lf->sha256_before);
-        snprintf(change_sha256, OS_FLSIZE + 1, "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n",
-                lf->sha256_before, lf->sha256_after);
-    }
-
-    object = cJSON_GetObjectItem(attributes, "mtime");
-    if (object) {
-        os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_MTIME].value);
-        snprintf(lf->fields[FIM_MTIME].value, OS_SIZE_16, "%d", object->valueint);
-        lf->mtime_after = object->valueint;
-    }
-
-    object = cJSON_GetObjectItem(old_attributes, "mtime");
-    if (object) {
-        lf->mtime_before = object->valueint;
-        snprintf(change_mtime, OS_FLSIZE, "Old modification time was: '%ld', now it is '%ld'\n",
-                lf->mtime_before, lf->mtime_after);
-    }
-
-    object = cJSON_GetObjectItem(attributes, "inode");
-    if (object) {
-        os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_INODE].value);
-        snprintf(lf->fields[FIM_INODE].value, OS_SIZE_16, "%f", object->valuedouble);
-        lf->inode_after = object->valuedouble;
-    }
-    object = cJSON_GetObjectItem(old_attributes, "inode");
-    if (object) {
-        lf->inode_before = object->valuedouble;
-        snprintf(change_inode, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n",
-                lf->inode_before, lf->inode_after);
-    }
-
-    object = cJSON_GetObjectItem(attributes, "win_attributes");
-    if (object) {
-        os_calloc(OS_SIZE_256 + 1, sizeof(char), lf->win_perm_after);
-        decode_win_attributes(lf->win_perm_after, object->valueint);
-    }
-
-    object = cJSON_GetObjectItem(old_attributes, "win_attributes");
-    if (object) {
-        os_calloc(OS_SIZE_256 + 1, sizeof(char), lf->win_perm_before);
-        decode_win_attributes(lf->win_perm_before, object->valueint);
-        snprintf(change_win_attributes, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n",
-                lf->win_perm_before, lf->win_perm_after);
-    }
-
-    if(audit) {
-        object = cJSON_GetObjectItem(audit, "user_name");
-        if (object && object->valuestring) {
-            os_strdup(object->valuestring, lf->fields[FIM_USER_NAME].value);
+    cJSON_ArrayForEach(object, old_attributes) {
+        if (object->string == NULL) {
+            mdebug1("FIM old attribute set contains an item with no key.");
+            return -1;
         }
 
-        object = cJSON_GetObjectItem(audit, "audit_name");
-        if (object && object->valuestring) {
-            os_strdup(object->valuestring, lf->fields[FIM_AUDIT_NAME].value);
-        }
+        switch (object->type) {
+        case cJSON_Number:
+            if (strcmp(object->string, "size") == 0) {
+                os_calloc(OS_SIZE_32, sizeof(char), lf->size_before);
+                snprintf(lf->size_before, OS_SIZE_32, "%ld", (long)object->valuedouble);
+                snprintf(change_size, OS_FLSIZE + 1, "Size changed from '%s' to '%s'\n", lf->size_before, lf->size_after);
+            } else if (strcmp(object->string, "inode") == 0) {
+                lf->inode_before = (long)object->valuedouble;
+                snprintf(change_inode, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", lf->inode_before, lf->inode_after);
+            } else if (strcmp(object->string, "mtime") == 0) {
+                lf->mtime_before = (long)object->valuedouble;
+                snprintf(change_mtime, OS_FLSIZE, "Old modification time was: '%ld', now it is '%ld'\n", lf->mtime_before, lf->mtime_after);
+            }
 
-        object = cJSON_GetObjectItem(audit, "effective_name");
-        if (object && object->valuestring) {
-            os_strdup(object->valuestring, lf->fields[FIM_EFFECTIVE_NAME].value);
-        }
+            break;
 
-        object = cJSON_GetObjectItem(audit, "group_name");
-        if (object && object->valuestring) {
-            os_strdup(object->valuestring, lf->fields[FIM_GROUP_NAME].value);
-        }
-
-        object = cJSON_GetObjectItem(audit, "ppid");
-        if (object && object->valuestring) {
-            os_strdup(object->valuestring, lf->fields[FIM_PROC_ID].value);
-        }
-
-        object = cJSON_GetObjectItem(audit, "process_name");
-        if (object && object->valuestring) {
-            os_strdup(object->valuestring, lf->fields[FIM_PROC_NAME].value);
+        case cJSON_String:
+            if (strcmp(object->string, "perm") == 0) {
+                os_strdup(object->valuestring, lf->perm_before);
+                snprintf(change_perm, OS_SIZE_20480 + 1, "Permissions changed from '%s' to '%s'\n", lf->perm_before ? lf->perm_before : "", lf->perm_after ? lf->perm_after : "");
+            } else if (strcmp(object->string, "user_name") == 0) {
+                // TODO: This depends on the order of the JSON objects
+                os_strdup(object->valuestring, lf->uname_before);
+                snprintf(change_owner, OS_FLSIZE + 1, "Ownership was '%s (%s)', now it is '%s (%s)'\n", lf->uname_before, lf->owner_before, lf->uname_after, lf->owner_after);
+            } else if (strcmp(object->string, "group_name") == 0) {
+                // TODO: This depends on the order of the JSON objects
+                os_strdup(object->valuestring, lf->gname_before);
+                snprintf(change_gowner, OS_FLSIZE + 1, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", lf->gname_before, lf->gowner_before, lf->gname_after, lf->gowner_after);
+            } else if (strcmp(object->string, "uid") == 0) {
+                os_strdup(object->valuestring, lf->owner_before);
+            } else if (strcmp(object->string, "gid") == 0) {
+                os_strdup(object->valuestring, lf->gowner_before);
+            } else if (strcmp(object->string, "hash_md5") == 0) {
+                os_strdup(object->valuestring, lf->md5_before);
+                snprintf(change_md5, OS_FLSIZE + 1, "Old md5sum was: '%s'\nNew md5sum is : '%s'\n", lf->md5_before, lf->md5_after);
+            } else if (strcmp(object->string, "hash_sha1") == 0) {
+                os_strdup(object->valuestring, lf->sha1_before);
+                snprintf(change_sha1, OS_FLSIZE + 1, "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n", lf->sha1_before, lf->sha1_after);
+            } else if (strcmp(object->string, "hash_sha256") == 0) {
+                os_strdup(object->valuestring, lf->sha256_before);
+                snprintf(change_sha256, OS_FLSIZE + 1, "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n", lf->sha256_before, lf->sha256_after);
+            } else if (strcmp(object->string, "win_attributes") == 0) {
+                os_strdup(object->valuestring, lf->win_perm_before);
+                snprintf(change_win_attributes, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n", lf->win_perm_before, lf->win_perm_after);
+            }
         }
     }
+
+    cJSON_ArrayForEach(object, audit) {
+        if (object->string == NULL) {
+            mdebug1("FIM audit set contains an item with no key.");
+            return -1;
+        }
+
+        switch (object->type) {
+        case cJSON_Number:
+            if (strcmp(object->string, "ppid") == 0) {
+                os_calloc(OS_SIZE_32, sizeof(char), lf->fields[FIM_PPID].value);
+                snprintf(lf->fields[FIM_PPID].value, OS_SIZE_32, "%ld", (long)object->valuedouble);
+            } else if (strcmp(object->string, "process_id") == 0) {
+                os_calloc(OS_SIZE_32, sizeof(char), lf->fields[FIM_PROC_ID].value);
+                snprintf(lf->fields[FIM_PROC_ID].value, OS_SIZE_32, "%ld", (long)object->valuedouble);
+            }
+
+            break;
+
+        case cJSON_String:
+            if (strcmp(object->string, "user_id") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_USER_ID].value);
+            } else if (strcmp(object->string, "user_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_USER_NAME].value);
+            } else if (strcmp(object->string, "group_id") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_GROUP_ID].value);
+            } else if (strcmp(object->string, "group_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_GROUP_NAME].value);
+            } else if (strcmp(object->string, "process_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_PROC_NAME].value);
+            } else if (strcmp(object->string, "audit_uid") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_AUDIT_ID].value);
+            } else if (strcmp(object->string, "audit_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_AUDIT_NAME].value);
+            } else if (strcmp(object->string, "effective_uid") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_EFFECTIVE_UID].value);
+            } else if (strcmp(object->string, "effective_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_EFFECTIVE_NAME].value);
+            }
+        }
+    }
+
 
     // TODO: format comment
     // Provide information about the file

@@ -87,8 +87,8 @@ typedef struct _Eventinfo {
     char *filename;
     char *sk_tag;
     char *sym_path;
-    int perm_before;
-    int perm_after;
+    char *perm_before;
+    char *perm_after;
     char *win_perm_before;
     char *win_perm_after;
     char *md5_before;

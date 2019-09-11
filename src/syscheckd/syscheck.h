@@ -47,6 +47,12 @@ extern int sys_debug_level;
     #define w_stat(x, y) lstat(x, y)
 #endif
 
+typedef enum fim_event_type {
+    FIM_ADD,
+    FIM_DELETE,
+    FIM_MODIFICATION
+} fim_event_type;
+
 /* Check the integrity of the files against the saved database */
 void run_check(void);
 
@@ -69,10 +75,10 @@ int fim_scan();
 int fim_directory (char * path, int dir_position, whodata_evt * w_evt);
 
 //
-int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * w_evt);
+int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, whodata_evt * w_evt);
 
 //
-int fim_process_event(char * file, int mode, whodata_evt *w_evt);
+int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt);
 
 //
 void fim_audit_inode_event(whodata_evt * w_evt);
@@ -84,7 +90,7 @@ int fim_configuration_directory (char * path);
 int fim_check_depth(char * path, int dir_position);
 
 //
-fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, int mode, int options);
+fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fim_event_mode mode, int options);
 
 //
 void fim_get_checksum (fim_entry_data * data);
@@ -104,14 +110,36 @@ void check_deleted_files();
 //
 void delete_inode_item(char *inode, char *file_name);
 
-//
-cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int dir_position, int type, int mode, whodata_evt *w_evt);
-
-//
-cJSON * fim_json_alert (char * file_name, fim_entry_data * data, int dir_position, int type, int mode, whodata_evt * w_evt);
-
-//
-cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int dir_position, int type, int mode, whodata_evt * w_evt);
+/**
+ * @brief Produce a file change JSON event
+ *
+ * {
+ *   type:                  "event"
+ *   data: {
+ *     path:                string
+ *     mode:                "scheduled"|"real-time"|"whodata"
+ *     type:                "added"|"deleted"|"modified"
+ *     timestamp:           number
+ *     tags:                string
+ *     content_changes:     string
+ *     changed_attributes:  array   fim_json_compare_attrs()    [Only if old_data]
+ *     old_attributes:      object  fim_attributes_json()       [Only if old_data]
+ *     attributes:          object  fim_attributes_json()
+ *     audit:               object  fim_audit_json()
+ *   }
+ * }
+ *
+ * @param file_name File path.
+ * @param old_data Previous file state.
+ * @param new_data Current file state.
+ * @param dir_position Index of the related configuration stanza.
+ * @param type Type of event: added, deleted or modified.
+ * @param mode Event source.
+ * @param w_evt Audit data structure.
+ * @return File event JSON object.
+ * @retval NULL No changes detected. Do not send an event.
+ */
+cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int dir_position, fim_event_type type, fim_event_mode mode, whodata_evt *w_evt);
 
 //
 void set_integrity_index(char * file_name, fim_entry_data * data);
@@ -225,5 +253,109 @@ void fim_sync_checksum_split(const char * start, const char * top);
 void fim_sync_send_list(const char * start, const char * top);
 void fim_sync_dispatch(char * payload);
 long fim_sync_last_message();
+
+/**
+ * @brief Create file attribute set JSON from a FIM entry structure
+ *
+ * Format:
+ * {
+ *   type:        "file"|"registry"
+ *   size:        number
+ *   perm:        number
+ *   user_name:   string
+ *   group_name:  string
+ *   uid:         string
+ *   gid:         string
+ *   inode:       number
+ *   mtime:       number
+ *   hash_md5:    string
+ *   hash_sha1:   string
+ *   hash_sha256: string
+ *   checksum:    string
+ * }
+ *
+ * @param data Pointer to a FIM entry structure.
+ * @pre data is mutex-blocked.
+ * @return Pointer to cJSON structure.
+ */
+cJSON * fim_attributes_json(const fim_entry_data * data);
+
+/**
+ * @brief Create file entry JSON from a FIM entry structure
+ *
+ * Format:
+ * {
+ *   path:              string
+ *   timestamp:         number
+ *   attributes: {
+ *     type:            "file"|"registry"
+ *     size:            number
+ *     perm:            number
+ *     user_name:       string
+ *     group_name:      string
+ *     uid:             string
+ *     gid:             string
+ *     inode:           number
+ *     mtime:           number
+ *     hash_md5:        string
+ *     hash_sha1:       string
+ *     hash_sha256:     string
+ *     win_attributes:  number
+ *     symlink_path:    string
+ *     checksum:        string
+ *   }
+ * }
+ *
+ * @param path Pointer to file path string.
+ * @param data Pointer to a FIM entry structure.
+ * @pre data is mutex-blocked.
+ * @return Pointer to cJSON structure.
+ */
+cJSON * fim_entry_json(const char * path, fim_entry_data * data);
+
+/**
+ * @brief Create file attribute comparison JSON object
+ *
+ * Format: array of strings, with the following possible strings:
+ * - size
+ * - permission
+ * - uid
+ * - user_name
+ * - gid
+ * - group_name
+ * - mtime
+ * - inode (UNIX only)
+ * - md5
+ * - sha1
+ * - sha256
+ *
+ * @param old_data
+ * @param new_data
+ * @return cJSON*
+ */
+cJSON * fim_json_compare_attrs(const fim_entry_data * old_data, const fim_entry_data * new_data);
+
+/**
+ * @brief Create file audit data JSON object
+ *
+ * Format:
+ * {
+ *   user_id:        string
+ *   user_name:      string
+ *   group_id:       string
+ *   group_name:     string
+ *   process_name:   string
+ *   audit_uid:      string
+ *   audit_name:     string
+ *   effective_uid:  string
+ *   effective_name: string
+ *   ppid:           number
+ *   process_id:     number
+ * }
+ *
+ * @param w_evt Pointer to event whodata structure
+ * @return cJSON object pointer.
+ */
+cJSON * fim_audit_json(const whodata_evt * w_evt);
 
 #endif

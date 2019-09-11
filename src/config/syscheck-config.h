@@ -11,11 +11,11 @@
 #ifndef __SYSCHECKC_H
 #define __SYSCHECKC_H
 
-
-#define FIM_SCHEDULED   0
-#define FIM_REALTIME    1
-#define FIM_WHODATA     2
-#define FIM_MODES       3
+typedef enum fim_event_mode {
+    FIM_SCHEDULED,
+    FIM_REALTIME,
+    FIM_WHODATA
+} fim_event_mode;
 
 #define FIM_MODE(x) (x & WHODATA_ACTIVE ? FIM_WHODATA : x & REALTIME_ACTIVE ? FIM_REALTIME : FIM_SCHEDULED)
 
@@ -203,7 +203,7 @@ typedef struct fim_entry_data {
     os_sha1 hash_sha1;
     os_sha256 hash_sha256;
     // Options
-    int mode;
+    fim_event_mode mode;
     int options;
     time_t last_event;
     unsigned int scanned;

@@ -185,9 +185,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                 merror("The old permissions could not be added to the JSON alert.");
             }
         } else if (lf->perm_before) {
-            char perm[7];
-            snprintf(perm, 7, "%6o", lf->perm_before);
-            cJSON_AddStringToObject(file_diff, "perm_before", perm);
+            cJSON_AddStringToObject(file_diff, "perm_before", lf->perm_before);
         }
         if (lf->win_perm_after && *lf->win_perm_after != '\0') {
             cJSON *new_perm;
@@ -197,9 +195,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                 merror("The new permissions could not be added to the JSON alert.");
             }
         } else if (lf->perm_after) {
-            char perm[7];
-            snprintf(perm, 7, "%6o", lf->perm_after);
-            cJSON_AddStringToObject(file_diff, "perm_after", perm);
+            cJSON_AddStringToObject(file_diff, "perm_after", lf->perm_after);
         }
         if(lf->owner_before) {
             if (strcmp(lf->owner_before, "") != 0) {
