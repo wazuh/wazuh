@@ -1441,7 +1441,7 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
                 status = "Z";   //ZOMBIE
                 break;
             default:
-                mterror(WM_SYS_LOGTAG, "Error getting the status of the process %d", pid);
+                mtdebug1(WM_SYS_LOGTAG, "Error getting the status of the process %d", pid);
                 status = "E";     //Error getting the status
         }
 
@@ -1463,7 +1463,7 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
 
         cJSON_AddNumberToObject(process, "priority", task_info.ptinfo.pti_priority);
         cJSON_AddNumberToObject(process, "nice", task_info.pbsd.pbi_nice);
-        cJSON_AddNumberToObject(process, "vm_size", task_info.ptinfo.pti_virtual_size);
+        cJSON_AddNumberToObject(process, "vm_size", task_info.ptinfo.pti_virtual_size / 1024);
 
         cJSON_AddItemToArray(proc_array, object);
     }
