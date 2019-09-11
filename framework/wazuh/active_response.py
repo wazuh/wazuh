@@ -19,11 +19,11 @@ def run_command(agent_id=None, command=None, arguments=None, custom=False):
     """
     msg_queue = active_response.create_message(command=command, arguments=arguments, custom=custom)
 
-    return active_response.send_command(msg_queue=msg_queue, agent_id=agent_id)
+    return active_response.send_command(msg_queue=msg_queue, agent_ids=agent_id)
 
 
 @expose_resources(actions=['active_response:command'], resources='agent:id:*')
-def run_command_all(command=None, arguments=None, custom=False):
+def run_command_all(agent_id, command=None, arguments=None, custom=False):
     """Run AR command in a specific agent
 
     :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of
@@ -34,4 +34,4 @@ def run_command_all(command=None, arguments=None, custom=False):
     """
     msg_queue = active_response.create_message(command=command, arguments=arguments, custom=custom)
 
-    return active_response.send_command(msg_queue=msg_queue, agent_id=None)
+    return active_response.send_command(msg_queue=msg_queue, agent_ids=agent_id)

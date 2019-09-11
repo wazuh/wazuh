@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from wazuh.rbac import auth_context
+from wazuh.rbac import pre_policies
 from werkzeug.exceptions import Unauthorized
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -153,9 +154,8 @@ def generate_token(user_id):
     :return: string jwt formatted string
     """
     # Add dummy rbac_policies for developing here
-    rbac = auth_context.RBAChecker(auth_context='Testing', testing=True)
-    rbac_policies = rbac.optimize_resources('white')
     mode = False  # White
+    rbac_policies = pre_policies.optimize_resources(mode)
 
     timestamp = int(time())
     payload = {

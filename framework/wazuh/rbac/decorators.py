@@ -84,7 +84,7 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     """
     mode = rbac[0]
     user_permissions = rbac[1]
-    allow_match = False
+    allow_match = []
     # We run through all required permissions for the request
     for req_action, req_resources in req_permissions.items():
         for req_resource in req_resources:
@@ -95,24 +95,26 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
                 m = re.search(r'^(\w+\:\w+)(:)([\w\-\.\/]+|\*)$', req_resource)
                 # We find if resource matches
                 if m.group(1) == 'agent:id':
-                    reqs = [req_resource]
+                    if req_resource.split(':')[-1] == '*':  # Expand
+                        reqs = user_resources[m.group(1)]['allow']
+                    else:
+                        reqs = [req_resource]
                     reqs.extend(_get_groups_resources(m.group(3)))
                     for req in reqs:
                         split_req = req.split(':')[-1]
                         if split_req in user_resources[m.group(1)]['allow'] and \
                                 split_req not in user_resources[m.group(1)]['deny']:
-                            allow_match = True
-                            break
+                            allow_match.append(split_req)
                         elif split_req in user_resources[m.group(1)]['deny']:
                             break
                 elif m.group(3) != '*':
-                    allow_match = (m.group(3) in user_resources[m.group(1)]['allow']) or \
+                    allow_match.append(m.group(3) in user_resources[m.group(1)]['allow']) or \
                                 ('*' in user_resources[m.group(1)]['allow'])
                 else:
-                    allow_match = '*' in user_resources[m.group(1)]['allow']
+                    allow_match.append('*' in user_resources[m.group(1)]['allow'])
             except KeyError:
                 if mode:  # For black mode
-                    allow_match = True
+                    allow_match.append('*')
                     break
     # If we don't find a deny match or we find an allow match for all policies in white list mode we allow the request
     return allow_match
@@ -130,8 +132,9 @@ def expose_resources(actions: list = None, resources: str = None):
         def wrapper(*args, **kwargs):
             req_permissions = _get_required_permissions(actions=actions, resources=resources, **kwargs)
             allow = _match_permissions(req_permissions=req_permissions, rbac=kwargs['rbac'])
-            if allow:
+            if len(allow) > 0:
                 del kwargs['rbac']
+                kwargs['agent_id'] = allow
                 return func(*args, **kwargs)
             else:
                 raise WazuhError(4000)
