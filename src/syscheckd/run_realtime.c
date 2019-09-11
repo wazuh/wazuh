@@ -262,6 +262,8 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
                 }
             }
 
+            Sleep(syscheck.rt_delay);
+
             /* Check the change */
             str_lowercase(final_path);
             minfo("callback(%d)'%s'", FIM_REALTIME, final_path);
