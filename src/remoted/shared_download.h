@@ -81,6 +81,7 @@ typedef struct _sd_config {
     ino_t file_inode;               /** File serial number. **/
     OSHash *ptable;                 /**< Pointer to ptable structure. */
     pthread_mutex_t mutex;          /**< Thread lock. */
+    int checked_url_connection;     /**< Check URL connection. */
 } sd_config_t;
 
 /** 
@@ -254,5 +255,10 @@ int sd_reload(sd_config_t **config);
  * @returns @c 1 if the file has changed or @c 0 in other case.
  */
 int sd_file_changed(sd_config_t *config);
+
+/**
+ * @brief Check download module connection
+ */
+void check_download_module_connection();
 
 #endif /* __SHARED_DOWNLOAD_H */

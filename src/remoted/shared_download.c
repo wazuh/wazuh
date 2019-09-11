@@ -398,6 +398,11 @@ int sd_load(sd_config_t **config) {
             sd_add_group(&(*config));
             sd_add_agent(&(*config));
 
+            if (!(*config)->checked_url_connection) {
+                check_download_module_connection();
+                (*config)->checked_url_connection = 1;
+            }
+
             return 1;
 
         } else {
@@ -452,12 +457,28 @@ int sd_reload(sd_config_t **config) {
             sd_destroy_content(&config_tmp);
         }
     }
-
     return 0;
 }
 
 int sd_file_changed(sd_config_t *config) {
     return config->file_date != File_DateofChange(config->file) || config->file_inode != File_Inode(config->file);
+}
+
+void check_download_module_connection() {
+    int i;
+
+    for (i = SOCK_ATTEMPTS; i > 0; --i) {
+        if (wurl_check_connection() == 0) {
+            break;
+        } else {
+            mdebug2("Download module not yet available. Remaining attempts: %d", i - 1);
+            sleep(1);
+        }
+    }
+
+    if (i == 0) {
+        merror("Cannot connect to the download module socket. External shared file download is not available.");
+    }
 }
 
 static void sd_move(sd_config_t **config, sd_config_t **config_tmp) {
