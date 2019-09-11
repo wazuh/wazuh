@@ -272,6 +272,8 @@ void OSList_DeleteList(OSList *list)
     w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
     w_mutex_lock((pthread_mutex_t *)&list->mutex);
 
+    list->pending_remove = 1;
+
     while(tmp1){
         tmp2 = tmp1->next;
         free(tmp1);

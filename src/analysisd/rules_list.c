@@ -20,11 +20,40 @@ static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule);
 static int _AddtoRule(int sid, int level, int none, const char *group,
                RuleNode *r_node, RuleInfo *read_rule);
 
-/* Internal functions to add, remove and copy rules */
+/**
+ * @brief Remove an array of rules and child arrays
+ * @param array Array of rule childs.
+ *
+ * @note Does not remove RuleInfo
+ */
 static void _remove_arrayRuleNode(RuleNode *array);
+
+/**
+ * @brief Search rule and remove this and childs
+ * @param parent Rule parent
+ * @param sid_rule Rule
+ *
+ * @note Does not remove RuleInfo
+ */
 static void _remove_ruleNode(RuleNode *parent, int sid_rule);
+
+/**
+ * @brief Remove RuleInfo structure.
+ * @param r_info RuleInfo structure to remove.
+ */
 static void _free_ruleInfo(RuleInfo *r_info);
+
+/**
+ * @brief Copy rule and rules child
+ * @param orig Original rule node
+ * @param copy Copy rule node
+ */
 static RuleNode *_copy_rule(RuleNode *orig, RuleNode *copy);
+
+/**
+ * @brief Add rules to rulenode structure
+ * @param r_node rules to add
+ */
 static void _add_rules(RuleNode *r_node);
 
 
@@ -391,13 +420,7 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
     return (0);
 }
 
-/**
- * @brief Search rule and remove this and childs
- * @param sid_parent Rule parent
- * @param sid_rule Rule
- *
- * @note Does not remove RuleInfo
- */
+
 static void _remove_ruleNode (RuleNode *parent, int sid_rule)
 {
     RuleNode *tmp = parent->child;
@@ -420,7 +443,7 @@ static void _remove_ruleNode (RuleNode *parent, int sid_rule)
             _remove_arrayRuleNode(tmp);
             removed = true;
         }
-        else if (tmp->child){
+        else if (tmp->ruleinfo->sigid != sid_rule && tmp->child){
             _remove_ruleNode(tmp, sid_rule);
         }
 
@@ -435,12 +458,7 @@ static void _remove_ruleNode (RuleNode *parent, int sid_rule)
     }
 }
 
-/**
- * @brief Remove an array of rules and child arrays
- * @param array Array of rule childs.
- *
- * @note Does not remove RuleInfo
- */
+
 static void _remove_arrayRuleNode (RuleNode *array)
 {
     RuleNode *tmp = NULL;
@@ -456,145 +474,177 @@ static void _remove_arrayRuleNode (RuleNode *array)
     }
 }
 
-/**
- * @brief Remove RuleInfo structure.
- * @param r_info RuleInfo structure to remove.
- */
+
 static void _free_ruleInfo(RuleInfo *r_info)
 {
 
-    if (r_info->ignore_fields)
+    int i;
+
+    if (r_info->ignore_fields) {
         free(r_info->ignore_fields);
+    }
 
-    if (r_info->ckignore_fields)
+    if (r_info->ckignore_fields) {
         free(r_info->ckignore_fields);
+    }
 
-    if (r_info->sid_prev_matched)
+    if (r_info->sid_prev_matched) {
         OSList_DeleteList(r_info->sid_prev_matched);
+    }
 
-    if (r_info->sid_search)
+    if (r_info->sid_search) {
         OSList_DeleteList(r_info->sid_search);
+    }
 
-    if (r_info->group_prev_matched)
-        OSList_DeleteList(r_info->group_prev_matched);
+    i = 0;
+    while (r_info->group_prev_matched[i]) {
+        OSList_DeleteList(r_info->group_prev_matched[i]);
+    }
 
-    if (r_info->group_search)
+    if (r_info->group_search) {
         OSList_DeleteList(r_info->group_search);
+    }
 
-    if (r_info->group)
+    if (r_info->group) {
         free(r_info->group);
+    }
 
-    if (r_info->match)
+    if (r_info->match) {
         OSMatch_FreePattern(r_info->match);
+    }
 
-    if (r_info->regex)
+    if (r_info->regex) {
         OSRegex_FreePattern(r_info->regex);
+    }
 
-    if (r_info->day_time)
+    if (r_info->day_time) {
         free(r_info->day_time);
+    }
 
-    if (r_info->week_day)
+    if (r_info->week_day) {
         free(r_info->week_day);
+    }
 
     /*free(r_info->srcip);
     free(r_info->dstip);*/
 
-    if (r_info->srcgeoip)
+    if (r_info->srcgeoip) {
         OSMatch_FreePattern(r_info->srcgeoip);
+    }
 
-    if (r_info->dstgeoip)
+    if (r_info->dstgeoip) {
         OSMatch_FreePattern(r_info->dstgeoip);
+    }
 
-    if (r_info->srcport)
+    if (r_info->srcport) {
         OSMatch_FreePattern(r_info->srcport);
+    }
 
-    if (r_info->dstport)
+    if (r_info->dstport) {
         OSMatch_FreePattern(r_info->dstport);
+    }
 
-    if (r_info->user)
+    if (r_info->user) {
         OSMatch_FreePattern(r_info->user);
+    }
 
-    if (r_info->url)
+    if (r_info->url) {
         OSMatch_FreePattern(r_info->url);
+    }
 
-    if (r_info->id)
+    if (r_info->id) {
         OSMatch_FreePattern(r_info->id);
+    }
 
-    if (r_info->status)
+    if (r_info->status) {
         OSMatch_FreePattern(r_info->status);
+    }
 
-    if (r_info->hostname)
+    if (r_info->hostname) {
         OSMatch_FreePattern(r_info->hostname);
+    }
 
-    if (r_info->program_name)
+    if (r_info->program_name) {
         OSMatch_FreePattern(r_info->program_name);
+    }
 
-    if (r_info->extra_data)
+    if (r_info->extra_data) {
         OSMatch_FreePattern(r_info->extra_data);
+    }
 
-    if (r_info->location)
+    if (r_info->location) {
         OSMatch_FreePattern(r_info->location);
+    }
 
-    int i = 0;
+    i = 0;
     while (r_info->fields[i]){
         free(r_info->fields[i]->name);
-        OSRegex_FreePattern(r_info->fields[0]->regex);
-        free(r_info->fields[0]);
+        OSRegex_FreePattern(r_info->fields[i]->regex);
+        free(r_info->fields[i]);
         i++;
     }
 
-    if (r_info->action)
+    if (r_info->action) {
         free(r_info->action);
+    }
 
-    if (r_info->comment)
+    if (r_info->comment) {
         free(r_info->comment);
+    }
 
-    if (r_info->info)
+    if (r_info->info) {
         free(r_info->info);
+    }
 
-    if (r_info->cve)
+    if (r_info->cve) {
         free(r_info->cve);
+    }
 
     // free(r_info->info_details);
 
     // free(r_info->lists);
 
-    if (r_info->if_sid)
+    if (r_info->if_sid) {
         free(r_info->if_sid);
+    }
 
-    if (r_info->if_level)
+    if (r_info->if_level) {
         free(r_info->if_level);
+    }
 
-    if (r_info->if_group)
+    if (r_info->if_group) {
         free(r_info->if_group);
+    }
 
-    if (r_info->if_matched_regex)
+    if (r_info->if_matched_regex) {
         OSRegex_FreePattern(r_info->if_matched_regex);
+    }
 
-    if (r_info->if_matched_group)
+    if (r_info->if_matched_group) {
         OSMatch_FreePattern(r_info->if_matched_group);
+    }
 
-    if (r_info->ar)
+    if (r_info->ar) {
         free(r_info->ar);
+    }
 
-    if (r_info->file)
+    if (r_info->file) {
         free(r_info->file);
+    }
 
-    if (r_info->same_fields)
+    if (r_info->same_fields) {
         free(r_info->same_fields);
+    }
 
-    if (r_info->not_same_fields)
+    if (r_info->not_same_fields) {
         free(r_info->not_same_fields);
+    }
 
     free(r_info);
 
 }
 
-/**
- * @brief Copy rule and rules child
- * @param orig Original rule node
- * @param copy Copy rule node
- */
+
 static RuleNode *_copy_rule(RuleNode *orig, RuleNode *copy)
 {
     if (copy) {
@@ -621,10 +671,7 @@ static RuleNode *_copy_rule(RuleNode *orig, RuleNode *copy)
     return copy;
 }
 
-/**
- * @brief Add rules to rulenode structure
- * @param r_node rules to add
- */
+
 static void _add_rules(RuleNode *r_node)
 {
     while (r_node) {

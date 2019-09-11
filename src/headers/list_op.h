@@ -49,6 +49,13 @@ OSListNode *OSList_GetCurrentlyNode(OSList *list) __attribute__((nonnull));
 void OSList_DeleteCurrentlyNode(OSList *list) __attribute__((nonnull));
 void OSList_DeleteThisNode(OSList *list, OSListNode *thisnode) __attribute__((nonnull(1)));
 void OSList_DeleteOldestNode(OSList *list) __attribute__((nonnull));
+
+/**
+ * @brief Delete list
+ * @param list List to remove
+ *
+ * @note The function's call  must be controlled by a mutex
+ */
 void OSList_DeleteList(OSList *list) __attribute__((nonnull));
 
 void *OSList_AddData(OSList *list, void *data) __attribute__((nonnull(1)));
