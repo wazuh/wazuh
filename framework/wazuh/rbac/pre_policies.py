@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.agent import Agent
 from wazuh.rbac.auth_context import RBAChecker
 
 
@@ -89,29 +88,6 @@ def process_policy(mode, policy, odict):
         modify_odict(mode, action, policy['resources'], policy['effect'], odict)
 
 
-def expand_permissions(mode, odict):
-    agents = Agent.get_agents_overview()
-    agents_ids = list()
-    for agent in agents['items']:
-        agents_ids.append(agent['id'])
-
-    for action, resource in odict.items():
-        for res, value in resource.items():
-            if '*' in value['allow']:
-                value['allow'] = agents_ids
-                value['allow'] = [agent_id for agent_id in value['allow'] if agent_id not in value['deny']]
-            elif '*' in value['deny']:
-                value['deny'] = agents_ids
-                value['deny'] = [agent_id for agent_id in value['deny'] if agent_id not in value['allow']]
-
-            if mode:
-                value['allow'] = [agent_id for agent_id in agents_ids if agent_id not in value['deny']]
-            else:
-                value['deny'] = [agent_id for agent_id in agents_ids if agent_id not in value['allow']]
-
-    return odict
-
-
 def optimize_resources(mode=False):
     # For production
     # rbac = RBAChecker(auth_context='AUTHORIZATION CONTEXT (JSON)')
@@ -123,7 +99,6 @@ def optimize_resources(mode=False):
     odict = dict()
     for policy in policies:
         process_policy(mode, policy, odict)
-    odict = expand_permissions(mode, odict)
     convert_to_json_serializable(odict)
 
     return odict

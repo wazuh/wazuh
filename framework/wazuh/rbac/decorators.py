@@ -7,6 +7,7 @@ from functools import wraps
 from glob import glob
 
 from wazuh import common
+from wazuh.agent import Agent
 from wazuh.database import Connection
 from wazuh.exception import WazuhError, WazuhInternalError
 
@@ -75,6 +76,27 @@ def _get_required_permissions(actions: list = None, resources: str = None, **kwa
     return req_permissions
 
 
+def _expand_permissions(mode, odict):
+    agents = Agent.get_agents_overview()
+    agents_ids = list()
+    for agent in agents['items']:
+        agents_ids.append(agent['id'])
+
+    if '*' in odict['allow']:
+        odict['allow'] = agents_ids
+        odict['allow'] = [agent_id for agent_id in odict['allow'] if agent_id not in odict['deny']]
+    elif '*' in odict['deny']:
+        odict['deny'] = agents_ids
+        odict['deny'] = [agent_id for agent_id in odict['deny'] if agent_id not in odict['allow']]
+
+    if mode:
+        odict['allow'] = [agent_id for agent_id in agents_ids if agent_id not in odict['deny']]
+    else:
+        odict['deny'] = [agent_id for agent_id in agents_ids if agent_id not in odict['allow']]
+
+    return odict
+
+
 def _match_permissions(req_permissions: dict = None, rbac: list = None):
     """Try to match function required permissions against user permissions to allow or deny execution
 
@@ -87,6 +109,7 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     allow_match = []
     # We run through all required permissions for the request
     for req_action, req_resources in req_permissions.items():
+        agent_expand = False
         for req_resource in req_resources:
             # We run through the user permissions to find a match with the required permissions
             try:
@@ -95,6 +118,10 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
                 m = re.search(r'^(\w+\:\w+)(:)([\w\-\.\/]+|\*)$', req_resource)
                 # We find if resource matches
                 if m.group(1) == 'agent:id':
+                    # Expand *
+                    if not agent_expand:
+                        user_resources[m.group(1)] = _expand_permissions(mode, user_resources[m.group(1)])
+                        agent_expand = True
                     if req_resource.split(':')[-1] == '*':  # Expand
                         reqs = user_resources[m.group(1)]['allow']
                     else:
