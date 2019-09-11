@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
 # Install the package locally: python setup.py install
@@ -33,7 +33,7 @@ class InstallCommand(install):
         with open(os.path.join(here, 'wazuh', 'wazuh.json'), 'w') as f:
             json.dump({'install_type': self.install_type,
                        'wazuh_version': self.wazuh_version,
-                       'installation_date': datetime.now().strftime('%a %b %d %H:%M:%S UTC %Y')
+                       'installation_date': datetime.utcnow().strftime('%a %b %d %H:%M:%S UTC %Y')
                        }, f)
         # install.run(self)  # OR: install.do_egg_install(self)
         install.do_egg_install(self)

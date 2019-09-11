@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -781,10 +781,9 @@ static void c_files()
     }
 
     OSHashNode *my_node;
-    unsigned int *i;
-    os_calloc(1, sizeof(unsigned int), i);
+    unsigned int i;
 
-    for (my_node = OSHash_Begin(m_hash, i); my_node; my_node = OSHash_Next(m_hash, i, my_node)) {
+    for (my_node = OSHash_Begin(m_hash, &i); my_node; my_node = OSHash_Next(m_hash, &i, my_node)) {
         os_free(key);
         os_free(data);
         os_strdup(my_node->key, key);
@@ -792,7 +791,6 @@ static void c_files()
             os_strdup(my_node->data, data);
         }
         else {
-            os_free(i);
             os_free(key);
             os_free(data);
             closedir(dp);
@@ -837,7 +835,6 @@ static void c_files()
         p_size++;
     }
 
-    os_free(i);
     os_free(key);
     os_free(data);
     /* Unlock mutex */
@@ -1074,7 +1071,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             // Copy sum before unlock mutex
-            if (f_sum[0]->sum) {
+            if (*f_sum[0]->sum) {
                 memcpy(tmp_sum, f_sum[0]->sum, sizeof(tmp_sum));
             }
 

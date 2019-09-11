@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import common
 from wazuh.exception import WazuhException
@@ -195,36 +195,36 @@ def get_packages(offset=0, limit=common.database_limit, select=None, filters={},
                             filters=filters, search=search, sort=sort, array=True)
 
 
-def get_os(filters={}, offset=0, limit=common.database_limit, select={}, search={}, sort={}):
+def get_os(offset=0, limit=common.database_limit, select={}, filters={}, search={}, sort={}):
     return _get_agent_items(func=get_os_agent, offset=offset, limit=limit, select=select,
                             filters=filters, search=search, sort=sort)
 
 
-def get_hardware(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
+def get_hardware(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort=None):
     return _get_agent_items(func=get_hardware_agent, offset=offset, limit=limit, select=select,
                             filters=filters, search=search, sort=sort)
 
 
-def get_processes(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
+def get_processes(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort=None):
     return _get_agent_items(func=get_processes_agent, offset=offset, limit=limit, select=select,
                             filters=filters, search=search, sort=sort, array=True)
 
 
-def get_ports(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
+def get_ports(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort=None):
     return _get_agent_items(func=get_ports_agent, offset=offset, limit=limit, select=select,
                             filters=filters, search=search, sort=sort, array=True)
 
 
-def get_netaddr(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
+def get_netaddr(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort=None):
     return _get_agent_items(func=get_netaddr_agent, offset=offset, limit=limit, select=select,
                             filters=filters, search=search, sort=sort, array=True)
 
 
-def get_netproto(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
+def get_netproto(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort=None):
     return _get_agent_items(func=get_netproto_agent, offset=offset, limit=limit, select=select,
                             filters=filters, search=search, sort=sort, array=True)
 
 
-def get_netiface(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
+def get_netiface(offset=0, limit=common.database_limit, select=None, filters={}, sort=None, search={}):
     return _get_agent_items(func=get_netiface_agent, offset=offset, limit=limit, select=select,
                             filters=filters, search=search, sort=sort, array=True)

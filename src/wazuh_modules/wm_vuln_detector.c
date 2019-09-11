@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * January 4, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -1406,7 +1406,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                     }
                 }
             }
-        } if (!strcmp(node[i]->element, XML_CONST_VAR)) {
+        } else if (!strcmp(node[i]->element, XML_CONST_VAR)) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
             }
@@ -1482,7 +1482,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
 
                     for (j = 0; node[i]->attributes[j] && node[i]->values[j]; j++) {
                         if (!strcmp(node[i]->attributes[j], XML_VAR_REF)) {
-                            if (!var_check) {
+                            if (!var_ref) {
                                 os_strdup(node[i]->values[j], var_ref);
                             }
                         } else if (!strcmp(node[i]->attributes[j], XML_VAR_CHECK)) {
@@ -2316,6 +2316,7 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
     cJSON *package_list = NULL;
     last_scan *scan;
     int result;
+    const char *jsonErrPtr;
 
     mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_SOFTWARE_REQ, agent->agent_id);
 
@@ -2353,7 +2354,7 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
         goto end;
     }
 
-    if (obj = cJSON_Parse(json_str), obj && cJSON_IsObject(obj)) {
+    if (obj = cJSON_ParseWithOpts(json_str, &jsonErrPtr, 0), obj && cJSON_IsObject(obj)) {
         cJSON_GetObjectItem(obj, "data");
     } else {
         retval = OS_INVALID;
@@ -2414,7 +2415,7 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
             if (obj) {
                 cJSON *new_obj;
                 cJSON *data;
-                if (new_obj = cJSON_Parse(json_str), !new_obj) {
+                if (new_obj = cJSON_ParseWithOpts(json_str, &jsonErrPtr, 0), !new_obj) {
                     retval = OS_INVALID;
                     goto end;
                 } else if (!cJSON_IsObject(new_obj)) {
@@ -2429,7 +2430,7 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
                     free(data);
                 }
                 free(new_obj);
-            } else if (obj = cJSON_Parse(json_str), obj && cJSON_IsObject(obj)) {
+            } else if (obj = cJSON_ParseWithOpts(json_str, &jsonErrPtr, 0), obj && cJSON_IsObject(obj)) {
                 package_list = cJSON_GetObjectItem(obj, "data");
                 if (!package_list) {
                     retval = OS_INVALID;

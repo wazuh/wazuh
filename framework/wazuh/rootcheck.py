@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.exception import WazuhException
 from wazuh.utils import WazuhDBQuery, WazuhDBQueryDistinct
@@ -12,6 +12,7 @@ from wazuh.ossec_queue import OssecQueue
 from wazuh import common
 from glob import glob
 from os import remove, path
+from datetime import datetime
 
 fields = {'status': 'status', 'event': 'log', 'oldDay': 'date_first', 'readDay': 'date_last', 'pci':'pci_dss', 'cis': 'cis'}
 
@@ -26,7 +27,7 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='pm_event', sort=sort, search=search, select=select,
                               fields=fields, default_sort_field=default_sort_field, default_sort_order='DESC', filters=filters,
                               query=query, db_path=db_path[0], min_select_fields=set(), count=count, get_data=get_data,
-                              date_fields={'oldDay','readDate'})
+                              date_fields={'oldDay','readDay'})
 
     def _parse_filters(self):
         WazuhDBQuery._parse_filters(self)
@@ -43,7 +44,7 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
 
     def _filter_status(self, filter_status):
         partial = """SELECT {0} AS status, date_first, date_last, log, pci_dss, cis FROM pm_event AS t
-                WHERE date_last {1} (SELECT datetime(date_last, '-86400 seconds') FROM pm_event WHERE log = 'Ending rootcheck scan.')"""
+                WHERE date_last {1} (SELECT date_last-86400 FROM pm_event WHERE log = 'Ending rootcheck scan.')"""
 
         if filter_status['value'] == 'all':
             self.query = "SELECT {0} FROM (" + partial.format("'outstanding'", '>') + ' UNION ' + partial.format("'solved'",'<=') + \
@@ -57,6 +58,15 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
         else:
             raise WazuhException(1603, filter_status['value'])
 
+    def _format_data_into_dictionary(self):
+        def format_fields(field_name, value):
+            if field_name in ['oldDay', 'readDay']:
+                return datetime.utcfromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                return value
+
+        return {'items': [{key: format_fields(key, value) for key, value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
+                           if value is not None} for db_tuple in self.conn], 'totalItems': self.total_items}
 
     @staticmethod
     def _pass_filter(db_filter):
@@ -263,13 +273,13 @@ def last_scan(agent_id):
     # end time
     query = "SELECT max(date_last) FROM pm_event WHERE log = 'Ending rootcheck scan.'"
     conn.execute(query)
-    for tuple in conn:
-        data['end'] = tuple[0] if tuple[0] is not None else "ND"
+    for tup in conn:
+        data['end'] = datetime.utcfromtimestamp(tup[0]).strftime("%Y-%m-%d %H:%M:%S") if tup[0] is not None else "ND"
 
     # start time
     query = "SELECT max(date_last) FROM pm_event WHERE log = 'Starting rootcheck scan.'"
     conn.execute(query)
-    for tuple in conn:
-        data['start'] = tuple[0] if tuple[0] is not None else "ND"
+    for tup in conn:
+        data['start'] = datetime.utcfromtimestamp(tup[0]).strftime("%Y-%m-%d %H:%M:%S") if tup[0] is not None else "ND"
 
     return data

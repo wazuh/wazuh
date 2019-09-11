@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2015-2019, Wazuh Inc.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -29,8 +29,6 @@ os_info *get_win_version()
     const DWORD vsize = 1024;
     TCHAR value[vsize];
     DWORD dwCount = vsize;
-    char arch[64] = "";
-    char nodename[1024] = "";
     char version[64] = "";
     const DWORD size = 30;
 
@@ -227,46 +225,47 @@ os_info *get_win_version()
 
     if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
         merror(SK_REG_OPEN, subkey);
-        info->machine = strdup("unknown");
     } else {
-        dwCount = vsize;
+        char arch[64] = "";
+        dwCount = sizeof(arch);
         dwRet = RegQueryValueEx(RegistryKey, TEXT("PROCESSOR_ARCHITECTURE"), NULL, NULL, (LPBYTE)&arch, &dwCount);
 
         if (dwRet != ERROR_SUCCESS) {
             merror("Error reading 'Architecture' from Windows registry. (Error %u)",(unsigned int)dwRet);
-            info->machine = strdup("unknown");
         } else {
-
             if (!strncmp(arch, "AMD64", 5) || !strncmp(arch, "IA64", 4) || !strncmp(arch, "ARM64", 5)) {
                 info->machine = strdup("x86_64");
             } else if (!strncmp(arch, "x86", 3)) {
                 info->machine = strdup("i686");
-            } else {
-                info->machine = strdup("unknown");
             }
-
         }
         RegCloseKey(RegistryKey);
+    }
+
+    if (!info->machine) {
+        info->machine = strdup("unknown");
     }
 
     // Read Hostname
 
     snprintf(subkey, vsize - 1, "%s", "System\\CurrentControlSet\\Control\\ComputerName\\ActiveComputerName");
-
+    char nodename[1024] = "";
     if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
         merror(SK_REG_OPEN, subkey);
-        info->nodename = strdup("unknown");
     } else {
         dwCount = size;
         dwRet = RegQueryValueEx(RegistryKey, TEXT("ComputerName"), NULL, NULL, (LPBYTE)&nodename, &dwCount);
 
         if (dwRet != ERROR_SUCCESS) {
             merror("Error reading 'hostname' from Windows registry. (Error %u)",(unsigned int)dwRet);
-            info->nodename = strdup("unknown");
         } else {
             info->nodename = strdup(nodename);
         }
         RegCloseKey(RegistryKey);
+    }
+
+    if (!info->nodename) {
+        info->nodename = strdup("unknown");
     }
 
     free(subkey);

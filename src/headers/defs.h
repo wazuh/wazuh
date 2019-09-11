@@ -2,7 +2,7 @@
  * Copyright (C) 2009-2012 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -403,6 +403,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #ifndef DEFAULT_SYSLOG
 #define DEFAULT_SYSLOG 514 /* Default syslog port - udp */
+#endif
+
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
 #endif
 
 /* XML global elements */

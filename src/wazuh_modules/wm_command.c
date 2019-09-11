@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * October 26, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -54,7 +54,12 @@ void * wm_command_main(wm_command_t * command) {
     if (command->md5_hash || command->sha1_hash || command->sha256_hash) {
 
         command_cpy = strdup(command->command);
-        argv = wm_strtok(command_cpy);
+
+        if (argv = wm_strtok(command_cpy), !argv) {
+            merror("Could not split command: %s", command_cpy);
+            pthread_exit(NULL);
+        }
+
         binary = argv[0];
 
         if (!wm_get_path(binary, &full_path)) {
@@ -238,7 +243,7 @@ void * wm_command_main(wm_command_t * command) {
 }
 
 
-// Get readed data
+// Get read data
 
 cJSON *wm_command_dump(const wm_command_t * command) {
 

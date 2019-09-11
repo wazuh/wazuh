@@ -25,7 +25,7 @@
     <if_sid>7200</if_sid>
     <match>flip flop </match>
     <description>Arpwatch: "flip flop" message. IP address/MAC relation changing too often.</description>
-    <group>ip_spoof,pci_dss_1.3.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_CA.3,nist_800_53_SC.7,nist_800_53_SC.7,</group>
+    <group>ip_spoof,pci_dss_1.3.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_CA.3,nist_800_53_SI.4,</group>
   </rule>
 
   <rule id="7203" level="3">
@@ -39,7 +39,7 @@
     <if_sid>7200</if_sid>
     <match>changed ethernet address </match>
     <description>Arpwatch: Changed network interface for ip address.</description>
-    <group>ip_spoof,pci_dss_1.3.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_CA.3,nist_800_53_SC.7,nist_800_53_SC.7,</group>
+    <group>ip_spoof,pci_dss_1.3.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_CA.3,nist_800_53_SI.4,</group>
   </rule>
 
   <rule id="7205" level="0">
@@ -72,7 +72,7 @@
     <if_sid>7200</if_sid>
     <match>ethernet mismatch</match>
     <description>Arpwatch: Possible arpspoofing attempt.</description>
-    <group>ip_spoof,pci_dss_1.3.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_CA.3,nist_800_53_SC.7,nist_800_53_SC.7,</group>
+    <group>ip_spoof,pci_dss_1.3.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_CA.3,nist_800_53_SI.4,</group>
   </rule>
 
 </group>

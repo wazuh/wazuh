@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -33,7 +33,7 @@ volatile int audit_db_consistency_flag;
 #include "syscheck.h"
 #include "syscheck_op.h"
 
-pthread_mutex_t adddir_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t adddir_mutex;
 
 /* Checksum of the realtime file being monitored */
 int realtime_checksumfile(const char *file_name, whodata_evt *evt)
@@ -62,12 +62,14 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         pos = evt->dir_position;
     } else {
 #endif
-        pos = find_dir_pos(path, 1, 0, 0);
+        if (pos = find_dir_pos(path, 1, 0, evt ? CHECK_WHODATA : CHECK_REALTIME), pos < 0) {
+            goto end;
+        }
 #ifdef WIN_WHODATA
     }
 #endif
 
-    if (pos >= 0 && syscheck.converted_links[pos]) {
+    if (syscheck.converted_links[pos]) {
         replace_linked_path(file_name, pos, file_link);
     }
 
@@ -80,7 +82,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         c_sum[OS_SIZE_4096] = '\0';
 
         // If it returns < 0, we've already alerted the deleted file
-        if (c_read_file(path, *file_link ? file_link : NULL, buf, c_sum, evt) < 0) {
+        if (c_read_file(path, *file_link ? file_link : NULL, buf, c_sum, pos, evt) < 0) {
             os_free(path);
             return (0);
         }
@@ -164,18 +166,20 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
     }
 
+end:
     os_free(path);
     return (0);
 }
 
 /* Find container directory */
-int find_dir_pos(const char *filename, int full_compare, int check_find, int deep_search) {
+int find_dir_pos(const char *filename, char full_compare, char check_recursion, int check_find) {
     char buf[PATH_MAX + 1];
     int i;
     char *c;
     int retval = -1;
-    int path_length = PATH_MAX;
     char path_end = 0;
+    int level = -1;
+    char *cdir = NULL;
 
     if (full_compare) {
         snprintf(buf, PATH_MAX, "%s%c", filename, PATH_SEP);
@@ -183,46 +187,49 @@ int find_dir_pos(const char *filename, int full_compare, int check_find, int dee
         snprintf(buf, PATH_MAX, "%s", filename);
     }
 
+    if (check_recursion && check_path_type(buf) == 2) {
+        level = 0;
+    }
+
     while (c = strrchr(buf, PATH_SEP), c && c != buf && !path_end) {
         *c = '\0';
-
+#ifdef WIN32
         // Convert C: to C:\ .
         if (c > buf && *(c - 1) == ':') {
             path_end = 1;
             *c = '\\';
             *(c + 1) = '\0';
         }
+#endif
 
         for (i = 0; syscheck.dir[i]; i++) {
-            char *cdir = get_converted_link_path(i);
+            free(cdir);
+            cdir = get_converted_link_path(i);
             char *dir = cdir ? cdir : syscheck.dir[i];
-            if (check_find && !(syscheck.opts[i] & check_find)) {
-                free(cdir);
-                continue;
-            }
+
             if (!strcmp(dir, buf)) {
-                // If deep_search is activated we will continue searching for parent directories
-                if (deep_search) {
-                    int buf_len = strlen(buf);
-                    if (buf_len < path_length) {
-                        path_length = buf_len;
-                        retval = i;
-                    }
-                } else {
-                    retval = i;
+                if (syscheck.recursion_level[i] < level) {
+                    continue;
                 }
-                free(cdir);
+
+                if (check_find && !(syscheck.opts[i] & check_find)) {
+                    goto end;
+                }
+                retval = i;
                 break;
             }
-            free(cdir);
         }
 
-        if (!deep_search && syscheck.dir[i]) {
+        if (retval != -1) {
             // The directory has been found
             break;
         }
+
+        level++;
     }
 
+end:
+    free(cdir);
     return retval;
 }
 
@@ -237,6 +244,8 @@ int find_dir_pos(const char *filename, int full_compare, int check_find, int dee
 int realtime_start()
 {
     minfo(FIM_REALTIME_STARTING);
+
+    w_mutex_init(&adddir_mutex, NULL);
 
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
     if (syscheck.realtime == NULL) {
@@ -463,6 +472,9 @@ void free_win32rtfim_data(win32rtfim *data) {
 int realtime_start()
 {
     minfo(FIM_REALTIME_STARTING);
+
+    w_mutex_init(&adddir_mutex, NULL);
+
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
 
     syscheck.realtime->dirtb = OSHash_Create();

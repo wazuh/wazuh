@@ -21,7 +21,7 @@
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
 !define VERSION "3.10.0"
-!define REVISION "31003"
+!define REVISION "31008"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
@@ -213,7 +213,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
     File ../wazuh_modules/syscollector/syscollector_win_ext.dll
     File /oname=libwazuhext.dll ../libwazuhext.dll
-    File /oname=ruleset\sca\win_audit_rcl.yml ../../etc/sca/windows/win_audit_rcl.yml
+    File /oname=ruleset\sca\sca_win_audit.yml ../../etc/sca/windows/sca_win_audit.yml
     File VERSION
     File REVISION
 

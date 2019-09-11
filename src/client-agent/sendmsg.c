@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -12,7 +12,12 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
-static pthread_mutex_t send_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t send_mutex;
+
+/* Initialize sender structure */
+void sender_init() {
+    w_mutex_init(&send_mutex, NULL);
+}
 
 /* Send a message to the server */
 int send_msg(const char *msg, ssize_t msg_length)

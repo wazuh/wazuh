@@ -220,6 +220,7 @@ Wodle OpenSCAP: 81500 - 81600
         <field name="oscap.check.result">error</field>
         <description>OpenSCAP: $(oscap.check.title) (error)</description>
         <group>oscap-result,pci_dss_2.2,nist_800_53_CM.1,</group>
+        <options>no_full_log</options>
     </rule>
 
     <!--
@@ -230,6 +231,7 @@ Wodle OpenSCAP: 81500 - 81600
         <field name="oscap.check.result">unknown</field>
         <description>OpenSCAP: $(oscap.check.title) (unknown)</description>
         <group>oscap-result,pci_dss_2.2,nist_800_53_CM.1,</group>
+        <options>no_full_log</options>
     </rule>
 
     <!--
@@ -252,6 +254,7 @@ Wodle OpenSCAP: 81500 - 81600
         <field name="oscap.check.result">fail</field>
         <description>OpenSCAP: $(oscap.check.title) (not passed)</description>
         <group>oscap-result,pci_dss_2.2,nist_800_53_CM.1,</group>
+        <options>no_full_log</options>
     </rule>
 
     <rule id="81530" level="7">
@@ -259,6 +262,7 @@ Wodle OpenSCAP: 81500 - 81600
         <field name="oscap.check.severity">medium</field>
         <description>OpenSCAP: $(oscap.check.title) (not passed)</description>
         <group>oscap-result,pci_dss_2.2,nist_800_53_CM.1,</group>
+        <options>no_full_log</options>
     </rule>
 
     <rule id="81531" level="9">
@@ -266,6 +270,7 @@ Wodle OpenSCAP: 81500 - 81600
         <field name="oscap.check.severity">high</field>
         <description>OpenSCAP: $(oscap.check.title) (not passed)</description>
         <group>oscap-result,pci_dss_2.2,nist_800_53_CM.1,</group>
+        <options>no_full_log</options>
     </rule>
 
     <!-- -->
@@ -343,6 +348,7 @@ Wodle OpenSCAP: 81500 - 81600
         <field name="oscap.check.result">fail</field>
         <description>OpenSCAP: $(oscap.check.title) (not passed)</description>
         <group>oscap-result,pci_dss_2.2,nist_800_53_CM.1,</group>
+        <options>no_full_log</options>
     </rule>
 
 
