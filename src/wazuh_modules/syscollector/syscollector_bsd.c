@@ -30,8 +30,6 @@
 
 #ifdef __MACH__
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <ctype.h>
 #include <libproc.h>
 #include <pwd.h>
@@ -1367,22 +1365,22 @@ int getGatewayList(OSHash *gateway_list){
 
 void sys_proc_mac(int queue_fd, const char* LOCATION){
     char *timestamp;
-    time_t now;
     struct tm localtm;
     int random_id = os_random();
 
-    if (random_id < 0)
+    if (random_id < 0) {
         random_id = -random_id;
+    }
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
 
-    now = time(NULL);
+    time_t now = time(NULL);
     localtime_r(&now, &localtm);
 
     os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp, TIME_LENGTH-1, "%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -1400,7 +1398,6 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     mtdebug2(WM_SYS_LOGTAG, "Number of processes retrieved: %d", count);
 
     int index;
-    cJSON *item;
     cJSON *proc_array = cJSON_CreateArray();
 
     for(index=0; index < count; ++index) {
@@ -1415,7 +1412,7 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
         cJSON_AddItemToObject(object, "process", process);
 
         pid_t pid = pids[ index ] ;
-        cJSON_AddNumberToObject(process,"pid",pid);
+        cJSON_AddNumberToObject(process, "pid", pid);
 
         int st = proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0,
                             &task_info, PROC_PIDTASKALLINFO_SIZE);
@@ -1444,35 +1441,36 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
                 status = "Z";   //ZOMBIE
                 break;
             default:
-                mterror(WM_SYS_LOGTAG,"Error getting the status of the process %d", pid);
+                mterror(WM_SYS_LOGTAG, "Error getting the status of the process %d", pid);
                 status = "E";     //Error getting the status
         }
 
-        cJSON_AddStringToObject(process,"name",task_info.pbsd.pbi_name);
-        cJSON_AddStringToObject(process,"state",status);
-        cJSON_AddNumberToObject(process,"ppid",task_info.pbsd.pbi_ppid);
+        cJSON_AddStringToObject(process, "name", task_info.pbsd.pbi_name);
+        cJSON_AddStringToObject(process, "state", status);
+        cJSON_AddNumberToObject(process, "ppid", task_info.pbsd.pbi_ppid);
 
         struct passwd *euser = getpwuid((int)task_info.pbsd.pbi_uid);
         if(euser)
-            cJSON_AddStringToObject(process,"euser",euser->pw_name);
+            cJSON_AddStringToObject(process, "euser", euser->pw_name);
 
         struct passwd *ruser = getpwuid((int)task_info.pbsd.pbi_ruid);
         if(ruser)
-            cJSON_AddStringToObject(process,"ruser",ruser->pw_name);
+            cJSON_AddStringToObject(process, "ruser", ruser->pw_name);
 
         struct group *rgroup = getgrgid((int)task_info.pbsd.pbi_rgid);
         if(rgroup)
-            cJSON_AddStringToObject(process,"rgroup",rgroup->gr_name);
+            cJSON_AddStringToObject(process, "rgroup", rgroup->gr_name);
 
-        cJSON_AddNumberToObject(process,"priority",task_info.ptinfo.pti_priority);
-        cJSON_AddNumberToObject(process,"nice",task_info.pbsd.pbi_nice);
-        cJSON_AddNumberToObject(process,"vm_size",task_info.ptinfo.pti_virtual_size);
+        cJSON_AddNumberToObject(process, "priority", task_info.ptinfo.pti_priority);
+        cJSON_AddNumberToObject(process, "nice", task_info.pbsd.pbi_nice);
+        cJSON_AddNumberToObject(process, "vm_size", task_info.ptinfo.pti_virtual_size);
 
         cJSON_AddItemToArray(proc_array, object);
     }
 
     free(pids);
 
+    cJSON *item;
     cJSON_ArrayForEach(item, proc_array) {
         char *string = cJSON_PrintUnformatted(item);
         mtdebug2(WM_SYS_LOGTAG, "sys_proc_mac() sending '%s'", string);
@@ -1486,8 +1484,7 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     cJSON_AddNumberToObject(object, "ID", random_id);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
 
-    char *end_msg;
-    end_msg = cJSON_PrintUnformatted(object);
+    char *end_msg = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_proc_mac() sending '%s'", end_msg);
     wm_sendmsg(usec, queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
