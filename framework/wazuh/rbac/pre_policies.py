@@ -10,7 +10,8 @@ def convert_to_json_serializable(optimize_policies):
     for key, value in optimize_policies.items():
         for key_resource, value_resource in value.items():
             for key_effect, key_value in value_resource.items():
-                optimize_policies[key][key_resource][key_effect] = list(key_value)
+                if not isinstance(key_value, list):
+                    optimize_policies[key][key_resource][key_effect] = list(key_value)
 
     return optimize_policies
 
@@ -104,9 +105,9 @@ def expand_permissions(mode, odict):
                 value['deny'] = [agent_id for agent_id in value['deny'] if agent_id not in value['allow']]
 
             if mode:
-                value['allow'] = [[agent_id for agent_id in agents_ids if agent_id not in value['deny']]]
+                value['allow'] = [agent_id for agent_id in agents_ids if agent_id not in value['deny']]
             else:
-                value['deny'] = [[agent_id for agent_id in agents_ids if agent_id not in value['allow']]]
+                value['deny'] = [agent_id for agent_id in agents_ids if agent_id not in value['allow']]
 
     return odict
 
