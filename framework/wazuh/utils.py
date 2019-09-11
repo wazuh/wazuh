@@ -923,7 +923,7 @@ class WazuhDBQuery(object):
     def _parse_query(self):
         """
         A query has the following pattern: field operator value separator field operator value...
-        An example of query: status=never connected;name!=pepe
+        An example of query: status=never_connected;name!=pepe
             * Field must be a database field (it must be contained in self.fields variable)
             * operator must be one of = != < >
             * value can be anything

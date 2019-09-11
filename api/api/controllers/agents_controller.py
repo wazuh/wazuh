@@ -34,7 +34,7 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents='all', purg
     :param list_agents: Array of agent ID’s]
     :param purge: Delete an agent from the key store
     :param older_than: Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
-    ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date.
+    ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, uses the register date.
     :return: AgentAllItemsAffected
     """
     f_kwargs = {'list_agent': list_agents,
@@ -73,9 +73,9 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     ascending or descending order.
     :param search: Looks for elements with the specified string
     :param status: Filters by agent status. Use commas to enter multiple statuses.
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;Active&amp;quot;
+    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :param older_than: Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
-    ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date.
+    ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, uses the register date.
     :param manager: Filters by manager hostname to which agents are connected.
     :param version: Filters by agents version.
     :param group: Filters by group of agents.
@@ -729,7 +729,7 @@ def get_agent_in_group(group_id, pretty=False, wait_for_complete=False, offset=0
     :type search: str
     :param status: Filters by agent status. Use commas to enter multiple statuses.
     :type status: List[str]
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;Active&amp;quot;
+    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :type q: str
 
     :return:
@@ -1078,7 +1078,7 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=No
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;Active&amp;quot;
+    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: Data
     """
     f_kwargs = {'offset': offset,
@@ -1112,7 +1112,7 @@ def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=No
     :param limit: Maximum number of elements to return
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;Active&amp;quot;
+    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: Data
     """
     f_kwargs = {'offset': offset,
@@ -1183,7 +1183,7 @@ def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=None
     ascending or descending order.
     :param search: Looks for elements with the specified string
     :param fields: List of fields affecting the operation.
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;Active&amp;quot;
+    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: Data
     """
     f_kwargs = {'offset': offset,
@@ -1241,7 +1241,7 @@ def get_agent_summary_os(pretty=False, wait_for_complete=False, offset=0, limit=
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;Active&amp;quot;
+    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: Data
     """
     f_kwargs = {'offset': offset,

@@ -653,11 +653,11 @@ stages:
       body:
         error: 0
         data:
-          Total: !anyint
-          Active: !anyint
-          Disconnected: !anyint
-          Never connected: !anyint
-          Pending: !anyint
+          total: !anyint
+          active: !anyint
+          disconnected: !anyint
+          never_connected: !anyint
+          pending: !anyint
 
 ---
 test_name: GET /agents/outdated

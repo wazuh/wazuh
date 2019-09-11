@@ -53,7 +53,7 @@ class InitAgent:
         Sets up necessary test environment for agents:
             * One active agent.
             * One pending agent.
-            * One never connected agent.
+            * One never_connected agent.
             * One disconnected agent.
 
         :return: None
@@ -94,11 +94,11 @@ def check_agent(test_data, agent):
     assert 'id' in agent
     if agent['id'] == '000':
         assert agent.keys() == test_data.manager_fields
-    elif agent['status'] == 'Active' or agent['status'] == 'Disconnected':
+    elif agent['status'] == 'active' or agent['status'] == 'disconnected':
         assert agent.keys() == test_data.active_fields
-    elif agent['status'] == 'Pending':
+    elif agent['status'] == 'pending':
         assert agent.keys() == test_data.pending_fields
-    elif agent['status'] == 'Never connected':
+    elif agent['status'] == 'never_connected':
         assert agent.keys() == test_data.never_connected_fields
     else:
         raise Exception("Agent status not known: {}".format(agent['status']))
@@ -127,14 +127,14 @@ def test_get_agents_overview_default(test_data):
     ({'id', 'dateAdd'}, 'all', None, 0),
     ({'id', 'ip', 'registerIP'}, 'all', None, 1),
     ({'id', 'registerIP'}, 'all', None, 1),
-    ({'id', 'ip', 'lastKeepAlive'}, 'Active,Pending', None, 0),
-    ({'id', 'ip', 'lastKeepAlive'}, 'Disconnected', None, 1),
-    ({'id', 'ip', 'lastKeepAlive'}, 'Disconnected', '1s', 1),
-    ({'id', 'ip', 'lastKeepAlive'}, 'Disconnected', '2h', 0),
+    ({'id', 'ip', 'lastKeepAlive'}, 'active,pending', None, 0),
+    ({'id', 'ip', 'lastKeepAlive'}, 'disconnected', None, 1),
+    ({'id', 'ip', 'lastKeepAlive'}, 'disconnected', '1s', 1),
+    ({'id', 'ip', 'lastKeepAlive'}, 'disconnected', '2h', 0),
     ({'id', 'ip', 'lastKeepAlive'}, 'all', '15m', 2),
-    ({'id', 'ip', 'lastKeepAlive'}, 'Active', '15m', 0),
-    ({'id', 'ip', 'lastKeepAlive'}, 'Active,Pending', '15m', 1),
-    ({'id', 'ip', 'lastKeepAlive'}, ['Active', 'Pending'], '15m', 1)
+    ({'id', 'ip', 'lastKeepAlive'}, 'active', '15m', 0),
+    ({'id', 'ip', 'lastKeepAlive'}, 'active,pending', '15m', 1),
+    ({'id', 'ip', 'lastKeepAlive'}, ['active', 'pending'], '15m', 1)
 ])
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_get_agents_overview_select(test_data, select, status, older_than, offset):
@@ -152,8 +152,8 @@ def test_get_agents_overview_select(test_data, select, status, older_than, offse
     "ip=172.17.0.201",
     "ip=172.17.0.202",
     "ip=172.17.0.202;registerIP=any",
-    "status=Disconnected;lastKeepAlive>34m",
-    "(status=Active,status=Pending);lastKeepAlive>5m"
+    "status=disconnected;lastKeepAlive>34m",
+    "(status=active,status=pending);lastKeepAlive>5m"
 ])
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_get_agents_overview_query(test_data, query):
@@ -189,7 +189,7 @@ def test_get_agents_overview_search(test_data, search, totalItems):
 @pytest.mark.parametrize("status, older_than, totalItems, exception", [
     ('active', '9m', 1, None),
     ('all', '1s', 5, None),
-    ('pending,neverconnected', '30m', 1, None),
+    ('pending,never_connected', '30m', 1, None),
     (55, '30m', 0, 1729)
 ])
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
@@ -229,9 +229,9 @@ def test_get_agents_overview_sort(test_data, sort, first_id):
     {'fields': ['ip', 'id', 'status']},
 ])
 @pytest.mark.parametrize('a_id, a_ip, a_status', [
-    ('000', '127.0.0.1', 'Active'),
-    ('001', '172.17.0.202', 'Active'),
-    ('003', 'any', 'Never connected')
+    ('000', '127.0.0.1', 'active'),
+    ('001', '172.17.0.202', 'active'),
+    ('003', 'any', 'never_connected')
 ])
 @patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_get_basic_information(test_data, select, a_id, a_ip, a_status):
@@ -267,10 +267,10 @@ def test_get_agents_summary(test_data):
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
         summary = Agent.get_agents_summary()
-        assert summary['Active'] == 3
-        assert summary['Never connected'] == 1
-        assert summary['Pending'] == 1
-        assert summary['Disconnected'] == 1
+        assert summary['active'] == 3
+        assert summary['never_connected'] == 1
+        assert summary['pending'] == 1
+        assert summary['disconnected'] == 1
 
 
 @patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))

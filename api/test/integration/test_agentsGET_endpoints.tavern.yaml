@@ -496,7 +496,7 @@ stages:
    request:
      <<: *get_agents
      params:
-       status: active,neverconnected
+       status: active,never_connected
    response:
      status_code: 200
      body:
@@ -3044,14 +3044,14 @@ stages:
    request:
      <<: *no_group_request
      params:
-       search: neverconnected
+       search: never_connected
 
    response:
      status_code: 200
      body:
        data:
          items: !anything
-           status: neverconnected
+           status: never_connected
          totalItems: !anyint
 
  - name: Try show agents with wrong search
@@ -3574,14 +3574,14 @@ stages:
    request:
      <<: *distinct_request
      params:
-       search: neverconnected
+       search: never_connected
 
    response:
      status_code: 200
      body:
        data:
          items: !anything
-           status: neverconnected
+           status: never_connected
          totalItems: !anyint
 
  - name: Try show agents with wrong search
@@ -3718,11 +3718,11 @@ stages:
      status_code: 200
      body: &agents_summary_response
        data:
-         Active: !anyint
-         Disconnected: !anyint
-         Never connected: !anyint
-         Pending: !anyint
-         Total: !anyint
+         active: !anyint
+         disconnected: !anyint
+         never_connected: !anyint
+         pending: !anyint
+         total: !anyint
 
  - name: Extra parameter
 
@@ -3876,7 +3876,7 @@ stages:
    request:
      <<: *agents_summary_os_request
      params:
-       search: neverconnected
+       search: never_connected
 
    response:
      status_code: 200

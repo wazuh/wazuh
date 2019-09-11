@@ -115,11 +115,11 @@ def last_scan(agent_id):
     # import pydevd_pycharm
     # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
     my_agent = Agent(agent_id)
-    # if agent status is never connected, a KeyError happens
+    # if agent status is never_connected, a KeyError happens
     try:
         agent_version = my_agent.get_basic_information(select=['version'])['version']
     except KeyError:
-        # if the agent is never connected, it won't have either version (key error) or last scan information.
+        # if the agent is never_connected, it won't have either version (key error) or last scan information.
         return {'start': None, 'end': None}
 
     if WazuhVersion(agent_version) < WazuhVersion('Wazuh v3.7.0'):

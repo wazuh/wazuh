@@ -78,7 +78,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             self.query += '(last_keepalive >= :time_active AND version IS NOT NULL) or id = 0'
         elif status_filter['value'] == 'disconnected':
             self.query += 'last_keepalive < :time_active'
-        elif status_filter['value'] == "never connected" or status_filter['value'] == "neverconnected":
+        elif status_filter['value'] == "never_connected" or status_filter['value'] == "neverconnected":
             self.query += 'last_keepalive IS NULL AND id != 0'
         elif status_filter['value'] == 'pending':
             self.query += 'last_keepalive IS NOT NULL AND version IS NULL'
@@ -140,7 +140,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         if 'older_than' in self.legacy_filters:
             if self.legacy_filters['older_than'] is not None:
                 self.q += (';' if self.q else '') + \
-                          "(lastKeepAlive>{0};status!=neverconnected,dateAdd>{0};status=neverconnected)".format(
+                          "(lastKeepAlive>{0};status!=never_connected,dateAdd>{0};status=never_connected)".format(
                               self.legacy_filters['older_than'])
             del self.legacy_filters['older_than']
         WazuhDBQuery._parse_legacy_filters(self)
@@ -249,11 +249,11 @@ class Agent:
         """Calculates state based on last keep alive
         """
         if not last_keep_alive:
-            return "neverconnected"
+            return "never_connected"
         else:
             last_date = datetime.utcfromtimestamp(last_keep_alive)
             difference = (today - last_date).total_seconds()
-            return "Disconnected" if difference > common.limit_seconds else ("Pending" if pending else "Active")
+            return "disconnected" if difference > common.limit_seconds else ("pending" if pending else "active")
 
 
     def _load_info_from_DB(self, select=None):
@@ -798,15 +798,15 @@ class Agent:
     @staticmethod
     def get_agents_summary():
         """Counts the number of agents by status.
-        :return: Dictionary with keys: total, Active, Disconnected, Never connected
+        :return: Dictionary with keys: total, active, disconnected, never_connected
         """
         db_query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select=None, count=True,
                                       get_data=False, query="")
 
         db_query.run()
-        data = {'Total': db_query.total_items}
+        data = {'total': db_query.total_items}
 
-        for status in ['Active', 'Disconnected', 'Never connected', 'Pending']:
+        for status in ['active', 'disconnected', 'never_connected', 'pending']:
             db_query.reset()
 
             db_query.q = "status=" + status
@@ -1016,8 +1016,8 @@ class Agent:
         :param backup: Create backup before removing the agent.
         :param purge: Delete definitely from key store.
         :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" |
-        "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never connected agents, uses the register date.
-        :param status: Filters by agent status: Active, Disconnected or Never connected. Multiples statuses separated
+        "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never_connected agents, uses the register date.
+        :param status: Filters by agent status: active, disconnected or never_connected. Multiples statuses separated
         by commas.
         :return: Dictionary with affected_agents (agents removed), timeframe applied, failed_ids if it necessary
         (agents that cannot been removed), and a message.
@@ -1894,7 +1894,7 @@ class Agent:
                 # if an error happens getting agent version, agent is considered as outdated
                 list_agents_outdated.append(item)
             except KeyError:
-                continue  # a never connected agent causes a key error
+                continue  # a never_connected agent causes a key error
 
         return {'items': list_agents_outdated, 'totalItems': len(list_agents_outdated)}
 
