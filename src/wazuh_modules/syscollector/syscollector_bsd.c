@@ -1368,7 +1368,7 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     struct tm localtm;
     int random_id = os_random();
 
-    if (random_id < 0) {
+    if(random_id < 0) {
         random_id = -random_id;
     }
 
@@ -1405,44 +1405,52 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
         struct proc_taskallinfo task_info;
 
         cJSON *object = cJSON_CreateObject();
-        cJSON *process = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "process");
         cJSON_AddNumberToObject(object, "ID", random_id);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
+
+        cJSON *process = cJSON_CreateObject();
         cJSON_AddItemToObject(object, "process", process);
 
-        pid_t pid = pids[ index ] ;
+        pid_t pid = pids[index] ;
         cJSON_AddNumberToObject(process, "pid", pid);
 
-        int st = proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0,
-                            &task_info, PROC_PIDTASKALLINFO_SIZE);
+        int st = proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &task_info, PROC_PIDTASKALLINFO_SIZE);
 
-        if (st != PROC_PIDTASKALLINFO_SIZE) {
+        if(st != PROC_PIDTASKALLINFO_SIZE) {
             mterror(WM_SYS_LOGTAG, "Cannot get process info for PID %d", pid);
             cJSON_Delete(object);
             continue;
         }
 
+        /*
+            I : Idle
+            R : Running
+            S : Sleep
+            T : Stopped
+            Z : Zombie
+            E : Internal error getting the status
+        */
         char *status;
         switch(task_info.pbsd.pbi_status){
             case 1:
-                status = "I"; //IDLE
+                status = "I";
                 break;
             case 2:
-                status = "R"; //RUNNING
+                status = "R";
                 break;
             case 3:
-                status = "S";  //SLEEP
+                status = "S";
                 break;
             case 4:
-                status = "T";    //STOPPED
+                status = "T";
                 break;
             case 5:
-                status = "Z";   //ZOMBIE
+                status = "Z";
                 break;
             default:
                 mtdebug1(WM_SYS_LOGTAG, "Error getting the status of the process %d", pid);
-                status = "E";     //Error getting the status
+                status = "E";
         }
 
         cJSON_AddStringToObject(process, "name", task_info.pbsd.pbi_name);
@@ -1450,16 +1458,19 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
         cJSON_AddNumberToObject(process, "ppid", task_info.pbsd.pbi_ppid);
 
         struct passwd *euser = getpwuid((int)task_info.pbsd.pbi_uid);
-        if(euser)
+        if(euser) {
             cJSON_AddStringToObject(process, "euser", euser->pw_name);
+        }
 
         struct passwd *ruser = getpwuid((int)task_info.pbsd.pbi_ruid);
-        if(ruser)
+        if(ruser) {
             cJSON_AddStringToObject(process, "ruser", ruser->pw_name);
+        }
 
         struct group *rgroup = getgrgid((int)task_info.pbsd.pbi_rgid);
-        if(rgroup)
+        if(rgroup) {
             cJSON_AddStringToObject(process, "rgroup", rgroup->gr_name);
+        }
 
         cJSON_AddNumberToObject(process, "priority", task_info.ptinfo.pti_priority);
         cJSON_AddNumberToObject(process, "nice", task_info.pbsd.pbi_nice);
@@ -1468,14 +1479,14 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
         cJSON_AddItemToArray(proc_array, object);
     }
 
-    free(pids);
+    os_free(pids);
 
     cJSON *item;
     cJSON_ArrayForEach(item, proc_array) {
         char *string = cJSON_PrintUnformatted(item);
         mtdebug2(WM_SYS_LOGTAG, "sys_proc_mac() sending '%s'", string);
         wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-        free(string);
+        os_free(string);
     }
 
     cJSON_Delete(proc_array);
@@ -1488,9 +1499,8 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     mtdebug2(WM_SYS_LOGTAG, "sys_proc_mac() sending '%s'", end_msg);
     wm_sendmsg(usec, queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
-    free(end_msg);
-    free(timestamp);
-
+    os_free(end_msg);
+    os_free(timestamp);
 }
 
 #endif
