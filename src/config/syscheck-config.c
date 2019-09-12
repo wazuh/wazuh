@@ -869,6 +869,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_audit_hc = "startup_healthcheck";
     const char *xml_process_priority = "process_priority";
     const char *xml_inventory = "inventory";
+    const char *xml_max_eps = "max_eps";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -1390,6 +1391,20 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
             parse_inventory(syscheck, children);
             OS_ClearNode(children);
+        } else if (strcmp(node[i]->element, xml_max_eps) == 0) {
+            char * end;
+            long value = strtol(node[i]->content, &end, 10);
+
+            if (value < 0 || value == LONG_MAX || *end) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                if (value > 1000000) {
+                    mdebug1("<%s> exceeds the maximum allowed value (1000000). EPS limitation is disabled.", node[i]->element);
+                }
+
+                syscheck->max_eps = value;
+                syscheck->send_delay = 1000000 / value;
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

@@ -126,6 +126,7 @@ static void dispatch_check(dbsync_context_t * ctx) {
     }
 
 end:
+    free(data_plain);
     free(query);
     free(response);
 }

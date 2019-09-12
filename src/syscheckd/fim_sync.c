@@ -23,6 +23,37 @@
 static long fim_sync_cur_id;
 static long fim_sync_last_msg_time;
 
+/**
+ * @brief Create a data synchronization check/clear message
+ *
+ * Format (check):
+ * {
+ *   component:     string
+ *   type:          "check"
+ *   data: {
+ *     id:          number
+ *     begin:       string
+ *     end:         string
+ *     tail:        string [Optional]
+ *     checksum:    string
+ *   }
+ * }
+ *
+ * Format (clear):
+ * {
+ *   component: string
+ *   type:      "clear"
+ * }
+ *
+ * @param component Name of the component.
+ * @param id Sync session counter (timetamp).
+ * @param start First key in the list.
+ * @param top Last key in the list.
+ * @param tail Key of the first key in the next sublist.
+ * @param checksum Checksum of this list.
+ * @return Pointer to dynamically allocated string.
+ */
+
 char * dbsync_check_msg(const char * component, long id, const char * start, const char * top, const char * tail, const char * checksum) {
     cJSON * root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "component", component);
@@ -52,138 +83,14 @@ char * dbsync_check_msg(const char * component, long id, const char * start, con
 }
 
 /**
- * @brief Create file attribute set JSON from a FIM entry structure
- *
- * Form:
- * {
- *   type:        file|registry
- *   size:        number
- *   perm:        number
- *   user_name:   string
- *   group_name:  string
- *   uid:         string
- *   gid:         string
- *   inode:       number
- *   mtime:       number
- *   hash_md5:    string
- *   hash_sha1:   string
- *   hash_sha256: string
- *   checksum:    string
- * }
- *
- * @param data Pointer to a FIM entry structure.
- * @pre data is mutex-blocked.
- * @return Pointer to cJSON structure.
- */
-
-cJSON * fim_attributes_json(const fim_entry_data * data) {
-    cJSON * attributes = cJSON_CreateObject();
-
-    // TODO: Read structure.
-    cJSON_AddStringToObject(attributes, "type", "file");
-
-    if (data->size) {
-        cJSON_AddNumberToObject(attributes, "size", data->size);
-    }
-
-    if (data->perm) {
-        cJSON_AddNumberToObject(attributes, "perm", data->perm);
-    }
-
-    if (data->uid) {
-        char text[64];
-        snprintf(text, sizeof(text), "%u", data->uid);
-        cJSON_AddStringToObject(attributes, "uid", text);
-    }
-
-    if (data->gid) {
-        char text[64];
-        snprintf(text, sizeof(text), "%u", data->gid);
-        cJSON_AddStringToObject(attributes, "gid", text);
-    }
-
-    if (data->user_name) {
-        cJSON_AddStringToObject(attributes, "user_name", data->user_name);
-    }
-
-    if (data->group_name) {
-        cJSON_AddStringToObject(attributes, "group_name", data->group_name);
-    }
-
-    if (data->inode) {
-        cJSON_AddNumberToObject(attributes, "inode", data->inode);
-    }
-
-    if (data->mtime) {
-        cJSON_AddNumberToObject(attributes, "mtime", data->mtime);
-    }
-
-    if (data->hash_md5) {
-        cJSON_AddStringToObject(attributes, "hash_md5", data->hash_md5);
-    }
-
-    if (data->hash_sha1) {
-        cJSON_AddStringToObject(attributes, "hash_sha1", data->hash_sha1);
-    }
-
-    if (data->hash_sha256) {
-        cJSON_AddStringToObject(attributes, "hash_sha256", data->hash_sha256);
-    }
-
-    if (data->checksum) {
-        cJSON_AddStringToObject(attributes, "checksum", data->checksum);
-    }
-
-    return attributes;
-}
-
-/**
- * @brief Create file entry JSON from a FIM entry structure
- *
- * Form:
- * {
- *   path:          string
- *   timestamp:     number
- *   attributes: {
- *     type:        file|registry
- *     size:        number
- *     perm:        number
- *     user_name:   string
- *     group_name:  string
- *     uid:         string
- *     gid:         string
- *     inode:       number
- *     mtime:       number
- *     hash_md5:    string
- *     hash_sha1:   string
- *     hash_sha256: string
- *     checksum:    string
- *   }
- * }
- *
- * @param path Pointer to file path string.
- * @param data Pointer to a FIM entry structure.
- * @pre data is mutex-blocked.
- * @return Pointer to cJSON structure.
- */
-
-cJSON * fim_entry_json(const char * path, fim_entry_data * data) {
-    assert(data);
-    assert(path);
-
-    cJSON * root = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(root, "path", path);
-    cJSON_AddNumberToObject(root, "timestamp", data->scanned);
-
-    cJSON * attributes = fim_attributes_json(data);
-    cJSON_AddItemToObject(root, "attributes", attributes);
-
-    return root;
-}
-
-/**
  * @brief Create a data synchronization save message
+ *
+ * Format:
+ * {
+ *   component:         string
+ *   type:              "save"
+ *   data:              object
+ * }
  *
  * @param component Name of the component.
  * @param data Synchronization data.

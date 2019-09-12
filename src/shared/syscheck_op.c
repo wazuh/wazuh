@@ -390,9 +390,9 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     }
 
     if (sum->perm) {
-        lf->perm_after = sum->perm;
         os_calloc(7, sizeof(char), lf->fields[FIM_PERM].value);
         snprintf(lf->fields[FIM_PERM].value, 7, "%06o", sum->perm);
+        os_strdup(lf->fields[FIM_PERM].value, lf->perm_after);
     } else if (sum->win_perm && *sum->win_perm != '\0') {
         int size;
         os_strdup(sum->win_perm, lf->win_perm_after);

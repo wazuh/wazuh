@@ -24,19 +24,13 @@ int print_hash_tables();
 // Global variables
 static int _base_line = 0;
 
-typedef enum fim_alert_type {
-    FIM_ADD,
-    FIM_DELETE,
-    FIM_MODIFICATION
-}fim_alert_type;
-
-static const char *FIM_ALERT[] = {
+static const char *FIM_EVENT_TYPE[] = {
     "added",
     "deleted",
     "modified"
 };
 
-static const char *FIM_ALERT_MODE[] = {
+static const char *FIM_EVENT_MODE[] = {
     "scheduled",
     "real-time",
     "whodata"
@@ -79,6 +73,7 @@ int fim_directory (char * path, int dir_position, int mode, whodata_evt * w_evt)
     char *s_name;
     char linked_read_file[PATH_MAX + 1] = {'\0'};
     int options;
+    fim_event_mode mode = 0;
     size_t path_size;
     short is_nfs;
 
@@ -148,7 +143,7 @@ int fim_directory (char * path, int dir_position, int mode, whodata_evt * w_evt)
 }
 
 
-int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * w_evt) {
+int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, whodata_evt * w_evt) {
     cJSON * json_event = NULL;
     fim_entry_data * entry_data = NULL;
     fim_entry_data * saved_data = NULL;
@@ -228,7 +223,7 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
 }
 
 
-int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
+int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
     struct stat file_stat;
     int dir_position = 0;
     int depth = 0;
@@ -387,7 +382,7 @@ int fim_check_depth(char * path, int dir_position) {
 
 
 // Get data from file
-fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, int mode, int options) {
+fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fim_event_mode mode, int options) {
     fim_entry_data * data = NULL;
 
     os_calloc(1, sizeof(fim_entry_data), data);
@@ -697,248 +692,225 @@ void delete_inode_item(char *inode_key, char *file_name) {
     }
 }
 
-cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int dir_position, int type, int mode, whodata_evt * w_evt) {
+cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int dir_position, fim_event_type type, fim_event_mode mode, whodata_evt * w_evt) {
+    cJSON * changed_attributes = NULL;
+
+    if (old_data != NULL) {
+        changed_attributes = fim_json_compare_attrs(old_data, new_data);
+
+        // If no such changes, do not send event.
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            cJSON_Delete(changed_attributes);
+            return NULL;
+        }
+    }
+
     cJSON * json_event = cJSON_CreateObject();
-    cJSON * json_alert = NULL;
+    cJSON_AddStringToObject(json_event, "type", "event");
 
-    if (old_data) {
-        json_alert = fim_json_alert_changes(file_name, old_data, new_data, dir_position, type, mode, w_evt);
-    }
-    else {
-        json_alert = fim_json_alert(file_name, new_data, dir_position, type, mode, w_evt);
-    }
+    cJSON * data = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_event, "data", data);
 
-    if (json_alert != NULL) {
-        cJSON_AddStringToObject(json_event, "type", "event");
-        cJSON_AddItemToObject(json_event, "event", json_alert);
-        return json_event;
-    }
-    else {
-        cJSON_Delete(json_event);
-        return NULL;
-    }
-}
+    cJSON_AddStringToObject(data, "path", file_name);
+    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
+    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[type]);
+    cJSON_AddNumberToObject(data, "timestamp", new_data->last_event);
 
-cJSON * fim_json_alert(char * file_name, fim_entry_data * data, int dir_position, int type, int mode, whodata_evt * w_evt) {
-    cJSON * response = NULL;
-    cJSON * fim_attributes = NULL;
-    cJSON * fim_audit = NULL;
     char * tags = syscheck.tag[dir_position];
-    char * diff = NULL;
 
-    response = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(response, "path", file_name);
-    cJSON_AddStringToObject(response, "mode", FIM_ALERT_MODE[mode]);
-    cJSON_AddStringToObject(response, "type", FIM_ALERT[type]);
-    cJSON_AddNumberToObject(response, "timestamp", data->last_event);
-    cJSON_AddStringToObject(response, "integrity", data->checksum);
     if (tags != NULL) {
-        cJSON_AddStringToObject(response, "tags", tags);
+        cJSON_AddStringToObject(data, "tags", tags);
     }
 
     if (syscheck.opts[dir_position] & CHECK_SEECHANGES && type != 1) {
-        if (diff = seechanges_addfile(file_name), diff) {
-            cJSON_AddStringToObject(response, "content_changes", diff);
+        char * diff = seechanges_addfile(file_name);
+
+        if (diff != NULL) {
+            cJSON_AddStringToObject(data, "content_changes", diff);
             os_free(diff);
         }
     }
 
-    fim_attributes = cJSON_CreateObject();
-    cJSON_AddNumberToObject(fim_attributes, "size", data->size);
-    cJSON_AddNumberToObject(fim_attributes, "perm", data->perm);
-    cJSON_AddStringToObject(fim_attributes, "user_name", data->user_name);
-    cJSON_AddStringToObject(fim_attributes, "group_name", data->group_name);
-#ifdef __linux__
-    cJSON_AddNumberToObject(fim_attributes, "uid", data->uid);
-    cJSON_AddNumberToObject(fim_attributes, "gid", data->gid);
-    cJSON_AddNumberToObject(fim_attributes, "inode", data->inode);
-#elif WIN32
-    cJSON_AddStringToObject(fim_attributes, "sid", data->sid);
-#endif
-    cJSON_AddNumberToObject(fim_attributes, "mtime", data->mtime);
-    cJSON_AddStringToObject(fim_attributes, "hash_md5", data->hash_md5);
-    cJSON_AddStringToObject(fim_attributes, "hash_sha1", data->hash_sha1);
-    cJSON_AddStringToObject(fim_attributes, "hash_sha256", data->hash_sha256);
-#ifdef WIN32
-    cJSON_AddNumberToObject(fim_attributes, "win_attributes", w_get_file_attrs(file_name));
-#endif
+    if (old_data) {
+        cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(data, "old_attributes", fim_attributes_json(old_data));
+    }
 
-    cJSON_AddItemToObject(response, "attributes", fim_attributes);
+    cJSON_AddItemToObject(data, "attributes", fim_attributes_json(new_data));
 
     if (w_evt) {
-        fim_audit = cJSON_CreateObject();
-        cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
-        cJSON_AddStringToObject(fim_audit, "user_name", w_evt->user_name);
-        cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
-        cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
-        cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
-        cJSON_AddStringToObject(fim_audit, "path", w_evt->path);
-        cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
-        cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
-        cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
-        cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
-        cJSON_AddStringToObject(fim_audit, "inode", w_evt->inode);
-        cJSON_AddNumberToObject(fim_audit, "ppid", w_evt->ppid);
-#ifndef WIN32
-        cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
-#else
-        cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
-        cJSON_AddNumberToObject(fim_audit, "mask", w_evt->mask);
-#endif
-        cJSON_AddItemToObject(response, "audit", fim_audit);
+        cJSON_AddItemToObject(data, "audit", fim_audit_json(w_evt));
     }
 
-    return response;
+    return json_event;
 }
 
-cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int dir_position, int type, int mode, whodata_evt * w_evt) {
-    cJSON * response = NULL;
-    cJSON * fim_attributes = NULL;
-    cJSON * fim_old_attributes = NULL;
-    cJSON * fim_audit = NULL;
-    cJSON * changed_attributes = NULL;
-    char * tags = syscheck.tag[dir_position];
-    char * diff = NULL;
-    int report_alert = 0;
+// Create file attribute set JSON from a FIM entry structure
 
-    fim_old_attributes = cJSON_CreateObject();
-    changed_attributes = cJSON_CreateArray();
-    if ( (old_data->size != new_data->size) && (old_data->options & CHECK_SIZE) ) {
-        cJSON_AddNumberToObject(fim_old_attributes, "size", old_data->size);
+cJSON * fim_attributes_json(const fim_entry_data * data) {
+    cJSON * attributes = cJSON_CreateObject();
+
+    // TODO: Read structure.
+    cJSON_AddStringToObject(attributes, "type", "file");
+
+    if (data->options & CHECK_SIZE) {
+        cJSON_AddNumberToObject(attributes, "size", data->size);
+    }
+
+    if (data->options & CHECK_PERM) {
+        char * text = agent_file_perm(data->perm);
+        cJSON_AddStringToObject(attributes, "perm", text);
+        free(text);
+    }
+
+    if (data->options & CHECK_OWNER) {
+        char text[64];
+        snprintf(text, sizeof(text), "%u", data->uid);
+        cJSON_AddStringToObject(attributes, "uid", text);
+    }
+
+    if (data->options & CHECK_GROUP) {
+        char text[64];
+        snprintf(text, sizeof(text), "%u", data->gid);
+        cJSON_AddStringToObject(attributes, "gid", text);
+    }
+
+    if (data->user_name) {
+        cJSON_AddStringToObject(attributes, "user_name", data->user_name);
+    }
+
+    if (data->group_name) {
+        cJSON_AddStringToObject(attributes, "group_name", data->group_name);
+    }
+
+    if (data->options & CHECK_INODE) {
+        cJSON_AddNumberToObject(attributes, "inode", data->inode);
+    }
+
+    if (data->options & CHECK_MTIME) {
+        cJSON_AddNumberToObject(attributes, "mtime", data->mtime);
+    }
+
+    if (data->options & CHECK_MD5SUM) {
+        cJSON_AddStringToObject(attributes, "hash_md5", data->hash_md5);
+    }
+
+    if (data->options & CHECK_SHA1SUM) {
+        cJSON_AddStringToObject(attributes, "hash_sha1", data->hash_sha1);
+    }
+
+    if (data->options & CHECK_SHA256SUM) {
+        cJSON_AddStringToObject(attributes, "hash_sha256", data->hash_sha256);
+    }
+
+    // TODO: Read structure.
+    if (data->options & CHECK_ATTRS) {
+        cJSON_AddStringToObject(attributes, "win_attributes", "");
+    }
+
+    if (*data->checksum) {
+        cJSON_AddStringToObject(attributes, "checksum", data->checksum);
+    }
+
+    return attributes;
+}
+
+// Create file entry JSON from a FIM entry structure
+
+cJSON * fim_entry_json(const char * path, fim_entry_data * data) {
+    assert(data);
+    assert(path);
+
+    cJSON * root = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(root, "path", path);
+    cJSON_AddNumberToObject(root, "timestamp", data->last_event);
+
+    cJSON * attributes = fim_attributes_json(data);
+    cJSON_AddItemToObject(root, "attributes", attributes);
+
+    return root;
+}
+
+// Create file attribute comparison JSON object
+
+cJSON * fim_json_compare_attrs(const fim_entry_data * old_data, const fim_entry_data * new_data) {
+    cJSON * changed_attributes = cJSON_CreateArray();
+
+    if ( (old_data->options & CHECK_SIZE) && (old_data->size != new_data->size) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
-        report_alert = 1;
     }
 
-    if ( (old_data->perm != new_data->perm) && (old_data->options & CHECK_PERM) ) {
-        cJSON_AddNumberToObject(fim_old_attributes, "perm", old_data->perm);
+    if ( (old_data->options & CHECK_PERM) && (old_data->perm != new_data->perm) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
-        report_alert = 1;
     }
 
-    if ( (old_data->uid != new_data->uid) && (old_data->options & CHECK_OWNER) ) {
-        cJSON_AddNumberToObject(fim_old_attributes, "uid", old_data->uid);
-        cJSON_AddStringToObject(fim_old_attributes, "user_name", old_data->user_name);
-        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
-        report_alert = 1;
+    if (old_data->options & CHECK_OWNER) {
+        if (old_data->uid != new_data->uid) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
+        }
+
+        if (old_data->user_name && new_data->user_name && strcmp(old_data->user_name, new_data->user_name) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
+        }
     }
 
-    if ( (old_data->gid != new_data->gid) && (old_data->options & CHECK_GROUP) ) {
-        cJSON_AddNumberToObject(fim_old_attributes, "gid", old_data->gid);
-        cJSON_AddStringToObject(fim_old_attributes, "group_name", old_data->group_name);
-        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("gid"));
-        report_alert = 1;
+    if (old_data->options & CHECK_GROUP) {
+        if (old_data->gid != new_data->gid) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("gid"));
+        }
+
+        if (old_data->group_name && new_data->group_name && strcmp(old_data->group_name, new_data->group_name) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
+        }
     }
 
-    if ( (old_data->mtime != new_data->mtime) && (old_data->options & CHECK_MTIME) ) {
-        cJSON_AddNumberToObject(fim_old_attributes, "mtime", old_data->mtime);
+    if ( (old_data->options & CHECK_MTIME) && (old_data->mtime != new_data->mtime) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
-        report_alert = 1;
     }
 
 #ifdef __linux__
-    if ( (old_data->inode != new_data->inode) && (old_data->options & CHECK_INODE) ) {
-        cJSON_AddNumberToObject(fim_old_attributes, "inode", old_data->inode);
+    if ( (old_data->options & CHECK_INODE) && (old_data->inode != new_data->inode) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
-        report_alert = 1;
     }
 #endif
 
-    if ( (strcmp(old_data->hash_md5, new_data->hash_md5) != 0) &&
-            (old_data->options & CHECK_MD5SUM) ) {
-        cJSON_AddStringToObject(fim_old_attributes, "hash_md5", old_data->hash_md5);
+    if ( (old_data->options & CHECK_MD5SUM) && (strcmp(old_data->hash_md5, new_data->hash_md5) != 0) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("md5"));
-        report_alert = 1;
     }
 
-    if ( (strcmp(old_data->hash_sha1, new_data->hash_sha1) != 0) &&
-            (old_data->options & CHECK_SHA1SUM) ) {
-        cJSON_AddStringToObject(fim_old_attributes, "hash_sha1", old_data->hash_sha1);
+    if ( (old_data->options & CHECK_SHA1SUM) && (strcmp(old_data->hash_sha1, new_data->hash_sha1) != 0) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha1"));
-        report_alert = 1;
     }
 
-    if ( (strcmp(old_data->hash_sha256, new_data->hash_sha256) != 0) &&
-            (old_data->options & CHECK_SHA256SUM) ) {
-        cJSON_AddStringToObject(fim_old_attributes, "hash_sha256", old_data->hash_sha256);
+    if ( (old_data->options & CHECK_SHA256SUM) && (strcmp(old_data->hash_sha256, new_data->hash_sha256) != 0) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha256"));
-        report_alert = 1;
     }
 
-    if (report_alert) {
-        response = cJSON_CreateObject();
-
-        cJSON_AddStringToObject(response, "path", file_name);
-        cJSON_AddStringToObject(response, "mode", FIM_ALERT_MODE[mode]);
-        cJSON_AddStringToObject(response, "type", FIM_ALERT[type]);
-        cJSON_AddNumberToObject(response, "timestamp", new_data->last_event);
-        cJSON_AddItemToObject(response, "changed_attributes", changed_attributes);
-        cJSON_AddStringToObject(response, "integrity", new_data->checksum);
-        if (tags != NULL) {
-            cJSON_AddStringToObject(response, "tags", tags);
-        }
-
-        if (syscheck.opts[dir_position] & CHECK_SEECHANGES && type != 1) {
-            if (diff = seechanges_addfile(file_name), diff) {
-                cJSON_AddStringToObject(response, "content_changes", diff);
-                os_free(diff);
-            }
-        }
-
-        fim_attributes = cJSON_CreateObject();
-        cJSON_AddNumberToObject(fim_attributes, "size", new_data->size);
-        cJSON_AddNumberToObject(fim_attributes, "perm", new_data->perm);
-        cJSON_AddStringToObject(fim_attributes, "user_name", new_data->user_name);
-        cJSON_AddStringToObject(fim_attributes, "group_name", new_data->group_name);
-#ifdef __linux__
-        cJSON_AddNumberToObject(fim_attributes, "uid", new_data->uid);
-        cJSON_AddNumberToObject(fim_attributes, "gid", new_data->gid);
-        cJSON_AddNumberToObject(fim_attributes, "inode", new_data->inode);
-#elif WIN32
-        cJSON_AddStringToObject(fim_attributes, "sid", new_data->sid);
-#endif
-        cJSON_AddNumberToObject(fim_attributes, "mtime", new_data->mtime);
-        cJSON_AddStringToObject(fim_attributes, "hash_md5", new_data->hash_md5);
-        cJSON_AddStringToObject(fim_attributes, "hash_sha1", new_data->hash_sha1);
-        cJSON_AddStringToObject(fim_attributes, "hash_sha256", new_data->hash_sha256);
-#ifdef WIN32
-        cJSON_AddNumberToObject(fim_attributes, "win_attributes", w_get_file_attrs(file_name));
-#endif
-
-        cJSON_AddItemToObject(response, "attributes", fim_attributes);
-        cJSON_AddItemToObject(response, "old_attributes", fim_old_attributes);
-
-        if (w_evt) {
-            fim_audit = cJSON_CreateObject();
-            cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
-            cJSON_AddStringToObject(fim_audit, "user_name", w_evt->user_name);
-            cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
-            cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
-            cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
-            cJSON_AddStringToObject(fim_audit, "path", w_evt->path);
-            cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
-            cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
-            cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
-            cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
-            cJSON_AddStringToObject(fim_audit, "inode", w_evt->inode);
-            cJSON_AddNumberToObject(fim_audit, "ppid", w_evt->ppid);
-#ifndef WIN32
-            cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
-#else
-            cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
-            cJSON_AddNumberToObject(fim_audit, "mask", w_evt->mask);
-#endif
-            cJSON_AddItemToObject(response, "audit", fim_audit);
-        }
-    } else {
-        minfo("~~ File without changes: '%s'", file_name);
-        cJSON_Delete(fim_old_attributes);
-        cJSON_Delete(changed_attributes);
-    }
-
-    return response;
+    return changed_attributes;
 }
 
+// Create file audit data JSON object
+
+cJSON * fim_audit_json(const whodata_evt * w_evt) {
+    cJSON * fim_audit = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
+    cJSON_AddStringToObject(fim_audit, "user_name", w_evt->user_name);
+    cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
+    cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
+    cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
+    cJSON_AddStringToObject(fim_audit, "path", w_evt->path);
+    cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
+    cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
+    cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
+    cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
+    cJSON_AddNumberToObject(fim_audit, "ppid", w_evt->ppid);
+    cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
+
+    return fim_audit;
+}
 
 int fim_check_ignore (const char *file_name) {
     /* Check if the file should be ignored */

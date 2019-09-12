@@ -51,12 +51,16 @@ static void fim_send_msg(char mq, const char * location, const char * msg) {
 /* Send a data synchronization control message */
 void fim_send_sync_msg(const char * msg) {
     fim_send_msg(DBSYNC_MQ, SYSCHECK, msg);
+    struct timespec timeout = { syscheck.send_delay / 1000000, syscheck.send_delay % 1000000 * 1000 };
+    nanosleep(&timeout, NULL);
 }
 
 /* Send a message related to syscheck change/addition */
 int send_syscheck_msg(const char *msg)
 {
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
+    struct timespec timeout = { syscheck.send_delay / 1000000, syscheck.send_delay % 1000000 * 1000 };
+    nanosleep(&timeout, NULL);
     return (0);
 }
 
