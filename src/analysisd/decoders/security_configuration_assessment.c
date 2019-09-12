@@ -23,12 +23,12 @@
 #include "../../remoted/remoted.h"
 #include <time.h>
 
-static int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response);
-static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_response);
+static int FindEventcheck(Eventinfo *lf, int pm_id, int *socket, char *wdb_response);
+static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket, char *wdb_response);
 static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket);
 static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *wdb_response);
-static int FindCheckResults(Eventinfo *lf, char * policy_id, int *socket,char *wdb_response);
-static int FindPoliciesIds(Eventinfo *lf, int *socket,char *wdb_response);
+static int FindCheckResults(Eventinfo *lf, char *policy_id, int *socket, char *wdb_response);
+static int FindPoliciesIds(Eventinfo *lf, int *socket, char *wdb_response);
 static int DeletePolicy(Eventinfo *lf, char *policy, int *socket);
 static int DeletePolicyCheck(Eventinfo *lf, char *policy, int *socket);
 static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id,int scan_id, int *socket);
@@ -36,7 +36,7 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, int id , int s
 static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int invalid, int total_checks, int score,char * hash,int update);
 static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, char *value);
 static int SaveRules(Eventinfo *lf,int *socket, int id_check, char *type, char *rule);
-static int SavePolicyInfo(Eventinfo *lf, int *socket, char *name,char *file, char * id,char *description,char * references, char *hash_file);
+static int SavePolicyInfo(Eventinfo *lf, int *socket, char *name, char *file, char * id, char *description, char *references, char *hash_file);
 static void HandleCheckEvent(Eventinfo *lf, int *socket, cJSON *event);
 static void HandleScanInfo(Eventinfo *lf, int *socket, cJSON *event);
 static void HandlePoliciesInfo(Eventinfo *lf, int *socket, cJSON *event);
@@ -46,7 +46,7 @@ static int CheckPoliciesJSON(cJSON *event, cJSON **policies);
 static int CheckDumpJSON(cJSON *event, cJSON **elements_sent, cJSON **policy_id, cJSON **scan_id);
 static void FillCheckEventInfo(Eventinfo *lf, cJSON *scan_id, cJSON *id, cJSON *name, cJSON *title, cJSON *description, cJSON *rationale, cJSON *remediation, cJSON *compliance, cJSON *condition, cJSON *reference, cJSON *file, cJSON *directory, cJSON *process, cJSON *registry, cJSON *result, cJSON *status, cJSON *reason, char *old_result, cJSON *command);
 static void FillScanInfo(Eventinfo *lf, cJSON *scan_id, cJSON *name, cJSON *description, cJSON *pass, cJSON *failed, cJSON *invalid, cJSON *total_checks, cJSON *score, cJSON *file, cJSON *policy_id);
-static void PushDumpRequest(char * agent_id, char * policy_id, int first_scan);
+static void PushDumpRequest(char *agent_id, char *policy_id, int first_scan);
 static int pm_send_db(char *msg, char *response, int *sock);
 static void *RequestDBThread();
 static int ConnectToSecurityConfigurationAssessmentSocket();
@@ -737,7 +737,9 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
 
     mdebug1("Checking event JSON fields.");
 
-    if(!CheckEventJSON(event, &scan_id, &id, &name, &title, &description, &rationale, &remediation, &compliance, &condition, &check, &reference, &file, &directory, &process, &registry, &result, &status, &reason, &policy_id, &command, &rules)) {
+    if(!CheckEventJSON(event, &scan_id, &id, &name, &title, &description, &rationale, 
+            &remediation, &compliance, &condition, &check, &reference, &file, &directory, 
+            &process, &registry, &result, &status, &reason, &policy_id, &command, &rules)) {
 
         int result_event = 0;
         char *wdb_response = NULL;

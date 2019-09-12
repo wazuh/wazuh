@@ -2584,7 +2584,7 @@ static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const 
         goto error;
     }
 
-    if(!condition->valueint) {
+    if(!condition->valuestring) {
         mdebug1("Field 'condition' must be a string.");
         goto error;
     }    
