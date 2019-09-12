@@ -298,11 +298,15 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
 
 void fim_audit_inode_event(whodata_evt * w_evt) {
     fim_inode_data * inode_data;
+    char *key_inodehash;
     int i = 0;
+
+    os_calloc(OS_SIZE_128, sizeof(char), key_inodehash);
+    snprintf(key_inodehash, OS_SIZE_128, "%s:%s", w_evt->dev, w_evt->inode);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    if (inode_data = OSHash_Get_ex(syscheck.fim_inode, w_evt->inode), inode_data) {
+    if (inode_data = OSHash_Get_ex(syscheck.fim_inode, key_inodehash), inode_data) {
         char **event_paths = NULL;
         os_calloc(inode_data->items, sizeof(char*), event_paths);
 
@@ -428,6 +432,7 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, in
         }
     }
 
+    data->dev = file_stat.st_dev;
     data->mode = mode;
     data->options = options;
     data->last_event = time(NULL);
@@ -503,7 +508,7 @@ int fim_insert (char * file, fim_entry_data * data) {
 
     // Function OSHash_Add_ex doesn't alloc memory for the data of the hash table
     os_calloc(OS_SIZE_16, sizeof(char), inode_key);
-    snprintf(inode_key, OS_SIZE_16, "%ld", data->inode);
+    snprintf(inode_key, OS_SIZE_16, "%ld:%ld", data->dev, data->inode);
 
     if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), !inode_data) {
         os_calloc(1, sizeof(fim_inode_data), inode_data);

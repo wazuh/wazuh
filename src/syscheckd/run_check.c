@@ -359,7 +359,6 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             sleep(lapse);
         }
 
-        minfo("~~~ starting integrity thread");
         fim_sync_checksum();
         sleep(syscheck.sync_interval);
     }
