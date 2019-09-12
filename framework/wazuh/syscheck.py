@@ -112,8 +112,6 @@ def last_scan(agent_id):
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
-    # import pydevd_pycharm
-    # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
     my_agent = Agent(agent_id)
     # if agent status is never_connected, a KeyError happens
     try:
