@@ -94,23 +94,26 @@ static int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const cha
  * @retval 0 On success.
  * @retval -1 On error.
  */
-static int wdbi_delete_tail(wdb_t * wdb, wdb_component_t component, const char * end, const char * tail) {
-    const int INDEXES_UNARY[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_TAIL_UNARY };
-    const int INDEXES_BINARY[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_TAIL_BINARY };
-    assert(component < sizeof(INDEXES_UNARY) / sizeof(int));
-    assert(component < sizeof(INDEXES_BINARY) / sizeof(int));
+static int wdbi_delete_tail(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail) {
+    const int INDEXES_AROUND[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_AROUND };
+    const int INDEXES_RANGE[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_RANGE };
+    assert(component < sizeof(INDEXES_AROUND) / sizeof(int));
+    assert(component < sizeof(INDEXES_RANGE) / sizeof(int));
 
-    int index = tail ? INDEXES_BINARY[component] : INDEXES_UNARY[component];
+    int index = tail ? INDEXES_RANGE[component] : INDEXES_AROUND[component];
 
     if (wdb_stmt_cache(wdb, index) == -1) {
         return -1;
     }
 
     sqlite3_stmt * stmt = wdb->stmt[index];
-    sqlite3_bind_text(stmt, 1, end, -1, NULL);
 
     if (tail) {
+        sqlite3_bind_text(stmt, 1, end, -1, NULL);
         sqlite3_bind_text(stmt, 2, tail, -1, NULL);
+    } else {
+        sqlite3_bind_text(stmt, 1, begin, -1, NULL);
+        sqlite3_bind_text(stmt, 2, end, -1, NULL);
     }
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
@@ -174,7 +177,7 @@ int wdbi_query_checksum_range(wdb_t * wdb, wdb_component_t component, const char
     }
 
     item = cJSON_GetObjectItem(data, "tail");
-    wdbi_delete_tail(wdb, component, end, item && cJSON_IsString(item) ? item->valuestring : NULL);
+    wdbi_delete_tail(wdb, component, begin, end, cJSON_GetStringValue(item));
 
 end:
     cJSON_Delete(data);
