@@ -496,6 +496,29 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     closedir(dir);
 }
 
+time_t calc_next_rotation(time_t tm, struct tm *rot, const char units, int interval)
+{
+    time_t ret = tm + interval;
+    rot = localtime(&ret);
+
+    switch (units) {
+        case 'd':
+            rot->tm_hour = 0;
+            rot->tm_min = 0;
+            rot->tm_sec = 0;
+        break;
+        case 'h':
+            rot->tm_min = 0;
+            rot->tm_sec = 0;
+        break;
+        case 'm':
+            rot->tm_sec = 0;
+        break;
+    }
+
+    ret = mktime(rot);
+    return ret;
+}
 
 
 

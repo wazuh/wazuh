@@ -30,30 +30,6 @@ const char * MONTHS[] = {
     "Dec"
 };
 
-time_t calc_next_rotation(time_t tm, struct tm *rot, const char units)
-{
-    time_t ret = tm + mond.interval;
-    rot = localtime(&ret);
-
-    switch (units) {
-        case 'd':
-            rot->tm_hour = 0;
-            rot->tm_min = 0;
-            rot->tm_sec = 0;
-        break;
-        case 'h':
-            rot->tm_min = 0;
-            rot->tm_sec = 0;
-        break;
-        case 'm':
-            rot->tm_sec = 0;
-        break;
-    }
-
-    ret = mktime(rot);
-    return ret;
-}
-
 void Monitord()
 {
     time_t tm, n_time;
@@ -91,7 +67,7 @@ void Monitord()
     thisyear = p->tm_year + 1900;
 
     /* Calculate when is the next rotation */
-    n_time = calc_next_rotation(tm, rot, mond.interval_units);
+    n_time = mond.interval ? calc_next_rotation(tm, rot, mond.interval_units, mond.interval) : 0;
 
     /* Set internal log path to rotate them */
 #ifdef WIN32
@@ -169,7 +145,7 @@ void Monitord()
                             __ossec_rsec = m_timespec.tv_sec;
                         }
                     }
-                    if ((stat(path_ossec, &buf) == 0) && mond.ossec_log_json) {
+                    if ((stat(path_ossec_json, &buf) == 0) && mond.ossec_log_json) {
                         size = buf.st_size;
                         if (mond.interval > 0 && tm > n_time && (long) size >= mond.min_size) {
                             if(mond.log_list_json && mond.log_list_json->last && today == mond.log_list_json->last->first_value) {
@@ -184,7 +160,7 @@ void Monitord()
                             __ossec_rsec = m_timespec.tv_sec;
                         }
                     }
-                    n_time = calc_next_rotation(tm, rot, mond.interval_units);
+                    n_time = calc_next_rotation(tm, rot, mond.interval_units, mond.interval);
                     if (today != p->tm_mday) {
                         /* Generate reports */
                         generate_reports(today, thismonth, thisyear, p);
@@ -253,7 +229,7 @@ void Monitord()
                             os_free(new_path);
                             __ossec_rsec = m_timespec.tv_sec;
                         }
-                        n_time = calc_next_rotation(tm, rot, mond.interval_units);
+                        n_time = calc_next_rotation(tm, rot, mond.interval_units, mond.interval);
                         if (today != p->tm_mday) {
                             /* Generate reports */
                             generate_reports(today, thismonth, thisyear, p);
