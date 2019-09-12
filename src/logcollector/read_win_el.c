@@ -512,15 +512,23 @@ void readel(os_el *el, int printit)
 
     /* Event log was closed and re-opened */
     else if (id == ERROR_INVALID_HANDLE) {
-        mdebug1("EventLog was closed and re-opened");
+        mdebug1("EventLog service is down. Trying to reconnect channel '%s'...", el->name);
 
         CloseEventLog(el->h);
         el->h = NULL;
 
         /* Reopen */
         if (startEL(el->name, el) < 0) {
-            merror("Unable to reopen event log '%s'", el->name);
+            merror(
+            "Could not subscribe for (%s) which returned (%d)",
+            el->name,
+            id);
         }
+    }
+
+    /* These error codes are returned in different Windows versions when EventLog is not available. This message is prompted for coherence with EventChannel */
+    else if (id == RPC_S_SERVER_UNAVAILABLE || id == RPC_S_UNKNOWN_IF) {
+        merror("Could not subscribe for (%s) which returned (%d)", el->name, id);
     }
 
     else {

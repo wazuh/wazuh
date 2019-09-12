@@ -503,8 +503,8 @@ DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_chann
     if (action == EvtSubscribeActionDeliver) {
         send_channel_event(evt, channel);
     } else {
-        for (int i = 0; i < 3; i++) {
-            mdebug1("Trying to restart channel '%s'...", channel->evt_log);
+        while(1) {
+            mdebug1("EventLog service is down. Trying to reconnect channel '%s'...", channel->evt_log);
             /* Try to restart EventChannel */
             if (win_start_event_channel(channel->evt_log, !channel->bookmark_enabled, channel->query) == -1) {
                 sleep(5);
