@@ -274,7 +274,7 @@ class WazuhException(Exception):
         1728: {'message': 'Invalid node type',
                'remediation': 'Valid types are `master` and `worker`. Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html) '
                           'to get more information about cluster configuration'},
-        1729: {'message': 'Agent status not valid. Valid statuses are Active, Disconnected, Pending and NeverConnected',
+        1729: {'message': 'Agent status not valid. Valid statuses are active, disconnected, pending and never_connected',
                'remediation': 'Please check used status and try again.'
                },
         1730: {'message': 'Node does not exist',
