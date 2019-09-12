@@ -371,6 +371,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
     if(lf->data)
         cJSON_AddStringToObject(data, "data", lf->data);
+    
+    if(lf->extra_data)
+        cJSON_AddStringToObject(data, "extra_data", lf->extra_data);
 
     if(lf->systemname)
         cJSON_AddStringToObject(data, "system_name", lf->systemname);

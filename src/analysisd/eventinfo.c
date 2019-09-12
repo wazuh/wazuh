@@ -718,6 +718,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->command = NULL;
     lf->url = NULL;
     lf->data = NULL;
+    lf->extra_data = NULL;
     lf->systemname = NULL;
 
     if (lf->fields) {
@@ -933,6 +934,10 @@ void Free_Eventinfo(Eventinfo *lf)
 
     if (lf->data) {
         free(lf->data);
+    }
+
+    if (lf->extra_data) {
+        free(lf->extra_data);
     }
 
     if (lf->systemname) {
@@ -1266,6 +1271,10 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     if(lf->data){
         os_strdup(lf->data,lf_cpy->data);
+    }
+
+    if(lf->extra_data){
+        os_strdup(lf->extra_data, lf_cpy->extra_data);
     }
 
     if(lf->systemname){
