@@ -30,16 +30,16 @@ int wdbc_connect() {
     for (attempts = 1; attempts <= 3 && (wdb_socket = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_SIZE_6144)) < 0; attempts++) {
         switch (errno) {
         case ENOENT:
-            mtinfo(ARGV0, "Cannot find '%s'. Waiting %d seconds to reconnect.", sockname, attempts);
+            minfo("Cannot find '%s'. Waiting %d seconds to reconnect.", sockname, attempts);
             break;
         default:
-            mtinfo(ARGV0, "Cannot connect to '%s': %s (%d). Waiting %d seconds to reconnect.", sockname, strerror(errno), errno, attempts);
+            minfo("Cannot connect to '%s': %s (%d). Waiting %d seconds to reconnect.", sockname, strerror(errno), errno, attempts);
         }
         sleep(attempts);
     }
 
     if (wdb_socket < 0) {
-        mterror(ARGV0, "Unable to connect to socket '%s'.", sockname);
+        merror("Unable to connect to socket '%s'.", sockname);
     }
 
     return wdb_socket;
@@ -68,10 +68,10 @@ int wdbc_query(const int sock, const char *query, char *response, const int len)
     // Send query to Wazuh DB
     if (OS_SendSecureTCP(sock, size + 1, query) != 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            mterror(ARGV0, "database socket is full");
+            merror("database socket is full");
             goto end;
         } else {
-            mterror(ARGV0, "in send (%d) '%s'.", errno, strerror(errno));
+            merror("Cannot send message: (%d) '%s'.", errno, strerror(errno));
             goto end;
         }
     }
@@ -83,10 +83,10 @@ int wdbc_query(const int sock, const char *query, char *response, const int len)
 
     switch (recv_len) {
     case OS_SOCKTERR:
-        merror("OS_RecvSecureTCP(): response size is bigger than expected");
+        merror("Cannot receive message: response size is bigger than expected");
         break;
     case -1:
-        merror("at OS_RecvSecureTCP(): %s (%d)", strerror(errno), errno);
+        merror("Cannot receive message: %s (%d)", strerror(errno), errno);
         break;
     default:
         response[len - 1] = '\0';
@@ -121,7 +121,7 @@ int wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
         *sock = wdbc_connect();
 
         if (*sock < 0) {
-            mterror(ARGV0, "Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
+            merror("Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
             return retval;
         }
     }
@@ -129,11 +129,11 @@ int wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
     // Send query to Wazuh DB
     if (retval = wdbc_query(*sock, query, response, len), retval != 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            mterror(ARGV0, "database socket is full");
+            merror("database socket is full");
             return retval;
         } else if (errno == EPIPE) {
             // Retry to connect
-            mterror(ARGV0, "Connection with wazuh-db lost. Reconnecting.");
+            merror("Connection with wazuh-db lost. Reconnecting.");
             close(*sock);
             if (*sock = wdbc_connect(), *sock < 0) {
                 return retval;
@@ -143,7 +143,7 @@ int wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
                 return retval;
             }
         } else {
-            mterror(ARGV0, "in send (%d) '%s'.", errno, strerror(errno));
+            merror("Cannot send message: (%d) '%s'.", errno, strerror(errno));
             return retval;
         }
     }
