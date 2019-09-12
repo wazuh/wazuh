@@ -183,3 +183,22 @@ end:
     cJSON_Delete(data);
     return retval;
 }
+
+// Query a complete table clear
+int wdbi_query_clear(wdb_t * wdb, wdb_component_t component) {
+    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_CLEAR };
+    assert(component < sizeof(INDEXES) / sizeof(int));
+
+    if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
+        return -1;
+    }
+
+    sqlite3_stmt * stmt = wdb->stmt[INDEXES[component]];
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    return 0;
+}

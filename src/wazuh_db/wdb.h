@@ -113,6 +113,7 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
     WDB_STMT_FIM_DELETE_AROUND,
     WDB_STMT_FIM_DELETE_RANGE,
+    WDB_STMT_FIM_CLEAR,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -568,5 +569,15 @@ int wdb_create_backup(const char * agent_id, int version);
  * @retval -1 On error.
  */
 int wdbi_query_checksum_range(wdb_t * wdb, wdb_component_t component, const char * payload);
+
+/**
+ * @brief Query a complete table clear
+ *
+ * @param wdb Database node.
+ * @param component Name of the component.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdbi_query_clear(wdb_t * wdb, wdb_component_t component);
 
 #endif

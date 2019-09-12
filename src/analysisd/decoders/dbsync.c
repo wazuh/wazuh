@@ -89,6 +89,11 @@ end:
 }
 
 static void dispatch_check(dbsync_context_t * ctx) {
+    if (ctx->data == NULL) {
+        merror("dbsync: Corrupt message: cannot get data member.");
+        return;
+    }
+
     char * data_plain = cJSON_PrintUnformatted(ctx->data);
     char * query;
     char * response;
@@ -98,7 +103,7 @@ static void dispatch_check(dbsync_context_t * ctx) {
     os_malloc(OS_MAXSTR, response);
 
     if (snprintf(query, OS_MAXSTR, "agent %s %s range_checksum %s", ctx->agent_id, ctx->component, data_plain) >= OS_MAXSTR) {
-        merror("dbsync: Cannot build query: input is too long.");
+        merror("dbsync: Cannot build check query: input is too long.");
         goto end;
     }
 
@@ -132,6 +137,11 @@ end:
 }
 
 static void dispatch_save(dbsync_context_t * ctx) {
+    if (ctx->data == NULL) {
+        merror("dbsync: Corrupt message: cannot get data member.");
+        return;
+    }
+
     char * data_plain = cJSON_PrintUnformatted(ctx->data);
     char * query;
     char * response;
@@ -141,7 +151,44 @@ static void dispatch_save(dbsync_context_t * ctx) {
     os_malloc(OS_MAXSTR, response);
 
     if (snprintf(query, OS_MAXSTR, "agent %s %s save2 %s", ctx->agent_id, ctx->component, data_plain) >= OS_MAXSTR) {
-        merror("dbsync: Cannot build query: input is too long.");
+        merror("dbsync: Cannot build save query: input is too long.");
+        goto end;
+    }
+
+    switch (wdbc_query_ex(&ctx->db_sock, query, response, OS_MAXSTR)) {
+    case -2:
+        merror("dbsync: Cannot communicate with database.");
+        goto end;
+    case -1:
+        merror("dbsync: Cannot get response from database.");
+        goto end;
+    }
+
+    switch (wdbc_parse_result(response, &arg)) {
+    case WDBC_OK:
+        break;
+    case WDBC_ERROR:
+        merror("dbsync: Bad response from database: %s", arg);
+        // Fallthrough
+    default:
+        goto end;
+    }
+
+end:
+    free(query);
+    free(response);
+}
+
+static void dispatch_clear(dbsync_context_t * ctx) {
+    char * query;
+    char * response;
+    char * arg;
+
+    os_malloc(OS_MAXSTR, query);
+    os_malloc(OS_MAXSTR, response);
+
+    if (snprintf(query, OS_MAXSTR, "agent %s %s clear ", ctx->agent_id, ctx->component) >= OS_MAXSTR) {
+        merror("dbsync: Cannot build clear query: input is too long.");
         goto end;
     }
 
@@ -192,15 +239,13 @@ void DispatchDBSync(dbsync_context_t * ctx, Eventinfo * lf) {
     }
 
     ctx->data = cJSON_GetObjectItem(root, "data");
-    if (ctx->data == NULL) {
-        merror("dbsync: Corrupt message: cannot get data member.");
-        goto end;
-    }
 
     if (strcmp(mtype, "check") == 0) {
         dispatch_check(ctx);
     } else if (strcmp(mtype, "save") == 0) {
         dispatch_save(ctx);
+    } else if (strcmp(mtype, "clear") == 0) {
+        dispatch_clear(ctx);
     } else {
         merror("dbsync: Wrong message type '%s' received from agent %s.", mtype, ctx->agent_id);
     }
