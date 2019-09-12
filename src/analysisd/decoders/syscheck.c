@@ -434,8 +434,6 @@ exit_fail:
 
 int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
     char response[OS_SIZE_6144];
-    fd_set fdset;
-    struct timeval timeout = {0, 1000};
     int size = strlen(wazuhdb_query);
     int retval = -2;
     int attempts;
@@ -488,14 +486,6 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
         }
     }
 
-    // Wait for socket
-    FD_ZERO(&fdset);
-    FD_SET(sdb->socket, &fdset);
-
-    if (select(sdb->socket + 1, &fdset, NULL, NULL, &timeout) < 0) {
-        mterror(ARGV0, "FIM decoder: in select (%d) '%s'.", errno, strerror(errno));
-        return retval;
-    }
     retval = -1;
 
     // Receive response from socket
