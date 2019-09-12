@@ -169,7 +169,9 @@ int DecodeWinevt(Eventinfo *lf){
     os_calloc(OS_MAXSTR, sizeof(char), msg_from_prov);
     os_calloc(OS_MAXSTR, sizeof(char), join_data);
 
-    if (received_event = cJSON_Parse(lf->log), !received_event)
+    const char *jsonErrPtr;
+
+    if (received_event = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0), !received_event)
     {
         merror("Malformed EventChannel JSON event");
         ret_val = 1;
