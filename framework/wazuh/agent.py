@@ -78,7 +78,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             self.query += '(last_keepalive >= :time_active AND version IS NOT NULL) or id = 0'
         elif status_filter['value'] == 'disconnected':
             self.query += 'last_keepalive < :time_active'
-        elif status_filter['value'] == "never_connected" or status_filter['value'] == "neverconnected":
+        elif status_filter['value'] == "never_connected":
             self.query += 'last_keepalive IS NULL AND id != 0'
         elif status_filter['value'] == 'pending':
             self.query += 'last_keepalive IS NOT NULL AND version IS NULL'
