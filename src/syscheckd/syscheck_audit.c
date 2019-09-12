@@ -652,6 +652,7 @@ void audit_parse(char *buffer) {
             // user_name & user_id
             if(regexec(&regexCompiled_uid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
+                char *uid = NULL;
                 os_malloc(match_size + 1, uid);
                 snprintf (uid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
                 char *user = get_user("",atoi(uid), NULL);
@@ -684,6 +685,7 @@ void audit_parse(char *buffer) {
             // effective_name && effective_uid
             if(regexec(&regexCompiled_euid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
+                char *euid = NULL;
                 os_malloc(match_size + 1, euid);
                 snprintf (euid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
                 char *user = get_user("",atoi(euid), NULL);

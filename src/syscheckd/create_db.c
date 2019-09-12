@@ -645,10 +645,7 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
     char *f_name;
     short is_nfs;
     DIR *dp;
-
     struct dirent *entry = NULL;
-    int opts;
-
     size_t dir_size;
     int pos;
     char linked_read_file[PATH_MAX + 1] = {'\0'};
