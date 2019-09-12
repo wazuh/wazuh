@@ -295,37 +295,4 @@
     <group>modsecurity,gpg13_10.1,</group>
   </rule>
 
-    <!--
-    Shellshock detected
-    Pattern: "(){:;};" (with spaces)
-    Code: 400
-    Decoder: web-accesslog_decoders.xml
-
-    Examples:
-    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 404 292 "-" "() { :;};/usr/bin/perl ..."
-    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 200 292 "-" "() { foo:; };/usr/bin/perl ..."
-    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 200 292 "-" "() { ignored; };/usr/bin/perl ..."
-    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 200 292 "-" "() { gry; };/usr/bin/perl ..."
-
-    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 200 292 "-" "() { _; } >_[$($())] { /usr/bin/perl ... }"
-    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 200 292 "-" "() { _; foo; } >_[$($())] { /usr/bin/perl ... }"
-    -->
-    <rule id="30412" level="6">
-        <if_sid>31101</if_sid>
-	<regex>"\(\)\s*{\s*:;\s*}\s*;|"\(\)\s*{\s*foo:;\s*}\s*;|"\(\)\s*{\s*ignored;\s*}\s*|"\(\)\s*{\s*gry;\s*}\s*;</regex>
-        <description>Apache: Shellshock attack attempt</description>
-	<info type="cve">CVE-2014-6271</info>
-	<info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6271</info>
-        <group>attack,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
-    </rule>
-
-    <rule id="30413" level="6">
-        <if_sid>31101</if_sid>
-        <regex>"\(\)\s*{\s*_;\.*}\s*>_[\$\(\$\(\)\)]\s*{</regex>
-        <description>Apache: Shellshock attack attempt</description>
-	<info type="cve">CVE-2014-6278</info>
-	<info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6278</info>
-        <group>attack,pci_dss_11.4,nist_800_53_SI.4,</group>
-    </rule>
-
 </group>

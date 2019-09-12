@@ -108,4 +108,18 @@
     <group>modsecurity,gpg13_10.1,</group>
   </rule>
 
+  <rule id="31334" level="3">
+    <if_sid>31301</if_sid>
+    <match>NAXSI_FMT:</match>
+    <description>NAXSI warning</description>
+    <group>naxsi,</group>
+  </rule>
+
+  <rule id="31335" level="7">
+    <if_sid>31334</if_sid>
+    <match>&block=1&</match>
+    <description>NAXSI rejected a query</description>
+    <group>naxsi,gpg13_10.1,</group>
+  </rule>
+
 </group>

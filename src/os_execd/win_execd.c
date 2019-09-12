@@ -56,18 +56,12 @@ static void WinExecd_Shutdown()
 int WinExecd_Start()
 {
     int c;
-    int test_config = 0;
     char *cfg = DEFAULTCPATH;
     winexec_queue = queue_init(OS_SIZE_128);
 
     /* Read config */
     if ((c = ExecdConfig(cfg)) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
-    }
-
-    /* Exit if test_config */
-    if (test_config) {
-        return (0);
     }
 
     /* Active response disabled */

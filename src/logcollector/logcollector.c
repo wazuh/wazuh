@@ -103,6 +103,7 @@ void LogCollectorStart()
     w_set_file_mutexes();
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
+    memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
     int r;
     const char *m_uname;
 
@@ -807,6 +808,7 @@ int handle_file(int i, int j, int do_fseek, int do_log)
 
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
+    memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
 
     lf->fp = NULL;
     lf->h = CreateFile(lf->file, GENERIC_READ,
@@ -1820,6 +1822,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
     struct stat tmp_stat;
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
+    memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
 #endif
 
     /* Daemon loop */
