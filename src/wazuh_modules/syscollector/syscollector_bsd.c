@@ -1403,6 +1403,14 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     for(index=0; index < count; ++index) {
 
         struct proc_taskallinfo task_info;
+        pid_t pid = pids[index] ;
+
+        int st = proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &task_info, PROC_PIDTASKALLINFO_SIZE);
+
+        if(st != PROC_PIDTASKALLINFO_SIZE) {
+            mterror(WM_SYS_LOGTAG, "Cannot get process info for PID %d", pid);
+            continue;
+        }
 
         cJSON *object = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "process");
@@ -1411,17 +1419,7 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
 
         cJSON *process = cJSON_CreateObject();
         cJSON_AddItemToObject(object, "process", process);
-
-        pid_t pid = pids[index] ;
         cJSON_AddNumberToObject(process, "pid", pid);
-
-        int st = proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &task_info, PROC_PIDTASKALLINFO_SIZE);
-
-        if(st != PROC_PIDTASKALLINFO_SIZE) {
-            mterror(WM_SYS_LOGTAG, "Cannot get process info for PID %d", pid);
-            cJSON_Delete(object);
-            continue;
-        }
 
         /*
             I : Idle
@@ -1494,13 +1492,13 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     cJSON_AddStringToObject(object, "type", "process_end");
     cJSON_AddNumberToObject(object, "ID", random_id);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
+    os_free(timestamp);
 
     char *end_msg = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_proc_mac() sending '%s'", end_msg);
     wm_sendmsg(usec, queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     os_free(end_msg);
-    os_free(timestamp);
 }
 
 #endif
