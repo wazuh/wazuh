@@ -315,7 +315,7 @@ void fim_audit_inode_event(whodata_evt * w_evt) {
 
         for(; i > 0; i--) {
             fim_process_event(event_paths[i - 1], FIM_WHODATA, w_evt);
-            os_free(event_paths[i]);
+            os_free(event_paths[i - 1]);
         }
         os_free(event_paths);
     } else {
