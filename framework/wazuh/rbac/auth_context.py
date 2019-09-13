@@ -212,7 +212,17 @@ class RBAChecker:
             {
                 "actions": ["active_response:command"],
                 "resources": ["agent:id:001", "agent:id:002"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:group:default"],
                 "effect": "allow"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:group:group1"],
+                "effect": "deny"
             }
         ]
 

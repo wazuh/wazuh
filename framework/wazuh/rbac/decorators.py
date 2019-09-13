@@ -2,40 +2,14 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import copy
 import re
 from functools import wraps
-from glob import glob
 
-from wazuh import common
-from wazuh.agent import Agent
-from wazuh.database import Connection
 from wazuh.exception import WazuhError, WazuhInternalError
+from wazuh.fcore.core_utils import get_agents_info, expand_group
 
-
-def _get_groups_resources(agent_id):
-    """Obtain group resources based on agent_id (all the groups where the agent belongs)
-
-    :param agent_id: Agent_id to search groups for
-    :return: Group resources
-    """
-    db_global = glob(common.database_path_global)
-    if not db_global:
-        raise WazuhInternalError(1600)
-
-    conn = Connection(db_global[0])
-    if agent_id == '*':
-        groups = ['agent:group:*']
-        conn.execute("SELECT name FROM `group` WHERE id IN (SELECT DISTINCT id_group FROM belongs)")
-    else:
-        groups = ['agent:id:*', 'agent:group:*']
-        conn.execute("SELECT name FROM `group` WHERE id IN (SELECT id_group FROM belongs WHERE id_agent = :agent_id)",
-                     {'agent_id': int(agent_id)})
-    result = conn.fetch_all()
-
-    for group in result:
-        groups.append('{0}:{1}'.format('agent:group', group['name']))
-
-    return groups
+agents = None
 
 
 def _get_required_permissions(actions: list = None, resources: str = None, **kwargs):
@@ -77,22 +51,43 @@ def _get_required_permissions(actions: list = None, resources: str = None, **kwa
 
 
 def _expand_permissions(mode, odict):
-    agents = Agent.get_agents_overview()
+    def _to_set(permissions):
+        permissions['allow'] = set(permissions['allow'])
+        permissions['deny'] = set(permissions['deny'])
+
+    def _update_set(index, key, agents_ids, remove=True):
+        if key == 'allow':
+            op_key = 'deny'
+        else:
+            op_key = 'allow'
+        if remove:
+            odict[index][key].remove('*')
+        odict[index][key].update(agent_id for agent_id in agents_ids if agent_id not in odict[index][op_key])
+
+    global agents
+    if agents is None:
+        agents = get_agents_info()
     agents_ids = list()
-    for agent in agents['items']:
-        agents_ids.append(agent['id'])
+    for agent in agents:
+        agents_ids.append(str(agent['id']).zfill(3))
 
-    if '*' in odict['allow']:
-        odict['allow'] = agents_ids
-        odict['allow'] = [agent_id for agent_id in odict['allow'] if agent_id not in odict['deny']]
-    elif '*' in odict['deny']:
-        odict['deny'] = agents_ids
-        odict['deny'] = [agent_id for agent_id in odict['deny'] if agent_id not in odict['allow']]
+    for key in odict:
+        if key == 'agent:id':
+            _to_set(odict[key])
+            _update_set(key, 'allow', agents_ids) if '*' in odict[key]['allow'] \
+                else _update_set(key, 'deny', agents_ids)
+        elif key == 'agent:group':
+            _to_set(odict[key])
+            if 'agent:id' not in odict.keys():
+                odict['agent:id'] = {
+                    'allow': set(),
+                    'deny': set()
+                }
+            expand_group(odict['agent:group'], odict['agent:id'])
 
-    if mode:
-        odict['allow'] = [agent_id for agent_id in agents_ids if agent_id not in odict['deny']]
-    else:
-        odict['deny'] = [agent_id for agent_id in agents_ids if agent_id not in odict['allow']]
+    _update_set('agent:id', 'allow', agents_ids, False) if mode \
+        else _update_set('agent:id', 'deny', agents_ids, False)
+    odict.pop('agent:group')
 
     return odict
 
@@ -107,32 +102,29 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     mode = rbac[0]
     user_permissions = rbac[1]
     allow_match = []
-    # We run through all required permissions for the request
     for req_action, req_resources in req_permissions.items():
         agent_expand = False
         for req_resource in req_resources:
-            # We run through the user permissions to find a match with the required permissions
             try:
                 user_resources = user_permissions[req_action]
-                # We find resource name to add * if not already there
                 m = re.search(r'^(\w+\:\w+)(:)([\w\-\.\/]+|\*)$', req_resource)
-                # We find if resource matches
-                if m.group(1) == 'agent:id':
+                if m.group(1) == 'agent:id' or m.group(1) == 'agent:group':
                     # Expand *
                     if not agent_expand:
-                        user_resources[m.group(1)] = _expand_permissions(mode, user_resources[m.group(1)])
+                        _expand_permissions(mode, user_resources)
+                        user_resources['agent:id']['allow'] = set(user_resources['agent:id']['allow'])
+                        user_resources['agent:id']['deny'] = set(user_resources['agent:id']['deny'])
                         agent_expand = True
                     if req_resource.split(':')[-1] == '*':  # Expand
                         reqs = user_resources[m.group(1)]['allow']
                     else:
                         reqs = [req_resource]
-                    reqs.extend(_get_groups_resources(m.group(3)))
                     for req in reqs:
                         split_req = req.split(':')[-1]
-                        if split_req in user_resources[m.group(1)]['allow'] and \
-                                split_req not in user_resources[m.group(1)]['deny']:
+                        if split_req in user_resources['agent:id']['allow'] and \
+                                split_req not in user_resources['agent:id']['deny']:
                             allow_match.append(split_req)
-                        elif split_req in user_resources[m.group(1)]['deny']:
+                        elif split_req in user_resources['agent:id']['deny']:
                             break
                 elif m.group(3) != '*':
                     allow_match.append(m.group(3) in user_resources[m.group(1)]['allow']) or \
@@ -143,7 +135,6 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
                 if mode:  # For black mode
                     allow_match.append('*')
                     break
-    # If we don't find a deny match or we find an allow match for all policies in white list mode we allow the request
     return allow_match
 
 
@@ -158,7 +149,7 @@ def expose_resources(actions: list = None, resources: str = None):
         @wraps(func)
         def wrapper(*args, **kwargs):
             req_permissions = _get_required_permissions(actions=actions, resources=resources, **kwargs)
-            allow = _match_permissions(req_permissions=req_permissions, rbac=kwargs['rbac'])
+            allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
             if len(allow) > 0:
                 del kwargs['rbac']
                 kwargs['agent_id'] = allow
