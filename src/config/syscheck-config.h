@@ -38,7 +38,6 @@ typedef enum fim_event_mode {
 #define CHECK_SHA1SUM       00000200
 #define CHECK_SHA256SUM     00000400
 // 0001000 0002000 0004000 Reserved for future hash functions
-#define CHECK_ALLHASHES     00000700
 #define CHECK_ATTRS         00010000
 #define CHECK_SEECHANGES    00020000
 #define CHECK_FOLLOW        00040000
@@ -192,9 +191,9 @@ typedef struct fim_status{
 typedef struct fim_entry_data {
     // Checksum attributes
     unsigned int size;
-    unsigned int perm;
-    unsigned int uid;
-    unsigned int gid;
+    char * perm;
+    char * uid;
+    char * gid;
     char * sid;
     char * user_name;
     char * group_name;

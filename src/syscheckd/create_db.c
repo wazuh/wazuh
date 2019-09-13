@@ -73,7 +73,6 @@ int fim_directory (char * path, int dir_position, int mode, whodata_evt * w_evt)
     char *s_name;
     char linked_read_file[PATH_MAX + 1] = {'\0'};
     int options;
-    fim_event_mode mode = 0;
     size_t path_size;
     short is_nfs;
 
@@ -386,20 +385,48 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
     fim_entry_data * data = NULL;
 
     os_calloc(1, sizeof(fim_entry_data), data);
+    init_fim_data_entry(data);
 
-    data->size = file_stat.st_size;
-    data->perm = file_stat.st_mode;
-    data->mtime = file_stat.st_mtime;
-    data->inode = file_stat.st_ino;
-    data->uid = file_stat.st_uid;
-    data->gid = file_stat.st_gid;
+    if (options & CHECK_SIZE) {
+        data->size = file_stat.st_size;
+    }
+
+    if (options & CHECK_PERM) {
+        data->perm = agent_file_perm(file_stat.st_mode);
+    }
+
+    if (options & CHECK_MTIME) {
+        data->mtime = file_stat.st_mtime;
+    }
+
+    if (options & CHECK_INODE) {
+        data->inode = file_stat.st_ino;
+    }
 
 #ifdef WIN32
-    data->user_name = get_user(file_name, file_stat.st_uid, &data->sid);
-    os_strdup((char*)get_group(file_stat.st_gid), data->group_name);
+
+    if (options & CHECK_OWNER) {
+        data->user_name = get_user(file_name, 0, &data->uid);
+    }
+
 #else
-    os_strdup((char*)get_user(file_name, file_stat.st_uid, NULL), data->user_name);
-    os_strdup((char*)get_user(file_name, file_stat.st_uid, NULL), data->group_name);
+
+    if (options & CHECK_OWNER) {
+        char aux[OS_SIZE_64];
+        snprintf(aux, OS_SIZE_64, "%u", file_stat.st_uid);
+        os_strdup(aux, data->uid);
+
+        os_strdup((char*)get_user(file_name, file_stat.st_uid, NULL), data->user_name);
+    }
+
+    if (options & CHECK_GROUP) {
+        char aux[OS_SIZE_64];
+        snprintf(aux, OS_SIZE_64, "%u", file_stat.st_gid);
+        os_strdup(aux, data->gid);
+
+        os_strdup((char*)get_user(file_name, file_stat.st_uid, NULL), data->group_name);
+    }
+
 #endif
 
     snprintf(data->hash_md5, sizeof(os_md5), "%s", "d41d8cd98f00b204e9800998ecf8427e");
@@ -413,7 +440,9 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
 #ifdef __linux__
     if ((file_stat.st_mode & S_IFMT) == FIM_REGULAR)
 #endif
-        if (file_stat.st_size > 0 && (size_t)file_stat.st_size < syscheck.file_max_size) {
+        if (file_stat.st_size > 0 &&
+                (size_t)file_stat.st_size < syscheck.file_max_size &&
+                (options & CHECK_MD5SUM || options & CHECK_SHA1SUM || options & CHECK_SHA256SUM) ) {
             if (OS_MD5_SHA1_SHA256_File(file_name,
                                         syscheck.prefilter_cmd,
                                         data->hash_md5,
@@ -427,6 +456,18 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
         }
     }
 
+    if (!(options & CHECK_MD5SUM)) {
+        data->hash_md5[0] = '\0';
+    }
+
+    if (!(options & CHECK_SHA1SUM)) {
+        data->hash_sha1[0] = '\0';
+    }
+
+    if (!(options & CHECK_SHA256SUM)) {
+        data->hash_sha256[0] = '\0';
+    }
+
     data->dev = file_stat.st_dev;
     data->mode = mode;
     data->options = options;
@@ -435,6 +476,22 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
     fim_get_checksum(data);
 
     return data;
+}
+
+
+// Initialize fim_entry_data structure
+void init_fim_data_entry(fim_entry_data *data) {
+    data->size = -1;
+    data->perm = NULL;
+    data->uid = NULL;
+    data->gid = NULL;
+    data->user_name = NULL;
+    data->group_name = NULL;
+    data->mtime = -1;
+    data->inode = -1;
+    data->hash_md5[0] = '\0';
+    data->hash_sha1[0] = '\0';
+    data->hash_sha256[0] = '\0';
 }
 
 
@@ -447,7 +504,7 @@ void fim_get_checksum (fim_entry_data * data) {
 
     size = snprintf(checksum,
             OS_SIZE_128,
-            "%d:%d:%d:%d:%s:%s:%d:%lu:%s:%s:%s",
+            "%d:%s:%s:%s:%s:%s:%d:%lu:%s:%s:%s",
             data->size,
             data->perm,
             data->uid,
@@ -468,7 +525,7 @@ void fim_get_checksum (fim_entry_data * data) {
         os_realloc(checksum, (size + 1) * sizeof(char), checksum);
         snprintf(checksum,
                 size + 1,
-                "%d:%d:%d:%d:%s:%s:%d:%lu:%s:%s:%s",
+                "%d:%s:%s:%s:%s:%s:%d:%lu:%s:%s:%s",
                 data->size,
                 data->perm,
                 data->uid,
@@ -759,21 +816,15 @@ cJSON * fim_attributes_json(const fim_entry_data * data) {
     }
 
     if (data->options & CHECK_PERM) {
-        char * text = agent_file_perm(data->perm);
-        cJSON_AddStringToObject(attributes, "perm", text);
-        free(text);
+        cJSON_AddStringToObject(attributes, "perm", data->perm);
     }
 
     if (data->options & CHECK_OWNER) {
-        char text[64];
-        snprintf(text, sizeof(text), "%u", data->uid);
-        cJSON_AddStringToObject(attributes, "uid", text);
+        cJSON_AddStringToObject(attributes, "uid", data->uid);
     }
 
     if (data->options & CHECK_GROUP) {
-        char text[64];
-        snprintf(text, sizeof(text), "%u", data->gid);
-        cJSON_AddStringToObject(attributes, "gid", text);
+        cJSON_AddStringToObject(attributes, "gid", data->gid);
     }
 
     if (data->user_name) {
@@ -842,12 +893,12 @@ cJSON * fim_json_compare_attrs(const fim_entry_data * old_data, const fim_entry_
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
     }
 
-    if ( (old_data->options & CHECK_PERM) && (old_data->perm != new_data->perm) ) {
+    if ( (old_data->options & CHECK_PERM) && strcmp(old_data->perm, new_data->perm) != 0 ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
     }
 
     if (old_data->options & CHECK_OWNER) {
-        if (old_data->uid != new_data->uid) {
+        if (old_data->uid && new_data->uid && strcmp(old_data->uid, new_data->uid) != 0) {
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
         }
 
@@ -857,7 +908,7 @@ cJSON * fim_json_compare_attrs(const fim_entry_data * old_data, const fim_entry_
     }
 
     if (old_data->options & CHECK_GROUP) {
-        if (old_data->gid != new_data->gid) {
+        if (old_data->gid && new_data->gid && strcmp(old_data->gid, new_data->gid) != 0) {
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("gid"));
         }
 
