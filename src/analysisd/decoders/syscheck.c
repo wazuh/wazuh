@@ -433,8 +433,7 @@ exit_fail:
 
 
 int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
-    char response[OS_SIZE_6144];
-    int size = strlen(wazuhdb_query);
+
     int retval = -2;
     int attempts;
 
@@ -456,6 +455,8 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
             return retval;
         }
     }
+
+    int size = strlen(wazuhdb_query);
 
     // Send query to Wazuh DB
     if (OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query) != 0) {
@@ -487,6 +488,8 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
     }
 
     retval = -1;
+
+    char response[OS_SIZE_6144];
 
     // Receive response from socket
     if (OS_RecvSecureTCP(sdb->socket, response, OS_SIZE_6144 - 1) > 0) {

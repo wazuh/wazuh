@@ -1782,8 +1782,6 @@ int pm_send_db(char *msg, char *response, int *sock)
     assert(msg);
     assert(response);
 
-    ssize_t length;
-    int size = strlen(msg);
     int retval = -1;
     int attempts;
 
@@ -1811,6 +1809,8 @@ int pm_send_db(char *msg, char *response, int *sock)
             goto end;
         }
     }
+
+    int size = strlen(msg);
 
     // Send msg to Wazuh DB
     if (OS_SendSecureTCP(*sock, size + 1, msg) != 0)
@@ -1850,6 +1850,8 @@ int pm_send_db(char *msg, char *response, int *sock)
             goto end;
         }
     }
+
+    ssize_t length;
 
     // Receive response from socket
     length = OS_RecvSecureTCP(*sock, response, OS_SIZE_6144);
