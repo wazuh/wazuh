@@ -1634,7 +1634,7 @@ int sc_send_db(char *msg, int *sock) {
             goto end;
 
         default:
-            response[length] = '\0';
+            response[length >= 0 ? length : 0] = '\0';
 
             if (strcmp(response, "ok")) {
                 merror("at sc_send_db(): received: '%s'", response);

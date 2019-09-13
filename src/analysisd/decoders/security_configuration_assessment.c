@@ -1636,7 +1636,9 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
         fillData(lf, "sca.check.result", result->valuestring);
     } else {
         fillData(lf, "sca.check.status", status->valuestring);
-        fillData(lf, "sca.check.reason", reason->valuestring);
+        if (reason) {
+            fillData(lf, "sca.check.reason", reason->valuestring);
+        }
     }
 
     if(old_result) {
@@ -1865,7 +1867,7 @@ int pm_send_db(char *msg, char *response, int *sock)
         goto end;
 
     default:
-        response[length] = '\0';
+        response[length >= 0 ? length : 0] = '\0';
 
         mdebug1("Got wazuh-db response: %s", response);
         if (strncmp(response, "ok", 2))

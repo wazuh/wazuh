@@ -1079,8 +1079,15 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
     }
 
     output = strchr(response, ' ');
-    *(output++) = '\0';
 
+    if (!output) {
+        merror("FIM decoder: Bad formatted response '%s'", response);
+        os_free(wazuhdb_query);
+        os_free(response);
+        return (-1);
+    }
+
+    *(output++) = '\0';
     *ts = atol(output);
 
     mdebug2("Agent '%s' FIM end_scan '%ld'", lf->agent_id, *ts);
