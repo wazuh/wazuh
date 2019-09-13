@@ -743,12 +743,12 @@ void send_win32_info(time_t curr_time)
         if (File_DateofChange(AGENTCONFIGINT) > 0) {
             os_md5 md5sum;
             if (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) != 0) {
-                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n", __win32_uname, tmp_labels, __win32_shared, label_ip);
+                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s\n%s%s%s\n", CONTROL_HEADER, __win32_uname, tmp_labels, __win32_shared, label_ip);
             } else {
-                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n", __win32_uname, md5sum, tmp_labels, __win32_shared, label_ip);
+                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s / %s\n%s%s%s\n", CONTROL_HEADER, __win32_uname, md5sum, tmp_labels, __win32_shared, label_ip);
             }
         } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n", __win32_uname, tmp_labels, __win32_shared, label_ip);
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s\n%s%s%s\n", CONTROL_HEADER, __win32_uname, tmp_labels, __win32_shared, label_ip);
         }
 
         free(agent_ip);
@@ -757,12 +757,12 @@ void send_win32_info(time_t curr_time)
         if (File_DateofChange(AGENTCONFIGINT) > 0) {
             os_md5 md5sum;
             if (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) != 0) {
-                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s", __win32_uname, tmp_labels, __win32_shared);
+                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s\n%s%s", CONTROL_HEADER, __win32_uname, tmp_labels, __win32_shared);
             } else {
-                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s", __win32_uname, md5sum, tmp_labels, __win32_shared);
+                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s / %s\n%s%s", CONTROL_HEADER, __win32_uname, md5sum, tmp_labels, __win32_shared);
             }
         } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s", __win32_uname, tmp_labels, __win32_shared);
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s\n%s%s", CONTROL_HEADER, __win32_uname, tmp_labels, __win32_shared);
         }
     }
 

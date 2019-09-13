@@ -131,11 +131,11 @@ void run_notify()
     rand_keepalive_str2(keep_alive_random, KEEPALIVE_SIZE);
 
 #if defined (__linux__) || defined (__MACH__)
-    char *agent_ip;
+    char agent_ip[IPSIZE + 1];
     int sock;
     char label_ip[60];
     int i;
-    os_calloc(IPSIZE + 1,sizeof(char),agent_ip);
+    *agent_ip = '\0';
 
     for (i = SOCK_ATTEMPTS; i > 0; --i) {
         if (sock = control_check_connection(), sock >= 0) {
@@ -168,32 +168,24 @@ void run_notify()
     if(*agent_ip && strcmp(agent_ip,"Err")){
         if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n%s",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s / %s\n%s%s%s\n%s", CONTROL_HEADER,
                     getuname(), md5sum, tmp_labels, shared_files, label_ip, keep_alive_random);
         } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n%s",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s\n%s%s%s\n%s", CONTROL_HEADER,
                     getuname(), tmp_labels, shared_files, label_ip, keep_alive_random);
         }
     }
     else{
+#endif
         if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n%s",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s / %s\n%s%s\n%s", CONTROL_HEADER,
                     getuname(), md5sum, tmp_labels, shared_files, keep_alive_random);
         } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n%s",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s\n%s%s\n%s", CONTROL_HEADER,
                     getuname(), tmp_labels, shared_files, keep_alive_random);
         }
-    }
-    free(agent_ip);
-#else
-    if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
-            (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
-        snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n%s",
-                getuname(), md5sum, tmp_labels, shared_files, keep_alive_random);
-    } else {
-        snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n%s",
-                getuname(), tmp_labels, shared_files, keep_alive_random);
+#if defined (__linux__) || defined (__MACH__)
     }
 #endif
 
