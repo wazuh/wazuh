@@ -21,8 +21,6 @@ volatile int audit_db_consistency_flag;
 #include "syscheck.h"
 #include "syscheck_op.h"
 
-static pthread_mutex_t adddir_mutex;
-
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
 
@@ -34,8 +32,6 @@ static pthread_mutex_t adddir_mutex;
 int realtime_start()
 {
     minfo(FIM_REALTIME_STARTING);
-
-    w_mutex_init(&adddir_mutex, NULL);
 
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
     if (syscheck.realtime == NULL) {
@@ -188,6 +184,9 @@ void free_syscheck_dirtb_data(char *data) {
 
 
 #elif defined(WIN32)
+
+static pthread_mutex_t adddir_mutex;
+
 typedef struct _win32rtfim {
     HANDLE h;
     OVERLAPPED overlap;
@@ -260,6 +259,8 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
                             finalfile);
                 }
             }
+
+            Sleep(syscheck.rt_delay);
 
             /* Check the change */
             str_lowercase(final_path);

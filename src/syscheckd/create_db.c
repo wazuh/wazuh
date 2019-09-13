@@ -45,14 +45,12 @@ int fim_scan() {
     clock_t begin = clock();
 
     while (syscheck.dir[position] != NULL) {
-        minfo("fim_scan(%d): '%s'", FIM_MODE(syscheck.opts[position]), syscheck.dir[position]);
-        fim_process_event(syscheck.dir[position], FIM_MODE(syscheck.opts[position]), NULL);
+        minfo("fim_scan(%d): '%s'", FIM_SCHEDULED, syscheck.dir[position]);
+        fim_process_event(syscheck.dir[position], FIM_SCHEDULED, NULL);
         position++;
     }
 
     clock_t end = clock();
-    minfo("The scan has been running during: %f sec.", (double)(end - begin) / CLOCKS_PER_SEC);
-    print_hash_tables();
 
     if (_base_line == 0) {
         _base_line = 1;
@@ -61,19 +59,20 @@ int fim_scan() {
     }
 
     minfo(FIM_FREQUENCY_ENDED);
+    minfo("The scan has been running during: %f sec.", (double)(end - begin) / CLOCKS_PER_SEC);
+    print_hash_tables();
 
     return 0;
 }
 
 
-int fim_directory (char * path, int dir_position, whodata_evt * w_evt) {
+int fim_directory (char * path, int dir_position, fim_event_mode mode, whodata_evt * w_evt) {
     DIR *dp;
     struct dirent *entry;
     char *f_name;
     char *s_name;
     char linked_read_file[PATH_MAX + 1] = {'\0'};
     int options;
-    fim_event_mode mode = 0;
     size_t path_size;
     short is_nfs;
 
@@ -103,12 +102,7 @@ int fim_directory (char * path, int dir_position, whodata_evt * w_evt) {
     }
 
     if (options & REALTIME_ACTIVE) {
-        mode = FIM_REALTIME;
         realtime_adddir(path, 0);
-    } else if (options & WHODATA_ACTIVE) {
-        mode = FIM_WHODATA;
-    } else {
-        mode = FIM_SCHEDULED;
     }
 
     os_calloc(PATH_MAX + 2, sizeof(char), f_name);
@@ -162,32 +156,36 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
     if (w_stat(file_name, &file_stat) < 0) {
         delete_target_file(file_name);
         deleted_flag = 1;
-    }
-
-    //File attributes
-    if (entry_data = fim_get_data(file_name, file_stat, mode, options), !entry_data) {
-        merror("Couldn't get attributes for file: '%s'", file_name);
-        return OS_INVALID;
+    } else {
+        //File attributes
+        if (entry_data = fim_get_data(file_name, file_stat, mode, options), !entry_data) {
+            merror("Couldn't get attributes for file: '%s'", file_name);
+            return OS_INVALID;
+        }
     }
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
     if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file_name), !saved_data) {
         // New entry. Insert into hash table
-        if (fim_insert (file_name, entry_data) == -1) {
-            free_entry_data(entry_data);
-            os_free(entry_data);
-            w_mutex_unlock(&syscheck.fim_entry_mutex);
-            return OS_INVALID;
-        }
+        if (!deleted_flag) {
+            if (fim_insert (file_name, entry_data) == -1) {
+                free_entry_data(entry_data);
+                w_mutex_unlock(&syscheck.fim_entry_mutex);
+                return OS_INVALID;
+            }
 
-        if (_base_line) {
-            json_event = fim_json_event(file_name, NULL, entry_data, dir_position, FIM_ADD, mode, w_evt);
+            if (_base_line) {
+                json_event = fim_json_event(file_name, NULL, entry_data, dir_position, FIM_ADD, mode, w_evt);
+            }
+        } else {
+            // TODO: Delete this msg
+            merror("~~~~ deleted before add");
         }
     } else {
         // Delete file. Sending alert.
         if (deleted_flag) {
-            fim_delete (file_name);
             json_event = fim_json_event (file_name, NULL, saved_data, dir_position, FIM_DELETE, mode, w_evt);
+            fim_delete (file_name);
             // minfo("Deleting file '%s' checksum: '%s'", file_name, checksum);
         // Checking for changes
         } else {
@@ -195,14 +193,12 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
             if (json_event = fim_json_event(file_name, saved_data, entry_data, dir_position, FIM_MODIFICATION, mode, w_evt), json_event) {
                 if (fim_update (file_name, entry_data) == -1) {
                     free_entry_data(entry_data);
-                    os_free(entry_data);
                     w_mutex_unlock(&syscheck.fim_entry_mutex);
                     return OS_INVALID;
                 }
                 //set_integrity_index(file_name, entry_data);
             } else {
                 free_entry_data(entry_data);
-                os_free(entry_data);
             }
         }
     }
@@ -213,14 +209,12 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
         seechanges_addfile(file_name);
     }
 
-    if (json_event) {
+    if (json_event && _base_line) {
         // minfo("File '%s' checksum: '%s'", file_name, checksum);
-        if (_base_line || mode == FIM_WHODATA || mode == FIM_REALTIME) {
-            json_formated = cJSON_PrintUnformatted(json_event);
-            minfo("%s", json_formated);
-            send_syscheck_msg(json_formated);
-            os_free(json_formated);
-        }
+        json_formated = cJSON_PrintUnformatted(json_event);
+        minfo("%s", json_formated);
+        send_syscheck_msg(json_formated);
+        os_free(json_formated);
         cJSON_Delete(json_event);
     }
 
@@ -249,7 +243,8 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
 
     mdebug1("~~ fim_process_event mode('%d'):'%s' config:'%s'", mode, file, syscheck.dir[dir_position]);
 
-    if (FIM_MODE(syscheck.opts[dir_position]) == mode) {
+    // We need to process every event generated by scheduled scans because we need to alert about discarded events of real-time and Whodata mode
+    if (mode == FIM_SCHEDULED || mode == FIM_MODE(syscheck.opts[dir_position])) {
         depth = fim_check_depth(file, dir_position);
         //minfo("~~Depth from parent path: '%d' recursion level:'%d'", depth, syscheck.recursion_level[dir_position]);
         if(depth >= syscheck.recursion_level[dir_position]) {
@@ -274,7 +269,7 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
 
                 case FIM_DIRECTORY:
                     // Directory path
-                    fim_directory(file, dir_position, w_evt);
+                    fim_directory(file, dir_position, mode, w_evt);
                     break;
 #ifndef WIN32
                 case FIM_LINK:
@@ -297,27 +292,37 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
 
 void fim_audit_inode_event(whodata_evt * w_evt) {
     fim_inode_data * inode_data;
-    char **event_paths;
+    char *key_inodehash;
     int i = 0;
+
+    os_calloc(OS_SIZE_128, sizeof(char), key_inodehash);
+    snprintf(key_inodehash, OS_SIZE_128, "%s:%s", w_evt->dev, w_evt->inode);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    if (inode_data = OSHash_Get_ex(syscheck.fim_inode, w_evt->inode), inode_data) {
+    if (inode_data = OSHash_Get_ex(syscheck.fim_inode, key_inodehash), inode_data) {
+        char **event_paths = NULL;
         os_calloc(inode_data->items, sizeof(char*), event_paths);
 
         while(inode_data->paths && inode_data->paths[i] && i < inode_data->items) {
             os_strdup(inode_data->paths[i], event_paths[i]);
             i++;
         }
-    }
 
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-    for(; i > 0; i--) {
-        fim_process_event(event_paths[i - 1], FIM_WHODATA, w_evt);
-        os_free(event_paths[i]);
+        for(; i > 0; i--) {
+            fim_process_event(event_paths[i - 1], FIM_WHODATA, w_evt);
+            os_free(event_paths[i - 1]);
+        }
+        os_free(event_paths);
+    } else {
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+        if (w_evt->path) {
+            fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+        }
     }
-    os_free(event_paths);
 
     return;
 }
@@ -421,9 +426,11 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
         }
     }
 
+    data->dev = file_stat.st_dev;
     data->mode = mode;
     data->options = options;
     data->last_event = time(NULL);
+    data->scanned = 1;
     fim_get_checksum(data);
 
     return data;
@@ -495,7 +502,7 @@ int fim_insert (char * file, fim_entry_data * data) {
 
     // Function OSHash_Add_ex doesn't alloc memory for the data of the hash table
     os_calloc(OS_SIZE_16, sizeof(char), inode_key);
-    snprintf(inode_key, OS_SIZE_16, "%ld", data->inode);
+    snprintf(inode_key, OS_SIZE_16, "%ld:%ld", data->dev, data->inode);
 
     if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), !inode_data) {
         os_calloc(1, sizeof(fim_inode_data), inode_data);
@@ -584,14 +591,9 @@ int fim_delete (char * file_name) {
         os_calloc(OS_SIZE_16, sizeof(char), inode);
         snprintf(inode, OS_SIZE_16, "%ld", saved_data->inode);
         delete_inode_item(inode, file_to_delete);
-        // TODO: Send alert to manager (send_msg())
-#endif
-        rbtree_delete(syscheck.fim_entry, file_to_delete);
-        free_entry_data(saved_data);
-        os_free(saved_data);
-#ifndef WIN32
         os_free(inode);
 #endif
+        rbtree_delete(syscheck.fim_entry, file_to_delete);
         os_free(file_to_delete);
     }
 
@@ -601,22 +603,57 @@ int fim_delete (char * file_name) {
 
 // Deletes a path from the syscheck hash table structure and sends a deletion event on scheduled scans
 void check_deleted_files() {
+    cJSON * json_event = NULL;
+    char * json_formated;
+    char ** keys;
     int i;
-    char ** keys = rbtree_keys(syscheck.fim_entry);
+    int pos;
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    keys = rbtree_keys(syscheck.fim_entry);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     for (i = 0; keys[i] != NULL; i++) {
+
+        w_mutex_lock(&syscheck.fim_entry_mutex);
+
         fim_entry_data * data = rbtree_get(syscheck.fim_entry, keys[i]);
-        assert(data != NULL);
+
+        if (!data) {
+            w_mutex_unlock(&syscheck.fim_entry_mutex);
+            continue;
+        }
 
         // File doesn't exist so we have to delete it from the
         // hash tables and send a deletion event.
-        if (!data->scanned && data->mode == FIM_SCHEDULED) {
+        if (!data->scanned) {
             minfo("File '%s' has been deleted.", keys[i]);
+
+            if (pos = fim_configuration_directory(keys[i]), pos < 0) {
+                w_mutex_unlock(&syscheck.fim_entry_mutex);
+                continue;
+            }
+
+            json_event = fim_json_event (keys[i], NULL, data, pos, FIM_DELETE, FIM_SCHEDULED, NULL);
             fim_delete(keys[i]);
+
+            if (json_event) {
+                // minfo("File '%s' checksum: '%s'", file_name, checksum);
+                if (_base_line) {
+                    json_formated = cJSON_PrintUnformatted(json_event);
+                    minfo("%s", json_formated);
+                    send_syscheck_msg(json_formated);
+                    os_free(json_formated);
+                }
+                cJSON_Delete(json_event);
+            }
         } else {
              // File still exists. We only need to reset the scanned flag.
             data->scanned = 0;
         }
+
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
+
     }
 
     free_strarray(keys);
@@ -918,6 +955,7 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
 void free_entry_data(fim_entry_data * data) {
     os_free(data->user_name);
     os_free(data->group_name);
+    os_free(data);
 }
 
 

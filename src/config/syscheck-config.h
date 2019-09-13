@@ -102,6 +102,7 @@ typedef struct whodata_evt {
     char *effective_uid;  // Linux
     char *effective_name;  // Linux
     char *inode;  // Linux
+    char *dev;  // Linux
     int ppid;  // Linux
 #ifndef WIN32
     unsigned int process_id;
@@ -198,11 +199,12 @@ typedef struct fim_entry_data {
     char * user_name;
     char * group_name;
     unsigned int mtime;
-    long unsigned int inode;
+    unsigned long int inode;
     os_md5 hash_md5;
     os_sha1 hash_sha1;
     os_sha256 hash_sha256;
     // Options
+    unsigned long int dev;
     fim_event_mode mode;
     int options;
     time_t last_event;

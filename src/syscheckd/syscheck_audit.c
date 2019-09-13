@@ -67,6 +67,7 @@ static regex_t regexCompiled_items;
 static regex_t regexCompiled_inode;
 static regex_t regexCompiled_dir;
 static regex_t regexCompiled_syscall;
+static regex_t regexCompiled_dev;
 
 
 // Check if Auditd is installed and running
@@ -330,6 +331,11 @@ int init_regex(void) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "syscall");
         return -1;
     }
+    static const char *pattern_dev = " dev=([0-9]*:[0-9]*)";
+    if (regcomp(&regexCompiled_dev, pattern_dev, REG_EXTENDED)) {
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dev");
+        return -1;
+    }
     return 0;
 }
 
@@ -511,6 +517,7 @@ void audit_parse(char *buffer) {
     char *file_path = NULL;
     char *syscall = NULL;
     char *inode = NULL;
+    char *dev = NULL;
     char *real_path = NULL;
     whodata_evt *w_evt;
     unsigned int items = 0;
@@ -675,6 +682,20 @@ void audit_parse(char *buffer) {
                 snprintf (inode, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
                 w_evt->inode = strdup(inode);
                 free(inode);
+            }
+            // dev
+            if(regexec(&regexCompiled_dev, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_malloc(match_size + 1, dev);
+                snprintf (dev, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+
+                char *aux = wstr_chr(dev, ':');
+                *(aux++) = '\0';
+
+                os_calloc(OS_SIZE_64, sizeof(char), w_evt->dev);
+                snprintf(w_evt->dev, OS_SIZE_64, "%s%s", dev, aux);
+                snprintf(w_evt->dev, OS_SIZE_64, "%ld", strtol(w_evt->dev, NULL, 16));
+                free(dev);
             }
 
             // TODO: Verify all case events
