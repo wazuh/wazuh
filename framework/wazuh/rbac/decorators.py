@@ -21,7 +21,7 @@ def _get_required_permissions(actions: list = None, resources: str = None, **kwa
     :return: Dictionary with required actions as keys and a list of required resources as values
     """
     # We expose required resources for the request
-    m = re.search(r'^(\w+\:\w+:)(\w+|\*|{(\w+)})$', resources)
+    m = re.search(r'^(\w+:\w+:)(\w+|\*|{(\w+)})$', resources)
     res_list = list()
     res_base = m.group(1)
     # If we find a '{' in the regex we obtain the dynamic resource/s
@@ -55,25 +55,22 @@ def _expand_permissions(mode, odict):
         permissions['allow'] = set(permissions['allow'])
         permissions['deny'] = set(permissions['deny'])
 
-    def _update_set(index, key, agents_ids, remove=True):
-        if key == 'allow':
-            op_key = 'deny'
-        else:
-            op_key = 'allow'
+    def _update_set(index, key_effect, agents_ids_to_add, remove=True):
+        op_key = 'deny' if key_effect == 'allow' else 'allow'
         if remove:
-            odict[index][key].remove('*')
-        odict[index][key].update(agent_id for agent_id in agents_ids if agent_id not in odict[index][op_key])
+            odict[index][key_effect].remove('*')
+        odict[index][key_effect].update(agent_id for agent_id in agents_ids_to_add
+                                        if agent_id not in odict[index][op_key])
 
-    def _cleaner(odict, list_to_delete):
+    def _cleaner(odict_clean, list_to_delete):
         for key_to_delete in list_to_delete:
-            odict.pop(key_to_delete)
+            odict_clean.pop(key_to_delete)
 
     global agents
     if agents is None:
         agents = get_agents_info()
     agents_ids = list()
-    for agent in agents:
-        agents_ids.append(str(agent['id']).zfill(3))
+    agents_ids.append(str(agent['id']).zfill(3) for agent in agents)
 
     # At the moment it is only used for groups
     clean = set()
@@ -107,21 +104,18 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     :param rbac: User permissions
     :return: Allow or deny
     """
-    mode = rbac[0]
-    user_permissions = rbac[1]
-    allow_match = []
+    mode, user_permissions = rbac
+    allow_match = list()
     for req_action, req_resources in req_permissions.items():
         agent_expand = False
         for req_resource in req_resources:
             try:
                 user_resources = user_permissions[req_action]
-                m = re.search(r'^(\w+\:\w+)(:)([\w\-\.\/]+|\*)$', req_resource)
+                m = re.search(r'^(\w+:\w+)(:)([\w\-./]+|\*)$', req_resource)
                 if m.group(1) == 'agent:id' or m.group(1) == 'agent:group':
-                    # Expand *
+                    # Expand * for agent:id and agent:group
                     if not agent_expand:
                         _expand_permissions(mode, user_resources)
-                        user_resources['agent:id']['allow'] = set(user_resources['agent:id']['allow'])
-                        user_resources['agent:id']['deny'] = set(user_resources['agent:id']['deny'])
                         agent_expand = True
                     if req_resource.split(':')[-1] == '*':  # Expand
                         reqs = user_resources[m.group(1)]['allow']
@@ -132,15 +126,13 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
                         if split_req in user_resources['agent:id']['allow'] and \
                                 split_req not in user_resources['agent:id']['deny']:
                             allow_match.append(split_req)
-                        elif split_req in user_resources['agent:id']['deny']:
-                            break
                 elif m.group(3) != '*':
                     allow_match.append(m.group(3) in user_resources[m.group(1)]['allow']) or \
                                 ('*' in user_resources[m.group(1)]['allow'])
                 else:
                     allow_match.append('*' in user_resources[m.group(1)]['allow'])
             except KeyError:
-                if mode:  # For black mode
+                if mode:  # For black mode, if the resource is not specified, it will be allow
                     allow_match.append('*')
                     break
     return allow_match
