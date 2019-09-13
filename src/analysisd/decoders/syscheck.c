@@ -1167,6 +1167,19 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         }
     }
 
+    if (event_type == NULL) {
+        mdebug1("No member 'type' in Syscheck JSON payload");
+        return -1;
+    }
+
+    if (strcmp("added", event_type) == 0) {
+        lf->event_type = FIM_ADDED;
+    } else if (strcmp("modified", event_type) == 0) {
+        lf->event_type = FIM_MODIFIED;
+    } else if (strcmp("deleted", event_type) == 0) {
+        lf->event_type = FIM_DELETED;
+    }
+
     fim_generate_alert(sdb, lf, mode, event_type, event_time, attributes, old_attributes, audit);
 
     return 0;

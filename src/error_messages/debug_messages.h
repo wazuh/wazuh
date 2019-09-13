@@ -185,13 +185,15 @@
 #define FIM_WHODATA_IGNORE_FILEEVENT        "(6309): Ignoring remove event for file '%s' because it has already been reported."
 #define FIM_CHECKSUM_MSG                    "(6310): Sending msg to the server: '%s'."
 #define FIM_PATH_EXEED_MAX                  "(6311): The path exeed maximum permited (%d): '%s'."
-#define FIM_PROCESS_PRIORITY                    "(6201): Setting process priority to: '%d'"
+#define FIM_PROCESS_PRIORITY                "(6201): Setting process priority to: '%d'"
+#define FIM_SEND                            "(6202): Sending event: %s"
 
 #define FIM_DBSYNC_NO_ARGUMENT              "(6312): Data synchronization command '%s' with no argument."
 #define FIM_DBSYNC_UNKNOWN_CMD              "(6313): Unknown data synchronization command: %s."
 #define FIM_DBSYNC_INVALID_ARGUMENT         "(6314): Invalid data synchronization argument: %s."
 #define FIM_DBSYNC_DEC_ID                   "(6315): Setting global ID back to lower message ID (%ld)."
 #define FIM_DBSYNC_DROP_MESSAGE             "(6316): Dropping message with id (%ld) greater than global id (%ld)."
-#define FIM_DBSYNC_SEND_FILE                "(6317): Sending file entry '%s'."
+#define FIM_DBSYNC_SEND                     "(6317): Sending control message: %s"
+
 
 #endif

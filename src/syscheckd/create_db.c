@@ -66,7 +66,7 @@ int fim_scan() {
 }
 
 
-int fim_directory (char * path, int dir_position, int mode, whodata_evt * w_evt) {
+int fim_directory (char * path, int dir_position, fim_event_mode mode, whodata_evt * w_evt) {
     DIR *dp;
     struct dirent *entry;
     char *f_name;

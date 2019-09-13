@@ -150,7 +150,7 @@ void fim_sync_checksum() {
     free_strarray(keys);
 }
 
-void fim_sync_checksum_split(const char * start, const char * top) {
+void fim_sync_checksum_split(const char * start, const char * top, long id) {
     cJSON * entry_data = NULL;
     char ** keys;
     int n;
@@ -204,17 +204,16 @@ void fim_sync_checksum_split(const char * start, const char * top) {
 
             EVP_DigestFinal_ex(ctx_left, digest, &digest_size);
             OS_SHA1_Hexdigest(digest, hexdigest);
-            char * plain = dbsync_check_msg("syscheck", 1, keys[0], keys[m - 1], keys[m], hexdigest);
+            char * plain = dbsync_check_msg("syscheck", id, keys[0], keys[m - 1], keys[m], hexdigest);
             fim_send_sync_msg(plain);
             free(plain);
 
             EVP_DigestFinal_ex(ctx_right, digest, &digest_size);
             OS_SHA1_Hexdigest(digest, hexdigest);
-            plain = dbsync_check_msg("syscheck", 1, keys[m], keys[n - 1], "", hexdigest);
+            plain = dbsync_check_msg("syscheck", id, keys[m], keys[n - 1], "", hexdigest);
             fim_send_sync_msg(plain);
             free(plain);
         } else {
-            mdebug2(FIM_DBSYNC_SEND_FILE, cJSON_GetStringValue(cJSON_GetObjectItem(entry_data, "file")));
             char * plain = dbsync_file_msg("syscheck", entry_data);
             fim_send_sync_msg(plain);
             free(plain);
@@ -242,8 +241,6 @@ void fim_sync_send_list(const char * start, const char * top) {
 
         cJSON * entry_data = fim_entry_json(keys[i], data);
         w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-        mdebug2(FIM_DBSYNC_SEND_FILE, keys[i]);
 
         char * plain = dbsync_file_msg("syscheck", entry_data);
         fim_send_sync_msg(plain);
@@ -301,7 +298,7 @@ void fim_sync_dispatch(char * payload) {
     }
 
     if (strcmp(command, "checksum_fail") == 0) {
-        fim_sync_checksum_split(begin, end);
+        fim_sync_checksum_split(begin, end, id->valuedouble);
     } else if (strcmp(command, "no_data") == 0) {
         fim_sync_send_list(begin, end);
     } else {

@@ -72,7 +72,7 @@ cJSON *getSyscheckInternalOptions(void);
 int fim_scan();
 
 //
-int fim_directory (char * path, int dir_position, int mode, whodata_evt * w_evt);
+int fim_directory (char * path, int dir_position, fim_event_mode mode, whodata_evt * w_evt);
 
 //
 int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, whodata_evt * w_evt);
@@ -252,7 +252,7 @@ int fim_delete_hashes(char *file_name);
 #endif
 
 void fim_sync_checksum();
-void fim_sync_checksum_split(const char * start, const char * top);
+void fim_sync_checksum_split(const char * start, const char * top, long id);
 void fim_sync_send_list(const char * start, const char * top);
 void fim_sync_dispatch(char * payload);
 long fim_sync_last_message();

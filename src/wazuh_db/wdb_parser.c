@@ -492,6 +492,18 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         }
 
         return 0;
+    } else if (strcmp(curr, "clear") == 0) {
+        switch (wdbi_query_clear(wdb, WDB_FIM)) {
+        case -1:
+            mdebug1("DB(%s) Cannot query FIM range checksum.", wdb->agent_id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
+            return -1;
+
+        default:
+            snprintf(output, OS_MAXSTR + 1, "ok ");
+        }
+
+        return 0;
     } else {
         mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
         mdebug2("DB query error near: %s", curr);
