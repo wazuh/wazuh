@@ -46,8 +46,17 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb);
 static int fim_process_alert(_sdb *sdb, Eventinfo *lf, cJSON *event);
 
 // Generate fim alert
-static int fim_generate_alert(_sdb *sdb, Eventinfo *lf, char *mode, char *event_type,
+static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
         time_t event_time, cJSON *attributes, cJSON *old_attributes, cJSON *audit);
+
+// Send save query to Wazuh DB
+static void fim_send_db_save(_sdb * sdb, const char * agent_id, cJSON * data);
+
+// Send delete query to Wazuh DB
+void fim_send_db_delete(_sdb * sdb, const char * agent_id, const char * path);
+
+// Send a query to Wazuh DB
+void fim_send_db_query(int * sock, const char * query);
 
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -1173,13 +1182,92 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         lf->event_type = FIM_DELETED;
     }
 
-    fim_generate_alert(sdb, lf, mode, event_type, event_time, attributes, old_attributes, audit);
+    fim_generate_alert(lf, mode, event_type, event_time, attributes, old_attributes, audit);
+
+    switch (lf->event_type) {
+    case FIM_ADDED:
+    case FIM_MODIFIED:
+        fim_send_db_save(sdb, lf->agent_id, event);
+        break;
+
+    case FIM_DELETED:
+        fim_send_db_delete(sdb, lf->agent_id, lf->filename);
+
+    default:
+        ;
+    }
 
     return 0;
 }
 
+void fim_send_db_save(_sdb * sdb, const char * agent_id, cJSON * data) {
+    cJSON_DeleteItemFromObject(data, "mode");
+    cJSON_DeleteItemFromObject(data, "type");
+    cJSON_DeleteItemFromObject(data, "tags");
+    cJSON_DeleteItemFromObject(data, "content_changes");
+    cJSON_DeleteItemFromObject(data, "changed_attributes");
+    cJSON_DeleteItemFromObject(data, "old_attributes");
+    cJSON_DeleteItemFromObject(data, "audit");
 
-static int fim_generate_alert(_sdb * sdb, Eventinfo *lf, char *mode, char *event_type,
+    char * data_plain = cJSON_PrintUnformatted(data);
+    char * query;
+
+    os_malloc(OS_MAXSTR, query);
+
+    if (snprintf(query, OS_MAXSTR, "agent %s syscheck save2 %s", agent_id, data_plain) >= OS_MAXSTR) {
+        merror("FIM decoder: Cannot build save query: input is too long.");
+        goto end;
+    }
+
+    fim_send_db_query(&sdb->socket, query);
+
+end:
+    free(data_plain);
+    free(query);
+}
+
+void fim_send_db_delete(_sdb * sdb, const char * agent_id, const char * path) {
+    char query[OS_SIZE_6144];
+
+    if (snprintf(query, sizeof(query), "agent %s syscheck delete %s", agent_id, path) >= OS_MAXSTR) {
+        merror("FIM decoder: Cannot build save query: input is too long.");
+        return;
+    }
+
+    fim_send_db_query(&sdb->socket, query);
+}
+
+void fim_send_db_query(int * sock, const char * query) {
+    char * response;
+    char * arg;
+
+    os_malloc(OS_MAXSTR, response);
+
+    switch (wdbc_query_ex(sock, query, response, OS_MAXSTR)) {
+    case -2:
+        merror("FIM decoder: Cannot communicate with database.");
+        goto end;
+    case -1:
+        merror("FIM decoder: Cannot get response from database.");
+        goto end;
+    }
+
+    switch (wdbc_parse_result(response, &arg)) {
+    case WDBC_OK:
+        break;
+    case WDBC_ERROR:
+        merror("FIM decoder: Bad response from database: %s", arg);
+        // Fallthrough
+    default:
+        goto end;
+    }
+
+end:
+    free(response);
+}
+
+
+static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
     time_t event_time, cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
 
     cJSON *object = NULL;
@@ -1193,7 +1281,6 @@ static int fim_generate_alert(_sdb * sdb, Eventinfo *lf, char *mode, char *event
     char change_mtime[OS_FLSIZE + 1] = {'\0'};
     char change_inode[OS_FLSIZE + 1] = {'\0'};
     char change_win_attributes[OS_SIZE_256 + 1] = {'\0'};
-    int db_result = 0;
     int it;
 
     /* Dynamic Fields */
@@ -1385,39 +1472,6 @@ static int fim_generate_alert(_sdb * sdb, Eventinfo *lf, char *mode, char *event
             change_win_attributes
             //lf->fields[FIM_SYM_PATH].value
     );
-
-    char wdb_query[6144];
-    char response[6144];
-
-    snprintf(wdb_query, OS_SIZE_6144, "agent %s syscheck save file "
-            "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s!0:%ld:%s: %s",
-            lf->agent_id,
-            //ttype,
-            lf->fields[FIM_SIZE].value,
-            lf->fields[FIM_PERM].value,
-            lf->fields[FIM_UID].value,
-            lf->fields[FIM_GID].value,
-            lf->fields[FIM_UNAME].value,
-            lf->fields[FIM_GNAME].value,
-            lf->fields[FIM_MTIME].value,
-            lf->fields[FIM_INODE].value,
-            lf->fields[FIM_MD5].value,
-            lf->fields[FIM_SHA1].value,
-            lf->fields[FIM_SHA256].value,
-            lf->time.tv_sec,
-            lf->fields[FIM_SYM_PATH].value ? lf->fields[FIM_SYM_PATH].value : "",
-            lf->filename
-    );
-
-    db_result = wdbc_query_ex(&sdb->socket, wdb_query, response, sizeof(response) - 1);
-
-    switch (db_result) {
-    case -2:
-        merror("FIM decoder: Bad save/update query: '%s'.", wdb_query);
-        // Fallthrough
-    case -1:
-        return -1;
-    }
 
     return 0;
 }
