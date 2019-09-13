@@ -17,6 +17,7 @@ int wdb_mitre_attack_insert(wdb_t *wdb, char *id, char *json){
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_ATTACK_INSERT) < 0) {
         mdebug1("at wdb_mitre_attack_insert(): cannot cache statement");
+        w_mutex_unlock(&wdb->mutex);
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_MITRE_ATTACK_INSERT];
@@ -40,6 +41,7 @@ int wdb_mitre_phase_insert(wdb_t *wdb, char *attack_id, char *phase){
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_PHASE_INSERT) < 0) {
         mdebug1("at wdb_mitre_phase_insert(): cannot cache statement");
+        w_mutex_unlock(&wdb->mutex);
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_MITRE_PHASE_INSERT];
@@ -63,6 +65,7 @@ int wdb_mitre_platform_insert(wdb_t *wdb, char *attack_id, char *platform){
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_PLATFORM_INSERT) < 0) {
         mdebug1("at wdb_mitre_platform_insert(): cannot cache statement");
+        w_mutex_unlock(&wdb->mutex);
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_MITRE_PLATFORM_INSERT];
@@ -86,6 +89,7 @@ int wdb_mitre_attack_update(wdb_t *wdb, char *id, char *json){
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_ATTACK_UPDATE) < 0) {
         mdebug1("at wdb_mitre_attack_update(): cannot cache statement");
+        w_mutex_unlock(&wdb->mutex);
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_MITRE_ATTACK_UPDATE];
@@ -110,6 +114,7 @@ int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output){
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_ATTACK_GET) < 0) {
         mdebug1("at wdb_mitre_attack_get(): cannot cache statement");
+        w_mutex_unlock(&wdb->mutex);
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_MITRE_ATTACK_GET];
@@ -146,6 +151,7 @@ int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output, struct opt_
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_PHASE_GET) < 0) {
         mdebug1("at wdb_mitre_phases_get(): cannot cache statement");
+        w_mutex_unlock(&wdb->mutex);
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_MITRE_PHASE_GET];
@@ -209,6 +215,7 @@ int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output, struc
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_PLATFORM_GET) < 0) {
         mdebug1("at wdb_mitre_phases_get(): cannot cache statement");
+        w_mutex_unlock(&wdb->mutex);
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_MITRE_PLATFORM_GET];
@@ -266,6 +273,7 @@ int wdb_mitre_attack_find(wdb_t *wdb, char *id){
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_ATTACK_GET) < 0) {
         mdebug1("at wdb_mitre_attack_get(): cannot cache statement");
+        w_mutex_unlock(&wdb->mutex);
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_MITRE_ATTACK_GET];
@@ -294,6 +302,7 @@ int wdb_mitre_attack_delete(wdb_t *wdb, char *id){
     
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_ATTACK_DELETE) < 0) {
         mdebug1("at wdb_mitre_attack_delete(): cannot cache statement");
+        w_mutex_unlock(&wdb->mutex);
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_MITRE_ATTACK_DELETE];
@@ -316,6 +325,7 @@ int wdb_mitre_phase_delete(wdb_t *wdb, char *attack_id){
 
    if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_PHASE_DELETE) < 0) {
         mdebug1("at wdb_mitre_phase_delete(): cannot cache statement");
+        w_mutex_unlock(&wdb->mutex);
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_MITRE_PHASE_DELETE];
@@ -338,6 +348,7 @@ int wdb_mitre_platform_delete(wdb_t *wdb, char *attack_id){
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_PLATFORM_DELETE) < 0) {
         mdebug1("at wdb_mitre_phase_delete(): cannot cache statement");
+        w_mutex_unlock(&wdb->mutex);
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_MITRE_PLATFORM_DELETE];
