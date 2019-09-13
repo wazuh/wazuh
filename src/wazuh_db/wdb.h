@@ -154,8 +154,13 @@ struct opt_param {
 extern sqlite3 *wdb_global;
 extern wdb_t * db_global;
 
+/* Mitre SQLite database */
+extern sqlite3 *db_mitre;
+extern wdb_t * wdb_mitre;
+
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
+extern char *schema_mitre_sql;
 extern char *schema_upgrade_v1_sql;
 extern char *schema_upgrade_v2_sql;
 
@@ -183,6 +188,8 @@ int wdb_open_global();
  * @see wdb_upgrade
  */
 wdb_t * wdb_open_global2();
+
+wdb_t * wdb_open_mitre(); 
 
 /* Close global database */
 void wdb_close_global();
@@ -475,7 +482,7 @@ int wdb_mitre_platform_delete(wdb_t *wdb, char *id);
  * @brief It creates the 3 tables and filles them
  * @return Nothing
  */
-void wdb_mitre_load();
+void wdb_mitre_load(wdb_t *wdb);
 
 /**
  * @brief Create global database

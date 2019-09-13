@@ -105,6 +105,7 @@ static const char *SQL_STMT[] = {
 };
 
 sqlite3 *wdb_global = NULL;
+sqlite3 *db_mitre = NULL;
 wdb_config config;
 pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -189,6 +190,39 @@ wdb_t * wdb_open_global2() {
         }
     }
 
+end:
+    return wdb;
+}
+
+wdb_t * wdb_open_mitre() {
+    char path[PATH_MAX + 1];
+    char s_mitre[64] = "mitre";
+    wdb_t * wdb = NULL;
+
+    // Try to open DB
+    snprintf(path, OS_FLSIZE, "%s%s/%s", isChroot() ? "/" : "", WDB_DIR, WDB_MITRE_NAME);
+    
+    if (sqlite3_open_v2(path, &db_mitre, SQLITE_OPEN_READWRITE, NULL)) {
+        mdebug1("No SQLite mitre database found, creating.");
+        sqlite3_close_v2(db_mitre);
+
+        if (wdb_create_mitre(path) < 0) {
+            merror("Couldn't create SQLite database '%s'. Retrying to open again", path);
+        }
+
+        // Retry to open
+        if (sqlite3_open_v2(path, &db_mitre, SQLITE_OPEN_READWRITE, NULL)) {
+            merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db_mitre));
+            sqlite3_close_v2(db_mitre);
+            goto end;
+        
+        wdb = wdb_init(db_mitre, s_mitre);
+        //wdb_pool_append(wdb);
+        }
+    } else {
+        wdb = wdb_init(db_mitre, s_mitre);
+        //wdb_pool_append(wdb);
+    }
 end:
     return wdb;
 }
@@ -494,6 +528,14 @@ int wdb_create_global(const char *path) {
     else if (wdb_insert_info("max_agents", max_agents) < 0)
         return -1;
     else if (wdb_insert_info("openssl_support", "yes") < 0)
+        return -1;
+    else
+        return 0;
+}
+
+/* Create mitre database */
+int wdb_create_mitre(const char *path) {
+    if (wdb_create_file(path, schema_mitre_sql) < 0)
         return -1;
     else
         return 0;

@@ -215,6 +215,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WDB_DIR         "var/db"
 #define WDB2_DIR        "queue/db"
 #define WDB_GLOB_NAME   "global.db"
+#define WDB_MITRE_NAME  "mitre.db"
 #define WDB_PROF_NAME   ".template.db"
 
 /* Diff queue */
