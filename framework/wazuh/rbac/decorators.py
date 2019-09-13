@@ -64,6 +64,10 @@ def _expand_permissions(mode, odict):
             odict[index][key].remove('*')
         odict[index][key].update(agent_id for agent_id in agents_ids if agent_id not in odict[index][op_key])
 
+    def _cleaner(odict, list_to_delete):
+        for key_to_delete in list_to_delete:
+            odict.pop(key_to_delete)
+
     global agents
     if agents is None:
         agents = get_agents_info()
@@ -71,12 +75,16 @@ def _expand_permissions(mode, odict):
     for agent in agents:
         agents_ids.append(str(agent['id']).zfill(3))
 
+    # At the moment it is only used for groups
+    clean = set()
+
     for key in odict:
         if key == 'agent:id':
             _to_set(odict[key])
             _update_set(key, 'allow', agents_ids) if '*' in odict[key]['allow'] \
                 else _update_set(key, 'deny', agents_ids)
         elif key == 'agent:group':
+            clean.add(key)
             _to_set(odict[key])
             if 'agent:id' not in odict.keys():
                 odict['agent:id'] = {
@@ -87,7 +95,7 @@ def _expand_permissions(mode, odict):
 
     _update_set('agent:id', 'allow', agents_ids, False) if mode \
         else _update_set('agent:id', 'deny', agents_ids, False)
-    odict.pop('agent:group')
+    _cleaner(odict, clean)
 
     return odict
 
@@ -138,11 +146,12 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     return allow_match
 
 
-def expose_resources(actions: list = None, resources: str = None):
+def expose_resources(actions: list = None, resources: str = None, resource_name: str = None):
     """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
 
     :param actions: List of actions exposed by the framework function
     :param resources: List of resources exposed by the framework function
+    :param resource_name: Name of the input parameter used to calculate resource access
     :return: Allow or deny framework function execution
     """
     def decorator(func):
@@ -152,7 +161,7 @@ def expose_resources(actions: list = None, resources: str = None):
             allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
             if len(allow) > 0:
                 del kwargs['rbac']
-                kwargs['agent_id'] = allow
+                kwargs[resource_name] = allow
                 return func(*args, **kwargs)
             else:
                 raise WazuhError(4000)
