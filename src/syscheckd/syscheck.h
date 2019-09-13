@@ -300,7 +300,7 @@ cJSON * fim_attributes_json(const fim_entry_data * data);
  *     hash_md5:        string
  *     hash_sha1:       string
  *     hash_sha256:     string
- *     win_attributes:  number
+ *     win_attributes:  string
  *     symlink_path:    string
  *     checksum:        string
  *   }
