@@ -32,6 +32,7 @@
 #define NOT_SAME_SRCIP      0xffd /* 0xfff - 0x002 */
 #define NOT_SAME_ID         0xffb /* 0xfff - 0x004 */
 #define NOT_SAME_AGENT      0xff7 /* 0xfff - 0x008 */
+#define NOT_SAME_AGENT_ID   0xff3 
 
 /* Alert options - stored in a uint8 */
 #define DO_FTS          0x0001

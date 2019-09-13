@@ -76,7 +76,8 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
             goto end;
         }
 
-        if (strcmp(lf->agent_id, my_lf->agent_id)){
+        if (rule->context_opts & NOT_SAME_AGENT_ID) {
+        } else if (strcmp(lf->agent_id, my_lf->agent_id)){
             continue;
         }
 
@@ -300,7 +301,8 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
             goto end;
         }
 
-        if (strcmp(lf->agent_id, my_lf->agent_id)){
+        if (rule->context_opts & NOT_SAME_AGENT_ID) {
+        } else if (strcmp(lf->agent_id, my_lf->agent_id)){
             continue;
         }
 
@@ -512,8 +514,9 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             lf = NULL;
             goto end;
         }
-
-        if (strcmp(lf->agent_id, my_lf->agent_id)){
+        
+        if (rule->context_opts & NOT_SAME_AGENT_ID) {
+        } else if (strcmp(lf->agent_id, my_lf->agent_id)){
             continue;
         }
 
