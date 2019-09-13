@@ -13,7 +13,6 @@
 #include "os_net/os_net.h"
 #include "agentd.h"
 
-#ifndef WIN32
 static time_t g_saved_time = 0;
 static char *rand_keepalive_str2(char *dst, int size);
 
@@ -36,7 +35,6 @@ static char *rand_keepalive_str2(char *dst, int size)
     dst[i] = '\0';
     return dst;
 }
-#endif
 
 /* Return the names of the files in a directory */
 char *getsharedfiles()
@@ -62,11 +60,10 @@ char *getsharedfiles()
     return (ret);
 }
 
-#ifndef WIN32
-
 /* Periodically send notification to server */
 void run_notify()
 {
+    minfo("~~~~~~~~~~~~~~~~~~~~run_notify0   %d",  agt->max_time_reconnect_try);
     char keep_alive_random[KEEPALIVE_SIZE];
     char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE];
     static char tmp_labels[OS_MAXSTR - OS_HEADER_SIZE] = { '\0' };
@@ -80,17 +77,21 @@ void run_notify()
 #ifndef ONEWAY_ENABLED
     /* Check if the server has responded */
     if ((curr_time - available_server) > agt->max_time_reconnect_try) {
+        minfo("~~~~~~~~~~~~~~~~~~~~run_notify1.0   ");
         /* If response is not available, set lock and wait for it */
         mwarn(SERVER_UNAV);
         os_setwait();
         update_status(GA_STATUS_NACTIVE);
 
+        minfo("~~~~~~~~~~~~~~~~~~~~run_notify1.1   ");
         /* Send sync message */
         start_agent(0);
 
+        minfo("~~~~~~~~~~~~~~~~~~~~run_notify1.2   ");
         minfo(SERVER_UP);
         os_delwait();
         update_status(GA_STATUS_ACTIVE);
+        minfo("~~~~~~~~~~~~~~~~~~~~run_notify1.3   ");
     }
 #endif
 
@@ -177,6 +178,7 @@ void run_notify()
     }
     else{
 #endif
+        We need to add the Windows version of this algorithm
         if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s / %s\n%s%s\n%s", CONTROL_HEADER,
@@ -197,4 +199,3 @@ void run_notify()
     update_keepalive(curr_time);
     return;
 }
-#endif /* !WIN32 */
