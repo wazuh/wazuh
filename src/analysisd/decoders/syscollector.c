@@ -1564,9 +1564,7 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
 }
 
 int sc_send_db(char *msg, int *sock) {
-    char response[OS_SIZE_128 + 1];
-    ssize_t length;
-    int size = strlen(msg);
+
     int retval = -1;
     int attempts;
 
@@ -1588,6 +1586,8 @@ int sc_send_db(char *msg, int *sock) {
             goto end;
         }
     }
+
+    int size = strlen(msg);
 
     // Send msg to Wazuh DB
     if (OS_SendSecureTCP(*sock, size + 1, msg) != 0) {
@@ -1618,6 +1618,9 @@ int sc_send_db(char *msg, int *sock) {
             goto end;
         }
     }
+
+    char response[OS_SIZE_128 + 1];
+    ssize_t length;
 
     // Receive response from socket
     length = OS_RecvSecureTCP(*sock, response, OS_SIZE_128);
