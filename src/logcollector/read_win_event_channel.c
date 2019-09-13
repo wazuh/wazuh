@@ -386,7 +386,6 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     char *beg_prov = NULL;
     char *end_prov = NULL;
     char *find_prov = NULL;
-    char *final_msg_sent = NULL;
     size_t num;
 
     cJSON *event_json = cJSON_CreateObject();
@@ -493,7 +492,6 @@ cleanup:
     os_free(properties_values);
     os_free(provider_name);
     os_free(wprovider_name);
-    os_free(final_msg_sent);
     cJSON_Delete(event_json);
 
     return;
