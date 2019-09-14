@@ -401,6 +401,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
     const char *xml_interval = "interval";
     const char *xml_rotate = "rotate";
     const char *xml_compress = "compress";
+    const char *xml_maxage = "maxage";
 
     XML_NODE children = NULL;
     XML_NODE rotation_children = NULL;
@@ -414,6 +415,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
     Config->alerts_rotate = -1;
     Config->alerts_rotation_enabled = 1;
     Config->alerts_compress_rotation = 1;
+    Config->alerts_maxage = 31;
     Config->alerts_log_plain = 0;
     Config->alerts_log_json = 0;
 
@@ -423,6 +425,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
     Config->archives_rotate = -1;
     Config->archives_rotation_enabled = 1;
     Config->archives_compress_rotation = 1;
+    Config->archives_maxage = 31;
     Config->archives_log_plain = 0;
     Config->archives_log_json = 0;
 
@@ -566,7 +569,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                             char *end;
                             Config->alerts_rotate = strtol(rotation_children[k]->content, &end, 10);
                             if(Config->alerts_rotate < 2 && Config->alerts_rotate != -1) {
-                                mwarn("Minimum value for 'rotate' in <alertes> not allowed. It will be set to 2.");
+                                mwarn("Minimum value for 'rotate' in <alerts> not allowed. It will be set to 2.");
                                 Config->alerts_rotate = 2;
                             }
                             if (*end != '\0') {
@@ -596,6 +599,19 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return(OS_INVALID);
+                            }
+                        } else if(strcmp(rotation_children[k]->element, xml_maxage) == 0) {
+                            char *end;
+                            Config->alerts_maxage = strtol(rotation_children[k]->content, &end, 10);
+                            if(Config->alerts_maxage < 0 || Config->alerts_maxage > 500) {
+                                mwarn("Value for 'maxage' in <alerts> out of bounds [0-500]. It will be set to 31 days.");
+                                Config->alerts_maxage = 31;
+                            }
+                            if (*end != '\0') {
+                                merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                OS_ClearNode(rotation_children);
+                                OS_ClearNode(children);
+                                return OS_INVALID;
                             }
                         } else {
                             merror(XML_ELEMNULL);
@@ -774,6 +790,19 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return(OS_INVALID);
+                            }
+                        } else if(strcmp(rotation_children[k]->element, xml_maxage) == 0) {
+                            char *end;
+                            Config->archives_maxage = strtol(rotation_children[k]->content, &end, 10);
+                            if(Config->archives_maxage < 0 || Config->archives_maxage > 500) {
+                                mwarn("Value for 'maxage' in <archives> out of bounds [0-500]. It will be set to 31 days.");
+                                Config->archives_maxage = 31;
+                            }
+                            if (*end != '\0') {
+                                merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                OS_ClearNode(rotation_children);
+                                OS_ClearNode(children);
+                                return OS_INVALID;
                             }
                         } else {
                             merror(XML_ELEMNULL);

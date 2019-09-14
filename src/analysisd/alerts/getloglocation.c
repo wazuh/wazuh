@@ -260,6 +260,11 @@ void OS_RotateLogs(int day,int year,char *mon) {
     char c_ejflogfile[OS_FLSIZE + 1];
     char c_elogfile[OS_FLSIZE + 1];
     char *previous_log = NULL;
+    char path_alerts[PATH_MAX];
+    char path_archives[PATH_MAX];
+
+    snprintf(path_alerts, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGALERTS);
+    snprintf(path_archives, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGARCHIVES);
 
     gettime(&local_timespec);
 
@@ -292,6 +297,7 @@ void OS_RotateLogs(int day,int year,char *mon) {
                             }
                         }
                     }
+                    remove_old_logs(path_alerts, Config.alerts_maxage, "alerts");
                     add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
                     os_free(previous_log);
                 }
@@ -321,6 +327,7 @@ void OS_RotateLogs(int day,int year,char *mon) {
                             }
                         }
                     }
+                    remove_old_logs(path_alerts, Config.alerts_maxage, "alerts");
                     add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
                     os_free(previous_log);
                 }
@@ -354,6 +361,7 @@ void OS_RotateLogs(int day,int year,char *mon) {
                             }
                         }
                     }
+                    remove_old_logs(path_archives, Config.archives_maxage, "archives");
                     add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
                     os_free(previous_log);
                 }
@@ -383,6 +391,7 @@ void OS_RotateLogs(int day,int year,char *mon) {
                             }
                         }
                     }
+                    remove_old_logs(path_archives, Config.archives_maxage, "archive");
                     add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
                     os_free(previous_log);
                 }
@@ -418,6 +427,7 @@ void OS_RotateLogs(int day,int year,char *mon) {
                         }
                     }
                 }
+                remove_old_logs(path_alerts, Config.alerts_maxage, "alerts");
                 add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
                 os_free(previous_log);
                 __alerts_rsec = local_timespec.tv_sec;
@@ -448,6 +458,7 @@ void OS_RotateLogs(int day,int year,char *mon) {
                         }
                     }
                 }
+                remove_old_logs(path_alerts, Config.alerts_maxage, "alerts");
                 add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
                 os_free(previous_log);
                 __alerts_rsec = local_timespec.tv_sec;
@@ -482,6 +493,7 @@ void OS_RotateLogs(int day,int year,char *mon) {
                         }
                     }
                 }
+                remove_old_logs(path_archives, Config.archives_maxage, "archive");
                 add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
                 os_free(previous_log);
                 __archives_rsec = local_timespec.tv_sec;
@@ -512,6 +524,7 @@ void OS_RotateLogs(int day,int year,char *mon) {
                         }
                     }
                 }
+                remove_old_logs(path_archives, Config.archives_maxage, "archive");
                 add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
                 os_free(previous_log);
                 __archives_rsec = local_timespec.tv_sec;

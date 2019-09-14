@@ -213,7 +213,7 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
     const char *xml_interval = "interval";
     const char *xml_rotate = "rotate";
     const char *xml_compress = "compress";
-    const char *xml_keep = "keep";
+    const char *xml_maxage = "maxage";
     const char *xml_day_wait = "day_wait";
     const char *xml_daily_rotations = "daily_rotations";
 
@@ -405,7 +405,7 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                 OS_ClearNode(children);
                                 return(OS_INVALID);
                             }
-                        } else if(strcmp(rotation_children[k]->element, xml_keep) == 0) {
+                        } else if(strcmp(rotation_children[k]->element, xml_maxage) == 0) {
                             char *end;
                             rotation_config->maxage = strtol(rotation_children[k]->content, &end, 10);
                             if (rotation_config->maxage < 0) {

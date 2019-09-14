@@ -31,10 +31,6 @@ static const char * MONTHS[] = {
     "Dec"
 };
 
-static void remove_old_logs(const char *base_dir, int maxage);
-static void remove_old_logs_y(const char * base_dir, int year, time_t threshold);
-static void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold);
-
 char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int rotate_json, int daily_rotations, int last_counter) {
     char year_dir[PATH_MAX];
     char month_dir[PATH_MAX];
@@ -168,146 +164,10 @@ char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int ro
 
     minfo("Starting new log after rotation.");
     // Remove old compressed files
-    remove_old_logs(log_dir, maxage);
+    remove_old_logs(log_dir, maxage, "logs");
     os_free(dir);
     if(rotate_json)
         return strdup(new_path_json);
     else
         return strdup(new_path);
-}
-
-void remove_old_logs(const char *base_dir, int maxage) {
-    time_t threshold = time(NULL) - (maxage + 1) * 86400;
-    char path[PATH_MAX];
-    int year;
-    DIR *dir;
-    struct dirent *dirent;
-
-    if (dir = opendir(base_dir), !dir) {
-        merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
-        return;
-    }
-
-    while (dirent = readdir(dir), dirent) {
-        // Skip "." and ".."
-        if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
-            continue;
-        }
-
-        if (sscanf(dirent->d_name, "%d", &year) > 0) {
-            snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-            remove_old_logs_y(path, year, threshold);
-        }
-    }
-
-    closedir(dir);
-}
-
-void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
-    char path[PATH_MAX];
-    int month;
-    DIR *dir;
-    struct dirent *dirent;
-
-    if (dir = opendir(base_dir), !dir) {
-        merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
-        return;
-    }
-
-    while (dirent = readdir(dir), dirent) {
-        // Skip "." and ".."
-        if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
-            continue;
-        }
-
-        // Find month
-
-        for (month = 0; month < 12; month++) {
-            if (strcmp(dirent->d_name, MONTHS[month]) == 0) {
-                break;
-            }
-        }
-
-        snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-
-        if (month < 12) {
-            remove_old_logs_m(path, year, month, threshold);
-        } else {
-            mwarn("Unexpected folder '%s'", path);
-        }
-    }
-
-    closedir(dir);
-}
-
-void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold) {
-    char path[PATH_MAX];
-    DIR *dir;
-    int day;
-    struct dirent *dirent;
-    time_t now = time(NULL);
-    struct tm tm;
-    int counter;
-
-    localtime_r(&now, &tm);
-
-    tm.tm_year = year - 1900;
-    tm.tm_mon = month;
-    tm.tm_hour = 0;
-    tm.tm_min = 0;
-    tm.tm_sec = 0;
-
-    if (dir = opendir(base_dir), !dir) {
-        merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
-        return;
-    }
-
-    while (dirent = readdir(dir), dirent) {
-        // Skip "." and ".."
-        if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
-            continue;
-        }
-
-        if (sscanf(dirent->d_name, "ossec-logs-%02d.log", &day) > 0) {
-            tm.tm_mday = day;
-
-            if (mktime(&tm) <= threshold) {
-                snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
-                unlink(path);
-            }
-        }
-
-        if (sscanf(dirent->d_name, "ossec-logs-%02d-%03d.log", &day, &counter) > 0) {
-            tm.tm_mday = day;
-
-            if (mktime(&tm) <= threshold) {
-                snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
-                unlink(path);
-            }
-        }
-
-        if (sscanf(dirent->d_name, "ossec-logs-%02d.json", &day) > 0) {
-            tm.tm_mday = day;
-
-            if (mktime(&tm) <= threshold) {
-                snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
-                unlink(path);
-            }
-        }
-
-        if (sscanf(dirent->d_name, "ossec-logs-%02d-%03d.json", &day, &counter) > 0) {
-            tm.tm_mday = day;
-
-            if (mktime(&tm) <= threshold) {
-                snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
-                unlink(path);
-            }
-        }
-    }
-
-    closedir(dir);
 }

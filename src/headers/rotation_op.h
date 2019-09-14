@@ -47,4 +47,8 @@ void purge_rotation_list(rotation_list *list, int keep_files);
 // Add a new node to the rotation list
 void add_new_rotation_node(rotation_list *list, char *value, int keep_files);
 
+void remove_old_logs(const char *base_dir, int maxage, const char *type);
+void remove_old_logs_y(const char * base_dir, int year, time_t threshold, const char *type);
+void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold, const char *type);
+
 #endif

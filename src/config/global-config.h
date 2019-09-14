@@ -120,6 +120,7 @@ typedef struct __Config {
     long int archives_max_size;
     long int archives_interval;
     int archives_rotate;
+    int archives_maxage;
     rotation_list *log_archives_plain;
     rotation_list *log_archives_json;
 
@@ -133,6 +134,7 @@ typedef struct __Config {
     long int alerts_max_size;
     long int alerts_interval;
     int alerts_rotate;
+    int alerts_maxage;
     rotation_list *log_alerts_plain;
     rotation_list *log_alerts_json;
 

@@ -29,6 +29,8 @@
 #ifndef WIN32
 #define LOGFILE   "/logs/ossec.log"
 #define LOGJSONFILE "/logs/ossec.json"
+#define LOGALERTS "/logs/alerts"
+#define LOGARCHIVES "/logs/archives"
 #define _PRINTF_FORMAT printf
 #else
 #define LOGFILE "ossec.log"

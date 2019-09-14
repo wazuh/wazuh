@@ -339,6 +339,7 @@ cJSON *getAnalysisLoggingConfig(void) {
     char *rotation_size = "rotation_size";
     char *rotation_interval = "rotation_interval";
     char *saved_rotations = "saved_rotations";
+    char *maxage = "maxage";
     cJSON *root;
 
     if (!Config.archives_enabled && !Config.alerts_enabled)  {
@@ -360,6 +361,7 @@ cJSON *getAnalysisLoggingConfig(void) {
                 cJSON_AddNumberToObject(log_type, rotation_size, Config.archives_max_size);
                 cJSON_AddNumberToObject(log_type, saved_rotations, Config.archives_rotate);
                 cJSON_AddNumberToObject(log_type, rotation_interval, Config.archives_interval);
+                cJSON_AddNumberToObject(log_type, maxage, Config.archives_maxage);
             }
             cJSON_AddItemToObject(logging, "archives", log_type);
         }
@@ -373,6 +375,7 @@ cJSON *getAnalysisLoggingConfig(void) {
                 cJSON_AddNumberToObject(log_type, rotation_size, Config.alerts_max_size);
                 cJSON_AddNumberToObject(log_type, saved_rotations, Config.alerts_rotate);
                 cJSON_AddNumberToObject(log_type, rotation_interval, Config.alerts_interval);
+                cJSON_AddNumberToObject(log_type, maxage, Config.alerts_maxage);
             }
             cJSON_AddItemToObject(logging, "alerts", log_type);
         }
