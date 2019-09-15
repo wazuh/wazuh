@@ -10,6 +10,9 @@ setup.template.json.enabled: true
 setup.template.json.path: '/etc/filebeat/wazuh-template.json'
 setup.template.json.name: 'wazuh'
 setup.template.overwrite: true
-setup.ilm.enabled: false
+setup.ilm.enabled: true
+setup.ilm.policy_name: 'wazuh_policy'
+setup.ilm.policy_file: '/etc/filebeat/policy.json'
+
 
 output.elasticsearch.hosts: ['http://YOUR_ELASTIC_SERVER_IP:9200']
