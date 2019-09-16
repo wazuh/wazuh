@@ -548,7 +548,7 @@ int main_analysisd(int argc, char **argv)
                 free(Config.lists);
                 Config.lists = NULL;
             }
-	        Lists_OP_MakeAll(0, 0);
+            Lists_OP_MakeAll(0, 0);
         }
 
         {
