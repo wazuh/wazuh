@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.fcore import active_response
+from wazuh.core import active_response
 from wazuh.rbac.decorators import expose_resources
 
 

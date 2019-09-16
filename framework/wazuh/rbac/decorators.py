@@ -7,7 +7,7 @@ import re
 from functools import wraps
 
 from wazuh.exception import WazuhError, WazuhInternalError
-from wazuh.fcore.core_utils import get_agents_info, expand_group
+from wazuh.fcore import get_agents_info, expand_group
 
 agents = None
 
