@@ -84,7 +84,7 @@ async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_stat
 
     if isinstance(result, Exception):
         raise result
-    # add unknown value to unfilled variables in result. For example, never connected agents will miss the 'version'
+    # add unknown value to unfilled variables in result. For example, never_connected agents will miss the 'version'
     # variable.
     filled_result = [{**r, **{key: 'unknown' for key in select_fields - r.keys()}} for r in result['items']]
     result['items'] = filled_result

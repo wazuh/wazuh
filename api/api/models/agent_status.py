@@ -20,7 +20,7 @@ class AgentStatus(Model):
     """
     ACTIVE = "active"
     PENDING = "pending"
-    NEVERCONNECTED = "neverconnected"
+    NEVERCONNECTED = "never_connected"
     DISCONNECTED = "disconnected"
 
     def __init__(self):  # noqa: E501

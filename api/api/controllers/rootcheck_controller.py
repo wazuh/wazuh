@@ -48,7 +48,7 @@ def get_rootcheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=
     :type search: str
     :param status: Filters by agent status. Use commas to enter multiple statuses.
     :type status: List[str]
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;Active&amp;quot;
+    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :type q: str
     :param status: Filter by scan status.
     :type status: str
