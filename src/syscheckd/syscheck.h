@@ -93,6 +93,9 @@ int fim_check_depth(char * path, int dir_position);
 fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fim_event_mode mode, int options);
 
 //
+void init_fim_data_entry(fim_entry_data *data);
+
+//
 void fim_get_checksum (fim_entry_data * data);
 
 //
@@ -261,7 +264,7 @@ long fim_sync_last_message();
  * {
  *   type:        "file"|"registry"
  *   size:        number
- *   perm:        number
+ *   perm:        string
  *   user_name:   string
  *   group_name:  string
  *   uid:         string
@@ -290,7 +293,7 @@ cJSON * fim_attributes_json(const fim_entry_data * data);
  *   attributes: {
  *     type:            "file"|"registry"
  *     size:            number
- *     perm:            number
+ *     perm:            string
  *     user_name:       string
  *     group_name:      string
  *     uid:             string

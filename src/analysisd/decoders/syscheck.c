@@ -1136,6 +1136,13 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
                 mode = object->valuestring;
             } else if (strcmp(object->string, "type") == 0) {
                 event_type = object->valuestring;
+                if (strcmp("added", event_type) == 0) {
+                    lf->event_type = FIM_ADDED;
+                } else if (strcmp("modified", event_type) == 0) {
+                    lf->event_type = FIM_MODIFIED;
+                } else if (strcmp("deleted", event_type) == 0) {
+                    lf->event_type = FIM_DELETED;
+                }
             } else if (strcmp(object->string, "tags") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_TAG].value);
                 os_strdup(object->valuestring, lf->sk_tag);
