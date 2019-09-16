@@ -59,8 +59,9 @@ def _expand_permissions(mode, odict):
         op_key = 'deny' if key_effect == 'allow' else 'allow'
         if remove:
             odict[index][key_effect].remove('*')
-        odict[index][key_effect].update(agent_id for agent_id in agents_ids_to_add
-                                        if agent_id not in odict[index][op_key])
+        for agent_id in agents_ids_to_add:
+            if agent_id not in odict[index][op_key]:
+                odict[index][key_effect].add(agent_id)
 
     def _cleaner(odict_clean, list_to_delete):
         for key_to_delete in list_to_delete:
@@ -70,7 +71,8 @@ def _expand_permissions(mode, odict):
     if agents is None:
         agents = get_agents_info()
     agents_ids = list()
-    agents_ids.append(str(agent['id']).zfill(3) for agent in agents)
+    for agent in agents:
+        agents_ids.append(str(agent['id']).zfill(3))
 
     # At the moment it is only used for groups
     clean = set()
