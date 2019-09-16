@@ -496,9 +496,13 @@ static void _free_ruleInfo(RuleInfo *r_info)
         OSList_DeleteList(r_info->sid_search);
     }
 
-    /* if (r_info->group_prev_matched[i]) {
-        OSList_DeleteList(r_info->group_prev_matched[i]);
-    }*/
+    if (r_info->group_prev_matched) {
+        i = 0;
+        while (r_info->group_prev_matched[i]) {
+            OSList_DeleteList(r_info->group_prev_matched[i]);
+            i++;
+        }
+    }
 
     if (r_info->group_search) {
         OSList_DeleteList(r_info->group_search);
@@ -524,8 +528,23 @@ static void _free_ruleInfo(RuleInfo *r_info)
         free(r_info->week_day);
     }
 
-    /*free(r_info->srcip);
-    free(r_info->dstip);*/
+    if (r_info->srcip) {
+        i = 0;
+        while(r_info->srcip[i]){
+            free(r_info->srcip[i]->ip);
+            free(r_info->srcip[i]);
+            i++;
+        }
+    }
+
+    if (r_info->dstip) {
+        i = 0;
+        while (r_info->dstip[i]){
+            free(r_info->dstip[i]->ip);
+            free(r_info->dstip[i]);
+            i++;
+        }
+    }
 
     if (r_info->srcgeoip) {
         OSMatch_FreePattern(r_info->srcgeoip);
@@ -599,7 +618,16 @@ static void _free_ruleInfo(RuleInfo *r_info)
         free(r_info->cve);
     }
 
-    // free(r_info->info_details);
+    if (r_info->info_details) {
+        RuleInfoDetail *tmp;
+
+        while(r_info->info_details) {
+            tmp = r_info->info_details->next;
+            free(r_info->info_details->data);
+            free(r_info->info_details);
+            r_info->info_details = tmp;
+        }
+    }
 
     // free(r_info->lists);
 
