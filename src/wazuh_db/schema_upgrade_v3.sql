@@ -5,10 +5,27 @@
  * and/or modify it under the terms of GPLv2.
 */
 
-BEGIN;
+DROP TABLE IF EXISTS fim_entry;
 
-ALTER TABLE fim_entry ADD COLUMN checksum TEXT INTEGER DEFAULT NULL;
+CREATE TABLE fim_entry (
+    file TEXT PRIMARY KEY,
+    type TEXT NOT NULL CHECK (type IN ('file', 'registry')),
+    date INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    changes INTEGER NOT NULL DEFAULT 1,
+    size INTEGER,
+    perm TEXT,
+    uid TEXT,
+    gid TEXT,
+    md5 TEXT,
+    sha1 TEXT,
+    uname TEXT,
+    gname TEXT,
+    mtime INTEGER,
+    inode INTEGER,
+    sha256 TEXT,
+    attributes TEXT,
+    symbolic_path TEXT,
+    checksum TEXT
+);
 
 UPDATE metadata SET value = 3 WHERE key = 'db_version';
-
-END;

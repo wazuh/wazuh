@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     mtime INTEGER,
     inode INTEGER,
     sha256 TEXT,
-    attributes INTEGER DEFAULT 0,
+    attributes TEXT,
     symbolic_path TEXT,
     checksum TEXT
 );

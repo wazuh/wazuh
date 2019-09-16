@@ -335,6 +335,8 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                 cJSON_AddItemToArray(changed_attributes, cJSON_CreateString(changed));
                 changed = strtok_r(NULL, ",", &saveptr);
             }
+
+            free(aux_cha);
         }
 
         switch (lf->event_type) {
