@@ -164,7 +164,7 @@ def test_failed_run_exception_open(mock_open):
 
 @patch("wazuh.syscheck.Agent.get_basic_information")
 def test_failed_run_agent_not_status(mock_info):
-    """Test failed run function when an agent have status diferent to Active."""
+    """Test failed run function when an agent have status diferent to active."""
     with pytest.raises(exception.WazuhException, match=".* 1604 .*"):
         run('001')
 

@@ -713,7 +713,7 @@ class Master(server.AbstractServer):
 
         # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
-            workers_info[node_name]["info"]["n_active_agents"] = Agent.get_agents_overview(filters={'status': 'Active', 'node_name': node_name})['totalItems']
+            workers_info[node_name]["info"]["n_active_agents"] = Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name})['totalItems']
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(
                     datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']))
