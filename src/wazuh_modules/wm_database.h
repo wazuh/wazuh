@@ -27,4 +27,4 @@ typedef struct wm_database {
 // Read configuration and return a module (if enabled) or NULL (if disabled)
 wmodule* wm_database_read();
 
-#endif // WM_DATABASE
+#endif /* WM_DATABASE */

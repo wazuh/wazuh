@@ -8,8 +8,8 @@
  * Foundation.
 */
 
-#ifndef __OS_INTERNAL_H
-#define __OS_INTERNAL_H
+#ifndef OS_INTERNAL_H
+#define OS_INTERNAL_H
 
 /* Prototype for the _OsMatch */
 int _OS_Match(const char *pattern, const char *str, size_t str_len, size_t size) __attribute__((nonnull));
@@ -109,5 +109,4 @@ extern const uchar charmap[256];
  */
 extern const uchar regexmap[][256];
 
-#endif /* __OS_INTERNAL_H */
-
+#endif /* OS_INTERNAL_H */
