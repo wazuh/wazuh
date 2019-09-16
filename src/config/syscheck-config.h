@@ -289,8 +289,6 @@ typedef struct _config {
     unsigned int n_inodes;
     pthread_mutex_t fim_entry_mutex;
 
-    integrity * integrity_data;
-
     rtfim *realtime;
 
     char *prefilter_cmd;

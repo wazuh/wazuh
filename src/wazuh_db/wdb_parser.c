@@ -472,8 +472,8 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
         snprintf(output, OS_MAXSTR + 1, "ok");
         return 0;
-    } else if (strcmp(curr, "range_checksum") == 0) {
-        switch (wdbi_query_checksum_range(wdb, WDB_FIM, next)) {
+    } else if (strncmp(curr, "integrity_check_", 16) == 0) {
+        switch (wdbi_query_checksum(wdb, WDB_FIM, curr, next)) {
         case -1:
             mdebug1("DB(%s) Cannot query FIM range checksum.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
@@ -492,7 +492,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         }
 
         return 0;
-    } else if (strcmp(curr, "clear") == 0) {
+    } else if (strcmp(curr, "integrity_clear") == 0) {
         switch (wdbi_query_clear(wdb, WDB_FIM)) {
         case -1:
             mdebug1("DB(%s) Cannot query FIM range checksum.", wdb->agent_id);

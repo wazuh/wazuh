@@ -561,6 +561,7 @@ int wdb_create_backup(const char * agent_id, int version);
  *
  * @param wdb Database node.
  * @param component Name of the component.
+ * @param command Integrity check subcommand: "integrity_check_global", "integrity_check_left" or "integrity_check_right".
  * @param payload Operation arguments in JSON format.
  * @pre payload must contain strings "begin", "end" and "checksum", and optionally "tail".
  * @retval 2 Success: checksum matches.
@@ -568,7 +569,7 @@ int wdb_create_backup(const char * agent_id, int version);
  * @retval 0 Success: no files were found in this range.
  * @retval -1 On error.
  */
-int wdbi_query_checksum_range(wdb_t * wdb, wdb_component_t component, const char * payload);
+int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * command, const char * payload);
 
 /**
  * @brief Query a complete table clear
