@@ -193,7 +193,7 @@
 #define FIM_DBSYNC_INVALID_ARGUMENT         "(6314): Invalid data synchronization argument: %s."
 #define FIM_DBSYNC_DEC_ID                   "(6315): Setting global ID back to lower message ID (%ld)."
 #define FIM_DBSYNC_DROP_MESSAGE             "(6316): Dropping message with id (%ld) greater than global id (%ld)."
-#define FIM_DBSYNC_SEND                     "(6317): Sending control message: %s"
+#define FIM_DBSYNC_SEND                     "(6317): Sending integrity control message: %s"
 
 
 #endif

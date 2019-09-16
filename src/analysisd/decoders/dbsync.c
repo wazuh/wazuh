@@ -88,7 +88,7 @@ end:
     free(query);
 }
 
-static void dispatch_check(dbsync_context_t * ctx) {
+static void dispatch_check(dbsync_context_t * ctx, const char * command) {
     if (ctx->data == NULL) {
         merror("dbsync: Corrupt message: cannot get data member.");
         return;
@@ -102,7 +102,7 @@ static void dispatch_check(dbsync_context_t * ctx) {
     os_malloc(OS_MAXSTR, query);
     os_malloc(OS_MAXSTR, response);
 
-    if (snprintf(query, OS_MAXSTR, "agent %s %s range_checksum %s", ctx->agent_id, ctx->component, data_plain) >= OS_MAXSTR) {
+    if (snprintf(query, OS_MAXSTR, "agent %s %s %s %s", ctx->agent_id, ctx->component, command, data_plain) >= OS_MAXSTR) {
         merror("dbsync: Cannot build check query: input is too long.");
         goto end;
     }
@@ -241,11 +241,11 @@ void DispatchDBSync(dbsync_context_t * ctx, Eventinfo * lf) {
 
     ctx->data = cJSON_GetObjectItem(root, "data");
 
-    if (strcmp(mtype, "check") == 0) {
-        dispatch_check(ctx);
+    if (strncmp(mtype, "integrity_check_", 16) == 0) {
+        dispatch_check(ctx, mtype);
     } else if (strcmp(mtype, "save") == 0) {
         dispatch_save(ctx);
-    } else if (strcmp(mtype, "clear") == 0) {
+    } else if (strcmp(mtype, "integrity_clear") == 0) {
         dispatch_clear(ctx);
     } else {
         merror("dbsync: Wrong message type '%s' received from agent %s.", mtype, ctx->agent_id);

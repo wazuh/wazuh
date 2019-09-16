@@ -85,16 +85,18 @@ static int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const cha
  * This function shall delete every item in the corresponding table,
  * between end and tail (none of them included).
  *
- * Should tail be NULL, this function will delete every item
- * from end.
+ * Should tail be NULL, this function will delete every item from the first
+ * element to 'begin' and from 'end' to the last element.
  *
+ * @param wdb Database node.
  * @param component Name of the component.
- * @param end Previous element to the first item to delete.
- * @param tail Subsequent element to the first item to delete.
+ * @param begin First valid element in the list.
+ * @param end Last valid element. This is the previous element to the first item to delete.
+ * @param tail Subsequent element to the last item to delete.
  * @retval 0 On success.
  * @retval -1 On error.
  */
-static int wdbi_delete_tail(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail) {
+static int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail) {
     const int INDEXES_AROUND[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_AROUND };
     const int INDEXES_RANGE[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_RANGE };
     assert(component < sizeof(INDEXES_AROUND) / sizeof(int));
@@ -125,7 +127,7 @@ static int wdbi_delete_tail(wdb_t * wdb, wdb_component_t component, const char *
 }
 
 // Query the checksum of a data range
-int wdbi_query_checksum_range(wdb_t * wdb, wdb_component_t component, const char * payload) {
+int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * command, const char * payload) {
     int retval = -1;
     cJSON * data = cJSON_Parse(payload);
 
@@ -176,8 +178,14 @@ int wdbi_query_checksum_range(wdb_t * wdb, wdb_component_t component, const char
         retval = strcmp(hexdigest, checksum) ? 1 : 2;
     }
 
-    item = cJSON_GetObjectItem(data, "tail");
-    wdbi_delete_tail(wdb, component, begin, end, cJSON_GetStringValue(item));
+    // Remove old elements
+
+    if (strcmp(command, "integrity_check_global") == 0) {
+        wdbi_delete(wdb, component, begin, end, NULL);
+    } else if (strcmp(command, "integrity_check_left") == 0) {
+        item = cJSON_GetObjectItem(data, "tail");
+        wdbi_delete(wdb, component, begin, end, cJSON_GetStringValue(item));
+    }
 
 end:
     cJSON_Delete(data);

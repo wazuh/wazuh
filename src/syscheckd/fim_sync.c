@@ -23,91 +23,6 @@
 static long fim_sync_cur_id;
 static long fim_sync_last_msg_time;
 
-/**
- * @brief Create a data synchronization check/clear message
- *
- * Format (check):
- * {
- *   component:     string
- *   type:          "check"
- *   data: {
- *     id:          number
- *     begin:       string
- *     end:         string
- *     tail:        string [Optional]
- *     checksum:    string
- *   }
- * }
- *
- * Format (clear):
- * {
- *   component: string
- *   type:      "clear"
- * }
- *
- * @param component Name of the component.
- * @param id Sync session counter (timetamp).
- * @param start First key in the list.
- * @param top Last key in the list.
- * @param tail Key of the first key in the next sublist.
- * @param checksum Checksum of this list.
- * @return Pointer to dynamically allocated string.
- */
-
-char * dbsync_check_msg(const char * component, long id, const char * start, const char * top, const char * tail, const char * checksum) {
-    cJSON * root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "component", component);
-
-    if (checksum == NULL) {
-        cJSON_AddStringToObject(root, "type", "clear");
-    } else {
-        cJSON_AddStringToObject(root, "type", "check");
-
-        cJSON * data = cJSON_CreateObject();
-        cJSON_AddItemToObject(root, "data", data);
-
-        cJSON_AddNumberToObject(data, "id", id);
-        cJSON_AddStringToObject(data, "begin", start);
-        cJSON_AddStringToObject(data, "end", top);
-
-        if (tail != NULL) {
-            cJSON_AddStringToObject(data, "tail", tail);
-        }
-
-        cJSON_AddStringToObject(data, "checksum", checksum);
-    }
-
-    char * payload = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
-    return payload;
-}
-
-/**
- * @brief Create a data synchronization save message
- *
- * Format:
- * {
- *   component:         string
- *   type:              "save"
- *   data:              object
- * }
- *
- * @param component Name of the component.
- * @param data Synchronization data.
- * @post data is destroyed.
- * @return Pointer to dynamically allocated string.
- */
-char * dbsync_file_msg(const char * component, cJSON * data) {
-    cJSON * root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "component", component);
-    cJSON_AddStringToObject(root, "type", "save");
-    cJSON_AddItemToObject(root, "data", data);
-
-    char * msg = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
-    return msg;
-}
-
 void fim_sync_checksum() {
     char ** keys;
     int i;
@@ -137,11 +52,11 @@ void fim_sync_checksum() {
         EVP_DigestFinal_ex(ctx, digest, &digest_size);
         OS_SHA1_Hexdigest(digest, hexdigest);
 
-        char * plain = dbsync_check_msg("syscheck", fim_sync_cur_id, keys[0], keys[i - 1], NULL, hexdigest);
+        char * plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_GLOBAL, fim_sync_cur_id, keys[0], keys[i - 1], NULL, hexdigest);
         fim_send_sync_msg(plain);
         free(plain);
     } else {
-        char * plain = dbsync_check_msg("syscheck", fim_sync_cur_id, NULL, NULL, NULL, NULL);
+        char * plain = dbsync_check_msg("syscheck", INTEGRITY_CLEAR, 0, NULL, NULL, NULL, NULL);
         fim_send_sync_msg(plain);
         free(plain);
     }
@@ -204,13 +119,13 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
 
             EVP_DigestFinal_ex(ctx_left, digest, &digest_size);
             OS_SHA1_Hexdigest(digest, hexdigest);
-            char * plain = dbsync_check_msg("syscheck", id, keys[0], keys[m - 1], keys[m], hexdigest);
+            char * plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_LEFT, id, keys[0], keys[m - 1], keys[m], hexdigest);
             fim_send_sync_msg(plain);
             free(plain);
 
             EVP_DigestFinal_ex(ctx_right, digest, &digest_size);
             OS_SHA1_Hexdigest(digest, hexdigest);
-            plain = dbsync_check_msg("syscheck", id, keys[m], keys[n - 1], "", hexdigest);
+            plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_RIGHT, id, keys[m], keys[n - 1], "", hexdigest);
             fim_send_sync_msg(plain);
             free(plain);
         } else {
