@@ -194,7 +194,6 @@ typedef struct fim_entry_data {
     char * perm;
     char * uid;
     char * gid;
-    char * sid;
     char * user_name;
     char * group_name;
     unsigned int mtime;

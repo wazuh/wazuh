@@ -121,6 +121,7 @@ void init_whodata_event(whodata_evt *w_evt) {
     w_evt->effective_name = NULL;
     w_evt->ppid = -1;
     w_evt->process_id = 0;
+    w_evt->dev = NULL;
 }
 
 
@@ -142,6 +143,7 @@ void free_whodata_event(whodata_evt *w_evt) {
     if (w_evt->path) free(w_evt->path);
     if (w_evt->process_name) free(w_evt->process_name);
     if (w_evt->inode) free(w_evt->inode);
+    if (w_evt->dev) free(w_evt->dev);
     free(w_evt);
 }
 

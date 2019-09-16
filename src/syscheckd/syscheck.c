@@ -76,16 +76,6 @@ static void read_internal(int debug_level)
     return;
 }
 
-void free_syscheck_node_data(fim_entry_data *data) {
-    if (!data) {
-        return;
-    }
-
-    os_free(data->user_name);
-    os_free(data->group_name);
-    os_free(data);
-}
-
 // Initialize syscheck data
 int fim_initialize() {
     // Create store data
@@ -122,7 +112,7 @@ int fim_initialize() {
         return (0);
     }
 
-    rbtree_set_dispose(syscheck.fim_entry, (void (*)(void *))free_syscheck_node_data);
+    rbtree_set_dispose(syscheck.fim_entry, (void (*)(void *))free_entry_data);
     pthread_mutex_init(&syscheck.fim_entry_mutex, NULL);
 
     return 0;

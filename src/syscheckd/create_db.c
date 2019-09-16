@@ -60,7 +60,6 @@ int fim_scan() {
 
     minfo(FIM_FREQUENCY_ENDED);
     minfo("The scan has been running during: %f sec.", (double)(end - begin) / CLOCKS_PER_SEC);
-    print_hash_tables();
 
     return 0;
 }
@@ -154,7 +153,9 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
     options = syscheck.opts[dir_position];
 
     if (w_stat(file_name, &file_stat) < 0) {
-        delete_target_file(file_name);
+        if (options & CHECK_SEECHANGES) {
+            delete_target_file(file_name);
+        }
         deleted_flag = 1;
     } else {
         //File attributes
@@ -186,7 +187,6 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
         if (deleted_flag) {
             json_event = fim_json_event (file_name, NULL, saved_data, dir_position, FIM_DELETE, mode, w_evt);
             fim_delete (file_name);
-            // minfo("Deleting file '%s' checksum: '%s'", file_name, checksum);
         // Checking for changes
         } else {
             saved_data->scanned = 1;
@@ -196,7 +196,6 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
                     w_mutex_unlock(&syscheck.fim_entry_mutex);
                     return OS_INVALID;
                 }
-                //set_integrity_index(file_name, entry_data);
             } else {
                 free_entry_data(entry_data);
             }
@@ -205,18 +204,16 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (!_base_line && options & CHECK_SEECHANGES && !deleted_flag) {
-        minfo("creating diff file for '%s'", file_name);
+        // The first backup is created
         seechanges_addfile(file_name);
     }
 
     if (json_event && _base_line) {
-        // minfo("File '%s' checksum: '%s'", file_name, checksum);
         json_formated = cJSON_PrintUnformatted(json_event);
-        minfo("%s", json_formated);
         send_syscheck_msg(json_formated);
         os_free(json_formated);
-        cJSON_Delete(json_event);
     }
+    cJSON_Delete(json_event);
 
     return 0;
 }
@@ -324,6 +321,7 @@ void fim_audit_inode_event(whodata_evt * w_evt) {
         }
     }
 
+    os_free(key_inodehash);
     return;
 }
 
@@ -404,13 +402,10 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
     }
 
 #ifdef WIN32
-
     if (options & CHECK_OWNER) {
         data->user_name = get_user(file_name, 0, &data->uid);
     }
-
 #else
-
     if (options & CHECK_OWNER) {
         char aux[OS_SIZE_64];
         snprintf(aux, OS_SIZE_64, "%u", file_stat.st_uid);
@@ -426,7 +421,6 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
 
         os_strdup((char*)get_user(file_name, file_stat.st_uid, NULL), data->group_name);
     }
-
 #endif
 
     snprintf(data->hash_md5, sizeof(os_md5), "%s", "d41d8cd98f00b204e9800998ecf8427e");
@@ -695,16 +689,12 @@ void check_deleted_files() {
             json_event = fim_json_event (keys[i], NULL, data, pos, FIM_DELETE, FIM_SCHEDULED, NULL);
             fim_delete(keys[i]);
 
-            if (json_event) {
-                // minfo("File '%s' checksum: '%s'", file_name, checksum);
-                if (_base_line) {
-                    json_formated = cJSON_PrintUnformatted(json_event);
-                    minfo("%s", json_formated);
-                    send_syscheck_msg(json_formated);
-                    os_free(json_formated);
-                }
-                cJSON_Delete(json_event);
+            if (json_event && _base_line) {
+                json_formated = cJSON_PrintUnformatted(json_event);
+                send_syscheck_msg(json_formated);
+                os_free(json_formated);
             }
+            cJSON_Delete(json_event);
         } else {
              // File still exists. We only need to reset the scanned flag.
             data->scanned = 0;
@@ -1005,6 +995,13 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
 
 
 void free_entry_data(fim_entry_data * data) {
+    if (!data) {
+        return;
+    }
+
+    os_free(data->perm);
+    os_free(data->uid);
+    os_free(data->gid);
     os_free(data->user_name);
     os_free(data->group_name);
     os_free(data);
