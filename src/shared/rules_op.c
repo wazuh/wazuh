@@ -95,10 +95,6 @@ int OS_ReadXMLRules(const char *rulefile,
 
     const char *xml_different_url = "different_url";
 
-    const char *xml_notsame_source_ip = "not_same_source_ip";
-    const char *xml_notsame_user = "not_same_user";
-    const char *xml_notsame_agent = "not_same_agent";
-    const char *xml_notsame_id = "not_same_id";
     const char *xml_notsame_field = "not_same_field";
     const char *xml_global_frequency = "global_frequency";
 
@@ -516,9 +512,6 @@ int OS_ReadXMLRules(const char *rulefile,
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
-                } else if (strcasecmp(rule_opt[k]->element,
-                                      xml_notsame_source_ip) == 0) {
-                    config_ruleinfo->context_opts &= NOT_SAME_SRCIP;
                 } else if (strcmp(rule_opt[k]->element, xml_same_id) == 0) {
                     config_ruleinfo->context_opts |= SAME_ID;
                 } else if (strcmp(rule_opt[k]->element,
@@ -528,8 +521,6 @@ int OS_ReadXMLRules(const char *rulefile,
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
-                } else if (strcmp(rule_opt[k]->element, xml_notsame_id) == 0) {
-                    config_ruleinfo->context_opts &= NOT_SAME_ID;
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_fts) == 0) {
                     config_ruleinfo->alert_opts |= DO_FTS;
@@ -541,9 +532,6 @@ int OS_ReadXMLRules(const char *rulefile,
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
                 } else if (strcasecmp(rule_opt[k]->element,
-                                      xml_notsame_user) == 0) {
-                    config_ruleinfo->context_opts &= NOT_SAME_USER;
-                } else if (strcasecmp(rule_opt[k]->element,
                                       xml_same_location) == 0) {
                     config_ruleinfo->context_opts |= SAME_LOCATION;
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
@@ -551,10 +539,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     }
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_global_frequency) == 0) {
-                    config_ruleinfo->context_opts &= NOT_SAME_AGENT_ID;
-                } else if (strcasecmp(rule_opt[k]->element,
-                                      xml_notsame_agent) == 0) {
-                    config_ruleinfo->context_opts &= NOT_SAME_AGENT;
+                    config_ruleinfo->context_opts &= GLOBAL_FREQUENCY;
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_same_field) == 0) {
 

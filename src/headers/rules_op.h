@@ -28,11 +28,7 @@
 #define SAME_DODIFF         0x100
 #define SAME_FIELD          0x200
 #define NOT_SAME_FIELD      0x400
-#define NOT_SAME_USER       0xffe /* 0xfff - 0x001 */
-#define NOT_SAME_SRCIP      0xffd /* 0xfff - 0x002 */
-#define NOT_SAME_ID         0xffb /* 0xfff - 0x004 */
-#define NOT_SAME_AGENT      0xff7 /* 0xfff - 0x008 */
-#define NOT_SAME_AGENT_ID   0xff3 
+#define GLOBAL_FREQUENCY    0x1000
 
 /* Alert options - stored in a uint8 */
 #define DO_FTS          0x0001
