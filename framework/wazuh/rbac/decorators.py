@@ -12,7 +12,7 @@ from wazuh.core.core_utils import get_agents_info, expand_group
 agents = None
 
 
-def _get_required_permissions(actions: list = None, resources: str = None, **kwargs):
+def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
     """Obtain action:resource pairs exposed by the framework function
 
     :param actions: List of exposed actions
@@ -21,26 +21,29 @@ def _get_required_permissions(actions: list = None, resources: str = None, **kwa
     :return: Dictionary with required actions as keys and a list of required resources as values
     """
     # We expose required resources for the request
-    m = re.search(r'^(\w+:\w+:)(\w+|\*|{(\w+)})$', resources)
     res_list = list()
-    res_base = m.group(1)
-    # If we find a '{' in the regex we obtain the dynamic resource/s
-    if '{' in m.group(2):
-        try:
-            # Dynamic resources ids are found within the {}
-            params = kwargs[m.group(3)]
-            # We check if params is a list of resources or a single one in a string
-            if isinstance(params, list):
-                for param in params:
-                    res_list.append("{0}{1}".format(res_base, param))
-            else:
-                res_list.append("{0}{1}".format(res_base, params))
-        # KeyError occurs if required dynamic resources can't be found within request parameters
-        except KeyError as e:
-            raise WazuhInternalError(4014, extra_message=str(e))
-    # If we don't find a regex match we obtain the static resource/s
-    else:
-        res_list.append(resources)
+    for resource in resources:
+        m = re.search(r'^(\w+:\w+:)(\w+|\*|{(\w+)})$', resource)
+        res_base = m.group(1)
+        # If we find a '{' in the regex we obtain the dynamic resource/s
+        if '{' in m.group(2):
+            try:
+                # Dynamic resources ids are found within the {}
+                params = kwargs[m.group(3)]
+                # We check if params is a list of resources or a single one in a string
+                if isinstance(params, list):
+                    if len(params) == 0:
+                        raise WazuhError(4015, {'param': m.group(3)})
+                    for param in params:
+                        res_list.append("{0}{1}".format(res_base, param))
+                else:
+                    res_list.append("{0}{1}".format(res_base, params))
+            # KeyError occurs if required dynamic resources can't be found within request parameters
+            except KeyError as e:
+                raise WazuhError(4014, extra_message=str(e))
+        # If we don't find a regex match we obtain the static resource/s
+        else:
+            res_list.append(resource)
 
     # Create dict of required policies with action: list(resources) pairs
     req_permissions = dict()
@@ -51,9 +54,15 @@ def _get_required_permissions(actions: list = None, resources: str = None, **kwa
 
 
 def _expand_permissions(mode, odict):
-    def _to_set(permissions):
-        permissions['allow'] = set(permissions['allow'])
-        permissions['deny'] = set(permissions['deny'])
+    def _normalization(permissions):
+        for resource in permissions:
+            permissions[resource]['allow'] = set(permissions[resource]['allow'])
+            permissions[resource]['deny'] = set(permissions[resource]['deny'])
+        if 'agent:id' not in permissions.keys():
+            odict['agent:id'] = {
+                'allow': set(),
+                'deny': set()
+            }
 
     def _update_set(index, key_effect, agents_ids_to_add, remove=True):
         op_key = 'deny' if key_effect == 'allow' else 'allow'
@@ -76,20 +85,14 @@ def _expand_permissions(mode, odict):
 
     # At the moment it is only used for groups
     clean = set()
+    _normalization(odict)
 
     for key in odict:
         if key == 'agent:id':
-            _to_set(odict[key])
             _update_set(key, 'allow', agents_ids) if '*' in odict[key]['allow'] \
                 else _update_set(key, 'deny', agents_ids)
         elif key == 'agent:group':
             clean.add(key)
-            _to_set(odict[key])
-            if 'agent:id' not in odict.keys():
-                odict['agent:id'] = {
-                    'allow': set(),
-                    'deny': set()
-                }
             expand_group(odict['agent:group'], odict['agent:id'])
 
     _update_set('agent:id', 'allow', agents_ids, False) if mode \
@@ -140,7 +143,7 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     return allow_match
 
 
-def expose_resources(actions: list = None, resources: str = None, resource_name: str = None):
+def expose_resources(actions: list = None, resources: list = None, resource_name: str = None):
     """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
 
     :param actions: List of actions exposed by the framework function
