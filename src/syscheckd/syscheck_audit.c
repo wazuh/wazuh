@@ -373,11 +373,13 @@ int audit_init(void) {
     static int audit_socket;
     audit_socket = init_auditd_socket();
     if (audit_socket < 0) {
+        merror("Cann't init auditd socket in 'init_auditd_socket()'");
         return -1;
     }
 
     int regex_comp = init_regex();
     if (regex_comp < 0) {
+        merror("Cann't init regex in 'init_regex()'");
         return -1;
     }
 
@@ -1194,7 +1196,7 @@ int audit_health_check(int audit_socket) {
     audit_health_check_deletion = 0;
     unsigned int timer = 10;
 
-    if(retval = audit_add_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0){
+    if(retval = audit_add_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0 && retval != -17) { // -17 Means audit rule exist EEXIST
         mdebug1(FIM_AUDIT_HEALTHCHECK_RULE);
         goto exit_err;
     }
@@ -1211,6 +1213,12 @@ int audit_health_check(int audit_socket) {
         w_cond_wait(&audit_hc_started, &audit_hc_mutex);
     w_mutex_unlock(&audit_hc_mutex);
 
+
+    /*
+     * This is a workaround to fix the whodata mode init when is restarted unexpectedly
+     * *********************************************************************************
+     */
+
     // Create a file
     fp = fopen(AUDIT_HEALTHCHECK_FILE, "w");
 
@@ -1218,15 +1226,31 @@ int audit_health_check(int audit_socket) {
         mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);
         goto exit_err;
     }
-
     fclose(fp);
+
+    sleep(1);
+
+    fp = fopen(AUDIT_HEALTHCHECK_FILE, "w");
+
+    if(!fp) {
+        mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);
+        goto exit_err;
+    }
+    fclose(fp);
+
     mdebug2(FIM_HEALTHCHECK_WAIT_CREATE);
+    sleep(1);
+
+    /*
+     * *********************************************************************************
+     */
 
     while (!audit_health_check_creation && timer > 0) {
         sleep(1);
         timer--;
     }
     if (!audit_health_check_creation) {
+        mdebug1("error: audit_health_check_creation");
         goto exit_err;
     }
 

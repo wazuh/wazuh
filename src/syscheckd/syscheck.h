@@ -244,7 +244,6 @@ void symlink_checker_init();
 int w_update_sacl(const char *obj_path);
 #endif
 
-int print_hash_table();
 int fim_delete_hashes(char *file_name);
 
 #ifdef WIN32

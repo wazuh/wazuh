@@ -60,6 +60,7 @@ int fim_scan() {
 
     minfo(FIM_FREQUENCY_ENDED);
     minfo("The scan has been running during: %f sec.", (double)(end - begin) / CLOCKS_PER_SEC);
+    print_hash_tables();
 
     return 0;
 }
