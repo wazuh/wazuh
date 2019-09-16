@@ -496,11 +496,9 @@ static void _free_ruleInfo(RuleInfo *r_info)
         OSList_DeleteList(r_info->sid_search);
     }
 
-    i = 0;
-    while (r_info->group_prev_matched[i]) {
+    /* if (r_info->group_prev_matched[i]) {
         OSList_DeleteList(r_info->group_prev_matched[i]);
-        i++;
-    }
+    }*/
 
     if (r_info->group_search) {
         OSList_DeleteList(r_info->group_search);
