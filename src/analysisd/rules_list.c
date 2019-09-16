@@ -481,11 +481,11 @@ static void _free_ruleInfo(RuleInfo *r_info)
     int i;
 
     if (r_info->ignore_fields) {
-        free(r_info->ignore_fields);
+        os_free(r_info->ignore_fields);
     }
 
     if (r_info->ckignore_fields) {
-        free(r_info->ckignore_fields);
+        os_free(r_info->ckignore_fields);
     }
 
     if (r_info->sid_prev_matched) {
@@ -509,7 +509,7 @@ static void _free_ruleInfo(RuleInfo *r_info)
     }
 
     if (r_info->group) {
-        free(r_info->group);
+        os_free(r_info->group);
     }
 
     if (r_info->match) {
@@ -521,11 +521,11 @@ static void _free_ruleInfo(RuleInfo *r_info)
     }
 
     if (r_info->day_time) {
-        free(r_info->day_time);
+        os_free(r_info->day_time);
     }
 
     if (r_info->week_day) {
-        free(r_info->week_day);
+        os_free(r_info->week_day);
     }
 
     if (r_info->srcip) {
@@ -596,26 +596,26 @@ static void _free_ruleInfo(RuleInfo *r_info)
 
     i = 0;
     while (r_info->fields[i]){
-        free(r_info->fields[i]->name);
+        os_free(r_info->fields[i]->name);
         OSRegex_FreePattern(r_info->fields[i]->regex);
-        free(r_info->fields[i]);
+        os_free(r_info->fields[i]);
         i++;
     }
 
     if (r_info->action) {
-        free(r_info->action);
+        os_free(r_info->action);
     }
 
     if (r_info->comment) {
-        free(r_info->comment);
+        os_free(r_info->comment);
     }
 
     if (r_info->info) {
-        free(r_info->info);
+        os_free(r_info->info);
     }
 
     if (r_info->cve) {
-        free(r_info->cve);
+        os_free(r_info->cve);
     }
 
     if (r_info->info_details) {
@@ -623,8 +623,8 @@ static void _free_ruleInfo(RuleInfo *r_info)
 
         while(r_info->info_details) {
             tmp = r_info->info_details->next;
-            free(r_info->info_details->data);
-            free(r_info->info_details);
+            os_free(r_info->info_details->data);
+            os_free(r_info->info_details);
             r_info->info_details = tmp;
         }
     }
@@ -632,15 +632,15 @@ static void _free_ruleInfo(RuleInfo *r_info)
     // free(r_info->lists);
 
     if (r_info->if_sid) {
-        free(r_info->if_sid);
+        os_free(r_info->if_sid);
     }
 
     if (r_info->if_level) {
-        free(r_info->if_level);
+        os_free(r_info->if_level);
     }
 
     if (r_info->if_group) {
-        free(r_info->if_group);
+        os_free(r_info->if_group);
     }
 
     if (r_info->if_matched_regex) {
@@ -652,22 +652,22 @@ static void _free_ruleInfo(RuleInfo *r_info)
     }
 
     if (r_info->ar) {
-        free(r_info->ar);
+        os_free(r_info->ar);
     }
 
     if (r_info->file) {
-        free(r_info->file);
+        os_free(r_info->file);
     }
 
     if (r_info->same_fields) {
-        free(r_info->same_fields);
+        os_free(r_info->same_fields);
     }
 
     if (r_info->not_same_fields) {
-        free(r_info->not_same_fields);
+        os_free(r_info->not_same_fields);
     }
 
-    free(r_info);
+    os_free(r_info);
 
 }
 
