@@ -28,11 +28,11 @@ stages:
           items: !anything
           totalItems: !anything
         agent_status:
-          Active: !anyint
-          Disconnected: !anyint
-          Never connected: !anyint
-          Pending: !anyint
-          Total: !anyint
+          active: !anyint
+          disconnected: !anyint
+          never_connected: !anyint
+          pending: !anyint
+          total: !anyint
         agent_version:
           items: !anything
           totalItems: !anything

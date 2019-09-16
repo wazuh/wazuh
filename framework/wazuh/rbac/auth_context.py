@@ -1,5 +1,6 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# Copyright (C) 2015-2019, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
 import re
@@ -200,68 +201,29 @@ class RBAChecker:
             },
             {
                 "actions": ["active_response:command"],
-                "resources": ["agent:id:*"],
-                "effect": "allow"
-            },
-            {
-                "actions": ["active_response:command"],
-                "resources": ["agent:id:*"],
+                "resources": ["agent:id:001", "agent:id:002"],
                 "effect": "deny"
             },
             {
                 "actions": ["active_response:command"],
-                "resources": ["agent:id:001"],
+                "resources": ["agent:id:001", "agent:id:002", "agent:id:004"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:id:001", "agent:id:002"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:group:default"],
                 "effect": "allow"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:group:group1"],
+                "effect": "deny"
             }
         ]
 
         return policies
-
-    @staticmethod
-    def convert_to_json_serializable(optimize_policies):
-        for key, value in optimize_policies.items():
-            optimize_policies[key] = list(value)
-
-        return optimize_policies
-
-    @staticmethod
-    def check_all_permissions(resources):
-        for resource in resources:
-            if '*' in resource:
-                return True
-
-        return False
-
-
-    @staticmethod
-    def remove_policy(policies, optimize_policies):
-        for policy in policies:
-            if policy in optimize_policies:
-                optimize_policies.pop(policy)
-
-    @staticmethod
-    def policy_manager(action, optimize_policies, resources, effect):
-        if action not in optimize_policies.keys():
-            if effect == 'allow':
-                optimize_policies[action] = resources
-        else:
-            if effect == 'allow':
-                if RBAChecker.check_all_permissions(resources):
-                    optimize_policies[action] = [resources]
-                else:
-                    optimize_policies[action] |= resources
-            else:
-                optimize_policies.pop(action) if RBAChecker.check_all_permissions(resources) else \
-                    optimize_policies[action].remove(resources)
-
-    # Improve the data struct for increase the search speed
-    @staticmethod
-    def optimize_resources():
-        policies = RBAChecker.run_testing()
-        optimize_dict = dict()
-
-        for policy in policies:
-            for action in policy['actions']:
-                RBAChecker.policy_manager(action, optimize_dict, set(policy['resources']), policy['effect'])
-
-        return [RBAChecker.convert_to_json_serializable(optimize_dict)]

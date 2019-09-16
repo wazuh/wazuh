@@ -47,7 +47,7 @@ stages:
         message: Command sent.
 
     # PUT /active-response/009
-  - name: Try to send a message to an agent (Status=Disconnected/Never connected)
+  - name: Try to send a message to an agent (status=disconnected/never_connected)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/active-response/009"
       method: PUT
