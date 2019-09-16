@@ -68,7 +68,7 @@ class RBAChecker:
     def get_roles(self):
         """Return all roles
 
-        :return: List of roles with which the class is going to work
+        :return: List of roles to handle
         """
         return self.roles_list
 

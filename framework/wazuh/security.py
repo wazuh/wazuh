@@ -5,8 +5,9 @@
 import json
 
 from wazuh import common
-from wazuh.rbac import orm
 from wazuh.exception import WazuhError
+from wazuh.rbac import orm
+from wazuh.rbac.orm import SecurityError
 from wazuh.utils import process_array
 
 
@@ -137,9 +138,9 @@ class Role:
         """
         with orm.RolesManager() as rm:
             status = rm.add_role(name=name, rule=rule)
-            if not status:
+            if status == SecurityError.ALREADY_EXIST:
                 raise WazuhError(4005)
-            if status == -1:
+            if status == SecurityError.INVALID:
                 raise WazuhError(4003)
 
         return Role.get_role(role_id=rm.get_role(name=name).id)
@@ -158,10 +159,12 @@ class Role:
 
         with orm.RolesManager() as rm:
             status = rm.update_role(role_id=role_id, name=name, rule=rule)
-            if not status:
-                raise WazuhError(4002)
-            if status == -1:
+            if status == SecurityError.ALREADY_EXIST:
+                raise WazuhError(4005)
+            if status == SecurityError.INVALID:
                 raise WazuhError(4003)
+            if status == SecurityError.NOT_EXIST:
+                raise WazuhError(4002)
 
         return Role.get_role(role_id=role_id)
 
@@ -292,12 +295,10 @@ class Policy:
         """
         with orm.PoliciesManager() as pm:
             status = pm.add_policy(name=name, policy=policy)
-            if not status:
+            if status == SecurityError.ALREADY_EXIST:
                 raise WazuhError(4009)
-            if status == -1:
+            if status == SecurityError.INVALID:
                 raise WazuhError(4006)
-            if status == -2:
-                raise WazuhError(4012)
 
         return Policy.get_policy(policy_id=pm.get_policy(name=name).id)
 
@@ -315,12 +316,12 @@ class Policy:
 
         with orm.PoliciesManager() as pm:
             status = pm.update_policy(policy_id=policy_id, name=name, policy=policy)
-            if not status:
-                raise WazuhError(4007)
-            if status == -1:
-                raise WazuhError(4006)
-            if status == -2:
+            if status == SecurityError.ALREADY_EXIST:
                 raise WazuhError(4013)
+            if status == SecurityError.INVALID:
+                raise WazuhError(4006)
+            if status == SecurityError.NOT_EXIST:
+                raise WazuhError(4007)
 
         return Policy.get_policy(policy_id=policy_id)
 

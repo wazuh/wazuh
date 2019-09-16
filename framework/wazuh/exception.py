@@ -450,7 +450,7 @@ class WazuhException(Exception):
         4005: {'message': 'The specified name or rule already exist'},
         4006: {'message': 'The specified policy is invalid',
                'remediation': 'The policy must have a json format and it\'s keys must be "access", "resources", '
-                              'and "effect"'},
+                              'and "effect". The actions and resources must be splitted by ":". Example: agent:id:001'},
         4007: {'message': 'The specified policy does not exist',
                'remediation': 'Please, create the specified policy with the endpoint POST /security/policies'},
         4008: {'message': 'The specified role/policy is required for a correct Wazuh\'s functionality'},
@@ -459,7 +459,8 @@ class WazuhException(Exception):
                'remediation': 'Please, create the specified role-policy relation with the endpoint '
                               'POST /security/roles/{role_id}/policies/{policy_id}'},
         4011: {'message': 'The specified role-policy already exist'},
-        4012: {'message': 'The specified policy is invalid',
+        4012: {'message': 'The specified actions or resources '
+                          'are invalid',
                'remediation': 'The actions and resources must be splitted by ":". Example: agent:id:001'},
         4013: {'message': 'The specified name already exist'},
         4014: {'message': 'Can\'t access specified required dynamic resource'},

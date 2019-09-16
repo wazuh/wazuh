@@ -6,8 +6,10 @@ import json
 import os
 import re
 from datetime import datetime
+from enum import Enum
 from shutil import chown
 
+from api.constants import SECURITY_PATH
 from flask import Flask
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
@@ -16,8 +18,6 @@ from sqlalchemy.dialects.sqlite import TEXT
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-
-from api.constants import SECURITY_PATH
 
 # Create a application and configure it to be able to migrate
 app = Flask(__name__)
@@ -35,6 +35,16 @@ _Session = sessionmaker(bind=_engine)
 # IDs reserved for administrator roles and policies, these can not be modified or deleted
 admins_id = [1]
 admin_policy = [1]
+
+
+# Error codes for Roles and Policies managers
+class SecurityError(Enum):
+    # The element already exist in the database
+    ALREADY_EXIST = False
+    # The element is invalid, missing format or property
+    INVALID = -1
+    # The element does not exist in the database
+    NOT_EXIST = -2
 
 
 class RolesPolicies(_Base):
@@ -111,7 +121,7 @@ class Policies(_Base):
         """
         roles = list()
         for role in self.roles:
-            roles.append(role.get_policy())
+            roles.append(role.get_role())
 
         return {'id': self.id, 'name': self.name, 'policy': self.policy, 'roles': roles}
 
@@ -212,13 +222,13 @@ class RolesManager:
         """
         try:
             if rule is not None and not json_validator(rule):
-                return -1
+                return SecurityError.INVALID
             self.session.add(Roles(name=name, rule=json.dumps(rule)))
             self.session.commit()
             return True
         except IntegrityError:
             self.session.rollback()
-            return False
+            return SecurityError.ALREADY_EXIST
 
     def delete_role(self, role_id: int):
         """Delete an existent role in the system
@@ -302,21 +312,21 @@ class RolesManager:
             if role_to_update and role_to_update.id not in admins_id and role_to_update is not None:
                 # Rule is not a valid json
                 if rule is not None and not json_validator(rule):
-                    return -1
+                    return SecurityError.INVALID
                 # Change the name of the role
                 if name is not None:
                     if self.session.query(Roles).filter_by(name=name).first() is not None:
-                        return -2
+                        return SecurityError.ALREADY_EXIST
                     role_to_update.name = name
                 # Change the rule of the role
                 if rule is not None:
                     role_to_update.rule = json.dumps(rule)
                 self.session.commit()
                 return True
-            return False
+            return SecurityError.NOT_EXIST
         except IntegrityError:
             self.session.rollback()
-            return False
+            return SecurityError.NOT_EXIST
 
     def __enter__(self):
         self.session = _Session()
@@ -376,9 +386,9 @@ class PoliciesManager:
         """
         try:
             if policy is not None and not json_validator(policy):
-                return False
+                return SecurityError.ALREADY_EXIST
             if len(policy.keys()) != 3:
-                return -2
+                return SecurityError.INVALID
             # To add a policy it must have the keys actions, resources, effect
             if 'actions' in policy.keys() and 'resources' in policy.keys():
                 if 'effect' in policy.keys():
@@ -389,22 +399,22 @@ class PoliciesManager:
                         regex = r'^[a-z*]+:[a-z0-9*]+(:[a-z0-9*]+)*$'
                         for action in policy['actions']:
                             if not re.match(regex, action):
-                                return -2
+                                return SecurityError.INVALID
                         for resource in policy['resources']:
                             if not re.match(regex, resource):
-                                return -2
+                                return SecurityError.INVALID
                         self.session.add(Policies(name=name, policy=json.dumps(policy)))
                         self.session.commit()
                     else:
-                        return -1
+                        return SecurityError.INVALID
                 else:
-                    return -1
+                    return SecurityError.INVALID
             else:
-                return -1
+                return SecurityError.INVALID
             return True
         except IntegrityError:
             self.session.rollback()
-            return False
+            return SecurityError.ALREADY_EXIST
 
     def delete_policy(self, policy_id: int):
         """Delete an existent policy in the system
@@ -487,20 +497,20 @@ class PoliciesManager:
             if policy_to_update and policy_to_update.id not in admin_policy and policy_to_update is not None:
                 # Policy is not a valid json
                 if policy is not None and not json_validator(policy):
-                    return -1
+                    return SecurityError.INVALID
                 if name is not None:
                     if self.session.query(Policies).filter_by(name=name).first() is not None:
-                        return -2
+                        return SecurityError.ALREADY_EXIST
                     policy_to_update.name = name
                 if policy is not None:
                     if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
                         policy_to_update.policy = json.dumps(policy)
                 self.session.commit()
                 return True
-            return False
+            return SecurityError.NOT_EXIST
         except IntegrityError as e:
             self.session.rollback()
-            return False
+            return SecurityError.NOT_EXIST
 
     def __enter__(self):
         self.session = _Session()
@@ -763,11 +773,6 @@ with RolesManager() as rm:
             "r'^auth[a-zA-Z]+$'": ["administrator"]
         }
     })
-    # rm.add_role('Initial', {
-    #     "FIND": {
-    #         "name": "Bill"
-    #     }
-    # })
 
 with RolesPoliciesManager() as rpm:
     rpm.add_policy_to_role_admin(role_id=rm.get_role(name='wazuh').id, policy_id=pm.get_policy(name='wazuhPolicy').id)
