@@ -60,6 +60,26 @@ static pthread_rwlock_t files_update_rwlock;
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
 
+static char *rand_keepalive_str(char *dst, int size)
+{
+    static const char text[] = "abcdefghijklmnopqrstuvwxyz"
+                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                               "0123456789"
+                               "!@#$%^&*()_+-=;'[],./?";
+    int i;
+    int len;
+    srandom_init();
+    len = os_random() % (size - 10);
+    len = len >= 0 ? len : -len;
+
+    strncpy(dst, "--MARK--: ", 12);
+    for ( i = 10; i < len; ++i ) {
+        dst[i] = text[(unsigned int)os_random() % (sizeof text - 1)];
+    }
+    dst[i] = '\0';
+    return dst;
+}
+
 /* Handle file management */
 void LogCollectorStart()
 {
@@ -69,6 +89,7 @@ void LogCollectorStart()
     int f_free_excluded = 0;
     IT_control f_control = 0;
     IT_control duplicates_removed = 0;
+    char keepalive[1024];
     logreader *current;
 
     /* Create store data */
@@ -718,6 +739,8 @@ void LogCollectorStart()
             f_check = 0;
         }
 
+        rand_keepalive_str(keepalive, KEEPALIVE_SIZE);
+        SendMSG(logr_queue, keepalive, "ossec-keepalive", LOCALFILE_MQ);
         sleep(1);
 
         f_check++;
