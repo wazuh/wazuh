@@ -43,8 +43,12 @@ class SecurityError(Enum):
     ALREADY_EXIST = False
     # The element is invalid, missing format or property
     INVALID = -1
-    # The element does not exist in the database
-    NOT_EXIST = -2
+    # The role does not exist in the database
+    ROLE_NOT_EXIST = -2
+    # The policy does not exist in the database
+    POLICY_NOT_EXIST = -3
+    # Admin resources of the system
+    ADMIN_RESOURCES = -4
 
 
 class RolesPolicies(_Base):
@@ -188,7 +192,7 @@ class RolesManager:
             role = self.session.query(Roles).filter_by(name=name).first()
             return role
         except IntegrityError:
-            return False
+            return SecurityError.ROLE_NOT_EXIST
 
     def get_role_id(self, role_id: int):
         """Get the information about one role specified by id
@@ -200,7 +204,7 @@ class RolesManager:
             role = self.session.query(Roles).filter_by(id=role_id).first()
             return role
         except IntegrityError:
-            return False
+            return SecurityError.ROLE_NOT_EXIST
 
     def get_roles(self):
         """Get the information about all roles in the system
@@ -211,14 +215,14 @@ class RolesManager:
             roles = self.session.query(Roles).all()
             return roles
         except IntegrityError:
-            return False
+            return SecurityError.ROLE_NOT_EXIST
 
     def add_role(self, name: str, rule: dict):
         """Add a new role
 
         :param name: Name of the new role
         :param rule: Rule of the new role
-        :return: True -> Success | False -> Failure | -1 -> Invalid rule
+        :return: True -> Success | Role already exist | Invalid rule
         """
         try:
             if rule is not None and not json_validator(rule):
@@ -305,7 +309,7 @@ class RolesManager:
         :param role_id: ID of the role to be updated
         :param name: New name for the role
         :param rule: New rule for the role
-        :return: True -> Success | False -> Failure | -1 -> Invalid rule | -2 -> Name already in use
+        :return: True -> Success | Invalid rule | Name already in use | Role not exist
         """
         try:
             role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
@@ -323,10 +327,10 @@ class RolesManager:
                     role_to_update.rule = json.dumps(rule)
                 self.session.commit()
                 return True
-            return SecurityError.NOT_EXIST
+            return SecurityError.ROLE_NOT_EXIST
         except IntegrityError:
             self.session.rollback()
-            return SecurityError.NOT_EXIST
+            return SecurityError.ROLE_NOT_EXIST
 
     def __enter__(self):
         self.session = _Session()
@@ -351,7 +355,7 @@ class PoliciesManager:
             policy = self.session.query(Policies).filter_by(name=name).first()
             return policy
         except IntegrityError:
-            return False
+            return SecurityError.POLICY_NOT_EXIST
 
     def get_policy_by_id(self, policy_id: int):
         """Get the information about one policy specified by id
@@ -363,7 +367,7 @@ class PoliciesManager:
             policy = self.session.query(Policies).filter_by(id=policy_id).first()
             return policy
         except IntegrityError:
-            return False
+            return SecurityError.POLICY_NOT_EXIST
 
     def get_policies(self):
         """Get the information about all policies in the system
@@ -374,15 +378,14 @@ class PoliciesManager:
             policies = self.session.query(Policies).all()
             return policies
         except IntegrityError:
-            return False
+            return SecurityError.POLICY_NOT_EXIST
 
     def add_policy(self, name: str, policy: dict):
         """Add a new role
 
         :param name: Name of the new policy
         :param policy: Policy of the new policy
-        :return: True -> Success | False -> Failure | -1 -> Invalid policy
-        | -2 -> Missing key (actions, resources, effect) or invalid policy (regex)
+        :return: True -> Success | Invalid policy | Missing key (actions, resources, effect) or invalid policy (regex)
         """
         try:
             if policy is not None and not json_validator(policy):
@@ -490,7 +493,7 @@ class PoliciesManager:
         :param policy_id: ID of the Policy to be updated
         :param name: New name for the Policy
         :param policy: New policy for the Policy
-        :return: True -> Success | False -> Failure | -1 -> Invalid policy | -2 -> Name already in use
+        :return: True -> Success | False -> Failure | Invalid policy | Name already in use
         """
         try:
             policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
@@ -507,10 +510,10 @@ class PoliciesManager:
                         policy_to_update.policy = json.dumps(policy)
                 self.session.commit()
                 return True
-            return SecurityError.NOT_EXIST
+            return SecurityError.POLICY_NOT_EXIST
         except IntegrityError as e:
             self.session.rollback()
-            return SecurityError.NOT_EXIST
+            return SecurityError.POLICY_NOT_EXIST
 
     def __enter__(self):
         self.session = _Session()
@@ -543,36 +546,34 @@ class RolesPoliciesManager:
 
         :param role_id: ID of the role
         :param policy_id: ID of the policy
-        :return: True -> Success | False -> Failure | -1 -> Role not found
-        | -2 -> Policy not found | -3 -> Existing relationship
+        :return: True -> Success | False -> Failure | Role not found | Policy not found | Existing relationship
         """
         try:
             # Create a role-policy relationship if both exist
             if int(role_id) not in admins_id:
                 role = self.session.query(Roles).filter_by(id=role_id).first()
                 if role is None:
-                    return -1
+                    return SecurityError.ROLE_NOT_EXIST
                 policy = self.session.query(Policies).filter_by(id=policy_id).first()
                 if policy is None:
-                    return -2
+                    return SecurityError.POLICY_NOT_EXIST
                 if self.session.query(RolesPolicies).filter_by(role_id=role_id, policy_id=policy_id).first() is None:
                     role.policies.append(self.session.query(Policies).filter_by(id=policy_id).first())
                     self.session.commit()
                     return True
                 else:
-                    return -3
-            return False
+                    return SecurityError.ADMIN_RESOURCES
+            return SecurityError.ADMIN_RESOURCES
         except IntegrityError:
             self.session.rollback()
-            return False
+            return SecurityError.ADMIN_RESOURCES
 
     def add_role_to_policy(self, policy_id: int, role_id: int):
         """Clone of the previous function
 
         :param policy_id: ID of the policy
         :param role_id: ID of the role
-        :return: True -> Success | False -> Failure | -1 -> Role not found
-        | -2 -> Policy not found | -3 -> Existing relationship
+        :return: True -> Success | False -> Failure | Role not found | Policy not found | Existing relationship
         """
         return self.add_policy_to_role(role_id=role_id, policy_id=policy_id)
 
@@ -609,12 +610,15 @@ class RolesPoliciesManager:
 
         :param role_id: ID of the role
         :param policy_id: ID of the policy
-        :return: True -> Existent relationship | False -> Failure | -1 -> Role not exist
+        :return: True -> Existent relationship | False -> Failure | Role not exist
         """
         try:
             role = self.session.query(Roles).filter_by(id=role_id).first()
             if role is None:
-                return -1
+                return SecurityError.ROLE_NOT_EXIST
+            policy = self.session.query(Policies).filter_by(id=policy_id).first()
+            if policy is None:
+                return SecurityError.POLICY_NOT_EXIST
             policy = role.policies.filter_by(id=policy_id).first()
             if policy is not None:
                 return True
@@ -628,36 +632,25 @@ class RolesPoliciesManager:
 
         :param role_id: ID of the role
         :param policy_id: ID of the policy
-        :return: True -> Existent relationship | False -> Failure | -1 -> Policy not exist
+        :return: True -> Existent relationship | False -> Failure | Policy not exist
         """
-        try:
-            policy = self.session.query(Policies).filter_by(id=policy_id).first()
-            if policy is None:
-                return -1
-            role = policy.roles.filter_by(id=role_id).first()
-            if role is not None:
-                return True
-            return False
-        except IntegrityError:
-            self.session.rollback()
-            return False
+        return self.exist_role_policy(role_id, policy_id)
 
     def remove_policy_in_role(self, role_id: int, policy_id: int):
         """Create a role-policy relationship if both exist. Does not eliminate role and policy
 
         :param role_id: ID of the role
         :param policy_id: ID of the policy
-        :return: True -> Success | False -> Failure | -1 -> Role not exist | -2 -> Policy not exist
-        | -3 -> Non-existent relationship
+        :return: True -> Success | False -> Failure | Role not exist | Policy not exist | Non-existent relationship
         """
         try:
             if int(role_id) not in admins_id:  # Administrator
                 role = self.session.query(Roles).filter_by(id=role_id).first()
                 if role is None:
-                    return -1
+                    return SecurityError.ROLE_NOT_EXIST
                 policy = self.session.query(Policies).filter_by(id=policy_id).first()
                 if policy is None:
-                    return -2
+                    return SecurityError.POLICY_NOT_EXIST
                 if self.session.query(RolesPolicies).filter_by(role_id=role_id,
                                                                policy_id=policy_id).first() is not None:
                     role = self.session.query(Roles).get(role_id)
@@ -666,7 +659,7 @@ class RolesPoliciesManager:
                     self.session.commit()
                     return True
                 else:
-                    return -3
+                    return False
             return False
         except IntegrityError:
             self.session.rollback()
