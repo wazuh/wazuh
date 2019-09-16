@@ -1369,7 +1369,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                     goto cleanup;
                 }
             } else {
-                OS_AddChild(config_ruleinfo);
+                OS_AddChild(config_ruleinfo, NULL);
             }
 
             /* Clean what we do not need */

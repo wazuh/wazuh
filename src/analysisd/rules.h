@@ -216,7 +216,7 @@ void OS_CreateRuleList(void);
 int OS_AddRule(RuleInfo *read_rule);
 
 /* Add rule information as a child */
-int OS_AddChild(RuleInfo *read_rule);
+int OS_AddChild(RuleInfo *read_rule, RuleNode *r_node);
 
 /**
  * @brief Update rule info for overwritten ones
