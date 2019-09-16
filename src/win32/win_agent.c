@@ -303,10 +303,6 @@ int local_start()
     os_delwait();
     update_status(GA_STATUS_ACTIVE);
 
-    /* Send integrity message for agent configs */
-    intcheck_file(cfg, "");
-    intcheck_file(OSSEC_DEFINES, "");
-
     req_init();
 
     /* Start receiver thread */

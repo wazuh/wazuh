@@ -65,9 +65,6 @@ int receive_msg(void);
 /* Receiver messages for Windows */
 void *receiver_thread(void *none);
 
-/* Send integrity checking information about a file to the server */
-int intcheck_file(const char *file_name, const char *dir);
-
 /* Initialize agent buffer */
 void buffer_init();
 
