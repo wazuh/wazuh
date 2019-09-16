@@ -188,7 +188,7 @@ static void dispatch_clear(dbsync_context_t * ctx) {
     os_malloc(OS_MAXSTR, query);
     os_malloc(OS_MAXSTR, response);
 
-    if (snprintf(query, OS_MAXSTR, "agent %s %s clear ", ctx->agent_id, ctx->component) >= OS_MAXSTR) {
+    if (snprintf(query, OS_MAXSTR, "agent %s %s integrity_clear ", ctx->agent_id, ctx->component) >= OS_MAXSTR) {
         merror("dbsync: Cannot build clear query: input is too long.");
         goto end;
     }
