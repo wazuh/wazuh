@@ -381,8 +381,6 @@ def test_validate_cdb_list(mock_match):
     with patch('builtins.open', m):
         result = validate_cdb_list('path')
 
-    assert result == True
-
 
 @patch('wazuh.manager.re.match', return_value=False)
 def test_validate_cdb_list_ko(mock_match):
@@ -393,7 +391,7 @@ def test_validate_cdb_list_ko(mock_match):
     with patch('wazuh.manager.open', m):
         result = validate_cdb_list('path')
 
-    assert result ==False
+    assert result is False
 
     # Open function raise IOError
     with patch('wazuh.manager.open', side_effect=IOError):
@@ -546,7 +544,7 @@ def test_get_config(mock_act_conf):
     mock_act_conf.assert_called_once_with(agent_id='000', component='component', configuration='config')
 
 
-ossec_log_file = """2019/03/26 20:14:37 wazuh-modulesd:database[27799] wm_database.c:501 at wm_get_os_arch(): DEBUG: Detected architecture from Linux |ip-10-0-1-141.us-west-1.compute.internal |3.10.0-957.1.3.el7.x86_64 |#1 SMP Thu Nov 29 14:49:43 UTC 2018 |x86_64: x86_64
+ossec_log_file = '''2019/03/26 20:14:37 wazuh-modulesd:database[27799] wm_database.c:501 at wm_get_os_arch(): DEBUG: Detected architecture from Linux |ip-10-0-1-141.us-west-1.compute.internal |3.10.0-957.1.3.el7.x86_64 |#1 SMP Thu Nov 29 14:49:43 UTC 2018 |x86_64: x86_64
 2019/02/26 20:14:37 wazuh-modulesd:database[27799] wm_database.c:695 at wm_sync_agentinfo(): DEBUG: wm_sync_agentinfo(4): 0.091 ms.
 2019/03/27 10:42:06 wazuh-modulesd:syscollector: INFO: Starting evaluation.
 2019/03/27 10:42:07 wazuh-modulesd:rootcheck: INFO: Starting evaluation.
@@ -560,7 +558,7 @@ ossec_log_file = """2019/03/26 20:14:37 wazuh-modulesd:database[27799] wm_databa
 2019/04/11 12:53:37 wazuh-modulesd:aws-s3: INFO: Executing Bucket Analysis: wazuh-aws-wodle
 2019/03/27 10:42:06 wazuh-modulesd:syscollector: INFO: This is a
 multiline log
-2019/03/26 13:03:11 ossec-csyslogd: INFO: Remote syslog server not configured. Clean exit."""
+2019/03/26 13:03:11 ossec-csyslogd: INFO: Remote syslog server not configured. Clean exit.'''
 
 
 @pytest.mark.parametrize('category, type_log, totalItems, sort', [
@@ -580,12 +578,11 @@ multiline log
 ])
 @patch("wazuh.manager.previous_month", return_value=datetime.strptime('2019-03-01 00:00:00', '%Y-%m-%d %H:%M:%S'))
 def test_ossec_log(mock_month, test_manager, category, type_log, totalItems, sort):
-    """
-    Tests reading ossec.log file contents
-    """
+    """Test reading ossec.log file contents."""
     with patch('wazuh.manager.tail') as tail_patch:
         tail_patch.return_value = ossec_log_file.splitlines()
-        logs = ossec_log(category=category, type_log=type_log, sort=sort)
+        filters = {'category': category, 'type_log': type_log}
+        logs = ossec_log(filters=filters, sort=sort)
         assert logs['totalItems'] == totalItems
         assert all(log['description'][-1] != '\n' for log in logs['items'])
         if category != 'all' and category != 'wazuh-modulesd:syscollector':
@@ -599,3 +596,4 @@ def test_restart_ok(test_manager):
     """
     result = restart()
     assert result['message'] == 'Restarting manager'
+

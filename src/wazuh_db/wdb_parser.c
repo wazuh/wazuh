@@ -753,29 +753,6 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         cJSON_Delete(event);
 
         return result;
-    } else if (strcmp(curr, "query_global") == 0) {
-
-        char *name;
-        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
-
-        curr = next;
-        name = curr;
-
-        result = wdb_sca_global_find(wdb, name, result_found);
-
-        switch (result) {
-            case 0:
-                snprintf(output, OS_MAXSTR + 1, "ok not found");
-                break;
-            case 1:
-                snprintf(output, OS_MAXSTR + 1, "ok found %s", result_found);
-                break;
-            default:
-                mdebug1("Cannot query Security Configuration Assessment.");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot query Security Configuration Assessment global");
-        }
-
-        return result;
     } else if (strcmp(curr, "delete_policy") == 0) {
 
         char *policy_id;
@@ -1024,108 +1001,10 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         }
 
         return result;
-    } else if (strcmp(curr, "update_global") == 0) {
-        int scan_id;
-        char *name;
-        char *description;
-        char *references;
-        int pass;
-        int failed;
-        int score;
 
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Security Configuration Assessment query syntax.");
-            mdebug2("Security Configuration Assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        scan_id = strtol(curr,NULL,10);
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Security Configuration Assessment query syntax.");
-            mdebug2("Security Configuration Assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        name = curr;
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Security Configuration Assessment query syntax.");
-            mdebug2("Security Configuration Assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        description = curr;
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Security Configuration Assessment query syntax.");
-            mdebug2("Security Configuration Assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        references = curr;
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Security Configuration Assessment query syntax.");
-            mdebug2("Security Configuration Assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        if (!strncmp(curr, "NULL", 4))
-            pass = -1;
-        else
-            pass = strtol(curr,NULL,10);
-
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Security Configuration Assessment query syntax.");
-            mdebug2("Security Configuration Assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        if (!strncmp(curr, "NULL", 4))
-            failed = -1;
-        else
-            failed = strtol(curr,NULL,10);
-
-        *next++ = '\0';
-        curr = next;
-
-        if (!strncmp(curr, "NULL", 4))
-            score = -1;
-        else
-            score = strtol(curr,NULL,10);
-
-        if (result = wdb_sca_global_update(wdb,scan_id,name,description,references,pass,failed,score), result < 0) {
-            mdebug1("Cannot save Security Configuration Assessment information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment global information.");
-        } else {
-            snprintf(output, OS_MAXSTR + 1, "ok");
-        }
-
-        return result;
     } else if (strcmp(curr, "insert_rules") == 0){
 
-
-         int id_check;
+        int id_check;
         char *type;
         char *rule;
 
@@ -1383,54 +1262,6 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             pm_end_scan = strtol(curr,NULL,10);
 
         if (result = wdb_sca_scan_info_update(wdb, module,pm_end_scan), result < 0) {
-            mdebug1("Cannot save configuration assessment information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
-        } else {
-            snprintf(output, OS_MAXSTR + 1, "ok");
-        }
-
-        return result;
-    } else if (strcmp(curr, "update_check_scan") == 0) {
-
-        curr = next;
-        int scan_id_old;
-        int scan_id_new;
-        char * policy_id;
-
-        if (!strncmp(curr, "NULL", 4))
-            scan_id_old = -1;
-        else
-            scan_id_old = strtol(curr,NULL,10);
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid configuration assessment query syntax.");
-            mdebug2("configuration assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid configuration assessment query syntax.");
-            mdebug2("configuration assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        if (!strncmp(curr, "NULL", 4))
-            scan_id_new = -1;
-        else
-            scan_id_new = strtol(curr,NULL,10);
-
-        *next++ = '\0';
-        curr = next;
-
-        policy_id = curr;
-
-
-        if (result = wdb_sca_check_update_scan_id(wdb,scan_id_old,scan_id_new,policy_id), result < 0) {
             mdebug1("Cannot save configuration assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
         } else {

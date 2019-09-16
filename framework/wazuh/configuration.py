@@ -677,7 +677,7 @@ def upload_group_configuration(group_id, file_content):
             new_conf_path = os_path.join(common.shared_path, group_id, "agent.conf")
             safe_move(tmp_file_path, new_conf_path, permissions=0o660)
         except Exception as e:
-            raise WazuhInternalError(1017, str(e))
+            raise WazuhInternalError(1016, extra_message=str(e))
 
         return 'Agent configuration was updated successfully'
     except Exception as e:

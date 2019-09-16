@@ -126,7 +126,6 @@ int set_winsacl(const char *dir, int position);
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
 #endif
 
-extern pthread_mutex_t lastcheck_mutex;
 int fim_initialize();
 
 /* Check for restricts and ignored files */
@@ -148,7 +147,7 @@ int w_update_sacl(const char *obj_path);
 #endif
 
 int print_hash_table();
-int fim_delete_hashes(char *file_name);
+int fim_delete_hashes(const char * const file_name);
 
 #ifdef WIN32
 #define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })

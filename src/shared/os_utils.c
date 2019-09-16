@@ -118,7 +118,7 @@ OSList *w_os_get_process_list()
 
 #endif
 /* Check if a file exists */
-int w_is_file(char *file)
+int w_is_file(const char * const file)
 {
     FILE *fp;
     fp = fopen(file, "r");

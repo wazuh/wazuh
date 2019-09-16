@@ -90,6 +90,11 @@ int OS_SetKeepalive(int socket);
  * Enable SO_KEEPALIVE options for TCP
  */
 #ifndef CLIENT
+
+#ifdef __MACH__
+#define TCP_KEEPIDLE TCP_KEEPALIVE
+#endif
+
 void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt);
 #endif
 /* Set the delivery timeout for a socket

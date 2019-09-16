@@ -864,14 +864,16 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
     /* Get CPU and memory information */
     hw_info *sys_info;
     if (sys_info = get_system_linux(), sys_info){
-        cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
+        if(sys_info->cpu_name) {
+            cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
+        }
         cJSON_AddNumberToObject(hw_inventory, "cpu_cores", sys_info->cpu_cores);
         cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
         cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
         cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
         cJSON_AddNumberToObject(hw_inventory, "ram_usage", sys_info->ram_usage);
 
-        free(sys_info->cpu_name);
+        os_free(sys_info->cpu_name);
         free(sys_info);
     }
 
@@ -1063,6 +1065,7 @@ hw_info *get_system_linux(){
     char *end;
 
     os_calloc(1, sizeof(hw_info), info);
+    init_hw_info(info);
 
     if (!(fp = fopen("/proc/cpuinfo", "r"))) {
         mterror(WM_SYS_LOGTAG, "Unable to read the CPU name.");
@@ -1092,6 +1095,9 @@ hw_info *get_system_linux(){
                 info->cpu_MHz = atof(frec);
             }
         }
+        if (!info->cpu_name) {
+            info->cpu_name = strdup("unknown");
+        }
         fclose(fp);
     }
 
@@ -1100,28 +1106,35 @@ hw_info *get_system_linux(){
     if (!(fp = fopen("/proc/meminfo", "r"))) {
         mterror(WM_SYS_LOGTAG, "Unable to read the RAM memory information.");
     } else {
-        char *aux_string = NULL;
         while (fgets(string, OS_MAXSTR, fp) != NULL){
+            char *aux_string = NULL;
+
             if ((aux_string = strstr(string, "MemTotal")) != NULL){
 
-                char *end_string;
+                char *end_string = NULL;
                 strtok_r(string, ":", &saveptr);
                 aux_string = strtok_r(NULL, "\n", &saveptr);
-                if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
-                    *end = '\0';
+                if (aux_string) {
+                    if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
+                        *end = '\0';
+                    }
+                    info->ram_total = strtol(aux_string, &end_string, 10);
+                } else {
+                    info->ram_total = 0;
                 }
-                info->ram_total = strtol(aux_string, &end_string, 10);
-
             } else if ((aux_string = strstr(string, "MemFree")) != NULL){
 
-                char *end_string;
+                char *end_string = NULL;
                 strtok_r(string, ":", &saveptr);
                 aux_string = strtok_r(NULL, "\n", &saveptr);
-                if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
-                    *end = '\0';
+                if (aux_string) {
+                    if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
+                        *end = '\0';
+                    }
+                    info->ram_free = strtol(aux_string, &end_string, 10);
+                } else {
+                    info->ram_free = 0;
                 }
-                info->ram_free = strtol(aux_string, &end_string, 10);
-
             }
         }
 
@@ -1827,12 +1840,14 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     char ** parts = NULL;
                     char *ip_addrr;
                     parts = OS_StrBreak('%', host, 2);
-                    ip_addrr = w_strtrim(parts[0]);
-                    cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(ip_addrr));
-                    for (k=0; parts[k]; k++){
-                        free(parts[k]);
+                    if(parts) {
+                        ip_addrr = w_strtrim(parts[0]);
+                        cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(ip_addrr));
+                        for (k=0; parts[k]; k++){
+                            free(parts[k]);
+                        }
+                        free(parts);
                     }
-                    free(parts);
                 } else {
                     mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 address for interface '%s': %s\n", iface_name, gai_strerror(result));
                 }

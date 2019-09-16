@@ -47,26 +47,34 @@ char* getPrimaryIP(){
         mterror(WM_CONTROL_LOGTAG, "at getPrimaryIP(): getifaddrs() failed.");
         return agent_ip;
     }
-    else {
-        for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
-            i++;
-        }
-        os_calloc(i, sizeof(char *), ifaces_list);
 
-        /* Create interfaces list */
-        size = getIfaceslist(ifaces_list, ifaddr);
-
-        if(!ifaces_list[0]){
-            mtdebug1(WM_CONTROL_LOGTAG, "No network interface found when reading agent IP.");
-            os_free(ifaces_list);
-            freeifaddrs(ifaddr);
-            return agent_ip;
-        }
+    for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
+        i++;
     }
+
+    if(i == 0){
+        mtdebug1(WM_CONTROL_LOGTAG, "No network interfaces found when reading agent IP.");
+        return agent_ip;
+    }
+
+    os_calloc(i, sizeof(char *), ifaces_list);
+
+    /* Create interfaces list */
+    size = getIfaceslist(ifaces_list, ifaddr);
+
+    if(!ifaces_list[0]){
+        mtdebug1(WM_CONTROL_LOGTAG, "No network interfaces found when reading agent IP.");
+        os_free(ifaces_list);
+        freeifaddrs(ifaddr);
+        return agent_ip;
+    }
+
 #ifdef __MACH__
     OSHash *gateways = OSHash_Create();
+    OSHash_SetFreeDataPointer(gateways, (void (*)(void *)) freegate);
     if (getGatewayList(gateways) < 0){
         mtdebug1(WM_CONTROL_LOGTAG, "Unable to obtain the Default Gateway list");
+        OSHash_Free(gateways);
         os_free(ifaces_list);
         freeifaddrs(ifaddr);
         return agent_ip;
@@ -81,12 +89,10 @@ char* getPrimaryIP(){
 #elif defined __MACH__
         if(gate = OSHash_Get(gateways, ifaces_list[i]), gate){
             if(!gate->isdefault){
-                free(gate);
                 cJSON_Delete(object);
                 continue;
             }
             if(gate->addr[0]=='l'){
-                free(gate);
                 cJSON_Delete(object);
                 continue;
             }

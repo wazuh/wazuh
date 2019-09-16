@@ -301,14 +301,14 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         case W_METH_BLOWFISH:
             if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->key,
                         buffer_size, OS_DECRYPT)) {
-                mwarn(ENCKEY_ERROR, keys->keyentries[id]->ip->ip);
+                mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
                 return KS_ENCKEY;
             }
             break;
         case W_METH_AES:
             if (!OS_AES_Str(buffer, cleartext, keys->keyentries[id]->key,
                 buffer_size-4, OS_DECRYPT)) {
-                mwarn(ENCKEY_ERROR, keys->keyentries[id]->ip->ip);
+                mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
                 return KS_ENCKEY;
             }
             break;
@@ -328,14 +328,18 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
 
         /* Uncompress */
         if (*final_size = os_zlib_uncompress(cleartext, buffer, buffer_size, OS_MAXSTR), !*final_size) {
+#ifdef CLIENT
             merror(UNCOMPRESS_ERR);
+#else
+            merror(UNCOMPRESS_ERR " Message received from agent '%s' at '%s'", keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+#endif
             return KS_CORRUPT;
         }
 
         /* Check checksum */
 
         if (f_msg = CheckSum(buffer, *final_size), !f_msg) {
-            merror(ENCSUM_ERROR, keys->keyentries[id]->ip->ip);
+            merror(ENCSUM_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
             return KS_CORRUPT;
         }
 
@@ -418,7 +422,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         cleartext++;
         f_msg = CheckSum(cleartext, buffer_size);
         if (f_msg == NULL) {
-            merror(ENCSUM_ERROR, keys->keyentries[id]->ip->ip);
+            merror(ENCSUM_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
             return KS_CORRUPT;
         }
 
@@ -486,7 +490,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         return KS_RIDS;
     }
 
-    mwarn(ENCKEY_ERROR, srcip);
+    mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, srcip);
     return KS_ENCKEY;
 }
 

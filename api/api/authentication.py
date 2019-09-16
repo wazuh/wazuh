@@ -13,6 +13,8 @@ from sqlalchemy import create_engine, Column, String, Boolean
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from wazuh.rbac import auth_context
+from wazuh.rbac import pre_policies
 from werkzeug.exceptions import Unauthorized
 from werkzeug.security import check_password_hash, generate_password_hash
 from sqlalchemy.orm.exc import UnmappedInstanceError
@@ -229,18 +231,9 @@ def generate_token(user_id):
     :return: string jwt formatted string
     """
     # Add dummy rbac_policies for developing here
-    rbac_policies = [
-        # {
-        #     "actions": ["syscheck:put", "syscheck:get", "syscheck:delete"],
-        #     "resources": ["agent:id:*"],
-        #     "effect": "allow"
-        # },
-        # {
-        #     "actions": ["lists:get"],
-        #     "resources": ["list:path:*"],
-        #     "effect": "allow"
-        # },
-    ]
+    mode = False  # White
+    rbac_policies = pre_policies.optimize_resources(mode)
+
     timestamp = int(time())
     payload = {
         "iss": JWT_ISSUER,
@@ -248,7 +241,7 @@ def generate_token(user_id):
         "exp": int(timestamp + JWT_LIFETIME_SECONDS),
         "sub": str(user_id),
         "rbac_policies": rbac_policies,
-        "mode": False  # True if black_list, False if white_list , needs to be replaced with a function to get the mode
+        "mode": mode  # True if black_list, False if white_list , needs to be replaced with a function to get the mode
     }
 
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)

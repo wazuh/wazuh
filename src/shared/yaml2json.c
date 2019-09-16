@@ -47,6 +47,7 @@ int yaml_parse_file(const char * path, yaml_document_t * document) {
             error = 0;
         } else {
             mwarn("Failed to load YAML document in %s:%u", path, (unsigned int)parser.problem_mark.line);
+            yaml_document_delete(document);
         }
 
         yaml_parser_delete(&parser);

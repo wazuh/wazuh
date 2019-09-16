@@ -1305,7 +1305,7 @@ void sys_hw_windows(const char* LOCATION){
         if (sys_info->ram_usage)
             cJSON_AddNumberToObject(hw_inventory, "ram_usage", sys_info->ram_usage);
 
-        free(sys_info->cpu_name);
+        os_free(sys_info->cpu_name);
         free(sys_info);
     }
 
@@ -1952,6 +1952,7 @@ hw_info *get_system_windows(){
     DWORD dwCount = MAX_VALUE_NAME;
 
     os_calloc(1,sizeof(hw_info),info);
+    init_hw_info(info);
 
     // Get CPU name and frequency
 
@@ -2060,14 +2061,14 @@ int ntpath_to_win32path(char *ntpath, char **outbuf)
 				break;
 			}
 		} else {
-			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve Windows kernel path for drive '%s\\'. Error '%lu'.", msdos_drive, GetLastError());
+			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve Windows kernel path for drive '%s\\'. Error '%lu'", msdos_drive, GetLastError());
 		}
 
 		/* Get the next drive */
 		SingleDrive += (strlen(SingleDrive) + 1);
 	}
 
-	if (!success) mtwarn(WM_SYS_LOGTAG, "Unable to find a matching Windows kernel drive path for '%s'.", ntpath);
+	if (!success) mtwarn(WM_SYS_LOGTAG, "Unable to find a matching Windows kernel drive path for '%s'", ntpath);
 
 	return success;
 }

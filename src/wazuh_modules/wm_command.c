@@ -54,7 +54,12 @@ void * wm_command_main(wm_command_t * command) {
     if (command->md5_hash || command->sha1_hash || command->sha256_hash) {
 
         command_cpy = strdup(command->command);
-        argv = wm_strtok(command_cpy);
+
+        if (argv = wm_strtok(command_cpy), !argv) {
+            merror("Could not split command: %s", command_cpy);
+            pthread_exit(NULL);
+        }
+
         binary = argv[0];
 
         if (!wm_get_path(binary, &full_path)) {

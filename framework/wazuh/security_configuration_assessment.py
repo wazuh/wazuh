@@ -57,7 +57,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
                  get_data, default_sort_field='policy_id', filters=None, fields=fields_translation_sca,
                  default_query=default_query_sca, count_field='policy_id'):
         self.agent_id = agent_id
-        self._default_query_str = default_query
+        self.default_query = default_query
         self.count_field = count_field
         Agent(agent_id).get_basic_information()  # check if the agent exists
         filters = {} if filters is None else filters

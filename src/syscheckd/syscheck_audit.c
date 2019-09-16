@@ -17,6 +17,7 @@
 #include <os_net/os_net.h>
 #include "syscheck_op.h"
 #include "audit_op.h"
+#include "string_op.h"
 
 #define AUDIT_CONF_FILE DEFAULTDIR "/etc/af_wazuh.conf"
 #define PLUGINS_DIR_AUDIT_2 "/etc/audisp/plugins.d"
@@ -37,9 +38,9 @@
 W_Vector *audit_added_rules;
 W_Vector *audit_added_dirs;
 W_Vector *audit_loaded_rules;
-pthread_mutex_t audit_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t audit_hc_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t audit_rules_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t audit_mutex;
+pthread_mutex_t audit_hc_mutex;
+pthread_mutex_t audit_rules_mutex;
 int auid_err_reported;
 volatile int hc_thread_active;
 
@@ -56,6 +57,7 @@ static regex_t regexCompiled_ppid;
 static regex_t regexCompiled_gid;
 static regex_t regexCompiled_auid;
 static regex_t regexCompiled_euid;
+
 static regex_t regexCompiled_cwd;
 static regex_t regexCompiled_pname;
 static regex_t regexCompiled_path0;
@@ -63,9 +65,19 @@ static regex_t regexCompiled_path1;
 static regex_t regexCompiled_path2;
 static regex_t regexCompiled_path3;
 static regex_t regexCompiled_path4;
+
+static regex_t regexCompiled_cwd_hex;
+static regex_t regexCompiled_pname_hex;
+static regex_t regexCompiled_path0_hex;
+static regex_t regexCompiled_path1_hex;
+static regex_t regexCompiled_path2_hex;
+static regex_t regexCompiled_path3_hex;
+static regex_t regexCompiled_path4_hex;
+
 static regex_t regexCompiled_items;
 static regex_t regexCompiled_inode;
 static regex_t regexCompiled_dir;
+static regex_t regexCompiled_dir_hex;
 static regex_t regexCompiled_syscall;
 
 
@@ -280,6 +292,19 @@ int init_regex(void) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "inode");
         return -1;
     }
+
+    static const char *pattern_items = " items=([0-9]*) ";
+    if (regcomp(&regexCompiled_items, pattern_items, REG_EXTENDED)) {
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "items");
+        return -1;
+    }
+
+    static const char *pattern_syscall = " syscall=([0-9]*)";
+    if (regcomp(&regexCompiled_syscall, pattern_syscall, REG_EXTENDED)) {
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "syscall");
+        return -1;
+    }
+
     static const char *pattern_pname = " exe=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_pname, pattern_pname, REG_EXTENDED)) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "pname");
@@ -290,6 +315,13 @@ int init_regex(void) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "cwd");
         return -1;
     }
+
+    static const char *pattern_dir = " dir=\"([^ ]*)\"";
+    if (regcomp(&regexCompiled_dir, pattern_dir, REG_EXTENDED)) {
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dir");
+        return -1;
+    }
+
     static const char *pattern_path0 = " item=0 name=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_path0, pattern_path0, REG_EXTENDED)) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path0");
@@ -315,21 +347,55 @@ int init_regex(void) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path4");
         return -1;
     }
-    static const char *pattern_items = " items=([0-9]*) ";
-    if (regcomp(&regexCompiled_items, pattern_items, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "items");
+
+    static const char *pattern_pname_hex = " exe=([A-F0-9]*)";
+    if (regcomp(&regexCompiled_pname_hex, pattern_pname_hex, REG_EXTENDED)) {
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "pname_hex");
         return -1;
     }
-    static const char *pattern_dir = " dir=\"([^ ]*)\"";
-    if (regcomp(&regexCompiled_dir, pattern_dir, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dir");
+
+    static const char *pattern_cwd_hex = " cwd=([A-F0-9]*)";
+    if (regcomp(&regexCompiled_cwd_hex, pattern_cwd_hex, REG_EXTENDED)) {
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "cwd_hex");
         return -1;
     }
-    static const char *pattern_syscall = " syscall=([0-9]*)";
-    if (regcomp(&regexCompiled_syscall, pattern_syscall, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "syscall");
+
+    static const char *pattern_dir_hex = " dir=([A-F0-9]*)";
+    if (regcomp(&regexCompiled_dir_hex, pattern_dir_hex, REG_EXTENDED)) {
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dir_hex");
         return -1;
     }
+
+    static const char *pattern_path0_hex = " item=0 name=([A-F0-9]*)";
+    if (regcomp(&regexCompiled_path0_hex, pattern_path0_hex, REG_EXTENDED)) {
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path0_hex");
+        return -1;
+    }
+
+    static const char *pattern_path1_hex = " item=1 name=([A-F0-9]*)";
+    if (regcomp(&regexCompiled_path1_hex, pattern_path1_hex, REG_EXTENDED)) {
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path1_hex");
+        return -1;
+    }
+
+    static const char *pattern_path2_hex = " item=2 name=([A-F0-9]*)";
+    if (regcomp(&regexCompiled_path2_hex, pattern_path2_hex, REG_EXTENDED)) {
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path2_hex");
+        return -1;
+    }
+
+    static const char *pattern_path3_hex = " item=3 name=([A-F0-9]*)";
+    if (regcomp(&regexCompiled_path3_hex, pattern_path3_hex, REG_EXTENDED)) {
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path3_hex");
+        return -1;
+    }
+
+    static const char *pattern_path4_hex = " item=4 name=([A-F0-9]*)";
+    if (regcomp(&regexCompiled_path4_hex, pattern_path4_hex, REG_EXTENDED)) {
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path4_hex");
+        return -1;
+    }
+
     return 0;
 }
 
@@ -339,6 +405,10 @@ int audit_init(void) {
 
     audit_health_check_creation = 0;
     audit_health_check_deletion = 0;
+
+    w_mutex_init(&audit_mutex, NULL);
+    w_mutex_init(&audit_hc_mutex, NULL);
+    w_mutex_init(&audit_rules_mutex, NULL);
 
     // Check if auditd is installed and running.
     int aupid = check_auditd_enabled();
@@ -437,7 +507,6 @@ char * audit_get_id(const char * event) {
     return id;
 }
 
-
 char *gen_audit_path(char *cwd, char *path0, char *path1) {
 
     char *gen_path = NULL;
@@ -491,13 +560,6 @@ void audit_parse(char *buffer) {
     char *pdelete;
     regmatch_t match[2];
     int match_size;
-    char *uid = NULL;
-    char *gid = NULL;
-    char *auid = NULL;
-    char *euid = NULL;
-    char *pid = NULL;
-    char *ppid = NULL;
-    char *pname = NULL;
     char *path0 = NULL;
     char *path1 = NULL;
     char *path2 = NULL;
@@ -505,9 +567,6 @@ void audit_parse(char *buffer) {
     char *path4 = NULL;
     char *cwd = NULL;
     char *file_path = NULL;
-    char *syscall = NULL;
-    char *inode = NULL;
-    char *real_path = NULL;
     whodata_evt *w_evt;
     unsigned int items = 0;
     char *inode_temp;
@@ -528,6 +587,21 @@ void audit_parse(char *buffer) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_calloc(1, match_size + 1, p_dir);
                 snprintf (p_dir, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            }
+
+
+            else if (regexec(&regexCompiled_dir_hex, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                char *decoded_buffer = decode_hex_buffer_2_ascii_buffer(buffer + match[1].rm_so, match_size);
+                if (decoded_buffer) {
+                    const int decoded_length = match_size / 2;
+                    os_malloc(decoded_length + 1, p_dir);
+                    snprintf (p_dir, decoded_length + 1, "%.*s", decoded_length, decoded_buffer);
+                    os_free(decoded_buffer);
+                } else {
+                    merror("Error found while decoding HEX bufer: '%.*s'", match_size, buffer + match[1].rm_so);
+                }
+
             }
 
             if (p_dir && *p_dir != '\0') {
@@ -578,16 +652,15 @@ void audit_parse(char *buffer) {
             // user_name & user_id
             if(regexec(&regexCompiled_uid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
-                os_malloc(match_size + 1, uid);
-                snprintf (uid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-                const char *user = get_user("",atoi(uid), NULL);
+                os_malloc(match_size + 1, w_evt->user_id);
+                snprintf (w_evt->user_id, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                const char *user = get_user("", atoi(w_evt->user_id), NULL);
                 w_evt->user_name = strdup(user);
-                w_evt->user_id = strdup(uid);
-                free(uid);
             }
             // audit_name & audit_uid
             if(regexec(&regexCompiled_auid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
+                char *auid = NULL;
                 os_malloc(match_size + 1, auid);
                 snprintf (auid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
                 if (strcmp(auid, "4294967295") == 0) { // Invalid auid (-1)
@@ -602,30 +675,27 @@ void audit_parse(char *buffer) {
                     w_evt->audit_name = strdup(user);
                     w_evt->audit_uid = strdup(auid);
                 }
-                free(auid);
+                os_free(auid);
             }
             // effective_name && effective_uid
             if(regexec(&regexCompiled_euid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
-                os_malloc(match_size + 1, euid);
-                snprintf (euid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-                const char *user = get_user("",atoi(euid), NULL);
+                os_malloc(match_size + 1, w_evt->effective_uid);
+                snprintf (w_evt->effective_uid, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
+                const char *user = get_user("",atoi(w_evt->effective_uid), NULL);
                 w_evt->effective_name = strdup(user);
-                w_evt->effective_uid = strdup(euid);
-                free(euid);
             }
             // group_name & group_id
             if(regexec(&regexCompiled_gid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
-                os_malloc(match_size + 1, gid);
-                snprintf (gid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->group_name = strdup(get_group(atoi(gid)));
-                w_evt->group_id = strdup(gid);
-                free(gid);
+                os_malloc(match_size + 1, w_evt->group_id);
+                snprintf (w_evt->group_id, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
+                w_evt->group_name = strdup(get_group(atoi(w_evt->group_id)));
             }
             // process_id
             if(regexec(&regexCompiled_pid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
+                char *pid = NULL;
                 os_malloc(match_size + 1, pid);
                 snprintf (pid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
                 w_evt->process_id = atoi(pid);
@@ -634,6 +704,7 @@ void audit_parse(char *buffer) {
             // ppid
             if(regexec(&regexCompiled_ppid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
+                char *ppid = NULL;
                 os_malloc(match_size + 1, ppid);
                 snprintf (ppid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
                 w_evt->ppid = atoi(ppid);
@@ -642,36 +713,81 @@ void audit_parse(char *buffer) {
             // process_name
             if(regexec(&regexCompiled_pname, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
-                os_malloc(match_size + 1, pname);
-                snprintf (pname, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->process_name = strdup(pname);
-                free(pname);
+                os_malloc(match_size + 1, w_evt->process_name);
+                snprintf (w_evt->process_name, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            } else if (regexec(&regexCompiled_pname_hex, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                char *decoded_buffer = decode_hex_buffer_2_ascii_buffer(buffer + match[1].rm_so, match_size);
+                if (decoded_buffer) {
+                    const int decoded_length = match_size / 2;
+                    os_malloc(decoded_length + 1, w_evt->process_name);
+                    snprintf(w_evt->process_name, decoded_length + 1, "%.*s", decoded_length, decoded_buffer);
+                    os_free(decoded_buffer);
+                } else {
+                    merror("Error found while decoding HEX bufer: '%.*s'", match_size, buffer + match[1].rm_so);
+                }
+
             }
+
             // cwd
             if(regexec(&regexCompiled_cwd, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, cwd);
                 snprintf (cwd, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            } else if (regexec(&regexCompiled_cwd_hex, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                char *decoded_buffer = decode_hex_buffer_2_ascii_buffer(buffer + match[1].rm_so, match_size);
+                if (decoded_buffer) {
+                    const int decoded_length = match_size / 2;
+                    os_malloc(decoded_length + 1, cwd);
+                    snprintf(cwd, decoded_length + 1, "%.*s", decoded_length, decoded_buffer);
+                    os_free(decoded_buffer);
+                } else {
+                    merror("Error found while decoding HEX bufer: '%.*s'", match_size, buffer + match[1].rm_so);
+                }
             }
+
             // path0
             if(regexec(&regexCompiled_path0, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, path0);
                 snprintf (path0, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            } else if (regexec(&regexCompiled_path0_hex, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                char *decoded_buffer = decode_hex_buffer_2_ascii_buffer(buffer + match[1].rm_so, match_size);
+                if (decoded_buffer) {
+                    const int decoded_length = match_size / 2;
+                    os_malloc(decoded_length + 1, path0);
+                    snprintf(path0, decoded_length + 1, "%.*s", decoded_length, decoded_buffer);
+                    os_free(decoded_buffer);
+                } else {
+                    merror("Error found while decoding HEX bufer: '%.*s'", match_size, buffer + match[1].rm_so);
+                }
             }
+
             // path1
             if(regexec(&regexCompiled_path1, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, path1);
                 snprintf (path1, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            } else if (regexec(&regexCompiled_path1_hex, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                char *decoded_buffer = decode_hex_buffer_2_ascii_buffer(buffer + match[1].rm_so, match_size);
+                if (decoded_buffer) {
+                    const int decoded_length = match_size / 2;
+                    os_malloc(decoded_length + 1, path1);
+                    snprintf(path1, decoded_length + 1, "%.*s", decoded_length, decoded_buffer);
+                    os_free(decoded_buffer);
+                } else {
+                    merror("Error found while decoding HEX bufer: '%.*s'", match_size, buffer + match[1].rm_so);
+                }
             }
+
             // inode
             if(regexec(&regexCompiled_inode, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
-                os_malloc(match_size + 1, inode);
-                snprintf (inode, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->inode = strdup(inode);
-                free(inode);
+                os_malloc(match_size + 1, w_evt->inode);
+                snprintf (w_evt->inode, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
             }
 
             switch(items) {
@@ -716,6 +832,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
+                            char *real_path = NULL;
                             os_calloc(PATH_MAX + 2, sizeof(char), real_path);
                             if (realpath(w_evt->path, real_path), !real_path) {
                                 mdebug1(FIM_CHECK_LINK_REALPATH, w_evt->path);
@@ -740,8 +857,20 @@ void audit_parse(char *buffer) {
                     if(regexec(&regexCompiled_path2, buffer, 2, match, 0) == 0) {
                         match_size = match[1].rm_eo - match[1].rm_so;
                         os_malloc(match_size + 1, path2);
-                        snprintf (path2, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                        snprintf (path2, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
+                    } else if (regexec(&regexCompiled_path2_hex, buffer, 2, match, 0) == 0) {
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        char * decoded_buffer = decode_hex_buffer_2_ascii_buffer(buffer + match[1].rm_so, match_size);
+                        if (decoded_buffer) {
+                            const int decoded_length = match_size / 2;
+                            os_malloc(decoded_length + 1, path2);
+                            snprintf (path2, decoded_length + 1, "%.*s", decoded_length, decoded_buffer);
+                            os_free(decoded_buffer);
+                        } else {
+                            merror("Error found while decoding HEX bufer: '%.*s'", match_size, buffer + match[1].rm_so);
+                        }
                     }
+
                     if (cwd && path1 && path2) {
                         if (file_path = gen_audit_path(cwd, path1, path2), file_path) {
                             w_evt->path = file_path;
@@ -772,14 +901,38 @@ void audit_parse(char *buffer) {
                     if(regexec(&regexCompiled_path2, buffer, 2, match, 0) == 0) {
                         match_size = match[1].rm_eo - match[1].rm_so;
                         os_malloc(match_size + 1, path2);
-                        snprintf (path2, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                        snprintf (path2, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
+                    } else if (regexec(&regexCompiled_path2_hex, buffer, 2, match, 0) == 0) {
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        char *decoded_buffer = decode_hex_buffer_2_ascii_buffer(buffer + match[1].rm_so, match_size);
+                        if (decoded_buffer) {
+                            const int decoded_length = match_size / 2;
+                            os_malloc(decoded_length + 1, path2);
+                            snprintf (path2, decoded_length + 1, "%.*s", decoded_length, decoded_buffer);
+                            os_free(decoded_buffer);
+                        } else {
+                            merror("Error found while decoding HEX bufer: '%.*s'", match_size, buffer + match[1].rm_so);
+                        }
                     }
+
                     // path3
                     if(regexec(&regexCompiled_path3, buffer, 2, match, 0) == 0) {
                         match_size = match[1].rm_eo - match[1].rm_so;
                         os_malloc(match_size + 1, path3);
                         snprintf (path3, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                    } else if (regexec(&regexCompiled_path3_hex, buffer, 2, match, 0) == 0) {
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        char *decoded_buffer = decode_hex_buffer_2_ascii_buffer(buffer + match[1].rm_so, match_size);
+                        if (decoded_buffer) {
+                            const int decoded_length = match_size / 2;
+                            os_malloc(decoded_length + 1, path3);
+                            snprintf (path3, decoded_length + 1, "%.*s", decoded_length, decoded_buffer);
+                            os_free(decoded_buffer);
+                        } else {
+                            merror("Error found while decoding HEX bufer: '%.*s'", match_size, buffer + match[1].rm_so);
+                        }
                     }
+
                     if (cwd && path0 && path1 && path2 && path3) {
                         // Send event 1/2
                         char *file_path1;
@@ -839,8 +992,20 @@ void audit_parse(char *buffer) {
                     if(regexec(&regexCompiled_path4, buffer, 2, match, 0) == 0) {
                         match_size = match[1].rm_eo - match[1].rm_so;
                         os_malloc(match_size + 1, path4);
-                        snprintf (path4, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                        snprintf (path4, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
+                    }  else if (regexec(&regexCompiled_path4_hex, buffer, 2, match, 0) == 0) {
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        char *decoded_buffer = decode_hex_buffer_2_ascii_buffer(buffer + match[1].rm_so, match_size);
+                        if (decoded_buffer) {
+                            const int decoded_length = match_size / 2;
+                            os_malloc(decoded_length + 1, path4);
+                            snprintf (path4, decoded_length + 1, "%.*s", decoded_length, decoded_buffer);
+                            os_free(decoded_buffer);
+                        } else {
+                            merror("Error found while decoding HEX bufer: '%.*s'", match_size, buffer + match[1].rm_so);
+                        }
                     }
+
                     if (cwd && path1 && path4) {
                         char *file_path;
                         if (file_path = gen_audit_path(cwd, path1, path4), file_path) {
@@ -877,6 +1042,7 @@ void audit_parse(char *buffer) {
     case 3:
         if(regexec(&regexCompiled_syscall, buffer, 2, match, 0) == 0) {
             match_size = match[1].rm_eo - match[1].rm_so;
+            char *syscall = NULL;
             os_malloc(match_size + 1, syscall);
             snprintf (syscall, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
             if(!strcmp(syscall, "2") || !strcmp(syscall, "257")
@@ -898,7 +1064,7 @@ void audit_parse(char *buffer) {
             } else {
                 mdebug2(FIM_HEALTHCHECK_UNRECOGNIZED_EVENT, syscall);
             }
-            free(syscall);
+            os_free(syscall);
         }
     }
 }
@@ -981,6 +1147,15 @@ void * audit_main(int *audit_sock) {
     regfree(&regexCompiled_pname);
     regfree(&regexCompiled_items);
     regfree(&regexCompiled_inode);
+
+    regfree(&regexCompiled_cwd_hex);
+    regfree(&regexCompiled_pname_hex);
+    regfree(&regexCompiled_path0_hex);
+    regfree(&regexCompiled_path1_hex);
+    regfree(&regexCompiled_path2_hex);
+    regfree(&regexCompiled_path3_hex);
+    regfree(&regexCompiled_path4_hex);
+
     // Change Audit monitored folders to Inotify.
     int i;
     w_mutex_lock(&audit_rules_mutex);

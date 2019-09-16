@@ -11,7 +11,7 @@ from operator import itemgetter
 
 class WazuhDBQuerySyscollector(WazuhDBQuery):
 
-    nested_fields = ['scan', 'os', 'ram', 'cpu', 'local', 'remote']
+    nested_fields = ['scan', 'os', 'ram', 'cpu', 'local', 'remote', 'tx', 'rx']
 
     def __init__(self, array, nested, agent_id, *args, **kwargs):
         super().__init__(backend=WazuhDBBackend(agent_id), default_sort_field='scan_id', get_data=True, count=True,
@@ -21,8 +21,8 @@ class WazuhDBQuerySyscollector(WazuhDBQuery):
 
     def _format_data_into_dictionary(self):
         if self.nested:
-            fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), self.nested_fields, '_')
-            self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, self.nested_fields, '_') for d in self._data]
+            fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), self.nested_fields, '.')
+            self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, self.nested_fields, '.') for d in self._data]
 
         return super()._format_data_into_dictionary() if self.array else next(iter(self._data), {})
 
@@ -45,11 +45,11 @@ def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, sea
 
     # The osinfo fields in database are different in Windows and Linux
     os_name = agent_obj.get_agent_attr('os_name')
-    windows_fields = {'hostname': 'hostname', 'os_version': 'os_version', 'os_name': 'os_name',
-                      'architecture': 'architecture', 'os_major': 'os_major', 'os_minor': 'os_minor',
-                      'os_build': 'os_build', 'version': 'version', 'scan_time': 'scan_time',
-                      'scan_id': 'scan_id'}
-    linux_fields = {**windows_fields, **{'os_codename': 'os_codename', 'os_platform': 'os_platform',
+    windows_fields = {'hostname': 'hostname', 'os.version': 'os_version', 'os.name': 'os_name',
+                      'architecture': 'architecture', 'os.major': 'os_major', 'os.minor': 'os_minor',
+                      'os.build': 'os_build', 'version': 'version', 'scan.time': 'scan_time',
+                      'scan.id': 'scan_id'}
+    linux_fields = {**windows_fields, **{'os.codename': 'os_codename', 'os.platform': 'os_platform',
                                          'sysname': 'sysname', 'release': 'release'}}
 
     valid_select_fields = windows_fields if 'Windows' in os_name else linux_fields
@@ -64,9 +64,9 @@ def get_hardware_agent(agent_id, offset=0, limit=common.database_limit, select={
     """
     Get info about an agent's OS
     """
-    valid_select_fields = {'board_serial': 'board_serial', 'cpu_name': 'cpu_name', 'cpu_cores': 'cpu_cores',
-                           'cpu_mhz': 'cpu_mhz', 'ram_total': 'ram_total', 'ram_free': 'ram_free',
-                           'ram_usage': 'ram_usage', 'scan_id': 'scan_id', 'scan_time': 'scan_time'}
+    valid_select_fields = {'board_serial': 'board_serial', 'cpu.name': 'cpu_name', 'cpu.cores': 'cpu_cores',
+                           'cpu.mhz': 'cpu_mhz', 'ram.total': 'ram_total', 'ram.free': 'ram_free',
+                           'ram.usage': 'ram_usage', 'scan.id': 'scan_id', 'scan.time': 'scan_time'}
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, nested=nested,
                           search=search, sort=sort, filters=filters, valid_select_fields=valid_select_fields,
@@ -78,7 +78,7 @@ def get_packages_agent(agent_id, offset=0, limit=common.database_limit, select={
     """
     Get info about an agent's programs
     """
-    valid_select_fields = {'scan_id': 'scan_id', 'scan_time': 'scan_time', 'format': 'format', 'name': 'name',
+    valid_select_fields = {'scan.id': 'scan_id', 'scan.time': 'scan_time', 'format': 'format', 'name': 'name',
                            'priority': 'priority', 'section': 'section', 'size': 'size', 'vendor': 'vendor',
                            'install_time': 'install_time', 'version': 'version', 'architecture': 'architecture',
                            'multiarch': 'multiarch', 'source': 'source', 'description': 'description',
@@ -94,7 +94,7 @@ def get_processes_agent(agent_id, offset=0, limit=common.database_limit, select=
     """
     Get info about an agent's processes
     """
-    valid_select_fields = {'scan_id': 'scan_id', 'scan_time': 'scan_time', 'pid': 'pid', 'name': 'name',
+    valid_select_fields = {'scan.id': 'scan_id', 'scan.time': 'scan_time', 'pid': 'pid', 'name': 'name',
                            'state': 'state', 'ppid': 'ppid', 'utime': 'utime', 'stime': 'stime', 'cmd': 'cmd',
                            'argvs': 'argvs', 'euser': 'euser', 'ruser': 'ruser', 'suser': 'suser',
                            'egroup': 'egroup', 'rgroup': 'rgroup', 'sgroup': 'sgroup', 'fgroup': 'fgroup',
@@ -112,10 +112,10 @@ def get_ports_agent(agent_id, offset=0, limit=common.database_limit, select={}, 
     """
     Get info about an agent's ports
     """
-    valid_select_fields = {'scan_id': 'scan_id', 'scan_time': 'scan_time', 'protocol': 'protocol',
-                           'local_port': 'local_port', 'remote_ip': 'remote_ip', 'remote_port': 'remote_port',
+    valid_select_fields = {'scan.id': 'scan_id', 'scan.time': 'scan_time', 'protocol': 'protocol',
+                           'local.port': 'local_port', 'remote.ip': 'remote_ip', 'remote.port': 'remote_port',
                            'tx_queue': 'tx_queue', 'rx_queue': 'rx_queue', 'inode': 'inode', 'state': 'state',
-                           'pid': 'pid', 'process': 'process', 'local_ip': 'local_ip'}
+                           'pid': 'pid', 'process': 'process', 'local.ip': 'local_ip'}
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, search=search, sort=sort,
                           filters=filters, valid_select_fields=valid_select_fields, table='sys_ports', array=True,
@@ -127,7 +127,7 @@ def get_netaddr_agent(agent_id, offset=0, limit=common.database_limit, select={}
     """
     Get info about an agent's network address
     """
-    valid_select_fields = {'scan_id': 'scan_id', 'iface': 'iface', 'proto': 'proto', 'address': 'address',
+    valid_select_fields = {'scan.id': 'scan_id', 'iface': 'iface', 'proto': 'proto', 'address': 'address',
                            'netmask': 'netmask', 'broadcast': 'broadcast'}
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, search=search, sort=sort,
@@ -140,7 +140,7 @@ def get_netproto_agent(agent_id, offset=0, limit=common.database_limit, select={
     """
     Get info about an agent's network protocol
     """
-    valid_select_fields = {'scan_id': 'scan_id', 'iface': 'iface', 'type': 'type', 'gateway': 'gateway', 'dhcp': 'dhcp'}
+    valid_select_fields = {'scan.id': 'scan_id', 'iface': 'iface', 'type': 'type', 'gateway': 'gateway', 'dhcp': 'dhcp'}
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, search=search, sort=sort,
                           filters=filters, valid_select_fields=valid_select_fields, table='sys_netproto', array=True,
@@ -152,11 +152,11 @@ def get_netiface_agent(agent_id, offset=0, limit=common.database_limit, select={
     """
     Get info about an agent's network interface
     """
-    valid_select_fields = {'scan_id': 'scan_id', 'scan_time': 'scan_time', 'name': 'name', 'adapter': 'adapter',
-                           'type': 'type', 'state': 'state', 'mtu': 'mtu', 'mac': 'mac', 'tx_packets': 'tx_packets',
-                           'rx_packets': 'rx_packets', 'tx_bytes': 'tx_bytes', 'rx_bytes': 'rx_bytes',
-                           'tx_errors': 'tx_errors', 'rx_errors': 'rx_errors', 'tx_dropped': 'tx_dropped',
-                           'rx_dropped': 'rx_dropped'}
+    valid_select_fields = {'scan.id': 'scan_id', 'scan.time': 'scan_time', 'name': 'name', 'adapter': 'adapter',
+                           'type': 'type', 'state': 'state', 'mtu': 'mtu', 'mac': 'mac', 'tx.packets': 'tx_packets',
+                           'rx.packets': 'rx_packets', 'tx.bytes': 'tx_bytes', 'rx.bytes': 'rx_bytes',
+                           'tx.errors': 'tx_errors', 'rx.errors': 'rx_errors', 'tx.dropped': 'tx_dropped',
+                           'rx.dropped': 'rx_dropped'}
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, search=search, sort=sort,
                           filters=filters, valid_select_fields=valid_select_fields, table='sys_netiface', array=True,
@@ -188,12 +188,12 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
             result = sorted(result, key=itemgetter(sort['fields'][0]),
                             reverse=True if sort['order'] == "desc" else False)
 
-        fields_to_nest, non_nested = get_fields_to_nest(result[0].keys(), '_')
+        fields_to_nest, non_nested = get_fields_to_nest(result[0].keys(), '.')
     else:
         fields_to_nest, non_nested = None, None
 
     return {'items': list(map(lambda x: plain_dict_to_nested_dict(x, fields_to_nest, non_nested,
-                                                                  WazuhDBQuerySyscollector.nested_fields, '_'),
+                                                                  WazuhDBQuerySyscollector.nested_fields, '.'),
                               result)),
             'totalItems': total}
 

@@ -1,9 +1,9 @@
 ---
 test_name: PUT /agents/group/:group_id
 
-#marks:
-#  - usefixtures:
-#      - agents_test
+marks:
+  - usefixtures:
+    - base_tests
 
 includes:
  - !include common.yaml

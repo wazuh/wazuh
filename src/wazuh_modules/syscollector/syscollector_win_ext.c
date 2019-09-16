@@ -330,8 +330,6 @@ char* length_to_ipv6_mask(int mask_length){
                 case 1:
                     string[j++] = '8';
                     break;
-                case 0:
-                    break;
             }
             length = 0;
         }

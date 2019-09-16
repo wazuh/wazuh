@@ -27,9 +27,9 @@ static req_node_t ** req_pool;
 static volatile int pool_i = 0;
 static volatile int pool_j = 0;
 
-static pthread_mutex_t mutex_table = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t pool_available = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t mutex_table;
+static pthread_mutex_t mutex_pool;
+static pthread_cond_t pool_available;
 
 int request_pool;
 int rto_sec;
@@ -52,6 +52,10 @@ void req_init() {
     rto_sec = getDefine_Int("remoted", "request_rto_sec", 0, 60);
     rto_msec = getDefine_Int("remoted", "request_rto_msec", 0, 999);
     max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
+
+    w_mutex_init(&mutex_table, NULL);
+    w_mutex_init(&mutex_pool, NULL);
+    w_cond_init(&pool_available, NULL);
 
     // Create hash table and request pool
 

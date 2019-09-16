@@ -1,10 +1,15 @@
 ---
 test_name: GET /decoders
 
+marks:
+  - usefixtures:
+      - base_tests
+
 includes:
   - !include common.yaml
 
 stages:
+
     # Authentication stage
   - type: ref
     id: login_get_token
@@ -189,6 +194,7 @@ marks:
         - status
 
 stages:
+
     # GET /decoders?limit=1&sort={field}
   - name: Try to get decoders using an ascendent sorted field answer
     request:

@@ -140,10 +140,10 @@ class Decoder:
                              offset=offset, limit=limit)
 
     @staticmethod
-    def get_decoders(status=None, path=None, file=None, name=None, parents=False, offset=0, limit=common.database_limit,
-                     sort_by=None, sort_ascending=True, search_text=None, complementary_search=False,
-                     search_in_fields=None, q=''):
-        """Gets a list of available decoders.
+    def get_decoders(offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
+                     search_text=None, complementary_search=False, search_in_fields=None, filters=None, q=''):
+        """
+        Gets a list of available decoders.
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
@@ -152,9 +152,20 @@ class Decoder:
         :param search_text: Text to search
         :param complementary_search: Find items without the text to search
         :param search_in_fields: Fields to search in
+        :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}.
+            This filter is used for filtering by 'status', 'path', 'file', 'name' and 'parents'.
         :param q: Defines query to filter.
+
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+        # set default values to parameters
+        filters = filters if filters is not None else {}
+        status = filters.get('status', None)
+        path = filters.get('path', None)
+        file_ = filters.get('file', None)
+        name = filters.get('name', None)
+        parents = filters.get('parents', None)
+
         status = Decoder.__check_status(status)
         all_decoders = []
 
@@ -164,16 +175,16 @@ class Decoder:
 
         decoders = list(all_decoders)
         for d in all_decoders:
-            if path and path != d['path']:
+            if path and path != d.path:
                 decoders.remove(d)
                 continue
-            if file and file != d['file']:
+            if file_ and file_ != d.file:
                 decoders.remove(d)
                 continue
-            if name and name != d['name']:
+            if name and name != d.name:
                 decoders.remove(d)
                 continue
-            if parents and 'parent' in d['details']:
+            if parents and 'parent' in d.details:
                 decoders.remove(d)
                 continue
         return process_array(decoders, search_text=search_text, search_in_fields=search_in_fields,

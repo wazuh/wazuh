@@ -243,11 +243,13 @@ class WazuhIntegration:
             sys.exit(3)
         return client
 
-    def get_sts_client(self, access_key, secret_key):
+    def get_sts_client(self, access_key, secret_key, profile=None):
         conn_args = {}
         if access_key is not None and secret_key is not None:
             conn_args['aws_access_key_id'] = access_key
             conn_args['aws_secret_access_key'] = secret_key
+        elif profile is not None:
+            conn_args['profile_name'] = profile
 
         boto_session = boto3.Session(**conn_args)
 
@@ -1617,7 +1619,10 @@ class AWSCustomBucket(AWSBucket):
         AWSBucket.__init__(self, **kwargs)
         self.retain_db_records = 500
         # get STS client
-        self.sts_client = self.get_sts_client(kwargs['access_key'], kwargs['secret_key'])
+        access_key = kwargs.get('access_key', None)
+        secret_key = kwargs.get('secret_key', None)
+        profile = kwargs.get('profile', None)
+        self.sts_client = self.get_sts_client(access_key, secret_key, profile=profile)
         # get account ID
         self.aws_account_id = self.sts_client.get_caller_identity().get('Account')
         # SQL queries for custom buckets
@@ -1943,7 +1948,7 @@ class AWSService(WazuhIntegration):
                                   service_name=service_name, region=region)
 
         # get sts client (necessary for getting account ID)
-        self.sts_client = self.get_sts_client(access_key, secret_key)
+        self.sts_client = self.get_sts_client(access_key, secret_key, aws_profile)
         # get account ID
         self.account_id = self.sts_client.get_caller_identity().get('Account')
         self.only_logs_after = only_logs_after

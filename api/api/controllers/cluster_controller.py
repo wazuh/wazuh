@@ -266,7 +266,7 @@ def get_info_node(node_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'node_id': node_id}
 
-    dapi = DistributedAPI(f=Wazuh(common.ossec_path).get_ossec_init,
+    dapi = DistributedAPI(f=Wazuh().to_dict,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -336,7 +336,8 @@ def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
     f_kwargs = {'node_id': node_id,
                 'year': year,
                 'month': month,
-                'day': day}
+                'day': day,
+                'date': True if date else False}
 
     dapi = DistributedAPI(f=stats.totals,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -372,8 +373,9 @@ def get_stats_hourly_node(node_id, pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -474,8 +476,10 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
     f_kwargs = {'node_id': node_id,
                 'offset': offset,
                 'limit': limit,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['timestamp'],
+                'sort_ascending': False if sort is None or parse_api_param(sort, 'sort')['order'] == 'desc' else True,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'category': category,
                 'type_log': type_log}
 

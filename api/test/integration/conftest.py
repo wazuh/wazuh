@@ -1,35 +1,127 @@
 import pytest
 import time
 import os
+import subprocess
 
 
-@pytest.fixture(name="agents_test", scope="session")
-def fix_test():
-    os.chdir("./agent_enviroment")
-    os.system("docker-compose up --build -d")
-    time.sleep(60)
-    print('Entorno configurado - Comienzan los test')
-    yield
-    print('Test finalizados')
-    os.system("docker-compose down")
+def build_and_up(env: str):
+    pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
+    os.chdir(pwd)
+    values = {
+        'interval': 10,
+        'max_retries': 30,
+        'retries': 0
+    }
+    current_process = subprocess.Popen(
+        ["docker-compose", "build", "--build-arg", "ENVIRONMENT={}".format(env)])
+    current_process.wait()
+    current_process = subprocess.Popen(["docker-compose", "up", "-d"])
+    current_process.wait()
+
+    return values
 
 
-@pytest.fixture(name="agent_tests", scope="session")
-def fix_test():
-    here = os.path.abspath(os.path.dirname(__file__))
-    test_path = os.path.join(here, 'environment', 'agents', 'docker-compose.yml')
-    os.system("docker-compose -f {} up --build -d".format(test_path))
-    time.sleep(90)
-    yield
-    os.system("docker-compose -f {} down".format(test_path))
+def down_env():
+    current_process = subprocess.Popen(["docker-compose", "down"])
+    current_process.wait()
+
+
+def check_health(interval=10, node_type='master', agents=None):
+    time.sleep(interval)
+    if node_type == 'master':
+        health = subprocess.check_output(
+            "docker inspect env_wazuh-master_1 -f '{{json .State.Health.Status}}'", shell=True)
+        return False if not health.startswith(b'"healthy"') else True
+    elif node_type == 'agent':
+        for agent in agents:
+            health = subprocess.check_output(
+                "docker inspect env_wazuh-agent{}_1 -f '{{json .State.Health.Status}}'".format(agent), shell=True)
+            if not health.startswith(b'"healthy"'):
+                return False
+        return True
+
+
+@pytest.fixture(name="base_tests", scope="session")
+def environment_base():
+    values = build_and_up("base")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="security_tests", scope="session")
+def environment_security():
+    values = build_and_up("security")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="manager_tests", scope="session")
+def environment_manager():
+    values = build_and_up("manager")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="cluster_tests", scope="session")
+def environment_cluster():
+    values = build_and_up("cluster")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="syscollector_tests", scope="session")
+def environment_syscollector():
+    values = build_and_up("syscollector")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
 
 
 @pytest.fixture(name="ciscat_tests", scope="session")
-def fix_test():
-    here = os.path.abspath(os.path.dirname(__file__))
-    test_path = os.path.join(here, 'environment', 'ciscat', 'docker-compose.yml')
-    os.system("docker-compose -f {0} up --build -d --scale wazuh-agent-ciscat=3".format(test_path))
-    time.sleep(150)
-    yield
-    os.system("docker-compose -f {0} down".format(test_path))
-
+def environment_ciscat():
+    values = build_and_up("ciscat")
+    while values['retries'] < values['max_retries']:
+        master_health = check_health()
+        if master_health:
+            agents_healthy = check_health(node_type='agent', agents=[1, 2, 3])
+            if agents_healthy is True:
+                time.sleep(10)
+                yield
+                break
+        else:
+            values['retries'] += 1
+    down_env()

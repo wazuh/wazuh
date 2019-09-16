@@ -77,6 +77,16 @@ size_t mailcom_getconfig(const char * section, char ** output);
 MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *mail, MailMsg **msg_sms) __attribute__((nonnull));
 MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *mail, MailMsg **msg_sms) __attribute__((nonnull));
 
+/**
+ * @brief Read cJSON and save in printed with email format
+ * @param item Pointer to the cJSON to read
+ * @param printed Body email
+ * @param body_size Maximun body message size
+ * @param tab Determine the number of tabs on each line
+ * @param counter Count the number of times that is tabulated in a line
+ */
+void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int counter);
+
 /* Send an email */
 int OS_Sendmail(MailConfig *mail, struct tm *p) __attribute__((nonnull));
 int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg) __attribute__((nonnull));

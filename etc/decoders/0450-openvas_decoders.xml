@@ -3,7 +3,7 @@
   -  Author: Christian Fischer.
   -  Updated by Wazuh, Inc.
   -  Copyright (C) 2015-2019, Wazuh Inc.
-  -  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <!--
@@ -85,7 +85,7 @@ Mar 10 10:05:59 hostname md    omp[9140]: Authentication failure for 'admin' fro
 </decoder>
 
 <decoder name="openvasmd">
-  <program_name>^md</program_name>
+  <program_name>^md$</program_name>
 </decoder>
 
 <decoder name="openvasmd">

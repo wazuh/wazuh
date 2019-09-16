@@ -72,9 +72,6 @@ static const char *SQL_STMT[] = {
     "INSERT INTO sca_check (id,scan_id,title,description,rationale,remediation,file,directory,process,registry,`references`,result,policy_id,command,status,reason) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
     "INSERT INTO sca_scan_info (start_scan,end_scan,id,policy_id,pass,fail,invalid,total_checks,score,hash) VALUES (?,?,?,?,?,?,?,?,?,?);",
     "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ?, invalid = ?, total_checks = ?, score = ?, hash = ? WHERE policy_id = ?;",
-    "INSERT INTO sca_global (scan_id,name,description,`references`,pass,failed,score) VALUES(?,?,?,?,?,?,?);",
-    "UPDATE sca_global SET scan_id = ?, name = ?, description = ?, `references` = ?, pass = ?, failed = ?, score = ? WHERE name = ?;",
-    "SELECT name FROM sca_global WHERE name = ?;",
     "INSERT INTO sca_check_compliance (id_check,`key`,`value`) VALUES(?,?,?);",
     "INSERT INTO sca_check_rules (id_check,`type`, rule) VALUES(?,?,?);",
     "SELECT policy_id,hash,id FROM sca_scan_info WHERE policy_id = ?;",
@@ -82,7 +79,6 @@ static const char *SQL_STMT[] = {
     "SELECT id FROM sca_policy WHERE id = ?;",
     "SELECT hash_file FROM sca_policy WHERE id = ?;",
     "INSERT INTO sca_policy (name,file,id,description,`references`,hash_file) VALUES(?,?,?,?,?,?);",
-    "UPDATE sca_check SET scan_id = ? WHERE policy_id = ?;",
     "SELECT result FROM sca_check WHERE policy_id = ? ORDER BY id;",
     "SELECT id FROM sca_policy;",
     "DELETE FROM sca_policy WHERE id = ?;",
@@ -569,7 +565,7 @@ wdb_t * wdb_init(sqlite3 * db, const char * agent_id) {
 
 void wdb_destroy(wdb_t * wdb) {
     os_free(wdb->agent_id);
-    pthread_mutex_destroy(&wdb->mutex);
+    w_mutex_destroy(&wdb->mutex);
     free(wdb);
 }
 

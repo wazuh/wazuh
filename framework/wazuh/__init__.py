@@ -12,7 +12,6 @@ from time import strftime
 from wazuh import common
 from wazuh.database import Connection
 from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
-from wazuh.utils import execute
 
 """
 Wazuh HIDS Python package

@@ -46,7 +46,8 @@ cols_returned_from_db_sca = [field.split(' as ')[1] if ' as ' in field else fiel
 cols_returned_from_db_sca_check = [field.replace('`', '').replace('sca.', '') for field in fields_translation_sca_check.keys()]
 
 
-@patch("wazuh.security_configuration_assessment.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+
+@patch("wazuh.security_configuration_assessment.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
 class TestPolicyMonitoring(TestCase):
 
     @patch('socket.socket')
@@ -168,8 +169,8 @@ class TestPolicyMonitoring(TestCase):
         """
         Test failing using not correct limits
         """
-        with patch('wazuh.security_configuration_assessment.WazuhDBConnection') as mock_wdb:
-            mock_wdb.return_value.execute.side_effect = get_fake_sca_data
+        with patch('wazuh.security_configuration_assessment.WazuhDBBackend') as mock_wdb:
+            mock_wdb.return_value.connect_to_db.return_value.execute.side_effect = get_fake_sca_data
             with pytest.raises(exception.WazuhException, match=".* 1405 .*"):
                 get_sca_list(agent_id='000', limit=common.maximum_database_limit+1)
 
@@ -180,8 +181,8 @@ class TestPolicyMonitoring(TestCase):
         """
         Test failing when WazuhDB don't return 'items' key into result
         """
-        with patch('wazuh.security_configuration_assessment.WazuhDBConnection') as mock_wdb:
-            mock_wdb.return_value.execute.side_effect = get_fake_sca_data
+        with patch('wazuh.security_configuration_assessment.WazuhDBBackend') as mock_wdb:
+            mock_wdb.return_value.connect_to_db.return_value.execute.side_effect = get_fake_sca_data
             with patch('wazuh.security_configuration_assessment.WazuhDBQuerySCA.run', return_value={}):
                 with pytest.raises(exception.WazuhException, match=".* 2007 .*"):
                     get_sca_checks('not_exists', agent_id='000')

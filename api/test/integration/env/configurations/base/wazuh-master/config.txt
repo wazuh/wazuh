@@ -1,0 +1,22 @@
+This configuration is composed of:
+
+12 agents (ids 001 to 012 and names wazuh-agent1 to wazuh-agent12)
+3 groups (group1, group2, group3)
+
+Statuses:
+
+agents 001 to 008 are Active
+agents 009 and 010 are Disconnected
+agents 011 and 012 are Never connected
+
+Apart from default, the agent groups are distributed as follows:
+
+agent 001 belongs to group1
+agent 002 belongs to group2
+agent 003 belongs to group3
+agent 005 belongs to group1 and group2
+agent 006 belongs to group2 and group3
+agent 007 belongs to group1 and group3
+agent 008 belongs to group1, group2 and group3
+agent 009 belongs to group1
+agent 010 belongs to group2

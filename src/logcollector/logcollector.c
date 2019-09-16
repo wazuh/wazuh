@@ -48,7 +48,7 @@ int OUTPUT_QUEUE_SIZE = OUTPUT_MIN_QUEUE_SIZE;
 logsocket default_agent = { .name = "agent" };
 
 /* Output thread variables */
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t mutex;
 #ifdef WIN32
 static pthread_mutex_t win_el_mutex;
 static pthread_mutexattr_t win_el_mutex_attr;
@@ -68,6 +68,7 @@ void LogCollectorStart()
     int f_reload = 0;
     int f_free_excluded = 0;
     IT_control f_control = 0;
+    IT_control duplicates_removed = 0;
     logreader *current;
 
     /* Create store data */
@@ -89,6 +90,8 @@ void LogCollectorStart()
     check_pattern_expand(1);
     check_pattern_expand_excluded();
 
+    w_mutex_init(&mutex, NULL);
+
 #ifndef WIN32
     /* To check for inode changes */
     struct stat tmp_stat;
@@ -100,6 +103,7 @@ void LogCollectorStart()
     w_set_file_mutexes();
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
+    memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
     int r;
     const char *m_uname;
 
@@ -137,8 +141,13 @@ void LogCollectorStart()
         }
 
         /* Remove duplicate entries */
-        if (remove_duplicates(current, i, j) == NEXT_IT) {
+        /* Returns NEXT_IT if duplicates were removed, LEAVE_IT if an error occurred
+           or CONTINUE_IT to continue with the current iteration */
+        duplicates_removed = remove_duplicates(current, i, j);
+        if (duplicates_removed == NEXT_IT) {
             i--;
+            continue;
+        } else if (duplicates_removed == LEAVE_IT){
             continue;
         }
 
@@ -683,8 +692,11 @@ void LogCollectorStart()
                         }
                     }
 
-                    if (remove_duplicates(current, i, j) == NEXT_IT) {
+                    duplicates_removed = remove_duplicates(current, i, j);
+                    if (duplicates_removed == NEXT_IT) {
                         i--;
+                        continue;
+                    } else if (duplicates_removed == LEAVE_IT){
                         continue;
                     }
                 }
@@ -796,6 +808,7 @@ int handle_file(int i, int j, int do_fseek, int do_log)
 
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
+    memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
 
     lf->fp = NULL;
     lf->h = CreateFile(lf->file, GENERIC_READ,
@@ -1130,7 +1143,7 @@ int check_pattern_expand(int do_seek) {
                     int added = 0;
 
                     if(!ex_file) {
-                        minfo(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
+                        mdebug1(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
 
                         os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
 
@@ -1440,10 +1453,13 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
     IT_control d_control = CONTINUE_IT;
     IT_control f_control;
     int r, k;
+    int same_inode = 0;
     logreader *dup;
 
     if (current->file && !current->command) {
         for (r = 0, k = -1;; r++) {
+            same_inode = 0;
+
             if (f_control = update_current(&dup, &r, &k), f_control) {
                 if (f_control == NEXT_IT) {
                     continue;
@@ -1452,8 +1468,37 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
                 }
             }
 
-            if (current != dup && dup->file && !strcmp(current->file, dup->file)) {
-                mwarn(DUP_FILE, current->file);
+            if (!dup->file || dup->command) {
+                continue;
+            }
+
+            struct stat statCurrent, statDup;
+
+            if (strcmp(current->logformat, "eventchannel") && strcmp(current->logformat, "eventlog") &&
+                strcmp(dup->logformat, "eventchannel") && strcmp(dup->logformat, "eventlog")) {
+
+                if (stat(current->file, &statCurrent) < 0){
+                    merror("Couldn't stat file '%s'", current->file);
+                    d_control = LEAVE_IT;
+                    break;
+                }
+
+                if (stat(dup->file, &statDup) < 0){
+                    merror("Couldn't stat file '%s'", dup->file);
+                    d_control = LEAVE_IT;
+                    break;
+                }
+
+                same_inode = (statCurrent.st_ino == statDup.st_ino && statCurrent.st_dev == statDup.st_dev) ? 1 : 0;
+            }
+
+            if (current != dup && (!strcmp(current->file, dup->file) || same_inode)) {
+                if (same_inode) {
+                    mdebug1(DUP_FILE_INODE, current->file);
+                } else {
+                    mwarn(DUP_FILE, current->file);
+                }
+
                 int result;
                 if (j < 0) {
                     result = Remove_Localfile(&logff, i, 0, 1,NULL);
@@ -1754,14 +1799,12 @@ void w_create_output_threads(){
 #ifndef WIN32
                 w_create_thread(w_output_thread, curr_node->key);
 #else
-                if (CreateThread(NULL,
+                w_create_thread(NULL,
                     0,
                     (LPTHREAD_START_ROUTINE)w_output_thread,
                     curr_node->key,
                     0,
-                    NULL) == NULL) {
-                    merror(THREAD_ERROR);
-                }
+                    NULL);
 #endif
             }
         }
@@ -1779,6 +1822,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
     struct stat tmp_stat;
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
+    memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
 #endif
 
     /* Daemon loop */
@@ -2039,14 +2083,12 @@ void w_create_input_threads(){
 #ifndef WIN32
         w_create_thread(w_input_thread,NULL);
 #else
-        if (CreateThread(NULL,
+        w_create_thread(NULL,
                      0,
                      (LPTHREAD_START_ROUTINE)w_input_thread,
                      NULL,
                      0,
-                     NULL) == NULL) {
-        merror(THREAD_ERROR);
-    }
+                     NULL);
 #endif
     }
 }

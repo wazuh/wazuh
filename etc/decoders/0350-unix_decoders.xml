@@ -2,7 +2,7 @@
   -  Unix decoders
   -  Created by Wazuh, Inc.
   -  Copyright (C) 2015-2019, Wazuh Inc.
-  -  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 
@@ -73,4 +73,8 @@ Dec  1 16:22:16 ip-10-0-0-220 gpasswd[3246]: user bart added by root to group su
     <prematch offset="after_parent">added by</prematch>
     <regex offset="after_parent">user (\S+) added by (\S+) to group (\S+)</regex>
     <order>dstuser,srcuser,group</order>
+</decoder>
+
+<decoder name="systemd">
+    <program_name>systemd</program_name>
 </decoder>

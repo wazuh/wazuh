@@ -279,6 +279,19 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     return root;
 }
 
+// Initialize hw_info structure
+
+void init_hw_info(hw_info *info) {
+    if(info != NULL) {
+        info->cpu_name = NULL;
+        info->cpu_cores = 0;
+        info->cpu_MHz = 0.0;
+        info->ram_total = 0;
+        info->ram_free = 0;
+        info->ram_usage = 0;
+    }
+}
+
 void wm_sys_destroy(wm_sys_t *sys) {
     free(sys);
 }
