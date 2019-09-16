@@ -123,10 +123,10 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
                         reqs = user_resources[m.group(1)]['allow']
                     else:
                         reqs = [req_resource]
+                    final_user_permissions = user_resources['agent:id']['allow'] - user_resources['agent:id']['deny']
                     for req in reqs:
                         split_req = req.split(':')[-1]
-                        if split_req in user_resources['agent:id']['allow'] and \
-                                split_req not in user_resources['agent:id']['deny']:
+                        if split_req in final_user_permissions:
                             allow_match.append(split_req)
                 elif m.group(3) != '*':
                     allow_match.append(m.group(3) in user_resources[m.group(1)]['allow']) or \
