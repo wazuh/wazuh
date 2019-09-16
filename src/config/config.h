@@ -23,9 +23,7 @@
 #define CAR           000001000
 #define CDBD          000002000
 #define CSYSLOGD      000004000
-#define CLOCAL_CONFIG 000000000
-#define CRMOTE_CONFIG 000010000
-// #define CAGENT_CONFIG 000010000
+#define CRMOTE_CONFIG 000010000            // Since Wazuh 3.11 : CAGENT_CONFIG has been replaced with CRMOTE_CONFIG
 #define CAGENTLESS    000020000
 #define CREPORTS      000040000
 #define CINTEGRATORD  000100000
@@ -35,6 +33,8 @@
 #define CBUFFER       002000000
 #define CCLUSTER      004000000
 #define CSOCKET       010000000
+#define CLOCAL_CONFIG 020000000
+#define CAGENT_CGFILE 040000000
 
 #define MAX_NEEDED_TAGS 4
 
@@ -68,7 +68,7 @@ int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
 int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
 int Read_CReports(XML_NODE node, void *config1, void *config2);
-int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
+int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_type);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
 #ifndef WIN32
 int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1);

@@ -15,7 +15,7 @@ static const char *XML_NAME = "name";
 
 // Read wodle element
 
-int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
+int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_type)
 {
     wmodule **wmodules = (wmodule**)d1;
     int agent_cfg = d2 ? *(int *)d2 : 0;
@@ -109,22 +109,23 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
         }
     }
 #endif
-    else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name) || !strcmp(node->values[0], "aws-cloudtrail")) {
+    else if ( (!strcmp(node->values[0], WM_AWS_CONTEXT.name) || !strcmp(node->values[0], "aws-cloudtrail")) &&
+        (cfg_type != CAGENT_CGFILE) && (cfg_type != CRMOTE_CONFIG) ) {
 #ifndef WIN32
-        if (!strcmp(node->values[0], "aws-cloudtrail")) mwarn("Module name 'aws-cloudtrail' is deprecated. Change it to '%s'.", WM_AWS_CONTEXT.name);
-        if (wm_aws_read(xml, children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
+            if (!strcmp(node->values[0], "aws-cloudtrail")) mwarn("Module name 'aws-cloudtrail' is deprecated. Change it to '%s'.", WM_AWS_CONTEXT.name);
+            if (wm_aws_read(xml, children, cur_wmodule) < 0) {
+                OS_ClearNode(children);
+                return OS_INVALID;
+            }
 #else
         mwarn("The '%s' module is not available on Windows systems. Ignoring.", node->values[0]);
 #endif
-    } else if (!strcmp(node->values[0], "docker-listener")) {
+    } else if ( (cfg_type != CRMOTE_CONFIG) && (!strcmp(node->values[0], "docker-listener")) ) {
 #ifndef WIN32
-        if (wm_docker_read(children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
+            if (wm_docker_read(children, cur_wmodule) < 0) {
+                OS_ClearNode(children);
+                return OS_INVALID;
+            }
 #else
         mwarn("The '%s' module is not available on Windows systems. Ignoring it.", node->values[0]);
 #endif
@@ -150,13 +151,17 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     }
 #endif
 #endif
-
     else {
         if(!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], AZ_WM_NAME) ||
             !strcmp(node->values[0], KEY_WM_NAME)) {
             mwarn("The '%s' module only works for the manager", node->values[0]);
+        } else if ( !strcmp(node->values[0], WM_AWS_CONTEXT.name) || !strcmp(node->values[0], "aws-cloudtrail") ) {
+            mwarn("The 'AWS' module only works for the manager");
         } else {
-            merror("Unknown module '%s'", node->values[0]);
+            char *type_str = NULL;
+            type_str = cfg_type == CAGENT_CGFILE ? strdup("agent") : (cfg_type == CRMOTE_CONFIG ? strdup("remote") : strdup("manager"));
+            merror("Unknown module '%s' for the %s configuration file.", node->values[0], type_str);
+            os_free(type_str);
         }
     }
 

@@ -141,7 +141,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (strcmp(node[i]->element, oswmodule) == 0) {
-            if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
+            const int cfg_type = modules & CAGENT_CGFILE ? CAGENT_CGFILE : (modules & CRMOTE_CONFIG ? CRMOTE_CONFIG : 0);
+            if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2, cfg_type) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, ossca) == 0) {
@@ -159,7 +160,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
         }
 #ifndef WIN32
         else if (strcmp(node[i]->element, osfluent_forward) == 0) {
-            if ((modules & CWMODULE) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {
+            if ((modules & CWMODULE) && !(modules & CRMOTE_CONFIG) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {
                 goto fail;
             }
         }

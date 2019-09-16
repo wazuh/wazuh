@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    printf("Verify-agent-conf has been deprecated. Use \"validator-config\" instead.");
+    fprintf(stderr, "\nVerify-agent-conf has been deprecated. Use \"validator-config\" instead.\n\n");
 
     return 1;
 

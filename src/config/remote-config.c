@@ -290,16 +290,20 @@ void free_remoted(remoted * rmt) {
         os_free(rmt->lip);
 
         int i = 0;
-        while(rmt->allowips[i]) {
-            os_free(rmt->allowips[i]);
-            i++;
+        if(rmt->allowips) {
+            while(rmt->allowips[i]) {
+                os_free(rmt->allowips[i]);
+                i++;
+            }
         }
         os_free(rmt->allowips);
 
         i=0;
-        while(rmt->denyips[i]) {
-            os_free(rmt->denyips[i]);
-            i++;
+        if(rmt->denyips) {
+            while(rmt->denyips[i]) {
+                os_free(rmt->denyips[i]);
+                i++;
+            }
         }
         os_free(rmt->denyips);
         os_free(rmt);
