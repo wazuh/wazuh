@@ -1341,7 +1341,7 @@ int check_pattern_expand(int do_seek) {
                     DIR *is_dir = NULL;
 
                     if (is_dir = opendir(full_path), is_dir) {
-                        mdebug2("File %s is a directory. Skipping it.", full_path);
+                        mdebug1("File %s is a directory. Skipping it.", full_path);
                         closedir(is_dir);
                         continue;
                     }
