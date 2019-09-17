@@ -504,11 +504,11 @@ DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_chann
         send_channel_event(evt, channel);
     } else {
         while(1) {
-            mdebug1("EventLog service is down. Trying to reconnect channel '%s'...", channel->evt_log);
             /* Try to restart EventChannel */
             if (win_start_event_channel(channel->evt_log, !channel->bookmark_enabled, channel->query) == -1) {
                 sleep(5);
             } else {
+                minfo("'%s' channel has been reconnected succesfully.", channel->evt_log);
                 break;
             }
         }
@@ -527,6 +527,7 @@ int win_start_event_channel(char *evt_log, char future, char *query)
     EVT_HANDLE bookmark = NULL;
     EVT_HANDLE result = NULL;
     int status = 0;
+    static int counter = 0;
 
     if ((channel = calloc(1, sizeof(os_channel))) == NULL) {
         mferror(
@@ -632,15 +633,25 @@ int win_start_event_channel(char *evt_log, char future, char *query)
     }
 
     if (result == NULL) {
-        mferror(
-            "Could not EvtSubscribe() for (%s) which returned (%lu)",
-            channel->evt_log,
-            GetLastError());
+        unsigned long id = GetLastError();
+        if (id != RPC_S_SERVER_UNAVAILABLE && id != RPC_S_UNKNOWN_IF) {
+            mferror(
+                "Could not EvtSubscribe() for (%s) which returned (%lu)",
+                channel->evt_log,
+                id);
+        } else {
+            /* Prevent message flooding when EventLog is stopped */
+            if (counter == 0) {
+                mwarn("Eventlog is down. Please restart the service.");
+                counter = 1;
+            }
+        }
         goto cleanup;
     }
 
     /* Success */
     status = 1;
+    counter = 0;
 
 cleanup:
     free(wchannel);

@@ -283,6 +283,7 @@ void readel(os_el *el, int printit)
     int size_left;
     int str_size;
     int id;
+    static int counter = 0;
 
     char mbuffer[BUFFER_SIZE + 1];
     LPSTR sstr = NULL;
@@ -512,7 +513,7 @@ void readel(os_el *el, int printit)
 
     /* Event log was closed and re-opened */
     else if (id == ERROR_INVALID_HANDLE) {
-        mdebug1("EventLog service is down. Trying to reconnect channel '%s'...", el->name);
+        mdebug1("EventLog service has been restarted. Trying to reconnect '%s' channel...", el->name);
 
         CloseEventLog(el->h);
         el->h = NULL;
@@ -523,12 +524,18 @@ void readel(os_el *el, int printit)
             "Could not subscribe for (%s) which returned (%d)",
             el->name,
             id);
+        } else {
+            counter = 0;
+            minfo("'%s' channel has been reconnected succesfully.", el->name);
         }
     }
 
-    /* These error codes are returned in different Windows versions when EventLog is not available. This message is prompted for coherence with EventChannel */
     else if (id == RPC_S_SERVER_UNAVAILABLE || id == RPC_S_UNKNOWN_IF) {
-        merror("Could not subscribe for (%s) which returned (%d)", el->name, id);
+        /* Prevent message flooding when EventLog is stopped */
+        if (counter == 0) {
+            mwarn("Eventlog is down. Please restart the service.");
+            counter = 1;
+        }
     }
 
     else {
