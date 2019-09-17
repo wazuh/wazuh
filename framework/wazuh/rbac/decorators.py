@@ -122,20 +122,18 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
                     if not agent_expand:
                         _expand_permissions(mode, user_resources)
                         agent_expand = True
-                    if req_resource.split(':')[-1] == '*':  # Expand
-                        reqs = user_resources[m.group(1)]['allow']
-                    else:
-                        reqs = [req_resource]
                     final_user_permissions = user_resources['agent:id']['allow'] - user_resources['agent:id']['deny']
+                    reqs = user_resources[m.group(1)]['allow'] if req_resource.split(':')[-1] == '*' else [req_resource]
                     for req in reqs:
                         split_req = req.split(':')[-1]
                         if split_req in final_user_permissions:
                             allow_match.append(split_req)
-                elif m.group(3) != '*':
-                    allow_match.append(m.group(3) in user_resources[m.group(1)]['allow']) or \
-                                ('*' in user_resources[m.group(1)]['allow'])
-                else:
-                    allow_match.append('*' in user_resources[m.group(1)]['allow'])
+                # In this part of the code we should process other resources apart of agent:*:*
+                # elif m.group(3) != '*':
+                #     allow_match.append(m.group(3) in user_resources[m.group(1)]['allow']) or \
+                #                 ('*' in user_resources[m.group(1)]['allow'])
+                # else:
+                #     allow_match.append('*' in user_resources[m.group(1)]['allow'])
             except KeyError:
                 if mode:  # For black mode, if the resource is not specified, it will be allow
                     allow_match.append('*')
