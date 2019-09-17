@@ -764,7 +764,8 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                     policy_id->valuestring, 
                     command ? command->valuestring : NULL, 
                     status ? status->valuestring : NULL, reason ? reason->valuestring : NULL), 
-                    result < 0) {
+                    result < 0) 
+                {
             mdebug1("Cannot save Security Configuration Assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment information.");
         } else {

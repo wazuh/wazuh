@@ -2589,7 +2589,7 @@ static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const 
         goto error;
     }    
 
-    cJSON_AddItemToObject(check_information,"rules", cJSON_Duplicate(rules,1));
+    cJSON_AddItemToObject(check_information, "rules", cJSON_Duplicate(rules, 1));
 
     cJSON *references = cJSON_GetObjectItem(check, "references");
 
