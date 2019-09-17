@@ -903,7 +903,7 @@ InstallLocal()
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b update/ruleset/RULESET_VERSION ${PREFIX}/ruleset/VERSION
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/ruleset/rules
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
-    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/mitre/enterprise-attack.json ${PREFIX}/ruleset/mitre
+    ${INSTALL} -m 0440 -o root -g ${OSSEC_GROUP} -b ../etc/mitre/enterprise-attack.json ${PREFIX}/ruleset/mitre
     ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/rootcheck
 
     InstallSecurityConfigurationAssessmentFiles "manager"
