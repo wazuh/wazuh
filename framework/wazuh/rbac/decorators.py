@@ -143,12 +143,12 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     return allow_match
 
 
-def expose_resources(actions: list = None, resources: list = None, resource_name: str = None):
+def expose_resources(actions: list = None, resources: list = None, target_param: str = None):
     """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
 
     :param actions: List of actions exposed by the framework function
     :param resources: List of resources exposed by the framework function
-    :param resource_name: Name of the input parameter used to calculate resource access
+    :param target_param: Name of the input parameter used to calculate resource access
     :return: Allow or deny framework function execution
     """
     def decorator(func):
@@ -158,7 +158,7 @@ def expose_resources(actions: list = None, resources: list = None, resource_name
             allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
             if len(allow) > 0:
                 del kwargs['rbac']
-                kwargs[resource_name] = allow
+                kwargs[target_param] = allow
                 return func(*args, **kwargs)
             else:
                 raise WazuhError(4000)
