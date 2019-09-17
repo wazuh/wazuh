@@ -505,9 +505,11 @@ static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * he
     msgpack_pack_str_body(&pk, shared_key_hexdigest, OS_SHA512_LEN - 1);
     msgpack_pack_str(&pk, strlen(fluent->user_name));
     msgpack_pack_str_body(&pk, fluent->user_name, strlen(fluent->user_name));
-    msgpack_pack_str(&pk, OS_SHA512_LEN - 1); /* Remove terminator byte */
-    msgpack_pack_str_body(&pk, password, OS_SHA512_LEN - 1);
 
+    if (helo->auth_size > 0) {
+        msgpack_pack_str(&pk, OS_SHA512_LEN - 1); /* Remove terminator byte */
+        msgpack_pack_str_body(&pk, password, OS_SHA512_LEN - 1);
+    }
 
     /* Send PING message */
 
@@ -569,8 +571,6 @@ end:
 }
 
 static int wm_fluent_hs_tls(wm_fluent_t * fluent) {
-    wm_fluent_helo_t * helo = NULL;
-    wm_fluent_pong_t * pong = NULL;
     int retval = -1;
 
     /* TLS mode */
@@ -582,13 +582,14 @@ static int wm_fluent_hs_tls(wm_fluent_t * fluent) {
     mdebug1("Connection with %s:%hu established", fluent->address, fluent->port);
 
     /* Fluent protocol handshake */
+    wm_fluent_helo_t * helo = wm_fluent_recv_helo(fluent);
 
-    helo = wm_fluent_recv_helo(fluent);
-    if (!(helo)) {
+    if (!helo) {
         merror("Cannot receive HELO message from server");
         return -1;
     }
 
+    wm_fluent_pong_t * pong = NULL;
     if (wm_fluent_send_ping(fluent, helo) < 0) {
         merror("Cannot send PING message to server");
         goto end;
