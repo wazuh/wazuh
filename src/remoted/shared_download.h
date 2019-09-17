@@ -122,14 +122,14 @@ sd_agent_t *sd_get_agent(sd_config_t *config, const char *name);
  * 
  * @param config The shared download configuration.
  */
-void sd_add_agent(sd_config_t **config);
+void sd_add_agent(sd_config_t *config);
 
 /**
  * @brief Adds a group to the HASH table.
  * 
  * @param config The shared download configuration.
  */
-void sd_add_group(sd_config_t **config);
+void sd_add_group(sd_config_t *config);
 
 /**
  * @brief Calls sd_create_directory for each group.

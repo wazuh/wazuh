@@ -13,14 +13,13 @@
 #include "shared.h"
 
 /** 
- * Internal function prototype.
- * 
- * @brief Calls to.
+ * @brief It deallocates config memory and make it points
+ * to config_tmp structure.
  * 
  * @param config The shared download configuration.
  * @param config_tmp The temporal shared download configuration.
  */
-static void sd_move(sd_config_t **config, sd_config_t **config_cp);
+static void sd_move(sd_config_t **config, sd_config_t **config_tmp);
 
 int sd_init(sd_config_t **config) {
 
@@ -65,18 +64,18 @@ sd_agent_t *sd_get_agent(sd_config_t *config, const char *name) {
     return agent;
 }
 
-void sd_add_agent(sd_config_t **config) {
-    if ((*config)->agents) {
-        for(int i = 0; (*config)->agents[i].name; i++) {
-            OSHash_Add((*config)->ptable, (*config)->agents[i].name, &(*config)->agents[i]);
+void sd_add_agent(sd_config_t *config) {
+    if (config->agents) {
+        for(int i = 0; config->agents[i].name; i++) {
+            OSHash_Add(config->ptable, config->agents[i].name, &config->agents[i]);
         }
     }
 }
 
-void sd_add_group(sd_config_t **config) {
-    if ((*config)->groups) {
-        for (int i = 0; (*config)->groups[i].name; i++) {
-            OSHash_Add((*config)->ptable, (*config)->groups[i].name, &(*config)->groups[i]);
+void sd_add_group(sd_config_t *config) {
+    if (config->groups) {
+        for (int i = 0; config->groups[i].name; i++) {
+            OSHash_Add(config->ptable, config->groups[i].name, &config->groups[i]);
         }
     }
 }
@@ -182,7 +181,6 @@ int sd_parse_poll(yaml_node_t *root_node, sd_group_t *group) {
             return 0;
         }
     }
-
     return 1;
 }
 
@@ -224,7 +222,6 @@ int sd_parse_group(yaml_document_t *document, yaml_node_t *root_node, sd_group_t
             return 0;
         }
     }
-
     return 1;
 }
 
@@ -395,14 +392,13 @@ int sd_load(sd_config_t **config) {
             minfo(W_PARSER_SUCCESS, (*config)->file);
 
             /* Add group and agent to the HASH table */
-            sd_add_group(&(*config));
-            sd_add_agent(&(*config));
+            sd_add_group(*config);
+            sd_add_agent(*config);
 
             if (!(*config)->checked_url_connection) {
                 check_download_module_connection();
                 (*config)->checked_url_connection = 1;
             }
-
             return 1;
 
         } else {
