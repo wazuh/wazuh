@@ -194,11 +194,11 @@ int wm_fluent_read(xml_node **nodes, wmodule *module)
     }
 
     if (!fluent->user_name) {
-        os_strdup("",fluent->user_name);
+        os_strdup("", fluent->user_name);
     }
 
     if (!fluent->user_pass) {
-        os_strdup("",fluent->user_pass);
+        os_strdup("", fluent->user_pass);
     }
 
     return 0;
