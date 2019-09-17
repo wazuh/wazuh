@@ -87,14 +87,14 @@ wchar_t *convert_unix_string(char *string)
                                0);
 
     if (size == 0) {
-        mferror(
+        merror(
             "Could not MultiByteToWideChar() when determining size which returned (%lu)",
             GetLastError());
         return (NULL);
     }
 
     if ((dest = calloc(size, sizeof(wchar_t))) == NULL) {
-        mferror(
+        merror(
             "Could not calloc() memory for MultiByteToWideChar() which returned [(%d)-(%s)]",
             errno,
             strerror(errno));
@@ -109,7 +109,7 @@ wchar_t *convert_unix_string(char *string)
                                  size);
 
     if (result == 0) {
-        mferror(
+        merror(
             "Could not MultiByteToWideChar() which returned (%lu)",
             GetLastError());
         free(dest);
@@ -160,7 +160,7 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
                               NULL,
                               &size);
     if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-        mferror(
+        merror(
             "Could not EvtFormatMessage() to determine buffer size with flags (%lu) which returned (%lu)",
             flags,
             GetLastError());
@@ -168,7 +168,7 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
     }
 
     if ((buffer = calloc(size, sizeof(wchar_t))) == NULL) {
-        mferror(
+        merror(
             "Could not calloc() memory which returned [(%d)-(%s)]",
             errno,
             strerror(errno));
@@ -185,7 +185,7 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
                               buffer,
                               &size);
     if (result == FALSE) {
-        mferror(
+        merror(
             "Could not EvtFormatMessage() with flags (%lu) which returned (%lu)",
             flags,
             GetLastError());
@@ -218,7 +218,7 @@ EVT_HANDLE read_bookmark(os_channel *channel)
          * file did not exist which should be logged
          */
         if (errno != ENOENT) {
-            mferror(
+            merror(
                 "Could not fopen() existing bookmark (%s) for (%s) which returned [(%d)-(%s)]",
                 channel->bookmark_filename,
                 channel->evt_log,
@@ -230,7 +230,7 @@ EVT_HANDLE read_bookmark(os_channel *channel)
 
     size = fread(bookmark_xml, sizeof(wchar_t), OS_MAXSTR, fp);
     if (ferror(fp)) {
-        mferror(
+        merror(
             "Could not fread() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
             channel->bookmark_filename,
             channel->evt_log,
@@ -252,7 +252,7 @@ EVT_HANDLE read_bookmark(os_channel *channel)
 
     /* Create bookmark from saved XML */
     if ((bookmark = EvtCreateBookmark(bookmark_xml)) == NULL) {
-        mferror(
+        merror(
             "Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
             channel->bookmark_filename,
             channel->evt_log,
@@ -275,7 +275,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
     FILE *fp = NULL;
 
     if ((bookmark = EvtCreateBookmark(NULL)) == NULL) {
-        mferror(
+        merror(
             "Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
             channel->bookmark_filename,
             channel->evt_log,
@@ -284,7 +284,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
     }
 
     if (!EvtUpdateBookmark(bookmark, evt)) {
-        mferror(
+        merror(
             "Could not EvtUpdateBookmark() bookmark (%s) for (%s) which returned (%lu)",
             channel->bookmark_filename,
             channel->evt_log,
@@ -301,7 +301,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
                        &size,
                        &count);
     if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-        mferror(
+        merror(
             "Could not EvtRender() to get buffer size to update bookmark (%s) for (%s) which returned (%lu)",
             channel->bookmark_filename,
             channel->evt_log,
@@ -310,7 +310,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
     }
 
     if ((buffer = calloc(size, sizeof(char))) == NULL) {
-        mferror(
+        merror(
             "Could not calloc() memory to save bookmark (%s) for (%s) which returned [(%d)-(%s)]",
             channel->bookmark_filename,
             channel->evt_log,
@@ -326,7 +326,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
                    buffer,
                    &size,
                    &count)) {
-        mferror(
+        merror(
             "Could not EvtRender() bookmark (%s) for (%s) which returned (%lu)",
             channel->bookmark_filename, channel->evt_log,
             GetLastError());
@@ -344,7 +344,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
     }
 
     if ((fwrite(buffer, 1, size, fp)) < size) {
-        mferror(
+        merror(
             "Could not fwrite() to bookmark (%s) for (%s) which returned [(%d)-(%s)]",
             channel->bookmark_filename,
             channel->evt_log,
@@ -401,7 +401,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
                        &buffer_length,
                        &count);
     if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-        mferror(
+        merror(
             "Could not EvtRender() to determine buffer size for (%s) which returned (%lu)",
             channel->evt_log,
             GetLastError());
@@ -409,7 +409,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     }
 
     if ((properties_values = malloc(buffer_length)) == NULL) {
-        mferror(
+        merror(
             "Could not malloc() memory to process event (%s) which returned [(%d)-(%s)]",
             channel->evt_log,
             errno,
@@ -424,7 +424,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
                    properties_values,
                    &buffer_length,
                    &count)) {
-        mferror(
+        merror(
             "Could not EvtRender() for (%s) which returned (%lu)",
             channel->evt_log,
             GetLastError());
@@ -464,7 +464,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         wprovider_name = convert_unix_string(provider_name);
 
         if (wprovider_name && (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
-            mferror(
+            merror(
                 "Could not get message for (%s)",
                 channel->evt_log);
         }
@@ -530,7 +530,7 @@ int win_start_event_channel(char *evt_log, char future, char *query)
     static int counter = 0;
 
     if ((channel = calloc(1, sizeof(os_channel))) == NULL) {
-        mferror(
+        merror(
             "Could not calloc() memory for channel to start reading (%s) which returned [(%d)-(%s)]",
             evt_log,
             errno,
@@ -542,7 +542,7 @@ int win_start_event_channel(char *evt_log, char future, char *query)
 
     /* Create copy of event log string */
     if ((channel->bookmark_name = strdup(channel->evt_log)) == NULL) {
-        mferror(
+        merror(
             "Could not strdup() event log name to start reading (%s) which returned [(%d)-(%s)]",
             channel->evt_log,
             errno,
@@ -553,7 +553,7 @@ int win_start_event_channel(char *evt_log, char future, char *query)
     if (query) {
         /* Create copy of query string */
         if ((channel->query = strdup(query)) == NULL) {
-            mferror(
+            merror(
                 "Could not strdup() query (%s) which returned [(%d)-(%s)]",
                 query,
                 errno,
@@ -569,7 +569,7 @@ int win_start_event_channel(char *evt_log, char future, char *query)
 
     /* Convert evt_log to Windows string */
     if ((wchannel = convert_unix_string(channel->evt_log)) == NULL) {
-        mferror(
+        merror(
             "Could not convert_unix_string() evt_log for (%s) which returned [(%d)-(%s)]",
             channel->evt_log,
             errno,
@@ -580,7 +580,7 @@ int win_start_event_channel(char *evt_log, char future, char *query)
     /* Convert query to Windows string */
     if (query) {
         if ((filtered_query = filter_special_chars(query)) == NULL) {
-            mferror(
+            merror(
                 "Could not filter_special_chars() query for (%s) which returned [(%d)-(%s)]",
                 channel->evt_log,
                 errno,
@@ -589,7 +589,7 @@ int win_start_event_channel(char *evt_log, char future, char *query)
         }
 
         if ((wquery = convert_unix_string(filtered_query)) == NULL) {
-            mferror(
+            merror(
                 "Could not convert_unix_string() query for (%s) which returned [(%d)-(%s)]",
                 channel->evt_log,
                 errno,
@@ -635,7 +635,7 @@ int win_start_event_channel(char *evt_log, char future, char *query)
     if (result == NULL) {
         unsigned long id = GetLastError();
         if (id != RPC_S_SERVER_UNAVAILABLE && id != RPC_S_UNKNOWN_IF) {
-            mferror(
+            merror(
                 "Could not EvtSubscribe() for (%s) which returned (%lu)",
                 channel->evt_log,
                 id);
