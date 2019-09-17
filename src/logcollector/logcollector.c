@@ -1141,13 +1141,13 @@ int check_pattern_expand(int do_seek) {
 
                 struct stat statbuf;
                 if (lstat(g.gl_pathv[glob_offset], &statbuf) < 0) {
-                    merror("Error on stat '%s' due to [(%d)-(%s)]", g.gl_pathv[glob_offset], errno, strerror(errno));
+                    merror("Error on lstat '%s' due to [(%d)-(%s)]", g.gl_pathv[glob_offset], errno, strerror(errno));
                     glob_offset++;
                     continue;
                 }
 
                 if ((statbuf.st_mode & S_IFMT) != S_IFREG) {
-                    mdebug2("Ignoring '%s'. It's not a regular file", g.gl_pathv[glob_offset]);
+                    mdebug1("File %s is not a regular file. Skipping it.", g.gl_pathv[glob_offset]);
                     glob_offset++;
                     continue;
                 }
