@@ -7,8 +7,8 @@
  * Foundation.
 */
 
-#ifndef _CONFIG_JSON__H
-#define _CONFIG_JSON__H
+#ifndef CONFIG_JSON_H
+#define CONFIG_JSON_H
 
 #include "config.h"
 
@@ -254,4 +254,4 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
     }
 }
 
-#endif
+#endif /* CONFIG_JSON_H */

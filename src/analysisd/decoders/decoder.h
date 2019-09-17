@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-#ifndef __DECODER_H
-#define __DECODER_H
+#ifndef DECODER_H
+#define DECODER_H
 
 #include "shared.h"
 #include "os_regex/os_regex.h"
@@ -80,4 +80,4 @@ int sc_send_db(char * msg,int *sock);
 void SecurityConfigurationAssessmentInit(void);
 int ReadDecodeXML(const char *file);
 
-#endif
+#endif /* DECODER_H */
