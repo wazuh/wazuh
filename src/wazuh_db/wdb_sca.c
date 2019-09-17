@@ -53,8 +53,8 @@ int wdb_sca_find(wdb_t * wdb, int pm_id, char * output) {
 int wdb_sca_save(wdb_t *wdb, int id, int scan_id, char *title, char *description,
         char *rationale, char *remediation, char *condition, char *file,
         char *directory, char *process, char *registry, char *reference,
-        char *result, char *policy_id, char *command, char *status, char *reason) 
-    {
+        char *result, char *policy_id, char *command, char *status, char *reason)
+{
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("cannot begin transaction");
         return -1;
