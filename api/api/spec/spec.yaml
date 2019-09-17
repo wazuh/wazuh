@@ -10961,7 +10961,7 @@ paths:
         - security
       summary: 'Create new user'
       description: 'This method should be called to get an API token. This token will expire at some time.'
-      operationId: api.controllers.login_controller.create_user
+      operationId: api.controllers.user_controller.create_user
       requestBody:
         content:
           application/json:
@@ -10998,7 +10998,7 @@ paths:
         - security
       summary: 'Get users'
       description: 'This method should be called to get an API token. This token will expire at some time.'
-      operationId: api.controllers.login_controller.get_users
+      operationId: api.controllers.user_controller.get_users
 
       responses:
         '200':
@@ -11026,7 +11026,7 @@ paths:
         - security
       summary: 'Get user information'
       description: 'This method should be called to get an API token. This token will expire at some time.'
-      operationId: api.controllers.login_controller.get_user
+      operationId: api.controllers.user_controller.get_user
       parameters:
         - $ref: '#/components/parameters/username'
 
@@ -11052,7 +11052,7 @@ paths:
         - security
       summary: 'Modify an user'
       description: 'This method should be called to get an API token. This token will expire at some time.'
-      operationId: api.controllers.login_controller.update_user
+      operationId: api.controllers.user_controller.update_user
       parameters:
         - $ref: '#/components/parameters/username'
       requestBody:
@@ -11086,7 +11086,7 @@ paths:
         - security
       summary: 'Delete an user'
       description: 'This method should be called to get an API token. This token will expire at some time.'
-      operationId: api.controllers.login_controller.delete_user
+      operationId: api.controllers.user_controller.delete_user
       parameters:
         - $ref: '#/components/parameters/username'
 

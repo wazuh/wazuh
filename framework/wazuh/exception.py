@@ -465,7 +465,7 @@ class WazuhException(Exception):
         4014: {'message': 'Parameter {param} is required',
                'remediation': 'Please, make sure the parameter is defined'},
         4015: {'message': 'Invalid value for parameter {param}',
-               'remediation': 'Please, make sure parameter is not empty'}
+               'remediation': 'Please, make sure parameter is not empty'},
 
         # User management
         5000: {'message': 'The user could not be created',

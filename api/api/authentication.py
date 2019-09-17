@@ -150,22 +150,11 @@ class AuthenticationManager:
                         'username': users.username
                     }
                     users_name.append(user_dict)
-        except UnmappedInstanceError as e:
+        except UnmappedInstanceError:
             # User no exist
             return False
 
         return users_name
-
-    # def login_user(self, username, password):
-    #     """Validates a username-password pair and generates a jwt token
-    #
-    #     :param username: string Unique user name
-    #     :param password: string Password to be checked against the one saved in the database
-    #     :return: string jwt encoded token or None if user credentials are rejected
-    #     """
-    #     if self.check_user(username=username, password=password):
-    #         return generate_token(username)
-    #     return None
 
     def __enter__(self):
         self.session = _Session()
