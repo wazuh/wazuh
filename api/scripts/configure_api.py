@@ -55,7 +55,6 @@ def _check_port(port):
                 return True
         except Exception:
             pass
-
     print('[ERROR] The port provided is invalid, the port must be a number between 1 and 65535')
     return False
 
@@ -76,7 +75,6 @@ def _convert_boolean_to_string(value):
 
 
 def _open_file():
-    lines = None
     try:
         with open(API_CONFIG_PATH, 'r+') as f:
             lines = f.readlines()
@@ -214,7 +212,7 @@ def change_proxy(value=None):
                 value = 'no'
             else:
                 return False
-
+        value = _convert_boolean_to_string(value)
         lines = _open_file()
         new_file = _match_value(_proxy_value, lines, value)
         if new_file != '':
@@ -327,19 +325,17 @@ if __name__ == '__main__':
     if _check_uwsgi_config() and len(sys.argv) > 1 and not args.interactive:
         if args.ip:
             change_ip(args.ip)
-
         if args.port:
             change_port(args.port)
-
         if _check_boolean('proxy', args.proxy):
             change_proxy(args.proxy)
-
         if _check_boolean('basic auth', args.basic):
             change_basic_auth(args.basic)
-
-        if _check_boolean('https', args.https) and args.sCertificate and args.sKey:
-            change_https(args.https, args.sCertificate, args.sKey)
-
+        if _check_boolean('https', args.https):
+            if not args.sCertificate or not args.sKey:
+                print('[ERROR] HTTPS option must be accompanied with \'-sC\' and \'-sK\' options')
+            else:
+                change_https(args.https, args.sCertificate, args.sKey)
         if _check_boolean('http', args.http):
             if args.http.lower() == 'true' or args.http.lower() == 'yes':
                 args.http = 'yes'
