@@ -8,6 +8,7 @@ import argparse
 import ipaddress
 import re
 import sys
+import os
 
 from api.constants import UWSGI_CONFIG_PATH, API_CONFIG_PATH, TEMPLATE_API_CONFIG_PATH
 from wazuh.user_manager import Users
@@ -16,9 +17,8 @@ _ip_host = re.compile(r'( *)(# )?http:(.*):')
 _proxy_value = re.compile(r'(.*)behind_proxy_server:(.*)')
 _basic_auth_value = re.compile(r'(.*)basic_auth:(.*)')
 _wsgi_socket = re.compile(r'( *)(# )?shared-socket:(.*):')
-_wsgi_certs = re.compile(r'https: =(.*)')
+_wsgi_certs = re.compile(r'https: =.*')
 
-new_api_yaml = False
 interactive = False
 
 
@@ -121,7 +121,7 @@ def change_ip(ip=None):
                     ip_port = match_split[1].split(':')
                     ip_port[0] = ip
                     match_split[1] = ':'.join(ip_port)
-                    new_file += ': '.join(match_split)
+                    new_file += ':'.join(match_split)
                 else:
                     new_file += line
             if new_file != '':
@@ -171,15 +171,20 @@ def change_basic_auth(value=None):
             value = input('[INFO] Enable user authentication? [Y/n/s]: ')
             if value.lower() == '' or value.lower() == 'y' or value.lower() == 'yes':
                 value = 'yes'
-                user = input('[INFO] New API user: ')
-                if user != '':
+                username = input('[INFO] New API user: ')
+                if username != '':
                     while True:
                         password = input('[INFO] New password: ')
                         check_pass = input('[INFO] Re-type new password: ')
                         if password == check_pass and password != '':
                             break
                         print('[ERROR] Password verification error: Passwords don\'t match or password is empty.')
-                    print(Users.create_user(user, password))
+                    try:
+                        user = Users.create_user(username, password)
+                        print('[INFO] User created correctly. Username: \'{}\''.format(
+                               user['data']['items'][0]['username']))
+                    except Exception:
+                        print('[ERROR] Username \'{}\' already exist'.format(username))
             elif value.lower() == 'n' or value.lower() == 'no':
                 value = 'no'
             else:
@@ -240,36 +245,49 @@ def change_http(line, value):
 
 
 # Enable/Disable HTTPS protocol
-def change_https(value=None, https=True):
+def change_https(value=None, crt_path=None, key_path=None):
     while value is None or value.lower() != 's':
         with open(UWSGI_CONFIG_PATH, 'r+') as f:
             lines = f.readlines()
 
         if interactive:
-            if https:
-                value = input('[INFO] Enable HTTPS and generate SSL certificate? [Y/n/s]: ')
+            value = input('[INFO] Enable HTTPS and generate SSL certificate? [Y/n/s]: ')
             if value.lower() == '' or value.lower() == 'y' or value.lower() == 'yes':
                 value = 'yes'
+                crt_path = str(input('[INFO] Introduce the absolute path of your certificate: '))
+                key_path = str(input('[INFO] Introduce the absolute path of your key: '))
             elif value.lower() == 'n' or value.lower() == 'no':
                 value = 'no'
             else:
                 return False
 
+        if crt_path and key_path and (not os.path.isfile(crt_path) or not os.path.isfile(key_path)):
+            print('[ERROR] Invalid path for the certificate and the key, please check that both files exist. '
+                  'Exiting...')
+            return
         value = _convert_boolean_to_string(value)
         new_file = ''
         for line in lines:
             match = re.search(_wsgi_socket, line)
             match_cert = re.search(_wsgi_certs, line)
             match_http = re.search(_ip_host, line)
-            if match_http and not https:
-                line = change_http(line, value)
+            if match_http:
+                if value == 'yes':
+                    line = change_http(line, 'no')
+                else:
+                    line = change_http(line, 'yes')
                 new_file += line
-            elif https and (match or match_cert):
+            elif match or match_cert:
                 match_split = line.split(':')
                 if value == 'yes':
                     comment = match_split[0].split('# ')
                     if len(comment) > 1:
                         match_split[0] = comment[0] + comment[1]
+                    if match_cert:
+                        splitted = match_split[1].split(',')
+                        splitted[1] = crt_path
+                        splitted[2] = key_path
+                        match_split[1] = ','.join(splitted)
                 elif '# ' not in ''.join(match_split):  # If it is not already disable
                     if match:
                         # Split by shared-socket (sh)
@@ -286,8 +304,7 @@ def change_https(value=None, https=True):
         if new_file != '':
             with open(UWSGI_CONFIG_PATH, 'w') as f:
                 f.write(new_file)
-            if https:
-                print('[INFO] HTTPS changed correctly to \'{}\''.format(value))
+            print('[INFO] HTTPS changed correctly to \'{}\''.format(value))
             return True
         if not interactive:
             return False
@@ -302,6 +319,8 @@ if __name__ == '__main__':
     parser.add_argument('-x', '--proxy', help="Yes to run API behind a proxy", type=str)
     parser.add_argument('-t', '--http', help="Enable http protocol (true/false)", type=str)
     parser.add_argument('-s', '--https', help="Enable https protocol (true/false)", type=str)
+    parser.add_argument('-sC', '--sCertificate', help="Set the ssl certificate (path)", type=str)
+    parser.add_argument('-sK', '--sKey', help="Set the ssl key (path)", type=str)
     parser.add_argument('-I', '--interactive', help="Enables guided configuration", action='store_true')
     args = parser.parse_args()
 
@@ -318,15 +337,15 @@ if __name__ == '__main__':
         if _check_boolean('basic auth', args.basic):
             change_basic_auth(args.basic)
 
-        if _check_boolean('https', args.https):
-            change_https(args.https)
+        if _check_boolean('https', args.https) and args.sCertificate and args.sKey:
+            change_https(args.https, args.sCertificate, args.sKey)
 
         if _check_boolean('http', args.http):
             if args.http.lower() == 'true' or args.http.lower() == 'yes':
                 args.http = 'yes'
             elif args.http.lower() == 'false' or args.http.lower() == 'no':
                 args.http = 'no'
-            change_https(args.http, https=False)
+            change_https(args.http)
     elif args.interactive or len(sys.argv) == 1:
         interactive = True
         print('[INFO] Interactive mode!')
