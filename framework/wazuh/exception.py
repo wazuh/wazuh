@@ -462,7 +462,10 @@ class WazuhException(Exception):
         4012: {'message': 'The specified policy is invalid',
                'remediation': 'The actions and resources must be splitted by ":". Example: agent:id:001'},
         4013: {'message': 'The specified name already exist'},
-        4014: {'message': "Can't access specified required dynamic resource"}
+        4014: {'message': 'Parameter {param} is required',
+               'remediation': 'Please, make sure the parameter is defined'},
+        4015: {'message': 'Invalid value for parameter {param}',
+               'remediation': 'Please, make sure parameter is not empty'}
 
         # > 9000: Authd
     }
