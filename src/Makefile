@@ -534,7 +534,6 @@ BUILD_SERVER+=ossec-dbd -
 BUILD_SERVER+=ossec-integratord
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
-BUILD_SERVER+=mitred
 ifneq (,$(filter ${USE_FRAMEWORK_LIB},yes y Y 1))
 BUILD_SERVER+=wazuh-framework
 endif
@@ -929,17 +928,6 @@ wazuh_db/%.o: wazuh_db/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-db\" -c $^ -o $@
 
 wazuh-db: ${wdb_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### Mitre ####
-mitrelib_c := $(wildcard wazuh_db/wdb*.c)
-mitrelib_o := $(mitrelib_c:.c=.o)
-mitre_o := mitre/main.o $(mitrelib_o:.c=.o) 
-
-mitre/%.o: mitre/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"mitred\" -c $^ -o $@
-
-mitred: ${mitre_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### Config ##########
@@ -1459,7 +1447,7 @@ ifneq (,$(filter ${OPTIMIZE_CPYTHON},yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
 endif
 
-wpython: install_dependencies install_framework
+wpython: install_dependencies install_framework install_mitre
 
 ifeq (${uname_S},Darwin)
 WLIBPYTHON=libpython3.7m.dylib
@@ -1504,6 +1492,8 @@ install_dependencies: install_python
 install_framework: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR} --wazuh-version=$(shell cat VERSION) --install-type=${TARGET}
 
+install_mitre: install_python
+	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db 
 
 ####################
 #### test ##########
