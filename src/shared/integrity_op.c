@@ -33,8 +33,6 @@ char * dbsync_check_msg(const char * component, dbsync_msg msg, long id, const c
         assert(top != NULL);
         assert(checksum != NULL);
 
-        cJSON_AddStringToObject(root, "type", "check");
-
         cJSON * data = cJSON_CreateObject();
         cJSON_AddItemToObject(root, "data", data);
 
