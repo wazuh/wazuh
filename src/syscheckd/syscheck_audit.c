@@ -990,7 +990,19 @@ void * audit_main(int *audit_sock) {
     w_mutex_lock(&audit_rules_mutex);
     if (audit_added_dirs) {
         for (i = 0; i < W_Vector_length(audit_added_dirs); i++) {
-            realtime_adddir(W_Vector_get(audit_added_dirs, i), 0);
+            char *path;
+            os_strdup(W_Vector_get(audit_added_dirs, i), path);
+            int pos = fim_configuration_directory(path);
+
+            syscheck.opts[pos] &= ~ WHODATA_ACTIVE;
+            syscheck.opts[pos] |= REALTIME_ACTIVE;
+
+            if (realtime_adddir(path, 0)) {
+                minfo("~~~~ Directory:'%s' changed to real-time monitoring.", path);
+            } else {
+                mwarn("~~~~ Unable to set monitoring in real-time to directory '%s'.", path);
+            }
+            os_free(path);
         }
         W_Vector_free(audit_added_dirs);
     }
@@ -1213,12 +1225,6 @@ int audit_health_check(int audit_socket) {
         w_cond_wait(&audit_hc_started, &audit_hc_mutex);
     w_mutex_unlock(&audit_hc_mutex);
 
-
-    /*
-     * This is a workaround to fix the whodata mode init when is restarted unexpectedly
-     * *********************************************************************************
-     */
-
     // Create a file
     fp = fopen(AUDIT_HEALTHCHECK_FILE, "w");
 
@@ -1227,6 +1233,11 @@ int audit_health_check(int audit_socket) {
         goto exit_err;
     }
     fclose(fp);
+
+    /*
+     * This is a workaround to fix the whodata mode init when is restarted unexpectedly
+     * *********************************************************************************
+     */
 
     sleep(1);
 

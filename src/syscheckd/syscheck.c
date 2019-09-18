@@ -80,14 +80,12 @@ static void read_internal(int debug_level)
 int fim_initialize() {
     // Create store data
     syscheck.fim_entry = rbtree_init();
-    syscheck.n_entries = 0;
 
     // To manage events in whodata mode
 #ifndef WIN32
     // Create inodes entries
     syscheck.fim_inode = OSHash_Create();
 #endif
-    syscheck.n_inodes = 0;
 
     // To check for deleted files in Scheduled scans
     syscheck.last_check = OSHash_Create();

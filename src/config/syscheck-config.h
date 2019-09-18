@@ -283,8 +283,6 @@ typedef struct _config {
 
     rb_tree * fim_entry;
     OSHash * fim_inode;
-    unsigned int n_entries;
-    unsigned int n_inodes;
     pthread_mutex_t fim_entry_mutex;
 
     rtfim *realtime;
