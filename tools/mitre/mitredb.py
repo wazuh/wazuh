@@ -125,10 +125,7 @@ def main(database=None):
 
     sql_delete_has_platform = """DROP TABLE IF EXISTS has_platform;"""
  
-    sql_create_attack = """CREATE TABLE attack (
-                                        id TEXT PRIMARY KEY, 
-                                        json TEXT
-                                    );"""
+    sql_create_attack = """CREATE TABLE attack (id TEXT PRIMARY KEY, json TEXT);"""
  
     sql_create_has_phase = """CREATE TABLE has_phase (
                                     attack_id TEXT, 
@@ -178,7 +175,7 @@ def main(database=None):
         data = json.load(json_file)
         for data_object in data['objects']:
             if data_object['type'] == 'attack-pattern' and data_object['external_references'][0]['source_name'] == 'mitre-attack':
-                string_id = json.dumps(data_object['external_references'][0]['external_id'])
+                string_id = json.dumps(data_object['external_references'][0]['external_id']).replace('"', '')
                 string_object = json.dumps(data_object)
 
                 # Fill the attack table 
@@ -187,12 +184,12 @@ def main(database=None):
                 # Fill the phase table
                 n = len(data_object['kill_chain_phases'])
                 for i in range (0,n):
-                    string_phase = json.dumps(data_object['kill_chain_phases'][i]['phase_name'])
+                    string_phase = json.dumps(data_object['kill_chain_phases'][i]['phase_name']).replace('"', '')
                     insert_phase_table(conn, string_id, string_phase)
                 
                 # Fill the platform table
                 for platform in data_object['x_mitre_platforms']:
-                    string_platform = json.dumps(platform)
+                    string_platform = json.dumps(platform).replace('"', '')
                     insert_platform_table(conn,string_id, string_platform)
                 
     conn.close()
