@@ -48,6 +48,14 @@ def get_agents_info():
 
 
 def expand_group(permissions_dict_group, permissions_dict_id):
+    def _insert_in_groups(effect, group_dict):
+        op_effect = 'deny' if effect == 'allow' else 'allow'
+        if '*' in group_dict[effect]:
+            group_dict[effect].clear()
+            for expanded in expanded_groups:
+                if expanded['name'] not in group_dict[op_effect]:
+                    group_dict[effect].add(expanded['name'])
+
     db_global = glob(common.database_path_global)
     if not db_global:
         raise WazuhInternalError(1600)
@@ -56,17 +64,8 @@ def expand_group(permissions_dict_group, permissions_dict_id):
     if '*' in permissions_dict_group['allow'] or '*' in permissions_dict_group['deny']:
         conn.execute("SELECT name FROM `group`")
         expanded_groups = conn.fetch_all()
-        if '*' in permissions_dict_group['allow']:
-            permissions_dict_group['allow'].clear()
-            for expanded in expanded_groups:
-                if expanded['name'] not in permissions_dict_group['deny']:
-                    permissions_dict_group['allow'].add(expanded['name'])
-        elif '*' in permissions_dict_group['deny']:
-            permissions_dict_group['deny'].clear()
-            for expanded in expanded_groups:
-                group = expanded['name']
-                if group not in permissions_dict_group['allow']:
-                    permissions_dict_group['deny'].add(group)
+        _insert_in_groups('allow', permissions_dict_group)
+        _insert_in_groups('deny', permissions_dict_group)
     for allowed in permissions_dict_group['allow']:
         conn.execute("SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM `group` WHERE name = :group)",
                      {'group': allowed})

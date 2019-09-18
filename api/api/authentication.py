@@ -9,7 +9,7 @@ from shutil import chown
 from time import time
 
 from jose import JWTError, jwt
-from sqlalchemy import create_engine, Column, String
+from sqlalchemy import create_engine, Column, String, Boolean
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -17,6 +17,7 @@ from wazuh.rbac import auth_context
 from wazuh.rbac import pre_policies
 from werkzeug.exceptions import Unauthorized
 from werkzeug.security import check_password_hash, generate_password_hash
+from sqlalchemy.orm.exc import UnmappedInstanceError
 
 from api.api_exception import APIException
 from api.constants import SECURITY_PATH
@@ -35,7 +36,7 @@ class _User(_Base):
     password = Column(String(256))
 
     def __repr__(self):
-        return f"<User(user={self.user})"
+        return f"<User(user={self.username})"
 
 
 # This is the actual sqlite database creation
@@ -69,6 +70,45 @@ class AuthenticationManager:
             self.session.rollback()
             return False
 
+    def update_user(self, username: str, password: str):
+        """
+        Update the password an existent user
+        :param username: string Unique user name
+        :param password: string Password provided by user. It will be stored hashed
+        :return: True if the user has been modify successfuly. False otherwise
+        """
+        if username == 'wazuh' or username == 'wazuh-app':
+            return 'admin'
+
+        try:
+            user = self.session.query(_User).filter_by(username=username).first()
+            if user is not None:
+                user.password = generate_password_hash(password)
+                self.session.commit()
+                return True
+            else:
+                return False
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def delete_user(self, username: str):
+        """
+        Update the password an existent user
+        :param username: string Unique user name
+        :return: True if the user has been delete successfuly. False otherwise
+        """
+        if username == 'wazuh' or username == 'wazuh-app':
+            return 'admin'
+
+        try:
+            self.session.delete(self.session.query(_User).filter_by(username=username).first())
+            self.session.commit()
+            return True
+        except UnmappedInstanceError:
+            # User already deleted
+            return False
+
     def check_user(self, username, password):
         """Validates a username-password pair.
 
@@ -79,16 +119,42 @@ class AuthenticationManager:
         user = self.session.query(_User).filter_by(username=username).first()
         return check_password_hash(user.password, password) if user else False
 
-    def login_user(self, username, password):
-        """Validates a username-password pair and generates a jwt token
-
-        :param username: string Unique user name
-        :param password: string Password to be checked against the one saved in the database
-        :return: string jwt encoded token or None if user credentials are rejected
+    def get_users(self, username: str = None):
         """
-        if self.check_user(username=username, password=password):
-            return generate_token(username)
-        return None
+        get user/users
+        :param username: string Unique user name
+        :return: Get all users or a specified one
+        """
+        users_name = list()
+        users = None
+        try:
+            if username is not None:
+                users = self.session.query(_User).filter_by(username=username).first()
+            else:
+                users = self.session.query(_User).all()
+        except IntegrityError:
+            self.session.rollback()
+            return None
+
+        try:
+            if isinstance(users, list):
+                for user in users:
+                    if user is not None:
+                        user_dict = {
+                            'username': user.username
+                        }
+                        users_name.append(user_dict)
+            else:
+                if users is not None:
+                    user_dict = {
+                        'username': users.username
+                    }
+                    users_name.append(user_dict)
+        except UnmappedInstanceError:
+            # User no exist
+            return False
+
+        return users_name
 
     def __enter__(self):
         self.session = _Session()
@@ -114,7 +180,7 @@ def check_user(user, password, required_scopes=None):
     """
     with AuthenticationManager() as auth:
         if auth.check_user(user, password):
-            return {'sub': 'foo',
+            return {'sub': user,
                     'active': True
                     }
 

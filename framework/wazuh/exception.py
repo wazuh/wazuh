@@ -450,7 +450,7 @@ class WazuhException(Exception):
         4005: {'message': 'The specified name or rule already exist'},
         4006: {'message': 'The specified policy is invalid',
                'remediation': 'The policy must have a json format and it\'s keys must be "access", "resources", '
-                              'and "effect"'},
+                              'and "effect". The actions and resources must be splitted by ":". Example: agent:id:001'},
         4007: {'message': 'The specified policy does not exist',
                'remediation': 'Please, create the specified policy with the endpoint POST /security/policies'},
         4008: {'message': 'The specified role/policy is required for a correct Wazuh\'s functionality'},
@@ -459,10 +459,34 @@ class WazuhException(Exception):
                'remediation': 'Please, create the specified role-policy relation with the endpoint '
                               'POST /security/roles/{role_id}/policies/{policy_id}'},
         4011: {'message': 'The specified role-policy already exist'},
-        4012: {'message': 'The specified policy is invalid',
+        4012: {'message': 'The specified actions or resources '
+                          'are invalid',
                'remediation': 'The actions and resources must be splitted by ":". Example: agent:id:001'},
         4013: {'message': 'The specified name already exist'},
-        4014: {'message': "Can't access specified required dynamic resource"}
+        4014: {'message': 'Parameter {param} is required',
+               'remediation': 'Please, make sure the parameter is defined'},
+        4015: {'message': 'Invalid value for parameter {param}',
+               'remediation': 'Please, make sure parameter is not empty'},
+
+        # User management
+        5000: {'message': 'The user could not be created',
+               'remediation': 'Please check that the user does not exist, '
+                              'to do this you can use the `GET /security/users/{username}` call'},
+        5001: {'message': 'The user does not exist',
+               'remediation': 'The user can be created with the endpoint POST /security/users'},
+        5002: {'message': 'There is no users in the system'},
+        5003: {'message': 'The user could not be modified',
+               'remediation': 'There is already a user with these properties'},
+        5004: {'message': 'The user could not be removed or updated',
+               'remediation': 'Administrator users can not be removed or updated'},
+        5005: {'message': 'Invalid body',
+               'remediation': 'Please check our official documentation to see more details '
+                              '[official documentation](https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'},
+        5006: {'message': 'Operation not allowed, the user does not have permissions to perform this action.',
+               'remediation': 'No user, except administrator users, can change the data of a different user.'},
+        5007: {'message': 'Insecure password provided.',
+               'remediation': 'The password for users must have a minimum length of 8 characters and must have at '
+                              'least one uppercase and lowercase letter, a number and a symbol.'}
 
         # > 9000: Authd
     }
