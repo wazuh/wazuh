@@ -362,7 +362,7 @@ stop)
 restart)
     testconfig
     lock
-    stopa 
+    stopa
     start
     unlock
     ;;
