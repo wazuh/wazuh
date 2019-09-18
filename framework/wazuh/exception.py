@@ -483,7 +483,10 @@ class WazuhException(Exception):
                'remediation': 'Please check our official documentation to see more details '
                               '[official documentation](https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'},
         5006: {'message': 'Operation not allowed, the user does not have permissions to perform this action.',
-               'remediation': 'No user, except administrator users, can change the data of a different user.'}
+               'remediation': 'No user, except administrator users, can change the data of a different user.'},
+        5007: {'message': 'Insecure password provided.',
+               'remediation': 'The password for users must have a minimum length of 8 characters and must have at '
+                              'least one uppercase and lowercase letter, a number and a symbol.'}
 
         # > 9000: Authd
     }

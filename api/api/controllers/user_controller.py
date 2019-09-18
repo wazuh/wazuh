@@ -7,11 +7,11 @@ import logging
 import re
 
 import connexion
-
 from api.authentication import decode_token
+
+from wazuh import user_manager
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
-from wazuh.user_manager import Users
 from ..util import remove_nones_to_dict, exception_handler, raise_if_exc
 
 logger = logging.getLogger('wazuh')
@@ -25,7 +25,7 @@ def get_users():
 
     :return: All users data
     """
-    dapi = DistributedAPI(f=Users.get_users,
+    dapi = DistributedAPI(f=user_manager.get_users,
                           request_type='local_master',
                           is_async=False,
                           logger=logger
@@ -44,7 +44,7 @@ def get_user(username=None):
     """
     f_kwargs = {'username': username}
 
-    dapi = DistributedAPI(f=Users.get_user_id,
+    dapi = DistributedAPI(f=user_manager.get_user_id,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -83,7 +83,7 @@ def create_user():
     if process != 0:
         raise WazuhError(5005, extra_message='Invalid field found {}'.format(process))
 
-    dapi = DistributedAPI(f=Users.create_user,
+    dapi = DistributedAPI(f=user_manager.create_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -107,7 +107,7 @@ def update_user(username=None):
     if process != 0:
         raise WazuhError(5005, extra_message='Invalid field found {}'.format(process))
 
-    dapi = DistributedAPI(f=Users.update_user,
+    dapi = DistributedAPI(f=user_manager.update_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -127,7 +127,7 @@ def delete_user(username=None):
     """
     f_kwargs = {'username': username}
 
-    dapi = DistributedAPI(f=Users.delete_user,
+    dapi = DistributedAPI(f=user_manager.delete_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

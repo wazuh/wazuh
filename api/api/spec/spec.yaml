@@ -3645,13 +3645,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    password:
-      in: path
-      name: password
-      description: Password of an user.
-      schema:
-        type: string
-        format: alphanumeric
 
 tags:
   - name: active-response
@@ -10960,7 +10953,7 @@ paths:
       tags:
         - security
       summary: 'Create new user'
-      description: 'This method should be called to get an API token. This token will expire at some time.'
+      description: 'Adds a new user to the system through the API.'
       operationId: api.controllers.user_controller.create_user
       requestBody:
         content:
@@ -10976,8 +10969,8 @@ paths:
                 password:
                   type: string
                   maxLength: 64
-                  minLength: 2
-                  format: user_password
+                  minLength: 8
+                  format: password
               required:
                 - username
                 - password
@@ -10997,7 +10990,7 @@ paths:
       tags:
         - security
       summary: 'Get users'
-      description: 'This method should be called to get an API token. This token will expire at some time.'
+      description: 'Get all users that are currently in the system.'
       operationId: api.controllers.user_controller.get_users
 
       responses:
@@ -11025,7 +11018,7 @@ paths:
       tags:
         - security
       summary: 'Get user information'
-      description: 'This method should be called to get an API token. This token will expire at some time.'
+      description: 'Get the information of a specified user.'
       operationId: api.controllers.user_controller.get_user
       parameters:
         - $ref: '#/components/parameters/username'
@@ -11051,7 +11044,7 @@ paths:
       tags:
         - security
       summary: 'Modify an user'
-      description: 'This method should be called to get an API token. This token will expire at some time.'
+      description: "Modify a user's password by specifying their name."
       operationId: api.controllers.user_controller.update_user
       parameters:
         - $ref: '#/components/parameters/username'
@@ -11064,8 +11057,8 @@ paths:
                 password:
                   type: string
                   maxLength: 64
-                  minLength: 2
-                  format: user_password
+                  minLength: 8
+                  format: password
               required:
                 - password
       responses:
@@ -11085,7 +11078,7 @@ paths:
       tags:
         - security
       summary: 'Delete an user'
-      description: 'This method should be called to get an API token. This token will expire at some time.'
+      description: "Delete a user by specifying their name"
       operationId: api.controllers.user_controller.delete_user
       parameters:
         - $ref: '#/components/parameters/username'
