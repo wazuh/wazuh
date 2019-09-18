@@ -358,6 +358,68 @@
                     <Component Id="WPK_ROOT.PEM" DiskId="1" Guid="EABF8773-57B9-4CD8-A862-87B0E060DBF8">
                         <File Id="WPK_ROOT.PEM" Name="wpk_root.pem" Source="..\..\etc\wpk_root.pem" />
                     </Component>
+                    <Component Id="XP-CONF" DiskId="1" Guid="">
+                        <File Id="XP.ZIP" Name="xp.zip" Source="..\..\etc\templates\config\windows\xp.zip"/>
+                        <Condition>VersionNT = 501 OR VersionNT64 = 501</Condition>
+                        <Condtion>MsiNTProductType = 1</Condition>
+                    </Component>
+                    <Component Id="2003-CONF" DiskId="1" Guid="">
+                        <File Id="2003.ZIP" Name="2003.zip" Source="..\..\etc\templates\config\windows\2003.zip"/>
+                        <Condition>VersionNT64 = 502</Condition>
+                        <Condtion>MsiNTProductType &gt; 1</Condition>
+                    </Component>
+                    <Component Id="VISTA-CONF" DiskId="1" Guid="">
+                        <File Id="VISTA.ZIP" Name="vista.zip" Source="..\..\etc\templates\config\windows\vista.zip"/>
+                        <Condition>VersionNT = 600 OR VersionNT64 = 600</Condition>
+                        <Condtion>MsiNTProductType = 1</Condition>
+                    </Component>
+                    <Component Id="2008-CONF" DiskId="1" Guid="">
+                        <File Id="2008.ZIP" Name="2008.zip" Source="..\..\etc\templates\config\windows\2008.zip"/>
+                        <Condition>VersionNT = 600 OR VersionNT64 = 600</Condition>
+                        <Condtion>MsiNTProductType &gt; 1</Condition>
+                    </Component>
+                    <Component Id="7-CONF" DiskId="1" Guid="">
+                        <File Id="7.ZIP" Name="7.zip" Source="..\..\etc\templates\config\windows\7.zip"/>
+                        <Condition>VersionNT = 601 OR VersionNT64 = 601</Condition>
+                        <Condtion>MsiNTProductType = 1</Condition>
+                    </Component>
+                    <Component Id="2008R2-CONF" DiskId="1" Guid="">
+                        <File Id="2008R2.ZIP" Name="2008R2.zip" Source="..\..\etc\templates\config\windows\2008R2.zip"/>
+                        <Condition>VersionNT = 601 OR VersionNT64 = 601</Condition>
+                        <Condtion>MsiNTProductType &gt; 1</Condition>
+                    </Component>
+                    <Component Id="8-CONF" DiskId="1" Guid="">
+                        <File Id="8.ZIP" Name="8.zip" Source="..\..\etc\templates\config\windows\8.zip"/>
+                        <Condition>VersionNT = 602 OR VersionNT64 = 602</Condition>
+                        <Condtion>MsiNTProductType = 1</Condition>
+                    </Component>
+                    <Component Id="2012-CONF" DiskId="1" Guid="">
+                        <File Id="2012.ZIP" Name="2012.zip" Source="..\..\etc\templates\config\windows\2012.zip"/>
+                        <Condition>VersionNT64 = 602</Condition>
+                        <Condtion>MsiNTProductType = 1</Condition>
+                    </Component>
+                    <Component Id="8.1-CONF" DiskId="1" Guid="">
+                        <File Id="8.1.ZIP" Name="8.1.zip" Source="..\..\etc\templates\config\windows\8.1.zip"/>
+                        <Condition>VersionNT = 603 OR VersionNT64 = 603</Condition>
+                        <Condition>MAJORVERSION != "#10"</Condition>
+                        <Condtion>MsiNTProductType = 1</Condition>
+                    </Component>
+                    <Component Id="2012R2-CONF" DiskId="1" Guid="">
+                        <File Id="2012R2.ZIP" Name="2012R2.zip" Source="..\..\etc\templates\config\windows\2012R2.zip"/>
+                        <Condition>VersionNT64 = 603</Condition>
+                        <Condition>MAJORVERSION != "#10"</Condition>
+                        <Condtion>MsiNTProductType &gt; 1</Condition>
+                    </Component>
+                    <Component Id="10-CONF" DiskId="1" Guid="">
+                        <File Id="10.ZIP" Name="10.zip" Source="..\..\etc\templates\config\windows\10.zip"/>
+                        <Condition>MAJORVERSION = "#10"</Condition>
+                        <Condtion>MsiNTProductType = 1</Condition>
+                    </Component>
+                    <Component Id="2016-CONF" DiskId="1" Guid="">
+                        <File Id="2016.ZIP" Name="2016.zip" Source="..\..\etc\templates\config\windows\2016.zip"/>
+                        <Condition>MAJORVERSION = "#10"</Condition>
+                        <Condtion>MsiNTProductType &gt; 1</Condition>
+                    </Component>
                     <Directory Id="ACTIVE_RESPONSE" Name="active-response">
                         <Directory Id="BIN" Name="bin">
                             <Component Id="RESTART_OSSEC.CMD" DiskId="1" Guid="5A405DD9-F4FF-4313-B242-A28DE03611CA">
@@ -406,19 +468,13 @@
                           <File Id="SCA_WIN_AUDIT.YML" Name="sca_win_audit.yml" Source="..\..\etc\sca\windows\sca_win_audit.yml" />
                         </Component>
                         <Component Id="SCA_WIN10" DiskId="1" Guid="A6B0FCA6-522F-4129-95B7-0FF9EB2EA907">
-                            <File Id="SCA_WIN10_L1.YML" Name="sca_win10_enterprise_L1.yml" Source="..\..\etc\sca\windows\10\cis_win10_enterprise_L1.yml" />
-                            <File Id="SCA_WIN10_L2.YML" Name="sca_win10_enterprise_L2.yml" Source="..\..\etc\sca\windows\10\cis_win10_enterprise_L2.yml" />
+                            <File Id="SCA_WIN10.YML" Name="10.zip" Source="..\..\etc\sca\windows\10.zip" />
                             <Condition>MAJORVERSION = "#10" AND MsiNTProductType = 1</Condition>
                         </Component>
-                        <Component Id="SCA_2012R2_MEMBER" DiskId="1" Guid="6C7B21C9-2B01-4A6B-BAC5-782382D10FBB">
-                            <File Id="SCA_WIN2012R2_MEMBER_L1.YML" Name="cis_win2012r2_memberL1.yml" Source="..\..\etc\sca\windows\2012R2\member\cis_win2012r2_memberL1.yml" />
-                            <File Id="SCA_WIN2012R2_MEMBER_L2.YML" Name="cis_win2012r2_memberL2.yml" Source="..\..\etc\sca\windows\2012R2\member\cis_win2012r2_memberL2.yml" />
-                            <Condition>VersionNT64 = 603 AND MsiNTProductType = 3</Condition>
+                        <Component Id="SCA_WIN2012R2" DiskId="1" Guid="6C7B21C9-2B01-4A6B-BAC5-782382D10FBB">
+                            <File Id="SCA_WIN2012R2.ZIP" Name="2012R2.zip" Source="..\..\etc\sca\windows\2012R2.zip" />
+                            <Condition>VersionNT64 = 603 AND MsiNTProductType &gt; 1</Condition>
                         </Component>
-                        <Component Id="SCA_2012R2_DOMAIN" DiskId="1" Guid="86B1DF3F-CCAE-452B-AFCF-9DC008BCC492">
-                            <File Id="SCA_WIN2012R2_DOMAIN_L1.YML" Name="cis_win2012r2_domainL1.yml" Source="..\..\etc\sca\windows\2012R2\domain\cis_win2012r2_domainL1.yml" />
-                            <File Id="SCA_WIN2012R2_DOMAIN_L2.YML" Name="cis_win2012r2_domainL2.yml" Source="..\..\etc\sca\windows\2012R2\domain\cis_win2012r2_domainL2.yml" />
-                            <Condition>VersionNT64 = 603 AND MsiNTProductType = 2</Condition>
                         </Component>
                       </Directory>
                     </Directory>
@@ -580,8 +636,7 @@
             <ComponentRef Id="REMOVE_OLD_POLICIES" />
             <ComponentRef Id="SCA_WIN_AUDIT.YML" />
             <ComponentRef Id="SCA_WIN10" />
-            <ComponentRef Id="SCA_2012R2_DOMAIN" />
-            <ComponentRef Id="SCA_2012R2_MEMBER" />
+            <ComponentRef Id="SCA_WIN2012R2" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
             <ComponentRef Id="CMP_WODLES" />
