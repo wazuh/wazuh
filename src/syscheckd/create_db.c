@@ -175,15 +175,17 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
     }
 
     if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file_name), !saved_data) {
-        // New entry. Insert into hash table
-        if (fim_insert(file_name, entry_data) == -1) {
-            free_entry_data(entry_data);
-            w_mutex_unlock(&syscheck.fim_entry_mutex);
-            return OS_INVALID;
-        }
+        if (!deleted_flag) {
+            // New entry. Insert into hash table
+            if (fim_insert(file_name, entry_data) == -1) {
+                free_entry_data(entry_data);
+                w_mutex_unlock(&syscheck.fim_entry_mutex);
+                return OS_INVALID;
+            }
 
-        if (_base_line) {
-            json_event = fim_json_event(file_name, NULL, entry_data, dir_position, FIM_ADD, mode, w_evt);
+            if (_base_line) {
+                json_event = fim_json_event(file_name, NULL, entry_data, dir_position, FIM_ADD, mode, w_evt);
+            }
         }
     } else {
         // Delete file. Sending alert.
