@@ -127,7 +127,7 @@ int receive_msg()
 
             /* Syscheck */
             else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0) {
-                ag_send_syscheck(&agt->syscheck_sock, tmp_msg + strlen(HC_SK), 1);
+                ag_send_syscheck(tmp_msg + strlen(HC_SK));
                 continue;
             }
 
