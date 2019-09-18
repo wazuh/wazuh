@@ -56,6 +56,12 @@ int main(int argc, char **argv)
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
 
+    /* To check if is valid server address */
+    bool is_valid = false;
+    int i = 0;
+    int min_size = 1;
+    char val_default[10] = "MANAGER_IP";
+
     uid_t uid;
     gid_t gid;
 
@@ -138,6 +144,22 @@ int main(int argc, char **argv)
 
     if (!(agt->server && agt->server[0].rip)) {
         merror(AG_INV_IP);
+        merror_exit(CLIENT_ERROR);
+    }
+
+    /* Check if is valid server addres */
+    while(i < agt->rip_id){
+
+        if ( strcmp(agt->server[i].rip, val_default) != 0
+            && strlen(agt->server[i].rip) > min_size ){
+            is_valid = true;
+        }
+
+        i++;
+    }
+
+    if (!is_valid){
+        merror(AG_INV_MNGIP);
         merror_exit(CLIENT_ERROR);
     }
 
