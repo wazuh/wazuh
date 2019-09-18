@@ -70,7 +70,7 @@ class AuthenticationManager:
             self.session.rollback()
             return False
 
-    def update_user(self, username: str, password):
+    def update_user(self, username: str, password: str):
         """
         Update the password an existent user
         :param username: string Unique user name
