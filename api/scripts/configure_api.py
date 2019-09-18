@@ -1,4 +1,4 @@
-#!/var/ossec/framework/python/bin/python3
+#!/usr/bin/awk BEGIN{a=ARGV[1];sub(/[a-z_.]+$/,"../../framework/python/bin/python3",a);system(a"\t"ARGV[1])}
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
