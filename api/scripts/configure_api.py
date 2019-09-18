@@ -1,4 +1,4 @@
-#!/usr/bin/awk BEGIN{a=ARGV[1];sub(/[a-z_.]+$/,"../../framework/python/bin/python3",a);system(a"\t"ARGV[1])}
+#!/var/ossec/framework/python/bin/python3
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -9,8 +9,10 @@ import ipaddress
 import re
 import sys
 import os
+import subprocess
 
 from api.constants import UWSGI_CONFIG_PATH, API_CONFIG_PATH, TEMPLATE_API_CONFIG_PATH
+from wazuh.common import ossec_path
 from wazuh import user_manager
 
 _ip_host = re.compile(r'( *)(# )?http:(.*):')
@@ -115,7 +117,7 @@ def change_ip(ip=None):
                     ip_port = match_split[1].split(':')
                     ip_port[0] = ip
                     match_split[1] = ':'.join(ip_port)
-                    new_file += ':'.join(match_split)
+                    new_file += ': '.join(match_split)
                 else:
                     new_file += line
             if new_file != '':
@@ -135,7 +137,7 @@ def change_port(port=None):
     while port != '':
         if interactive:
             port = input('[INFO] Enter the PORT to listen, press enter to not modify: ')
-        if _check_port(port):
+        if port != '' and _check_port(port):
             with open(UWSGI_CONFIG_PATH, 'r+') as f:
                 lines = f.readlines()
 
@@ -315,6 +317,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--https', help="Enable https protocol (true/false)", type=str)
     parser.add_argument('-sC', '--sCertificate', help="Set the ssl certificate (path)", type=str)
     parser.add_argument('-sK', '--sKey', help="Set the ssl key (path)", type=str)
+    parser.add_argument('-R', '--restart', help="Restart Wazuh after modifications", action = 'store_true')
     parser.add_argument('-I', '--interactive', help="Enables guided configuration", action='store_true')
     args = parser.parse_args()
 
@@ -338,6 +341,9 @@ if __name__ == '__main__':
             elif args.http.lower() == 'false' or args.http.lower() == 'no':
                 args.http = 'no'
             change_https(args.http)
+        if args.restart:
+            print('[INFO] Restarting Wazuh...')
+            subprocess.call(ossec_path + '/bin/ossec-control restart', shell=True)
     elif args.interactive or len(sys.argv) == 1:
         interactive = True
         print('[INFO] Interactive mode!')
@@ -346,5 +352,7 @@ if __name__ == '__main__':
         change_proxy()
         change_basic_auth()
         change_https()
+        print('[INFO] Restarting Wazuh...')
+        subprocess.call(ossec_path + '/bin/ossec-control restart', shell=True)
     else:
         print('[ERROR] Please check that your configuration is correct')
