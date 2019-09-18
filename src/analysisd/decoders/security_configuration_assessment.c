@@ -1636,7 +1636,9 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
         fillData(lf, "sca.check.result", result->valuestring);
     } else {
         fillData(lf, "sca.check.status", status->valuestring);
-        fillData(lf, "sca.check.reason", reason->valuestring);
+        if (reason) {
+            fillData(lf, "sca.check.reason", reason->valuestring);
+        }
     }
 
     if(old_result) {
@@ -1782,10 +1784,6 @@ int pm_send_db(char *msg, char *response, int *sock)
     assert(msg);
     assert(response);
 
-    ssize_t length;
-    fd_set fdset;
-    struct timeval timeout = {0, 1000};
-    int size = strlen(msg);
     int retval = -1;
     int attempts;
 
@@ -1813,6 +1811,8 @@ int pm_send_db(char *msg, char *response, int *sock)
             goto end;
         }
     }
+
+    int size = strlen(msg);
 
     // Send msg to Wazuh DB
     if (OS_SendSecureTCP(*sock, size + 1, msg) != 0)
@@ -1853,15 +1853,7 @@ int pm_send_db(char *msg, char *response, int *sock)
         }
     }
 
-    // Wait for socket
-    FD_ZERO(&fdset);
-    FD_SET(*sock, &fdset);
-
-    if (select(*sock + 1, &fdset, NULL, NULL, &timeout) < 0)
-    {
-        merror("at select(): %s (%d)", strerror(errno), errno);
-        goto end;
-    }
+    ssize_t length;
 
     // Receive response from socket
     length = OS_RecvSecureTCP(*sock, response, OS_SIZE_6144);
@@ -1875,7 +1867,7 @@ int pm_send_db(char *msg, char *response, int *sock)
         goto end;
 
     default:
-        response[length] = '\0';
+        response[length >= 0 ? length : 0] = '\0';
 
         mdebug1("Got wazuh-db response: %s", response);
         if (strncmp(response, "ok", 2))
