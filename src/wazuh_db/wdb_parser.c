@@ -398,37 +398,18 @@ int wdb_parse(char * input, char * output) {
             return -1;
         }
         return result;
-    } else if (strcmp(actor, "global") == 0) {
+    } else if (strcmp(actor, "mitre") == 0) {
         query = next;
 
-        if (next = wstr_chr(query, ' '), !next) {
-            mdebug1("Invalid DB query syntax.");
-            mdebug2("DB query error near: %s", query);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-            return -1;
-        }
-        *next++ = '\0';
-
-        if (db_global = wdb_open_global2(), !db_global) {
-            merror("Couldn't open DB global");
-            snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
-            return -1;
+        if (wdb_mitre = wdb_open_mitre(), !wdb_mitre) {;
+            merror("Couldn't open DB mitre");
+            snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB mitre");
+            result = -1;
         }
 
-        if (strcmp(query, "mitre") == 0) {
-            if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = -1;
-            } else {
-                wdb_mitre_load(db_global);
-                if(wdb_parse_mitre(db_global, next, output, &params) > 0){
-                    mdebug2("Mitre - attack json found correctly");
-                } else {
-                    merror("Mitre - attack json not found");
-                }
-            }
+        if(wdb_parse_mitre(wdb_mitre, query, output, &params) < 1){
+            merror("DB Mitre query error near: %s", query);
+            result = -1;   
         }
         return result;
     } else {
