@@ -16,6 +16,8 @@
 
 #include <time.h>
 
+int day_to_int(const char *day);
+
 void gettime(struct timespec *ts);
 
 // Computes a -= b

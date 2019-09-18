@@ -38,6 +38,7 @@
 #include "labels.h"
 #include "state.h"
 #include "syscheck_op.h"
+#include "monitord/monitord.h"
 
 #ifdef PRELUDE_OUTPUT_ENABLED
 #include "output/prelude.h"
@@ -86,6 +87,8 @@ int sys_debug_level;
 int num_rule_matching_threads;
 EventList *last_events_list;
 time_t current_time;
+time_t alerts_time;
+time_t archive_time;
 
 /* execd queue */
 static int execdq = 0;
@@ -2493,9 +2496,20 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
     int day = 0;
     int year = 0;
     struct tm *p;
+    struct tm rot;
     char mon[4] = {0};
 
-    while(1){
+    /* Get current time before starting */
+    time(&current_time);
+    p = localtime(&c_time);
+
+    minfo("Today is %d/%d/%d %d:%d:%d", p->tm_mday, p->tm_mon+1, p->tm_year+1900, p->tm_hour, p->tm_min, p->tm_sec);
+
+    /* Calculate when is the next rotation */
+    alerts_time = Config.alerts_interval ? calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval) : 0;
+    archive_time = Config.archives_interval ? calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval) : 0;
+
+    while (1) {
         time(&current_time);
         p = localtime(&c_time);
         day = p->tm_mday;
@@ -2525,7 +2539,7 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
                     Update_Hour();
                 }
 
-                if (OS_GetLogLocation(day,year,mon) < 0) {
+                if (OS_GetLogLocation(day, year, mon) < 0) {
                     merror_exit("Error allocating log files");
                 }
 
@@ -2535,7 +2549,7 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
             }
         }
 
-        OS_RotateLogs(day,year,mon);
+        OS_RotateLogs(day, year, mon);
         w_mutex_unlock(&writer_threads_mutex);
         sleep(1);
     }

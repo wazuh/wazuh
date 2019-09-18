@@ -119,6 +119,8 @@ typedef struct __Config {
     unsigned int archives_log_plain:1;
     long int archives_max_size;
     long int archives_interval;
+    char archives_interval_units;
+    char alerts_interval_units;
     int archives_rotate;
     int archives_maxage;
     rotation_list *log_archives_plain;

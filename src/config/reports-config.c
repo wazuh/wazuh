@@ -35,27 +35,6 @@ static int _filter_arg(char *mystr)
     return (1);
 }
 
-static int day_to_int(const char *day)
-{
-    if (!strcmp(day, "monday")) {
-        return 1;
-    } else if (!strcmp(day, "tuesday")) {
-        return 2;
-    } else if (!strcmp(day, "wednesday")) {
-        return 3;
-    } else if (!strcmp(day, "thursday")) {
-        return 4;
-    } else if (!strcmp(day, "friday")) {
-        return 5;
-    } else if (!strcmp(day, "saturday")) {
-        return 6;
-    } else if (!strcmp(day, "sunday")) {
-        return 7;
-    } else {
-        return 0;
-    }
-}
-
 int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *config2)
 {
     unsigned int i = 0, s = 0;
