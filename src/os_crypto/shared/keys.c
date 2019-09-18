@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -349,7 +349,7 @@ void OS_FreeKey(keyentry *key) {
         fclose(key->fp);
     }
 
-    pthread_mutex_destroy(&key->mutex);
+    w_mutex_destroy(&key->mutex);
     free(key);
 }
 

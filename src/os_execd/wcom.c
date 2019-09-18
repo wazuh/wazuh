@@ -2,7 +2,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * Jun 07, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -771,7 +771,7 @@ int _unsign(const char * source, char dest[PATH_MAX + 1]) {
         }
     } else {
 #else
-    if (!_mktemp(dest)) {
+    if (_mktemp_s(dest, strlen(dest) + 1)) {
 #endif
         merror("At unsign(): Couldn't create temporary compressed file");
         output = -1;

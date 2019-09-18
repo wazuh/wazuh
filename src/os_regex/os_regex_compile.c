@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -51,7 +51,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
     reg->prts_closure = NULL;
     reg->raw = NULL;
     memset(&reg->d_size, 0, sizeof(regex_dynamic_size));
-    reg->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+    w_mutex_init(&reg->mutex, NULL);
 
     /* The pattern can't be null */
     if (pattern == NULL) {

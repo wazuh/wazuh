@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -56,7 +56,7 @@ static void execd_shutdown(int sig)
 {
     /* Remove pending active responses */
     minfo(EXEC_SHUTDOWN);
- 
+
     timeout_node = timeout_list ? OSList_GetFirstNode(timeout_list) : NULL;
     while (timeout_node) {
         timeout_data *list_entry;
@@ -313,8 +313,14 @@ static void ExecdStart(int q)
             list_entry = (timeout_data *)timeout_node->data;
 
             /* Timed out */
-            if ((curr_time - list_entry->time_of_addition) >
-                    list_entry->time_to_block) {
+            if ((curr_time - list_entry->time_of_addition) > list_entry->time_to_block) {
+
+                mdebug1("Executing command '%s %s' after a timeout of '%ds'",
+                    list_entry->command[0],
+                    list_entry->command[1] ? list_entry->command[1] : "",
+                    list_entry->time_to_block
+                );
+
                 ExecCmd(list_entry->command);
 
                 /* Delete current node - already sets the pointer to next */
@@ -355,6 +361,8 @@ static void ExecdStart(int q)
             merror(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
             continue;
         }
+
+        mdebug2("Received message: '%s'", buffer);
 
         /* Current time */
         curr_time = time(0);
@@ -490,73 +498,94 @@ static void ExecdStart(int q)
             timeout_args[i + 1] = NULL;
         }
 
-        /* Check if this command was already executed */
-        timeout_node = OSList_GetFirstNode(timeout_list);
-        added_before = 0;
+        if (name[0] != '!') {
+            if (!timeout_args[2] || !timeout_args[3]) {
+                merror("Invalid number of arguments (%s)", name);
 
-        /* Check for the username and IP argument */
-        if (name[0] != '!' && (!timeout_args[2] || !timeout_args[3])) {
-            added_before = 1;
-            merror("Invalid number of arguments (%s).", name);
-        }
-
-        while (timeout_node) {
-            timeout_data *list_entry;
-
-            list_entry = (timeout_data *)timeout_node->data;
-            if ((strcmp(list_entry->command[3], timeout_args[3]) == 0) &&
-                    (strcmp(list_entry->command[0], timeout_args[0]) == 0)) {
-                /* Means we executed this command before
-                 * and we don't need to add it again
-                 */
-                added_before = 1;
-
-                /* Update the timeout */
-                list_entry->time_of_addition = curr_time;
-
-                if (repeated_offenders_timeout[0] != 0 &&
-                        repeated_hash != NULL &&
-                        strncmp(timeout_args[3], "-", 1) != 0) {
-                    char *ntimes = NULL;
-                    char rkey[256];
-                    rkey[255] = '\0';
-                    snprintf(rkey, 255, "%s%s", list_entry->command[0],
-                             timeout_args[3]);
-
-                    if ((ntimes = (char *) OSHash_Get(repeated_hash, rkey))) {
-                        int ntimes_int = 0;
-                        int i2 = 0;
-                        int new_timeout = 0;
-                        ntimes_int = atoi(ntimes);
-                        while (repeated_offenders_timeout[i2] != 0) {
-                            i2++;
-                        }
-                        if (ntimes_int >= i2) {
-                            new_timeout = repeated_offenders_timeout[i2 - 1] * 60;
-                        } else {
-                            free(ntimes);       /* In hash_op.c, data belongs to caller */
-                            os_calloc(16, sizeof(char), ntimes);
-                            new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
-                            ntimes_int++;
-                            snprintf(ntimes, 16, "%d", ntimes_int);
-                            if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
-                                free(ntimes);
-                                merror("At ExecdStart: OSHash_Update() failed");
-                            }
-                        }
-                        list_entry->time_to_block = new_timeout;
-                    }
+                char **ss_ta = timeout_args;
+                while (*timeout_args) {
+                    os_free(*timeout_args);
+                    *timeout_args = NULL;
+                    timeout_args++;
                 }
-                break;
+                os_free(ss_ta);
+
+                while (i > 0) {
+                    cmd_args[i] = NULL;
+                    i--;
+                }
+
+                continue;
             }
 
-            /* Continue with the next entry in timeout list*/
-            timeout_node = OSList_GetNextNode(timeout_list);
+            added_before = 0;
+            /* Check if this command was already executed */
+            timeout_node = OSList_GetFirstNode(timeout_list);
+            while (timeout_node) {
+                timeout_data *list_entry;
+
+                list_entry = (timeout_data *)timeout_node->data;
+                if ((strcmp(list_entry->command[3], timeout_args[3]) == 0) &&
+                        (strcmp(list_entry->command[0], timeout_args[0]) == 0)) {
+                    /* Means we executed this command before
+                    * and we don't need to add it again
+                    */
+                    added_before = 1;
+
+                    /* Update the timeout */
+                    mdebug1("Command already received, updating time of addition to now.");
+                    list_entry->time_of_addition = curr_time;
+
+                    if (repeated_offenders_timeout[0] != 0 &&
+                            repeated_hash != NULL &&
+                            strncmp(timeout_args[3], "-", 1) != 0) {
+                        char *ntimes = NULL;
+                        char rkey[256];
+                        rkey[255] = '\0';
+                        snprintf(rkey, 255, "%s%s", list_entry->command[0],
+                                timeout_args[3]);
+
+                        if ((ntimes = (char *) OSHash_Get(repeated_hash, rkey))) {
+                            int ntimes_int = 0;
+                            int i2 = 0;
+                            int new_timeout = 0;
+                            ntimes_int = atoi(ntimes);
+                            while (repeated_offenders_timeout[i2] != 0) {
+                                i2++;
+                            }
+                            if (ntimes_int >= i2) {
+                                new_timeout = repeated_offenders_timeout[i2 - 1] * 60;
+                            } else {
+                                free(ntimes);       /* In hash_op.c, data belongs to caller */
+                                os_calloc(16, sizeof(char), ntimes);
+                                new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
+                                ntimes_int++;
+                                snprintf(ntimes, 16, "%d", ntimes_int);
+                                if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
+                                    free(ntimes);
+                                    merror("At ExecdStart: OSHash_Update() failed");
+                                }
+                            }
+                            mdebug1("Repeated offender. Setting timeout to '%ds'", new_timeout);
+                            list_entry->time_to_block = new_timeout;
+                        }
+                    }
+                    break;
+                }
+
+                /* Continue with the next entry in timeout list*/
+                timeout_node = OSList_GetNextNode(timeout_list);
+            }
         }
 
         /* If it wasn't added before, do it now */
         if (!added_before) {
             /* Execute command */
+            mdebug1("Executing command '%s %s'",
+                cmd_args[0],
+                cmd_args[1] ? cmd_args[1] : ""
+            );
+
             ExecCmd(cmd_args);
 
             /* We don't need to add to the list if the timeout_value == 0 */
@@ -606,14 +635,17 @@ static void ExecdStart(int q)
                 timeout_entry->time_to_block = timeout_value;
 
                 /* Add command to the timeout list */
+                mdebug1("Adding command '%s' to the timeout list, with a timeout of '%ds'.",
+                    timeout_entry->command[0],
+                    timeout_entry->time_to_block
+                );
+
                 if (!OSList_AddData(timeout_list, timeout_entry)) {
                     merror(LIST_ADD_ERROR);
                     FreeTimeoutEntry(timeout_entry);
                 }
-            }
-
-            /* If no timeout, we still need to free it in here */
-            else {
+            } else {
+                /* If no timeout, we still need to free it in here */
                 char **ss_ta = timeout_args;
                 while (*timeout_args) {
                     os_free(*timeout_args);
@@ -624,10 +656,8 @@ static void ExecdStart(int q)
             }
 
             childcount++;
-        }
-
-        /* We didn't add it to the timeout list */
-        else {
+        } else {
+            /* We didn't add it to the timeout list */
             char **ss_ta = timeout_args;
 
             /* Clear the timeout arguments */

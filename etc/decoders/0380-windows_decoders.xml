@@ -90,10 +90,11 @@
   <parent>windows-date-format</parent>
   <type>web-log</type>
   <use_own_name>true</use_own_name>
-  <prematch offset="after_parent">^\S+ GET |^\S+ POST </prematch>
-  <regex offset="after_prematch">(\S+ \S*) \.* (\S+) \S*\.* (\d\d\d) \S+ \S+ \S+</regex>
-  <order>url,srcip,id</order>
+  <prematch offset="after_parent">^\S+ GET |^\S+ POST</prematch>
+  <regex offset="after_parent">^\S+ (\w+) (\S+ \S+) (\S+) \S+ (\S+) (\S+) \.*(\d\d\d) </regex>
+  <order>action, url, srcport, srcip, user_agent, id</order>
 </decoder>
+
 
 <!-- IIS 5 W3C FTP log format.
   - Examples:
@@ -460,26 +461,24 @@ Event ID 15: FileCreateStreamHash
 <!-- Windows Defender -->
 
 <!--
-Event ID 1116:
-
 2017 Apr 06 06:25:54 WinEvtLog: Microsoft-Windows-Windows Defender/Operational: WARNING(1116): Microsoft-Windows-Windows Defender: SYSTEM: NT AUTHORITY: DESKTOP-6UOEPO5: Windows Defender has detected malware or other potentially unwanted software.   For more information please see the following:  http://go.microsoft.com/fwlink/?linkid=37020&name=Virus:DOS/EICAR_Test_File&threatid=2147519003&enterprise=0     Name: Virus:DOS/EICAR_Test_File          ID: 2147519003          Severity: Severe        Category: Virus         Path: file:_C:\Users\spiderman\Downloads\eicar.com.txt          Detection Origin: Local machine         Detection Type: Concrete     Detection Source: Real-Time Protection          User: NT AUTHORITY\SYSTEM       Process Name: C:\Windows\System32\SearchProtocolHost.exe        Signature Version: AV: 1.239.892.0, AS: 1.239.892.0, NIS: 116.88.0.0    Engine Version: AM: 1.1.13601.0, NIS: 2.1.12706.0
 -->
-<decoder name="Windows-defender#1116">
+<decoder name="Windows-defender">
     <parent>windows</parent>
     <type>windows</type>
-    <prematch>Microsoft-Windows-Windows Defender/Operational: \S+\(1116\)</prematch>
+    <prematch>Microsoft-Windows-Windows Defender/Operational: \S+\(1\d\d\d\)</prematch>
 	<regex>Microsoft-Windows-Windows Defender/Operational: \S+\((\d+)\)</regex>
 	<order>id</order>
 </decoder>
 
-<decoder name="Windows-defender#1116">
+<decoder name="Windows-defender">
     <parent>windows</parent>
     <type>windows</type>
     <regex offset="after_regex">Name: (\.*)\s+ID: (\.*)\s+Severity: (\.*)\s+Category: (\.*)\s+Path: \S+:(\.*)\s+Detection </regex>
 	<order>defender.name, defender.id, defender.severity, defender.category, defender.pathfound</order>
 </decoder>
 
-<decoder name="Windows-defender#1116">
+<decoder name="Windows-defender">
     <parent>windows</parent>
     <type>windows</type>
     <regex offset="after_regex">Type: (\.*)\s+Detection Source: (\.*)\s+User: (\.*)\s+Process Name: (\.*.\S+)\s+Signature</regex>
@@ -487,33 +486,23 @@ Event ID 1116:
 </decoder>
 
 <!--
-Event ID 1117:
-
 2017 Apr 06 06:26:01 WinEvtLog: Microsoft-Windows-Windows Defender/Operational: INFORMATION(1117): Microsoft-Windows-Windows Defender: SYSTEM: NT AUTHORITY: DESKTOP-6UOEPO5: Windows Defender has taken action to protect this machine from malware or other potentially unwanted software.   For more information please see the following:  http://go.microsoft.com/fwlink/?linkid=37020&name=Virus:DOS/EICAR_Test_File&threatid=2147519003&enterprise=0         Name: Virus:DOS/EICAR_Test_File         ID: 2147519003          Severity: Severe        Category: Virus         Path: file:_C:\Users\spiderman\Downloads\eicar.com.txt;webfile:_C:\Users\spiderman\Downloads\eicar.com.txt|http://www.eicar.org/download/eicar.com.txt|chrome.exe    Detection Origin: Internet      Detection Type: Concrete        Detection Source: Real-Time Protection          User: NT AUTHORITY\SYSTEM       Process Name: C:\Windows\System32\SearchProtocolHost.exe     Action: Quarantine      Action Status:  No additional actions required          Error Code: 0x80508023          Error description: The program could not find the malware and other potentially unwanted software on this computer.          Signature Version: AV: 1.239.892.0, AS: 1.239.892.0, NIS: 116.88.0.0    Engine Version: AM: 1.1.13601.0, NIS: 2.1.12706.0
 -->
-<decoder name="Windows-defender#1117">
-    <parent>windows</parent>
-    <type>windows</type>
-    <prematch>Microsoft-Windows-Windows Defender/Operational: \S+\(1117\)</prematch>
-	<regex>Microsoft-Windows-Windows Defender/Operational: \S+\((\d+)\)</regex>
-	<order>id</order>
-</decoder>
-
-<decoder name="Windows-defender#1117">
+<decoder name="Windows-defender">
     <parent>windows</parent>
     <type>windows</type>
     <regex offset="after_regex">Name: (\.*)\s+ID: (\.*)\s+Severity: (\.*)\s+Category: (\.*)\s+Path:\s+\S+:(\.*);</regex>
     <order>defender.name, defender.id, defender.severity, defender.category, defender.path</order>
 </decoder>
 
-<decoder name="Windows-defender#1117">
+<decoder name="Windows-defender">
     <parent>windows</parent>
     <type>windows</type>
     <regex offset="after_regex">User: (\S+ \S+) | User: (\S+) </regex>
 	<order>srcuser</order>
 </decoder>
 
-<decoder name="Windows-defender#1117">
+<decoder name="Windows-defender">
     <parent>windows</parent>
     <type>windows</type>
     <regex offset="after_regex">Process Name: (\.*.\S+)\s+Action: (\S+)</regex>

@@ -1,21 +1,22 @@
 #!/usr/bin/env python
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from freezegun import freeze_time
-from shutil import copyfile
-from unittest.mock import patch, mock_open
-import hashlib
-import sqlite3
 import os
-import pytest
 import re
+import sqlite3
+from unittest.mock import patch, mock_open
 
-from wazuh import common
-from wazuh.agent import Agent
-from wazuh.exception import WazuhException
-from wazuh.utils import WazuhVersion
+import pytest
+from freezegun import freeze_time
+
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh import common
+        from wazuh.agent import Agent
+        from wazuh.exception import WazuhException
+        from wazuh.utils import WazuhVersion
 
 from pwd import getpwnam
 from grp import getgrnam
@@ -148,7 +149,7 @@ def test_get_agents_overview_select(test_data, select, status, older_than, offse
     "ip=172.17.0.202",
     "ip=172.17.0.202;registerIP=any",
     "status=Disconnected;lastKeepAlive>34m",
-    "(status=Active,status=Pending);lastKeepAlive>5m",
+    "(status=Active,status=Pending);lastKeepAlive>5m"
 ])
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_get_agents_overview_query(test_data, query):
@@ -260,8 +261,8 @@ def test_get_config_error(ossec_socket_mock, test_data, agent_id, component, con
 @patch("wazuh.common.ossec_uid", return_value=getpwnam("root"))
 @patch("wazuh.common.ossec_gid", return_value=getgrnam("root"))
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_remove_manual(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
-                       stat_mock, chmod_mock, chown_mock, move_mock, rmtree_mock, remove_mock, wdb_mock, test_data,
+def test_remove_manual(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, safe_move_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
+                       stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, wdb_mock, test_data,
                        backup):
     """
     Test the _remove_manual function
@@ -315,8 +316,8 @@ def test_remove_manual(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, rename_m
 @patch("wazuh.common.ossec_uid", return_value=getpwnam("root"))
 @patch("wazuh.common.ossec_gid", return_value=getgrnam("root"))
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_remove_manual_error(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
-                             stat_mock, chmod_mock, chown_mock, move_mock, rmtree_mock, remove_mock, wdb_mock,
+def test_remove_manual_error(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, safe_move_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
+                             stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, wdb_mock,
                              test_data, agent_id, expected_exception):
     """
     Test the _remove_manual function error cases
@@ -351,14 +352,12 @@ def test_get_available_versions(requests_mock, test_data, agent_id):
     """
     Test _get_versions method
     """
-    # get manager version before mock DB
-    manager_version = get_manager_version()
     # regex for checking SHA-1 hash
     regex_sha1 = re.compile(r'^[0-9a-f]{40}$')
 
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
-
+        manager_version = get_manager_version()
         agent = Agent(agent_id)
         agent._load_info_from_DB()
         # mock request with available versions from server
@@ -382,8 +381,6 @@ def test_upgrade(socket_sendto, _send_wpk_file, ossec_socket_mock, test_data, ag
     """
     Test upgrade method
     """
-    # get manager version before mock DB
-    manager_version = get_manager_version()
     ossec_socket_mock.return_value.receive.return_value = b'ok'
 
     with patch('sqlite3.connect') as mock_db:
@@ -448,6 +445,7 @@ def test_get_wpk_file(versions_mock, get_req_mock, open_mock, sha1_mock, test_da
 @patch('wazuh.agent.stat')
 @patch('wazuh.agent.requests.get')
 @patch('wazuh.agent.Agent._get_wpk_file')
+@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_send_wpk_file(_get_wpk_mock, get_req_mock, stat_mock, ossec_socket_mock,
                        open_mock, test_data, agent_id):
     """
@@ -469,6 +467,7 @@ def test_send_wpk_file(_get_wpk_mock, get_req_mock, stat_mock, ossec_socket_mock
 
             assert result == ["WPK file sent", version[0]]
 
+
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_get_outdated_agents(test_data):
     """
@@ -484,3 +483,16 @@ def test_get_outdated_agents(test_data):
         for item in result['items']:
             assert set(item.keys()) == {'version', 'id', 'name'}
             assert WazuhVersion(item['version']) < WazuhVersion(get_manager_version())
+
+
+@patch('wazuh.agent.Agent.get_all_groups')
+@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+def test_get_full_summary(mock_get_all_groups, test_data):
+    """Test get_full_sumary method."""
+    expected_keys = {'nodes', 'groups', 'agent_os', 'agent_status',
+                     'agent_version', 'last_registered_agent'}
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+        result = Agent.get_full_summary()
+        # check keys of result
+        assert(set(result.keys()) == expected_keys)

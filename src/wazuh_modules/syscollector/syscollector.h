@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * March 9, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -231,6 +231,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
 void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddrs_ptr, __attribute__((unused)) gateway *gate);
 // Create the interface list
 int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr);
+
+// Initialize hw_info struct values
+void init_hw_info(hw_info *info);
 
 #endif
 #endif

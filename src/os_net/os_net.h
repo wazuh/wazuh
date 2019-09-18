@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -90,6 +90,11 @@ int OS_SetKeepalive(int socket);
  * Enable SO_KEEPALIVE options for TCP
  */
 #ifndef CLIENT
+
+#ifdef __MACH__
+#define TCP_KEEPIDLE TCP_KEEPALIVE
+#endif
+
 void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt);
 #endif
 /* Set the delivery timeout for a socket
