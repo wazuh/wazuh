@@ -133,6 +133,12 @@ int local_start()
     DWORD  threadID2;
     win_debug_level = getDefine_Int("windows", "debug", 0, 2);
 
+    /* To check if is valid server address */
+    bool is_valid = false;
+    int i = 0;
+    int min_size = 1;
+    char val_default[7] = "0.0.0.0";
+
     /* Start agent */
     agt = (agent *)calloc(1, sizeof(agent));
     if (!agt) {
@@ -172,6 +178,22 @@ int local_start()
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
     minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
+
+    /* Check if is valid server addres */
+    while(i < agt->rip_id){
+
+        if ( strcmp(agt->server[i].rip, val_default) != 0
+            && strlen(agt->server[i].rip) > min_size ){
+            is_valid = true;
+        }
+
+        i++;
+    }
+
+    if (!is_valid){
+        merror(AG_INV_MNGIP);
+        merror_exit(CLIENT_ERROR);
+    }
 
     // Resolve hostnames
     rc = 0;
