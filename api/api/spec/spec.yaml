@@ -3637,6 +3637,14 @@ components:
       schema:
         type: string
         format: alphanumeric
+    username:
+      in: path
+      name: username
+      description: ID of an user.
+      required: true
+      schema:
+        type: string
+        format: alphanumeric
 
 tags:
   - name: active-response
@@ -10939,6 +10947,154 @@ paths:
                   manager: 1a683501f77f
         default:
           $ref: '#/components/responses/ResponseError'
+
+  /security/users:
+    post:
+      tags:
+        - security
+      summary: 'Create new user'
+      description: 'Adds a new user to the system through the API.'
+      operationId: api.controllers.user_controller.create_user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  minLength: 4
+                  maxLength: 20
+                  format: names
+                password:
+                  type: string
+                  maxLength: 64
+                  minLength: 8
+                  format: password
+              required:
+                - username
+                - password
+
+      responses:
+        '200':
+          description: 'User created successful'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+
+                example:
+                  message: 'User created correctly'
+    get:
+      tags:
+        - security
+      summary: 'Get users'
+      description: 'Get all users that are currently in the system.'
+      operationId: api.controllers.user_controller.get_users
+
+      responses:
+        '200':
+          description: 'Information about users'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+
+                example:
+                  data:
+                    items:
+                    - username: "wazuh-app"
+                    - username: "wazuh"
+                    totalItems: 2
+        '401':
+          description: 'Access unauthorized'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /security/users/{username}:
+    get:
+      tags:
+        - security
+      summary: 'Get user information'
+      description: 'Get the information of a specified user.'
+      operationId: api.controllers.user_controller.get_user
+      parameters:
+        - $ref: '#/components/parameters/username'
+
+      responses:
+        '200':
+          description: 'Information about user'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+
+                example:
+                  data:
+                    message: 'User created correctly'
+        '401':
+          description: 'Access unauthorized'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    put:
+      tags:
+        - security
+      summary: 'Modify an user'
+      description: "Modify a user's password by specifying their name."
+      operationId: api.controllers.user_controller.update_user
+      parameters:
+        - $ref: '#/components/parameters/username'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  maxLength: 64
+                  minLength: 8
+                  format: password
+              required:
+                - password
+      responses:
+        '200':
+          description: 'User updated successful'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+
+                example:
+                  data:
+                    message: 'User updated correctly'
+
+    delete:
+      tags:
+        - security
+      summary: 'Delete an user'
+      description: "Delete a user by specifying their name"
+      operationId: api.controllers.user_controller.delete_user
+      parameters:
+        - $ref: '#/components/parameters/username'
+
+      responses:
+        '200':
+          description: 'User deleted successful'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+
+                example:
+                  data:
+                    message: 'User deleted correctly'
 
 externalDocs:
   description: Find more about Wazuh API usage

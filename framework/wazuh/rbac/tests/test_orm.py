@@ -334,7 +334,7 @@ def test_remove_role_from_policy(import_RBAC):
     with import_RBAC.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = test_add_role_policy(import_RBAC)
         for policy in policies_ids:
-            rpm.remove_role_in_policy(role_id=roles_ids[0], policy_id=policy)
+            rpm.remove_policy_in_role(role_id=roles_ids[0], policy_id=policy)
         for policy in policies_ids:
             assert (not rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policy))
 

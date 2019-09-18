@@ -5,8 +5,9 @@
 import json
 
 from wazuh import common
-from wazuh.rbac import orm
 from wazuh.exception import WazuhError
+from wazuh.rbac import orm
+from wazuh.rbac.orm import SecurityError
 from wazuh.utils import process_array
 
 
@@ -40,7 +41,7 @@ class Role:
         return_role = None
         with orm.RolesManager() as rm:
             role = rm.get_role_id(role_id)
-            if role is not None:
+            if role and role != SecurityError.ROLE_NOT_EXIST:
                 return_role = role.to_dict()
                 return_role['rule'] = json.loads(return_role['rule'])
                 # It is necessary to load the policies (json.loads) for a correct visualization
@@ -57,20 +58,20 @@ class Role:
         return return_role
 
     @staticmethod
-    def get_roles(offset=0, limit=common.database_limit, search_text=None, search_in_fields=None,
-                  complementary_search=False, sort_by=None, sort_ascending=True):
+    def get_roles(offset=0, limit=common.database_limit, sort_by=None,
+                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
         """Returns information from all system roles, does not return information from its associated policies
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort_by: Fields to sort the items by
+        :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param sort_ascending: Sort in ascending (true) or descending (false) order
         :param search_text: Text to search
         :param complementary_search: Find items without the text to search
         :param search_in_fields: Fields to search in
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        return_roles = list()
+        data = list()
 
         with orm.RolesManager() as rm:
             roles = rm.get_roles()
@@ -78,11 +79,11 @@ class Role:
                 dict_role = role.to_dict()
                 dict_role.pop('policies', None)
                 dict_role['rule'] = json.loads(dict_role['rule'])
-                return_roles.append(dict_role)
+                data.append(dict_role)
 
-        return process_array(return_roles, search_text=search_text, search_in_fields=search_in_fields,
-                             complementary_search=complementary_search, sort_by=sort_by,
-                             sort_ascending=sort_ascending, offset=offset, limit=limit)
+        return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             offset=offset, limit=limit)
 
     @staticmethod
     def remove_role(role_id):
@@ -137,9 +138,9 @@ class Role:
         """
         with orm.RolesManager() as rm:
             status = rm.add_role(name=name, rule=rule)
-            if not status:
+            if status == SecurityError.ALREADY_EXIST:
                 raise WazuhError(4005)
-            if status == -1:
+            if status == SecurityError.INVALID:
                 raise WazuhError(4003)
 
         return Role.get_role(role_id=rm.get_role(name=name).id)
@@ -158,10 +159,12 @@ class Role:
 
         with orm.RolesManager() as rm:
             status = rm.update_role(role_id=role_id, name=name, rule=rule)
-            if not status:
-                raise WazuhError(4002)
-            if status == -1:
+            if status == SecurityError.ALREADY_EXIST:
+                raise WazuhError(4005)
+            if status == SecurityError.INVALID:
                 raise WazuhError(4003)
+            if status == SecurityError.ROLE_NOT_EXIST:
+                raise WazuhError(4002)
 
         return Role.get_role(role_id=role_id)
 
@@ -196,7 +199,7 @@ class Policy:
         return_policy = None
         with orm.PoliciesManager() as pm:
             policy = pm.get_policy_by_id(policy_id)
-            if policy is not None:
+            if policy and policy != SecurityError.POLICY_NOT_EXIST:
                 return_policy = policy.to_dict()
                 return_policy['policy'] = json.loads(return_policy['policy'])
                 # It is necessary to load the roles (json.loads) for a correct visualization
@@ -214,31 +217,31 @@ class Policy:
         return return_policy
 
     @staticmethod
-    def get_policies(offset=0, limit=common.database_limit, search_text=None, search_in_fields=None,
-                     complementary_search=False, sort_by=None, sort_ascending=True):
+    def get_policies(offset=0, limit=common.database_limit, sort_by=None,
+                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
         """Here we will be able to obtain all policies
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort_by: Fields to sort the items by
+        :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param sort_ascending: Sort in ascending (true) or descending (false) order
         :param search_text: Text to search
         :param complementary_search: Find items without the text to search
         :param search_in_fields: Fields to search in
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        return_policies = list()
+        data = list()
         with orm.PoliciesManager() as pm:
             policies = pm.get_policies()
             for policy in policies:
                 dict_policy = policy.to_dict()
                 dict_policy.pop('roles', None)
                 dict_policy['policy'] = json.loads(dict_policy['policy'])
-                return_policies.append(dict_policy)
+                data.append(dict_policy)
 
-        return process_array(return_policies, search_text=search_text, search_in_fields=search_in_fields,
-                             complementary_search=complementary_search, sort_by=sort_by,
-                             sort_ascending=sort_ascending, offset=offset, limit=limit)
+        return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             offset=offset, limit=limit)
 
     @staticmethod
     def remove_policy(policy_id):
@@ -292,12 +295,10 @@ class Policy:
         """
         with orm.PoliciesManager() as pm:
             status = pm.add_policy(name=name, policy=policy)
-            if not status:
+            if status == SecurityError.ALREADY_EXIST:
                 raise WazuhError(4009)
-            if status == -1:
+            if status == SecurityError.INVALID:
                 raise WazuhError(4006)
-            if status == -2:
-                raise WazuhError(4012)
 
         return Policy.get_policy(policy_id=pm.get_policy(name=name).id)
 
@@ -315,12 +316,12 @@ class Policy:
 
         with orm.PoliciesManager() as pm:
             status = pm.update_policy(policy_id=policy_id, name=name, policy=policy)
-            if not status:
-                raise WazuhError(4007)
-            if status == -1:
-                raise WazuhError(4006)
-            if status == -2:
+            if status == SecurityError.ALREADY_EXIST:
                 raise WazuhError(4013)
+            if status == SecurityError.INVALID:
+                raise WazuhError(4006)
+            if status == SecurityError.POLICY_NOT_EXIST:
+                raise WazuhError(4007)
 
         return Policy.get_policy(policy_id=policy_id)
 
@@ -363,29 +364,22 @@ class RolePolicy:
         :param policies_ids: List of policies ids
         :return Role-Policies information.
         """
-        with orm.PoliciesManager() as pm:
-            for policy_id in policies_ids:
-                if not pm.get_policy_by_id(policy_id):
-                    raise WazuhError(4007, extra_message=str(policy_id))
-
         with orm.RolesPoliciesManager() as rpm:
             for policy_id in policies_ids:
                 role_policy = rpm.exist_role_policy(role_id, policy_id)
-                if role_policy:
+                if role_policy is True:
                     raise WazuhError(4011,
                                      extra_message='Role id ' + str(role_id) + ' - ' + 'Policy id ' + str(policy_id))
-                elif role_policy == -1:
+                elif role_policy == SecurityError.ROLE_NOT_EXIST:
                     raise WazuhError(4002, extra_message='Role id ' + str(role_id))
+                elif role_policy == SecurityError.POLICY_NOT_EXIST:
+                    raise WazuhError(4007, extra_message='Policy id ' + str(policy_id))
 
         with orm.RolesPoliciesManager() as rpm:
             for policy_id in policies_ids:
                 status = rpm.add_policy_to_role(role_id=role_id, policy_id=policy_id)
-                if not status:
+                if status == SecurityError.ADMIN_RESOURCES:
                     raise WazuhError(4008)
-                if status == -1:
-                    raise WazuhError(4002)
-                if status == -2:
-                    raise WazuhError(4007)
 
         return Role.get_role(role_id=role_id)
 
@@ -397,24 +391,21 @@ class RolePolicy:
         :param policies_ids: List of policies ids
         :return Result of operation.
         """
-        with orm.PoliciesManager() as pm:
-            for policy_id in policies_ids:
-                if not pm.get_policy_by_id(policy_id):
-                    raise WazuhError(4007, extra_message=str(policy_id))
-
         with orm.RolesPoliciesManager() as rpm:
             for policy_id in policies_ids:
                 role_policy = rpm.exist_role_policy(role_id, policy_id)
                 if not role_policy:
                     raise WazuhError(4010,
                                      extra_message='Role id ' + str(role_id) + ' - ' + 'Policy id ' + str(policy_id))
-                elif role_policy == -1:
+                elif role_policy == SecurityError.ROLE_NOT_EXIST:
                     raise WazuhError(4002, extra_message='Role id ' + str(role_id))
+                elif role_policy == SecurityError.POLICY_NOT_EXIST:
+                    raise WazuhError(4007, extra_message='Policy id ' + str(policy_id))
 
         with orm.RolesPoliciesManager() as rpm:
             for policy_id in policies_ids:
                 status = rpm.remove_policy_in_role(role_id=role_id, policy_id=policy_id)
-                if not status:
+                if status == SecurityError.ADMIN_RESOURCES:
                     raise WazuhError(4008)
 
         return Role.get_role(role_id=role_id)
