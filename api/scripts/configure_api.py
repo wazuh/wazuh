@@ -11,7 +11,7 @@ import sys
 import os
 
 from api.constants import UWSGI_CONFIG_PATH, API_CONFIG_PATH, TEMPLATE_API_CONFIG_PATH
-from wazuh.user_manager import Users
+from wazuh import user_manager
 
 _ip_host = re.compile(r'( *)(# )?http:(.*):')
 _proxy_value = re.compile(r'(.*)behind_proxy_server:(.*)')
@@ -49,12 +49,8 @@ def _check_ip(ip):
 # Checks that the provided port is valid
 def _check_port(port):
     if port is not None:
-        # In case the port cannot be converted to integer, it will return False
-        try:
-            if 1 <= int(port) <= 65535:
-                return True
-        except Exception:
-            pass
+        if 1 <= int(port) <= 65535:
+            return True
     print('[ERROR] The port provided is invalid, the port must be a number between 1 and 65535')
     return False
 
@@ -178,7 +174,7 @@ def change_basic_auth(value=None):
                             break
                         print('[ERROR] Password verification error: Passwords don\'t match or password is empty.')
                     try:
-                        user = Users.create_user(username, password)
+                        user = user_manager.create_user(username, password)
                         print('[INFO] User created correctly. Username: \'{}\''.format(
                                user['data']['items'][0]['username']))
                     except Exception:
