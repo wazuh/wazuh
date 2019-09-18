@@ -12,8 +12,8 @@
  * APIs for many crypto operations
  */
 
-#ifndef __BF_OP_H
-#define __BF_OP_H
+#ifndef BF_OP_H
+#define BF_OP_H
 
 #define OS_ENCRYPT      1
 #define OS_DECRYPT      0
@@ -21,5 +21,4 @@
 int OS_BF_Str(const char *input, char *output, const char *charkey,
               long size, short int action) __attribute((nonnull));
 
-#endif
-
+#endif /* BF_OP_H */

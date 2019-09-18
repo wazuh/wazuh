@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __CAGENTD_H
-#define __CAGENTD_H
+#ifndef CAGENTD_H
+#define CAGENTD_H
 
 typedef struct agent_flags_t {
     unsigned int auto_restart:1;
@@ -45,4 +45,4 @@ typedef struct _agent {
 /* Frees the Client struct  */
 void Free_Client(agent * config);
 
-#endif /* __CAGENTD_H */
+#endif /* CAGENTD_H */

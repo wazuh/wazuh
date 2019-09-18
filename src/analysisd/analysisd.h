@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _LOGAUDIT__H
-#define _LOGAUDIT__H
+#ifndef LOGAUDIT_H
+#define LOGAUDIT_H
 
 #include <sys/types.h>
 
@@ -74,4 +74,4 @@ extern int num_rule_matching_threads;
 #define SYS_MAX_WAZUH_DB_ATTEMPS 5
 #define PM_MAX_WAZUH_DB_ATTEMPS 5
 
-#endif /* _LOGAUDIT__H */
+#endif /* LOGAUDIT_H */
