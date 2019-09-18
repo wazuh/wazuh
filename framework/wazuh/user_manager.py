@@ -98,8 +98,6 @@ def delete_user(username: str):
     :return: Status message
     """
     with AuthenticationManager() as auth:
-        import pydevd_pycharm
-        pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
         query = auth.delete_user(username)
         if query is True:
             return format_result('User \'{}\' deleted correctly'.format(username))
