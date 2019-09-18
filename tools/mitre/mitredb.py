@@ -14,6 +14,8 @@ import json
 import sqlite3
 from sqlite3 import Error
 import os
+import pwd
+import grp 
 import argparse
  
  
@@ -191,7 +193,12 @@ def main(database=None):
                 for platform in data_object['x_mitre_platforms']:
                     string_platform = json.dumps(platform).replace('"', '')
                     insert_platform_table(conn,string_id, string_platform)
-                
+              
+    os.chmod(database, 0o660)
+    uid = pwd.getpwnam("root").pw_uid
+    gid = grp.getgrnam("ossec").gr_gid
+    os.chown(database, uid, gid)
+
     conn.close()
 
 if __name__ == '__main__':
