@@ -3789,13 +3789,16 @@ int wdb_parse_mitre(wdb_t * wdb, char * input, char * output, struct opt_param *
         switch (result) {
             case 0:
                 snprintf(output, OS_MAXSTR + 1, "err not found");
+                return 0;
                 break;
             case 1:
                 snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
+                return 1;
                 break;
             default:
                 mdebug1("Cannot query Mitre attack.");
                 snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre attack");
+                return -1;
         }
     } else if (strcmp(curr, "get_phase") == 0) {
         char *phase;
@@ -3806,13 +3809,16 @@ int wdb_parse_mitre(wdb_t * wdb, char * input, char * output, struct opt_param *
         switch (result) {
             case 0:
                 snprintf(output, OS_MAXSTR + 1, "err not found");
+                return 0;
                 break;
             case 1:
                 snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
+                return 1;
                 break;
             default:
                 mdebug1("Cannot query Mitre phase.");
                 snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre phase");
+                return -1;
         }
     } else if (strcmp(curr, "get_platform") == 0) {
         char *platform;
@@ -3823,13 +3829,16 @@ int wdb_parse_mitre(wdb_t * wdb, char * input, char * output, struct opt_param *
         switch (result) {
             case 0:
                 snprintf(output, OS_MAXSTR + 1, "err not found");
+                return 0;
                 break;
             case 1:
                 snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
+                return 1;
                 break;
             default:
                 mdebug1("Cannot query Mitre platform.");
                 snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre platform");
+                return -1;
         }
     } else {
         mdebug1("Invalid Mitre query syntax.");
@@ -3837,5 +3846,4 @@ int wdb_parse_mitre(wdb_t * wdb, char * input, char * output, struct opt_param *
         snprintf(output, OS_MAXSTR + 1, "err Invalid Mitre query syntax, near '%.32s'", curr);
         return -1;
     }
-    return result;
 }
