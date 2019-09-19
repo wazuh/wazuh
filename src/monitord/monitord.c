@@ -33,7 +33,8 @@ const char * MONTHS[] = {
 void Monitord()
 {
     time_t tm, n_time;
-    struct tm *p, *rot = NULL;
+    struct tm *p;
+    struct tm rot;
     int counter = 0;
 
     char path_ossec[PATH_MAX];
@@ -67,7 +68,7 @@ void Monitord()
     thisyear = p->tm_year + 1900;
 
     /* Calculate when is the next rotation */
-    n_time = mond.interval ? calc_next_rotation(tm, rot, mond.interval_units, mond.interval) : 0;
+    n_time = mond.interval ? calc_next_rotation(tm, &rot, mond.interval_units, mond.interval) : 0;
 
     /* Set internal log path to rotate them */
 #ifdef WIN32
@@ -160,7 +161,6 @@ void Monitord()
                             __ossec_rsec = m_timespec.tv_sec;
                         }
                     }
-                    n_time = calc_next_rotation(tm, rot, mond.interval_units, mond.interval);
                     if (today != p->tm_mday) {
                         /* Generate reports */
                         generate_reports(today, thismonth, thisyear, p);
@@ -169,6 +169,7 @@ void Monitord()
                         thismonth = p->tm_mon;
                         thisyear = p->tm_year + 1900;
                     }
+                    n_time = calc_next_rotation(tm, &rot, mond.interval_units, mond.interval);
                 } else {
                     if (mond.max_size > 0) {
                         if ((stat(path_ossec, &buf) == 0) && mond.ossec_log_plain) {
@@ -229,7 +230,6 @@ void Monitord()
                             os_free(new_path);
                             __ossec_rsec = m_timespec.tv_sec;
                         }
-                        n_time = calc_next_rotation(tm, rot, mond.interval_units, mond.interval);
                         if (today != p->tm_mday) {
                             /* Generate reports */
                             generate_reports(today, thismonth, thisyear, p);
@@ -238,6 +238,7 @@ void Monitord()
                             thismonth = p->tm_mon;
                             thisyear = p->tm_year + 1900;
                         }
+                        n_time = calc_next_rotation(tm, &rot, mond.interval_units, mond.interval);
                     }
                 }
             }

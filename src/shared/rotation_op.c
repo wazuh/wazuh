@@ -498,25 +498,40 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
 
 time_t calc_next_rotation(time_t tm, struct tm *rot, const char units, int interval)
 {
-    time_t ret = tm + interval;
+    int counter = 24 / interval; /* Number of intervals to rotate in a day */
+    int i = 1;
+    time_t ret = tm;
+    int seconds;
     rot = localtime(&ret);
 
     switch (units) {
-        case 'd':
+        case 'w':
+            /* Seconds left to the next rotation day depending if its this week or the next */
+            seconds = (interval > rot->tm_wday) ? (interval-rot->tm_wday) * 24 * 3600 : (7-(interval-rot->tm_wday)) * 24 * 3600;
+            ret = tm + seconds;
+            rot = localtime(&ret);
             rot->tm_hour = 0;
-            rot->tm_min = 0;
-            rot->tm_sec = 0;
         break;
         case 'h':
-            rot->tm_min = 0;
-            rot->tm_sec = 0;
-        break;
-        case 'm':
-            rot->tm_sec = 0;
+            while (rot->tm_hour >= i*interval && i < counter) {
+                i++;
+            }
+            /* The next rotation is tomorrow */
+            if (i == counter) {
+                ret += 24 * 3600;
+                rot = localtime(&ret);
+                rot->tm_hour = 0;
+            /* The next rotation is today */
+            } else {
+                rot->tm_hour = i*interval;
+            }
         break;
     }
 
+    rot->tm_min = 0;
+    rot->tm_sec = 0;
     ret = mktime(rot);
+
     return ret;
 }
 

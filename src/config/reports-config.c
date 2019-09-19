@@ -35,6 +35,27 @@ static int _filter_arg(char *mystr)
     return (1);
 }
 
+static int day_to_int(const char *day)
+{
+    if (!strcmp(day, "monday")) {
+        return 1;
+    } else if (!strcmp(day, "tuesday")) {
+        return 2;
+    } else if (!strcmp(day, "wednesday")) {
+        return 3;
+    } else if (!strcmp(day, "thursday")) {
+        return 4;
+    } else if (!strcmp(day, "friday")) {
+        return 5;
+    } else if (!strcmp(day, "saturday")) {
+        return 6;
+    } else if (!strcmp(day, "sunday")) {
+        return 7;
+    } else {
+        return 0;
+    }
+}
+
 int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *config2)
 {
     unsigned int i = 0, s = 0;
@@ -211,7 +232,7 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
     const char *xml_rotation = "rotation";
     const char *xml_max_size = "max_size";
     const char *xml_min_size = "min_size";
-    const char *xml_interval = "interval";
+    const char *xml_schedule = "schedule";
     const char *xml_rotate = "rotate";
     const char *xml_compress = "compress";
     const char *xml_maxage = "maxage";
@@ -371,29 +392,25 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                 OS_ClearNode(children);
                                 return (OS_INVALID);
                             }
-                        } else if(strcmp(rotation_children[k]->element, xml_interval) == 0) {
-                            char *end;
+                        } else if(strcmp(rotation_children[k]->element, xml_schedule) == 0) {
                             char c;
-                            rotation_config->interval_rotate = strtol(rotation_children[k]->content, &end, 10);
+                            char *end;
+                            rotation_config->interval = strtol(rotation_children[k]->content, &end, 10);
                             switch (sscanf(rotation_children[k]->content, "%ld%c", &rotation_config->interval, &c)) {
-                                case 1:
+                                case 0:
+                                    if (rotation_config->interval =  day_to_int(rotation_children[k]->content), rotation_config->interval) {
+                                        rotation_config->interval_units = 'w';
+                                    } else {
+                                        merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                        OS_ClearNode(rotation_children);
+                                        OS_ClearNode(children);
+                                        return (OS_INVALID);
+                                    }
                                     break;
                                 case 2:
                                     switch (c) {
-                                        case 'd':
-                                            rotation_config->interval *= 86400;
-                                            rotation_config->interval_units = 'd';
-                                            break;
                                         case 'h':
-                                            rotation_config->interval *= 3600;
                                             rotation_config->interval_units = 'h';
-                                            break;
-                                        case 'm':
-                                            rotation_config->interval *= 60;
-                                            rotation_config->size_units = 'm';
-                                            break;
-                                        case 's':
-                                            rotation_config->interval_units = 's';
                                             break;
                                         default:
                                             merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
@@ -408,14 +425,16 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
-                            if (rotation_config->interval < 1) {
-                                merror("The minimum allowed value for '%s' is 1 second.", rotation_children[k]->element);
+                            if (24 % rotation_config->interval != 0) {
+                                merror("The '%s' option only accepts daily divisors as argument [1h, 2h, 3h, 4h, 6h, 8h, 12h].", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return (OS_INVALID);
-                            }  else if (rotation_config->interval > 86400) {
-                                mwarn("Maximum value for 'interval' in <logs> not allowed. It will be set to 1 day.");
-                                rotation_config->interval = 86400;
+                            }  else if (rotation_config->interval > 24 || rotation_config->interval < 1) {
+                                merror("Value for 'interval' in <logs> not allowed.");
+                                OS_ClearNode(rotation_children);
+                                OS_ClearNode(children);
+                                return (OS_INVALID);
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_rotate) == 0) {
                             char *end;
