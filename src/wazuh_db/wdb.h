@@ -181,7 +181,7 @@ int wdb_open_global();
  */
 wdb_t * wdb_open_global2();
 
-wdb_t * wdb_open_mitre(); 
+wdb_t * wdb_open_mitre();
 
 /* Close global database */
 void wdb_close_global();

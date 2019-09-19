@@ -160,7 +160,8 @@ wdb_t * wdb_open_global2() {
         sqlite3_close_v2(wdb_global);
 
         if (wdb_create_global(path) < 0) {
-            merror("Couldn't create SQLite database '%s'. Retrying to open again", path);
+            merror("Couldn't create SQLite database '%s'.", path);
+            goto end;
         }
 
         // Retry to open
@@ -168,16 +169,14 @@ wdb_t * wdb_open_global2() {
             merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(wdb_global));
             sqlite3_close_v2(wdb_global);
             goto end;
-        } else {
-            mdebug1("SQLite global DB created");
         }
         
         wdb = wdb_init(wdb_global, s_global);
-        wdb_pool_append(wdb);
+        //wdb_pool_append(wdb);
     }
     else {
         wdb = wdb_init(wdb_global, s_global);
-        wdb_pool_append(wdb);
+        //wdb_pool_append(wdb);
 
         if (new_wdb = wdb_upgrade(wdb), new_wdb != wdb) {
             // If I had to generate backup and change DB
@@ -193,30 +192,23 @@ wdb_t * wdb_open_mitre() {
     char path[PATH_MAX + 1];
     char s_mitre[64] = "mitre";
     wdb_t * wdb = NULL;
-
+ 
     // Try to open DB
-    snprintf(path, OS_FLSIZE, "%s%s/%s", isChroot() ? "/" : "", WDB_DIR, WDB_MITRE_NAME);
+    snprintf(path, sizeof(path), "%s/mitre.db", WDB_DIR);
     
     if (sqlite3_open_v2(path, &db_mitre, SQLITE_OPEN_READWRITE, NULL)) {
-        mdebug1("No SQLite mitre database found, creating.");
+        mdebug1("No SQLite mitre database found.");
         sqlite3_close_v2(db_mitre);
+        goto end;
 
-        if (wdb_create_mitre(path) < 0) {
-            merror("Couldn't create SQLite database '%s'. Retrying to open again", path);
-        }
-
-        // Retry to open
-        if (sqlite3_open_v2(path, &db_mitre, SQLITE_OPEN_READWRITE, NULL)) {
-            merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db_mitre));
-            sqlite3_close_v2(db_mitre);
-            goto end;
-        
-        wdb = wdb_init(db_mitre, s_mitre);
-        //wdb_pool_append(wdb);
-        }
     } else {
         wdb = wdb_init(db_mitre, s_mitre);
-        //wdb_pool_append(wdb);
+        wdb_pool_append(wdb);
+
+       // if (new_wdb = wdb_upgrade(wdb), new_wdb != wdb) {
+            // If I had to generate backup and change DB
+        //    wdb = new_wdb;
+        //}
     }
 end:
     return wdb;
@@ -528,14 +520,6 @@ int wdb_create_global(const char *path) {
         return 0;
 }
 
-/* Create mitre database */
-int wdb_create_mitre(const char *path) {
-    if (wdb_create_file(path, schema_mitre_sql) < 0)
-        return -1;
-    else
-        return 0;
-}
-
 /* Create profile database */
 int wdb_create_profile(const char *path) {
     return wdb_create_file(path, schema_agents_sql);
@@ -658,12 +642,12 @@ int wdb_insert_info(const char *key, const char *value) {
     return result;
 }
 
-wdb_t * wdb_init(sqlite3 * db, const char * agent_id) {
+wdb_t * wdb_init(sqlite3 * db, const char * id) {
     wdb_t * wdb;
     os_calloc(1, sizeof(wdb_t), wdb);
     wdb->db = db;
     w_mutex_init(&wdb->mutex, NULL);
-    os_strdup(agent_id, wdb->id);
+    os_strdup(id, wdb->id);
     wdb->remove = 0;
     return wdb;
 }
@@ -761,9 +745,10 @@ void wdb_commit_old() {
 
     w_mutex_unlock(&pool_mutex);
 
+    /* Global */
     w_mutex_lock(&global_mutex);
     
-    if (wdb_global != NULL){ //note: db_global->db = wdb_global
+    if (wdb_global != NULL) { 
         w_mutex_lock(&db_global->mutex);
         if (db_global->transaction && time(NULL) - db_global->last > config.commit_time) {
             mdebug2("Committing database for %s", db_global->id);
@@ -773,6 +758,21 @@ void wdb_commit_old() {
     }
     
     w_mutex_unlock(&global_mutex);
+
+    /* Mitre */
+    w_mutex_lock(&mitre_mutex);
+    
+    if (db_mitre != NULL){ 
+        w_mutex_lock(&wdb_mitre->mutex);
+        if (wdb_mitre->transaction && time(NULL) - wdb_mitre->last > config.commit_time) {
+            mdebug2("Committing database for %s", wdb_mitre->id);
+            wdb_commit2(wdb_mitre);
+        }
+        w_mutex_unlock(&wdb_mitre->mutex);
+    }
+    
+    w_mutex_unlock(&mitre_mutex);
+
 }
 
 void wdb_close_old() {
