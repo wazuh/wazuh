@@ -109,7 +109,7 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
 
     while (1) {
         // Store logs until MAX_MSG_RECV is reached
-        while (recv_b = recv(server_sock, buffer, OS_MAXSTR - 1, 0) && matrix_index < MAX_MSG_RECV) {
+        while ((recv_b = recv(server_sock, buffer, OS_MAXSTR - 1, 0)) && matrix_index < MAX_MSG_RECV) {
             if (strlen(buffer) == 0) {
                 continue;
             }
@@ -119,7 +119,7 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
         }
 
         // When the matrix has MAX_MSG_RECV logs, send them
-        wm_fluent_send(fluent, matrix_buffer, len(matrix_buffer));
+        wm_fluent_send(fluent, matrix_buffer, MAX_MSG_RECV);
     }
 
     /*os_malloc(OS_MAXSTR, buffer);*/
@@ -667,6 +667,7 @@ end:
 static int wm_fluent_send(wm_fluent_t * fluent, const char ** str, size_t size) {
     size_t taglen = strlen(fluent->tag);
     int retval = -1;
+    size_t str_length;
 
     while (wm_fluent_handshake(fluent) < 0) {
         mdebug2("Handshake failed. Waiting 30 seconds.");
@@ -679,6 +680,28 @@ static int wm_fluent_send(wm_fluent_t * fluent, const char ** str, size_t size) 
     msgpack_packer pk;
     msgpack_packer_init(&pk, &sbuf, msgpack_sbuffer_write);
 
+    // Save space and add tag
+    msgpack_pack_array(&pk, 3);
+    msgpack_pack_str(&pk, taglen);
+    msgpack_pack_str_body(&pk, fluent->tag, taglen);
+
+    // Save space for MAX_MSG_RECV*2 entries, messages and their timestamp
+    msgpack_pack_map(&pk, size);
+
+    for (int i = 0; i<size; i++) {
+        str_length = strlen(str[i]);
+        msgpack_pack_unsigned_int(&pk, time(NULL));
+        msgpack_pack_str(&pk, str_length);
+        msgpack_pack_str_body(&pk, str[i], str_length);
+    }
+
+    msgpack_pack_map(&pk, 1);
+    msgpack_pack_str(&pk, 6);
+    msgpack_pack_str_body(&pk, "option", 6);
+    msgpack_pack_str(&pk, 8);
+    msgpack_pack_str_body(&pk, "optional", 8);
+
+/*
     msgpack_pack_array(&pk, 4);
     msgpack_pack_str(&pk, taglen);
     msgpack_pack_str_body(&pk, fluent->tag, taglen);
@@ -689,7 +712,7 @@ static int wm_fluent_send(wm_fluent_t * fluent, const char ** str, size_t size) 
     msgpack_pack_str(&pk, 6);
     msgpack_pack_str_body(&pk, "option", 6);
     msgpack_pack_str(&pk, 8);
-    msgpack_pack_str_body(&pk, "optional", 8);
+    msgpack_pack_str_body(&pk, "optional", 8);*/
 
     if (fluent->shared_key) {
         assert(fluent->ssl);
