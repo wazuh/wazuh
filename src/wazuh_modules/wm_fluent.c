@@ -55,7 +55,7 @@ static wm_fluent_helo_t * wm_fluent_recv_helo(wm_fluent_t * fluent);
 static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * helo);
 static wm_fluent_pong_t * wm_fluent_recv_pong(wm_fluent_t * fluent);
 static int wm_fluent_handshake(wm_fluent_t * fluent);
-static int wm_fluent_send(wm_fluent_t * fluent, const char * str, size_t size);
+static int wm_fluent_send(wm_fluent_t * fluent, const char ** str, size_t size);
 static int wm_fluent_check_config(wm_fluent_t * fluent);
 
 const wm_context WM_FLUENT_CONTEXT = {
@@ -95,10 +95,37 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
         pthread_exit(NULL);
     }
 
+    fcntl(server_sock, F_DUPFD, O_NONBLOCK);
+
+    int matrix_index = 0;
+    const int MAX_MSG_RECV = 5;
+    char **matrix_buffer = (char **)malloc(MAX_MSG_RECV * sizeof(char*));
+
+    for(int i = 0; i < MAX_MSG_RECV; i++) {
+        matrix_buffer[i] = (char *)malloc(OS_MAXSTR * sizeof(char));
+    }
+
     os_malloc(OS_MAXSTR, buffer);
 
-    /* Main loop */
     while (1) {
+        // Store logs until MAX_MSG_RECV is reached
+        while (recv_b = recv(server_sock, buffer, OS_MAXSTR - 1, 0) && matrix_index < MAX_MSG_RECV) {
+            if (strlen(buffer) == 0) {
+                continue;
+            }
+
+            strcat(matrix_buffer[matrix_index], buffer);
+            matrix_index++;
+        }
+
+        // When the matrix has MAX_MSG_RECV logs, send them
+        wm_fluent_send(fluent, matrix_buffer, len(matrix_buffer));
+    }
+
+    /*os_malloc(OS_MAXSTR, buffer);*/
+
+    /* Main loop */
+    /*while (1) {
         recv_b = recv(server_sock, buffer, OS_MAXSTR - 1, 0);
 
         switch (recv_b) {
@@ -113,7 +140,7 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
                 mwarn("Cannot send data to '%s': %s (%d). Reconnecting...", fluent->address, strerror(errno), errno);
             }
         }
-    }
+    }*/
 
     if (fluent->client_sock >= 0) {
         close(fluent->client_sock);
@@ -637,7 +664,7 @@ end:
     return retval;
 }
 
-static int wm_fluent_send(wm_fluent_t * fluent, const char * str, size_t size) {
+static int wm_fluent_send(wm_fluent_t * fluent, const char ** str, size_t size) {
     size_t taglen = strlen(fluent->tag);
     int retval = -1;
 
