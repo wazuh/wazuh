@@ -602,7 +602,7 @@ char *w_strtok_r_str_delim(const char *delim, char **remaining_str)
     return token;
 }
 
-const char * find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
+const char *find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
 {
     if (!string_array || !str){
         return NULL;
@@ -614,5 +614,32 @@ const char * find_string_in_array(char * const string_array[], size_t array_len,
             return string_array[i];
         }
     }
+
     return NULL;
+}
+
+char* decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const size_t buffer_size)
+{
+    if (!encoded_buffer) {
+        return NULL;
+    }
+
+    /* each ASCII character has 2 digits in its HEX form, hence its length must be even */
+    if (buffer_size % 2 != 0) {
+        return NULL;
+    }
+
+    const size_t decoded_len = buffer_size / 2;
+    char *decoded_buffer;
+    os_calloc(decoded_len, sizeof(char), decoded_buffer);
+
+    size_t i;
+    for(i = 0; i < decoded_len; ++i) {
+        if (1 != sscanf(encoded_buffer + 2 * i, "%2hhx", decoded_buffer + i)) {
+            os_free(decoded_buffer);
+            return NULL;
+        }
+    }
+
+    return decoded_buffer;
 }
