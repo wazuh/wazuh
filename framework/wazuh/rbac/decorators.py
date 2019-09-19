@@ -146,22 +146,23 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
                 user_resources = user_permissions[req_action]
                 m = re.search(r'^(\w+:\w+)(:)([\w\-./]+|\*)$', req_resource)
                 action = ''
+                final_user_permissions = set()
                 if m.group(1) == 'agent:id' or m.group(1) == 'agent:group':
                     # Expand * for agent:id and agent:group
                     if not agent_expand:
                         _agent_expand_permissions(mode, user_resources)
                         agent_expand = True
                     action = 'agent:id'
+                    global agents
+                    if req_resource.split(':')[-1] != '*' and req_resource.split(':')[-1] not in agents:
+                        final_user_permissions.add(req_resource.split(':')[-1])
                 # Provisional
                 elif m.group(1) == 'role:id':
                     if not role_expand:
                         _role_expand_permissions(mode, user_resources)
                         role_expand = True
                     action = 'role:id'
-                final_user_permissions = user_resources[action]['allow'] - user_resources[action]['deny']
-                global agents
-                if req_resource.split(':')[-1] != '*' and req_resource.split(':')[-1] not in agents:
-                    final_user_permissions.add(req_resource.split(':')[-1])
+                final_user_permissions.update(user_resources[action]['allow'] - user_resources[action]['deny'])
                 reqs = user_resources[action]['allow'] if req_resource.split(':')[-1] == '*' else [req_resource]
                 for req in reqs:
                     split_req = req.split(':')[-1]
