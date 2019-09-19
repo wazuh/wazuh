@@ -79,9 +79,10 @@ def _expand_permissions(mode, odict):
     global agents
     if agents is None:
         agents = get_agents_info()
-    agents_ids = list()
-    for agent in agents:
-        agents_ids.append(str(agent['id']).zfill(3))
+        agents_ids = list()
+        for agent in agents:
+            agents_ids.append(str(agent['id']).zfill(3))
+        agents = agents_ids
 
     # At the moment it is only used for groups
     clean = set()
@@ -89,14 +90,14 @@ def _expand_permissions(mode, odict):
 
     for key in odict:
         if key == 'agent:id':
-            _update_set(key, 'allow', agents_ids) if '*' in odict[key]['allow'] \
-                else _update_set(key, 'deny', agents_ids)
+            _update_set(key, 'allow', agents) if '*' in odict[key]['allow'] \
+                else _update_set(key, 'deny', agents)
         elif key == 'agent:group':
             clean.add(key)
             expand_group(odict['agent:group'], odict['agent:id'])
 
-    _update_set('agent:id', 'allow', agents_ids, False) if mode \
-        else _update_set('agent:id', 'deny', agents_ids, False)
+    _update_set('agent:id', 'allow', agents, False) if mode \
+        else _update_set('agent:id', 'deny', agents, False)
     _cleaner(odict, clean)
 
     return odict
@@ -123,6 +124,9 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
                         _expand_permissions(mode, user_resources)
                         agent_expand = True
                     final_user_permissions = user_resources['agent:id']['allow'] - user_resources['agent:id']['deny']
+                    global agents
+                    if req_resource.split(':')[-1] != '*' and req_resource.split(':')[-1] not in agents:
+                        final_user_permissions.add(req_resource.split(':')[-1])
                     reqs = user_resources[m.group(1)]['allow'] if req_resource.split(':')[-1] == '*' else [req_resource]
                     for req in reqs:
                         split_req = req.split(':')[-1]
