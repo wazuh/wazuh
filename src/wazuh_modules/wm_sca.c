@@ -2578,6 +2578,8 @@ static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const 
 
         cJSON_AddItemToObject(check_information, "compliance", add_compliances);
     }
+
+    cJSON_AddItemToObject(check_information, "rules", cJSON_Duplicate(rules, 1));
     
     if(!condition) {
         mdebug1("No 'condition' field found on check.");
@@ -2587,9 +2589,9 @@ static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const 
     if(!condition->valuestring) {
         mdebug1("Field 'condition' must be a string.");
         goto error;
-    }    
+    }
 
-    cJSON_AddItemToObject(check_information, "rules", cJSON_Duplicate(rules, 1));
+    cJSON_AddStringToObject(check_information, "condition", condition->valuestring);
 
     cJSON *references = cJSON_GetObjectItem(check, "references");
 
