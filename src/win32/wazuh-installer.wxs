@@ -358,67 +358,53 @@
                     <Component Id="WPK_ROOT.PEM" DiskId="1" Guid="EABF8773-57B9-4CD8-A862-87B0E060DBF8">
                         <File Id="WPK_ROOT.PEM" Name="wpk_root.pem" Source="..\..\etc\wpk_root.pem" />
                     </Component>
-                    <Component Id="XP-CONF" DiskId="1" Guid="">
-                        <File Id="XP.ZIP" Name="xp.zip" Source="..\..\etc\templates\config\windows\xp.zip"/>
-                        <Condition>VersionNT = 501 OR VersionNT64 = 501</Condition>
-                        <Condtion>MsiNTProductType = 1</Condition>
+                    <Component Id="WXP_CONF" DiskId="1" Guid="F2258AB6-A976-4333-A957-3CD0662C82D2">
+                        <File Id="WXP.ZIP" Name="xp.zip" Source="..\..\etc\templates\config\windows\xp.zip"/>
+                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 ) AND  MsiNTProductType = 1</Condition>
                     </Component>
-                    <Component Id="2003-CONF" DiskId="1" Guid="">
-                        <File Id="2003.ZIP" Name="2003.zip" Source="..\..\etc\templates\config\windows\2003.zip"/>
-                        <Condition>VersionNT64 = 502</Condition>
-                        <Condtion>MsiNTProductType &gt; 1</Condition>
+                    <Component Id="W2003_CONF" DiskId="1" Guid="C7630770-517D-4DB8-AF2E-D1728CC591BC">
+                        <File Id="W2003.ZIP" Name="2003.zip" Source="..\..\etc\templates\config\windows\2003.zip"/>
+                        <Condition>VersionNT64 = 502 AND MsiNTProductType &gt; 1</Condition>
                     </Component>
-                    <Component Id="VISTA-CONF" DiskId="1" Guid="">
-                        <File Id="VISTA.ZIP" Name="vista.zip" Source="..\..\etc\templates\config\windows\vista.zip"/>
-                        <Condition>VersionNT = 600 OR VersionNT64 = 600</Condition>
-                        <Condtion>MsiNTProductType = 1</Condition>
+                    <Component Id="WVISTA_CONF" DiskId="1" Guid="F7BE2567-235B-42D5-9B3D-2542959B9782">
+                        <File Id="WVISTA.ZIP" Name="vista.zip" Source="..\..\etc\templates\config\windows\Vista.zip"/>
+                        <Condition>( VersionNT = 600 OR VersionNT64 = 600 ) AND  MsiNTProductType = 1</Condition>
                     </Component>
-                    <Component Id="2008-CONF" DiskId="1" Guid="">
-                        <File Id="2008.ZIP" Name="2008.zip" Source="..\..\etc\templates\config\windows\2008.zip"/>
-                        <Condition>VersionNT = 600 OR VersionNT64 = 600</Condition>
-                        <Condtion>MsiNTProductType &gt; 1</Condition>
+                    <Component Id="W2008_CONF" DiskId="1" Guid="5B63A9C6-245B-4571-A733-61EDD3F4D6AA">
+                        <File Id="W2008.ZIP" Name="2008.zip" Source="..\..\etc\templates\config\windows\2008.zip"/>
+                        <Condition>( VersionNT = 600 OR VersionNT64 = 600 ) AND  MsiNTProductType &gt; 1</Condition>
                     </Component>
-                    <Component Id="7-CONF" DiskId="1" Guid="">
-                        <File Id="7.ZIP" Name="7.zip" Source="..\..\etc\templates\config\windows\7.zip"/>
-                        <Condition>VersionNT = 601 OR VersionNT64 = 601</Condition>
-                        <Condtion>MsiNTProductType = 1</Condition>
+                    <Component Id="W7_CONF" DiskId="1" Guid="2D5DA566-0710-414B-B266-97F2AD741C55">
+                        <File Id="W7.ZIP" Name="7.zip" Source="..\..\etc\templates\config\windows\7.zip"/>
+                        <Condition>( VersionNT = 601 OR VersionNT64 = 601 ) AND  MsiNTProductType = 1</Condition>
                     </Component>
-                    <Component Id="2008R2-CONF" DiskId="1" Guid="">
-                        <File Id="2008R2.ZIP" Name="2008R2.zip" Source="..\..\etc\templates\config\windows\2008R2.zip"/>
-                        <Condition>VersionNT = 601 OR VersionNT64 = 601</Condition>
-                        <Condtion>MsiNTProductType &gt; 1</Condition>
+                    <Component Id="W2008R2_CONF" DiskId="1" Guid="D34B958E-CAB2-4144-81D3-D55FA8847210">
+                        <File Id="W2008R2.ZIP" Name="2008R2.zip" Source="..\..\etc\templates\config\windows\2008R2.zip"/>
+                        <Condition>( VersionNT = 601 OR VersionNT64 = 601 ) AND  MsiNTProductType &gt; 1</Condition>
                     </Component>
-                    <Component Id="8-CONF" DiskId="1" Guid="">
-                        <File Id="8.ZIP" Name="8.zip" Source="..\..\etc\templates\config\windows\8.zip"/>
-                        <Condition>VersionNT = 602 OR VersionNT64 = 602</Condition>
-                        <Condtion>MsiNTProductType = 1</Condition>
+                    <Component Id="W8_CONF" DiskId="1" Guid="593FE1DF-6DB1-42D2-A1C8-2F2CC50B5E65">
+                        <File Id="W8.ZIP" Name="8.zip" Source="..\..\etc\templates\config\windows\8.zip"/>
+                        <Condition>( VersionNT = 602 OR VersionNT64 = 602 ) AND  MsiNTProductType = 1</Condition>
                     </Component>
-                    <Component Id="2012-CONF" DiskId="1" Guid="">
-                        <File Id="2012.ZIP" Name="2012.zip" Source="..\..\etc\templates\config\windows\2012.zip"/>
-                        <Condition>VersionNT64 = 602</Condition>
-                        <Condtion>MsiNTProductType = 1</Condition>
+                    <Component Id="W2012_CONF" DiskId="1" Guid="219CDD35-E92D-44C2-83B5-6DC8482F47A6">
+                        <File Id="W2012.ZIP" Name="2012.zip" Source="..\..\etc\templates\config\windows\2012.zip"/>
+                        <Condition>VersionNT64 = 602 AND MsiNTProductType = 1</Condition>
                     </Component>
-                    <Component Id="8.1-CONF" DiskId="1" Guid="">
-                        <File Id="8.1.ZIP" Name="8.1.zip" Source="..\..\etc\templates\config\windows\8.1.zip"/>
-                        <Condition>VersionNT = 603 OR VersionNT64 = 603</Condition>
-                        <Condition>MAJORVERSION != "#10"</Condition>
-                        <Condtion>MsiNTProductType = 1</Condition>
+                    <Component Id="W8.1_CONF" DiskId="1" Guid="8EEF6A3C-9B13-4A9D-B7D3-16F88CCDAE8C">
+                        <File Id="W8.1.ZIP" Name="8.1.zip" Source="..\..\etc\templates\config\windows\8.1.zip"/>
+                        <Condition>( VersionNT = 603 OR VersionNT64 = 603) AND MAJORVERSION &lt;&gt; "#10" AND  MsiNTProductType = 1</Condition>
                     </Component>
-                    <Component Id="2012R2-CONF" DiskId="1" Guid="">
-                        <File Id="2012R2.ZIP" Name="2012R2.zip" Source="..\..\etc\templates\config\windows\2012R2.zip"/>
-                        <Condition>VersionNT64 = 603</Condition>
-                        <Condition>MAJORVERSION != "#10"</Condition>
-                        <Condtion>MsiNTProductType &gt; 1</Condition>
+                    <Component Id="W2012R2_CONF" DiskId="1" Guid="D59212B8-2FEA-497F-9F33-80EA49B8A21D">
+                        <File Id="W2012R2.ZIP" Name="2012R2.zip" Source="..\..\etc\templates\config\windows\2012R2.zip"/>
+                        <Condition>VersionNT64 = 603 AND MAJORVERSION &lt;&gt; "#10" AND MsiNTProductType &gt; 1</Condition>
                     </Component>
-                    <Component Id="10-CONF" DiskId="1" Guid="">
-                        <File Id="10.ZIP" Name="10.zip" Source="..\..\etc\templates\config\windows\10.zip"/>
-                        <Condition>MAJORVERSION = "#10"</Condition>
-                        <Condtion>MsiNTProductType = 1</Condition>
+                    <Component Id="W10_CONF" DiskId="1" Guid="D5C32F63-D8B5-4663-91FF-48F95C649705">
+                        <File Id="W10.ZIP" Name="10.zip" Source="..\..\etc\templates\config\windows\10.zip"/>
+                        <Condition>MAJORVERSION = "#10" AND MsiNTProductType = 1</Condition>
                     </Component>
-                    <Component Id="2016-CONF" DiskId="1" Guid="">
-                        <File Id="2016.ZIP" Name="2016.zip" Source="..\..\etc\templates\config\windows\2016.zip"/>
-                        <Condition>MAJORVERSION = "#10"</Condition>
-                        <Condtion>MsiNTProductType &gt; 1</Condition>
+                    <Component Id="W2016_CONF" DiskId="1" Guid="AE483236-6535-482F-920E-E5E4FE676BAB">
+                        <File Id="W2016.ZIP" Name="2016.zip" Source="..\..\etc\templates\config\windows\2016.zip"/>
+                        <Condition>MAJORVERSION = "#10" AND MsiNTProductType &gt; 1</Condition>
                     </Component>
                     <Directory Id="ACTIVE_RESPONSE" Name="active-response">
                         <Directory Id="BIN" Name="bin">
@@ -468,13 +454,12 @@
                           <File Id="SCA_WIN_AUDIT.YML" Name="sca_win_audit.yml" Source="..\..\etc\sca\windows\sca_win_audit.yml" />
                         </Component>
                         <Component Id="SCA_WIN10" DiskId="1" Guid="A6B0FCA6-522F-4129-95B7-0FF9EB2EA907">
-                            <File Id="SCA_WIN10.YML" Name="10.zip" Source="..\..\etc\sca\windows\10.zip" />
+                            <File Id="SCA_WIN10.ZIP" Name="10.zip" Source="..\..\etc\sca\windows\10.zip" />
                             <Condition>MAJORVERSION = "#10" AND MsiNTProductType = 1</Condition>
                         </Component>
                         <Component Id="SCA_WIN2012R2" DiskId="1" Guid="6C7B21C9-2B01-4A6B-BAC5-782382D10FBB">
                             <File Id="SCA_WIN2012R2.ZIP" Name="2012R2.zip" Source="..\..\etc\sca\windows\2012R2.zip" />
                             <Condition>VersionNT64 = 603 AND MsiNTProductType &gt; 1</Condition>
-                        </Component>
                         </Component>
                       </Directory>
                     </Directory>
@@ -650,6 +635,19 @@
             <ComponentRef Id="VERSION" />
             <ComponentRef Id="REVISION" />
             <ComponentRef Id="WPK_ROOT.PEM" />
+            <ComponentRef Id="WXP_CONF" />
+            <ComponentRef Id="W2003_CONF" />
+            <ComponentRef Id="WVISTA_CONF" />
+            <ComponentRef Id="W2008_CONF" />
+            <ComponentRef Id="W7_CONF" />
+            <ComponentRef Id="W2008R2_CONF" />
+            <ComponentRef Id="W8_CONF" />
+            <ComponentRef Id="W2012_CONF" />
+            <ComponentRef Id="W8.1_CONF" />
+            <ComponentRef Id="W2012R2_CONF" />
+            <ComponentRef Id="W10_CONF" />
+            <ComponentRef Id="W2016_CONF" />
+
         </Feature>
         <MajorUpgrade Schedule="afterInstallExecute" AllowDowngrades="yes" />
     </Product>
