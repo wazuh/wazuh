@@ -10471,9 +10471,10 @@ paths:
             schema:
               $ref: '#/components/schemas/RolesRequest'
             example:
-              name: 'administrator'
+              name: "normal"
               rule:
-                administrator: 'total_access'
+                MATCH:
+                  definition: "normalRule"
       responses:
         '200':
           description: 'Information of role modified'

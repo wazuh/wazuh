@@ -439,8 +439,9 @@ class WazuhException(Exception):
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
         4000: {'message': "Permission denied",
-               'remediation': "Please, make sure you have permissions to execute current request, for more information on setting up permissions please visit XXXX"},
-        4001: {'message': 'The body of the request is empty, you must specify that you want to modify',
+               'remediation': "Please, make sure you have permissions to execute current request, "
+                              "for more information on setting up permissions please visit XXXX"},
+        4001: {'message': 'The body of the request is empty, you must specify what you want to modify',
                'remediation': "The fields available for update are: name(str), rule(str), policies(list(dict))"},
         4002: {'message': 'The specified role does not exist',
                'remediation': 'Please, create the specified role with the endpoint POST /security/roles'},
@@ -600,3 +601,17 @@ class WazuhClusterError(WazuhException):
     This type of exception is raised inside the cluster.
     """
     pass
+
+
+def create_exception_dic(item, e):
+    """
+    """
+    exception_dic = {'id': item, 'error': {'message': e.message}}
+
+    if isinstance(e, WazuhException):
+        exception_dic['error']['code'] = e.code
+        exception_dic['error']['remediation'] = e.remediation
+    else:
+        exception_dic['error']['code'] = 1000
+
+    return exception_dic

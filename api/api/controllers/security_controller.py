@@ -46,7 +46,8 @@ def get_roles(pretty=False, wait_for_complete=False, offset=0, limit=None, searc
     :param search: Looks for elements with the specified string
     :return Roles information
     """
-    f_kwargs = {'offset': offset, 'limit': limit,
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs = {'rbac': rbac, 'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
@@ -76,9 +77,6 @@ def get_role(role_id, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     :return Role information
     """
-    f_kwargs = {'role_id': role_id}
-
-    # Get body parameters
     rbac = get_permissions(connexion.request.headers['Authorization'])
     f_kwargs = {'rbac': rbac, **{'role_id': role_id}}
 
@@ -137,7 +135,8 @@ def remove_role(role_id, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     :return Operation result
     """
-    f_kwargs = {'role_id': role_id}
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs = {'rbac': rbac, 'role_id': role_id}
 
     dapi = DistributedAPI(f=security.remove_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -162,7 +161,8 @@ def remove_roles(list_roles=None, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     :return Two list with deleted roles and not deleted roles
     """
-    f_kwargs = {'list_roles': list_roles}
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs = {'rbac': rbac, 'list_roles': list_roles}
 
     dapi = DistributedAPI(f=security.remove_roles,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -196,9 +196,8 @@ def update_role(role_id, pretty=False, wait_for_complete=False):
                                                  '(TO BE DEFINED) '
                                                  'to get more information about API call')
 
-    # f_kwargs = {'role_id': role_id, **{}, **role_added_model.to_dict()}
-    role_added_model['role_id'] = role_id
-    f_kwargs = role_added_model
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs = {'rbac': rbac, 'role_id': role_id, 'name': role_added_model['name'], 'rule': role_added_model['rule']}
 
     dapi = DistributedAPI(f=security.update_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -256,7 +255,8 @@ def get_policy(policy_id, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     :return Policy information
     """
-    f_kwargs = {'policy_id': policy_id}
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs = {'rbac': rbac, **{'policy_id': policy_id}}
 
     dapi = DistributedAPI(f=security.get_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

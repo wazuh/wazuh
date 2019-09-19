@@ -190,6 +190,8 @@ class RolesManager:
         """
         try:
             role = self.session.query(Roles).filter_by(name=name).first()
+            if not role:
+                return SecurityError.ROLE_NOT_EXIST
             return role
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
@@ -202,6 +204,8 @@ class RolesManager:
         """
         try:
             role = self.session.query(Roles).filter_by(id=role_id).first()
+            if not role:
+                return SecurityError.ROLE_NOT_EXIST
             return role
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
@@ -255,7 +259,7 @@ class RolesManager:
                 self.session.query(Roles).filter_by(id=role_id).delete()
                 self.session.commit()
                 return True
-            return False
+            return SecurityError.ADMIN_RESOURCES
         except IntegrityError:
             self.session.rollback()
             return False
@@ -353,6 +357,8 @@ class PoliciesManager:
         """
         try:
             policy = self.session.query(Policies).filter_by(name=name).first()
+            if not policy:
+                return SecurityError.POLICY_NOT_EXIST
             return policy
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST
@@ -365,6 +371,8 @@ class PoliciesManager:
         """
         try:
             policy = self.session.query(Policies).filter_by(id=policy_id).first()
+            if not policy:
+                return SecurityError.POLICY_NOT_EXIST
             return policy
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST

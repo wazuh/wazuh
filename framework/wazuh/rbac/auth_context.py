@@ -330,8 +330,23 @@ class RBAChecker:
                 "effect": "deny"
             },
             {
-                "actions": ["role:read"],
-                "resources": ["role:id:1"],
+                "actions": ["security:read"],
+                "resources": ["role:id:1", "role:id:99", "role:id:2", "policy:id:55"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["security:read"],
+                "resources": ["role:id:1", "role:id:99", "role:id:2", "policy:id:55", "role:id:6"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["security:update"],
+                "resources": ["role:id:1", "role:id:99", "role:id:2", "policy:id:55", "role:id:6", "policy:id:1"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["security:read"],
+                "resources": ["policy:id:1"],
                 "effect": "allow"
             }
         ]
