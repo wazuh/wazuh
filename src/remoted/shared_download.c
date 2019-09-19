@@ -65,24 +65,30 @@ sd_agent_t *sd_get_agent(sd_config_t *config, const char *name) {
 }
 
 void sd_add_agent(sd_config_t *config) {
+    int i;
+
     if (config->agents) {
-        for(int i = 0; config->agents[i].name; i++) {
+        for (i = 0; config->agents[i].name; i++) {
             OSHash_Add(config->ptable, config->agents[i].name, &config->agents[i]);
         }
     }
 }
 
 void sd_add_group(sd_config_t *config) {
+    int i;
+
     if (config->groups) {
-        for (int i = 0; config->groups[i].name; i++) {
+        for (i = 0; config->groups[i].name; i++) {
             OSHash_Add(config->ptable, config->groups[i].name, &config->groups[i]);
         }
     }
 }
 
 void sd_create_groups(sd_group_t *groups) {
+    int i;
+
     if (groups) {
-        for(int i = 0; groups[i].name; i++) {
+        for (i = 0; groups[i].name; i++) {
             sd_create_directory(groups[i].name);
         }
     }
@@ -186,6 +192,7 @@ int sd_parse_poll(yaml_node_t *root_node, sd_group_t *group) {
 
 int sd_parse_group(yaml_document_t *document, yaml_node_t *root_node, sd_group_t *group) {
     sd_yaml_node yaml_node_map;
+    int i;
 
     group->merge_file_index = -1;
 
@@ -205,7 +212,7 @@ int sd_parse_group(yaml_document_t *document, yaml_node_t *root_node, sd_group_t
             } else {
 
                 // Check if the file name is merged.mg
-                for (int i = 0; group->files[i].name; i++) {
+                for (i = 0; group->files[i].name; i++) {
                     if (!strcmp(group->files[i].name, SHAREDCFG_FILENAME)) {
                         group->merge_file_index = i;
                         break;
@@ -413,9 +420,11 @@ int sd_load(sd_config_t **config) {
 }
 
 void sd_destroy_content(sd_config_t **config) {
+    int i;
+    int j;
 
     if ((*config)->agents) {
-        for (int i = 0; i < (*config)->n_agents; i++) {
+        for (i = 0; i < (*config)->n_agents; i++) {
             os_free((*config)->agents[i].name);
             os_free((*config)->agents[i].group);
         }
@@ -423,8 +432,8 @@ void sd_destroy_content(sd_config_t **config) {
     }
 
     if ((*config)->groups) {
-        for (int i = 0; i < (*config)->n_groups; i++) {
-            for (int j = 0; j < (*config)->groups[i].n_files; j++) {
+        for (i = 0; i < (*config)->n_groups; i++) {
+            for (j = 0; j < (*config)->groups[i].n_files; j++) {
                 free((*config)->groups[i].files[j].name);
                 free((*config)->groups[i].files[j].url);
             }
