@@ -48,7 +48,7 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, const 
     if (File_DateofChange(txt_filename) > File_DateofChange(cdb_filename) ||
             force) {
     	if (show_message){
-            printf(" * File %s has been updated\n", cdb_filename);
+            printf(" * CDB list %s has been updated successfully\n", cdb_filename);
         }
         if (tmp_fd = fopen(tmp_filename, "w+"), !tmp_fd) {
             merror(FOPEN_ERROR, tmp_filename, errno, strerror(errno));
@@ -156,6 +156,6 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, const 
             return;
         }
     } else if(show_message){
-        printf(" * File %s does not need to be compiled\n", cdb_filename);
+        printf(" * CDB list %s is up-to-date\n", cdb_filename);
     }
 }
