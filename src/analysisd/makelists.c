@@ -173,7 +173,8 @@ int main(int argc, char **argv)
         Config.lists = NULL;
     }
 
-    Lists_OP_MakeAll(force, 1);
+    printf(" * This module has been deprecated.\n");
     printf(" * The CBD list will be compiled automatically once Wazuh is restarted.\n");
+    Lists_OP_MakeAll(force, 1);
     exit(0);
 }
