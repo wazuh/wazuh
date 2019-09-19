@@ -486,26 +486,6 @@ static void _free_ruleInfo(RuleInfo *r_info)
         os_free(r_info->ckignore_fields);
     }
 
-    if (r_info->sid_prev_matched) {
-        OSList_DeleteList(r_info->sid_prev_matched);
-    }
-
-    if (r_info->sid_search) {
-        OSList_DeleteList(r_info->sid_search);
-    }
-
-    if (r_info->group_prev_matched) {
-        i = 0;
-        while (r_info->group_prev_matched[i]) {
-            OSList_DeleteList(r_info->group_prev_matched[i]);
-            i++;
-        }
-    }
-
-    if (r_info->group_search) {
-        OSList_DeleteList(r_info->group_search);
-    }
-
     if (r_info->group) {
         os_free(r_info->group);
     }
