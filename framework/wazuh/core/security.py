@@ -77,7 +77,7 @@ def update_role_to_database(role_id, name, rule):
 
 def get_policy_from_database(policy_id):
     with orm.PoliciesManager() as pm:
-        policy = pm.get_policy_by_id(policy_id)
+        policy = pm.get_policy_id(policy_id)
         if policy is not None:
             return_policy = policy.to_dict()
             return_policy['policy'] = json.loads(return_policy['policy'])

@@ -225,7 +225,8 @@ def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None, se
     :param search: Looks for elements with the specified string
     :return Policies information
     """
-    f_kwargs = {'offset': offset, 'limit': limit,
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs = {'rbac': rbac, 'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,

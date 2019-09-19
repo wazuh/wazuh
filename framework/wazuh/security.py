@@ -104,7 +104,7 @@ def remove_role(role_id):
 def remove_roles(role_id=None):
     """Removes a list of roles from the system
 
-    :param list_roles: List of roles to be removed
+    :param role_id: List of roles ids.
     :return Result of operation.
     """
     affected_items = list()
@@ -177,10 +177,8 @@ def get_policy(policy_id, offset=0, limit=common.database_limit, sort_by=None,
     failed_items = list()
     with orm.PoliciesManager() as pm:
         for p_id in policy_id:
-            policy = pm.get_policy_by_id(int(p_id))
+            policy = pm.get_policy_id(int(p_id))
             if policy != SecurityError.POLICY_NOT_EXIST:
-                import pydevd_pycharm
-                pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
                 dict_policy = policy.to_dict()
                 if len(dict_policy['roles']) == 0:
                     dict_policy.pop('roles', None)
@@ -197,10 +195,12 @@ def get_policy(policy_id, offset=0, limit=common.database_limit, sort_by=None,
                          offset=offset, limit=limit)
 
 
-def get_policies(offset=0, limit=common.database_limit, sort_by=None,
+@expose_resources(actions=['security:read'], resources=['policy:id:*'], target_param='policy_id')
+def get_policies(policy_id=None, offset=0, limit=common.database_limit, sort_by=None,
                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Here we will be able to obtain all policies
 
+    :param policy_id: Lists of IDs of the policies on which the information will be collected
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
@@ -210,15 +210,16 @@ def get_policies(offset=0, limit=common.database_limit, sort_by=None,
     :param search_in_fields: Fields to search in
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    data = list()
+    affected_items = list()
     with orm.PoliciesManager() as pm:
-        policies = pm.get_policies()
-        for policy in policies:
-            dict_policy = policy.to_dict()
-            dict_policy.pop('roles', None)
-            data.append(dict_policy)
+        for p_id in policy_id:
+            policy = pm.get_policy_id(int(p_id))
+            if policy != SecurityError.POLICY_NOT_EXIST:
+                dict_policy = policy.to_dict()
+                dict_policy.pop('roles', None)
+                affected_items.append(dict_policy)
 
-    return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+    return process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                          offset=offset, limit=limit)
 
@@ -299,7 +300,7 @@ def update_policy(policy_id, name=None, policy=None):
         if status == SecurityError.POLICY_NOT_EXIST:
             raise WazuhError(4007)
 
-    return pm.get_policy_by_id(policy_id).to_dict()
+    return pm.get_policy_id(policy_id).to_dict()
 
 
 def set_role_policy(role_id, policies_ids):

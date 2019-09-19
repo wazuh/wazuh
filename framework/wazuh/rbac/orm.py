@@ -363,7 +363,7 @@ class PoliciesManager:
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST
 
-    def get_policy_by_id(self, policy_id: int):
+    def get_policy_id(self, policy_id: int):
         """Get the information about one policy specified by id
 
         :param policy_id: ID of the policy that want to get its information
