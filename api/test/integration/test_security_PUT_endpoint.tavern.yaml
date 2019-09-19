@@ -126,6 +126,22 @@ stages:
           - id: 2
         rule: !anything
 
+  # PUT /security/roles/{role_id}/policies/{policy}
+  - name: Create link role-policy
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/3/policies/3"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+    response:
+      status_code: 200
+      body:
+        id: 3
+        name: !anystr
+        policies:
+          - id: 3
+        rule: !anything
+
   # PUT /security/roles/{non-existent role_id}/policies/{policy}
   - name: Create link role-policy (non-existent role)
     request:
