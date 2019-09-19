@@ -328,6 +328,11 @@ class RBAChecker:
                 "actions": ["active_response:command"],
                 "resources": ["agent:group:group1"],
                 "effect": "deny"
+            },
+            {
+                "actions": ["role:read"],
+                "resources": ["role:id:1"],
+                "effect": "allow"
             }
         ]
 

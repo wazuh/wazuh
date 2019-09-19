@@ -10421,9 +10421,12 @@ paths:
           required: true
           description: 'Filter by policy id'
           schema:
-            type: integer
-            minLength: 1
-            minimum: 1
+            type: array
+            items:
+              type: integer
+              description: "Role id"
+              minLength: 1
+              minimum: 1
       responses:
         '200':
           description: 'Role information'

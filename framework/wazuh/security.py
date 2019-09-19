@@ -7,10 +7,12 @@ import json
 from wazuh import common
 from wazuh.exception import WazuhError
 from wazuh.rbac import orm
+from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import SecurityError
 from wazuh.utils import process_array
 
 
+@expose_resources(actions=['role:read'], resources=['role:id:{role_id}'], target_param='role_id')
 def get_role(role_id):
     """Returns the information of a certain role
 
@@ -19,17 +21,18 @@ def get_role(role_id):
     """
     return_role = None
     with orm.RolesManager() as rm:
-        role = rm.get_role_id(role_id)
-        if role and role != SecurityError.ROLE_NOT_EXIST:
-            return_role = role.to_dict()
-            return_role['rule'] = json.loads(return_role['rule'])
-            # It is necessary to load the policies (json.loads) for a correct visualization
-            for index, policy in enumerate(return_role['policies']):
-                return_role['policies'][index]['policy'] = \
-                    json.loads(return_role['policies'][index]['policy'])
-            # Removes the policies field because when creating a role it is not connected to any of them.
-            if len(return_role['policies']) == 0:
-                return_role.pop('policies', None)
+        for r_id in role_id:
+            role = rm.get_role_id(r_id)
+            if role and role != SecurityError.ROLE_NOT_EXIST:
+                return_role = role.to_dict()
+                return_role['rule'] = json.loads(return_role['rule'])
+                # It is necessary to load the policies (json.loads) for a correct visualization
+                for index, policy in enumerate(return_role['policies']):
+                    return_role['policies'][index]['policy'] = \
+                        json.loads(return_role['policies'][index]['policy'])
+                # Removes the policies field because when creating a role it is not connected to any of them.
+                if len(return_role['policies']) == 0:
+                    return_role.pop('policies', None)
 
     if return_role is None:
         raise WazuhError(4002)
@@ -37,6 +40,7 @@ def get_role(role_id):
     return return_role
 
 
+@expose_resources(actions=['role:read'], resources=['role:id:*'], target_param='role_id')
 def get_roles(offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Returns information from all system roles, does not return information from its associated policies
@@ -122,7 +126,7 @@ def add_role(name=None, rule=None):
         if status == SecurityError.INVALID:
             raise WazuhError(4003)
 
-    return get_role(role_id=rm.get_role(name=name).id)
+    return rm.get_role(name=name).to_dict()
 
 
 def update_role(role_id, name=None, rule=None):
@@ -145,7 +149,7 @@ def update_role(role_id, name=None, rule=None):
         if status == SecurityError.ROLE_NOT_EXIST:
             raise WazuhError(4002)
 
-    return get_role(role_id=role_id)
+    return rm.get_role_id(role_id=role_id).to_dict()
 
 
 def get_policy(policy_id):
@@ -171,7 +175,6 @@ def get_policy(policy_id):
     if return_policy is None:
         raise WazuhError(4007)
 
-    # return {'items': return_policies, 'totalItems': len(return_policies)}
     return return_policy
 
 
@@ -210,10 +213,7 @@ def remove_policy(policy_id):
     """
     response = dict()
     with orm.PoliciesManager() as pm:
-        if pm.delete_policy(policy_id):
-            response['removed_policies'] = [int(policy_id)]
-        else:
-            response['incorrect_policies'] = [int(policy_id)]
+        response['removed_policies'] = [int(policy_id)] if pm.delete_policy(policy_id) else [int(policy_id)]
 
     return response
 
@@ -258,7 +258,7 @@ def add_policy(name=None, policy=None):
         if status == SecurityError.INVALID:
             raise WazuhError(4006)
 
-    return get_policy(policy_id=pm.get_policy(name=name).id)
+    return pm.get_policy(name).to_dict()
 
 
 def update_policy(policy_id, name=None, policy=None):
@@ -281,7 +281,7 @@ def update_policy(policy_id, name=None, policy=None):
         if status == SecurityError.POLICY_NOT_EXIST:
             raise WazuhError(4007)
 
-    return get_policy(policy_id=policy_id)
+    return pm.get_policy_by_id(policy_id).to_dict()
 
 
 def set_role_policy(role_id, policies_ids):

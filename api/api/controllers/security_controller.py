@@ -9,12 +9,13 @@ import re
 import connexion
 
 from api.authentication import generate_token
+from api.authentication import get_permissions
 from api.models.base_model_ import Data
 from api.models.token_response import TokenResponse
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc, parse_api_param
+from wazuh import security
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
-from wazuh import security
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -76,6 +77,10 @@ def get_role(role_id, pretty=False, wait_for_complete=False):
     :return Role information
     """
     f_kwargs = {'role_id': role_id}
+
+    # Get body parameters
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs = {'rbac': rbac, **{'role_id': role_id}}
 
     dapi = DistributedAPI(f=security.get_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

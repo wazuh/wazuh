@@ -127,7 +127,7 @@ class Policies(_Base):
         for role in self.roles:
             roles.append(role.get_role())
 
-        return {'id': self.id, 'name': self.name, 'policy': self.policy, 'roles': roles}
+        return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy), 'roles': roles}
 
 
 class Roles(_Base):
@@ -174,7 +174,7 @@ class Roles(_Base):
         for policy in self.policies:
             policies.append(policy.get_policy())
 
-        return {'id': self.id, 'name': self.name, 'rule': self.rule, 'policies': policies}
+        return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule), 'policies': policies}
 
 
 class RolesManager:
