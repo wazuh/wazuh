@@ -95,11 +95,6 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
         pthread_exit(NULL);
     }
 
-    while (wm_fluent_handshake(fluent) < 0) {
-        mdebug2("Handshake failed. Waiting 30 seconds.");
-        sleep(30);
-    }
-
     os_malloc(OS_MAXSTR, buffer);
 
     /* Main loop */
@@ -116,16 +111,13 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
         default:
             if (wm_fluent_send(fluent, buffer, recv_b) < 0) {
                 mwarn("Cannot send data to '%s': %s (%d). Reconnecting...", fluent->address, strerror(errno), errno);
-
-                while (wm_fluent_handshake(fluent) < 0) {
-                    mdebug2("Handshake failed. Waiting 30 seconds.");
-                    sleep(30);
-                }
-
-                minfo("Connected to %s:%hu", fluent->address, fluent->port);
-                wm_fluent_send(fluent, buffer, recv_b);
             }
         }
+    }
+
+    if (fluent->client_sock >= 0) {
+        close(fluent->client_sock);
+        fluent->client_sock = -1;
     }
 
     return NULL;
@@ -648,6 +640,11 @@ end:
 static int wm_fluent_send(wm_fluent_t * fluent, const char * str, size_t size) {
     size_t taglen = strlen(fluent->tag);
     int retval = -1;
+
+    while (wm_fluent_handshake(fluent) < 0) {
+        mdebug2("Handshake failed. Waiting 30 seconds.");
+        sleep(30);
+    }
 
     msgpack_sbuffer sbuf;
     msgpack_sbuffer_init(&sbuf);
