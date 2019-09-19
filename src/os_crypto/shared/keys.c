@@ -629,7 +629,7 @@ keyentry * OS_DupKeyEntry(const keyentry * key) {
     }
 
     copy->sock = key->sock;
-    copy->mutex = key->mutex;
+    w_mutex_init(&copy->mutex, NULL);
     copy->peer_info = key->peer_info;
 
     return copy;
