@@ -92,28 +92,23 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SCA_CHECK_RULES_DELETE] = "DELETE FROM sca_check_rules WHERE id_check NOT IN ( SELECT id FROM sca_check);",
     [WDB_STMT_SCA_CHECK_FIND] = "SELECT id FROM sca_check WHERE policy_id = ?;",
     [WDB_STMT_SCA_CHECK_DELETE_DISTINCT] = "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;",
-    [WDB_STMT_MITRE_ATTACK_INSERT] = "INSERT INTO attack (id, json) VALUES (?,?);",
-    [WDB_STMT_MITRE_PHASE_INSERT] = "INSERT INTO has_phase (attack_id, phase_name) VALUES (?,?);",
-    [WDB_STMT_MITRE_PLATFORM_INSERT] = "INSERT INTO has_platform (attack_id, platform_name) VALUES (?,?);",
-    [WDB_STMT_MITRE_ATTACK_UPDATE] = "UPDATE attack SET json = ? WHERE id = ?;",
     [WDB_STMT_MITRE_ATTACK_GET] = "SELECT json FROM attack WHERE id = ?;",
     [WDB_STMT_MITRE_PHASE_GET] = "SELECT json FROM attack JOIN has_phase ON id = attack_id WHERE phase_name = ? LIMIT ? OFFSET ?;",
     [WDB_STMT_MITRE_PLATFORM_GET] = "SELECT json FROM attack JOIN has_platform ON id = attack_id WHERE platform_name = ? LIMIT ? OFFSET ?;",
-    [WDB_STMT_MITRE_ATTACK_DELETE] = "DELETE FROM attack WHERE id = ?;",
-    [WDB_STMT_MITRE_PHASE_DELETE] = "DELETE FROM has_phase WHERE attack_id = ?;",
-    [WDB_STMT_MITRE_PLATFORM_DELETE] = "DELETE FROM has_platform WHERE attack_id = ?;"
 };
 
 sqlite3 *wdb_global = NULL;
-sqlite3 *db_mitre = NULL;
 wdb_config config;
 pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t mitre_mutex = PTHREAD_MUTEX_INITIALIZER;
 wdb_t * db_pool_begin;
 wdb_t * db_pool_last;
 int db_pool_size;
 OSHash * open_dbs;
 wdb_t * db_global;
+sqlite3 *db_mitre = NULL;
+wdb_t * wdb_mitre;
 
 /* Open global database. Returns 0 on success or -1 on failure. */
 int wdb_open_global() {
