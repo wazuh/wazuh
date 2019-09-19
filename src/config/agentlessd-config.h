@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _AGENTLESSDCONFIG_H
-#define _AGENTLESSDCONFIG_H
+#ifndef AGENTLESSDCONFIG_H
+#define AGENTLESSDCONFIG_H
 
 /* Entry states */
 #define LESSD_STATE_CONNECTED       0x001
@@ -41,5 +41,4 @@ typedef struct _agentlessd_config {
 
 } agentlessd_config;
 
-#endif /* _AGENTLESSDCONFIG_H */
-
+#endif /* AGENTLESSDCONFIG_H */

@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _OS_RULES
-#define _OS_RULES
+#ifndef OS_RULES
+#define OS_RULES
 
 #define MAX_LAST_EVENTS 11
 
@@ -261,4 +261,4 @@ int _setlevels(RuleNode *node, int nnode);
 extern int _max_freq;
 extern int default_timeframe;
 
-#endif /* _OS_RULES */
+#endif /* OS_RULES */

@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -384,27 +384,42 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     os_calloc(SUBJECT_SIZE, sizeof(char), mail->subject);
 
 
-    // Get full_log field content
-    json_field = cJSON_GetObjectItem(al_json,"full_log");
-    if (!json_field) {
-        goto end;
+    /* Add alert to logs */
+
+    if(json_field = cJSON_GetObjectItem(al_json,"full_log"), json_field){
+
+        log_size = strlen(json_field->valuestring) + 4;
+
+        if (body_size <= log_size) {
+            goto end;
+        }
+
+        strncpy(logs, json_field->valuestring, body_size);
+        strncpy(logs + log_size, "\r\n", body_size - log_size);
+
     }
+    else if (json_object = cJSON_GetObjectItem(al_json,"syscheck"), json_object){
 
-    log_size = strlen(json_field->valuestring) + 4;
+        json_field = cJSON_GetObjectItem(json_object,"path");
+        if (json_field) {
+            log_size = strlen(json_field->valuestring) + 6;
+            if (body_size > log_size) {
+                strncat(logs, "File: ", 6);
+                strncat(logs, json_field->valuestring, body_size);
+                body_size -= log_size;
+            }
+        }
 
-    /* If size left is small than the size of the log, stop it */
-    if (body_size <= log_size) {
-        goto end;
-    }
-
-    strncpy(logs, json_field->valuestring, body_size);
-    strncpy(logs + log_size, "\r\n", body_size - log_size);
-    body_size -= log_size;
-
-
-    json_object = cJSON_GetObjectItem(al_json,"syscheck");
-
-    if (json_object) {
+        json_field = cJSON_GetObjectItem(json_object,"event");
+        if (json_field) {
+            log_size = strlen(json_field->valuestring) + 1 + 4;
+            if (body_size > log_size) {
+                strncat(logs, " ", 1);
+                strncat(logs, json_field->valuestring, body_size);
+                strncat(logs, "\r\n", 4);
+                body_size -= log_size;
+            }
+        }
 
         json_field = cJSON_GetObjectItem(json_object,"md5_before");
         if (json_field) {
@@ -430,9 +445,9 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
 
         json_field = cJSON_GetObjectItem(json_object,"sha1_before");
         if (json_field) {
-            log_size = strlen(json_field->valuestring) + 16 + 4;
+            log_size = strlen(json_field->valuestring) + 17 + 4;
             if (body_size > log_size) {
-                strncat(logs, "Old sh1sum was: ", 16);
+                strncat(logs, "Old sha1sum was: ", 17);
                 strncat(logs, json_field->valuestring, body_size);
                 strncat(logs, "\r\n", 4);
                 body_size -= log_size;
@@ -441,14 +456,48 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
 
         json_field = cJSON_GetObjectItem(json_object,"sha1_after");
         if (json_field) {
-            log_size = strlen(json_field->valuestring) + 15 + 4;
+            log_size = strlen(json_field->valuestring) + 16 + 4;
             if (body_size > log_size) {
-                strncat(logs, "New sh1sum is: ", 15);
+                strncat(logs, "New sha1sum is: ", 16);
+                strncat(logs, json_field->valuestring, body_size);
+                strncat(logs, "\r\n", 4);
+                body_size -= log_size;
+            }
+        }
+
+        json_field = cJSON_GetObjectItem(json_object,"sha256_before");
+        if (json_field) {
+            log_size = strlen(json_field->valuestring) + 19 + 4;
+            if (body_size > log_size) {
+                strncat(logs, "Old sha256sum was: ", 19);
+                strncat(logs, json_field->valuestring, body_size);
+                strncat(logs, "\r\n", 4);
+                body_size -= log_size;
+            }
+        }
+
+        json_field = cJSON_GetObjectItem(json_object,"sha256_after");
+        if (json_field) {
+            log_size = strlen(json_field->valuestring) + 18 + 4;
+            if (body_size > log_size) {
+                strncat(logs, "New sha256sum is: ", 18);
                 strncat(logs, json_field->valuestring, body_size);
                 strncat(logs, "\r\n", 4);
             }
         }
     }
+    else {
+        /* The full alert is printed */
+        /* tab is used to determine the number of tabs on each line */
+        char *tab;
+        os_malloc(256*sizeof(char), tab);
+        strncpy(tab, "\t", 2);
+
+        PrintTable(al_json, logs, body_size, tab, 2);
+
+        free(tab);
+    }
+
 
     /* Subject */
 
@@ -672,3 +721,109 @@ end:
 
     return NULL;
 }
+
+/* Read cJSON and save in printed with email format */
+void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int counter)
+{
+    char *key;
+    size_t log_size;
+    char *tab_child;
+    int max_tabs = 12;
+    char *delimitator = ": ";
+    char *endline = "\r\n";
+    char *space = " ";
+
+    /* Like tab, tab_child is used to derterminate the number of times a line must be tabbed. */
+    os_malloc(256*sizeof(char), tab_child);
+    strncpy(tab_child, tab, 256*sizeof(char));
+
+
+    /* If final node, it print */
+    if ((item->type & 0xFF) == cJSON_Number || (item->type & 0xFF) == cJSON_String ||
+        (item->type & 0xFF) == cJSON_False || (item->type & 0xFF) == cJSON_True ){
+
+        item->string[0] = toupper(item->string[0]);
+        key = cJSON_PrintUnformatted(item);
+        log_size = strlen(key) + strlen(tab) + strlen(item->string) + strlen(delimitator) + strlen(endline);
+
+        if (body_size > log_size) {
+            strncat(printed, tab, strlen(tab));
+            strncat(printed, item->string, strlen(item->string));
+            strncat(printed, delimitator, strlen(delimitator));
+            strncat(printed, key, body_size);
+            strncat(printed, endline, strlen(endline));
+            body_size -= log_size;
+        }
+
+        free(key);
+    }
+    else if ((item->type & 0xFF) == cJSON_Array){
+
+        cJSON *json_array;
+        int i = 0;
+        log_size = strlen(item->string) + strlen(tab) + strlen(delimitator);
+
+        if(body_size > log_size){
+            item->string[0] = toupper(item->string[0]);
+            strncat(printed, tab, strlen(tab));
+            strncat(printed, item->string, strlen(item->string));
+            strncat(printed, delimitator, strlen(delimitator));
+            body_size -= log_size;
+        }
+
+        while(json_array = cJSON_GetArrayItem(item, i), json_array){
+            key = cJSON_PrintUnformatted(json_array);
+            log_size = strlen(key) + strlen(space);
+
+            if(body_size > log_size){
+                strncat(printed, json_array->valuestring, body_size);
+                strncat(printed, space, strlen(space));
+                body_size -= log_size;
+            }
+
+            free(key);
+            i++;
+        }
+
+        if(body_size > strlen(endline)){
+            strncat(printed, endline, strlen(endline));
+            body_size -= log_size;
+        }
+
+    }
+    /* If it have a child, the PrintTable function is called with one more tabulation.*/
+    else {
+        if (item->child){
+
+            if (item->string) {
+                log_size = strlen(item->string) + strlen(tab) + strlen(endline);
+
+                if (body_size > log_size) {
+                    item->string[0] = toupper(item->string[0]);
+                    strncat(printed, tab, strlen(tab));
+                    strncat(printed, item->string, strlen(item->string));
+                    strncat(printed, endline, strlen(endline));
+                    body_size -= log_size;
+                }
+            }
+            /*Cannot be tabulated more than 6 times in the message */
+            if(counter < max_tabs){
+                strncat(tab_child, "\t", 2);
+                PrintTable(item->child, printed, body_size, tab_child, (counter + 2));
+            }
+            else {
+                PrintTable(item->next, printed, body_size, tab, counter);
+            }
+        }
+    }
+
+
+    /* If there are more items in the array the function is called with the same number of tabs */
+    if(item->next && body_size > 2){
+        PrintTable(item->next, printed, body_size, tab, counter);
+    }
+
+    /* Clear memory */
+    free(tab_child);
+}
+

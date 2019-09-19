@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -16,6 +16,8 @@
 int sender_pool;
 
 static netbuffer_t netbuffer;
+
+size_t global_counter;
 
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
@@ -104,7 +106,9 @@ void HandleSecure()
     // Create message handler thread pool
     {
         int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
-
+        // Initialize FD list and counter.
+        global_counter = 0;
+        rem_initList(FD_LIST_INIT_VALUE);
         while (worker_pool > 0) {
             w_create_thread(rem_handler_main, NULL);
             worker_pool--;
@@ -163,7 +167,7 @@ void HandleSecure()
                 if (fd == logr.sock) {
                     sock_client = accept(logr.sock, (struct sockaddr *)&peer_info, &logr.peer_size);
                     if (sock_client < 0) {
-                        merror_exit(ACCEPT_ERROR);
+                        merror_exit(ACCEPT_ERROR, strerror(errno), errno);
                     }
 
                     nb_open(&netbuffer, sock_client, &peer_info);
@@ -233,8 +237,13 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
 
     while (1) {
         message = rem_msgpop();
-        memcpy(buffer, message->buffer, message->size);
-        HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
+        size_t fd_list_counter = rem_getCounter(message->sock);
+        if (message->counter > fd_list_counter) {
+            memcpy(buffer, message->buffer, message->size);
+            HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
+        } else {
+            rem_inc_dequeued();
+        }
         rem_msgfree(message);
     }
 
@@ -260,7 +269,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     int protocol = logr.proto[logr.position];
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
-    char srcip[IPSIZE + 1];
+    char srcip[IPSIZE + 1] = {0};
     char agname[KEYSIZE + 1];
     char *tmp_msg;
     size_t msg_length;
@@ -268,8 +277,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     int r;
 
     /* Set the source IP */
-    strncpy(srcip, inet_ntoa(peer_info->sin_addr), IPSIZE);
-    srcip[IPSIZE] = '\0';
+    inet_ntop(peer_info->sin_family, &peer_info->sin_addr, srcip, IPSIZE);
 
     /* Initialize some variables */
     memset(cleartext_msg, '\0', OS_MAXSTR + 1);
@@ -333,7 +341,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
         if (agentid < 0) {
             key_unlock();
-            mwarn(DENYIP_WARN, srcip);
+            mwarn(DENYIP_WARN " Source agent ID is unknown.", srcip);
 
             // Send key request by ip
             push_request(srcip,"ip");
@@ -431,6 +439,8 @@ int _close_sock(keystore * keys, int sock) {
     if (nb_close(&netbuffer, sock) == 0) {
         rem_dec_tcp();
     }
+
+    rem_setCounter(sock, global_counter);
 
     mdebug1("TCP peer disconnected [%d]", sock);
 

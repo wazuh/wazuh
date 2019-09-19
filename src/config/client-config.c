@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -161,7 +161,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-        }else if(strcmp(node[i]->element, xml_crypto_method) == 0){
+        } else if(strcmp(node[i]->element, xml_crypto_method) == 0){
             if(strcmp(node[i]->content, "blowfish") == 0){
                 logr->crypto_method = W_METH_BLOWFISH;
             }

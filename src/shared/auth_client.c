@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * May 30, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -52,7 +52,8 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
 
         // Decode response
 
-        if (response = cJSON_Parse(buffer), !response) {
+        const char *jsonErrPtr;
+        if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response) {
             merror_exit("Parsing JSON response.");
         }
 

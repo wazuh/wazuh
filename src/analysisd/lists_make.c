@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 3) as published by the FSF - Free Software
  * Foundation
@@ -147,6 +147,10 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int fo
         cdb_make_finish(&cdbm);
         if (rename(tmp_filename, cdb_filename) == -1) {
             merror(RENAME_ERROR, tmp_filename, cdb_filename, errno, strerror(errno));
+            return;
+        }
+        if( chmod(cdb_filename, 0660) == -1 ) {
+            merror("Could not chmod cdb list '%s' to 660 due to: [%d - %s]", cdb_filename, errno, strerror(errno));
             return;
         }
     } else {

@@ -2,7 +2,7 @@
  * Copyright (C) 2009-2012 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -10,8 +10,8 @@
 
 /* Global Definitions */
 
-#ifndef __OS_HEADERS
-#define __OS_HEADERS
+#ifndef OS_HEADERS
+#define OS_HEADERS
 
 #define TRUE            1
 #define FALSE           0
@@ -61,7 +61,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.10.0"
+#define __ossec_version "v3.11.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -405,6 +405,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DEFAULT_SYSLOG 514 /* Default syslog port - udp */
 #endif
 
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
+
 /* XML global elements */
 #ifndef xml_global
 #define xml_global "global"
@@ -464,4 +468,4 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define FTELL_INT64 (long)
 #endif
 
-#endif /* __OS_HEADERS */
+#endif /* OS_HEADERS */

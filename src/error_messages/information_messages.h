@@ -2,14 +2,14 @@
  * Copyright (C) 2015-2019
  * January 17
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
- #ifndef _INFO_MESSAGES__H
- #define _INFO_MESSAGES__H
+#ifndef INFO_MESSAGES_H
+#define INFO_MESSAGES_H
 
 /* File integrity monitoring info messages*/
 #define FIM_DAEMON_STARTED                  "(6000): Starting daemon..."
@@ -45,7 +45,7 @@
 #define FIM_AUDIT_RESTARTING                "(6025): Audit plugin configuration (%s) was modified. Restarting Auditd service."
 #define FIM_AUDIT_HEALTHCHECK_DISABLE       "(6026): Audit health check is disabled. Real-time Whodata could not work correctly."
 #define FIM_AUDIT_REMOVE_RULE               "(6027): Monitored directory '%s' was removed: Audit rule removed."
-#define FIM_AUDIT_INVALID_AUID              "(6028): Audit: Invalid 'auid' value readed. Check Audit configuration (PAM)."
+#define FIM_AUDIT_INVALID_AUID              "(6028): Audit: Invalid 'auid' value read. Check Audit configuration (PAM)."
 #define FIM_AUDIT_RECONNECT                 "(6029): Audit: reconnecting... (%i)"
 #define FIM_AUDIT_CONNECT                   "(6030): Audit: connected."
 
@@ -57,4 +57,4 @@
 
 #define FIM_WHODATA_VOLUMES                 "(6236): Analyzing Windows volumes"
 
-#endif
+#endif /* INFO_MESSAGES_H */

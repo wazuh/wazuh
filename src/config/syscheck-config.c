@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -455,6 +455,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             else if (strcmp(*attrs, xml_whodata) == 0) {
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_WHODATA;
+                    opts &= ~ CHECK_REALTIME;
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_WHODATA;
                 } else {
@@ -554,7 +555,9 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             /* Check real time */
             else if (strcmp(*attrs, xml_real_time) == 0) {
                 if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_REALTIME;
+                    if(!(opts & CHECK_WHODATA)) {
+                        opts |= CHECK_REALTIME;
+                    }
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_REALTIME;
                 } else {
@@ -669,6 +672,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 #ifdef WIN32
         if(!ExpandEnvironmentStrings(tmp_dir, expandedpath, sizeof(expandedpath) - 1)){
             merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
+            os_free(restrictfile);
+            os_free(tag);
             continue;
         }
 
@@ -901,6 +906,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
                 while(node[i]->attributes[j]) {
                     if (strcmp(node[i]->attributes[j], xml_tag) == 0) {
+                        os_free(tag);
                         os_strdup(node[i]->values[j], tag);
                     } else if (strcmp(node[i]->attributes[j], xml_arch) == 0) {
                         if (strcmp(node[i]->values[j], xml_32bit) == 0) {
@@ -910,12 +916,12 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             snprintf(arch, 6, "%s", "both");
                         } else {
                             merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
-                            free(tag);
+                            os_free(tag);
                             return OS_INVALID;
                         }
                     } else {
                         merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
-                        free(tag);
+                        os_free(tag);
                         return OS_INVALID;
                     }
                     j++;
@@ -1258,7 +1264,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         } else if (strcmp(node[i]->element, xml_remove_old_diff) == 0) {
             // Deprecated since 3.8.0, aplied by default...
         } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
-            // To be deprecated. This field is now readed inside the <whodata> block.
+            // To be deprecated. This field is now read inside the <whodata> block.
             if(strcmp(node[i]->content, "yes") == 0)
                 syscheck->restart_audit = 1;
             else if(strcmp(node[i]->content, "no") == 0)

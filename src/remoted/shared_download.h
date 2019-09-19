@@ -3,14 +3,14 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 3, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
-#ifndef __SHARED_DOWNLOAD_H
-#define __SHARED_DOWNLOAD_H
+#ifndef SHARED_DOWNLOAD_H
+#define SHARED_DOWNLOAD_H
 
 #include <external/libyaml/include/yaml.h>
 
@@ -65,4 +65,4 @@ int w_prepare_parsing();
 void w_create_group(char *group);
 void w_yaml_create_groups();
 
-#endif /* __SHARED_DOWNLOAD_H */
+#endif /* SHARED_DOWNLOAD_H */

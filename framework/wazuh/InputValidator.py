@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import re
 import operator
@@ -16,7 +16,7 @@ class InputValidator:
 
     def check_name(self, name, regex_str=r"\w+"):
         """
-        Abstract function to check a name matches a regex (\w+ by default)
+        Abstract function to check a name matches a regex (\\w+ by default)
         :param name: Name to check
         :param regex_str: Regular expression to do the matching
         :return: True if it matched, False otherwise.
@@ -25,7 +25,7 @@ class InputValidator:
         matching = regex.match(name)
         if matching:
             return matching.group() == name
-        else: 
+        else:
             return False
 
 

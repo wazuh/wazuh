@@ -1,14 +1,14 @@
 /* Copyright (C) 2015-2019, Wazuh Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
 */
 
-#ifndef _CONFIG_JSON__H
-#define _CONFIG_JSON__H
+#ifndef CONFIG_JSON_H
+#define CONFIG_JSON_H
 
 #include "config.h"
 
@@ -254,4 +254,4 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
     }
 }
 
-#endif
+#endif /* CONFIG_JSON_H */

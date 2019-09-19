@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * January, 2019
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -33,7 +33,7 @@ char* getPrimaryIP(){
      /* Get Primary IP */
     char * agent_ip = NULL;
     char **ifaces_list;
-    struct ifaddrs *ifaddr, *ifa;
+    struct ifaddrs *ifaddr = NULL, *ifa;
     int size;
     int i = 0;
 #ifdef __linux__
@@ -41,29 +41,42 @@ char* getPrimaryIP(){
 #endif
 
     if (getifaddrs(&ifaddr) == -1) {
+        if (ifaddr) {
+            freeifaddrs(ifaddr);
+        }
         mterror(WM_CONTROL_LOGTAG, "at getPrimaryIP(): getifaddrs() failed.");
         return agent_ip;
     }
-    else {
-        for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
-            i++;
-        }
-        os_calloc(i, sizeof(char *), ifaces_list);
 
-        /* Create interfaces list */
-        size = getIfaceslist(ifaces_list, ifaddr);
-
-        if(!ifaces_list[0]){
-            mtdebug1(WM_CONTROL_LOGTAG, "No network interface found when reading agent IP.");
-            os_free(ifaces_list);
-            return agent_ip;
-        }
+    for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
+        i++;
     }
+
+    if(i == 0){
+        mtdebug1(WM_CONTROL_LOGTAG, "No network interfaces found when reading agent IP.");
+        return agent_ip;
+    }
+
+    os_calloc(i, sizeof(char *), ifaces_list);
+
+    /* Create interfaces list */
+    size = getIfaceslist(ifaces_list, ifaddr);
+
+    if(!ifaces_list[0]){
+        mtdebug1(WM_CONTROL_LOGTAG, "No network interfaces found when reading agent IP.");
+        os_free(ifaces_list);
+        freeifaddrs(ifaddr);
+        return agent_ip;
+    }
+
 #ifdef __MACH__
     OSHash *gateways = OSHash_Create();
+    OSHash_SetFreeDataPointer(gateways, (void (*)(void *)) freegate);
     if (getGatewayList(gateways) < 0){
         mtdebug1(WM_CONTROL_LOGTAG, "Unable to obtain the Default Gateway list");
+        OSHash_Free(gateways);
         os_free(ifaces_list);
+        freeifaddrs(ifaddr);
         return agent_ip;
     }
     gateway *gate;
@@ -76,11 +89,11 @@ char* getPrimaryIP(){
 #elif defined __MACH__
         if(gate = OSHash_Get(gateways, ifaces_list[i]), gate){
             if(!gate->isdefault){
-                free(gate);
+                cJSON_Delete(object);
                 continue;
             }
             if(gate->addr[0]=='l'){
-                free(gate);
+                cJSON_Delete(object);
                 continue;
             }
             getNetworkIface_bsd(object, ifaces_list[i], ifaddr, gate);
@@ -110,7 +123,7 @@ char* getPrimaryIP(){
             cJSON_Delete(object);
             break;
 #endif
-            
+
         }
         cJSON_Delete(object);
     }
@@ -197,8 +210,8 @@ void *send_ip(){
             continue;
         }
 
-        os_calloc(IPSIZE, sizeof(char), buffer);
-        switch (length = OS_RecvUnix(peer, IPSIZE - 1, buffer), length) {
+        os_calloc(IPSIZE + 1, sizeof(char), buffer);
+        switch (length = OS_RecvUnix(peer, IPSIZE, buffer), length) {
         case -1:
             mterror(WM_CONTROL_LOGTAG, "At send_ip(): OS_RecvUnix(): %s", strerror(errno));
             break;

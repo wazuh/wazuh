@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * March 9, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -153,6 +153,8 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys_proc_linux(queue_fd, WM_SYS_LOCATION);
             #elif defined(WIN32)
                 sys_proc_windows(WM_SYS_LOCATION);
+            #elif defined(__MACH__)
+                sys_proc_mac(queue_fd, WM_SYS_LOCATION);
             #else
                 sys->flags.procinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Running processes inventory is not available for this OS version.");
@@ -262,7 +264,7 @@ void wm_sys_check() {
 }
 
 
-// Get readed data
+// Get read data
 
 cJSON *wm_sys_dump(const wm_sys_t *sys) {
 
@@ -283,6 +285,19 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     cJSON_AddItemToObject(root,"syscollector",wm_sys);
 
     return root;
+}
+
+// Initialize hw_info structure
+
+void init_hw_info(hw_info *info) {
+    if(info != NULL) {
+        info->cpu_name = NULL;
+        info->cpu_cores = 0;
+        info->cpu_MHz = 0.0;
+        info->ram_total = 0;
+        info->ram_free = 0;
+        info->ram_usage = 0;
+    }
 }
 
 void wm_sys_destroy(wm_sys_t *sys) {

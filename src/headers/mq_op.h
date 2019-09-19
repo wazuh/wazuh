@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _MQ__H
-#define _MQ__H
+#ifndef MQ_H
+#define MQ_H
 
 #include "config/localfile-config.h"
 
@@ -42,4 +42,4 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attr
 
 int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * target) __attribute__((nonnull (2, 3, 5)));
 
-#endif
+#endif /* MQ_H */

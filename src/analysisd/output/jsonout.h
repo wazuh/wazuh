@@ -2,14 +2,14 @@
  * Copyright (C) 2015 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
-#ifndef _JSONOUT_H_
-#define _JSONOUT_H_
+#ifndef JSONOUT_H
+#define JSONOUT_H
 
 #include "eventinfo.h"
 
@@ -18,4 +18,4 @@ void jsonout_output_archive(const Eventinfo *lf);
 void jsonout_output_archive_flush();
 void jsonout_output_event_flush();
 
-#endif /* _JSONOUT_H_ */
+#endif /* JSONOUT_H */

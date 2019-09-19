@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -10,8 +10,8 @@
 
 /* Functions for privilege separation */
 
-#ifndef __PRIV_H
-#define __PRIV_H
+#ifndef PRIV_H
+#define PRIV_H
 
 #include "shared.h"
 
@@ -25,5 +25,4 @@ int Privsep_SetGroup(gid_t gid);
 
 int Privsep_Chroot(const char *path) __attribute__((nonnull));
 
-#endif
-
+#endif /* PRIV_H */

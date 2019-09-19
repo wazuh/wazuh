@@ -5,7 +5,7 @@
  *
  * Updated by Jeremy Phillips <jeremy@uranusbytes.com>
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -183,7 +183,7 @@ void* wm_aws_main(wm_aws *aws_config) {
 }
 
 
-// Get readed data
+// Get read data
 
 cJSON *wm_aws_dump(const wm_aws *aws_config) {
 

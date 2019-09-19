@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -232,6 +232,9 @@ int local_start()
         agt->execdq = -1;
     }
 
+    /* Initialize sender */
+    sender_init();
+
     /* Read keys */
     minfo(ENC_READ);
 
@@ -246,15 +249,16 @@ int local_start()
     srandom(time(0));
     os_random();
 
+    // Initialize children pool
+    wm_children_pool_init();
+
     /* Launch rotation thread */
-    if (CreateThread(NULL,
+    w_create_thread(NULL,
                      0,
                      (LPTHREAD_START_ROUTINE)state_main,
                      NULL,
                      0,
-                     (LPDWORD)&threadID) == NULL) {
-        merror(THREAD_ERROR);
-    }
+                     (LPDWORD)&threadID);
 
     /* Socket connection */
     agt->sock = -1;
@@ -269,36 +273,30 @@ int local_start()
     /* Start buffer thread */
     if (agt->buffer){
         buffer_init();
-        if (CreateThread(NULL,
+        w_create_thread(NULL,
                          0,
                          (LPTHREAD_START_ROUTINE)dispatch_buffer,
                          NULL,
                          0,
-                         (LPDWORD)&threadID) == NULL) {
-            merror(THREAD_ERROR);
-        }
+                         (LPDWORD)&threadID);
     }else{
         minfo(DISABLED_BUFFER);
     }
     /* Start syscheck thread */
-    if (CreateThread(NULL,
+    w_create_thread(NULL,
                      0,
                      (LPTHREAD_START_ROUTINE)skthread,
                      NULL,
                      0,
-                     (LPDWORD)&threadID) == NULL) {
-        merror(THREAD_ERROR);
-    }
+                     (LPDWORD)&threadID);
 
     /* Launch rotation thread */
-    if (CreateThread(NULL,
+    w_create_thread(NULL,
                      0,
                      (LPTHREAD_START_ROUTINE)w_rotate_log_thread,
                      NULL,
                      0,
-                     (LPDWORD)&threadID) == NULL) {
-        merror(THREAD_ERROR);
-    }
+                     (LPDWORD)&threadID);
 
     /* Check if server is connected */
     os_setwait();
@@ -313,24 +311,20 @@ int local_start()
     req_init();
 
     /* Start receiver thread */
-    if (CreateThread(NULL,
+    w_create_thread(NULL,
                      0,
                      (LPTHREAD_START_ROUTINE)receiver_thread,
                      NULL,
                      0,
-                     (LPDWORD)&threadID2) == NULL) {
-        merror(THREAD_ERROR);
-    }
+                     (LPDWORD)&threadID2);
 
     /* Start request receiver thread */
-    if (CreateThread(NULL,
+    w_create_thread(NULL,
                      0,
                      (LPTHREAD_START_ROUTINE)req_receiver,
                      NULL,
                      0,
-                     (LPDWORD)&threadID2) == NULL) {
-        merror(THREAD_ERROR);
-    }
+                     (LPDWORD)&threadID2);
 
     // Read wodle configuration and start modules
 
@@ -338,14 +332,12 @@ int local_start()
         wmodule * cur_module;
 
         for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-            if (CreateThread(NULL,
+            w_create_thread(NULL,
                             0,
                             (LPTHREAD_START_ROUTINE)cur_module->context->start,
                             cur_module->data,
                             0,
-                            (LPDWORD)&threadID2) == NULL) {
-                merror(THREAD_ERROR);
-            }
+                            (LPDWORD)&threadID2);
         }
     }
 
@@ -540,8 +532,8 @@ char *get_win_agent_ip(){
     char *agent_ip = NULL;
     int min_metric = INT_MAX;
 
-    HMODULE sys_library = NULL;
-    CallFunc _get_network_vista = NULL;
+    static HMODULE sys_library = NULL;
+    static CallFunc _get_network_vista = NULL;
 
 
     ULONG flags = (checkVista() ? (GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS) : 0);
@@ -601,12 +593,13 @@ char *get_win_agent_ip(){
 
                 Iterations++;
             } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
-        }
+        } else {
+            if (!sys_library) {
+                sys_library = LoadLibrary("syscollector_win_ext.dll");
+            }
 
-        if (checkVista()) {
-            if (sys_library = LoadLibrary("syscollector_win_ext.dll"), sys_library) {
-                _get_network_vista = (CallFunc)GetProcAddress(sys_library, "get_network_vista");
-                if (!_get_network_vista){
+            if (sys_library && !_get_network_vista) {
+                if (_get_network_vista = (CallFunc)GetProcAddress(sys_library, "get_network_vista"), !_get_network_vista) {
                     dwRetVal = GetLastError();
                     mterror(WM_SYS_LOGTAG, "Unable to access 'get_network_vista' on syscollector_win_ext.dll.");
                     goto end;
@@ -631,6 +624,11 @@ char *get_win_agent_ip(){
                 }
 
                 if (checkVista()) {
+                    if (!sys_library) {
+                        merror("Could not load library 'syscollector_win_ext.dll'");
+                        goto end;
+                    }
+
                     /* Call function get_network_vista() in syscollector_win_ext.dll */
                     string = _get_network_vista(pCurrAddresses, 0, NULL);
                 } else {
@@ -638,7 +636,8 @@ char *get_win_agent_ip(){
                     string = get_network_xp(pCurrAddresses, AdapterInfo, 0, NULL);
                 }
 
-                cJSON *object = cJSON_Parse(string);
+                const char *jsonErrPtr;
+                cJSON *object = cJSON_ParseWithOpts(string, &jsonErrPtr, 0);
                 cJSON *iface = cJSON_GetObjectItem(object, "iface");
                 cJSON *ipv4 = cJSON_GetObjectItem(iface, "IPv4");
                 if(ipv4){
