@@ -60,7 +60,8 @@ int main(int argc, char **argv)
     bool is_valid = false;
     int i = 0;
     int min_size = 1;
-    char val_default[10] = "MANAGER_IP";
+    char val_default1[12] = "MANAGER_IP\0";
+    char val_default2[9] = "0.0.0.0\0";
 
     uid_t uid;
     gid_t gid;
@@ -148,14 +149,13 @@ int main(int argc, char **argv)
     }
 
     /* Check if is valid server addres */
-    while(i < agt->rip_id){
+    for (i = 0; i < agt->rip_id; i++) {
 
-        if ( strcmp(agt->server[i].rip, val_default) != 0
+        if ( strcmp(agt->server[i].rip, val_default1) != 0
+            && strcmp(agt->server[i].rip, val_default2) != 0
             && strlen(agt->server[i].rip) > min_size ){
             is_valid = true;
         }
-
-        i++;
     }
 
     if (!is_valid){

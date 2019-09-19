@@ -137,7 +137,8 @@ int local_start()
     bool is_valid = false;
     int i = 0;
     int min_size = 1;
-    char val_default[7] = "0.0.0.0";
+    char val_default1[12] = "MANAGER_IP\0";
+    char val_default2[9] = "0.0.0.0\0";
 
     /* Start agent */
     agt = (agent *)calloc(1, sizeof(agent));
@@ -180,14 +181,13 @@ int local_start()
     minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
 
     /* Check if is valid server addres */
-    while(i < agt->rip_id){
+    for (i = 0; i < agt->rip_id; i++) {
 
-        if ( strcmp(agt->server[i].rip, val_default) != 0
+        if ( strcmp(agt->server[i].rip, val_default1) != 0
+            && strcmp(agt->server[i].rip, val_default2) != 0
             && strlen(agt->server[i].rip) > min_size ){
             is_valid = true;
         }
-
-        i++;
     }
 
     if (!is_valid){
