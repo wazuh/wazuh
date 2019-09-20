@@ -68,7 +68,7 @@ void sd_add_agent(sd_config_t *config) {
     int i;
 
     if (config->agents) {
-        for (i = 0; config->agents[i].name; i++) {
+        for (i = 0; i < config->n_agents; i++) {
             OSHash_Add(config->ptable, config->agents[i].name, &config->agents[i]);
         }
     }
@@ -78,18 +78,18 @@ void sd_add_group(sd_config_t *config) {
     int i;
 
     if (config->groups) {
-        for (i = 0; config->groups[i].name; i++) {
+        for (i = 0; i < config->n_groups; i++) {
             OSHash_Add(config->ptable, config->groups[i].name, &config->groups[i]);
         }
     }
 }
 
-void sd_create_groups(sd_group_t *groups) {
+void sd_create_groups_directory(sd_config_t *config) {
     int i;
 
-    if (groups) {
-        for (i = 0; groups[i].name; i++) {
-            sd_create_directory(groups[i].name);
+    if (config->groups) {
+        for (i = 0; i < config->n_groups; i++) {
+            sd_create_directory(config->groups[i].name);
         }
     }
 }
@@ -196,7 +196,7 @@ int sd_parse_group(yaml_document_t *document, yaml_node_t *root_node, sd_group_t
 
     group->merge_file_index = -1;
 
-    for(yaml_node_map.pair_i = root_node->data.mapping.pairs.start; 
+    for (yaml_node_map.pair_i = root_node->data.mapping.pairs.start; 
                         yaml_node_map.pair_i < root_node->data.mapping.pairs.top;
                          ++yaml_node_map.pair_i) 
     {
@@ -212,7 +212,7 @@ int sd_parse_group(yaml_document_t *document, yaml_node_t *root_node, sd_group_t
             } else {
 
                 // Check if the file name is merged.mg
-                for (i = 0; group->files[i].name; i++) {
+                for (i = 0; i < group->n_files; i++) {
                     if (!strcmp(group->files[i].name, SHAREDCFG_FILENAME)) {
                         group->merge_file_index = i;
                         break;

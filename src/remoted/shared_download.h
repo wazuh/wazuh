@@ -134,9 +134,9 @@ void sd_add_group(sd_config_t *config);
 /**
  * @brief Calls sd_create_directory for each group.
  * 
- * @param groups The groups.
+ * @param config The shared download configuration.
  */
-void sd_create_groups(sd_group_t *groups);
+void sd_create_groups_directory(sd_config_t *config);
 
 /**
  * @brief Creates directories

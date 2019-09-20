@@ -311,7 +311,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 int i;
 
                 if(shared_download_group->files){
-                    for(i = 0; shared_download_group->files[i].name; i++)
+                    for(i = 0; i < shared_download_group->n_files; i++)
                     {
                         file_url = shared_download_group->files[i].url;
                         file_name = shared_download_group->files[i].name;
@@ -1227,7 +1227,7 @@ void *update_shared_files(__attribute__((unused)) void *none) {
             // Check if the yaml file has changed and reload it
             if(sd_file_changed(shared_download_config)){
                 sd_reload(&shared_download_config);
-                sd_create_groups(shared_download_config->groups);
+                sd_create_groups_directory(shared_download_config);
             }
 
             c_files();
@@ -1337,7 +1337,7 @@ void manager_init()
     sd_load(&shared_download_config);
     mdebug1("Running manager_init");
     c_files();
-    sd_create_groups(shared_download_config->groups);
+    sd_create_groups_directory(shared_download_config);
     memset(pending_queue, 0, MAX_AGENTS * 9);
     pending_data = OSHash_Create();
 
