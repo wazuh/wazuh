@@ -91,11 +91,55 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddStringToObject(rule, "id", id);
         }
         if(lf->generated_rule->mitre_id) {
-            cJSON *mitrearray = cJSON_CreateArray();
-            for (i = 0; lf->generated_rule->mitre_id[i] != NULL; i++){
-                cJSON_AddItemReferenceToArray(mitrearray, mitre_get_attack(lf->generated_rule->mitre_id[i]));
+            int i;
+            int inarray;
+            cJSON * mitre;
+            cJSON *tactics;
+            cJSON * tactic;
+            cJSON * element;
+            cJSON_AddItemToObject(rule, "mitre", mitre = cJSON_CreateObject());
+            /* Creating id array */
+            for (i=0; lf->generated_rule->mitre_id[i] != NULL; i++) {
             }
-            cJSON_AddItemReferenceToObject(rule, "mitre", mitrearray);
+            cJSON *mitre_id_array = cJSON_CreateStringArray(lf->generated_rule->mitre_id, i);
+            cJSON_AddItemToObject(mitre, "id", mitre_id_array);
+            /* Creating tactics array */
+            cJSON *mitre_tactic_array = cJSON_CreateArray();
+            for (i = 0; lf->generated_rule->mitre_id[i] != NULL; i++){
+                tactics = mitre_get_attack(lf->generated_rule->mitre_id[i]);
+                cJSON_ArrayForEach(tactic, tactics){
+                    /* Check if the element is already in the vector */
+                    cJSON_ArrayForEach(element, mitre_tactic_array){
+                        if (strcmp(element->valuestring, tactic->valuestring) == 0) {
+                            inarray = 1;
+                        }
+                    }
+                    if (inarray == 1) {
+                        inarray = 0;
+                    } else {
+                        cJSON_AddItemToArray(mitre_tactic_array, cJSON_Duplicate(tactic,0));
+                    }     
+                }
+            }
+            cJSON_AddItemToObject(mitre, "tactics", mitre_tactic_array);
+        }
+        if(lf->generated_rule->pci_dss_id || lf->generated_rule->cis_id) {
+            cJSON * compliance;
+            cJSON_AddItemToObject(rule, "compliance", compliance = cJSON_CreateObject());
+            int i;
+        
+            if(lf->generated_rule->pci_dss_id) {
+                for (i=0; lf->generated_rule->pci_dss_id[i] != NULL; i++) {
+                }
+                cJSON *pci_dss_array = cJSON_CreateStringArray(lf->generated_rule->pci_dss_id,i);
+                cJSON_AddItemToObject(compliance, "pci_dss", pci_dss_array);
+            }
+            if(lf->generated_rule->cis_id) {
+                for (i=0; lf->generated_rule->cis_id[i] != NULL; i++) {
+                }
+                cJSON *cis_array = cJSON_CreateStringArray(lf->generated_rule->cis_id, i);
+                cJSON_AddItemToObject(compliance, "cis", cis_array);
+            }
         }
         if(lf->generated_rule->cve) {
             cJSON_AddStringToObject(rule, "cve", lf->generated_rule->cve);
