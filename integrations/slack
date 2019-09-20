@@ -81,7 +81,7 @@ def generate_msg(alert):
         color = "good"
     elif (level >= 5 and level <= 7):
         color = "warning"
-    else:        
+    else:
         color = "danger"
 
     msg = {}
