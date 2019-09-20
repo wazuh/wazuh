@@ -317,20 +317,22 @@ class RolesManager:
         """
         try:
             role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
-            if role_to_update and role_to_update.id not in admins_id and role_to_update is not None:
-                # Rule is not a valid json
-                if rule is not None and not json_validator(rule):
-                    return SecurityError.INVALID
-                # Change the name of the role
-                if name is not None:
-                    if self.session.query(Roles).filter_by(name=name).first() is not None:
-                        return SecurityError.ALREADY_EXIST
-                    role_to_update.name = name
-                # Change the rule of the role
-                if rule is not None:
-                    role_to_update.rule = json.dumps(rule)
-                self.session.commit()
-                return True
+            if role_to_update and role_to_update is not None:
+                if role_to_update.id not in admins_id:
+                    # Rule is not a valid json
+                    if rule is not None and not json_validator(rule):
+                        return SecurityError.INVALID
+                    # Change the name of the role
+                    if name is not None:
+                        if self.session.query(Roles).filter_by(name=name).first() is not None:
+                            return SecurityError.ALREADY_EXIST
+                        role_to_update.name = name
+                    # Change the rule of the role
+                    if rule is not None:
+                        role_to_update.rule = json.dumps(rule)
+                    self.session.commit()
+                    return True
+                return SecurityError.ADMIN_RESOURCES
             return SecurityError.ROLE_NOT_EXIST
         except IntegrityError:
             self.session.rollback()
@@ -446,6 +448,7 @@ class PoliciesManager:
                 self.session.query(Policies).filter_by(id=policy_id).delete()
                 self.session.commit()
                 return True
+            return SecurityError.ADMIN_RESOURCES
         except IntegrityError:
             self.session.rollback()
             return False
@@ -505,21 +508,23 @@ class PoliciesManager:
         """
         try:
             policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
-            if policy_to_update and policy_to_update.id not in admin_policy and policy_to_update is not None:
-                # Policy is not a valid json
-                if policy is not None and not json_validator(policy):
-                    return SecurityError.INVALID
-                if name is not None:
-                    if self.session.query(Policies).filter_by(name=name).first() is not None:
-                        return SecurityError.ALREADY_EXIST
-                    policy_to_update.name = name
-                if policy is not None:
-                    if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
-                        policy_to_update.policy = json.dumps(policy)
-                self.session.commit()
-                return True
+            if policy_to_update and policy_to_update is not None:
+                if policy_to_update.id not in admin_policy:
+                    # Policy is not a valid json
+                    if policy is not None and not json_validator(policy):
+                        return SecurityError.INVALID
+                    if name is not None:
+                        if self.session.query(Policies).filter_by(name=name).first() is not None:
+                            return SecurityError.ALREADY_EXIST
+                        policy_to_update.name = name
+                    if policy is not None:
+                        if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
+                            policy_to_update.policy = json.dumps(policy)
+                    self.session.commit()
+                    return True
+                return SecurityError.ADMIN_RESOURCES
             return SecurityError.POLICY_NOT_EXIST
-        except IntegrityError as e:
+        except IntegrityError:
             self.session.rollback()
             return SecurityError.POLICY_NOT_EXIST
 

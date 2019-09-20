@@ -36,14 +36,14 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                 # We check if params is a list of resources or a single one in a string
                 if isinstance(params, list):
                     if len(params) == 0:
-                        raise WazuhError(4015, {'param': m.group(3)})
+                        raise WazuhError(4015, extra_message={'param': m.group(3)})
                     for param in params:
                         res_list.append("{0}{1}".format(res_base, param))
                 else:
                     res_list.append("{0}{1}".format(res_base, params))
             # KeyError occurs if required dynamic resources can't be found within request parameters
             except KeyError as e:
-                raise WazuhError(4014, extra_message=str(e))
+                raise WazuhError(4014, extra_message={'param': m.group(3)})
         # If we don't find a regex match we obtain the static resource/s
         else:
             res_list.append(resource)

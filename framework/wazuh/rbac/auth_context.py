@@ -353,6 +353,16 @@ class RBAChecker:
                 "actions": ["security:delete"],
                 "resources": ["role:id:1", "role:id:2"],
                 "effect": "allow"
+            },
+            {
+                "actions": ["security:delete"],
+                "resources": ["policy:id:1", "policy:id:2"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["security:update"],
+                "resources": ["policy:id:1", "policy:id:2"],
+                "effect": "allow"
             }
         ]
 

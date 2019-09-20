@@ -229,7 +229,7 @@ def add_role(name=None, rule=None):
         status = rm.add_role(name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
             raise WazuhError(4005)
-        if status == SecurityError.INVALID:
+        elif status == SecurityError.INVALID:
             raise WazuhError(4003)
 
     return rm.get_role(name=name).to_dict()
@@ -248,23 +248,25 @@ def update_role(role_id=None, name=None, rule=None):
         raise WazuhError(4001)
 
     with orm.RolesManager() as rm:
-        status = rm.update_role(role_id=role_id[0], name=name, rule=rule)
+        status = rm.update_role(role_id=int(role_id[0]), name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
             raise WazuhError(4005)
-        if status == SecurityError.INVALID:
+        elif status == SecurityError.INVALID:
             raise WazuhError(4003)
-        if status == SecurityError.ROLE_NOT_EXIST:
+        elif status == SecurityError.ROLE_NOT_EXIST:
             raise WazuhError(4002)
+        elif status == SecurityError.ADMIN_RESOURCES:
+            raise WazuhError(4008)
 
     return rm.get_role_id(role_id=role_id[0]).to_dict()
 
 
-@expose_resources(actions=['security:read'], resources=['policy:id:{policy_id}'], target_param='policy_id')
-def get_policy(policy_id, offset=0, limit=common.database_limit, sort_by=None,
+@expose_resources(actions=['security:read'], resources=['policy:id:{policy_ids}'], target_param='policy_ids')
+def get_policy(policy_ids, offset=0, limit=common.database_limit, sort_by=None,
                sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Returns the information of a certain policy
 
-    :param policy_id: ID of the policy on which the information will be collected
+    :param policy_ids: ID of the policy on which the information will be collected
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
@@ -277,7 +279,7 @@ def get_policy(policy_id, offset=0, limit=common.database_limit, sort_by=None,
     affected_items = list()
     failed_items = list()
     with orm.PoliciesManager() as pm:
-        for p_id in policy_id:
+        for p_id in policy_ids:
             policy = pm.get_policy_id(int(p_id))
             if policy != SecurityError.POLICY_NOT_EXIST:
                 dict_policy = policy.to_dict()
@@ -296,12 +298,12 @@ def get_policy(policy_id, offset=0, limit=common.database_limit, sort_by=None,
                          offset=offset, limit=limit)
 
 
-@expose_resources(actions=['security:read'], resources=['policy:id:*'], target_param='policy_id')
-def get_policies(policy_id=None, offset=0, limit=common.database_limit, sort_by=None,
+@expose_resources(actions=['security:read'], resources=['policy:id:*'], target_param='policy_ids')
+def get_policies(policy_ids=None, offset=0, limit=common.database_limit, sort_by=None,
                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Here we will be able to obtain all policies
 
-    :param policy_id: Lists of IDs of the policies on which the information will be collected
+    :param policy_ids: Lists of IDs of the policies on which the information will be collected
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
@@ -313,11 +315,11 @@ def get_policies(policy_id=None, offset=0, limit=common.database_limit, sort_by=
     """
     affected_items = list()
     with orm.PoliciesManager() as pm:
-        for p_id in policy_id:
+        for p_id in policy_ids:
             policy = pm.get_policy_id(int(p_id))
             if policy != SecurityError.POLICY_NOT_EXIST:
                 dict_policy = policy.to_dict()
-                dict_policy.pop('roles', None)
+                dict_policy.pop('policies', None)
                 affected_items.append(dict_policy)
 
     return process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
@@ -325,43 +327,43 @@ def get_policies(policy_id=None, offset=0, limit=common.database_limit, sort_by=
                          offset=offset, limit=limit)
 
 
-def remove_policy(policy_id=None):
+@expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'], target_param='policy_ids')
+def remove_policy(policy_ids=None):
     """Removes a certain policy from the system
 
-    :param policy_id: ID of the policy to be removed
+    :param policy_ids: ID of the policy to be removed
     :return Result of operation.
     """
-    response = dict()
+    affected_items = list()
+    failed_items = list()
     with orm.PoliciesManager() as pm:
-        response['removed_policies'] = [int(policy_id)] if pm.delete_policy(policy_id) else [int(policy_id)]
+        for p_id in policy_ids:
+            result = pm.delete_policy(int(p_id))
+            if result == SecurityError.ADMIN_RESOURCES:
+                failed_items.append(create_exception_dic(p_id, WazuhError(4008)))
+            elif result is False:
+                failed_items.append(create_exception_dic(p_id, WazuhError(4007)))
+            else:
+                affected_items.append(p_id)
 
-    return response
+    return "Policies {} correctly deleted".format(', '.join(affected_items))
 
 
+@expose_resources(actions=['security:delete'], resources=['policy:id:*'], target_param='policy_ids')
 def remove_policies(policy_ids=None):
     """Removes a list of policies from the system
 
     :param policy_ids: List of policies to be removed
     :return Result of operation.
     """
-    if policy_ids is None:
-        list_policies = list()
-    status_correct = list()
-    response = dict()
-
+    affected_items = list()
     with orm.PoliciesManager() as pm:
-        if len(policy_ids) > 0:
-            for policy in policy_ids:
-                if pm.delete_policy(policy):
-                    status_correct.append(int(policy))
-            response['removed_policies'] = status_correct
-            # Symmetric difference: The symmetric difference of two sets A and B is
-            # the set of elements which are in either of the sets A or B but not in both.
-            response['incorrect_policies'] = list(set(policy_ids) ^ set(status_correct))
-        else:
-            response['removed_policies'] = pm.delete_all_policies()
+        for p_id in policy_ids:
+            result = pm.delete_policy(int(p_id))
+            if result and result != SecurityError.ADMIN_RESOURCES:
+                affected_items.append(p_id)
 
-    return response
+    return "Policies {} correctly deleted".format(', '.join(affected_items))
 
 
 def add_policy(name=None, policy=None):
@@ -375,13 +377,14 @@ def add_policy(name=None, policy=None):
         status = pm.add_policy(name=name, policy=policy)
         if status == SecurityError.ALREADY_EXIST:
             raise WazuhError(4009)
-        if status == SecurityError.INVALID:
+        elif status == SecurityError.INVALID:
             raise WazuhError(4006)
 
     return pm.get_policy(name).to_dict()
 
 
-def update_policy(policy_id, name=None, policy=None):
+@expose_resources(actions=['security:update'], resources=['policy:id:{policy_id}'], target_param='policy_id')
+def update_policy(policy_id=None, name=None, policy=None):
     """Updates a policy in the system
 
     :param policy_id: Policy id to be update
@@ -393,15 +396,17 @@ def update_policy(policy_id, name=None, policy=None):
         raise WazuhError(4001)
 
     with orm.PoliciesManager() as pm:
-        status = pm.update_policy(policy_id=policy_id, name=name, policy=policy)
+        status = pm.update_policy(policy_id=int(policy_id[0]), name=name, policy=policy)
         if status == SecurityError.ALREADY_EXIST:
             raise WazuhError(4013)
-        if status == SecurityError.INVALID:
+        elif status == SecurityError.INVALID:
             raise WazuhError(4006)
-        if status == SecurityError.POLICY_NOT_EXIST:
+        elif status == SecurityError.POLICY_NOT_EXIST:
             raise WazuhError(4007)
+        elif status == SecurityError.ADMIN_RESOURCES:
+            raise WazuhError(4008)
 
-    return pm.get_policy_id(policy_id).to_dict()
+    return pm.get_policy_id(policy_id[0]).to_dict()
 
 
 def set_role_policy(role_id, policies_ids):

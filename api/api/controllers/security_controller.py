@@ -283,7 +283,7 @@ def update_role(role_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_policies(policy_ids, pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
+def get_policies(policy_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
     """Returns information from all system policies
 
     :param policy_ids: List of policies
@@ -394,8 +394,10 @@ def update_policy(policy_id, pretty=False, wait_for_complete=False):
                                                  '(TO BE DEFINED) '
                                                  'to get more information about API call')
 
-    policy_added_model['policy_id'] = policy_id
-    f_kwargs = policy_added_model
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs = {'rbac': rbac, 'policy_id': policy_id,
+                'name': policy_added_model['name'],
+                'policy': policy_added_model['policy']}
 
     dapi = DistributedAPI(f=security.update_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
