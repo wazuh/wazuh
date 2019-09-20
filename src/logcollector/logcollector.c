@@ -168,8 +168,6 @@ void LogCollectorStart()
         if (duplicates_removed == NEXT_IT) {
             i--;
             continue;
-        } else if (duplicates_removed == LEAVE_IT){
-            continue;
         }
 
         if (!current->file) {
@@ -716,8 +714,6 @@ void LogCollectorStart()
                     duplicates_removed = remove_duplicates(current, i, j);
                     if (duplicates_removed == NEXT_IT) {
                         i--;
-                        continue;
-                    } else if (duplicates_removed == LEAVE_IT){
                         continue;
                     }
                 }
