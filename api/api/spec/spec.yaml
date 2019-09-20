@@ -541,6 +541,10 @@ components:
       - stopped
       - running
 
+    # Security models
+    Role_id:
+      type: integer
+      description: Role ID.
     PoliciesRequest:
       type: object
       properties:
@@ -2603,17 +2607,6 @@ components:
           minLength: 1
           minimum: 2
           description: Policy ID.
-    list_roles:
-      in: query
-      name: list_roles
-      description: Array of role's IDs
-      schema:
-        type: array
-        items:
-          type: integer
-          minLength: 1
-          minimum: 2
-          description: Role ID.
     manager_host:
       in: query
       name: manager
@@ -2776,13 +2769,18 @@ components:
     role_id:
       in: path
       name: role_id
-      description: 'Specified and existent role id'
+      description: 'Specified a role id'
       required: True
       schema:
-        type: integer
-        minLength: 1
-        minimum: 2
-        description: Role ID.
+        $ref: '#/components/schemas/Role_id'
+    role_ids:
+      in: query
+      name: 'role_ids'
+      description: 'List of role ids'
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Role_id'
     role_name:
       in: query
       name: role_name
@@ -10291,15 +10289,16 @@ paths:
     get:
       tags:
         - security
-      summary: 'Gets all roles in the system'
-      description: 'Gets all roles in the system, including the administrator role'
+      summary: 'Gets a list of roles or all roles in the system'
+      description: 'For a specific list, indicate the ids separated by commas. Example: ?role_ids=1,2,3'
       operationId: api.controllers.security_controller.get_roles
       parameters:
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/role_ids'
         - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
@@ -10323,14 +10322,19 @@ paths:
                       rule:
                         MATCH:
                           administrator: 'total_access'
-                  totalItems: 1
+                    - id: 2
+                      name: 'normal_user'
+                      rule:
+                        MATCH:
+                          definition: 'limit_access'
+                  totalItems: 2
         default:
           $ref: '#/components/responses/ResponseError'
 
     post:
       tags:
         - security
-      summary: 'Add a new role'
+      summary: 'Add a new role to the system'
       description: 'Add a new role, all fields need to be specified'
       operationId: api.controllers.security_controller.add_role
       parameters:
@@ -10345,13 +10349,13 @@ paths:
                 - name
                 - rule
             example:
-              name: "normal"
+              name: "normal_user"
               rule:
                 MATCH:
-                  definition: "normalRule"
+                  definition: "limit_access"
       responses:
         '200':
-          description: 'Add a role'
+          description: 'Return the information of the new role'
           content:
             application/json:
               schema:
@@ -10361,11 +10365,11 @@ paths:
               example:
                 data:
                   id: 2
-                  name: "normal"
+                  name: "normal_user"
                   policies: []
                   rule:
                     MATCH:
-                      definition: "normalRule"
+                      definition: "limit_access"
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10376,12 +10380,12 @@ paths:
       description: 'Policies linked to roles are not going to be removed.'
       operationId: api.controllers.security_controller.remove_roles
       parameters:
-        - $ref: '#/components/parameters/list_roles'
+        - $ref: '#/components/parameters/role_ids'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: 'Deletion result'
+          description: 'Remove result'
           content:
             application/json:
               schema:
@@ -10407,53 +10411,6 @@ paths:
           $ref: '#/components/responses/ResponseError'
 
   /security/roles/{role_id}:
-    get:
-      tags:
-        - security
-      summary: 'Get a specified role'
-      description: 'Get a specified role, including the policies assigned to it'
-      operationId: api.controllers.security_controller.get_role
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - in: path
-          name: 'role_id'
-          required: true
-          description: 'Filter by policy id'
-          schema:
-            type: array
-            items:
-              type: integer
-              description: "Role id"
-              minLength: 1
-              minimum: 1
-      responses:
-        '200':
-          description: 'Role information'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/RolesResponseSpec'
-              example:
-                id: 2
-                name: 'normal_role'
-                rule:
-                  FIND:
-                    normal: 'normal'
-                policies:
-                  - id: 2
-                    name: 'normal_policy'
-                    policy:
-                      actions:
-                        - "agent:delete"
-                      resources:
-                        - "agent:id:001"
-                      effect: "allow"
-        default:
-          $ref: '#/components/responses/ResponseError'
-
     put:
       tags:
         - security
@@ -10501,43 +10458,6 @@ paths:
                         effect: "allow"
         default:
           $ref: '#/components/responses/ResponseError'
-
-    delete:
-      tags:
-        - security
-      summary: "Delete a specified role"
-      description: "Remove a specified role"
-      operationId: api.controllers.security_controller.remove_role
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/role_id'
-      responses:
-        '200':
-          description: 'Deletion result'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          removed_roles:
-                            type: array
-                            description: Role affected
-                            items:
-                              type: integer
-                              description: "Role id"
-                          incorrect_roles:
-                            type: array
-                            description: "Role affected"
-                            items:
-                              type: integer
-                              description: "Role id"
-        default:
-          $ref: "#/components/responses/ResponseError"
 
   /security/policies:
     get:
@@ -10958,7 +10878,7 @@ paths:
         - security
       summary: 'Create new user'
       description: 'Adds a new user to the system through the API.'
-      operationId: api.controllers.user_controller.create_user
+      operationId: api.controllers.security_controller.create_user
       requestBody:
         content:
           application/json:
@@ -10995,7 +10915,7 @@ paths:
         - security
       summary: 'Get users'
       description: 'Get all users that are currently in the system.'
-      operationId: api.controllers.user_controller.get_users
+      operationId: api.controllers.security_controller.get_users
 
       responses:
         '200':
@@ -11023,7 +10943,7 @@ paths:
         - security
       summary: 'Get user information'
       description: 'Get the information of a specified user.'
-      operationId: api.controllers.user_controller.get_user
+      operationId: api.controllers.security_controller.get_user
       parameters:
         - $ref: '#/components/parameters/username'
 
@@ -11049,7 +10969,7 @@ paths:
         - security
       summary: 'Modify an user'
       description: "Modify a user's password by specifying their name."
-      operationId: api.controllers.user_controller.update_user
+      operationId: api.controllers.security_controller.update_user
       parameters:
         - $ref: '#/components/parameters/username'
       requestBody:
@@ -11083,7 +11003,7 @@ paths:
         - security
       summary: 'Delete an user'
       description: "Delete a user by specifying their name"
-      operationId: api.controllers.user_controller.delete_user
+      operationId: api.controllers.security_controller.delete_user
       parameters:
         - $ref: '#/components/parameters/username'
 

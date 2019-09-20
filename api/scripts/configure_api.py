@@ -13,7 +13,7 @@ import subprocess
 
 from api.constants import UWSGI_CONFIG_PATH, API_CONFIG_PATH, TEMPLATE_API_CONFIG_PATH
 from wazuh.common import ossec_path
-from wazuh import user_manager
+from wazuh import security
 
 _ip_host = re.compile(r'( *)(# )?http:(.*):')
 _proxy_value = re.compile(r'(.*)behind_proxy_server:(.*)')
@@ -176,7 +176,7 @@ def change_basic_auth(value=None):
                             break
                         print('[ERROR] Password verification error: Passwords don\'t match or password is empty.')
                     try:
-                        user = user_manager.create_user(username, password)
+                        user = security.create_user(username, password)
                         print('[INFO] User created correctly. Username: \'{}\''.format(
                                user['data']['items'][0]['username']))
                     except Exception:

@@ -3,21 +3,118 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
+import re
 
+from api.authentication import AuthenticationManager
 from wazuh import common
-from wazuh.exception import WazuhError, create_exception_dic
+from wazuh.exception import WazuhError, WazuhInternalError, create_exception_dic
 from wazuh.rbac import orm
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import SecurityError
 from wazuh.utils import process_array
 
+# Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
+_user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
 
-@expose_resources(actions=['security:read'], resources=['role:id:{role_id}'], target_param='role_id')
-def get_role(role_id=None, offset=0, limit=common.database_limit, sort_by=None,
+
+def get_users(offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+    """Get the information of all users
+
+    :return: Information about users
+    """
+    with AuthenticationManager() as auth:
+        result = auth.get_users()
+
+    if not result or len(result) == 0:
+        raise WazuhInternalError(5002)
+
+    return process_array(result, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
+
+
+def get_user_id(username: str = None, offset=0, limit=common.database_limit, sort_by=None,
+              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+    """Get the information of a specified user
+
+    :param username: Name of the user
+    :return: Information about user
+    """
+    with AuthenticationManager() as auth:
+        result = auth.get_users(username)
+
+    if not result or len(result) == 0:
+        raise WazuhError(5001, extra_message='User {} does not exist'.format(username))
+
+    return process_array(result, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
+
+
+def create_user(username: str = None, password: str = None):
+    """Create a new user
+
+    :param username: Name for the new user
+    :param password: Password for the new user
+    :return: Status message
+    """
+    if not _user_password.match(password):
+        raise WazuhError(5007)
+
+    result = None
+    with AuthenticationManager() as auth:
+        if auth.add_user(username, password):
+            result = get_user_id(username)
+
+    if result is None:
+        raise WazuhError(5000, extra_message='The user \'{}\' could not be created'.format(username))
+
+    return result
+
+
+def update_user(username: str, password: str):
+    """Update a specified user
+
+    :param username: Name for the new user
+    :param password: Password for the new user
+    :return: Status message
+    """
+    if not _user_password.match(password):
+        raise WazuhError(5007)
+
+    with AuthenticationManager() as auth:
+        query = auth.update_user(username, password)
+        if query is True:
+            return get_user_id(username)
+        elif query is False:
+            raise WazuhError(5001, extra_message='The user \'{}\' not exist'.format(username))
+        elif query == 'admin':
+            raise WazuhError(5004, extra_message='The users wazuh and wazuh-app can not be updated')
+
+
+def delete_user(username: str):
+    """Delete a specified user
+
+    :param username: Name of the user
+    :return: Status message
+    """
+    with AuthenticationManager() as auth:
+        query = auth.delete_user(username)
+        if query is True:
+            return 'User \'{}\' deleted correctly'.format(username)
+        elif query is False:
+            raise WazuhError(5001, extra_message='The user \'{}\' not exist'.format(username))
+        elif query == 'admin':
+            raise WazuhError(5004, extra_message='The users wazuh and wazuh-app can not be removed')
+
+
+@expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'], target_param='role_ids')
+def get_role(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
+             sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Returns information from all system roles, does not return information from its associated policies
 
-    :param role_id: List of roles ids.
+    :param role_ids: List of roles ids.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
@@ -30,15 +127,12 @@ def get_role(role_id=None, offset=0, limit=common.database_limit, sort_by=None,
     affected_items = list()
     failed_items = list()
     with orm.RolesManager() as rm:
-        for r_id in role_id:
+        for r_id in role_ids:
             role = rm.get_role_id(int(r_id))
             if role != SecurityError.ROLE_NOT_EXIST:
                 dict_role = role.to_dict()
-                if len(role['policies']) == 0:
-                    dict_role.pop('policies', None)
-                else:
-                    for index, policy in enumerate(dict_role['policies']):
-                        dict_role['policies'][index]['policy'] = json.loads(dict_role['policies'][index]['policy'])
+                for index, policy in enumerate(dict_role['policies']):
+                    dict_role['policies'][index]['policy'] = json.loads(dict_role['policies'][index]['policy'])
                 affected_items.append(dict_role)
             else:
                 # Role id does not exist
@@ -49,12 +143,12 @@ def get_role(role_id=None, offset=0, limit=common.database_limit, sort_by=None,
                          offset=offset, limit=limit)
 
 
-@expose_resources(actions=['security:read'], resources=['role:id:*'], target_param='role_id')
-def get_roles(role_id=None, offset=0, limit=common.database_limit, sort_by=None,
+@expose_resources(actions=['security:read'], resources=['role:id:*'], target_param='role_ids')
+def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Returns information from all system roles, does not return information from its associated policies
 
-    :param role_id: List of roles ids.
+    :param role_ids: List of roles ids. (All)
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
@@ -66,7 +160,7 @@ def get_roles(role_id=None, offset=0, limit=common.database_limit, sort_by=None,
     """
     affected_items = list()
     with orm.RolesManager() as rm:
-        for r_id in role_id:
+        for r_id in role_ids:
             role = rm.get_role_id(int(r_id))
             if role != SecurityError.ROLE_NOT_EXIST:
                 dict_role = role.to_dict()
@@ -78,17 +172,17 @@ def get_roles(role_id=None, offset=0, limit=common.database_limit, sort_by=None,
                          offset=offset, limit=limit)
 
 
-@expose_resources(actions=['security:delete'], resources=['role:id:{role_id}'], target_param='role_id')
-def remove_role(role_id):
+@expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'], target_param='role_ids')
+def remove_role(role_ids):
     """Removes a certain role from the system
 
-    :param role_id: ID of the role to be removed
+    :param role_ids: List of roles ids.
     :return Result of operation.
     """
     affected_items = list()
     failed_items = list()
     with orm.RolesManager() as rm:
-        for r_id in role_id:
+        for r_id in role_ids:
             result = rm.delete_role(int(r_id))
             if result == SecurityError.ADMIN_RESOURCES:
                 failed_items.append(create_exception_dic(r_id, WazuhError(4008)))
@@ -100,16 +194,16 @@ def remove_role(role_id):
     return "Roles {} correctly deleted".format(', '.join(affected_items))
 
 
-@expose_resources(actions=['security:delete'], resources=['role:id:*'], target_param='role_id')
-def remove_roles(role_id=None):
+@expose_resources(actions=['security:delete'], resources=['role:id:*'], target_param='role_ids')
+def remove_roles(role_ids=None):
     """Removes a list of roles from the system
 
-    :param role_id: List of roles ids.
+    :param role_ids: List of roles ids. (All)
     :return Result of operation.
     """
     affected_items = list()
     with orm.RolesManager() as rm:
-        for r_id in role_id:
+        for r_id in role_ids:
             result = rm.delete_role(int(r_id))
             if result and result != SecurityError.ADMIN_RESOURCES:
                 affected_items.append(r_id)
