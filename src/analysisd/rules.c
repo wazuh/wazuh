@@ -141,6 +141,10 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_compliance = "compliance";
     const char *xml_pci_dss = "pci_dss";
     const char *xml_cis = "cis";
+    const char *xml_gpg = "gpg";
+    const char *xml_gdpr = "gdpr";
+    const char *xml_hipaa = "hipaa";
+    const char *xml_nist = "nist";
 
     char *rulepath = NULL;
     char *regex = NULL;
@@ -347,6 +351,10 @@ int Rules_OP_ReadRules(const char *rulefile)
                 int mitre_size = 0;
                 int pci_dss_size = 0;
                 int cis_size = 0;
+                int gpg_size = 0;
+                int gdpr_size = 0;
+                int hipaa_size = 0;
+                int nist_size = 0;
                 RuleInfoDetail *last_info_detail = NULL;
                 regex = NULL;
                 match = NULL;
@@ -1166,7 +1174,27 @@ int Rules_OP_ReadRules(const char *rulefile)
                                 os_strdup(compliance_opt[i]->content, config_ruleinfo->cis_id[cis_size]);
                                 config_ruleinfo->cis_id[cis_size + 1] = NULL;
                                 cis_size++;
-                           } else {
+                            } else if (strcasecmp(compliance_opt[i]->element, xml_gpg) == 0){
+                                os_realloc(config_ruleinfo->gpg_id, (gpg_size + 2) * sizeof(char *), config_ruleinfo->gpg_id);
+                                os_strdup(compliance_opt[i]->content, config_ruleinfo->gpg_id[gpg_size]);
+                                config_ruleinfo->gpg_id[gpg_size + 1] = NULL;
+                                gpg_size++;
+                            } else if (strcasecmp(compliance_opt[i]->element, xml_gdpr) == 0){
+                                os_realloc(config_ruleinfo->gdpr_id, (gdpr_size + 2) * sizeof(char *), config_ruleinfo->gdpr_id);
+                                os_strdup(compliance_opt[i]->content, config_ruleinfo->gdpr_id[gdpr_size]);
+                                config_ruleinfo->gdpr_id[gdpr_size + 1] = NULL;
+                                gdpr_size++;
+                            } else if (strcasecmp(compliance_opt[i]->element, xml_hipaa) == 0){
+                                os_realloc(config_ruleinfo->hipaa_id, (hipaa_size + 2) * sizeof(char *), config_ruleinfo->hipaa_id);
+                                os_strdup(compliance_opt[i]->content, config_ruleinfo->hipaa_id[hipaa_size]);
+                                config_ruleinfo->hipaa_id[hipaa_size + 1] = NULL;
+                                hipaa_size++;
+                            } else if (strcasecmp(compliance_opt[i]->element, xml_nist) == 0){
+                                os_realloc(config_ruleinfo->nist_id, (nist_size + 2) * sizeof(char *), config_ruleinfo->nist_id);
+                                os_strdup(compliance_opt[i]->content, config_ruleinfo->nist_id[nist_size]);
+                                config_ruleinfo->nist_id[nist_size + 1] = NULL;
+                                nist_size++;
+                            } else {
                                merror("Invalid option '%s' for "
                                       "rule '%d'.", compliance_opt[i]->element,
                                       config_ruleinfo->sigid);

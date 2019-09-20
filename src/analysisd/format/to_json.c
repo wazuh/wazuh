@@ -123,7 +123,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             }
             cJSON_AddItemToObject(mitre, "tactics", mitre_tactic_array);
         }
-        if(lf->generated_rule->pci_dss_id || lf->generated_rule->cis_id) {
+        if(lf->generated_rule->pci_dss_id || lf->generated_rule->cis_id || lf->generated_rule->gpg_id || lf->generated_rule->gdpr_id || lf->generated_rule->hipaa_id || lf->generated_rule->nist_id) {
             cJSON * compliance;
             cJSON_AddItemToObject(rule, "compliance", compliance = cJSON_CreateObject());
             int i;
@@ -139,6 +139,30 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                 }
                 cJSON *cis_array = cJSON_CreateStringArray(lf->generated_rule->cis_id, i);
                 cJSON_AddItemToObject(compliance, "cis", cis_array);
+            }
+            if(lf->generated_rule->gpg_id) {
+                for (i=0; lf->generated_rule->gpg_id[i] != NULL; i++) {
+                }
+                cJSON *gpg_array = cJSON_CreateStringArray(lf->generated_rule->gpg_id, i);
+                cJSON_AddItemToObject(compliance, "gpg", gpg_array);
+            }
+            if(lf->generated_rule->gdpr_id) {
+                for (i=0; lf->generated_rule->gdpr_id[i] != NULL; i++) {
+                }
+                cJSON *gdpr_array = cJSON_CreateStringArray(lf->generated_rule->gdpr_id, i);
+                cJSON_AddItemToObject(compliance, "gdpr", gdpr_array);
+            }
+            if(lf->generated_rule->hipaa_id) {
+                for (i=0; lf->generated_rule->hipaa_id[i] != NULL; i++) {
+                }
+                cJSON *hipaa_array = cJSON_CreateStringArray(lf->generated_rule->hipaa_id, i);
+                cJSON_AddItemToObject(compliance, "hipaa", hipaa_array);
+            }
+            if(lf->generated_rule->nist_id) {
+                for (i=0; lf->generated_rule->nist_id[i] != NULL; i++) {
+                }
+                cJSON *nist_array = cJSON_CreateStringArray(lf->generated_rule->nist_id, i);
+                cJSON_AddItemToObject(compliance, "nist", nist_array);
             }
         }
         if(lf->generated_rule->cve) {
