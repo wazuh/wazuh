@@ -423,39 +423,49 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
 
 static void _remove_ruleNode (RuleNode *parent, int sid_rule)
 {
-    RuleNode *tmp = parent->child;
-    RuleNode *prev = parent->child;
-    bool removed = false;
+    RuleNode *tmp = NULL;
+    RuleNode *prev = NULL;
 
-    if (tmp->ruleinfo->sigid == sid_rule){
-        parent->child = tmp->next;
+    /* Remove rule from array */
+    if (parent->child->ruleinfo->sigid == sid_rule) {
+
+        tmp = parent->child;
+        parent->child = parent->child->next;
         tmp->next = NULL;
         _remove_arrayRuleNode(tmp);
-        tmp = parent->child;
+    }
+    else {
+
         prev = parent->child;
+        tmp = prev->next;
+
+        while (tmp) {
+
+            if (tmp->ruleinfo->sigid == sid_rule) {
+
+                prev->next = tmp->next;
+                tmp->next = NULL;
+                _remove_arrayRuleNode(tmp);
+                tmp = prev->next;
+            }
+            else {
+                prev = tmp;
+                tmp = tmp->next;
+            }
+        }
     }
 
-    while(tmp){
+    /* Search rule in childs */
+    tmp = parent->child;
+    while (tmp) {
 
-        if (tmp->ruleinfo->sigid == sid_rule) {
-            prev->next = tmp->next;
-            tmp->next = NULL;
-            _remove_arrayRuleNode(tmp);
-            removed = true;
-        }
-        else if (tmp->ruleinfo->sigid != sid_rule && tmp->child){
+        if(tmp->child){
             _remove_ruleNode(tmp, sid_rule);
         }
 
-        if(removed){
-            tmp = prev->next;
-            removed = false;
-        } else {
-            prev = tmp;
-            tmp = tmp->next;
-        }
-
+        tmp = tmp->next;
     }
+
 }
 
 
