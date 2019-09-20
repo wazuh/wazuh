@@ -1,4 +1,4 @@
-/**
+/*
  * Wazuh Shared Configuration Manager
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 3, 2018.
@@ -29,29 +29,29 @@
 #define W_PARSER_GROUP_TOO_LARGE "The group name is too large. The maximum length is %d"
 
 /**
- * A structure to represent files.
+ * Structure to represent group's files.
  */
 typedef struct _sd_file {
-    char *name; /**< The file's name. */
-    char *url;  /**< The file's url. */
+    char *name; /**< File's name. */
+    char *url;  /**< File's url. */
 } sd_file_t;
 
 /**
- * A structure to represent groups.
+ * Structure to represent configuration's groups.
  */
 typedef struct _sd_group {
-    char *name;                 /**< The group's name. */
-    sd_file_t *files;           /**< Pointer to the _sd_file structure */
-    int n_files;                /**< Files' number of each group */
-    int poll;                   /**<  Download rate in seconds of the specified files. */
-    int current_polling_time;   /**< Current time to reload the files */
+    char *name;                 /**< Group's name. */
+    sd_file_t *files;           /**< Pointer to sd_file structure. */
+    int n_files;                /**< Number of files of each group. */
+    int poll_download_rate;     /**< Download rate in seconds of the specified files. */
+    int current_polling_time;   /**< Current time to reload files */
     int merge_file_index;       /**< Index of merged.md file. */
-    int merged_is_downloaded;   /**< Check if the merged.mg file is downloaded. */
+    int merged_is_downloaded;   /**< Check if merged.mg file is downloaded. */
     
 } sd_group_t;
 
 /**
- * A structure to represent YAML nodes.
+ * Structure to represent YAML nodes.
  */
 typedef struct _sd_yaml_node {
     yaml_node_t *key;           /**< Mapping YAML node key. */
@@ -61,27 +61,27 @@ typedef struct _sd_yaml_node {
 } sd_yaml_node;
 
 /**
- * A structure to represent agents.
+ * Structure to represent configuration's agents.
  */
 typedef struct _sd_agent {
-    char *name;     /**< The agent's name. */
-    char *group;    /**< The agent's group name. */
+    char *name;     /**< Agent's name. */
+    char *group;    /**< Agent's group name. */
 } sd_agent_t;
 
 /**
- * A structure to represent the configuration.
+ * Structure to represent Shared Download configuration.
  */
 typedef struct _sd_config {
-    int n_agents;                   /**< Agents' number. */
-    sd_agent_t *agents;             /**< Pointer to sd_agent_t structure. */
-    int n_groups;                   /**< Group's number. */
-    sd_group_t *groups;             /**< Pointer to sd_group_t structure. */
-    char file[OS_SIZE_1024 + 1];    /**< YAML file. */
-    time_t file_date;               /**< Controll file's date modifications. */
-    ino_t file_inode;               /** File serial number. **/
-    OSHash *ptable;                 /**< Pointer to ptable structure. */
-    pthread_mutex_t mutex;          /**< Thread lock. */
-    int checked_url_connection;     /**< Check URL connection. */
+    int n_agents;                       /**< Agents' number. */
+    sd_agent_t *agents;                 /**< Pointer to sd_agent_t structure. */
+    int n_groups;                       /**< Group's number. */
+    sd_group_t *groups;                 /**< Pointer to sd_group_t structure. */
+    char file_name[OS_SIZE_1024 + 1];   /**< YAML file's name. */
+    time_t file_date;                   /**< Controll files date modifications. */
+    ino_t file_inode;                   /** File serial number. **/
+    OSHash *ptable;                     /**< Pointer to ptable structure. */
+    pthread_mutex_t mutex;              /**< Thread lock. */
+    int checked_url_connection;         /**< Check URL connection. */
 } sd_config_t;
 
 /** 
@@ -139,7 +139,7 @@ void sd_add_group(sd_config_t *config);
 void sd_create_groups_directory(sd_config_t *config);
 
 /**
- * @brief Creates directories
+ * @brief Creates directories.
  * 
  * @param group The group's name.
  */
@@ -177,7 +177,7 @@ int sd_parse_files(yaml_document_t * document, yaml_node_t *root_node, sd_file_t
 int sd_parse_poll(yaml_node_t *root_node, sd_group_t *group);
 
 /**
- * @brief Parses a single group. 
+ * @brief Parses a single configuration's group. 
  * 
  * @param document YAML document.
  * @param root_node YAML root node.
@@ -188,7 +188,7 @@ int sd_parse_poll(yaml_node_t *root_node, sd_group_t *group);
 int sd_parse_group(yaml_document_t * document, yaml_node_t *root_node, sd_group_t *group);
 
 /**
- * @brief Parses groups. 
+ * @brief Parses configuration's groups. 
  * 
  * @param document YAML document.
  * @param root_node YAML root node.
@@ -200,7 +200,7 @@ int sd_parse_group(yaml_document_t * document, yaml_node_t *root_node, sd_group_
 int sd_parse_groups(yaml_document_t * document, yaml_node_t *root_node, sd_group_t **groups, int *n_groups);
 
 /**
- * @brief Parses agents.
+ * @brief Parses configuration's agents.
  * 
  * @param document YAML document.
  * @param root_node YAML root node.

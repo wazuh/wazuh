@@ -98,39 +98,39 @@ void sd_create_directory(char *group) {
 
     char group_path[PATH_MAX] = { 0 };
 
-    if(snprintf(group_path, PATH_MAX,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s", group) >= PATH_MAX) {
+    if(snprintf(group_path, PATH_MAX,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s", group) < PATH_MAX) {
         mwarn(W_PARSER_GROUP_TOO_LARGE, PATH_MAX);
+        return;
     }
-    else {
-        /* Check if group exists */
-        DIR *group_dir = opendir(group_path);
+    
+    /* Check if group exists */
+    DIR *group_dir = opendir(group_path);
 
-        if (!group_dir) {
-            /* Create the group */
-            if(mkdir(group_path,0770) < 0) {
-                switch (errno) {
-                case EEXIST:
-                    if (IsDir(group_path) < 0) {
-                        merror("Couldn't make dir '%s': not a directory.", group_path);
-                    }
-                    break;
-
-                case EISDIR:
-                    break;
-
-                default:
-                    merror("Couldn't make dir '%s': %s", group_path, strerror(errno));
-                    break;
+    if (!group_dir) {
+        /* Create the group */
+        if(mkdir(group_path,0770) < 0) {
+            switch (errno) {
+            case EEXIST:
+                if (IsDir(group_path) < 0) {
+                    merror("Couldn't make dir '%s': not a directory.", group_path);
                 }
+                break;
 
-            } else {
-                if(chmod(group_path,0770) < 0) {
-                    merror("Error in chmod setting permissions for path: %s",group_path);
-                }
+            case EISDIR:
+                break;
+
+            default:
+                merror("Couldn't make dir '%s': %s", group_path, strerror(errno));
+                break;
             }
+
         } else {
-            closedir(group_dir);
+            if(chmod(group_path,0770) < 0) {
+                merror("Error in chmod setting permissions for path: %s",group_path);
+            }
         }
+    } else {
+        closedir(group_dir);
     }
 }
 
@@ -178,11 +178,11 @@ int sd_parse_files(yaml_document_t * document, yaml_node_t *root_node, sd_file_t
 }
 
 int sd_parse_poll(yaml_node_t *root_node, sd_group_t *group) {
-    group->poll = 1800;
+    group->poll_download_rate = 1800;
     if (root_node->type == YAML_SCALAR_NODE) {
         char *scalar = sd_get_scalar(root_node); 
         char *end;
-        if (group->poll = strtol(scalar, &end, 10), *end || group->poll < 0) {
+        if (group->poll_download_rate = strtol(scalar, &end, 10), *end || group->poll_download_rate < 0) {
             merror(W_PARSER_POLL, scalar);
             return 0;
         }
@@ -316,8 +316,8 @@ int sd_parse(sd_config_t **config) {
     int ret_val = 0;
     int index = 0;
 
-    if (config_file = fopen((*config)->file, "rb"), !config_file) {
-        merror(W_PARSER_ERROR_FILE, (*config)->file);
+    if (config_file = fopen((*config)->file_name, "rb"), !config_file) {
+        merror(W_PARSER_ERROR_FILE, (*config)->file_name);
         return 0;
     }
 
@@ -327,17 +327,17 @@ int sd_parse(sd_config_t **config) {
         return 0;
     }
 
-    mdebug1(W_PARSER_STARTED, (*config)->file);
+    mdebug1(W_PARSER_STARTED, (*config)->file_name);
 
     yaml_parser_set_input_file(&parser, config_file);
 
     if (!yaml_parser_load(&parser, &document)) {
-        merror(W_PARSER_FAILED":%u", (*config)->file, (unsigned int)parser.problem_mark.line);
+        merror(W_PARSER_FAILED":%u", (*config)->file_name, (unsigned int)parser.problem_mark.line);
         goto end;
     }
 
     if (root_node = yaml_document_get_root_node(&document), !root_node) {
-        merror("No YAML document defined in %s: ", (*config)->file);
+        merror("No YAML document defined in %s: ", (*config)->file_name);
         goto end;
     }
 
@@ -356,7 +356,7 @@ int sd_parse(sd_config_t **config) {
  
                 if (!strcmp(yaml_node.scalar, "groups")) {
                     if ((*config)->groups) {
-                        mwarn("Parsing '%s': redefinition of 'group'. Ignoring repeated sections", (*config)->file);
+                        mwarn("Parsing '%s': redefinition of 'group'. Ignoring repeated sections", (*config)->file_name);
                     } else {
                         if (!sd_parse_groups(&document, yaml_node.value, &(*config)->groups, &(*config)->n_groups)) {
                             goto end;
@@ -391,16 +391,16 @@ end:
 
 int sd_load(sd_config_t **config) {
 
-    snprintf((*config)->file, OS_SIZE_1024, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, SHAREDCFG_DIR, W_SHARED_YAML_FILE);
+    snprintf((*config)->file_name, OS_SIZE_1024, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, SHAREDCFG_DIR, W_SHARED_YAML_FILE);
 
     /* Save date and inode of the yaml file */
-    (*config)->file_inode = File_Inode((*config)->file);
-    (*config)->file_date = File_DateofChange((*config)->file);
+    (*config)->file_inode = File_Inode((*config)->file_name);
+    (*config)->file_date = File_DateofChange((*config)->file_name);
 
     if ((*config)->file_inode != (ino_t) -1 && (*config)->file_date != -1) {
         if (sd_parse(&(*config))) {
 
-            minfo(W_PARSER_SUCCESS, (*config)->file);
+            minfo(W_PARSER_SUCCESS, (*config)->file_name);
 
             /* Add group and agent to the HASH table */
             sd_add_group(*config);
@@ -454,7 +454,7 @@ void sd_destroy_content(sd_config_t **config) {
 }
 
 int sd_reload(sd_config_t **config) {
-    minfo(W_PARSER_FILE_CHANGED, (*config)->file);
+    minfo(W_PARSER_FILE_CHANGED, (*config)->file_name);
     sd_config_t *config_tmp = NULL;
 
     if (sd_init(&config_tmp)) {
@@ -470,7 +470,7 @@ int sd_reload(sd_config_t **config) {
 }
 
 int sd_file_changed(sd_config_t *config) {
-    return config->file_date != File_DateofChange(config->file) || config->file_inode != File_Inode(config->file);
+    return config->file_date != File_DateofChange(config->file_name) || config->file_inode != File_Inode(config->file_name);
 }
 
 void check_download_module_connection() {

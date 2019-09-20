@@ -270,7 +270,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
     if (!logr.nocmerged && (shared_download_group = sd_get_group(shared_download_config, group), shared_download_group)) {
 
         if(shared_download_group->current_polling_time <= 0){
-            shared_download_group->current_polling_time = shared_download_group->poll;
+            shared_download_group->current_polling_time = shared_download_group->poll_download_rate;
 
             char *file_url;
             char *file_name;
