@@ -229,6 +229,8 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
     int dir_position = 0;
     int depth = 0;
 
+    mdebug1("~~ Process event(mode:%d): '%s'", mode, file);
+
     if (fim_check_ignore(file) == 1) {
         return (0);
     }
@@ -239,7 +241,7 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
 
     // If the directory have another configuration will come back
     if (dir_position = fim_configuration_directory(file), dir_position < 0) {
-        minfo("No configuration founded for file: '%s'", file);
+        minfo("~~ No configuration founded for file: '%s'", file);
         return(0);
     }
 
@@ -292,7 +294,10 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
 
 void fim_audit_inode_event(whodata_evt * w_evt) {
     fim_inode_data * inode_data;
+    struct stat file_stat;
     char *key_inodehash;
+
+    mdebug1("~~ Inode event: (%s)'%s'", w_evt->inode, w_evt->path);
 
     os_calloc(OS_SIZE_128, sizeof(char), key_inodehash);
     snprintf(key_inodehash, OS_SIZE_128, "%s:%s", w_evt->dev, w_evt->inode);
@@ -324,8 +329,24 @@ void fim_audit_inode_event(whodata_evt * w_evt) {
     } else {
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-        if (w_evt->path) {
-            fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+        if (w_stat(w_evt->path, &file_stat) < 0) {
+            mdebug1("~~~~ File '%s' not in database and stat failed", w_evt->path);
+        } else {
+            switch(file_stat.st_mode & S_IFMT) {
+                case FIM_REGULAR:
+                    // Regular file
+                    fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+                    break;
+
+                case FIM_DIRECTORY:
+                    // Directory path
+                    minfo("~~~~ Event path is a directory, discarding '%s'", w_evt->path);
+                    break;
+                // TODO: Case for symbolic links?
+                default:
+                    // Unsupported file type
+                    break;
+            }
         }
     }
 
@@ -1042,7 +1063,7 @@ int print_hash_tables() {
             wm_strcat(&files, data->paths[i], ',');
         }
 
-        //minfo("INODE (%u) => '%s'->(%d)'%s'\n", element_totali, (char*)hash_node->key, data->items, files);
+        mdebug1("INODE (%u) => '%s'->(%d)'%s'\n", element_totali, (char*)hash_node->key, data->items, files);
         element_totali++;
         inode_items += data->items;
     }
