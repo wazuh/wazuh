@@ -69,7 +69,7 @@ def get_sca_agent(agent_id=None, pretty=False, wait_for_complete=False,
 @exception_handler
 def get_sca_checks(agent_id=None, pretty=False, wait_for_complete=False,
                    policy_id=None, title=None, description=None,
-                   rationale=None, remediation=None, process=None,
+                   rationale=None, remediation=None, file= None, process=None,
                    directory=None, registry=None, references=None, result=None,
                    offset=0, limit=None, sort=None, search=None, q=None):
     """Get policy monitoring alerts for a given policy
@@ -96,14 +96,11 @@ def get_sca_checks(agent_id=None, pretty=False, wait_for_complete=False,
     :param search: Looks for elements with the specified string
     :param q: Query to filter results by. This is specially useful to filter by total checks passed, failed or total score (fields pass, fail, score)
     """
-    # get file parameter from query
-    file_ = connexion.request.args.get('file', None)
-
     filters = {'title': title,
                'description': description,
                'rationale': rationale,
                'remediation': remediation,
-               'file': file_,
+               'file': file,
                'process': process,
                'directory': directory,
                'registry': registry,
