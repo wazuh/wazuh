@@ -448,7 +448,7 @@ void LogCollectorStart()
 
                     /* Variable file name */
                     else if (!current->fp && open_file_attempts - current->ign > 0) {
-                        handle_file(i, j, 0, 1);
+                        handle_file(i, j, 1, 1);
                         continue;
                     }
                 }
@@ -696,14 +696,14 @@ void LogCollectorStart()
                         continue;
                     } else {
                         /* Try for a few times to open the file */
-                        handle_file(i, j, 0, 1);
+                        handle_file(i, j, 1, 1);
                         continue;
                     }
                 }
             }
 
             // Check for new files to be expanded
-            if (check_pattern_expand(0)) {
+            if (check_pattern_expand(1)) {
                 /* Remove duplicate entries */
                 for (i = 0, j = -1;; i++) {
                     if (f_control = update_current(&current, &i, &j), f_control) {
