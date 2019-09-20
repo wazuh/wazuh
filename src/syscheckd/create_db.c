@@ -427,7 +427,7 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
         snprintf(aux, OS_SIZE_64, "%u", file_stat.st_gid);
         os_strdup(aux, data->gid);
 
-        os_strdup((char*)get_user(file_name, file_stat.st_uid, NULL), data->group_name);
+        os_strdup((char*)get_group(file_stat.st_gid), data->group_name);
     }
 #endif
 
@@ -876,7 +876,7 @@ cJSON * fim_json_compare_attrs(const fim_entry_data * old_data, const fim_entry_
         }
 
         if (old_data->group_name && new_data->group_name && strcmp(old_data->group_name, new_data->group_name) != 0) {
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group_name"));
         }
     }
 

@@ -60,7 +60,6 @@ void fim_send_db_query(int * sock, const char * query);
 
 // Build change comment
 static void fim_generate_comment(char * str, long size, const char * format, const char * a1, const char * a2);
-static void fim_generate_comment2(char * str, long size, const char * format, const char * a1, const char * b1, const char * a2, const char * b2);
 
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -1285,7 +1284,9 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
     char change_size[OS_FLSIZE + 1] = {'\0'};
     char change_perm[OS_SIZE_20480 + 1] = {'\0'};
     char change_owner[OS_FLSIZE + 1] = {'\0'};
+    char change_user[OS_FLSIZE + 1] = {'\0'};
     char change_gowner[OS_FLSIZE + 1] = {'\0'};
+    char change_group[OS_FLSIZE + 1] = {'\0'};
     char change_md5[OS_FLSIZE + 1] = {'\0'};
     char change_sha1[OS_FLSIZE + 1] = {'\0'};
     char change_sha256[OS_FLSIZE + 1] = {'\0'};
@@ -1448,14 +1449,16 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
     if (lf->inode_before != lf->inode_after) {
         snprintf(change_inode, sizeof(change_inode), "Old inode was: '%ld', now it is '%ld'\n", lf->inode_before, lf->inode_after);
     }
-    
+
     if (lf->mtime_before != lf->mtime_after) {
         snprintf(change_mtime, sizeof(change_mtime), "Old modification time was: '%ld', now it is '%ld'\n", lf->mtime_before, lf->mtime_after);
     }
-    
+
     fim_generate_comment(change_perm, sizeof(change_perm), "Permissions changed from '%s' to '%s'\n", lf->perm_before, lf->perm_after);
-    fim_generate_comment2(change_owner, sizeof(change_owner), "Ownership was '%s (%s)', now it is '%s (%s)'\n", lf->uname_before, lf->owner_before, lf->uname_after, lf->owner_after);
-    fim_generate_comment2(change_gowner, sizeof(change_gowner), "Group ownership was '%s (%s)', now it is '%s (%s)'\n", lf->gname_before, lf->gowner_before, lf->gname_after, lf->gowner_after);
+    fim_generate_comment(change_owner, sizeof(change_owner), "Ownership was '%s', now it is '%s'\n", lf->owner_before, lf->owner_after);
+    fim_generate_comment(change_user, sizeof(change_owner), "User name was '%s', now it is '%s'\n", lf->uname_before, lf->uname_after);
+    fim_generate_comment(change_gowner, sizeof(change_gowner), "Group ownership was '%s', now it is '%s'\n", lf->gowner_before, lf->gowner_after);
+    fim_generate_comment(change_group, sizeof(change_gowner), "Group name was '%s', now it is '%s'\n", lf->gname_before, lf->gname_after);
     fim_generate_comment(change_md5, sizeof(change_md5), "Old md5sum was: '%s'\nNew md5sum is : '%s'\n", lf->md5_before, lf->md5_after);
     fim_generate_comment(change_sha1, sizeof(change_sha1), "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n", lf->sha1_before, lf->sha1_after);
     fim_generate_comment(change_sha256, sizeof(change_sha256), "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n", lf->sha256_before, lf->sha256_after);
@@ -1473,7 +1476,7 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
             "Mode: %s\n"
             "Event time: %s\n"
             "%s"
-            "%s%s%s%s%s%s%s%s%s%s",
+            "%s%s%s%s%s%s%s%s%s%s%s%s",
             lf->fields[FIM_FILE].value, event_type,
             mode,
             str_time,
@@ -1481,7 +1484,9 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
             change_size,
             change_perm,
             change_owner,
+            change_user,
             change_gowner,
+            change_group,
             change_md5,
             change_sha1,
             change_sha256,
@@ -1501,17 +1506,6 @@ void fim_generate_comment(char * str, long size, const char * format, const char
     a2 = a2 != NULL ? a2 : "";
 
     if (strcmp(a1, a2) != 0) {
-        snprintf(str, size, format, a1, a2);
-    }
-}
-
-void fim_generate_comment2(char * str, long size, const char * format, const char * a1, const char * b1, const char * a2, const char * b2) {
-    a1 = a1 != NULL ? a1 : "";
-    a2 = a2 != NULL ? a2 : "";
-    b1 = b1 != NULL ? b1 : "";
-    b2 = b2 != NULL ? b2 : "";
-
-    if (strcmp(a1, a2) != 0 || strcmp(b1, b2)) {
         snprintf(str, size, format, a1, a2);
     }
 }
