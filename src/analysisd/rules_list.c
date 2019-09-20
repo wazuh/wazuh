@@ -40,6 +40,8 @@ static void _remove_ruleNode(RuleNode *parent, int sid_rule);
 /**
  * @brief Remove RuleInfo structure.
  * @param r_info RuleInfo structure to remove.
+ * @note Not all fields are deleted because some fields are shared by multiples rules.
+ * They are lists, sid_search, group_search, sid_prev_matched, group_prev_matched.
  */
 static void _free_ruleInfo(RuleInfo *r_info);
 
@@ -606,8 +608,6 @@ static void _free_ruleInfo(RuleInfo *r_info)
             r_info->info_details = tmp;
         }
     }
-
-    // free(r_info->lists);
 
     if (r_info->if_sid) {
         os_free(r_info->if_sid);
