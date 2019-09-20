@@ -283,9 +283,10 @@ def update_role(role_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
+def get_policies(policy_ids, pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
     """Returns information from all system policies
 
+    :param policy_ids: List of policies
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param offset: First item to return.
@@ -295,15 +296,16 @@ def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None, se
     :param search: Looks for elements with the specified string
     :return Policies information
     """
+    function = security.get_policies if policy_ids is None else security.get_policy
     rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {'rbac': rbac, 'offset': offset, 'limit': limit,
+    f_kwargs = {'policy_ids': policy_ids, 'rbac': rbac, 'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
                 }
 
-    dapi = DistributedAPI(f=security.get_policies,
+    dapi = DistributedAPI(f=function,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -315,31 +317,6 @@ def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None, se
     response = Data(data)
 
     return response, 200
-
-
-@exception_handler
-def get_policy(policy_id, pretty=False, wait_for_complete=False):
-    """Return information of one specified policy
-
-    :param policy_id: Id of the policy to be obtained
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return Policy information
-    """
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {'rbac': rbac, **{'policy_id': policy_id}}
-
-    dapi = DistributedAPI(f=security.get_policy,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger
-                          )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-
-    return data, 200
 
 
 @exception_handler
@@ -374,42 +351,19 @@ def add_policy(pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def remove_policy(policy_id, pretty=False, wait_for_complete=False):
-    """Removes one specified policy from the system
+def remove_policies(policy_ids=None, pretty=False, wait_for_complete=False):
+    """Removes a list of roles in the system
 
-    :param policy_id: Specific policy id in the system to be deleted
+    :param policy_ids: List of policies ids to be deleted
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :return Operation result
+    :return Two list with deleted roles and not deleted roles
     """
-    f_kwargs = {'policy_id': policy_id}
+    function = security.remove_policies if policy_ids is None else security.remove_policy
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs = {'rbac': rbac, 'policy_ids': policy_ids}
 
-    dapi = DistributedAPI(f=security.remove_policy,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger
-                          )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
-
-    return response, 200
-
-
-@exception_handler
-def remove_policies(list_policies=None, pretty=False, wait_for_complete=False):
-    """Removes a list of policies in the system
-
-    :param list_policies: List of policies ids to deleted
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return Two list with deleted policies and not deleted policies
-    """
-    f_kwargs = {'list_policies': list_policies}
-
-    dapi = DistributedAPI(f=security.remove_policies,
+    dapi = DistributedAPI(f=function,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

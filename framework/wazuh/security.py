@@ -35,11 +35,18 @@ def get_users(offset=0, limit=common.database_limit, sort_by=None,
 
 
 def get_user_id(username: str = None, offset=0, limit=common.database_limit, sort_by=None,
-              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+                sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Get the information of a specified user
 
     :param username: Name of the user
-    :return: Information about user
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param sort_ascending: Sort in ascending (true) or descending (false) order
+    :param search_text: Text to search
+    :param complementary_search: Find items without the text to search
+    :param search_in_fields: Fields to search in
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     with AuthenticationManager() as auth:
         result = auth.get_users(username)
@@ -85,12 +92,12 @@ def update_user(username: str, password: str):
 
     with AuthenticationManager() as auth:
         query = auth.update_user(username, password)
-        if query is True:
-            return get_user_id(username)
-        elif query is False:
+        if query is False:
             raise WazuhError(5001, extra_message='The user \'{}\' not exist'.format(username))
         elif query == 'admin':
             raise WazuhError(5004, extra_message='The users wazuh and wazuh-app can not be updated')
+
+    return get_user_id(username)
 
 
 def delete_user(username: str):
@@ -101,12 +108,12 @@ def delete_user(username: str):
     """
     with AuthenticationManager() as auth:
         query = auth.delete_user(username)
-        if query is True:
-            return 'User \'{}\' deleted correctly'.format(username)
-        elif query is False:
+        if query is False:
             raise WazuhError(5001, extra_message='The user \'{}\' not exist'.format(username))
         elif query == 'admin':
             raise WazuhError(5004, extra_message='The users wazuh and wazuh-app can not be removed')
+
+    return 'User \'{}\' deleted correctly'.format(username)
 
 
 @expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'], target_param='role_ids')
@@ -318,7 +325,7 @@ def get_policies(policy_id=None, offset=0, limit=common.database_limit, sort_by=
                          offset=offset, limit=limit)
 
 
-def remove_policy(policy_id):
+def remove_policy(policy_id=None):
     """Removes a certain policy from the system
 
     :param policy_id: ID of the policy to be removed
@@ -331,26 +338,26 @@ def remove_policy(policy_id):
     return response
 
 
-def remove_policies(list_policies=None):
+def remove_policies(policy_ids=None):
     """Removes a list of policies from the system
 
-    :param list_policies: List of policies to be removed
+    :param policy_ids: List of policies to be removed
     :return Result of operation.
     """
-    if list_policies is None:
+    if policy_ids is None:
         list_policies = list()
     status_correct = list()
     response = dict()
 
     with orm.PoliciesManager() as pm:
-        if len(list_policies) > 0:
-            for policy in list_policies:
+        if len(policy_ids) > 0:
+            for policy in policy_ids:
                 if pm.delete_policy(policy):
                     status_correct.append(int(policy))
             response['removed_policies'] = status_correct
             # Symmetric difference: The symmetric difference of two sets A and B is
             # the set of elements which are in either of the sets A or B but not in both.
-            response['incorrect_policies'] = list(set(list_policies) ^ set(status_correct))
+            response['incorrect_policies'] = list(set(policy_ids) ^ set(status_correct))
         else:
             response['removed_policies'] = pm.delete_all_policies()
 

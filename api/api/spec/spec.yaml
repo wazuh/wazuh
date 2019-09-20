@@ -545,6 +545,13 @@ components:
     Role_id:
       type: integer
       description: Role ID.
+    Policy_id:
+      type: integer
+      description: Policy ID.
+    Username:
+      type: string
+      description: Username of the user.
+      format: alphanumeric
     PoliciesRequest:
       type: object
       properties:
@@ -2693,25 +2700,18 @@ components:
     policy_id_rbac:
       in: path
       name: policy_id
-      description: 'Specified and existent policy id'
+      description: 'Specified a policy id'
       required: True
       schema:
-        type: integer
-        minLength: 1
-        minimum: 2
-        description: Policy ID.
-    policy_id_rbac_list:
-      in: path
-      name: policies_ids
-      description: 'List of policies ids'
-      required: True
+        $ref: '#/components/schemas/Policy_id'
+    policy_ids_rbac:
+      in: query
+      name: 'policy_ids'
+      description: 'List of policy ids'
       schema:
         type: array
         items:
-          type: integer
-          minLength: 1
-          minimum: 2
-          description: Policy ID.
+          $ref: '#/components/schemas/Policy_id'
     policy_name:
       in: query
       name: policy_name
@@ -3638,11 +3638,20 @@ components:
     username:
       in: path
       name: username
+      description: 'Specified an username'
+      required: True
+      schema:
+        $ref: '#/components/schemas/Username'
+    usernames:
+      in: query
+      name: usernames
       description: ID of an user.
       required: true
       schema:
-        type: string
-        format: alphanumeric
+        type: array
+        items:
+          $ref: '#/components/schemas/Username'
+
 
 tags:
   - name: active-response
@@ -10416,7 +10425,7 @@ paths:
         - security
       summary: 'Modify a specified role'
       description: 'Modify a role, cannot modify associated policies in this endpoint,
-                    at least one property must be indicated'
+                        at least one property must be indicated'
       operationId: api.controllers.security_controller.update_role
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -10467,11 +10476,12 @@ paths:
       description: 'Get all policies in the system, including the administrator policy'
       operationId: api.controllers.security_controller.get_policies
       parameters:
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/policy_ids_rbac'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
@@ -10557,9 +10567,9 @@ paths:
       description: 'Roles linked to policies are not going to be removed.'
       operationId: api.controllers.security_controller.remove_policies
       parameters:
+        - $ref: '#/components/parameters/policy_ids_rbac'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_policies'
       responses:
         '200':
           description: 'Operation result'
@@ -10588,51 +10598,6 @@ paths:
           $ref: '#/components/responses/ResponseError'
 
   /security/policies/{policy_id}:
-    get:
-      tags:
-        - security
-      summary: 'Get a specified policy'
-      description: 'Get a specified policy, including the roles assigned to it'
-      operationId: api.controllers.security_controller.get_policy
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - in: path
-          name: 'policy_id'
-          required: true
-          description: 'Filter by policy id'
-          schema:
-            type: integer
-            minLength: 1
-            minimum: 1
-      responses:
-        '200':
-          description: 'Policy information'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/PoliciesResponseSpec'
-              example:
-                id: 2
-                name: 'normal_policy'
-                policy:
-                  actions:
-                    - "agent:delete"
-                  resources:
-                    - "agent:id:001"
-                    - "agent:id:002"
-                    - "agent:id:003"
-                  effect: "allow"
-                  roles:
-                    - id: 2
-                      name: 'normal_role'
-                      rule:
-                        normal: 'normal'
-        default:
-          $ref: '#/components/responses/ResponseError'
-
     put:
       tags:
         - security
@@ -10640,9 +10605,9 @@ paths:
       description: 'Modify a policy, at least one property must be indicated'
       operationId: api.controllers.security_controller.update_policy
       parameters:
+        - $ref: '#/components/parameters/policy_id_rbac'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/policy_id_rbac'
       requestBody:
         content:
           application/json:
@@ -10682,44 +10647,10 @@ paths:
                       name: 'normal_role'
                       rule:
                         normal: 'normal'
-    delete:
-      tags:
-        - security
-      summary: "Delete a specific policy"
-      description: "Removes a specific policy, the roles attached to it are not going to be eliminated."
-      operationId: api.controllers.security_controller.remove_policy
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/policy_id_rbac'
-      responses:
-        '200':
-          description: 'Deletion result'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          removed_policies:
-                            type: array
-                            description: 'Removed policies'
-                            items:
-                              type: integer
-                              description: 'Policy id'
-                          incorrect_policies:
-                            type: array
-                            description: "Incorrect policies"
-                            items:
-                              type: integer
-                              description: "Policy id"
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /security/roles/{role_id}/policies/{policies_ids}:
+  /security/roles/{role_id}/policies:
     put:
       tags:
         - security
@@ -10727,10 +10658,10 @@ paths:
       description: 'Create a specified relation role-policy, one role may have multiples policies'
       operationId: api.controllers.security_controller.set_role_policy
       parameters:
+        - $ref: '#/components/parameters/role_id'
+        - $ref: '#/components/parameters/policy_ids_rbac'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/role_id'
-        - $ref: '#/components/parameters/policy_id_rbac_list'
       responses:
         '200':
           description: 'Role information'
@@ -10763,10 +10694,10 @@ paths:
       description: 'Delete a specified relation role-policy'
       operationId: api.controllers.security_controller.remove_role_policy
       parameters:
+        - $ref: '#/components/parameters/role_id'
+        - $ref: '#/components/parameters/policy_ids_rbac'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/role_id'
-        - $ref: '#/components/parameters/policy_id_rbac_list'
       responses:
         '200':
           description: 'Role information'
@@ -10785,6 +10716,122 @@ paths:
                   policies: []
         default:
           $ref: '#/components/responses/ResponseError'
+
+  /security/users:
+    get:
+      tags:
+        - security
+      summary: 'Get user information'
+      description: 'Get the information of a specified user.'
+      operationId: api.controllers.security_controller.get_user
+      parameters:
+        - $ref: '#/components/parameters/usernames'
+      responses:
+        '200':
+          description: 'Information about user'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+
+                example:
+                  data:
+                    message: 'User created correctly'
+        '401':
+          description: 'Access unauthorized'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    post:
+      tags:
+        - security
+      summary: 'Create new user'
+      description: 'Adds a new user to the system through the API.'
+      operationId: api.controllers.security_controller.create_user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  minLength: 4
+                  maxLength: 20
+                  format: names
+                password:
+                  type: string
+                  maxLength: 64
+                  minLength: 8
+                  format: password
+              required:
+                - username
+                - password
+      responses:
+        '200':
+          description: 'User created successful'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                example:
+                  message: 'User created correctly'
+
+    delete:
+      tags:
+        - security
+      summary: 'Delete an user'
+      description: "Delete a user by specifying their name"
+      operationId: api.controllers.security_controller.delete_user
+      parameters:
+        - $ref: '#/components/parameters/usernames'
+      responses:
+        '200':
+          description: 'User deleted successful'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                example:
+                  data:
+                    message: 'User deleted correctly'
+
+  /security/users/{username}:
+    put:
+      tags:
+        - security
+      summary: 'Modify an user'
+      description: "Modify a user's password by specifying their name."
+      operationId: api.controllers.security_controller.update_user
+      parameters:
+        - $ref: '#/components/parameters/username'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  maxLength: 64
+                  minLength: 8
+                  format: password
+              required:
+                - password
+      responses:
+        '200':
+          description: 'User updated successful'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                example:
+                  data:
+                    message: 'User updated correctly'
 
   /overview/agents:
     get:
@@ -10871,154 +10918,6 @@ paths:
                   manager: 1a683501f77f
         default:
           $ref: '#/components/responses/ResponseError'
-
-  /security/users:
-    post:
-      tags:
-        - security
-      summary: 'Create new user'
-      description: 'Adds a new user to the system through the API.'
-      operationId: api.controllers.security_controller.create_user
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                username:
-                  type: string
-                  minLength: 4
-                  maxLength: 20
-                  format: names
-                password:
-                  type: string
-                  maxLength: 64
-                  minLength: 8
-                  format: password
-              required:
-                - username
-                - password
-
-      responses:
-        '200':
-          description: 'User created successful'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-
-                example:
-                  message: 'User created correctly'
-    get:
-      tags:
-        - security
-      summary: 'Get users'
-      description: 'Get all users that are currently in the system.'
-      operationId: api.controllers.security_controller.get_users
-
-      responses:
-        '200':
-          description: 'Information about users'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-
-                example:
-                  data:
-                    items:
-                    - username: "wazuh-app"
-                    - username: "wazuh"
-                    totalItems: 2
-        '401':
-          description: 'Access unauthorized'
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-  /security/users/{username}:
-    get:
-      tags:
-        - security
-      summary: 'Get user information'
-      description: 'Get the information of a specified user.'
-      operationId: api.controllers.security_controller.get_user
-      parameters:
-        - $ref: '#/components/parameters/username'
-
-      responses:
-        '200':
-          description: 'Information about user'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-
-                example:
-                  data:
-                    message: 'User created correctly'
-        '401':
-          description: 'Access unauthorized'
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-    put:
-      tags:
-        - security
-      summary: 'Modify an user'
-      description: "Modify a user's password by specifying their name."
-      operationId: api.controllers.security_controller.update_user
-      parameters:
-        - $ref: '#/components/parameters/username'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                password:
-                  type: string
-                  maxLength: 64
-                  minLength: 8
-                  format: password
-              required:
-                - password
-      responses:
-        '200':
-          description: 'User updated successful'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-
-                example:
-                  data:
-                    message: 'User updated correctly'
-
-    delete:
-      tags:
-        - security
-      summary: 'Delete an user'
-      description: "Delete a user by specifying their name"
-      operationId: api.controllers.security_controller.delete_user
-      parameters:
-        - $ref: '#/components/parameters/username'
-
-      responses:
-        '200':
-          description: 'User deleted successful'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-
-                example:
-                  data:
-                    message: 'User deleted correctly'
 
 externalDocs:
   description: Find more about Wazuh API usage
