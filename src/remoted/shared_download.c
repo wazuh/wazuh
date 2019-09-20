@@ -307,37 +307,38 @@ int sd_parse_agents(yaml_document_t *document, yaml_node_t *root_node, sd_agent_
 }
 
 int sd_parse(sd_config_t **config) {
-    FILE *fh;
+    FILE *config_file;
     yaml_node_t *root_node;
     sd_yaml_node yaml_node;
     yaml_parser_t parser;
     yaml_document_t document;
 
+    int ret_val = 0;
     int index = 0;
 
-    if (fh = fopen((*config)->file, "rb"), !fh) {
+    if (config_file = fopen((*config)->file, "rb"), !config_file) {
         merror(W_PARSER_ERROR_FILE, (*config)->file);
         return 0;
     }
 
     if (!yaml_parser_initialize(&parser)) {
         merror(W_PARSER_ERROR_INIT);
-        fclose(fh);
+        fclose(config_file);
         return 0;
     }
 
     mdebug1(W_PARSER_STARTED, (*config)->file);
 
-    yaml_parser_set_input_file(&parser, fh);
+    yaml_parser_set_input_file(&parser, config_file);
 
     if (!yaml_parser_load(&parser, &document)) {
         merror(W_PARSER_FAILED":%u", (*config)->file, (unsigned int)parser.problem_mark.line);
-        return 0;
+        goto end;
     }
 
     if (root_node = yaml_document_get_root_node(&document), !root_node) {
         merror("No YAML document defined in %s: ", (*config)->file);
-        return 0;
+        goto end;
     }
 
     if (root_node->type == YAML_MAPPING_NODE) {
@@ -358,31 +359,34 @@ int sd_parse(sd_config_t **config) {
                         mwarn("Parsing '%s': redefinition of 'group'. Ignoring repeated sections", (*config)->file);
                     } else {
                         if (!sd_parse_groups(&document, yaml_node.value, &(*config)->groups, &(*config)->n_groups)) {
-                            return 0;
+                            goto end;
                         }
                     }
                 } else if (!strcmp(yaml_node.scalar, "agents")) {
                     if (!sd_parse_agents(&document, yaml_node.value, &(*config)->agents, &(*config)->n_agents)) {
-                        return 0;
+                        goto end;
                     }
                 } else {
                     merror("Parsing error on line %d:, unknown token '%s'", (unsigned int)yaml_node.value->start_mark.line, yaml_node.scalar);
-                    return 0;
+                    goto end;
                 }       
             } else {
                 merror("Mapping key must be scalar (line %u)", (unsigned int)yaml_node.key->start_mark.line);
-                return 0;
+                goto end;
             }
         }
     } else {
         merror("Root node must be mapping (line %u)", (unsigned int)root_node->start_mark.line);
-        return 0;
+        goto end;
     }
 
+    ret_val = 1;
+
+end:
     yaml_parser_delete(&parser);
     yaml_document_delete(&document);
-    fclose(fh);
-    return 1;
+    fclose(config_file);
+    return ret_val;
 }
 
 int sd_load(sd_config_t **config) {
