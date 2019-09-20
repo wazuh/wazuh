@@ -296,4 +296,9 @@ CREATE TABLE IF NOT EXISTS sca_check_compliance (
 
 CREATE INDEX IF NOT EXISTS comp_id_check_index ON sca_check_compliance (id_check);
 
+CREATE TABLE IF NOT EXISTS vuln_metadata (
+    LAST_SCAN INTEGER,
+    WAZUH_VERSION TEXT
+);
+
 PRAGMA journal_mode=WAL;
