@@ -12,7 +12,7 @@
 #include "wdb.h"
 #include "external/cJSON/cJSON.h"
 
-int wdb_param_parse(char *input, struct opt_param *s){
+int wdb_param_parse(char *input, struct opt_param *output){
     char * next;
     char * limit;
     char * offset;
@@ -56,7 +56,7 @@ int wdb_param_parse(char *input, struct opt_param *s){
             merror("err Invalid parameter 'limit' parse syntax, near '%.32s'", input);
             return -1;
         }
-        s->limit = limit_n;
+        output->limit = limit_n;
         if (next = wstr_chr(offset, ' '), next) {
             *next++ = '\0';
         }
@@ -72,7 +72,7 @@ int wdb_param_parse(char *input, struct opt_param *s){
             }
 
             offset_n = strtol(n, &next, 10);
-            s->offset = offset_n;
+            output->offset = offset_n;
             result = 0;
         } else {
             return -1;

@@ -146,7 +146,7 @@ int wdb_open_global() {
     return 0;
 }
 
-wdb_t * wdb_open_global2() {
+wdb_t * wdb_t_open_global() {
     char path[PATH_MAX + 1];
     char s_global[64] = "global";
     wdb_t * wdb = NULL;

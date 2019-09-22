@@ -179,7 +179,7 @@ int wdb_open_global();
  * @see wdb_pool_append
  * @see wdb_upgrade
  */
-wdb_t * wdb_open_global2();
+wdb_t * wdb_t_open_global();
 
 wdb_t * wdb_open_mitre();
 
@@ -588,9 +588,12 @@ int wdb_parse(char * input, char * output);
 /**
  * @brief This function parses limit and offset parameters and store in struc opt_param
  * 
+ * An example of use is [limit 10 offset 0] query sentence
+ * @param input The path where the global DB will be created or opened
+ * @param output This output is a struct that store limit and offset parameters
  * @return Return -1 if error
  */
-int wdb_param_parse(char *input, struct opt_param *s);
+int wdb_param_parse(char *input, struct opt_param *output);
 
 int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
 
