@@ -174,8 +174,22 @@ def main(database=None):
     
     # Parse enterprise-attack.json file:
     with open('../../etc/mitre/enterprise-attack.json') as json_file:
-        data = json.load(json_file)
-        for data_object in data['objects']:
+        datajson = json.load(json_file)
+        data = json.dumps(datajson)
+        data = data.replace('persistence', 'Persistence')
+        data = data.replace('privilege-escalation', 'Privilege Escalation')
+        data = data.replace('defense-evasion', 'Defense Evasion')
+        data = data.replace('discovery', 'Discovery')
+        data = data.replace('credential-access', 'Credential Access')
+        data = data.replace('execution', 'Execution')
+        data = data.replace('lateral-movement', 'Lateral Movement')
+        data = data.replace('collection', 'Collection')
+        data = data.replace('exfiltration', 'Exfiltration')
+        data = data.replace('command-and-control', 'Command and Control')
+        data = data.replace('initial-access', 'Initial Access')
+        data = data.replace('impact', 'Impact')
+        datajson = json.loads(data)
+        for data_object in datajson['objects']:
             if data_object['type'] == 'attack-pattern' and data_object['external_references'][0]['source_name'] == 'mitre-attack':
                 string_id = json.dumps(data_object['external_references'][0]['external_id']).replace('"', '')
                 string_object = json.dumps(data_object)
