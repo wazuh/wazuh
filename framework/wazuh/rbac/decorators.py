@@ -8,10 +8,11 @@ from functools import wraps
 
 from wazuh.exception import WazuhError
 from wazuh.core.core_utils import get_agents_info, expand_group
-from wazuh.rbac.orm import RolesManager
+from wazuh.rbac.orm import RolesManager, PoliciesManager
 
 agents = None
 roles = None
+policies = None
 
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
@@ -35,14 +36,14 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                 # We check if params is a list of resources or a single one in a string
                 if isinstance(params, list):
                     if len(params) == 0:
-                        raise WazuhError(4015, {'param': m.group(3)})
+                        raise WazuhError(4015, extra_message={'param': m.group(3)})
                     for param in params:
                         res_list.append("{0}{1}".format(res_base, param))
                 else:
                     res_list.append("{0}{1}".format(res_base, params))
             # KeyError occurs if required dynamic resources can't be found within request parameters
             except KeyError as e:
-                raise WazuhError(4014, extra_message=str(e))
+                raise WazuhError(4014, extra_message={'param': m.group(3)})
         # If we don't find a regex match we obtain the static resource/s
         else:
             res_list.append(resource)
@@ -57,11 +58,14 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
 
 def _update_set(index, key_effect, to_add, odict, remove=True):
     op_key = 'deny' if key_effect == 'allow' else 'allow'
-    if remove:
-        odict[index][key_effect].remove('*')
-    for element in to_add:
-        if element not in odict[index][op_key]:
-            odict[index][key_effect].add(element)
+    try:
+        if remove:
+            odict[index][key_effect].remove('*')
+        for element in to_add:
+            if element not in odict[index][op_key]:
+                odict[index][key_effect].add(element)
+    except:
+        pass
 
 
 def _normalization(key, permissions):
@@ -107,7 +111,7 @@ def _agent_expand_permissions(mode, odict):
     return odict
 
 
-def _role_expand_permissions(mode, odict):
+def _role_policy_expand_permissions(mode, odict, resource_prefix):
     global roles
     if roles is None:
         with RolesManager() as rm:
@@ -115,16 +119,26 @@ def _role_expand_permissions(mode, odict):
     roles_ids = set()
     for role in roles:
         roles_ids.add(str(role.id))
+    global policies
+    if policies is None:
+        with PoliciesManager() as pm:
+            policies = pm.get_policies()
+    policies_ids = set()
+    for policy in policies:
+        policies_ids.add(str(policy.id))
 
-    _normalization('role:id', odict)
+    _normalization(resource_prefix, odict)
 
     for key in odict:
-        if key == 'role:id':
-            _update_set(key, 'allow', roles_ids, odict) if '*' in odict[key]['allow'] \
-                else _update_set(key, 'deny', roles_ids, odict)
+        _update_set(key, 'allow', roles_ids, odict) if '*' in odict[key]['allow'] \
+            else _update_set(key, 'deny', roles_ids, odict)
+        _update_set(key, 'allow', policies_ids, odict) if '*' in odict[key]['allow'] \
+            else _update_set(key, 'deny', policies_ids, odict)
 
     _update_set('role:id', 'allow', roles_ids, odict, False) if mode \
         else _update_set('role:id', 'deny', roles_ids, odict, False)
+    _update_set('role:id', 'allow', policies_ids, odict, False) if mode \
+        else _update_set('role:id', 'deny', policies_ids, odict, False)
 
     return odict
 
@@ -137,10 +151,14 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     :return: Allow or deny
     """
     mode, user_permissions = rbac
-    allow_match = list()
+    # allow_match = list()
+    # import pydevd_pycharm
+    # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+    allow_match = [list() * len(req_permissions)]
+    actual_index = 0
     for req_action, req_resources in req_permissions.items():
         agent_expand = False
-        role_expand = False
+        role_policy_expand = False
         for req_resource in req_resources:
             try:
                 user_resources = user_permissions[req_action]
@@ -157,25 +175,26 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
                     if req_resource.split(':')[-1] != '*' and req_resource.split(':')[-1] not in agents:
                         final_user_permissions.add(req_resource.split(':')[-1])
                 # Provisional
-                elif m.group(1) == 'role:id':
-                    if not role_expand:
-                        _role_expand_permissions(mode, user_resources)
-                        role_expand = True
-                    action = 'role:id'
+                elif m.group(1) == 'role:id' or m.group(1) == 'policy:id':
+                    if not role_policy_expand:
+                        _role_policy_expand_permissions(mode, user_resources, m.group(1))
+                        role_policy_expand = True
+                    action = m.group(1)
                 final_user_permissions.update(user_resources[action]['allow'] - user_resources[action]['deny'])
                 reqs = user_resources[action]['allow'] if req_resource.split(':')[-1] == '*' else [req_resource]
                 for req in reqs:
                     split_req = req.split(':')[-1]
                     if split_req in final_user_permissions:
-                        allow_match.append(split_req)
+                        allow_match[actual_index].append(split_req)
             except KeyError:
                 if mode:  # For black mode, if the resource is not specified, it will be allow
                     allow_match.append('*')
                     break
+        actual_index += 1
     return allow_match
 
 
-def expose_resources(actions: list = None, resources: list = None, target_param: str = None):
+def expose_resources(actions: list = None, resources: list = None, target_param: list = None):
     """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
 
     :param actions: List of actions exposed by the framework function
@@ -188,11 +207,14 @@ def expose_resources(actions: list = None, resources: list = None, target_param:
         def wrapper(*args, **kwargs):
             req_permissions = _get_required_permissions(actions=actions, resources=resources, **kwargs)
             allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
-            if len(allow) > 0:
-                del kwargs['rbac']
-                kwargs[target_param] = allow
-                return func(*args, **kwargs)
-            else:
-                raise WazuhError(4000)
+            del kwargs['rbac']
+            for index, target in enumerate(target_param):
+                try:
+                    if len(allow[index]) == 0:
+                        raise Exception
+                    kwargs[target] = allow[index]
+                except Exception:
+                    raise WazuhError(4000)
+            return func(*args, **kwargs)
         return wrapper
     return decorator
