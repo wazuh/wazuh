@@ -116,7 +116,7 @@ def delete_user(username: str):
     return 'User \'{}\' deleted correctly'.format(username)
 
 
-@expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'], target_param='role_ids')
+@expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'], target_param=['role_ids'])
 def get_role(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Returns information from all system roles, does not return information from its associated policies
@@ -150,7 +150,7 @@ def get_role(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
                          offset=offset, limit=limit)
 
 
-@expose_resources(actions=['security:read'], resources=['role:id:*'], target_param='role_ids')
+@expose_resources(actions=['security:read'], resources=['role:id:*'], target_param=['role_ids'])
 def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Returns information from all system roles, does not return information from its associated policies
@@ -179,7 +179,7 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
                          offset=offset, limit=limit)
 
 
-@expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'], target_param='role_ids')
+@expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'], target_param=['role_ids'])
 def remove_role(role_ids):
     """Removes a certain role from the system
 
@@ -201,7 +201,7 @@ def remove_role(role_ids):
     return "Roles {} correctly deleted".format(', '.join(affected_items))
 
 
-@expose_resources(actions=['security:delete'], resources=['role:id:*'], target_param='role_ids')
+@expose_resources(actions=['security:delete'], resources=['role:id:*'], target_param=['role_ids'])
 def remove_roles(role_ids=None):
     """Removes a list of roles from the system
 
@@ -235,7 +235,7 @@ def add_role(name=None, rule=None):
     return rm.get_role(name=name).to_dict()
 
 
-@expose_resources(actions=['security:update'], resources=['role:id:{role_id}'], target_param='role_id')
+@expose_resources(actions=['security:update'], resources=['role:id:{role_id}'], target_param=['role_id'])
 def update_role(role_id=None, name=None, rule=None):
     """Updates a role in the system
 
@@ -261,7 +261,7 @@ def update_role(role_id=None, name=None, rule=None):
     return rm.get_role_id(role_id=role_id[0]).to_dict()
 
 
-@expose_resources(actions=['security:read'], resources=['policy:id:{policy_ids}'], target_param='policy_ids')
+@expose_resources(actions=['security:read'], resources=['policy:id:{policy_ids}'], target_param=['policy_ids'])
 def get_policy(policy_ids, offset=0, limit=common.database_limit, sort_by=None,
                sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Returns the information of a certain policy
@@ -298,7 +298,7 @@ def get_policy(policy_ids, offset=0, limit=common.database_limit, sort_by=None,
                          offset=offset, limit=limit)
 
 
-@expose_resources(actions=['security:read'], resources=['policy:id:*'], target_param='policy_ids')
+@expose_resources(actions=['security:read'], resources=['policy:id:*'], target_param=['policy_ids'])
 def get_policies(policy_ids=None, offset=0, limit=common.database_limit, sort_by=None,
                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Here we will be able to obtain all policies
@@ -327,7 +327,7 @@ def get_policies(policy_ids=None, offset=0, limit=common.database_limit, sort_by
                          offset=offset, limit=limit)
 
 
-@expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'], target_param='policy_ids')
+@expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'], target_param=['policy_ids'])
 def remove_policy(policy_ids=None):
     """Removes a certain policy from the system
 
@@ -349,7 +349,7 @@ def remove_policy(policy_ids=None):
     return "Policies {} correctly deleted".format(', '.join(affected_items))
 
 
-@expose_resources(actions=['security:delete'], resources=['policy:id:*'], target_param='policy_ids')
+@expose_resources(actions=['security:delete'], resources=['policy:id:*'], target_param=['policy_ids'])
 def remove_policies(policy_ids=None):
     """Removes a list of policies from the system
 
@@ -383,7 +383,7 @@ def add_policy(name=None, policy=None):
     return pm.get_policy(name).to_dict()
 
 
-@expose_resources(actions=['security:update'], resources=['policy:id:{policy_id}'], target_param='policy_id')
+@expose_resources(actions=['security:update'], resources=['policy:id:{policy_id}'], target_param=['policy_id'])
 def update_policy(policy_id=None, name=None, policy=None):
     """Updates a policy in the system
 
@@ -409,15 +409,17 @@ def update_policy(policy_id=None, name=None, policy=None):
     return pm.get_policy_id(policy_id[0]).to_dict()
 
 
-def set_role_policy(role_id, policies_ids):
+@expose_resources(actions=['security:union_add'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
+                  target_param=['role_id', 'policy_ids'])
+def set_role_policy(role_id, policy_ids):
     """Create a relationship between a role and a policy
 
     :param role_id: The new role_id
-    :param policies_ids: List of policies ids
+    :param policy_ids: List of policies ids
     :return Role-Policies information.
     """
     with orm.RolesPoliciesManager() as rpm:
-        for policy_id in policies_ids:
+        for policy_id in policy_ids:
             role_policy = rpm.exist_role_policy(role_id, policy_id)
             if role_policy is True:
                 raise WazuhError(4011,
@@ -428,7 +430,7 @@ def set_role_policy(role_id, policies_ids):
                 raise WazuhError(4007, extra_message='Policy id ' + str(policy_id))
 
     with orm.RolesPoliciesManager() as rpm:
-        for policy_id in policies_ids:
+        for policy_id in policy_ids:
             status = rpm.add_policy_to_role(role_id=role_id, policy_id=policy_id)
             if status == SecurityError.ADMIN_RESOURCES:
                 raise WazuhError(4008)
@@ -436,15 +438,17 @@ def set_role_policy(role_id, policies_ids):
     return get_role(role_ids=role_id)
 
 
-def remove_role_policy(role_id, policies_ids):
+@expose_resources(actions=['security:union_remove'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
+                  target_param=['role_id', 'policy_ids'])
+def remove_role_policy(role_id, policy_ids):
     """Removes a relationship between a role and a policy
 
     :param role_id: The new role_id
-    :param policies_ids: List of policies ids
+    :param policy_ids: List of policies ids
     :return Result of operation.
     """
     with orm.RolesPoliciesManager() as rpm:
-        for policy_id in policies_ids:
+        for policy_id in policy_ids:
             role_policy = rpm.exist_role_policy(role_id, policy_id)
             if not role_policy:
                 raise WazuhError(4010,
@@ -455,7 +459,7 @@ def remove_role_policy(role_id, policies_ids):
                 raise WazuhError(4007, extra_message='Policy id ' + str(policy_id))
 
     with orm.RolesPoliciesManager() as rpm:
-        for policy_id in policies_ids:
+        for policy_id in policy_ids:
             status = rpm.remove_policy_in_role(role_id=role_id, policy_id=policy_id)
             if status == SecurityError.ADMIN_RESOURCES:
                 raise WazuhError(4008)

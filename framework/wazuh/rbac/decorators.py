@@ -152,6 +152,10 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     """
     mode, user_permissions = rbac
     allow_match = list()
+    import pydevd_pycharm
+    pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+    allow_match = [list() * len(req_permissions)]
+    actual_index = 0
     for req_action, req_resources in req_permissions.items():
         agent_expand = False
         role_policy_expand = False
@@ -181,15 +185,16 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
                 for req in reqs:
                     split_req = req.split(':')[-1]
                     if split_req in final_user_permissions:
-                        allow_match.append(split_req)
+                        allow_match[actual_index].append(split_req)
             except KeyError:
                 if mode:  # For black mode, if the resource is not specified, it will be allow
                     allow_match.append('*')
                     break
+        actual_index += 1
     return allow_match
 
 
-def expose_resources(actions: list = None, resources: list = None, target_param: str = None):
+def expose_resources(actions: list = None, resources: list = None, target_param: list = None):
     """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
 
     :param actions: List of actions exposed by the framework function
@@ -204,7 +209,8 @@ def expose_resources(actions: list = None, resources: list = None, target_param:
             allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
             if len(allow) > 0:
                 del kwargs['rbac']
-                kwargs[target_param] = allow
+                for index, target in enumerate(target_param):
+                    kwargs[target] = allow[index]
                 return func(*args, **kwargs)
             else:
                 raise WazuhError(4000)
