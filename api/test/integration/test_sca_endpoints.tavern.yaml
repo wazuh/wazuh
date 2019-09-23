@@ -61,7 +61,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        offset: 2
+        offset: 1
         limit: 1
     response:
       status_code: 200
@@ -131,7 +131,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        q: score>50
+        q: score>40
     response:
       status_code: 200
       body:
@@ -158,7 +158,7 @@ stages:
         title: !anystr
         type: !anystr
 
-  - name: Parameters -> name=System audit for SSH hardening,limit=1
+  - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/000"
       method: GET
@@ -166,7 +166,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        name: System audit for SSH hardening
+        name: CIS benchmark for Debian/Linux 9 L2
     response:
       status_code: 200
       body:
@@ -174,9 +174,9 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_agent_result_000
-              name: System audit for SSH hardening
+              name: CIS benchmark for Debian/Linux 9 L2
 
-  - name: Parameters -> name=System audit for SSH hardening,limit=1
+  - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/000"
       method: GET
@@ -184,7 +184,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        references: https://www.ssh.com/ssh/
+        references: https://www.cisecurity.org/cis-benchmarks/
     response:
       status_code: 200
       body:
@@ -192,16 +192,16 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_agent_result_000
-              references: https://www.ssh.com/ssh/
+              references: https://www.cisecurity.org/cis-benchmarks/
 
-  - name: Parameters -> description=Guidance for establishing a secure configuration for password vulnerabilities.,limit=1
+  - name: Parameters -> description=This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/000"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        description: Guidance for establishing a secure configuration for password vulnerabilities.
+        description: This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.
         limit: 1
     response:
       status_code: 200
@@ -210,16 +210,16 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_agent_result_000
-              description: Guidance for establishing a secure configuration for password vulnerabilities.
+              description: !anystr
 
 ---
-test_name: GET /sca/000/checks/system_audit_pw
+test_name: GET /sca/000/checks/cis_debian9_L1
 
 stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -230,7 +230,7 @@ stages:
 
   - name: Parameters -> limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -253,16 +253,16 @@ stages:
               result: !anystr
               compliance: !anything
               rules: !anything
-              references: !anystr
+#              references: !anystr
 
   - name: Parameters -> limit=4
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 4
+        limit: 1
     response:
       status_code: 200
       body:
@@ -280,7 +280,7 @@ stages:
 
   - name: Parameters -> offset=5,limit=3
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -301,7 +301,7 @@ stages:
 
   - name: Parameters -> sort=-id,limit=2
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -321,7 +321,7 @@ stages:
 
   - name: Parameters -> search=passwd,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -335,14 +335,14 @@ stages:
           totalItems: !anyint
           - <<: *sca_check_result_000
 
-  - name: Parameters -> q=id=13000
+  - name: Parameters -> q=id=3098
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        q: id=13000
+        q: id=3098
     response:
       status_code: 200
       body:
@@ -353,7 +353,7 @@ stages:
 
   - name: Parameters -> result=failed,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -370,7 +370,7 @@ stages:
 
   - name: Parameters -> file=/etc/shadow,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -387,7 +387,7 @@ stages:
 
   - name: Parameters -> limit=2500
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -403,15 +403,15 @@ stages:
         title: !anystr
         type: !anystr
 
-  - name: Parameters -> references=https://www.thegeekdiary.com/understanding-etclogin-defs-file,limit=1
+  - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        references: https://www.thegeekdiary.com/understanding-etclogin-defs-file
+        title: Ensure shadow group is empty
     response:
       status_code: 200
       body:
@@ -419,17 +419,17 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_check_result_000
-              references: https://www.thegeekdiary.com/understanding-etclogin-defs-file
+              title: Ensure shadow group is empty
 
-  - name: Parameters -> title=Ensure password hashing algorithm is SHA-512,limit=1
+  - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        title: Ensure password hashing algorithm is SHA-512
+        remediation: Remove any legacy + entries from /etc/group if they exist.
     response:
       status_code: 200
       body:
@@ -437,29 +437,10 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_check_result_000
-              title: Ensure password hashing algorithm is SHA-512
-
-  - name: Parameters -> remediation=Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs.,limit=1
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        remediation: Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs.
-    response:
-      status_code: 200
-      body:
-        data:
-          totalItems: !anyint
-          items:
-            - <<: *sca_check_result_000
-              remediation: Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs.
-
+              remediation: Remove any legacy + entries from /etc/group if they exist.
 ---
-test_name: GET /sca/001
 
+test_name: GET /sca/001
 
 stages:
 
@@ -510,7 +491,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        offset: 2
+        offset: 1
         limit: 1
     response:
       status_code: 200
@@ -572,7 +553,7 @@ stages:
           items:
             - <<: *sca_agent_result_001
 
-  - name: Parameters -> q=score=33,limit=1
+  - name: Parameters -> q=score>50,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
@@ -580,7 +561,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        q: score=33
+        q: score>40
     response:
       status_code: 200
       body:
@@ -607,7 +588,7 @@ stages:
         title: !anystr
         type: !anystr
 
-  - name: Parameters -> name=System audit for password-related vulnerabilities,limit=1
+  - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
@@ -615,7 +596,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        name: System audit for password-related vulnerabilities
+        name: CIS benchmark for Debian/Linux 9 L2
     response:
       status_code: 200
       body:
@@ -623,16 +604,34 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_agent_result_001
-              name: System audit for password-related vulnerabilities
+              name: CIS benchmark for Debian/Linux 9 L2
 
-  - name: Parameters -> description=Guidance for establishing a secure configuration for password vulnerabilities.,limit=1
+  - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        description: Guidance for establishing a secure configuration for password vulnerabilities.
+        limit: 1
+        references: https://www.cisecurity.org/cis-benchmarks/
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result_001
+              references: https://www.cisecurity.org/cis-benchmarks/
+
+  - name: Parameters -> description=This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.,limit=1
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        description: This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.
         limit: 1
     response:
       status_code: 200
@@ -641,18 +640,16 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_agent_result_001
-              description: Guidance for establishing a secure configuration for password vulnerabilities.
+              description: !anystr
 
 ---
----
----
-test_name: GET /sca/001/checks/system_audit
+test_name: GET /sca/001/checks/cis_debian9_L1
 
 stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -663,7 +660,7 @@ stages:
 
   - name: Parameters -> limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -676,25 +673,26 @@ stages:
           totalItems: !anyint
           items:
             - &sca_check_result_001
+              remediation: !anystr
+              rationale: !anystr
               title: !anystr
               policy_id: !anystr
+              file: !anystr
+              description: !anystr
               id: !anyint
               result: !anystr
               compliance: !anything
               rules: !anything
-              references: !anystr
-              directory: !anystr
-              status: !anystr
-              reason: !anystr
+#              references: !anystr
 
-  - name: Parameters -> limit=2
+  - name: Parameters -> limit=4
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2
+        limit: 1
     response:
       status_code: 200
       body:
@@ -702,15 +700,38 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_check_result_001
-            - <<: *sca_check_result_001
               rules:
                 - &rule_object_001
                   rule: !anystr
                   type: !anystr
+                - <<: *rule_object_001
+                - <<: *rule_object_001
+                - <<: *rule_object_001
+
+  - name: Parameters -> offset=5,limit=3
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        offset: 5
+        limit: 3
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result_001
+              rules:
+                - <<: *rule_object_001
+                - <<: *rule_object_001
+                - <<: *rule_object_001
 
   - name: Parameters -> sort=-id,limit=2
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -726,11 +747,11 @@ stages:
             - <<: *sca_check_result_001
               rules:
                 - <<: *rule_object_001
-            - <<: *sca_check_result_001
+                - <<: *rule_object_001
 
   - name: Parameters -> search=passwd,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -744,14 +765,14 @@ stages:
           totalItems: !anyint
           - <<: *sca_check_result_001
 
-  - name: Parameters -> q=id=13001
+  - name: Parameters -> q=id=3098
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        q: id=1015
+        q: id=3098
     response:
       status_code: 200
       body:
@@ -760,9 +781,43 @@ stages:
           items:
             - <<: *sca_check_result_001
 
+  - name: Parameters -> result=failed,limit=1
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        result: failed
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - result: failed
+
+  - name: Parameters -> file=/etc/shadow,limit=1
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        file: /etc/shadow
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - file: /etc/shadow
+
   - name: Parameters -> limit=2500
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -778,15 +833,15 @@ stages:
         title: !anystr
         type: !anystr
 
-  - name: Parameters -> references=https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html,limit=1
+  - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        references: https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
+        title: Ensure shadow group is empty
     response:
       status_code: 200
       body:
@@ -794,17 +849,17 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_check_result_001
-              references: https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
+              title: Ensure shadow group is empty
 
-  - name: Parameters -> title=Web vulnerability - .htaccess file compromised - auto append,limit=1
+  - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        title: Web vulnerability - .htaccess file compromised - auto append
+        remediation: Remove any legacy + entries from /etc/group if they exist.
     response:
       status_code: 200
       body:
@@ -812,11 +867,9 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_check_result_001
-              title: Web vulnerability - .htaccess file compromised - auto append
-
+              remediation: Remove any legacy + entries from /etc/group if they exist.
 ---
 test_name: GET /sca/002
-
 
 stages:
 
@@ -867,7 +920,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        offset: 2
+        offset: 1
         limit: 1
     response:
       status_code: 200
@@ -929,7 +982,7 @@ stages:
           items:
             - <<: *sca_agent_result_002
 
-  - name: Parameters -> q=score=33,limit=1
+  - name: Parameters -> q=score>50,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
@@ -937,7 +990,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        q: score=33
+        q: score>40
     response:
       status_code: 200
       body:
@@ -964,7 +1017,7 @@ stages:
         title: !anystr
         type: !anystr
 
-  - name: Parameters -> name=System audit for password-related vulnerabilities,limit=1
+  - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
@@ -972,7 +1025,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        name: System audit for password-related vulnerabilities
+        name: CIS benchmark for Debian/Linux 9 L2
     response:
       status_code: 200
       body:
@@ -980,16 +1033,34 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_agent_result_002
-              name: System audit for password-related vulnerabilities
+              name: CIS benchmark for Debian/Linux 9 L2
 
-  - name: Parameters -> description=Guidance for establishing a secure configuration for password vulnerabilities.,limit=1
+  - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        description: Guidance for establishing a secure configuration for password vulnerabilities.
+        limit: 1
+        references: https://www.cisecurity.org/cis-benchmarks/
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result_002
+              references: https://www.cisecurity.org/cis-benchmarks/
+
+  - name: Parameters -> description=This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.,limit=1
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        description: This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.
         limit: 1
     response:
       status_code: 200
@@ -998,16 +1069,16 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_agent_result_002
-              description: Guidance for establishing a secure configuration for password vulnerabilities.
+              description: !anystr
 
 ---
-test_name: GET /sca/002/checks/system_audit
+test_name: GET /sca/002/checks/cis_debian9_L1
 
 stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1018,7 +1089,7 @@ stages:
 
   - name: Parameters -> limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1031,25 +1102,26 @@ stages:
           totalItems: !anyint
           items:
             - &sca_check_result_002
+              remediation: !anystr
+              rationale: !anystr
               title: !anystr
               policy_id: !anystr
+              file: !anystr
+              description: !anystr
               id: !anyint
               result: !anystr
               compliance: !anything
               rules: !anything
-              references: !anystr
-              directory: !anystr
-              status: !anystr
-              reason: !anystr
+#              references: !anystr
 
-  - name: Parameters -> limit=2
+  - name: Parameters -> limit=4
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2
+        limit: 1
     response:
       status_code: 200
       body:
@@ -1057,15 +1129,38 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_check_result_002
-            - <<: *sca_check_result_002
               rules:
                 - &rule_object_002
                   rule: !anystr
                   type: !anystr
+                - <<: *rule_object_002
+                - <<: *rule_object_002
+                - <<: *rule_object_002
+
+  - name: Parameters -> offset=5,limit=3
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        offset: 5
+        limit: 3
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result_002
+              rules:
+                - <<: *rule_object_002
+                - <<: *rule_object_002
+                - <<: *rule_object_002
 
   - name: Parameters -> sort=-id,limit=2
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1081,11 +1176,11 @@ stages:
             - <<: *sca_check_result_002
               rules:
                 - <<: *rule_object_002
-            - <<: *sca_check_result_002
+                - <<: *rule_object_002
 
   - name: Parameters -> search=passwd,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1099,14 +1194,14 @@ stages:
           totalItems: !anyint
           - <<: *sca_check_result_002
 
-  - name: Parameters -> q=id=13002
+  - name: Parameters -> q=id=3098
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        q: id=1015
+        q: id=3098
     response:
       status_code: 200
       body:
@@ -1115,9 +1210,43 @@ stages:
           items:
             - <<: *sca_check_result_002
 
+  - name: Parameters -> result=failed,limit=1
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        result: failed
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - result: failed
+
+  - name: Parameters -> file=/etc/shadow,limit=1
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        file: /etc/shadow
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - file: /etc/shadow
+
   - name: Parameters -> limit=2500
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1133,15 +1262,15 @@ stages:
         title: !anystr
         type: !anystr
 
-  - name: Parameters -> references=https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html,limit=1
+  - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        references: https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
+        title: Ensure shadow group is empty
     response:
       status_code: 200
       body:
@@ -1149,17 +1278,17 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_check_result_002
-              references: https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
+              title: Ensure shadow group is empty
 
-  - name: Parameters -> title=Web vulnerability - .htaccess file compromised - auto append,limit=1
+  - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        title: Web vulnerability - .htaccess file compromised - auto append
+        remediation: Remove any legacy + entries from /etc/group if they exist.
     response:
       status_code: 200
       body:
@@ -1167,11 +1296,9 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_check_result_002
-              title: Web vulnerability - .htaccess file compromised - auto append
-
+              remediation: Remove any legacy + entries from /etc/group if they exist.
 ---
 test_name: GET /sca/003
-
 
 stages:
 
@@ -1222,7 +1349,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        offset: 2
+        offset: 1
         limit: 1
     response:
       status_code: 200
@@ -1284,7 +1411,7 @@ stages:
           items:
             - <<: *sca_agent_result_003
 
-  - name: Parameters -> q=score=33,limit=1
+  - name: Parameters -> q=score>50,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
@@ -1292,7 +1419,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        q: score=33
+        q: score>40
     response:
       status_code: 200
       body:
@@ -1319,7 +1446,7 @@ stages:
         title: !anystr
         type: !anystr
 
-  - name: Parameters -> name=System audit for password-related vulnerabilities,limit=1
+  - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
@@ -1327,7 +1454,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        name: System audit for password-related vulnerabilities
+        name: CIS benchmark for Debian/Linux 9 L2
     response:
       status_code: 200
       body:
@@ -1335,16 +1462,34 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_agent_result_003
-              name: System audit for password-related vulnerabilities
+              name: CIS benchmark for Debian/Linux 9 L2
 
-  - name: Parameters -> description=Guidance for establishing a secure configuration for password vulnerabilities.,limit=1
+  - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        description: Guidance for establishing a secure configuration for password vulnerabilities.
+        limit: 1
+        references: https://www.cisecurity.org/cis-benchmarks/
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result_003
+              references: https://www.cisecurity.org/cis-benchmarks/
+
+  - name: Parameters -> description=This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.,limit=1
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        description: This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.
         limit: 1
     response:
       status_code: 200
@@ -1353,16 +1498,16 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_agent_result_003
-              description: Guidance for establishing a secure configuration for password vulnerabilities.
+              description: !anystr
 
 ---
-test_name: GET /sca/003/checks/system_audit
+test_name: GET /sca/003/checks/cis_debian9_L1
 
 stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1373,7 +1518,7 @@ stages:
 
   - name: Parameters -> limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1386,25 +1531,26 @@ stages:
           totalItems: !anyint
           items:
             - &sca_check_result_003
+              remediation: !anystr
+              rationale: !anystr
               title: !anystr
               policy_id: !anystr
+              file: !anystr
+              description: !anystr
               id: !anyint
               result: !anystr
               compliance: !anything
               rules: !anything
-              references: !anystr
-              directory: !anystr
-              status: !anystr
-              reason: !anystr
+#              references: !anystr
 
-  - name: Parameters -> limit=2
+  - name: Parameters -> limit=4
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2
+        limit: 1
     response:
       status_code: 200
       body:
@@ -1412,15 +1558,38 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_check_result_003
-            - <<: *sca_check_result_003
               rules:
                 - &rule_object_003
                   rule: !anystr
                   type: !anystr
+                - <<: *rule_object_003
+                - <<: *rule_object_003
+                - <<: *rule_object_003
+
+  - name: Parameters -> offset=5,limit=3
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        offset: 5
+        limit: 3
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result_003
+              rules:
+                - <<: *rule_object_003
+                - <<: *rule_object_003
+                - <<: *rule_object_003
 
   - name: Parameters -> sort=-id,limit=2
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1436,11 +1605,11 @@ stages:
             - <<: *sca_check_result_003
               rules:
                 - <<: *rule_object_003
-            - <<: *sca_check_result_003
+                - <<: *rule_object_003
 
   - name: Parameters -> search=passwd,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1454,14 +1623,14 @@ stages:
           totalItems: !anyint
           - <<: *sca_check_result_003
 
-  - name: Parameters -> q=id=13003
+  - name: Parameters -> q=id=3098
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        q: id=1015
+        q: id=3098
     response:
       status_code: 200
       body:
@@ -1470,9 +1639,43 @@ stages:
           items:
             - <<: *sca_check_result_003
 
+  - name: Parameters -> result=failed,limit=1
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        result: failed
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - result: failed
+
+  - name: Parameters -> file=/etc/shadow,limit=1
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        file: /etc/shadow
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - file: /etc/shadow
+
   - name: Parameters -> limit=2500
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1488,15 +1691,15 @@ stages:
         title: !anystr
         type: !anystr
 
-  - name: Parameters -> references=https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html,limit=1
+  - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        references: https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
+        title: Ensure shadow group is empty
     response:
       status_code: 200
       body:
@@ -1504,17 +1707,17 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_check_result_003
-              references: https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
+              title: Ensure shadow group is empty
 
-  - name: Parameters -> title=Web vulnerability - .htaccess file compromised - auto append,limit=1
+  - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/system_audit"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        title: Web vulnerability - .htaccess file compromised - auto append
+        remediation: Remove any legacy + entries from /etc/group if they exist.
     response:
       status_code: 200
       body:
@@ -1522,4 +1725,5 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_check_result_003
-              title: Web vulnerability - .htaccess file compromised - auto append
+              remediation: Remove any legacy + entries from /etc/group if they exist.
+---

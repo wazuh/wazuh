@@ -28,7 +28,7 @@ stages:
     response:
       status_code: 200
       body:
-        message: Command sent.
+        message: !anystr
 
     # PUT /active-response/002
   - name: Send a message to an agent (Status=Active)
@@ -44,7 +44,7 @@ stages:
     response:
       status_code: 200
       body:
-        message: Command sent.
+        message: !anystr
 
     # PUT /active-response/009
   - name: Try to send a message to an agent (status=disconnected/never_connected)
@@ -152,7 +152,7 @@ stages:
     response:
         status_code: 200
         body:
-          message: "Command sent to all agents."
+          message: !anystr
 
     # PUT /active-response
   - name: Try to send a message to all agents, malformed body
