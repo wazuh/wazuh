@@ -165,7 +165,7 @@ def get_roles(role_ids=None, pretty=False, wait_for_complete=False, offset=0, li
     :param search: Looks for elements with the specified string
     :return Roles information
     """
-    function = security.get_roles if role_ids is None else security.get_role
+    func = security.get_roles if role_ids is None else security.get_role
     rbac = get_permissions(connexion.request.headers['Authorization'])
     f_kwargs = {'role_ids': role_ids, 'rbac': rbac, 'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
@@ -174,7 +174,7 @@ def get_roles(role_ids=None, pretty=False, wait_for_complete=False, offset=0, li
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
                 }
 
-    dapi = DistributedAPI(f=function,
+    dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -230,11 +230,11 @@ def remove_roles(role_ids=None, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     :return Two list with deleted roles and not deleted roles
     """
-    function = security.remove_roles if role_ids is None else security.remove_role
+    func = security.remove_roles if role_ids is None else security.remove_role
     rbac = get_permissions(connexion.request.headers['Authorization'])
     f_kwargs = {'rbac': rbac, 'role_ids': role_ids}
 
-    dapi = DistributedAPI(f=function,
+    dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -296,7 +296,7 @@ def get_policies(policy_ids=None, pretty=False, wait_for_complete=False, offset=
     :param search: Looks for elements with the specified string
     :return Policies information
     """
-    function = security.get_policies if policy_ids is None else security.get_policy
+    func = security.get_policies if policy_ids is None else security.get_policy
     rbac = get_permissions(connexion.request.headers['Authorization'])
     f_kwargs = {'policy_ids': policy_ids, 'rbac': rbac, 'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
@@ -305,7 +305,7 @@ def get_policies(policy_ids=None, pretty=False, wait_for_complete=False, offset=
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
                 }
 
-    dapi = DistributedAPI(f=function,
+    dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -359,11 +359,11 @@ def remove_policies(policy_ids=None, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     :return Two list with deleted roles and not deleted roles
     """
-    function = security.remove_policies if policy_ids is None else security.remove_policy
+    func = security.remove_policies if policy_ids is None else security.remove_policy
     rbac = get_permissions(connexion.request.headers['Authorization'])
     f_kwargs = {'rbac': rbac, 'policy_ids': policy_ids}
 
-    dapi = DistributedAPI(f=function,
+    dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

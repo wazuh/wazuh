@@ -361,7 +361,7 @@ class RBAChecker:
             },
             {
                 "actions": ["security:update"],
-                "resources": ["policy:id:1", "policy:id:2"],
+                "resources": ["policy:id:1", "policy:id:2", "policy:id:3"],
                 "effect": "allow"
             }
         ]

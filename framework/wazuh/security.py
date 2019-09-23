@@ -415,24 +415,42 @@ def set_role_policy(role_id, policy_ids):
     :param policy_ids: List of policies ids
     :return Role-Policies information.
     """
+    affected_items = list()
+    failed_items = list()
     with orm.RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
-            role_policy = rpm.exist_role_policy(role_id, policy_id)
+            role_policy = rpm.exist_role_policy(role_id[0], policy_id)
             if role_policy is True:
-                raise WazuhError(4011,
-                                 extra_message='Role id ' + str(role_id) + ' - ' + 'Policy id ' + str(policy_id))
+                failed_items.append(
+                    create_exception_dic(
+                        '{}: {}'.format(role_id[0], policy_id),
+                        WazuhError(4011,
+                                   extra_message='Role id ' + str(role_id[0]) + ' - ' + 'Policy id ' + str(policy_id))))
             elif role_policy == SecurityError.ROLE_NOT_EXIST:
-                raise WazuhError(4002, extra_message='Role id ' + str(role_id))
+                failed_items.append(
+                    create_exception_dic(
+                        '{}: {}'.format(role_id[0], policy_id),
+                        WazuhError(4002,
+                                   extra_message='Role id ' + str(role_id[0]))))
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
-                raise WazuhError(4007, extra_message='Policy id ' + str(policy_id))
+                failed_items.append(
+                    create_exception_dic(
+                        '{}: {}'.format(role_id[0], policy_id),
+                        WazuhError(4007,
+                                   extra_message='Policy id ' + str(policy_id))))
 
     with orm.RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
-            status = rpm.add_policy_to_role(role_id=role_id, policy_id=policy_id)
+            status = rpm.add_policy_to_role(role_id=role_id[0], policy_id=policy_id)
             if status == SecurityError.ADMIN_RESOURCES:
-                raise WazuhError(4008)
+                failed_items.append(
+                    create_exception_dic(
+                        '{}: {}'.format(role_id[0], policy_id),
+                        WazuhError(4008)))
+            else:
+                affected_items.append('{}: {}'.format(role_id[0], policy_id))
 
-    return get_role(role_ids=role_id)
+    return 'Affected pairs role: policy -> {}'.format(affected_items)
 
 
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
@@ -444,21 +462,39 @@ def remove_role_policy(role_id, policy_ids):
     :param policy_ids: List of policies ids
     :return Result of operation.
     """
+    affected_items = list()
+    failed_items = list()
     with orm.RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
-            role_policy = rpm.exist_role_policy(role_id, policy_id)
+            role_policy = rpm.exist_role_policy(role_id[0], policy_id)
             if not role_policy:
-                raise WazuhError(4010,
-                                 extra_message='Role id ' + str(role_id) + ' - ' + 'Policy id ' + str(policy_id))
+                failed_items.append(
+                    create_exception_dic(
+                        '{}: {}'.format(role_id[0], policy_id),
+                        WazuhError(4010,
+                                   extra_message='Role id ' + str(role_id[0]) + ' - ' + 'Policy id ' + str(policy_id))))
             elif role_policy == SecurityError.ROLE_NOT_EXIST:
-                raise WazuhError(4002, extra_message='Role id ' + str(role_id))
+                failed_items.append(
+                    create_exception_dic(
+                        '{}: {}'.format(role_id[0], policy_id),
+                        WazuhError(4002,
+                                   extra_message='Role id ' + str(role_id[0]))))
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
-                raise WazuhError(4007, extra_message='Policy id ' + str(policy_id))
+                failed_items.append(
+                    create_exception_dic(
+                        '{}: {}'.format(role_id[0], policy_id),
+                        WazuhError(4007,
+                                   extra_message='Policy id ' + str(policy_id))))
 
     with orm.RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
-            status = rpm.remove_policy_in_role(role_id=role_id, policy_id=policy_id)
+            status = rpm.remove_policy_in_role(role_id=role_id[0], policy_id=policy_id)
             if status == SecurityError.ADMIN_RESOURCES:
-                raise WazuhError(4008)
+                failed_items.append(
+                    create_exception_dic(
+                        '{}: {}'.format(role_id[0], policy_id),
+                        WazuhError(4008)))
+            else:
+                affected_items.append('{}: {}'.format(role_id[0], policy_id))
 
-    return get_role(role_ids=role_id)
+    return 'Affected pairs role: policy -> {}'.format(affected_items)
