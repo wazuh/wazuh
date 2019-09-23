@@ -92,7 +92,9 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE file BETWEEN ? and ? ORDER BY file;",
     [WDB_STMT_FIM_DELETE_AROUND] = "DELETE FROM fim_entry WHERE file < ? OR file > ?;",
     [WDB_STMT_FIM_DELETE_RANGE] = "DELETE FROM fim_entry WHERE file > ? AND file < ?;",
-    [WDB_STMT_FIM_CLEAR] = "DELETE FROM fim_entry;"
+    [WDB_STMT_FIM_CLEAR] = "DELETE FROM fim_entry;",
+    [WDB_STMT_SYNC_UPDATE_ATTEMPT] = "UPDATE sync_info SET last_attempt = ?, n_attempts = n_attempts + 1 WHERE component = ?;",
+    [WDB_STMT_SYNC_UPDATE_COMPLETION] = "UPDATE sync_info SET last_attempt = ?, last_completion = ?, n_attempts = n_attempts + 1, n_completions = n_completions + 1 WHERE component = ?;",
 };
 
 sqlite3 *wdb_global = NULL;

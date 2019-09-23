@@ -285,11 +285,20 @@ CREATE TABLE IF NOT EXISTS sca_check_compliance (
 
 CREATE INDEX IF NOT EXISTS comp_id_check_index ON sca_check_compliance (id_check);
 
+CREATE TABLE IF NOT EXISTS sync_info (
+    component TEXT PRIMARY KEY,
+    last_attempt INTEGER DEFAULT 0,
+    last_completion INTEGER DEFAULT 0,
+    n_attempts INTEGER DEFAULT 0,
+    n_completions INTEGER DEFAULT 0
+);
+
 BEGIN;
 
 INSERT INTO metadata (key, value) VALUES ('db_version', '3');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
+INSERT INTO sync_info (component) VALUES ('fim');
 
 COMMIT;
 

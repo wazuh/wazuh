@@ -28,4 +28,13 @@ CREATE TABLE fim_entry (
     checksum TEXT
 );
 
-UPDATE metadata SET value = 3 WHERE key = 'db_version';
+CREATE TABLE IF NOT EXISTS sync_info (
+    component TEXT PRIMARY KEY,
+    last_attempt INTEGER DEFAULT 0,
+    last_completion INTEGER DEFAULT 0,
+    n_attempts INTEGER DEFAULT 0,
+    n_completions INTEGER DEFAULT 0
+);
+
+INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 3);
+INSERT INTO sync_info (component) VALUES ('fim');
