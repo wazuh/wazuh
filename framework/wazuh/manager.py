@@ -99,7 +99,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
                 else:
                     continue
             # We transform local time (ossec.log) to UTC with ISO8601 maintaining time integrity
-            log_line = {'timestamp': log_date.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+            log_line = {'timestamp': log_date.astimezone(timezone.utc),
                         'tag': log_category, 'level': level, 'description': description}
 
             if type_log == 'all':
