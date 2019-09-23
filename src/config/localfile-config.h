@@ -48,6 +48,7 @@ typedef struct _logtarget {
 typedef struct _logreader {
     off_t size;
     int ign;
+    dev_t dev;
 
 #ifdef WIN32
     HANDLE h;
