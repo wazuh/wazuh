@@ -1050,7 +1050,7 @@ int print_hash_tables() {
 #ifndef WIN32
     OSHashNode * hash_node;
     unsigned int inode_it = 0;
-    unsigned inode_items;
+    unsigned inode_items = 0;
     unsigned element_totali = 0;
 
     for (hash_node = OSHash_Begin(syscheck.fim_inode, &inode_it); hash_node; hash_node = OSHash_Next(syscheck.fim_inode, &inode_it, hash_node)) {
