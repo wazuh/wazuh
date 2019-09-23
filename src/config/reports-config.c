@@ -501,6 +501,12 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
     if(!rotation_config->ossec_log_json && ! rotation_config->ossec_log_plain) {
         rotation_config->ossec_log_plain = 1;
     }
+
+    if (rotation_config->min_size > 0 && rotation_config->max_size > 0) {
+        merror("'max_size' and 'min_size' options cannot be used together for log rotation.");
+        return OS_INVALID;
+    }
+
     return (0);
 }
 

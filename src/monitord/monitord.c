@@ -102,12 +102,6 @@ void Monitord()
     purge_rotation_list(mond.log_list_plain, mond.rotate);
     purge_rotation_list(mond.log_list_json, mond.rotate);
 
-    if (mond.min_size > 0 && mond.max_size > 0) {
-        mwarn("'max_size' and 'min_size' options cannot be used together for the same log rotation. Disabling 'min_size' option...");
-        mond.min_size = 0;
-        mond.min_size_rotate = 0;
-    }
-
     /* Main monitor loop */
     while (1) {
         tm = time(NULL);
