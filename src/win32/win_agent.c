@@ -133,12 +133,6 @@ int local_start()
     DWORD  threadID2;
     win_debug_level = getDefine_Int("windows", "debug", 0, 2);
 
-    /* To check if is valid server address */
-    bool is_valid = false;
-    int min_size = 0;
-    const char val_default1[] = "MANAGER_IP";
-    const char val_default2[] = "0.0.0.0";
-
     /* Start agent */
     agt = (agent *)calloc(1, sizeof(agent));
     if (!agt) {
@@ -179,18 +173,7 @@ int local_start()
     }
     minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
 
-    /* Check if is valid server addres */
-    int i;
-    for (i = 0; i < agt->rip_id; i++) {
-
-        if ( strcmp(agt->server[i].rip, val_default1) != 0
-            && strcmp(agt->server[i].rip, val_default2) != 0
-            && strlen(agt->server[i].rip) > min_size ){
-            is_valid = true;
-            break;
-        }
-    }
-
+    bool is_valid = Validate_Address(agt->server, agt->rip_id);
     if (!is_valid){
         merror(AG_INV_MNGIP);
         merror_exit(CLIENT_ERROR);

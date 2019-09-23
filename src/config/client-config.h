@@ -45,4 +45,11 @@ typedef struct _agent {
 /* Frees the Client struct  */
 void Free_Client(agent * config);
 
+/**
+ * @brief Check if address has default values
+ * @param servers Server(s) configuration block in agent ossec.conf
+ * @return Returnsrue if successful and false if not success
+ */
+bool Validate_Address(agent_server *servers, int num);
+
 #endif /* CAGENTD_H */

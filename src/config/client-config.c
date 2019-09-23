@@ -311,3 +311,20 @@ void Free_Client(agent * config){
         labels_free(config->labels);
     }
 }
+
+/* Check if is valid server addres */
+bool Validate_Address(agent_server *servers, int num)
+{
+    int i;
+    for (i = 0; i < num; i++) {
+
+        if ( strcmp(servers[i].rip, "MANAGER_IP") != 0
+            && strcmp(servers[i].rip, "0.0.0.0") != 0
+            && strlen(servers[i].rip) > 0 ){
+
+            return true;
+        }
+    }
+
+    return false;
+}
