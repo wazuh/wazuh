@@ -32,7 +32,6 @@ int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output){
         return 1;       
         break;
     case SQLITE_DONE:
-        snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", sqlite3_column_text(stmt, 0));
         w_mutex_unlock(&wdb->mutex);
         return 0;
         break;
