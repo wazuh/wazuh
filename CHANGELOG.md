@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.10.2]
+
+### Fixed
+
+- Fix error in Logcollector when reloading localfiles with timestamp wildcards. ([#3995](https://github.com/wazuh/wazuh/pull/3995))
+
 ## [v3.10.1]
 
 ### Fixed
