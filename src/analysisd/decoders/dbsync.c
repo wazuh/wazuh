@@ -136,7 +136,7 @@ end:
     free(response);
 }
 
-static void dispatch_save(dbsync_context_t * ctx) {
+static void dispatch_state(dbsync_context_t * ctx) {
     if (ctx->data == NULL) {
         merror("dbsync: Corrupt message: cannot get data member.");
         return;
@@ -243,8 +243,8 @@ void DispatchDBSync(dbsync_context_t * ctx, Eventinfo * lf) {
 
     if (strncmp(mtype, "integrity_check_", 16) == 0) {
         dispatch_check(ctx, mtype);
-    } else if (strcmp(mtype, "save") == 0) {
-        dispatch_save(ctx);
+    } else if (strcmp(mtype, "state") == 0) {
+        dispatch_state(ctx);
     } else if (strcmp(mtype, "integrity_clear") == 0) {
         dispatch_clear(ctx);
     } else {

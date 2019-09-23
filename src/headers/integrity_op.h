@@ -65,12 +65,12 @@ extern const char * INTEGRITY_COMMANDS[];
 char * dbsync_check_msg(const char * component, dbsync_msg msg, long id, const char * start, const char * top, const char * tail, const char * checksum);
 
 /**
- * @brief Create a data synchronization save message
+ * @brief Create a data synchronization state message
  *
  * Format:
  * {
  *   component:         string
- *   type:              "save"
+ *   type:              "state"
  *   data:              object
  * }
  *
@@ -79,6 +79,6 @@ char * dbsync_check_msg(const char * component, dbsync_msg msg, long id, const c
  * @post data is destroyed.
  * @return Pointer to dynamically allocated string.
  */
-char * dbsync_file_msg(const char * component, cJSON * data);
+char * dbsync_state_msg(const char * component, cJSON * data);
 
 #endif /* INTEGRITY_OP_H */
