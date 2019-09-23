@@ -8,5 +8,5 @@
     <network>yes</network>
     <packages>yes</packages>
     <ports all="no">no</ports>
-    <processes>no</processes>
+    <processes>yes</processes>
   </wodle>

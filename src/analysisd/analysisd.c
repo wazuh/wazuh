@@ -16,8 +16,11 @@
 #define ARGV0 "ossec-analysisd"
 #endif
 
-#include <time.h>
 #include "shared.h"
+#include <time.h>
+#if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#include <sys/sysctl.h>
+#endif
 #include "alerts/alerts.h"
 #include "alerts/getloglocation.h"
 #include "os_execd/execd.h"
@@ -37,6 +40,7 @@
 #include "labels.h"
 #include "state.h"
 #include "syscheck_op.h"
+#include "lists_make.h"
 
 #ifdef PRELUDE_OUTPUT_ENABLED
 #include "output/prelude.h"
@@ -547,6 +551,7 @@ int main_analysisd(int argc, char **argv)
                 free(Config.lists);
                 Config.lists = NULL;
             }
+            Lists_OP_MakeAll(0, 0);
         }
 
         {
