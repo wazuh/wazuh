@@ -31,6 +31,7 @@ void mitre_load(){
     cJSON *kill_chain_phase = NULL;
     cJSON *chain_phase = NULL;
     cJSON *arrayphases = NULL;
+    cJSON *string_tactic;
 
     /* Create hash table */
     mitre_table = OSHash_Create();
@@ -96,7 +97,34 @@ void mitre_load(){
                                 cJSON_ArrayForEach(kill_chain_phase, kill_chain_phases){
                                     cJSON_ArrayForEach(chain_phase, kill_chain_phase){
                                         if(strcmp(chain_phase->string,"phase_name") == 0){
-                                            cJSON_AddItemToArray(arrayphases, cJSON_Duplicate(chain_phase,1));
+                                            if(strcmp(chain_phase->valuestring,"privilege-escalation") == 0) {
+                                                string_tactic = cJSON_CreateString("Privilege Escalation");
+                                            } else if (strcmp(chain_phase->valuestring,"defense-evasion") == 0) {
+                                                string_tactic = cJSON_CreateString("Defense Evasion");
+                                            } else if (strcmp(chain_phase->valuestring,"persistence") == 0) {
+                                                string_tactic = cJSON_CreateString("Persistence");
+                                            } else if (strcmp(chain_phase->valuestring,"initial-access") == 0) {
+                                                string_tactic = cJSON_CreateString("Initial Access");
+                                            } else if (strcmp(chain_phase->valuestring,"discovery") == 0) {
+                                                string_tactic = cJSON_CreateString("Discovery");
+                                            } else if (strcmp(chain_phase->valuestring,"credential-access") == 0) {
+                                                string_tactic = cJSON_CreateString("Credential Access");
+                                            } else if (strcmp(chain_phase->valuestring,"execution") == 0) {
+                                                string_tactic = cJSON_CreateString("Execution");
+                                            } else if (strcmp(chain_phase->valuestring,"lateral-movement") == 0) {
+                                                string_tactic = cJSON_CreateString("Lateral Movement");
+                                            } else if (strcmp(chain_phase->valuestring,"collection") == 0) {
+                                                string_tactic = cJSON_CreateString("Collection");
+                                            } else if (strcmp(chain_phase->valuestring,"exfiltration") == 0) {
+                                                string_tactic = cJSON_CreateString("Exfiltration");
+                                            } else if (strcmp(chain_phase->valuestring,"command-and-control") == 0) {
+                                                string_tactic = cJSON_CreateString("Command and Control");
+                                            } else if (strcmp(chain_phase->valuestring,"impact") == 0) {
+                                                string_tactic = cJSON_CreateString("Impact");
+                                            } else {
+                                                string_tactic = cJSON_Duplicate(chain_phase,1);
+                                            }
+                                            cJSON_AddItemToArray(arrayphases, string_tactic);
                                         }
                                     }  
                                 }
@@ -116,7 +144,6 @@ void mitre_load(){
         }
     }
     cJSON_Delete(root);
-    minfo("Mitre Hash table completed");
     goto end;
 
 end:
