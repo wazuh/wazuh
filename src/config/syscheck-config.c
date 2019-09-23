@@ -412,7 +412,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts |= CHECK_SHA1SUM;
                     opts |= CHECK_SHA256SUM;
                 } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM;
+                    opts &= ~ (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM);
                 } else {
                     merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;

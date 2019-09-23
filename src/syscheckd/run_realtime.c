@@ -31,8 +31,6 @@ volatile int audit_db_consistency_flag;
 /* Start real time monitoring using inotify */
 int realtime_start()
 {
-    minfo(FIM_REALTIME_STARTING);
-
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
     if (syscheck.realtime == NULL) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
@@ -283,8 +281,6 @@ void free_win32rtfim_data(win32rtfim *data) {
 
 int realtime_start()
 {
-    minfo(FIM_REALTIME_STARTING);
-
     w_mutex_init(&adddir_mutex, NULL);
 
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
