@@ -2565,7 +2565,7 @@ class Agent:
         return configuration.upload_group_file(group_id, tmp_file, file_name)
 
     @staticmethod
-    def get_full_summary() -> Dict:
+    def get_full_overview() -> Dict:
         """Get information about agents.
 
         :return: Dictionary with information about agents
