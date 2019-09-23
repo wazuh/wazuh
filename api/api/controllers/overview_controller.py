@@ -6,8 +6,7 @@ import asyncio
 import logging
 
 from api.models.base_model_ import Data
-from api.util import (exception_handler, raise_if_exc,
-                      remove_nones_to_dict)
+from api.util import exception_handler, raise_if_exc, remove_nones_to_dict
 from wazuh.agent import Agent
 from wazuh.cluster.dapi.dapi import DistributedAPI
 
@@ -17,7 +16,7 @@ logger = logging.getLogger('wazuh')
 
 @exception_handler
 def get_overview_agents(pretty=False, wait_for_complete=False):
-    """Get full summary of agents.
+    """ Get full summary of agents.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
