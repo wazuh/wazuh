@@ -102,7 +102,7 @@ void sd_create_directory(char *group) {
         mwarn(W_PARSER_GROUP_TOO_LARGE, PATH_MAX);
         return;
     }
-    
+
     /* Check if group exists */
     DIR *group_dir = opendir(group_path);
 
@@ -161,6 +161,10 @@ int sd_parse_files(yaml_document_t * document, yaml_node_t *root_node, sd_file_t
                 yaml_node.scalar = sd_get_scalar(yaml_node.value);
 
                 os_strdup(yaml_node.scalar, (*files)[index].url);
+
+                if (!strcmp(yaml_node.scalar, "")) {
+                    mwarn("Expected value after '%s' token. Ignoring it", (*files)[index].name);
+                }
 
                 index++;
                 *n_files += 1;
@@ -255,7 +259,9 @@ int sd_parse_groups(yaml_document_t * document, yaml_node_t *root_node, sd_group
             os_strdup(yaml_node.scalar, (*groups)[index].name);
 
             if (yaml_node.value->type == YAML_MAPPING_NODE) {
-                sd_parse_group(document, yaml_node.value, *groups + index);
+                if(!sd_parse_group(document, yaml_node.value, *groups + index)) {
+                    return 0;
+                }
             } else {
                 merror("Node must be mapping (line %u)Could't parse groups", (unsigned int)root_node->start_mark.line);
                 return 0;
@@ -293,6 +299,10 @@ int sd_parse_agents(yaml_document_t *document, yaml_node_t *root_node, sd_agent_
             os_strdup(yaml_node.scalar, (*agents)[index].name);
 
             yaml_node.scalar = sd_get_scalar(yaml_node.value);
+
+            if (!strcmp(yaml_node.scalar, "")) {
+                mwarn("Expected value after '%s' token. Ignoring it", (*agents)[index].name);
+            }
 
             os_strdup(yaml_node.scalar, (*agents)[index].group);
 
@@ -332,7 +342,7 @@ int sd_parse(sd_config_t **config) {
     yaml_parser_set_input_file(&parser, config_file);
 
     if (!yaml_parser_load(&parser, &document)) {
-        merror(W_PARSER_FAILED":%u", (*config)->file_name, (unsigned int)parser.problem_mark.line);
+        merror(W_PARSER_FAILED" line: %u", (*config)->file_name, (unsigned int)parser.problem_mark.line);
         goto end;
     }
 
@@ -356,15 +366,19 @@ int sd_parse(sd_config_t **config) {
  
                 if (!strcmp(yaml_node.scalar, "groups")) {
                     if ((*config)->groups) {
-                        mwarn("Parsing '%s': redefinition of 'group'. Ignoring repeated sections", (*config)->file_name);
+                        mwarn("Parsing '%s': redefinition of 'groups'. Ignoring repeated sections", (*config)->file_name);
                     } else {
                         if (!sd_parse_groups(&document, yaml_node.value, &(*config)->groups, &(*config)->n_groups)) {
                             goto end;
                         }
                     }
                 } else if (!strcmp(yaml_node.scalar, "agents")) {
-                    if (!sd_parse_agents(&document, yaml_node.value, &(*config)->agents, &(*config)->n_agents)) {
-                        goto end;
+                    if ((*config)->agents) {
+                        mwarn("Parsing '%s': redefinition of 'agents'. Ignoring repeated sections", (*config)->file_name);
+                    } else {
+                        if (!sd_parse_agents(&document, yaml_node.value, &(*config)->agents, &(*config)->n_agents)) {
+                            goto end;
+                        }
                     }
                 } else {
                     merror("Parsing error on line %d:, unknown token '%s'", (unsigned int)yaml_node.value->start_mark.line, yaml_node.scalar);
