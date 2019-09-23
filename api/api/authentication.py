@@ -220,7 +220,7 @@ def generate_token(user_id):
     :return: string jwt formatted string
     """
     # Add dummy rbac_policies for developing here
-    mode = False  # White
+    mode = True  # Black list
     rbac_policies = pre_policies.optimize_resources(mode)
 
     timestamp = int(time())
