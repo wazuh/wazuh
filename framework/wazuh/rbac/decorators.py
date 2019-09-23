@@ -154,11 +154,11 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     # allow_match = list()
     # import pydevd_pycharm
     # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
-    allow_match = [list() * len(req_permissions)]
-    actual_index = 0
+    allow_match = dict()
     for req_action, req_resources in req_permissions.items():
         agent_expand = False
         role_policy_expand = False
+        actual_index = 0
         for req_resource in req_resources:
             try:
                 user_resources = user_permissions[req_action]
@@ -182,15 +182,17 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
                     action = m.group(1)
                 final_user_permissions.update(user_resources[action]['allow'] - user_resources[action]['deny'])
                 reqs = user_resources[action]['allow'] if req_resource.split(':')[-1] == '*' else [req_resource]
+                if not m.group(1) in allow_match.keys():
+                    allow_match[m.group(1)] = list()
                 for req in reqs:
                     split_req = req.split(':')[-1]
                     if split_req in final_user_permissions:
-                        allow_match[actual_index].append(split_req)
+                        allow_match[m.group(1)].append(split_req)
             except KeyError:
                 if mode:  # For black mode, if the resource is not specified, it will be allow
                     allow_match.append('*')
                     break
-        actual_index += 1
+            actual_index += 1
     return allow_match
 
 
@@ -210,9 +212,9 @@ def expose_resources(actions: list = None, resources: list = None, target_param:
             del kwargs['rbac']
             for index, target in enumerate(target_param):
                 try:
-                    if len(allow[index]) == 0:
+                    if len(allow[list(allow.keys())[index]]) == 0:
                         raise Exception
-                    kwargs[target] = allow[index]
+                    kwargs[target] = allow[list(allow.keys())[index]]
                 except Exception:
                     raise WazuhError(4000)
             return func(*args, **kwargs)
