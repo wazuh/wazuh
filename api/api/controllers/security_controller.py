@@ -413,16 +413,17 @@ def update_policy(policy_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def set_role_policy(role_id, policies_ids, pretty=False, wait_for_complete=False):
+def set_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=False):
     """Add a list of policies to one specified role
 
     :param role_id: Role id
-    :param policies_ids: List of policies ids
+    :param policy_ids: List of policies ids
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :return Role information
     """
-    f_kwargs = {'role_id': role_id, 'policies_ids': policies_ids}
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs = {'rbac': rbac, 'role_id': role_id, 'policy_ids': policy_ids}
 
     dapi = DistributedAPI(f=security.set_role_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -438,16 +439,17 @@ def set_role_policy(role_id, policies_ids, pretty=False, wait_for_complete=False
 
 
 @exception_handler
-def remove_role_policy(role_id, policies_ids, pretty=False, wait_for_complete=False):
+def remove_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=False):
     """Delete a list of policies of one specified role
 
     :param role_id: Role id
-    :param policies_ids: List of policies ids
+    :param policy_ids: List of policies ids
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :return Role information
     """
-    f_kwargs = {'role_id': role_id, 'policies_ids': policies_ids}
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs = {'rbac': rbac, 'role_id': role_id, 'policy_ids': policy_ids}
 
     dapi = DistributedAPI(f=security.remove_role_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

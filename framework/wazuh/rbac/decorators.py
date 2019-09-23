@@ -151,9 +151,9 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     :return: Allow or deny
     """
     mode, user_permissions = rbac
-    allow_match = list()
-    import pydevd_pycharm
-    pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+    # allow_match = list()
+    # import pydevd_pycharm
+    # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
     allow_match = [list() * len(req_permissions)]
     actual_index = 0
     for req_action, req_resources in req_permissions.items():
@@ -206,13 +206,17 @@ def expose_resources(actions: list = None, resources: list = None, target_param:
         @wraps(func)
         def wrapper(*args, **kwargs):
             req_permissions = _get_required_permissions(actions=actions, resources=resources, **kwargs)
+            import pydevd_pycharm
+            pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
             allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
-            if len(allow) > 0:
-                del kwargs['rbac']
-                for index, target in enumerate(target_param):
+            del kwargs['rbac']
+            for index, target in enumerate(target_param):
+                try:
+                    if len(allow[index]) == 0:
+                        raise Exception
                     kwargs[target] = allow[index]
-                return func(*args, **kwargs)
-            else:
-                raise WazuhError(4000)
+                except Exception:
+                    raise WazuhError(4000)
+            return func(*args, **kwargs)
         return wrapper
     return decorator

@@ -283,11 +283,8 @@ def get_policy(policy_ids, offset=0, limit=common.database_limit, sort_by=None,
             policy = pm.get_policy_id(int(p_id))
             if policy != SecurityError.POLICY_NOT_EXIST:
                 dict_policy = policy.to_dict()
-                if len(dict_policy['roles']) == 0:
-                    dict_policy.pop('roles', None)
-                else:
-                    for index, policy in enumerate(dict_policy['roles']):
-                        dict_policy['roles'][index]['rule'] = json.loads(dict_policy['roles'][index]['rule'])
+                for index, policy in enumerate(dict_policy['roles']):
+                    dict_policy['roles'][index]['rule'] = json.loads(dict_policy['roles'][index]['rule'])
                 affected_items.append(dict_policy)
             else:
                 # Policy id does not exist
@@ -319,7 +316,7 @@ def get_policies(policy_ids=None, offset=0, limit=common.database_limit, sort_by
             policy = pm.get_policy_id(int(p_id))
             if policy != SecurityError.POLICY_NOT_EXIST:
                 dict_policy = policy.to_dict()
-                dict_policy.pop('policies', None)
+                dict_policy.pop('roles', None)
                 affected_items.append(dict_policy)
 
     return process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
@@ -409,7 +406,7 @@ def update_policy(policy_id=None, name=None, policy=None):
     return pm.get_policy_id(policy_id[0]).to_dict()
 
 
-@expose_resources(actions=['security:union_add'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
+@expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
                   target_param=['role_id', 'policy_ids'])
 def set_role_policy(role_id, policy_ids):
     """Create a relationship between a role and a policy
@@ -438,7 +435,7 @@ def set_role_policy(role_id, policy_ids):
     return get_role(role_ids=role_id)
 
 
-@expose_resources(actions=['security:union_remove'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
+@expose_resources(actions=['security:delete'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
                   target_param=['role_id', 'policy_ids'])
 def remove_role_policy(role_id, policy_ids):
     """Removes a relationship between a role and a policy
