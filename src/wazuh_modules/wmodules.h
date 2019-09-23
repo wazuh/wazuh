@@ -92,6 +92,7 @@ typedef enum crypto_type {
 #include "wm_sca.h"
 #include "wm_fluent.h"
 #include "wm_control.h"
+#include "wm_check_config.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.

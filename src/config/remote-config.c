@@ -245,22 +245,29 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     return (0);
 }
 
-int Test_Remoted(const char * path) {
+int Test_Remoted(const char *path) {
     int fail = 0;
     remoted *test_remoted;
     os_calloc(1, sizeof(remoted), test_remoted);
 
+    test_remoted->port = NULL;
+    test_remoted->conn = NULL;
+    test_remoted->allowips = NULL;
+    test_remoted->denyips = NULL;
+    test_remoted->nocmerged = 0;
+    test_remoted->queue_size = 131072;
+
     if (ReadConfig(CREMOTE, path, test_remoted, NULL) < 0) {
-		merror(RCONFIG_ERROR,"Remoted", path);
+		merror(CONF_READ_ERROR, "Remoted");
 		fail = 1;
 	}
 
     if(!fail && test_remoted->queue_size < 1) {
-        merror("Queue size is invalid. Review configuration.");
+        merror("Remoted Config: Queue size is invalid. Review configuration.");
         fail = 1;
     }
     else if(!fail && test_remoted->queue_size > 262144) {
-        mwarn("Queue size is very high. The application may run out of memory.");
+        mwarn("Remoted Config: Queue size is very high. The application may run out of memory.");
     }
 
     /* Frees the LogReader config struct */
@@ -269,14 +276,6 @@ int Test_Remoted(const char * path) {
     if (fail) {
         return -1;
     }
-
-    /* Checking XML file */
-    OS_XML xml;
-
-    if (OS_ReadXML(path, &xml) < 0){
-        merror_exit(XML_ERROR, path, xml.err, xml.err_line);
-    }
-    OS_ClearXML(&xml);
 
     return 0;
 }

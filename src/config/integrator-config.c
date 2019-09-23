@@ -196,12 +196,12 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
     return(0);
 }
 
-int Test_Integratord(const char * path) {
+int Test_Integratord(const char *path) {
     int fail = 0;
     IntegratorConfig **test_integrator = NULL;
 
     if(ReadConfig(CINTEGRATORD, path, &test_integrator, NULL) < 0) {
-        merror(RCONFIG_ERROR,"Integratord", path);
+        merror(CONF_READ_ERROR, "Integratord");
 		fail = 1;
     }
 

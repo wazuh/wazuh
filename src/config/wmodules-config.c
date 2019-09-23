@@ -132,18 +132,18 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
     }
 #ifndef WIN32
 #ifndef CLIENT
-    else if (!strcmp(node->values[0], WM_VULNDETECTOR_CONTEXT.name)) {
+    else if (!strcmp(node->values[0], WM_VULNDETECTOR_CONTEXT.name) && (cfg_type != CAGENT_CGFILE) && (cfg_type != CRMOTE_CONFIG)) {
         mwarn("This vulnerability-detector declaration is deprecated. Use <vulnerability-detector> instead.");
         if (Read_Vuln(xml, children, cur_wmodule, 0) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
-    } else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
+    } else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name) && (cfg_type != CAGENT_CGFILE) && (cfg_type != CRMOTE_CONFIG)) {
         if (wm_azure_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
-    } else if (!strcmp(node->values[0], WM_KEY_REQUEST_CONTEXT.name)) {
+    } else if (!strcmp(node->values[0], WM_KEY_REQUEST_CONTEXT.name) && (cfg_type != CAGENT_CGFILE) && (cfg_type != CRMOTE_CONFIG)) {
         if (wm_key_request_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
@@ -154,9 +154,9 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
     else {
         if(!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], AZ_WM_NAME) ||
             !strcmp(node->values[0], KEY_WM_NAME)) {
-            mwarn("The '%s' module only works for the manager", node->values[0]);
+            mwarn("The '%s' module only works for the manager.", node->values[0]);
         } else if ( !strcmp(node->values[0], WM_AWS_CONTEXT.name) || !strcmp(node->values[0], "aws-cloudtrail") ) {
-            mwarn("The 'AWS' module only works for the manager");
+            mwarn("The 'AWS' module only works for the manager.");
         } else {
             char *type_str = NULL;
             type_str = cfg_type == CAGENT_CGFILE ? strdup("agent") : (cfg_type == CRMOTE_CONFIG ? strdup("remote") : strdup("manager"));
@@ -281,13 +281,13 @@ int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1)
 }
 #endif
 
-int Test_WModule(const char * path, int type) {
+int Test_WModule(const char *path, int type) {
     int fail = 0;
     wmodule *test_wmodule;
     os_calloc(1, sizeof(wmodule), test_wmodule);
 
     if (ReadConfig(CWMODULE | type, path, &test_wmodule, NULL) < 0) {
-        merror(RCONFIG_ERROR,"WModule", path);
+        merror(CONF_READ_ERROR, "WModule");
         fail = 1;
     }
 
@@ -295,7 +295,7 @@ int Test_WModule(const char * path, int type) {
 
     if (fail) {
         return -1;
-    } else {
-        return 0;
     }
+
+    return 0;
 }

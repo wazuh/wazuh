@@ -271,12 +271,12 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
     return (0);
 }
 
-int Test_Rootcheck(const char * path, int type){
+int Test_Rootcheck(const char *path, int type){
     int fail = 0;
     rkconfig test_rootcheck = { .workdir = 0 };
 
     if (ReadConfig(CROOTCHECK | type, path, &test_rootcheck, NULL) < 0) {
-        merror(RCONFIG_ERROR,"Rootcheck", path);
+        merror(CONF_READ_ERROR, "Rootcheck");
 		fail = 1;
 	}
 
@@ -284,12 +284,12 @@ int Test_Rootcheck(const char * path, int type){
 
     if (fail) {
         return -1;
-    } else {
-        return 0;
     }
+
+    return 0;
 }
 
-void Free_Rootcheck(rkconfig * config){
+void Free_Rootcheck(rkconfig *config){
     if (config) {
         int i;
         free((char*) config->workdir);

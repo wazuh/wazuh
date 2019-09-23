@@ -492,7 +492,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     return (0);
 }
 
-int Test_Localfile(const char * path, int type){
+int Test_Localfile(const char *path, int type){
     int fail = 0;
     int maximum_lines = getDefine_Int("logcollector", "max_lines", 0, 1000000);
 
@@ -511,8 +511,14 @@ int Test_Localfile(const char * path, int type){
 
     logreader_config test_localfile = { .agent_cfg = 0 };
 
-    if (ReadConfig(CLOCALFILE | type, path, &test_localfile, NULL) < 0) {
-        merror(RCONFIG_ERROR,"Localfile", path);
+    if(type & CRMOTE_CONFIG) {
+        test_localfile.agent_cfg = 1;
+        test_localfile.accept_remote = 1;
+        mwarn("Remote commands must be accept from the manager. Accepted for testing");
+    }
+
+    if (ReadConfig(CLOCALFILE | CSOCKET | type, path, &test_localfile, NULL) < 0) {
+        merror(CONF_READ_ERROR, "Localfile");
         fail = 1;
     }
 
@@ -520,9 +526,9 @@ int Test_Localfile(const char * path, int type){
 
     if (fail) {
         return -1;
-    } else {
-        return 0;
     }
+
+    return 0;
 }
 
 void Free_Localfile(logreader_config * config){

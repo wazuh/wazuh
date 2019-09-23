@@ -337,8 +337,13 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 #endif
                     } else if (strcmp(xml_agent_overwrite, node[i]->attributes[attrs]) == 0) {
                     } else {
-                        merror(XML_INVATTR, node[i]->attributes[attrs],
-                               cfgfile);
+                        merror(XML_INVATTR, node[i]->attributes[attrs], cfgfile);
+#ifndef CLIENT
+                        OS_ClearNode(chld_node);
+                        OS_ClearNode(node);
+                        OS_ClearXML(&xml);
+                        return (OS_INVALID);
+#endif
                     }
                     attrs++;
                 }
@@ -390,14 +395,14 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     return (0);
 }
 
-int Test_Analysisd(const char * path) {
+int Test_Analysisd(const char *path) {
     int fail = 0;
-    _Config * test_config;
+    _Config *test_config;
     os_calloc(1, sizeof(_Config), test_config);
 
     int modules = CGLOBAL | CRULES | CALERTS | CCLUSTER;
     if( (ReadConfig(modules, path, test_config, NULL) < 0) || (ReadConfig(CLABELS, path, &(test_config->labels), NULL) < 0) ) {
-        merror(RCONFIG_ERROR,"Analysisd", path);
+        merror(CONF_READ_ERROR, "Analysisd");
 		fail = 1;
     }
 

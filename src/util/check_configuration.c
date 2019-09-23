@@ -10,19 +10,22 @@
 
 #ifndef CLIENT
 
-#include "shared.h"
 #include "config/config.h"
 #include "config/localfile-config.h"
 #include "logcollector/logcollector.h"
 #include "getopt.h"
+#include "headers/check_config.h"
+
+#include "../os_net/os_net.h"
+#include <ifaddrs.h>
 
 #undef ARGV0
-#define ARGV0 "wazuh-validator"
-#define MANDATORY_OPTION "-t is a mandatory option.\n"
+#define ARGV0                   "./check_configuration"
+#define MANDATORY_OPTION        "-t is a mandatory option."
+#define ARGS_EXCEEDED           "number of arguments exceeded."
 
 #define MANAGER_CFG          1
-// #define AGENT_CFG           2
-// #define REMOTE_CFG          3
+
 
 /* Prototypes */
 static void helpmsg(void) __attribute__((noreturn));
@@ -30,15 +33,17 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\nUsage:  %s -t <manager/agent/remote> [-f <.conf file>]\n", ARGV0);
-    printf("Available options:\n");
+    printf("\nUsage:  %s -t TYPE [OPTIONS]\n\n", ARGV0);
+    printf("TYPE:\n");
+    printf("\tmanager     Wazuh manager configuration (ossec.conf).\n");
+    printf("\tagent       Wazuh agent configuration (ossec.conf).\n");
+    printf("\tremote      Wazuh centralized agent configuration (agent.conf).\n\n");
+    printf("OPTIONS:\n");
     printf("\t-h          This help message.\n\n");
-    printf("\t-t          Mandatory option. Type of configuration file to be tested:\n");
-    printf("\t            <manager>, <agent> or <remote>\n");
     printf("\t-f          Absolute path to config file to be tested.\n");
     printf("\t            If this option is not specified. Defaults to\n");
-    printf("\t            \"%s%s\", or\n", DEFAULTDIR, OSSECCONF);
-    printf("\t            \"%s\", if \"-t remote\" is provided.\n\n", AGENTCONFIG);
+    printf("\t            \"install/path/to/ossec.conf\", or\n");
+    printf("\t            \"/path/to/shared/agent.conf\", if \"-t remote\" is provided.\n\n");
     exit(1);
 }
 
@@ -49,23 +54,17 @@ int main(int argc, char **argv)
 
     printf("\n");
     /* User arguments */
-    if (argc > 1) {
+    if (argc > 1 && argc < 6) {
         char path_f[PATH_MAX + 1] = {0,};
-        int c = 0, type_flag = 0;   // file_type = CLOCAL_CONFIG;
+        int c = 0, type_flag = 0;
 
-        while ((c = getopt(argc, argv, "Vdhf:t:")) != -1) {
+        while ((c = getopt(argc, argv, "hf:t:")) != -1) {
             switch (c) {
-                case 'V':
-                    print_version();
-                    break;
                 case 'h':
                     helpmsg();
                     break;
-                case 'd':
-                    nowDebug();
-                    break;
                 case 'f':
-                    if (IsFile(optarg) < 0){
+                    if (IsFile(optarg) < 0) {
                         fprintf(stderr, "%s: [%s] is not a valid file. Exiting...\n\n", ARGV0, optarg);
                         return -1;
                     }
@@ -83,7 +82,7 @@ int main(int argc, char **argv)
                         type_flag = CRMOTE_CONFIG;
                     }
                     else {
-                        fprintf(stderr, "%s: Unknown value for -t option\n\n", ARGV0);
+                        fprintf(stderr, "%s: Unknown value for -t option\n", ARGV0);
                         helpmsg();
                     }
                     break;
@@ -93,6 +92,16 @@ int main(int argc, char **argv)
             }
         }
 
+        if(!type_flag) {
+            fprintf(stderr, "%s: %s\n", ARGV0, MANDATORY_OPTION);
+            helpmsg();
+        }
+
+        if(type_flag && !(strcmp(path_f, "")) && (argc >3)) {
+            fprintf(stderr, "%s WARNING: -f option was not found. If you want to check a specific file this option must be provided.\n\n", ARGV0);
+            return 0;
+        }
+
         char *filepath = NULL;
         if(strcmp(path_f, "") != 0) {
             filepath = strdup(path_f);
@@ -100,14 +109,14 @@ int main(int argc, char **argv)
 
         if(type_flag == MANAGER_CFG) {
             if(!filepath) {
-                filepath = strdup(DEFAULTDIR OSSECCONF);
+                filepath = strdup(DEFAULTCPATH);
             }
             test_manager_conf(filepath);
             os_free(filepath);
         }
         else if(type_flag == CAGENT_CGFILE) {
             if(!filepath) {
-                filepath = strdup(DEFAULTDIR OSSECCONF);
+                filepath = strdup(DEFAULTCPATH);
             }
             test_agent_conf(filepath, type_flag);
         }
@@ -119,11 +128,16 @@ int main(int argc, char **argv)
             os_free(filepath);
         }
     }
-    else{
-        fprintf(stderr, "%s: %s", ARGV0, MANDATORY_OPTION);
+    else if (argc > 5) {
+        fprintf(stderr, "%s: %s\n", ARGV0, ARGS_EXCEEDED);
+        helpmsg();
+    }
+    else {
+        fprintf(stderr, "%s: %s\n", ARGV0, MANDATORY_OPTION);
         helpmsg();
     }
 
+    printf("\n");
     return 0;
 }
 

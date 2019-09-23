@@ -73,13 +73,13 @@ int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2)
     return (0);
 }
 
-int Test_DBD(const char * path) {
+int Test_DBD(const char *path) {
     int fail = 0;
     DBConfig *dbdConfig;
-
     os_calloc(1, sizeof(DBConfig), dbdConfig);
+
     if(ReadConfig(CDBD, path, NULL, dbdConfig) < 0) {
-        merror(RCONFIG_ERROR,"Database", path);
+        merror(CONF_READ_ERROR, "Database");
 		fail = 1;
     }
 
@@ -111,12 +111,12 @@ int Test_DBD(const char * path) {
         if (dbdConfig->db_type == MYSQLDB) {
 #ifndef MYSQL_DATABASE_ENABLED
             merror(DB_COMPILED, "mysql");
-            return (OS_INVALID);
+            fail = 1;
 #endif
         } else if (dbdConfig->db_type == POSTGDB) {
 #ifndef PGSQL_DATABASE_ENABLED
             merror(DB_COMPILED, "postgresql");
-            return (OS_INVALID);
+            fail = 1;
 #endif
         }
     }

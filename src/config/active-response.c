@@ -436,7 +436,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     return (0);
 }
 
-int Test_ActiveResponse(const char * path, int type) {
+int Test_ActiveResponse(const char *path, int type) {
     int fail = 0;
     OSList *test_activecmd;
     OSList *test_activeresp;
@@ -444,9 +444,13 @@ int Test_ActiveResponse(const char * path, int type) {
     test_activecmd = OSList_Create();
     test_activeresp = OSList_Create();
 
+    if (!test_activecmd || !test_activeresp) {
+        merror_exit(LIST_ERROR);
+    }
+
     /* type indicates local or remote config */
     if (ReadConfig(CAR | type, path, test_activecmd, test_activeresp) < 0) {
-        merror(RCONFIG_ERROR,"Active-Response", path);
+        merror(CONF_READ_ERROR, "Active-Response");
         fail = 1;
     }
 
@@ -456,7 +460,7 @@ int Test_ActiveResponse(const char * path, int type) {
 
     if (fail) {
         return -1;
-    } else {
-        return 0;
     }
+
+    return 0;
 }

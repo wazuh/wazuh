@@ -556,7 +556,7 @@ BUILD_AGENT+=ossec-syscheckd
 BUILD_AGENT+=ossec-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=wazuh-modulesd
-BUILD_AGENT+=wazuh-validator
+# BUILD_AGENT+=check_configuration
 
 .PHONY: server local hybrid agent selinux
 
@@ -1206,7 +1206,7 @@ manage_agents: ${addagent_o}
 
 #### Util ##########
 
-util_programs = syscheck_update clear_stats agent_control syscheck_control rootcheck_control verify-agent-conf ossec-regex parallel-regex wazuh_validator
+util_programs = syscheck_update clear_stats agent_control syscheck_control rootcheck_control verify-agent-conf ossec-regex parallel-regex check_configuration
 
 $(util_programs): $(BUILD_LIBS)
 
@@ -1243,7 +1243,7 @@ ossec-regex: util/ossec-regex.o
 parallel-regex: util/parallel-regex.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-wazuh_validator: util/wazuh_validator.o
+check_configuration: util/check_configuration.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### rootcheck #####

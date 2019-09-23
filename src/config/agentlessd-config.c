@@ -165,7 +165,7 @@ int Test_Agentlessd(const char *path) {
     os_calloc(1, sizeof(agentlessd_config), agtless_config);
 
     if(ReadConfig(CAGENTLESS, path, agtless_config, NULL) < 0) {
-        merror(RCONFIG_ERROR,"Agentlessd", path);
+        merror(XML_INV_AGENTLESS);
 		fail = 1;
     }
 

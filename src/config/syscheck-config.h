@@ -245,7 +245,7 @@ void set_linked_path(syscheck_config *syscheck, const char *entry, int position)
 char *syscheck_opts2str(char *buf, int buflen, int opts);
 
 /* Frees the Syscheck struct  */
-void Free_Syscheck(syscheck_config * config);
+void Free_Syscheck(syscheck_config *config);
 char* check_ascci_hex (char *input);
 
 void log_realtime_status(int);

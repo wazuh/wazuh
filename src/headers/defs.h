@@ -141,6 +141,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define MON_LOCAL_SOCK  "/queue/ossec/monitor"
 #define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
 #define CONTROL_SOCK "/queue/ossec/control"
+#define CHK_CONF_SOCK DEFAULTDIR "/queue/ossec/check_config_sock"
 
 // Attempts to check sockets availability
 #define SOCK_ATTEMPTS   10

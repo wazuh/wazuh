@@ -1421,12 +1421,12 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
     return buf;
 }
 
-int Test_Syscheck(const char * path, int type){
+int Test_Syscheck(const char *path, int type){
     int fail = 0;
     syscheck_config test_syscheck = { .tsleep = 0 };
 
     if (ReadConfig(CSYSCHECK | type, path, &test_syscheck, NULL) < 0) {
-		merror(RCONFIG_ERROR,"Syscheck", path);
+		merror(CONF_READ_ERROR, "Syscheck");
 		fail = 1;
 	}
 
@@ -1434,12 +1434,12 @@ int Test_Syscheck(const char * path, int type){
 
     if (fail) {
         return -1;
-    } else {
-        return 0;
     }
+
+    return 0;
 }
 
-void Free_Syscheck(syscheck_config * config) {
+void Free_Syscheck(syscheck_config *config) {
     if (config) {
         int i;
         free(config->opts);

@@ -38,7 +38,7 @@ int wm_config() {
         return -1;
     }
 
-    
+
 #ifdef CLIENT
     // Read configuration: agent.conf
     agent_cfg = 1;
@@ -50,13 +50,17 @@ int wm_config() {
 #endif
 #else
     wmodule *module;
-    
+
     // The database module won't be available on agents
     if ((module = wm_database_read()))
         wm_add(module);
 
     // Downloading module
     if ((module = wm_download_read()))
+        wm_add(module);
+
+    // Check configuration module
+    if ((module = wm_chk_conf_read()))
         wm_add(module);
 
 #endif

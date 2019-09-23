@@ -188,13 +188,13 @@ short eval_bool(const char *str) {
     }
 }
 
-int Test_Authd(const char * path) {
+int Test_Authd(const char *path) {
     int fail = 0;
     authd_config_t *test_authd;
     os_calloc(1, sizeof(authd_config_t), test_authd);
 
     if (ReadConfig(CAUTHD, path, test_authd, NULL) < 0) {
-		merror(RCONFIG_ERROR,"Authd", path);
+		merror(CONF_READ_ERROR, "Authd");
 		fail = 1;
 	}
 
@@ -203,9 +203,9 @@ int Test_Authd(const char * path) {
 
     if (fail) {
         return -1;
-    } else {
-        return 0;
     }
+
+    return 0;
 }
 
 void free_authd_config(authd_config_t *authd) {

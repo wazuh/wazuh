@@ -206,7 +206,7 @@ fail:
     return (OS_INVALID);
 }
 
-int Test_CSyslogd(const char * path) {
+int Test_CSyslogd(const char *path) {
     int fail = 0;
 
     struct SyslogConfig_holder config;
