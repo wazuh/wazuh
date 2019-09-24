@@ -12,12 +12,19 @@
 #include "os_net/os_net.h"
 
 #ifdef WIN32
+
+#include "../syscheckd/syscheck.h"
 #include <sddl.h>
 int copy_ace_info(void *ace, char *perm, int perm_size);
 int w_get_account_info(SID *sid, char **account_name, char **account_domain);
+
 #elif !CLIENT
+
 static char *unescape_syscheck_field(char *sum);
+
 #endif
+
+
 int delete_target_file(const char *path) {
     char full_path[PATH_MAX] = "\0";
     snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
@@ -1181,7 +1188,7 @@ void ag_send_syscheck(char * message) {
     close(sock);
 }
 #else
-void ag_send_syscheck(char * message {
+void ag_send_syscheck(char * message) {
     char * response = NULL;
     syscom_dispatch(message, &response);
     free(response);

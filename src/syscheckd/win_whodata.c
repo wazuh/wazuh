@@ -766,41 +766,42 @@ add_whodata_evt:
                         fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         if (mask & DELETE) {
-                            static char *last_mdir = NULL;
-                            static time_t last_mdir_tm = 0;
-                            time_t now = time(NULL);
+                            fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+                            //static char *last_mdir = NULL;
+                            //static time_t last_mdir_tm = 0;
+                            //time_t now = time(NULL);
 
                             // We will not process deletion events on the same directory in less than WHODATA_DIR_REMOVE_INTERVAL seconds
-                            if (!last_mdir || strcmp(last_mdir, w_evt->path) ||
-                                last_mdir_tm + WHODATA_DIR_REMOVE_INTERVAL < now) {
-                                if (w_evt->path) {
-                                    char *dir_path;
-                                    char *saved_path;
+                            //if (!last_mdir || strcmp(last_mdir, w_evt->path) ||
+                            //    last_mdir_tm + WHODATA_DIR_REMOVE_INTERVAL < now) {
+                            //    if (w_evt->path) {
+                            //        char *dir_path;
+                            //        char *saved_path;
 
-                                    saved_path = w_evt->path;
+                            //        saved_path = w_evt->path;
 
-                                    os_calloc(strlen(w_evt->path) + 2, sizeof(char), dir_path);
-                                    snprintf(dir_path, strlen(w_evt->path) + 2, "%s\\", w_evt->path);
-                                    w_evt->path = dir_path;
+                            //        os_calloc(strlen(w_evt->path) + 2, sizeof(char), dir_path);
+                            //        snprintf(dir_path, strlen(w_evt->path) + 2, "%s\\", w_evt->path);
+                            //        w_evt->path = dir_path;
 
-                                    // Notify removed files
-                                    mdebug1(FIM_WHODATA_DIRECTORY_REMOVED, dir_path);
-                                    OSHash_It_ex(syscheck.fim_entry, 1, (void *) w_evt, whodata_remove_folder);
-                                    free(dir_path);
-                                    w_evt->path = saved_path;
+                            //        // Notify removed files
+                            //        mdebug1(FIM_WHODATA_DIRECTORY_REMOVED, dir_path);
+                            //        OSHash_It_ex(syscheck.fim_entry, 1, (void *) w_evt, whodata_remove_folder);
+                            //        free(dir_path);
+                            //        w_evt->path = saved_path;
 
-                                    // Find new files
-                                    fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+                            //        // Find new files
+                            //        fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
 
-                                    last_mdir_tm = now;
-                                    free(last_mdir);
-                                    os_strdup(w_evt->path, last_mdir);
-                                } else {
-                                    mdebug2(FIM_WHODATA_UNCONTROLLED_REMOVE);
-                                }
-                            } else {
-                                mdebug2(FIM_WHODATA_IGNORE_EVENT, w_evt->path);
-                            }
+                            //        last_mdir_tm = now;
+                            //        free(last_mdir);
+                            //        os_strdup(w_evt->path, last_mdir);
+                            //    } else {
+                            //        mdebug2(FIM_WHODATA_UNCONTROLLED_REMOVE);
+                            //    }
+                            //} else {
+                            //    mdebug2(FIM_WHODATA_IGNORE_EVENT, w_evt->path);
+                            //}
                         } else if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             // Check that a new file has been added
                             GetSystemTime(&w_dir->timestamp);
