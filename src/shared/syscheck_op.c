@@ -12,12 +12,19 @@
 #include "os_net/os_net.h"
 
 #ifdef WIN32
+
+#include "../syscheckd/syscheck.h"
 #include <sddl.h>
 int copy_ace_info(void *ace, char *perm, int perm_size);
 int w_get_account_info(SID *sid, char **account_name, char **account_domain);
+
 #elif !CLIENT
+
 static char *unescape_syscheck_field(char *sum);
+
 #endif
+
+
 int delete_target_file(const char *path) {
     char full_path[PATH_MAX] = "\0";
     snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
@@ -571,9 +578,38 @@ void sk_sum_clean(sk_sum_t * sum) {
 
 #endif
 
-const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
-    struct passwd *user = getpwuid(uid);
-    return user ? user->pw_name : "";
+char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
+    struct passwd pwd;
+    struct passwd *result;
+    char *buf;
+    char *user_name = NULL;
+    int bufsize;
+    int s;
+    int errno;
+
+    bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+    if (bufsize == -1) {
+        bufsize = 16384;
+    }
+
+    os_calloc(bufsize, sizeof(char), buf);
+
+    s = getpwuid_r(uid, &pwd, buf, bufsize, &result);
+    if (result == NULL) {
+        if (s == 0) {
+            mwarn("~~~ User with uid `%d` not found\n", uid);
+        }
+        else {
+            errno = s;
+            merror("Failed getting user_name (%d):'%s'\n", errno, strerror(errno));
+        }
+    } else {
+        os_strdup(pwd.pw_name, user_name);
+    }
+
+    os_free(buf);
+
+    return user_name;
 }
 
 const char *get_group(int gid) {
@@ -1181,7 +1217,7 @@ void ag_send_syscheck(char * message) {
     close(sock);
 }
 #else
-void ag_send_syscheck(char * message {
+void ag_send_syscheck(char * message) {
     char * response = NULL;
     syscom_dispatch(message, &response);
     free(response);

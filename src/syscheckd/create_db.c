@@ -40,11 +40,13 @@ static const char *FIM_EVENT_MODE[] = {
 
 int fim_scan() {
     int position = 0;
+
+#ifndef WIN32
     struct timespec start;
     struct timespec end;
     clock_t timeCPU_start = clock();
-
     gettime(&start);
+#endif
     minfo(FIM_FREQUENCY_STARTED);
 
     while (syscheck.dir[position] != NULL) {
@@ -53,7 +55,9 @@ int fim_scan() {
         position++;
     }
 
+#ifndef WIN32
     gettime(&end);
+#endif
 
     if (_base_line == 0) {
         _base_line = 1;
@@ -63,9 +67,11 @@ int fim_scan() {
 
     minfo(FIM_FREQUENCY_ENDED);
 
+#ifndef WIN32
     minfo("The scan has been running during: %.3f sec (%.3f clock sec)",
             time_diff(&start, &end),
             (double)(clock() - timeCPU_start) / CLOCKS_PER_SEC);
+#endif
     print_hash_tables();
 
     return 0;
@@ -217,8 +223,8 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
         json_formated = cJSON_PrintUnformatted(json_event);
         send_syscheck_msg(json_formated);
         os_free(json_formated);
+        cJSON_Delete(json_event);
     }
-    cJSON_Delete(json_event);
 
     return 0;
 }
@@ -280,6 +286,7 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
                     break;
 #endif
                 default:
+                    mdebug1("~~ Unsupported file type(mode:%d): '%s'", mode, file);
                     // Unsupported file type
                     return -1;
             }
@@ -419,7 +426,17 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
     }
 
     if (options & CHECK_PERM) {
+#ifdef WIN32
+        int error;
+        char perm_unescaped[OS_SIZE_6144 + 1];
+        if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
+            merror(FIM_ERROR_EXTRACT_PERM, file_name, error);
+        } else {
+            data->perm = escape_perm_sum(perm_unescaped);
+        }
+#else
         data->perm = agent_file_perm(file_stat.st_mode);
+#endif
     }
 
     if (options & CHECK_MTIME) {
@@ -440,7 +457,7 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
         snprintf(aux, OS_SIZE_64, "%u", file_stat.st_uid);
         os_strdup(aux, data->uid);
 
-        os_strdup((char*)get_user(file_name, file_stat.st_uid, NULL), data->user_name);
+        data->user_name = get_user(file_name, file_stat.st_uid, NULL);
     }
 
     if (options & CHECK_GROUP) {
@@ -688,8 +705,8 @@ void check_deleted_files() {
                 json_formated = cJSON_PrintUnformatted(json_event);
                 send_syscheck_msg(json_formated);
                 os_free(json_formated);
+                cJSON_Delete(json_event);
             }
-            cJSON_Delete(json_event);
         } else {
              // File still exists. We only need to reset the scanned flag.
             data->scanned = 0;
@@ -992,12 +1009,25 @@ void free_entry_data(fim_entry_data * data) {
     if (!data) {
         return;
     }
-
-    os_free(data->perm);
-    os_free(data->uid);
-    os_free(data->gid);
-    os_free(data->user_name);
-    os_free(data->group_name);
+    if (data->perm) {
+        os_free(data->perm);
+    }
+    if (data->uid) {
+#ifdef WIN32
+        LocalFree(data->uid);
+#else
+        os_free(data->uid);
+#endif
+    }
+    if (data->gid) {
+        os_free(data->gid);
+    }
+    if (data->user_name) {
+        os_free(data->user_name);
+    }
+    if (data->group_name) {
+        os_free(data->group_name);
+    }
     os_free(data);
 }
 
@@ -1024,7 +1054,6 @@ void free_inode_data(fim_inode_data * data) {
 
 
 int print_hash_tables() {
-    char * files = NULL;
     int element_sch = 0;
     int element_rt = 0;
     int element_wd = 0;
@@ -1052,6 +1081,7 @@ int print_hash_tables() {
     unsigned int inode_it = 0;
     unsigned inode_items = 0;
     unsigned element_totali = 0;
+    char * files = NULL;
 
     for (hash_node = OSHash_Begin(syscheck.fim_inode, &inode_it); hash_node; hash_node = OSHash_Next(syscheck.fim_inode, &inode_it, hash_node)) {
         fim_inode_data * data = hash_node->data;
@@ -1067,13 +1097,13 @@ int print_hash_tables() {
         element_totali++;
         inode_items += data->items;
     }
-#endif
     minfo("SCH '%d'", element_sch);
     minfo("RT '%d'", element_rt);
     minfo("WD '%d'", element_wd);
     minfo("Total: '%d' inodes: '%d' element_totali:'%d'", element_total, inode_items, element_totali);
 
     os_free(files);
+#endif
     free_strarray(keys);
 
     return 0;

@@ -388,6 +388,10 @@ int main(int argc, char **argv)
     if (!run_foreground) {
         nowDaemon();
         goDaemon();
+    } else {
+        if (chdir(DEFAULTDIR) == -1) {
+            merror_exit(CHDIR_ERROR, DEFAULTDIR, errno, strerror(errno));
+        }
     }
 
     /* Start signal handling */
