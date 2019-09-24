@@ -1137,11 +1137,7 @@ class Agent:
         if not Agent.group_exists(group_id):
             raise WazuhException(1710, group_id)
 
-        # If the new multi group doesnt exists, create it
-        if not Agent.multi_group_exists(agent_group):
-            Agent.create_multi_group(agent_group)
-
-        Agent().set_multi_group(str(agent_id),agent_group)
+        Agent().set_multi_group(str(agent_id), agent_group)
 
         # Check if the multigroup still exists in other agents
         multi_group_list = []
@@ -1474,33 +1470,6 @@ class Agent:
         return msg
 
     @staticmethod
-    def create_multi_group(group_id):
-        """
-        Creates a multi group.
-        :param group_id: Group ID.
-        :return: Confirmation message.
-        """
-
-        if ',' not in group_id:
-            # if there's not , in the group_id, then it isn't a multigroup and therefore the function does nothing
-            return
-
-        # Create group in /var/multigroups
-        try:
-            folder = hashlib.sha256(group_id.encode()).hexdigest()[:8]
-            multi_group_path = "{0}/{1}".format(common.multi_groups_path, folder)
-            mkdir_with_mode(multi_group_path)
-            chown(multi_group_path, common.ossec_uid(), common.ossec_gid())
-            chmod(multi_group_path, 0o770)
-            msg = "Group '{0}' created.".format(group_id)
-            return msg
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise WazuhException(1005, str(e))
-
-        return msg
-
-    @staticmethod
     def remove_multi_group(groups_id):
         """
         Removes groups by IDs.
@@ -1518,10 +1487,7 @@ class Agent:
                 groups_to_remove.append(','.join(group_list))
                 group_list.remove(group_to_remove)
                 if len(group_list) > 1:
-                    # create new multigroup
                     new_group = ','.join(group_list)
-                    if not Agent.multi_group_exists(new_group):
-                        Agent.create_multi_group(new_group)
                 else:
                     new_group = 'default' if not group_list else group_list[0]
 
@@ -1643,7 +1609,7 @@ class Agent:
         """
         Unset a group to a list of agents.
 
-        :param agent_id: List of Agent IDs.
+        :param agent_id_list: List of Agent IDs.
         :param group_id: Group ID.
         :return: Confirmation message.
         """
@@ -1654,7 +1620,7 @@ class Agent:
         if len(agent_id_list) < 1:
             raise WazuhException(1732)
 
-        # raise an exception if group not exists
+        # raise an exception if group does not exist
         if not Agent.group_exists(group_id):
             raise WazuhException(1710)
 
@@ -1798,7 +1764,7 @@ class Agent:
 
 
     @staticmethod
-    def unset_single_group_agent(agent_id, group_id, force):
+    def unset_single_group_agent(agent_id, group_id=None, force=False):
         """
         Unset the agent group. If agent has multigroups, it will preserve all previous groups except the last one.
 
@@ -1823,12 +1789,10 @@ class Agent:
         group_list.remove(group_id)
         if len(group_list) > 1:
             multigroup_name = ','.join(group_list)
-            if not Agent.multi_group_exists(multigroup_name):
-                Agent.create_multi_group(multigroup_name)
         else:
             multigroup_name = 'default' if not group_list else group_list[0]
 
-        Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
+        Agent.unset_all_groups_agent(agent_id=agent_id, force=True, group_id=multigroup_name)
 
         return f"Group '{group_id}' unset for agent '{agent_id}'." if multigroup_name != 'default' else \
                f"Agent {agent_id} set to group default."
