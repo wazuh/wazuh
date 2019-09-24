@@ -186,6 +186,9 @@ wdb_t * wdb_open_mitre();
 /* Close global database */
 void wdb_close_global();
 
+/* Close global database */
+void wdb_close_mitre();
+
 /* Open database for agent */
 sqlite3* wdb_open_agent(int id_agent, const char *name);
 

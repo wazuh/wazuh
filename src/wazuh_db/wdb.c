@@ -203,12 +203,6 @@ wdb_t * wdb_open_mitre() {
 
     } else {
         wdb = wdb_init(db_mitre, s_mitre);
-        wdb_pool_append(wdb);
-
-       // if (new_wdb = wdb_upgrade(wdb), new_wdb != wdb) {
-            // If I had to generate backup and change DB
-        //    wdb = new_wdb;
-        //}
     }
 end:
     return wdb;
@@ -218,6 +212,12 @@ end:
 void wdb_close_global() {
     sqlite3_close_v2(wdb_global);
     wdb_global = NULL;
+}
+
+/* Close global database */
+void wdb_close_mitre() {
+    sqlite3_close_v2(db_mitre);
+    db_mitre = NULL;
 }
 
 /* Open database for agent */
