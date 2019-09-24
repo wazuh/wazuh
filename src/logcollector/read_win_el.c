@@ -513,7 +513,7 @@ void readel(os_el *el, int printit)
 
     /* Event log was closed and re-opened */
     else if (id == ERROR_INVALID_HANDLE) {
-        mdebug1("EventLog service has been restarted. Reconnecting '%s' channel.", el->name);
+        mdebug1("The EventLog service has been restarted. Reconnecting to '%s' channel.", el->name);
 
         CloseEventLog(el->h);
         el->h = NULL;
@@ -533,7 +533,7 @@ void readel(os_el *el, int printit)
     else if (id == RPC_S_SERVER_UNAVAILABLE || id == RPC_S_UNKNOWN_IF) {
         /* Prevent message flooding when EventLog is stopped */
         if (counter == 0) {
-            mwarn("The eventlog service is down. Unable to collect logs from its channels.");
+            mwarn("The EventLog service is down. Unable to collect logs from its channels.");
             counter = 1;
         }
     }
@@ -570,8 +570,7 @@ void win_read_vista_sec()
 
         p = strchr(buf, ',');
         if (!p) {
-            merror("Invalid entry on the Vista security "
-                   "description.");
+            merror("Invalid entry on the Vista security description.");
             continue;
         }
 

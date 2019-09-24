@@ -642,7 +642,7 @@ int win_start_event_channel(char *evt_log, char future, char *query)
         } else {
             /* Prevent message flooding when EventLog is stopped */
             if (counter == 0) {
-                mwarn("The eventlog service is down. Unable to collect logs from its channels.");
+                mwarn("The EventLog service is down. Unable to collect logs from its channels.");
                 counter = 1;
             }
         }
