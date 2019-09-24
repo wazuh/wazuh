@@ -1448,10 +1448,6 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
         // Get the list of open FDs
         struct proc_fdinfo *procFDInfo;
         os_malloc(bufferSize, procFDInfo);
-        if (!procFDInfo) {
-            mterror(WM_SYS_LOGTAG, "Out of memory. Unable to allocate buffer with %d bytes", bufferSize);
-            continue;
-        }
         proc_pidinfo(pid, PROC_PIDLISTFDS, 0, procFDInfo, bufferSize);
         int numberOfProcFDs = bufferSize / PROC_PIDLISTFD_SIZE;
 
