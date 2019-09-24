@@ -183,7 +183,8 @@
         <InstallExecuteSequence>
             <Custom Action="SetCustomActionDataValue" After="InstallInitialize">NOT Installed</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
-            <Custom Action="InstallConfigurationFiles" After="CustomAction_InstallerScripts">NOT Installed</Custom>
+            <Custom Action="InstallConfigurationFiles" Before="InstallFinalize">NOT Installed</Custom>
+            <Custom Action="InstallSCAFiles" Before="InstallFinalize"></Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
             <Custom Action="StopWinService" After="InstallInitialize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>

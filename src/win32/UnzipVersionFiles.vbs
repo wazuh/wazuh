@@ -10,7 +10,7 @@ public function ExtractSCAFiles()
 End Function
 
 private function ExtractFiles(destFolder)
-
+	On Error Resume Next
 	Set fso = CreateObject("Scripting.FileSystemObject")
 	set objFolder = fso.GetFolder(destFolder)
 
