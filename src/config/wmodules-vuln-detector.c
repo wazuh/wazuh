@@ -15,7 +15,7 @@
 
 typedef struct vu_os_feed {
     char *version;
-    long unsigned int interval;
+    time_t interval;
     char *url;
     char *path;
     char *allow;
@@ -33,11 +33,11 @@ typedef struct provider_options {
     char **multi_allowed_os_name;
     char **multi_allowed_os_ver;
     int port;
-    unsigned long int update_interval;
+    time_t update_interval;
     int update_since;
 } provider_options;
 
-static int wm_vuldet_get_interval(char *source, unsigned long *interval);
+static int wm_vuldet_get_interval(char *source, time_t *interval);
 static int wm_vuldet_is_valid_year(char *source, int *date, int max);
 static int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list);
 static int wm_vuldet_read_deprecated_config(const OS_XML *xml, xml_node *node, update_node **updates, long unsigned int *update);
@@ -256,11 +256,11 @@ end:
     return retval;
 }
 
-int wm_vuldet_get_interval(char *source, unsigned long *interval) {
+int wm_vuldet_get_interval(char *source, time_t *interval) {
     char *endptr;
     *interval = strtoul(source, &endptr, 0);
 
-    if ((!*interval && endptr == source) || *interval == ULONG_MAX) {
+    if ((!*interval && endptr == source) || *interval < 0) {
         return OS_INVALID;
     }
 
@@ -422,7 +422,7 @@ int wm_vuldet_read_deprecated_config(const OS_XML *xml, xml_node *node, update_n
 static int wm_vuldet_read_deprecated_multifeed_tag(xml_node *node, update_node **updates, long unsigned int *update) {
     int j, k;
     int enabled = 0;
-    long unsigned int interval = 0;
+    time_t interval = 0;
     int os1 = 0, os2 = 0, os3 = 0;
     char is_ubuntu = !strcmp(node->element, XML_UPDATE_UBUNTU_OVAL);
     char *os_tag = is_ubuntu ? "UBUNTU" : "REDHAT";

@@ -84,6 +84,8 @@
 #define VU_OVAL_OBJ_INV       "(5569): Invalid OVAL object type: %s."
 #define VU_INS_VARIABLES      "(5570): Inserting variables..."
 #define VU_DISCARD_MATCH_N    "(5572): The matching configuration node '%s' from %s will be discarted because is contemplated by '%s' (%s%s%s%s%s%s%s)."
+#define VU_AG_FULL_SCAN       "(5573): A full scan will be run on agent %s."
+#define VU_AG_PART_SCAN       "(5574): A partial scan will be run on agent %s."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."

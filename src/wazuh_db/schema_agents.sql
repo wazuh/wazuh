@@ -300,5 +300,9 @@ CREATE TABLE IF NOT EXISTS vuln_metadata (
     LAST_SCAN INTEGER,
     WAZUH_VERSION TEXT
 );
+INSERT INTO vuln_metadata (LAST_SCAN, WAZUH_VERSION)
+    SELECT '0', '0' WHERE NOT EXISTS (
+        SELECT * FROM vuln_metadata
+    );
 
 PRAGMA journal_mode=WAL;
