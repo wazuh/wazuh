@@ -404,7 +404,7 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
-                            if (24 % rotation_config->interval != 0) {
+                            if (24 % rotation_config->interval != 0 && !strcmp(&rotation_config->interval_units, "h")) {
                                 merror("The '%s' option only accepts daily divisors as argument [1h, 2h, 3h, 4h, 6h, 8h, 12h].", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
