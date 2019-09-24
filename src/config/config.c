@@ -766,19 +766,6 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_rotate) == 0) {
                             char *end;
-                            Config->alerts_rotate = strtol(rotation_children[k]->content, &end, 10);
-                            if(Config->alerts_rotate < 2 && Config->alerts_rotate != -1) {
-                                mwarn("Minimum value for 'rotate' in <alerts> not allowed. It will be set to 2.");
-                                Config->alerts_rotate = 2;
-                            }
-                            if (*end != '\0') {
-                                merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
-                                OS_ClearNode(rotation_children);
-                                OS_ClearNode(children);
-                                return OS_INVALID;
-                            }
-                        } else if(strcmp(rotation_children[k]->element, xml_rotate) == 0) {
-                            char *end;
                             Config->archives_rotate = strtol(rotation_children[k]->content, &end, 10);
                             if(Config->archives_rotate < 2 && Config->archives_rotate != -1) {
                                 mwarn("Minimum value for 'rotate' in <archives> not allowed. It will be set to 2.");

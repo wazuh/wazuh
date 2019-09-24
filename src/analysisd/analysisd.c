@@ -2503,8 +2503,6 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
     time(&current_time);
     p = localtime(&c_time);
 
-    minfo("Today is %d/%d/%d %d:%d:%d", p->tm_mday, p->tm_mon+1, p->tm_year+1900, p->tm_hour, p->tm_min, p->tm_sec);
-
     /* Calculate when is the next rotation */
     alerts_time = Config.alerts_interval ? calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval) : 0;
     archive_time = Config.archives_interval ? calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval) : 0;
