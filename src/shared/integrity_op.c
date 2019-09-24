@@ -53,12 +53,12 @@ char * dbsync_check_msg(const char * component, dbsync_msg msg, long id, const c
     return payload;
 }
 
-// Create a data synchronization save message
+// Create a data synchronization state message
 
-char * dbsync_file_msg(const char * component, cJSON * data) {
+char * dbsync_state_msg(const char * component, cJSON * data) {
     cJSON * root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "component", component);
-    cJSON_AddStringToObject(root, "type", "save");
+    cJSON_AddStringToObject(root, "type", "state");
     cJSON_AddItemToObject(root, "data", data);
 
     char * msg = cJSON_PrintUnformatted(root);

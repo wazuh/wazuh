@@ -126,6 +126,59 @@ static int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begi
     return 0;
 }
 
+/**
+ * @brief Update sync attempt timestamp
+ *
+ * Set the column "last_attempt" with the timestamp argument,
+ * and increase "n_attempts" one unit.
+ *
+ * @param wdb Database node.
+ * @param component Name of the component.
+ * @param timestamp Synchronization event timestamp (field "id");
+ */
+
+static void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_UPDATE_ATTEMPT) == -1) {
+        return;
+    }
+
+    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_UPDATE_ATTEMPT];
+
+    sqlite3_bind_int64(stmt, 1, timestamp);
+    sqlite3_bind_text(stmt, 2, COMPONENT_NAMES[component], -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+    }
+}
+
+/**
+ * @brief Update sync completion timestamp
+ *
+ * Set the columns "last_attempt" and "last_completion" with the timestamp argument.
+ * Increase "n_attempts" and "n_completions" one unit.
+ *
+ * @param wdb Database node.
+ * @param component Name of the component.
+ * @param timestamp Synchronization event timestamp (field "id");
+ */
+
+static void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_UPDATE_COMPLETION) == -1) {
+        return;
+    }
+
+    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_UPDATE_COMPLETION];
+
+    sqlite3_bind_int64(stmt, 1, timestamp);
+    sqlite3_bind_int64(stmt, 2, timestamp);
+    sqlite3_bind_text(stmt, 3, COMPONENT_NAMES[component], -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+    }
+}
+
 // Query the checksum of a data range
 int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * command, const char * payload) {
     int retval = -1;
@@ -137,29 +190,37 @@ int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * com
     }
 
     cJSON * item = cJSON_GetObjectItem(data, "begin");
+    char * begin = cJSON_GetStringValue(item);
 
-    if (!(item && cJSON_IsString(item))) {
+    if (begin == NULL) {
         mdebug1("No such string 'begin' in JSON payload.");
         goto end;
     }
 
-    char * begin = item->valuestring;
     item = cJSON_GetObjectItem(data, "end");
+    char * end = cJSON_GetStringValue(item);
 
-    if (!(item && cJSON_IsString(item))) {
+    if (end == NULL) {
         mdebug1("No such string 'end' in JSON payload.");
         goto end;
     }
 
-    char * end = item->valuestring;
     item = cJSON_GetObjectItem(data, "checksum");
+    char * checksum = cJSON_GetStringValue(item);
 
-    if (!(item && cJSON_IsString(item))) {
+    if (checksum == NULL) {
         mdebug1("No such string 'checksum' in JSON payload.");
         goto end;
     }
 
-    char * checksum = item->valuestring;
+    item = cJSON_GetObjectItem(data, "id");
+
+    if (!cJSON_IsNumber(item)) {
+        mdebug1("No such string 'id' in JSON payload.");
+        goto end;
+    }
+
+    long timestamp = item->valuedouble;
     os_sha1 hexdigest;
     struct timespec ts_start, ts_end;
     gettime(&ts_start);
@@ -182,6 +243,19 @@ int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * com
 
     if (strcmp(command, "integrity_check_global") == 0) {
         wdbi_delete(wdb, component, begin, end, NULL);
+
+        // Update synchronization timestamp
+
+        switch (retval) {
+        case 0: // No data
+        case 1: // Checksum failure
+            wdbi_update_attempt(wdb, component, timestamp);
+            break;
+
+        case 2: // Data is synchronized
+            wdbi_update_completion(wdb, component, timestamp);
+        }
+
     } else if (strcmp(command, "integrity_check_left") == 0) {
         item = cJSON_GetObjectItem(data, "tail");
         wdbi_delete(wdb, component, begin, end, cJSON_GetStringValue(item));

@@ -129,7 +129,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
             fim_send_sync_msg(plain);
             free(plain);
         } else {
-            char * plain = dbsync_file_msg("syscheck", entry_data);
+            char * plain = dbsync_state_msg("syscheck", entry_data);
             fim_send_sync_msg(plain);
             free(plain);
         }
@@ -157,7 +157,7 @@ void fim_sync_send_list(const char * start, const char * top) {
         cJSON * entry_data = fim_entry_json(keys[i], data);
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-        char * plain = dbsync_file_msg("syscheck", entry_data);
+        char * plain = dbsync_state_msg("syscheck", entry_data);
         fim_send_sync_msg(plain);
         free(plain);
     }

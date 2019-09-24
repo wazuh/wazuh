@@ -1079,7 +1079,7 @@ int print_hash_tables() {
 #ifndef WIN32
     OSHashNode * hash_node;
     unsigned int inode_it = 0;
-    unsigned inode_items;
+    unsigned inode_items = 0;
     unsigned element_totali = 0;
     char * files = NULL;
 
