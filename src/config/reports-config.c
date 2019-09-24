@@ -404,18 +404,13 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
-                            if (24 % rotation_config->interval != 0 && !strcmp(&rotation_config->interval_units, "h")) {
-                                merror("The '%s' option only accepts daily divisors as argument [1h, 2h, 3h, 4h, 6h, 8h, 12h].", rotation_children[k]->element);
-                                OS_ClearNode(rotation_children);
-                                OS_ClearNode(children);
-                                return (OS_INVALID);
-                            }  else if (rotation_config->interval > 24 || rotation_config->interval < 1) {
-                                merror("Value for 'interval' in <logs> not allowed.");
+                            if ((24 % rotation_config->interval != 0 && !strcmp(&rotation_config->interval_units, "h")) || (rotation_config->interval > 24 || rotation_config->interval < 1)) {
+                                merror("Value for 'schedule' in <log> not allowed. Allowed values: [1h, 2h, 3h, 4h, 6h, 8h, 12h, monday, tuesday, wednesday, thursday, friday, saturday, sunday].");
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return (OS_INVALID);
                             }
-                        } else if(strcmp(rotation_children[k]->element, xml_rotate) == 0) {
+                        } else if (strcmp(rotation_children[k]->element, xml_rotate) == 0) {
                             char *end;
                             rotation_config->rotate = strtol(rotation_children[k]->content, &end, 10);
                             if (*end != '\0') {
@@ -460,7 +455,7 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                 return (OS_INVALID);
                             }  else if (rotation_config->maxage > 500) {
                                 mwarn("Maximum value for 'keep' in <logs> not allowed. It will be set to 500 days.");
-                                rotation_config->interval = 500;
+                                rotation_config->maxage = 500;
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_day_wait) == 0) {
                             char *end;
@@ -472,7 +467,7 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                 return (OS_INVALID);
                             }  else if (rotation_config->day_wait > 600) {
                                 mwarn("Maximum value for 'day_wait' in <logs> not allowed. It will be set to 600 seconds.");
-                                rotation_config->interval = 500;
+                                rotation_config->day_wait = 500;
                             }
                         } else {
                             merror(XML_ELEMNULL);

@@ -558,13 +558,8 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
-                            if (24 % Config->alerts_interval != 0 && !strcmp(&Config->archives_interval_units, "h")) {
-                                merror("The '%s' option only accepts daily divisors as argument [1h, 2h, 3h, 4h, 6h, 8h, 12h].", rotation_children[k]->element);
-                                OS_ClearNode(rotation_children);
-                                OS_ClearNode(children);
-                                return (OS_INVALID);
-                            }  else if (Config->alerts_interval > 24 || Config->alerts_interval < 1) {
-                                merror("Value for 'interval' in <logs> not allowed.");
+                            if ((24 % Config->alerts_interval != 0 && !strcmp(&Config->alerts_interval_units, "h")) || (Config->alerts_interval > 24 || Config->alerts_interval < 1)) {
+                                merror("Value for 'schedule' in <alerts> not allowed. Allowed values: [1h, 2h, 3h, 4h, 6h, 8h, 12h, monday, tuesday, wednesday, thursday, friday, saturday, sunday].");
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return (OS_INVALID);
@@ -753,13 +748,8 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
-                            if (24 % Config->alerts_interval != 0 && !strcmp(&Config->archives_interval_units, "h")) {
-                                merror("The '%s' option only accepts daily divisors as argument [1h, 2h, 3h, 4h, 6h, 8h, 12h].", rotation_children[k]->element);
-                                OS_ClearNode(rotation_children);
-                                OS_ClearNode(children);
-                                return (OS_INVALID);
-                            }  else if (Config->alerts_interval > 24 || Config->alerts_interval < 1) {
-                                merror("Value for 'interval' in <logs> not allowed.");
+                            if ((24 % Config->archives_interval != 0 && !strcmp(&Config->archives_interval_units, "h")) || (Config->archives_interval > 24 || Config->archives_interval < 1)) {
+                                merror("Value for 'schedule' in <archives> not allowed. Allowed values: [1h, 2h, 3h, 4h, 6h, 8h, 12h, monday, tuesday, wednesday, thursday, friday, saturday, sunday].");
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return (OS_INVALID);
