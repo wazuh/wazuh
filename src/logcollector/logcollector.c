@@ -170,7 +170,7 @@ void LogCollectorStart()
 
 #ifdef EVENTCHANNEL_SUPPORT
             minfo(READING_EVTLOG, current->file);
-            win_start_event_channel(current->file, current->future, current->query);
+            win_start_event_channel(current->file, current->future, current->query, current->reconnect_time);
 #else
             mwarn("eventchannel not available on this version of Windows");
 #endif

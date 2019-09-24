@@ -33,6 +33,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_label = "label";
     const char *xml_localfile_target = "target";
     const char *xml_localfile_outformat = "out_format";
+    const char *xml_localfile_reconnect_time = "reconnect_time";
     const char *xml_localfile_age = "age";
     const char *xml_localfile_exclude = "exclude";
     const char *xml_localfile_binaries = "ignore_binaries";
@@ -79,6 +80,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logf[pl].ign = 360;
     logf[pl].exists = 1;
     logf[pl].future = 1;
+    logf[pl].reconnect_time = 5;
 
     /* Search for entries related to files */
     i = 0;
@@ -138,6 +140,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             logf[pl].out_format[n]->target = target ? strdup(target) : NULL;
             os_strdup(node[i]->content, logf[pl].out_format[n]->format);
             logf[pl].out_format[n + 1] = NULL;
+        } else if (strcmp(node[i]->element, xml_localfile_reconnect_time) == 0) {
+            logf[pl].reconnect_time = atoi(node[i]->content);
         } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {
             flags.hidden = flags.system = 0;
             char *key_value = 0;

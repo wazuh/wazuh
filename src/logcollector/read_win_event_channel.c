@@ -63,6 +63,7 @@ typedef struct _os_channel {
     char bookmark_enabled;
     char bookmark_filename[OS_MAXSTR];
     char *query;
+    int reconnect_time;
 } os_channel;
 
 static char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags);
@@ -505,8 +506,9 @@ DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_chann
     } else {
         while(1) {
             /* Try to restart EventChannel */
-            if (win_start_event_channel(channel->evt_log, !channel->bookmark_enabled, channel->query) == -1) {
-                sleep(5);
+            if (win_start_event_channel(channel->evt_log, !channel->bookmark_enabled, channel->query, channel->reconnect_time) == -1) {
+                mdebug1("Trying to reconnect %s channel in %i seconds.", channel->evt_log, channel->reconnect_time );
+                sleep(channel->reconnect_time);
             } else {
                 minfo("'%s' channel has been reconnected succesfully.", channel->evt_log);
                 break;
@@ -517,7 +519,7 @@ DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_chann
     return (0);
 }
 
-int win_start_event_channel(char *evt_log, char future, char *query)
+int win_start_event_channel(char *evt_log, char future, char *query, int reconnect_time)
 {
     wchar_t *wchannel = NULL;
     wchar_t *wquery = NULL;
@@ -539,6 +541,7 @@ int win_start_event_channel(char *evt_log, char future, char *query)
     }
 
     channel->evt_log = evt_log;
+    channel->reconnect_time = reconnect_time;
 
     /* Create copy of event log string */
     os_strdup(channel->evt_log, channel->bookmark_name);
@@ -626,7 +629,7 @@ int win_start_event_channel(char *evt_log, char future, char *query)
         } else {
             /* Prevent message flooding when EventLog is stopped */
             if (counter == 0) {
-                mwarn("The EventLog service is down. Unable to collect logs from its channels.");
+                mwarn("The eventlog service is down. Unable to collect logs from its channels.");
                 counter = 1;
             }
         }
