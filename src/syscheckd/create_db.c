@@ -457,7 +457,7 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
         snprintf(aux, OS_SIZE_64, "%u", file_stat.st_uid);
         os_strdup(aux, data->uid);
 
-        os_strdup((char*)get_user(file_name, file_stat.st_uid, NULL), data->user_name);
+        data->user_name = get_user(file_name, file_stat.st_uid, NULL);
     }
 
     if (options & CHECK_GROUP) {

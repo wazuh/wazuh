@@ -578,9 +578,38 @@ void sk_sum_clean(sk_sum_t * sum) {
 
 #endif
 
-const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
-    struct passwd *user = getpwuid(uid);
-    return user ? user->pw_name : "";
+char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
+    struct passwd pwd;
+    struct passwd *result;
+    char *buf;
+    char *user_name = NULL;
+    int bufsize;
+    int s;
+    int errno;
+
+    bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+    if (bufsize == -1) {
+        bufsize = 16384;
+    }
+
+    os_calloc(bufsize, sizeof(char), buf);
+
+    s = getpwuid_r(uid, &pwd, buf, bufsize, &result);
+    if (result == NULL) {
+        if (s == 0) {
+            mwarn("~~~ User with uid `%d` not found\n", uid);
+        }
+        else {
+            errno = s;
+            merror("Failed getting user_name (%d):'%s'\n", errno, strerror(errno));
+        }
+    } else {
+        os_strdup(pwd.pw_name, user_name);
+    }
+
+    os_free(buf);
+
+    return user_name;
 }
 
 const char *get_group(int gid) {
