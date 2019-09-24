@@ -152,7 +152,7 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
     cJSON * json_event = NULL;
     fim_entry_data * entry_data = NULL;
     fim_entry_data * saved_data = NULL;
-    struct stat file_stat;
+    struct stat *file_stat = NULL;
     char * json_formated;
     int options;
     int deleted_flag = 0;
@@ -161,7 +161,8 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    if (w_stat(file_name, &file_stat) < 0) {
+    os_calloc(1, sizeof(struct stat), file_stat);
+    if (w_stat(file_name, file_stat) < 0) {
         if (options & CHECK_SEECHANGES) {
             delete_target_file(file_name);
         }
@@ -170,6 +171,7 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
         //File attributes
         if (entry_data = fim_get_data(file_name, file_stat, mode, options), !entry_data) {
             merror("Couldn't get attributes for file: '%s'", file_name);
+            os_free(file_stat);
             return OS_INVALID;
         }
     }
@@ -177,8 +179,9 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
     if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file_name), !saved_data) {
         if (!deleted_flag) {
             // New entry. Insert into hash table
-            if (fim_insert(file_name, entry_data) == -1) {
+            if (fim_insert(file_name, entry_data, file_stat) == -1) {
                 free_entry_data(entry_data);
+                os_free(file_stat);
                 w_mutex_unlock(&syscheck.fim_entry_mutex);
                 return OS_INVALID;
             }
@@ -198,6 +201,7 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
             if (json_event = fim_json_event(file_name, saved_data, entry_data, dir_position, FIM_MODIFICATION, mode, w_evt), json_event) {
                 if (fim_update(file_name, entry_data) == -1) {
                     free_entry_data(entry_data);
+                    os_free(file_stat);
                     w_mutex_unlock(&syscheck.fim_entry_mutex);
                     return OS_INVALID;
                 }
@@ -219,6 +223,7 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
         os_free(json_formated);
         cJSON_Delete(json_event);
     }
+    os_free(file_stat);
 
     return 0;
 }
@@ -409,14 +414,14 @@ int fim_check_depth(char * path, int dir_position) {
 
 
 // Get data from file
-fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fim_event_mode mode, int options) {
+fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, fim_event_mode mode, int options) {
     fim_entry_data * data = NULL;
 
     os_calloc(1, sizeof(fim_entry_data), data);
     init_fim_data_entry(data);
 
     if (options & CHECK_SIZE) {
-        data->size = file_stat.st_size;
+        data->size = file_stat->st_size;
     }
 
     if (options & CHECK_PERM) {
@@ -429,16 +434,16 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
             data->perm = escape_perm_sum(perm_unescaped);
         }
 #else
-        data->perm = agent_file_perm(file_stat.st_mode);
+        data->perm = agent_file_perm(file_stat->st_mode);
 #endif
     }
 
     if (options & CHECK_MTIME) {
-        data->mtime = file_stat.st_mtime;
+        data->mtime = file_stat->st_mtime;
     }
 
     if (options & CHECK_INODE) {
-        data->inode = file_stat.st_ino;
+        data->inode = file_stat->st_ino;
     }
 
 #ifdef WIN32
@@ -448,18 +453,18 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
 #else
     if (options & CHECK_OWNER) {
         char aux[OS_SIZE_64];
-        snprintf(aux, OS_SIZE_64, "%u", file_stat.st_uid);
+        snprintf(aux, OS_SIZE_64, "%u", file_stat->st_uid);
         os_strdup(aux, data->uid);
 
-        data->user_name = get_user(file_name, file_stat.st_uid, NULL);
+        data->user_name = get_user(file_name, file_stat->st_uid, NULL);
     }
 
     if (options & CHECK_GROUP) {
         char aux[OS_SIZE_64];
-        snprintf(aux, OS_SIZE_64, "%u", file_stat.st_gid);
+        snprintf(aux, OS_SIZE_64, "%u", file_stat->st_gid);
         os_strdup(aux, data->gid);
 
-        os_strdup((char*)get_group(file_stat.st_gid), data->group_name);
+        os_strdup((char*)get_group(file_stat->st_gid), data->group_name);
     }
 #endif
 
@@ -472,10 +477,10 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
 
     // We won't calculate hash for symbolic links, empty or large files
 #ifdef __linux__
-    if ((file_stat.st_mode & S_IFMT) == FIM_REGULAR)
+    if ((file_stat->st_mode & S_IFMT) == FIM_REGULAR)
 #endif
-        if (file_stat.st_size > 0 &&
-                (size_t)file_stat.st_size < syscheck.file_max_size &&
+        if (file_stat->st_size > 0 &&
+                (size_t)file_stat->st_size < syscheck.file_max_size &&
                 (options & CHECK_MD5SUM || options & CHECK_SHA1SUM || options & CHECK_SHA256SUM) ) {
             if (OS_MD5_SHA1_SHA256_File(file_name,
                                         syscheck.prefilter_cmd,
@@ -502,7 +507,7 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
         data->hash_sha256[0] = '\0';
     }
 
-    data->dev = file_stat.st_dev;
+    data->dev = file_stat->st_dev;
     data->mode = mode;
     data->options = options;
     data->last_event = time(NULL);
@@ -515,14 +520,14 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fi
 
 // Initialize fim_entry_data structure
 void init_fim_data_entry(fim_entry_data *data) {
-    data->size = -1;
+    data->size = 0;
     data->perm = NULL;
     data->uid = NULL;
     data->gid = NULL;
     data->user_name = NULL;
     data->group_name = NULL;
-    data->mtime = -1;
-    data->inode = -1;
+    data->mtime = 0;
+    data->inode = 0;
     data->hash_md5[0] = '\0';
     data->hash_sha1[0] = '\0';
     data->hash_sha256[0] = '\0';
@@ -579,7 +584,7 @@ void fim_get_checksum (fim_entry_data * data) {
 
 
 // Inserts a file in the syscheck hash table structure (inodes and paths)
-int fim_insert (char * file, fim_entry_data * data) {
+int fim_insert (char * file, fim_entry_data * data, struct stat *file_stat) {
     char * inode_key = NULL;
 
     if (rbtree_insert(syscheck.fim_entry, file, data) == NULL) {
@@ -592,7 +597,7 @@ int fim_insert (char * file, fim_entry_data * data) {
 
     // Function OSHash_Add_ex doesn't alloc memory for the data of the hash table
     os_calloc(OS_SIZE_128, sizeof(char), inode_key);
-    snprintf(inode_key, OS_SIZE_128, "%ld:%ld", data->dev, data->inode);
+    snprintf(inode_key, OS_SIZE_128, "%ld:%ld", file_stat->st_dev, file_stat->st_ino);
 
     if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), !inode_data) {
         os_calloc(1, sizeof(fim_inode_data), inode_data);
