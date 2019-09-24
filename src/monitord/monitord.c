@@ -199,7 +199,7 @@ void Monitord()
                             } else {
                                 new_path = w_rotate_log(path_ossec, mond.compress_rotation, mond.maxage, today != p->tm_mday ? 1 : 0, 0, mond.daily_rotations, -1);
                             }
-                            if(new_path) {
+                            if (new_path) {
                                 add_new_rotation_node(mond.log_list_plain, new_path, mond.rotate);
                             }
                             os_free(new_path);
@@ -210,7 +210,7 @@ void Monitord()
                             } else {
                                 new_path = w_rotate_log(path_ossec_json, mond.compress_rotation, mond.maxage, today != p->tm_mday ? 1 : 0, 1, mond.daily_rotations, -1);
                             }
-                            if(new_path) {
+                            if (new_path) {
                                 add_new_rotation_node(mond.log_list_json, new_path, mond.rotate);
                             }
                             os_free(new_path);

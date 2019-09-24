@@ -195,7 +195,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                     }
                     if (mond.rotation_enabled && mond.interval > 0 && now > n_time) {
                         if(mond.ossec_log_plain) {
-                            if(mond.log_list_plain && mond.log_list_plain->last) {
+                            if(mond.log_list_plain && mond.log_list_plain->last && today == mond.log_list_plain->last->first_value) {
                                 new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, today != tm.tm_mday ? 1 : 0, 0, mond.daily_rotations, mond.log_list_plain->last->second_value);
                             } else {
                                 new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, today != tm.tm_mday ? 1 : 0, 0, mond.daily_rotations, -1);
@@ -205,19 +205,19 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                             }
                             os_free(new_path);
                         }
-                        if(mond.ossec_log_json) {
-                            if(mond.log_list_json && mond.log_list_json->last) {
+                        if (mond.ossec_log_json) {
+                            if (mond.log_list_json && mond.log_list_json->last && today == mond.log_list_json->last->first_value) {
                                 new_path = w_rotate_log(path_json, mond.compress_rotation, mond.maxage, today != tm.tm_mday ? 1 : 0, 1, mond.daily_rotations, mond.log_list_json->last->second_value);
                             } else {
                                 new_path = w_rotate_log(path_json, mond.compress_rotation, mond.maxage, today != tm.tm_mday ? 1 : 0, 1, mond.daily_rotations, -1);
                             }
-                            if(new_path) {
+                            if (new_path) {
                                 add_new_rotation_node(mond.log_list_json, new_path, mond.rotate);
                             }
                             os_free(new_path);
                         }
-                        n_time = calc_next_rotation(now, rot, mond.interval_units, mond.interval);
                         if (today != tm.tm_mday) today = tm.tm_mday;
+                        n_time = calc_next_rotation(now, rot, mond.interval_units, mond.interval);
                     }
                 }
             }
