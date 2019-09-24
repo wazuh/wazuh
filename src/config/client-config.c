@@ -315,9 +315,9 @@ void Free_Client(agent * config){
 /* Check if is valid server addres */
 bool Validate_Address(agent_server *servers)
 {
-    int i = 0;
+    int i;
 
-    while (servers[i].rip) {
+    for (i = 0; servers[i].rip; i++) {
 
         if ( strcmp(servers[i].rip, "MANAGER_IP") != 0
             && strcmp(servers[i].rip, "0.0.0.0") != 0
@@ -325,8 +325,6 @@ bool Validate_Address(agent_server *servers)
 
             return true;
         }
-
-        i++;
     }
 
     return false;
