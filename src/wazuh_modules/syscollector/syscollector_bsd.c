@@ -28,7 +28,6 @@
 
 
 #ifdef __MACH__
-<<<<<<< HEAD
 
 #include <ctype.h>
 #include <libproc.h>
@@ -36,11 +35,8 @@
 #include <grp.h>
 #include <sys/resource.h>
 #include <sys/proc.h>
-=======
 #include <sys/proc_info.h>
-#include <libproc.h>
 #include <netdb.h>
->>>>>>> 611d96aaa... Add port inventory to syscollector MAC agents
 
 #if !HAVE_SOCKADDR_SA_LEN
 #define SA_LEN(sa)      af_to_len(sa->sa_family)
@@ -56,11 +52,9 @@
 
 hw_info *get_system_bsd();    // Get system information
 
-#ifdef __MACH__
-    OSHash *gateways;
-#endif
 
 #if defined(__MACH__)
+OSHash *gateways;
 
 char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_id);
 
@@ -1507,7 +1501,7 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
                 snprintf(protocol, 5, "%s%c",
                     socketInfo.psi.soi_kind == SOCKINFO_TCP ? "tcp" : "udp",
                     socketInfo.psi.soi_family == AF_INET6 ? '6' : '\0');
- 
+
 
                 int localPort = (int)ntohs(socketInfo.psi.soi_proto.pri_in.insi_lport);
                 int remotePort = (int)ntohs(socketInfo.psi.soi_proto.pri_in.insi_fport);
@@ -1567,10 +1561,8 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
 }
 
 void sys_proc_mac(int queue_fd, const char* LOCATION){
-    char *timestamp;
-    struct tm localtm;
-    int random_id = os_random();
 
+    int random_id = os_random();
     if(random_id < 0) {
         random_id = -random_id;
     }
@@ -1579,8 +1571,10 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     int usec = 1000000 / wm_max_eps;
 
     time_t now = time(NULL);
+    struct tm localtm;
     localtime_r(&now, &localtm);
 
+    char *timestamp;
     os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
     snprintf(timestamp, TIME_LENGTH-1, "%d/%02d/%02d %02d:%02d:%02d",
@@ -1590,19 +1584,19 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
 
 
-    pid_t * pids = NULL;
     int32_t maxproc;
     size_t len = sizeof(maxproc);
     sysctlbyname("kern.maxproc", &maxproc, &len, NULL, 0);
 
+    pid_t *pids = NULL;
     os_calloc(maxproc, 1, pids);
     int count = proc_listallpids(pids, maxproc);
 
     mtdebug2(WM_SYS_LOGTAG, "Number of processes retrieved: %d", count);
 
-    int index;
     cJSON *proc_array = cJSON_CreateArray();
 
+    int index;
     for(index=0; index < count; ++index) {
 
         struct proc_taskallinfo task_info;
