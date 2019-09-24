@@ -19,8 +19,6 @@
 #ifndef TIME_OP_H
 #define TIME_OP_H
 
-#ifndef WIN32
-
 #include <time.h>
 
 /**
@@ -47,7 +45,7 @@ void time_sub(struct timespec * a, const struct timespec * b);
  */
 double time_diff(const struct timespec * a, const struct timespec * b);
 
-#else
+#ifdef WIN32
 
 /**
  * @brief Get the epoch time
