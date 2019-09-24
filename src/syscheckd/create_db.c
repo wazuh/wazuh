@@ -40,13 +40,11 @@ static const char *FIM_EVENT_MODE[] = {
 
 int fim_scan() {
     int position = 0;
-
-#ifndef WIN32
     struct timespec start;
     struct timespec end;
     clock_t timeCPU_start = clock();
+
     gettime(&start);
-#endif
     minfo(FIM_FREQUENCY_STARTED);
 
     while (syscheck.dir[position] != NULL) {
@@ -55,9 +53,7 @@ int fim_scan() {
         position++;
     }
 
-#ifndef WIN32
     gettime(&end);
-#endif
 
     if (_base_line == 0) {
         _base_line = 1;
@@ -67,11 +63,9 @@ int fim_scan() {
 
     minfo(FIM_FREQUENCY_ENDED);
 
-#ifndef WIN32
     minfo("The scan has been running during: %.3f sec (%.3f clock sec)",
             time_diff(&start, &end),
             (double)(clock() - timeCPU_start) / CLOCKS_PER_SEC);
-#endif
     print_hash_tables();
 
     return 0;
