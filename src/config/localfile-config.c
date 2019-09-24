@@ -493,7 +493,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 }
 
 int Test_Localfile(const char *path, int type){
-    int fail = 0;
     int maximum_lines = getDefine_Int("logcollector", "max_lines", 0, 1000000);
 
     if (maximum_lines > 0 && maximum_lines < 100) {
@@ -519,15 +518,11 @@ int Test_Localfile(const char *path, int type){
 
     if (ReadConfig(CLOCALFILE | CSOCKET | type, path, &test_localfile, NULL) < 0) {
         merror(CONF_READ_ERROR, "Localfile");
-        fail = 1;
+        Free_Localfile(&test_localfile);
+        return OS_INVALID;
     }
 
     Free_Localfile(&test_localfile);
-
-    if (fail) {
-        return -1;
-    }
-
     return 0;
 }
 

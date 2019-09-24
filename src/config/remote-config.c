@@ -246,7 +246,6 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 }
 
 int Test_Remoted(const char *path) {
-    int fail = 0;
     remoted *test_remoted;
     os_calloc(1, sizeof(remoted), test_remoted);
 
@@ -259,24 +258,20 @@ int Test_Remoted(const char *path) {
 
     if (ReadConfig(CREMOTE, path, test_remoted, NULL) < 0) {
 		merror(CONF_READ_ERROR, "Remoted");
-		fail = 1;
+        free_remoted(test_remoted);
+        return OS_INVALID;
 	}
 
-    if(!fail && test_remoted->queue_size < 1) {
+    if(test_remoted->queue_size < 1) {
         merror("Remoted Config: Queue size is invalid. Review configuration.");
-        fail = 1;
-    }
-    else if(!fail && test_remoted->queue_size > 262144) {
+        free_remoted(test_remoted);
+        return OS_INVALID;
+    } else if(test_remoted->queue_size > 262144) {
         mwarn("Remoted Config: Queue size is very high. The application may run out of memory.");
     }
 
     /* Frees the LogReader config struct */
     free_remoted(test_remoted);
-
-    if (fail) {
-        return -1;
-    }
-
     return 0;
 }
 

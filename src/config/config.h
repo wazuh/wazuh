@@ -105,6 +105,7 @@ int Test_Labels(const char *path, int type);
 int Test_Analysisd(const char *path);
 int Test_Authd(const char *path);
 int Test_ActiveResponse(const char *path, int type);
+int Test_Agent_Active_Response(const char *path);
 int Test_Remoted(const char *path);
 int Test_Execd(const char *path);
 int Test_Integratord(const char *path);

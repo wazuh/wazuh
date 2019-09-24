@@ -1422,20 +1422,15 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
 }
 
 int Test_Syscheck(const char *path, int type){
-    int fail = 0;
     syscheck_config test_syscheck = { .tsleep = 0 };
 
     if (ReadConfig(CSYSCHECK | type, path, &test_syscheck, NULL) < 0) {
 		merror(CONF_READ_ERROR, "Syscheck");
-		fail = 1;
+        Free_Syscheck(&test_syscheck);
+        return OS_INVALID;
 	}
 
     Free_Syscheck(&test_syscheck);
-
-    if (fail) {
-        return -1;
-    }
-
     return 0;
 }
 

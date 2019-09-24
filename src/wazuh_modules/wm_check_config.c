@@ -15,7 +15,7 @@
 
 
 #include "wm_check_config.h"
-#define WARN_RESULT     "test was successful, however few errors have been found, please inspect your configuration file."
+#define WARN_RESULT     "test was successful, however few errors have been found, please inspect your configuration file"
 
 
 static void *wm_chk_conf_main();
@@ -29,7 +29,6 @@ const wm_context WM_CHK_CONF_CONTEXT = {
     (cJSON * (*)(const void *))wm_chk_conf_dump
 };
 
-
 void *wm_chk_conf_main() {
 
     int sock, peer;
@@ -37,7 +36,6 @@ void *wm_chk_conf_main() {
     ssize_t length;
     fd_set fdset;
 
-    /* variables */
     char *filetype = NULL;
     char *filepath = NULL;
 
@@ -79,12 +77,10 @@ void *wm_chk_conf_main() {
 
             case 0:
                 mtinfo(WM_CHECK_CONFIG_LOGTAG, "Empty message from local client.");
-                // close(peer);
                 break;
 
             case OS_MAXLEN:
                 mterror(WM_CHECK_CONFIG_LOGTAG, "Received message > %i", MAX_DYN_STR);
-                // close(peer);
                 break;
 
             default:
@@ -102,31 +98,34 @@ void *wm_chk_conf_main() {
                 }
 
                 char *output = NULL;
+                /* Now, we go to check the configuration file according to the filetype provided : test manager, agent or remote conf */
                 test_file(filetype, filepath, &output);
 
                 cJSON *temp_obj = cJSON_CreateObject();
                 if(output) {
                     char *aux = strdup(output);
 
-                    cJSON_AddStringToObject(temp_obj, "test_result", aux);
                     if(strstr(aux, "Test OK!") && !(strstr(aux, "ERROR"))) {
-                        cJSON_AddStringToObject(temp_obj, "error_message", "none.");
+                        cJSON_AddStringToObject(temp_obj, "error", "0");
+                    } else if(strstr(aux, "Test OK!") && strstr(aux, "ERROR")) {
+                        cJSON_AddStringToObject(temp_obj, "error", "2");
+                        cJSON_AddStringToObject(temp_obj, "error_mesage", WARN_RESULT);
+                    } else if(!strstr(aux, "Test OK!")) {
+                        cJSON_AddStringToObject(temp_obj, "error", "1");
                     }
-                    else if(strstr(aux, "Test OK!") && strstr(aux, "ERROR")) {
-                        cJSON_AddStringToObject(temp_obj, "error_message", WARN_RESULT);
-                    }
-                    else if(!strstr(aux, "Test OK!")) {
-                        cJSON_AddStringToObject(temp_obj, "error_message", "test unsuccessful.");
-                    }
+                    cJSON_AddStringToObject(temp_obj, "data", aux);
 
                     os_free(output);
                     output = cJSON_PrintUnformatted(temp_obj);
                     os_free(aux);
-                }
-                else {
-                    cJSON_AddStringToObject(temp_obj, "test_result", "failure testing the configuration file.");
+                } else {
+                    cJSON_AddStringToObject(temp_obj, "error", "1");
+                    cJSON_AddStringToObject(temp_obj, "data", "failure testing the configuration file");
                     output = cJSON_PrintUnformatted(temp_obj);
                 }
+
+                /* Send the test result to API socket */
+                send_message(output);
 
                 os_free(output);
                 cJSON_Delete(temp_obj);
@@ -144,7 +143,7 @@ void *wm_chk_conf_main() {
     return NULL;
 }
 
-void wm_chk_conf_destroy(){}
+void wm_chk_conf_destroy() {}
 
 wmodule *wm_chk_conf_read(){
     wmodule * module;
@@ -196,7 +195,6 @@ int check_event_rcvd(const char *buffer, char **filetype, char **filepath) {
         merror("'version' field not found");
         goto fail;
     }
-    // else if version???
 
     cJSON *component = cJSON_GetObjectItem(event, "component");
     if(!component) {
@@ -269,6 +267,31 @@ void test_file(const char *filetype, const char *filepath, char **output) {
     }
 
     os_free(output_msg);
+}
+
+void send_message(const char *output) {
+
+    /* Start api socket */
+    int api_sock, rc;
+    if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE)) < 0) {
+        merror(QUEUE_ERROR, EXECQUEUEPATHAPI, strerror(errno));
+        return;
+    }
+
+    if ((rc = OS_SendUnix(api_sock, output, 0)) < 0) {
+        /* Error on the socket */
+        if (rc == OS_SOCKTERR) {
+            merror("socketerr (not available).");
+            close(api_sock);
+            return;
+        }
+
+        /* Unable to send. Socket busy */
+        mdebug2("Socket busy, discarding message.");
+    }
+
+    close(api_sock);
+    mdebug2("The message was sent successfully.");
 }
 
 #endif

@@ -95,19 +95,14 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
 }
 
 int Test_ClientBuffer(const char *path, int type){
-    int fail = 0;
     agent test_clientBuffer = { .server = 0 };
 
     if (ReadConfig(CBUFFER | type, path, NULL, &test_clientBuffer) < 0) {
 		merror(CONF_READ_ERROR, "ClientBuffer");
-		fail = 1;
+        Free_Client(&test_clientBuffer);
+        return OS_INVALID;
 	}
 
     Free_Client(&test_clientBuffer);
-
-    if (fail) {
-        return -1;
-    }
-
     return 0;
 }

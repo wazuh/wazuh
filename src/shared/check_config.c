@@ -73,10 +73,9 @@ int test_agent_conf(const char * path, int type) {
         return OS_INVALID;
     } else if(Test_WModule(path, type) < 0) {                   // Test WModules, SCA and FluentForwarder
         return OS_INVALID;
+    } else if (Test_Agent_Active_Response(path) < 0) {
+        return OS_INVALID;
     }
-    // else if(ExecdConfig(path) < 0) {
-    //     return OS_INVALID;
-    // }
 
     printf("Test OK!\n");
     return 0;

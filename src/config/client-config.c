@@ -277,20 +277,15 @@ int Read_Client_Server(XML_NODE node, agent * logr)
 }
 
 int Test_Client(const char *path, int type){
-    int fail = 0;
     agent test_client = { .server = NULL };
 
     if (ReadConfig(CCLIENT | type, path, &test_client, NULL) < 0) {
 		merror(CONF_READ_ERROR, "Client");
-		fail = 1;
+        Free_Client(&test_client);
+        return OS_INVALID;
 	}
 
     Free_Client(&test_client);
-
-    if (fail) {
-        return -1;
-    }
-
     return 0;
 }
 

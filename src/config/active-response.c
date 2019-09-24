@@ -45,6 +45,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     const char *xml_ar_disabled = "disabled";
     const char *xml_ar_repeated = "repeated_offenders";
     const char *xml_ca_store = "ca_store";
+    const char *xml_ca_verification = "ca_verification";
 
     char *tmp_location;
 
@@ -149,9 +150,11 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
                 goto error_invalid;
             }
         } else if (strcmp(node[i]->element, xml_ar_repeated) == 0) {
-            /* Nothing - we deal with it on execd */
+            /* Nothing - we deal with it on execd and test in Test_Agent_Active_Response */
             rpt = 1;
         } else if (strcmp(node[i]->element, xml_ca_store) == 0) {
+            // Nothing to do
+        } else if (strcmp(node[i]->element, xml_ca_verification) == 0) {
             // Nothing to do
         } else {
             merror(XML_INVELEM, node[i]->element);
@@ -445,7 +448,8 @@ int Test_ActiveResponse(const char *path, int type) {
     test_activeresp = OSList_Create();
 
     if (!test_activecmd || !test_activeresp) {
-        merror_exit(LIST_ERROR);
+        merror(LIST_ERROR, "Attempting to check Active-Response");
+        return OS_INVALID;
     }
 
     /* type indicates local or remote config */
@@ -459,8 +463,115 @@ int Test_ActiveResponse(const char *path, int type) {
     Free_OSList(test_activeresp);
 
     if (fail) {
-        return -1;
+        return OS_INVALID;
     }
 
+    return 0;
+}
+
+int Test_Agent_Active_Response(const char *path) {
+    const char *(xmlf[]) = {"ossec_config", "active-response", "disabled", NULL};
+    const char *(castore[]) = {"ossec_config", "active-response", "ca_store", NULL};
+    const char *(caverify[]) = {"ossec_config", "active-response", "ca_verification", NULL};
+
+    /* Read XML file */
+
+    OS_XML xml;
+    if (OS_ReadXML(path, &xml) < 0) {
+        merror(XML_ERROR, path, xml.err, xml.err_line);
+        return OS_INVALID;
+    }
+
+    char *disable_entry = OS_GetOneContentforElement(&xml, xmlf);
+    if (disable_entry) {
+        if ( strcmp(disable_entry, "yes") && strcmp(disable_entry, "no") ) {
+            merror(XML_VALUEERR, "disabled", disable_entry);
+            os_free(disable_entry);
+            OS_ClearXML(&xml);
+            return OS_INVALID;
+        }
+
+        os_free(disable_entry);
+    }
+
+    XML_NODE node = OS_GetElementsbyNode(&xml, NULL);
+    XML_NODE child = NULL;
+    char *repeated_t = NULL;
+    int i = 0;
+
+    while (node && node[i]) {
+
+        child = OS_GetElementsbyNode(&xml, node[i]);
+        int j = 0;
+
+        while (child && child[j]) {
+
+            if (strcmp(child[j]->element, "active-response") == 0) {
+                XML_NODE child_attr = NULL;
+                child_attr = OS_GetElementsbyNode(&xml, child[j]);
+                int p = 0;
+
+                while (child_attr && child_attr[p]) {
+                    if (!strcmp(child_attr[p]->element, "repeated_offenders")) {
+                        os_strdup(child_attr[p]->content, repeated_t);
+                        OS_ClearNode(child_attr);
+                        goto next;
+                    }
+                    p++;
+                }
+
+                OS_ClearNode(child_attr);
+            }
+            j++;
+        }
+
+        i++;
+        OS_ClearNode(child);
+        child = NULL;
+    }
+
+next:
+    OS_ClearNode(child);
+    OS_ClearNode(node);
+
+    if (repeated_t) {
+        char **repeated_a = OS_StrBreak(',', repeated_t, 5);
+
+        if (!repeated_a) {
+            merror(XML_VALUEERR, "repeated_offenders", repeated_t);
+            os_free(repeated_t);
+            OS_ClearXML(&xml);
+            return OS_INVALID;
+        }
+    }
+
+    int enable_ca_verification = 0;
+    char **ca_verification = OS_GetContents(&xml, caverify);
+    if (ca_verification) {
+        for (i = 0; ca_verification[i]; ++i) {
+            if (strcasecmp(ca_verification[i], "yes") == 0) {
+                enable_ca_verification = 1;
+            } else if (strcasecmp(ca_verification[i], "no") == 0) {
+                enable_ca_verification = 0;
+            } else {
+                mwarn("Invalid content for tag <%s>: '%s'", caverify[2], ca_verification[i]);
+            }
+        }
+
+        free_strarray(ca_verification);
+    }
+
+    if (enable_ca_verification)
+    {
+        char **wcom_ca_store = OS_GetContents(&xml, castore);
+        if (!wcom_ca_store) {
+            minfo("No option <ca_store> defined. Wazuh default CA (%s) will be used.", DEF_CA_STORE);
+        }
+    }
+    else {
+        minfo("WPK verification with CA is disabled.");
+    }
+
+    OS_ClearXML(&xml);
     return 0;
 }

@@ -160,22 +160,17 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
 }
 
 int Test_Agentlessd(const char *path) {
-    int fail = 0;
     agentlessd_config *agtless_config;
     os_calloc(1, sizeof(agentlessd_config), agtless_config);
 
     if(ReadConfig(CAGENTLESS, path, agtless_config, NULL) < 0) {
         merror(XML_INV_AGENTLESS);
-		fail = 1;
+        free_AgentlessConfig(agtless_config);
+        return OS_INVALID;
     }
 
     // Free Memory
     free_AgentlessConfig(agtless_config);
-
-    if(fail) {
-        return -1;
-    }
-
     return 0;
 }
 

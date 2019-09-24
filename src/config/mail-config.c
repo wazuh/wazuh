@@ -14,7 +14,6 @@
 #include "global-config.h"
 
 int Test_Maild(const char *path) {
-    int fail = 0;
     MailConfig *mail_config;
     _Config *global_config;
 
@@ -25,41 +24,42 @@ int Test_Maild(const char *path) {
 
     if(ReadConfig(CMAIL, path, NULL, mail_config) < 0) {
         merror(CONF_READ_ERROR, "Mail options");
-		fail = 1;
+        goto fail;
     }
     else if(ReadConfig(CGLOBAL, path, global_config, NULL) < 0) {
         merror(CONF_READ_ERROR, "Global section for Mail test");
-		fail = 1;
+        goto fail;
     }
 
     if(mail_config->source == -1) {
         mail_config->source = MAIL_SOURCE_JSON;
     }
 
+    /* If mail config was filled, both log source from mailconfig and globalconfig must match */
     if((mail_config->from || mail_config->smtpserver || mail_config->maxperhour) && mail_config->mn) {
-        if((!global_config->alerts_log && !global_config->jsonout_output) && !fail) {
+        if((!global_config->alerts_log && !global_config->jsonout_output)) {
             merror("Mail Config: All alert formats are disabled.");
-            fail = 1;
+            goto fail;
         }
-        else if((!global_config->alerts_log && (mail_config->source == MAIL_SOURCE_LOGS)) && !fail) {
+        else if((!global_config->alerts_log && (mail_config->source == MAIL_SOURCE_LOGS))) {
             merror("Mail Config: Alerts.log is disabled when email_log_source selected this log.");
-            fail = 1;
+            goto fail;
         }
-        else if((!global_config->jsonout_output && (mail_config->source == MAIL_SOURCE_JSON)) && !fail) {
+        else if((!global_config->jsonout_output && (mail_config->source == MAIL_SOURCE_JSON))) {
             merror("Mail Config: Alerts.json is disabled when email_log_source selected this log.");
-            fail = 1;
+            goto fail;
         }
     }
 
     /* Free memory */
     config_free(global_config);
     freeMailConfig(mail_config);
-
-    if(fail) {
-        return -1;
-    }
-
     return 0;
+
+fail:
+    config_free(global_config);
+    freeMailConfig(mail_config);
+    return OS_INVALID;
 }
 
 void freeMailConfig(MailConfig *mailConfig) {

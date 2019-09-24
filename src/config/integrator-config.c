@@ -197,21 +197,16 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
 }
 
 int Test_Integratord(const char *path) {
-    int fail = 0;
     IntegratorConfig **test_integrator = NULL;
 
     if(ReadConfig(CINTEGRATORD, path, &test_integrator, NULL) < 0) {
         merror(CONF_READ_ERROR, "Integratord");
-		fail = 1;
+		free_integratord(test_integrator);
+        return OS_INVALID;
     }
 
     /* Free memory */
     free_integratord(test_integrator);
-
-    if(fail) {
-        return -1;
-    }
-
     return 0;
 }
 

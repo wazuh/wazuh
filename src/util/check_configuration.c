@@ -97,7 +97,7 @@ int main(int argc, char **argv)
             helpmsg();
         }
 
-        if(type_flag && !(strcmp(path_f, "")) && (argc >3)) {
+        if(type_flag && !(strcmp(path_f, "")) && (argc > 3)) {
             fprintf(stderr, "%s WARNING: -f option was not found. If you want to check a specific file this option must be provided.\n\n", ARGV0);
             return 0;
         }
@@ -107,26 +107,21 @@ int main(int argc, char **argv)
             filepath = strdup(path_f);
         }
 
+        if(!filepath) {
+            filepath = type_flag == CRMOTE_CONFIG ? strdup(DEFAULTDIR AGENTCONFIG) : strdup(DEFAULTCPATH);
+        }
+
         if(type_flag == MANAGER_CFG) {
-            if(!filepath) {
-                filepath = strdup(DEFAULTCPATH);
-            }
             test_manager_conf(filepath);
-            os_free(filepath);
         }
         else if(type_flag == CAGENT_CGFILE) {
-            if(!filepath) {
-                filepath = strdup(DEFAULTCPATH);
-            }
             test_agent_conf(filepath, type_flag);
         }
         else if(type_flag == CRMOTE_CONFIG) {
-            if(!filepath) {
-                filepath = strdup(AGENTCONFIG);
-            }
             test_remote_conf(filepath, type_flag);
-            os_free(filepath);
         }
+
+        os_free(filepath);
     }
     else if (argc > 5) {
         fprintf(stderr, "%s: %s\n", ARGV0, ARGS_EXCEEDED);

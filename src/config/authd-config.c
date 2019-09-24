@@ -189,22 +189,17 @@ short eval_bool(const char *str) {
 }
 
 int Test_Authd(const char *path) {
-    int fail = 0;
     authd_config_t *test_authd;
     os_calloc(1, sizeof(authd_config_t), test_authd);
 
     if (ReadConfig(CAUTHD, path, test_authd, NULL) < 0) {
 		merror(CONF_READ_ERROR, "Authd");
-		fail = 1;
+        free_authd_config(test_authd);
+        return OS_INVALID;
 	}
 
     /* Frees the LogReader config struct */
     free_authd_config(test_authd);
-
-    if (fail) {
-        return -1;
-    }
-
     return 0;
 }
 

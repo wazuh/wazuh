@@ -282,20 +282,15 @@ int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1)
 #endif
 
 int Test_WModule(const char *path, int type) {
-    int fail = 0;
     wmodule *test_wmodule;
     os_calloc(1, sizeof(wmodule), test_wmodule);
 
     if (ReadConfig(CWMODULE | type, path, &test_wmodule, NULL) < 0) {
         merror(CONF_READ_ERROR, "WModule");
-        fail = 1;
+        wm_free(test_wmodule);
+        return OS_INVALID;
     }
 
     wm_free(test_wmodule);
-
-    if (fail) {
-        return -1;
-    }
-
     return 0;
 }

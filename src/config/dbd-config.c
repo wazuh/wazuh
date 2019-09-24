@@ -74,62 +74,56 @@ int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2)
 }
 
 int Test_DBD(const char *path) {
-    int fail = 0;
     DBConfig *dbdConfig;
     os_calloc(1, sizeof(DBConfig), dbdConfig);
 
     if(ReadConfig(CDBD, path, NULL, dbdConfig) < 0) {
         merror(CONF_READ_ERROR, "Database");
-		fail = 1;
+		goto fail;
     }
 
-    if(!fail) {
-        /* Check if dbd isn't supposed to run */
-        if (!dbdConfig->host &&
-                !dbdConfig->user &&
-                !dbdConfig->pass &&
-                !dbdConfig->db &&
-                !dbdConfig->sock &&
-                !dbdConfig->port &&
-                !dbdConfig->db_type) {
-            goto chkfail;
-        }
+    /* Check if dbd isn't supposed to run */
+    if (!dbdConfig->host &&
+            !dbdConfig->user &&
+            !dbdConfig->pass &&
+            !dbdConfig->db &&
+            !dbdConfig->sock &&
+            !dbdConfig->port &&
+            !dbdConfig->db_type) {
+        free_dbdConfig(dbdConfig);
+        return 0;
+    }
 
         /* Check for a valid config */
-        if (!dbdConfig->host ||
-                !dbdConfig->user ||
-                !dbdConfig->pass ||
-                !dbdConfig->db ||
-                !dbdConfig->db_type) {
-            merror(DB_MISS_CONFIG);
-            fail = 1;
-        }
+    if (!dbdConfig->host ||
+            !dbdConfig->user ||
+            !dbdConfig->pass ||
+            !dbdConfig->db ||
+            !dbdConfig->db_type) {
+        merror(DB_MISS_CONFIG);
+        goto fail;
     }
 
-    if(!fail) {
-        /* Check for config errors */
-        if (dbdConfig->db_type == MYSQLDB) {
+    /* Check for config errors */
+    if (dbdConfig->db_type == MYSQLDB) {
 #ifndef MYSQL_DATABASE_ENABLED
-            merror(DB_COMPILED, "mysql");
-            fail = 1;
+        merror(DB_COMPILED, "mysql");
+        goto fail;
 #endif
-        } else if (dbdConfig->db_type == POSTGDB) {
+    } else if (dbdConfig->db_type == POSTGDB) {
 #ifndef PGSQL_DATABASE_ENABLED
-            merror(DB_COMPILED, "postgresql");
-            fail = 1;
+        merror(DB_COMPILED, "postgresql");
+        goto fail;
 #endif
-        }
     }
 
-chkfail:
+    free_dbdConfig(dbdConfig);
+    return 0;
+
+fail:
     // Free Memory
     free_dbdConfig(dbdConfig);
-
-    if(fail) {
-        return -1;
-    }
-
-    return 0;
+    return OS_INVALID;
 }
 
 void free_dbdConfig(DBConfig * db_config) {

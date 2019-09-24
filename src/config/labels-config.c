@@ -97,19 +97,14 @@ error:
 }
 
 int Test_Labels(const char *path, int type) {
-    int fail = 0;
     wlabel_t *test_labels = NULL;
 
     if (ReadConfig(CLABELS | type, path, &test_labels, NULL) < 0) {
         merror(CONF_READ_ERROR, "Labels");
-        fail = 1;
+        labels_free(test_labels);
+        return OS_INVALID;
     }
 
     labels_free(test_labels);
-
-    if (fail) {
-        return -1;
-    }
-
     return 0;
 }
