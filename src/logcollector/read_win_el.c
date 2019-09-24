@@ -74,12 +74,11 @@ int startEL(char *app, os_el *el)
 /* Returns a string that is a human readable datetime from an epoch int */
 char *epoch_to_human(time_t epoch)
 {
-    struct tm   *ts;
     static char buf[80];
     struct tm tm_result = { .tm_sec = 0 };
 
-    ts = localtime_r(&epoch, &tm_result);
-    strftime(buf, sizeof(buf), "%Y %b %d %H:%M:%S", ts);
+    localtime_r(&epoch, &tm_result);
+    strftime(buf, sizeof(buf), "%Y %b %d %H:%M:%S", &tm_result);
     return (buf);
 }
 

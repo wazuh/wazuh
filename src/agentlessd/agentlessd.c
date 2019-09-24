@@ -437,7 +437,6 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
 void Agentlessd()
 {
     time_t tm;
-    struct tm *p;
     struct tm tm_result = { .tm_sec = 0 };
 
     int today = 0;
@@ -451,9 +450,9 @@ void Agentlessd()
 
     /* Get current time before starting */
     tm = time(NULL);
-    p = localtime_r(&tm, &tm_result);
+    localtime_r(&tm, &tm_result);
 
-    today = p->tm_mday;
+    today = tm_result.tm_mday;
 
     /* Connect to the message queue. Exit if it fails. */
     if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
@@ -467,11 +466,11 @@ void Agentlessd()
     while (1) {
         unsigned int i = 0;
         tm = time(NULL);
-        p = localtime_r(&tm, &tm_result);
+        localtime_r(&tm, &tm_result);
 
         /* Day changed, deal with log files */
-        if (today != p->tm_mday) {
-            today = p->tm_mday;
+        if (today != tm_result.tm_mday) {
+            today = tm_result.tm_mday;
         }
 
         while (lessdc.entries[i]) {

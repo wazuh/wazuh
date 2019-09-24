@@ -179,7 +179,6 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
                                    int csv_output, cJSON *json_output)
 {
     int f_found = 0;
-    struct tm *tm_time;
     struct tm tm_result = { .tm_sec = 0 };
     char read_day[24 + 1];
     char buf[OS_MAXSTR + 1];
@@ -306,8 +305,8 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
                 goto cleanup;
             }
 
-            tm_time = localtime_r(&change_time, &tm_result);
-            strftime(read_day, 23, "%Y %h %d %T", tm_time);
+            localtime_r(&change_time, &tm_result);
+            strftime(read_day, 23, "%Y %h %d %T", &tm_result);
 
             if (json_output) {
                 json_entry = cJSON_CreateObject();
@@ -373,7 +372,6 @@ cleanup:
 static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, int csv_output, cJSON *json_output)
 {
     int f_found = 0;
-    struct tm *tm_time;
     struct tm tm_result = { .tm_sec = 0 };
 
     char read_day[24 + 1];
@@ -427,15 +425,15 @@ static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, i
             }
             changed_file_name++;
 
-            tm_time = localtime_r(&change_time, &tm_result);
-            strftime(read_day, 23, "%Y %h %d", tm_time);
+            localtime_r(&change_time, &tm_result);
+            strftime(read_day, 23, "%Y %h %d", &tm_result);
             if (strcmp(read_day, saved_read_day) != 0) {
                 if (!(csv_output || json_output)) {
                     printf("\nChanges for %s:\n", read_day);
                 }
                 strncpy(saved_read_day, read_day, 23);
             }
-            strftime(read_day, 23, "%Y %h %d %T", tm_time);
+            strftime(read_day, 23, "%Y %h %d %T", &tm_result);
 
             if (json_output) {
                 cJSON *entry = cJSON_CreateObject();
@@ -542,7 +540,6 @@ static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_sc
     /* Time from the message */
     time_t s_time = 0;
     time_t i_time = 0;
-    struct tm *tm_time;
     struct tm tm_result = { .tm_sec = 0 };
 
     char old_day[24 + 1];
@@ -571,8 +568,8 @@ static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_sc
 
     if (!(csv_output || json_output)) {
         if (show_last) {
-            tm_time = localtime_r(time_last_scan, &tm_result);
-            strftime(read_day, 23, "%Y %h %d %T", tm_time);
+            localtime_r(time_last_scan, &tm_result);
+            strftime(read_day, 23, "%Y %h %d %T", &tm_result);
 
             printf("\nLast scan: %s\n\n", read_day);
         } else if (resolved) {
@@ -641,10 +638,10 @@ static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_sc
             i++;
         }
 
-        tm_time = localtime_r((time_t *)&s_time, &tm_result);
-        strftime(read_day, 23, "%Y %h %d %T", tm_time);
-        tm_time = localtime_r((time_t *)&i_time, &tm_result);
-        strftime(old_day, 23, "%Y %h %d %T", tm_time);
+        localtime_r((time_t *)&s_time, &tm_result);
+        strftime(read_day, 23, "%Y %h %d %T", &tm_result);
+        localtime_r((time_t *)&i_time, &tm_result);
+        strftime(old_day, 23, "%Y %h %d %T", &tm_result);
 
         if (json_output) {
             char json_buffer[OS_MAXSTR + 1];
