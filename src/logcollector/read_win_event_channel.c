@@ -541,26 +541,10 @@ int win_start_event_channel(char *evt_log, char future, char *query)
     channel->evt_log = evt_log;
 
     /* Create copy of event log string */
-    if ((channel->bookmark_name = strdup(channel->evt_log)) == NULL) {
-        merror(
-            "Could not strdup() event log name to start reading (%s) which returned [(%d)-(%s)]",
-            channel->evt_log,
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
+    os_strdup(channel->evt_log, channel->bookmark_name);
 
-    if (query) {
-        /* Create copy of query string */
-        if ((channel->query = strdup(query)) == NULL) {
-            merror(
-                "Could not strdup() query (%s) which returned [(%d)-(%s)]",
-                query,
-                errno,
-                strerror(errno));
-            goto cleanup;
-        }
-    }
+    /* Create copy of query string */
+    channel->query = query;
 
     /* Replace '/' with '_' */
     if (strchr(channel->bookmark_name, '/')) {
