@@ -55,7 +55,7 @@ static wm_fluent_helo_t * wm_fluent_recv_helo(wm_fluent_t * fluent);
 static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * helo);
 static wm_fluent_pong_t * wm_fluent_recv_pong(wm_fluent_t * fluent);
 static int wm_fluent_handshake(wm_fluent_t * fluent);
-static int wm_fluent_send(wm_fluent_t * fluent, const char ** str, size_t size);
+static int wm_fluent_send(wm_fluent_t * fluent, char ** str, size_t size);
 static int wm_fluent_check_config(wm_fluent_t * fluent);
 
 const wm_context WM_FLUENT_CONTEXT = {
@@ -69,6 +69,7 @@ const wm_context WM_FLUENT_CONTEXT = {
 void * wm_fluent_main(wm_fluent_t * fluent) {
     int server_sock;
     char * buffer;
+    char * aux_buffer = NULL;
     ssize_t recv_b;
 
     // If module is disabled, exit
@@ -95,57 +96,76 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
         pthread_exit(NULL);
     }
 
-    fcntl(server_sock, F_DUPFD, O_NONBLOCK);
-
     int matrix_index = 0;
-    const int MAX_MSG_RECV = 5;
+    const int MAX_MSG_RECV = 3;
     char **matrix_buffer = (char **)malloc(MAX_MSG_RECV * sizeof(char*));
-
-    for(int i = 0; i < MAX_MSG_RECV; i++) {
-        matrix_buffer[i] = (char *)malloc(OS_MAXSTR * sizeof(char));
-    }
+    int attempts = 0;
 
     os_malloc(OS_MAXSTR, buffer);
 
     while (1) {
         // Store logs until MAX_MSG_RECV is reached
-        while ((recv_b = recv(server_sock, buffer, OS_MAXSTR - 1, 0)) && matrix_index < MAX_MSG_RECV) {
-            if (strlen(buffer) == 0) {
+        while ((recv_b = recv(server_sock, buffer, OS_MAXSTR - 1, MSG_DONTWAIT)) && matrix_index < MAX_MSG_RECV) {
+            if (aux_buffer != NULL) {
+                matrix_buffer[matrix_index] = (char *)malloc(OS_MAXSTR * sizeof(char));
+                memcpy(matrix_buffer[matrix_index], aux_buffer, strlen(aux_buffer));
+                matrix_buffer[matrix_index][strlen(aux_buffer)] = '\0';
+                matrix_index++;
+                free(aux_buffer);
+                aux_buffer = NULL;
+            }
+
+            if (strlen(buffer) == 0 || recv_b == -1) {
+                attempts++;
+                sleep(1);
+                if (attempts >= 30 && matrix_buffer[0] != NULL) {
+                    attempts = 0;
+                    break;
+                }
                 continue;
             }
 
-            strcat(matrix_buffer[matrix_index], buffer);
+            buffer[recv_b] = '\0';
+
+            matrix_buffer[matrix_index] = (char *)malloc(OS_MAXSTR * sizeof(char));
+            memcpy(matrix_buffer[matrix_index], buffer, strlen(buffer));
+            matrix_buffer[matrix_index][strlen(buffer)] = '\0';
             matrix_index++;
+
+            os_free(buffer);
+            os_malloc(OS_MAXSTR, buffer);
         }
 
         // When the matrix has MAX_MSG_RECV logs, send them
-        wm_fluent_send(fluent, matrix_buffer, MAX_MSG_RECV);
-    }
-
-    /*os_malloc(OS_MAXSTR, buffer);*/
-
-    /* Main loop */
-    /*while (1) {
-        recv_b = recv(server_sock, buffer, OS_MAXSTR - 1, 0);
-
-        switch (recv_b) {
-        case -1:
-            merror("Cannot receive data from '%s': %s (%d)", fluent->sock_path, strerror(errno), errno);
-            continue;
-        case 0:
-            merror("Empty string received from '%s'", fluent->sock_path);
-            continue;
-        default:
-            if (wm_fluent_send(fluent, buffer, recv_b) < 0) {
-                mwarn("Cannot send data to '%s': %s (%d). Reconnecting...", fluent->address, strerror(errno), errno);
-            }
+        if (wm_fluent_send(fluent, matrix_buffer, matrix_index) < 0) {
+            mwarn("Cannot send data to '%s': %s (%d). Reconnecting...", fluent->address, strerror(errno), errno);
         }
-    }*/
+
+        if (recv_b > 0 && buffer != NULL) {
+            buffer[recv_b] = '\0';
+            os_strdup(buffer, aux_buffer);
+        }
+
+        for(int i = 0; i < matrix_index; i++) {
+            free(matrix_buffer[i]);
+            matrix_buffer[i] = '\0';
+        }
+        matrix_index = 0;
+
+        os_free(buffer);
+        os_malloc(OS_MAXSTR, buffer);
+    }
 
     if (fluent->client_sock >= 0) {
         close(fluent->client_sock);
         fluent->client_sock = -1;
     }
+
+    for(int i = 0; i < MAX_MSG_RECV; i++) {
+        os_free(matrix_buffer[i]);
+    }
+    os_free(matrix_buffer);
+    os_free(buffer);
 
     return NULL;
 }
@@ -664,10 +684,9 @@ end:
     return retval;
 }
 
-static int wm_fluent_send(wm_fluent_t * fluent, const char ** str, size_t size) {
+static int wm_fluent_send(wm_fluent_t * fluent, char ** str, size_t size) {
     size_t taglen = strlen(fluent->tag);
     int retval = -1;
-    size_t str_length;
 
     while (wm_fluent_handshake(fluent) < 0) {
         mdebug2("Handshake failed. Waiting 30 seconds.");
@@ -681,16 +700,19 @@ static int wm_fluent_send(wm_fluent_t * fluent, const char ** str, size_t size) 
     msgpack_packer_init(&pk, &sbuf, msgpack_sbuffer_write);
 
     // Save space and add tag
-    msgpack_pack_array(&pk, 3);
+    msgpack_pack_array(&pk, 4);
     msgpack_pack_str(&pk, taglen);
     msgpack_pack_str_body(&pk, fluent->tag, taglen);
+    msgpack_pack_unsigned_int(&pk, time(NULL));
 
-    // Save space for MAX_MSG_RECV*2 entries, messages and their timestamp
-    msgpack_pack_map(&pk, size);
+    // Save space for MAX_MSG_RECV entries
+    msgpack_pack_array(&pk, size);
 
-    for (int i = 0; i<size; i++) {
+    size_t i;
+    size_t str_length;
+
+    for (i = 0; i<size; i++) {
         str_length = strlen(str[i]);
-        msgpack_pack_unsigned_int(&pk, time(NULL));
         msgpack_pack_str(&pk, str_length);
         msgpack_pack_str_body(&pk, str[i], str_length);
     }
@@ -700,19 +722,6 @@ static int wm_fluent_send(wm_fluent_t * fluent, const char ** str, size_t size) 
     msgpack_pack_str_body(&pk, "option", 6);
     msgpack_pack_str(&pk, 8);
     msgpack_pack_str_body(&pk, "optional", 8);
-
-/*
-    msgpack_pack_array(&pk, 4);
-    msgpack_pack_str(&pk, taglen);
-    msgpack_pack_str_body(&pk, fluent->tag, taglen);
-    msgpack_pack_unsigned_int(&pk, time(NULL));
-    msgpack_pack_str(&pk, size);
-    msgpack_pack_str_body(&pk, str, size);
-    msgpack_pack_map(&pk, 1);
-    msgpack_pack_str(&pk, 6);
-    msgpack_pack_str_body(&pk, "option", 6);
-    msgpack_pack_str(&pk, 8);
-    msgpack_pack_str_body(&pk, "optional", 8);*/
 
     if (fluent->shared_key) {
         assert(fluent->ssl);
