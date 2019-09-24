@@ -149,7 +149,8 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         struct dirent *version = NULL;
 
         while ((dep = readdir(dr)) != NULL) {
-            if (!strncmp(dep->d_name, ".", 1))
+            
+            if (strncmp(dep->d_name, ".", 1) == 0 || strncmp(dep->d_name, "..", 2) == 0) {
                 continue;
             }
 

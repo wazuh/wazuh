@@ -201,7 +201,7 @@ void remove_old_logs(const char *base_dir, int keep_log_days) {
         return;
     }
 
-    while ((dirent = readdir(dir)) != NULL) {
+    while (dirent = readdir(dir), dirent) {
         // Skip "." and ".."
         if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
             continue;
@@ -227,7 +227,7 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
         return;
     }
 
-    while ((dirent = readdir(dir)) != NULL) {
+    while (dirent = readdir(dir), dirent) {
         // Skip "." and ".."
         if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
             continue;
@@ -275,7 +275,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
         return;
     }
 
-    while ((dirent = readdir(dir)) != NULL) {
+    while (dirent = readdir(dir), dirent) {
         // Skip "." and ".."
         if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
             continue;
