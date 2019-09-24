@@ -141,8 +141,7 @@ int main(int argc, char **argv)
         merror_exit(CLIENT_ERROR);
     }
 
-    bool is_valid = Validate_Address(agt->server, agt->rip_id);
-    if (!is_valid){
+    if (!Validate_Address(agt->server)){
         merror(AG_INV_MNGIP);
         merror_exit(CLIENT_ERROR);
     }

@@ -50,6 +50,6 @@ void Free_Client(agent * config);
  * @param servers Server(s) configuration block in agent ossec.conf
  * @return Returnsrue if successful and false if not success
  */
-bool Validate_Address(agent_server *servers, int num);
+bool Validate_Address(agent_server *servers);
 
 #endif /* CAGENTD_H */

@@ -173,8 +173,7 @@ int local_start()
     }
     minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
 
-    bool is_valid = Validate_Address(agt->server, agt->rip_id);
-    if (!is_valid){
+    if (!Validate_Address(agt->server)){
         merror(AG_INV_MNGIP);
         merror_exit(CLIENT_ERROR);
     }
