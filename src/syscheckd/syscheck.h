@@ -12,6 +12,7 @@
 #define __SYSCHECK_H
 
 #include "config/syscheck-config.h"
+#include "syscheck_op.h"
 #include "external/cJSON/cJSON.h"
 
 #define MAX_LINE PATH_MAX+256
@@ -359,5 +360,30 @@ cJSON * fim_json_compare_attrs(const fim_entry_data * old_data, const fim_entry_
  * @return cJSON object pointer.
  */
 cJSON * fim_audit_json(const whodata_evt * w_evt);
+
+/**
+ * @brief Create scan info JSON event
+ *
+ * Format:
+ * {
+ *   type:          "scan_start"|"scan_end"
+ *   data: {
+ *     timestamp:   number
+ *   }
+ * }
+ *
+ * @param event Event type (start or end).
+ * @param timestamp Datetime in UNIX epoch.
+ * @return cJSON object pointer.
+ */
+
+cJSON * fim_scan_info_json(fim_scan_event event, long timestamp);
+
+/**
+ * @brief Send a scan info event
+ *
+ * @param event Event type (start or end).
+ */
+void fim_send_scan_info(fim_scan_event event);
 
 #endif

@@ -48,6 +48,7 @@ int fim_scan() {
     gettime(&start);
 #endif
     minfo(FIM_FREQUENCY_STARTED);
+    fim_send_scan_info(FIM_SCAN_START);
 
     while (syscheck.dir[position] != NULL) {
         minfo("fim_scan(%d): '%s'", FIM_SCHEDULED, syscheck.dir[position]);
@@ -66,6 +67,7 @@ int fim_scan() {
     }
 
     minfo(FIM_FREQUENCY_ENDED);
+    fim_send_scan_info(FIM_SCAN_END);
 
 #ifndef WIN32
     minfo("The scan has been running during: %.3f sec (%.3f clock sec)",
@@ -1107,4 +1109,29 @@ int print_hash_tables() {
     free_strarray(keys);
 
     return 0;
+}
+
+// Create scan info JSON event
+
+cJSON * fim_scan_info_json(fim_scan_event event, long timestamp) {
+    cJSON * root = cJSON_CreateObject();
+    cJSON * data = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(root, "type", event == FIM_SCAN_START ? "scan_start" : "scan_end");
+    cJSON_AddItemToObject(root, "data", data);
+    cJSON_AddNumberToObject(data, "timestamp", timestamp);
+
+    return root;
+}
+
+// Send a scan info event
+
+void fim_send_scan_info(fim_scan_event event) {
+    cJSON * json = fim_scan_info_json(event, time(NULL));
+    char * plain = cJSON_PrintUnformatted(json);
+
+    send_syscheck_msg(plain);
+
+    free(plain);
+    cJSON_Delete(json);
 }

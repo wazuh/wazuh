@@ -177,6 +177,11 @@ typedef struct sk_sum_t {
     long date_alert;
 } sk_sum_t;
 
+typedef enum fim_scan_event {
+    FIM_SCAN_START,
+    FIM_SCAN_END
+} fim_scan_event;
+
 /* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
    or -1 on failure. */
 int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum);
