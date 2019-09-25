@@ -51,9 +51,11 @@ def expand_group(group):
     if not db_global:
         raise WazuhInternalError(1600)
     conn = Connection(db_global[0])
-    conn.execute("SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM `group` WHERE name = :group)",
-                 {'group': group})
-
+    if group != 'null':
+        conn.execute("SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM `group` WHERE name = :group)",
+                     {'group': group})
+    else:
+        conn.execute("SELECT id FROM agent WHERE `group` IS null")
     agents = conn.fetch_all()
     agents_ids = list()
     for agent in agents:
