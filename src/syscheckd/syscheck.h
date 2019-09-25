@@ -85,7 +85,10 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt);
 void fim_audit_inode_event(whodata_evt * w_evt);
 
 //
-int fim_configuration_directory (char * path);
+int fim_registry_event (char * key, fim_entry_data * data, int pos);
+
+//
+int fim_configuration_directory(const char * path, const char entry[]);
 
 //
 int fim_check_depth(char * path, int dir_position);
@@ -143,7 +146,7 @@ void delete_inode_item(char *inode, char *file_name);
  * @return File event JSON object.
  * @retval NULL No changes detected. Do not send an event.
  */
-cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int dir_position, fim_event_type type, fim_event_mode mode, whodata_evt *w_evt);
+cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int pos, fim_event_type type, fim_event_mode mode, whodata_evt *w_evt);
 
 //
 void set_integrity_index(char * file_name, fim_entry_data * data);

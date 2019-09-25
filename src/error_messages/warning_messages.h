@@ -37,4 +37,7 @@
 
 #define FIM_WARN_NFS_INOTIFY                    "(6918): '%s' NFS Directories do not support iNotify."
 
+#define FIM_INV_REG                             "(1757): Invalid syscheck registry entry: '%s' arch: '%s'."
+#define FIM_REG_OPEN                            "(1758): Unable to open registry key: '%s' arch: '%s'."
+
 #endif

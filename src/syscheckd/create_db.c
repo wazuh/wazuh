@@ -17,11 +17,6 @@
 #include "integrity_op.h"
 #include "time_op.h"
 
-// delete this functions
-// ==================================
-int print_hash_tables();
-// ==================================
-
 // Global variables
 static int _base_line = 0;
 
@@ -35,6 +30,11 @@ static const char *FIM_EVENT_MODE[] = {
     "scheduled",
     "real-time",
     "whodata"
+};
+
+static const char *fim_entry_type[] = {
+    "file",
+    "registry"
 };
 
 
@@ -54,6 +54,10 @@ int fim_scan() {
         position++;
     }
 
+#ifdef WIN32
+        os_winreg_check();
+#endif
+
     gettime(&end);
 
     if (_base_line == 0) {
@@ -68,7 +72,6 @@ int fim_scan() {
     minfo("The scan has been running during: %.3f sec (%.3f clock sec)",
             time_diff(&start, &end),
             (double)(clock() - timeCPU_start) / CLOCKS_PER_SEC);
-    print_hash_tables();
 
     return 0;
 }
@@ -247,8 +250,7 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
     }
 
     // If the directory have another configuration will come back
-    if (dir_position = fim_configuration_directory(file), dir_position < 0) {
-        minfo("~~ No configuration founded for file: '%s'", file);
+    if (dir_position = fim_configuration_directory(file, "file"), dir_position < 0) {
         return(0);
     }
 
@@ -362,21 +364,83 @@ void fim_audit_inode_event(whodata_evt * w_evt) {
     return;
 }
 
+int fim_registry_event (char * key, fim_entry_data * data, int pos) {
+    cJSON * json_event = NULL;
+    fim_entry_data *saved_data;
+    char * json_formated;
+    int result = 0;
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+
+    if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, key), !saved_data) {
+        fim_insert (key, data, NULL);
+
+        if(_base_line) {
+            json_event = fim_json_event(key, NULL, data, pos, FIM_ADD, 0, NULL);
+        }
+        result = 1;
+    } else {
+        minfo("fim_registry_event:%p'%s'%s", saved_data, key, saved_data->hash_sha256);
+        if (strcmp(saved_data->hash_sha256, data->hash_sha256) != 0) {
+            json_event = fim_json_event(key, saved_data, data, pos, FIM_MODIFICATION, 0, NULL);
+            fim_update(key, data);
+            result = 2;
+        } else {
+            saved_data->scanned = 1;
+            result = 0;
+        }
+    }
+
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (json_event && _base_line) {
+        json_formated = cJSON_PrintUnformatted(json_event);
+        minfo("json_formated:'%s'", json_formated);
+        send_syscheck_msg(json_formated);
+        os_free(json_formated);
+        cJSON_Delete(json_event);
+    }
+
+    return result;
+}
+
 
 // Returns the position of the path into directories array
-int fim_configuration_directory(char * path) {
+int fim_configuration_directory(const char * path, const char entry[]) {
     int it = 0;
     int max = 0;
     int res = 0;
     int position = -1;
 
-    while(syscheck.dir[it]) {
-        res = w_compare_str(syscheck.dir[it], path);
-        if (max < res) {
-            position = it;
-            max = res;
+    if (strcmp("file", entry) == 0) {
+        while(syscheck.dir[it]) {
+            res = w_compare_str(syscheck.dir[it], path);
+
+            if (max < res) {
+                position = it;
+                max = res;
+            }
+            it++;
         }
-        it++;
+    }
+#ifdef WIN32
+    else if (strcmp("registry", entry) == 0) {
+        while(syscheck.registry[it].entry) {
+            char full_entry[2048 + 5];
+            snprintf(full_entry, 2048 + 5, "%s %s", syscheck.registry[it].arch == ARCH_64BIT ? "[x64]" : "", syscheck.registry[it].entry);
+            res = w_compare_str(full_entry, path);
+
+            if (max < res) {
+                position = it;
+                max = res;
+            }
+            it++;
+        }
+    }
+#endif
+
+    if (position == -1) {
+        minfo("~~ No configuration founded for (%s):'%s'", entry, path);
     }
 
     return position;
@@ -514,6 +578,8 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
     data->options = options;
     data->last_event = time(NULL);
     data->scanned = 1;
+    // Set file entry type
+    data->entry_type = fim_entry_type[0];
     fim_get_checksum(data);
 
     return data;
@@ -589,6 +655,8 @@ void fim_get_checksum (fim_entry_data * data) {
 int fim_insert (char * file, fim_entry_data * data, struct stat *file_stat) {
     char * inode_key = NULL;
 
+    minfo("fim_insert:%p(%s) '%s'", data, file, data->hash_sha256);
+
     if (rbtree_insert(syscheck.fim_entry, file, data) == NULL) {
         minfo("Duplicate path: '%s'", file);
         return (-1);
@@ -628,6 +696,8 @@ int fim_insert (char * file, fim_entry_data * data, struct stat *file_stat) {
 // Update an entry in the syscheck hash table structure (inodes and paths)
 int fim_update (char * file, fim_entry_data * data) {
     char * inode_key;
+
+    minfo("fim_update:%p(%s) '%s'", data, file, data->hash_sha256);
 
     os_calloc(OS_SIZE_128, sizeof(char), inode_key);
     snprintf(inode_key, OS_SIZE_128, "%ld:%ld", data->dev, data->inode);
@@ -694,7 +764,7 @@ void check_deleted_files() {
         if (!data->scanned) {
             minfo("File '%s' has been deleted.", keys[i]);
 
-            if (pos = fim_configuration_directory(keys[i]), pos < 0) {
+            if (pos = fim_configuration_directory(keys[i], data->entry_type), pos < 0) {
                 w_mutex_unlock(&syscheck.fim_entry_mutex);
                 continue;
             }
@@ -751,7 +821,7 @@ void delete_inode_item(char *inode_key, char *file_name) {
     }
 }
 
-cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int dir_position, fim_event_type type, fim_event_mode mode, whodata_evt * w_evt) {
+cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int pos, fim_event_type type, fim_event_mode mode, whodata_evt * w_evt) {
     cJSON * changed_attributes = NULL;
 
     if (old_data != NULL) {
@@ -776,30 +846,38 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[type]);
     cJSON_AddNumberToObject(data, "timestamp", new_data->last_event);
 
-    char * tags = syscheck.tag[dir_position];
-
-    if (tags != NULL) {
-        cJSON_AddStringToObject(data, "tags", tags);
-    }
-
-    if (syscheck.opts[dir_position] & CHECK_SEECHANGES && type != 1) {
-        char * diff = seechanges_addfile(file_name);
-
-        if (diff != NULL) {
-            cJSON_AddStringToObject(data, "content_changes", diff);
-            os_free(diff);
-        }
-    }
+    cJSON_AddItemToObject(data, "attributes", fim_attributes_json(new_data));
 
     if (old_data) {
         cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
         cJSON_AddItemToObject(data, "old_attributes", fim_attributes_json(old_data));
     }
 
-    cJSON_AddItemToObject(data, "attributes", fim_attributes_json(new_data));
+    char * tags = NULL;
+    if (strcmp(new_data->entry_type, "file") == 0) {
+        if (w_evt) {
+            cJSON_AddItemToObject(data, "audit", fim_audit_json(w_evt));
+        }
 
-    if (w_evt) {
-        cJSON_AddItemToObject(data, "audit", fim_audit_json(w_evt));
+        tags = syscheck.tag[pos];
+
+        if (syscheck.opts[pos] & CHECK_SEECHANGES && type != 1) {
+            char * diff = seechanges_addfile(file_name);
+
+            if (diff != NULL) {
+                cJSON_AddStringToObject(data, "content_changes", diff);
+                os_free(diff);
+            }
+        }
+    }
+#ifdef WIN32
+    else {
+        tags = syscheck.registry[pos].tag;
+    }
+#endif
+
+    if (tags != NULL) {
+        cJSON_AddStringToObject(data, "tags", tags);
     }
 
     return json_event;
@@ -811,7 +889,7 @@ cJSON * fim_attributes_json(const fim_entry_data * data) {
     cJSON * attributes = cJSON_CreateObject();
 
     // TODO: Read structure.
-    cJSON_AddStringToObject(attributes, "type", "file");
+    cJSON_AddStringToObject(attributes, "type", data->entry_type);
 
     if (data->options & CHECK_SIZE) {
         cJSON_AddNumberToObject(attributes, "size", data->size);
@@ -1048,70 +1126,7 @@ void free_inode_data(fim_inode_data * data) {
 }
 
 
-/* ================================================================================================ */
-/* ================================================================================================ */
-/* ================================================================================================ */
-/* ================================================================================================ */
-
-
-int print_hash_tables() {
-    int element_sch = 0;
-    int element_rt = 0;
-    int element_wd = 0;
-    int element_total = 0;
-    char ** keys = rbtree_keys(syscheck.fim_entry);
-    int i;
-
-    for (i = 0; keys[i]; i++) {
-        fim_entry_data * data = rbtree_get(syscheck.fim_entry, keys[i]);
-        assert(data != NULL);
-
-        //minfo("ENTRY (%d) => '%s'->'%lu' scanned:'%u'\n", element_total, keys[i], data->inode, data->scanned);
-
-        switch(data->mode) {
-            case FIM_SCHEDULED: element_sch++; break;
-            case FIM_REALTIME: element_rt++; break;
-            case FIM_WHODATA: element_wd++; break;
-        }
-
-        element_total++;
-    }
-
-#ifndef WIN32
-    OSHashNode * hash_node;
-    unsigned int inode_it = 0;
-    unsigned inode_items = 0;
-    unsigned element_totali = 0;
-    char * files = NULL;
-
-    for (hash_node = OSHash_Begin(syscheck.fim_inode, &inode_it); hash_node; hash_node = OSHash_Next(syscheck.fim_inode, &inode_it, hash_node)) {
-        fim_inode_data * data = hash_node->data;
-        os_free(files);
-        os_calloc(1, sizeof(char), files);
-        *files = '\0';
-
-        for (i = 0; i < data->items; i++) {
-            wm_strcat(&files, data->paths[i], ',');
-        }
-
-        mdebug1("INODE (%u) => '%s'->(%d)'%s'\n", element_totali, (char*)hash_node->key, data->items, files);
-        element_totali++;
-        inode_items += data->items;
-    }
-    minfo("SCH '%d'", element_sch);
-    minfo("RT '%d'", element_rt);
-    minfo("WD '%d'", element_wd);
-    minfo("Total: '%d' inodes: '%d' element_totali:'%d'", element_total, inode_items, element_totali);
-
-    os_free(files);
-#endif
-    free_strarray(keys);
-
-    return 0;
-}
-
 // Create scan info JSON event
-
 cJSON * fim_scan_info_json(fim_scan_event event, long timestamp) {
     cJSON * root = cJSON_CreateObject();
     cJSON * data = cJSON_CreateObject();
@@ -1123,8 +1138,8 @@ cJSON * fim_scan_info_json(fim_scan_event event, long timestamp) {
     return root;
 }
 
-// Send a scan info event
 
+// Send a scan info event
 void fim_send_scan_info(fim_scan_event event) {
     cJSON * json = fim_scan_info_json(event, time(NULL));
     char * plain = cJSON_PrintUnformatted(json);
