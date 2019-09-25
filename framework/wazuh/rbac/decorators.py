@@ -22,11 +22,7 @@ class Resource:
         self.name_identifier = ':'.join(split_resource[0:2])
         self.value = split_resource[2]
         if 'agent' in self.name_identifier:
-            agents_info = get_agents_info()
-            agents_ids = set()
-            for agent in agents_info:
-                agents_ids.add(str(agent['id']).zfill(3))
-            self.agents = agents_ids
+            self.agents = get_agents_info()
         elif 'role' in self.name_identifier:
             roles_ids = set()
             with RolesManager() as rm:

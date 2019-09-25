@@ -7,58 +7,28 @@ from glob import glob
 from wazuh import common
 from wazuh.database import Connection
 from wazuh.exception import WazuhInternalError
-
-
-def get_groups_resources(agent_id):
-    """Obtain group resources based on agent_id (all the groups where the agent belongs)
-
-    :param agent_id: Agent_id to search groups for
-    :return: Group resources
-    """
-    db_global = glob(common.database_path_global)
-    if not db_global:
-        raise WazuhInternalError(1600)
-
-    conn = Connection(db_global[0])
-    if agent_id == '*':
-        groups = ['agent:group:*']
-        conn.execute("SELECT name FROM `group` WHERE id IN (SELECT DISTINCT id_group FROM belongs)")
-    else:
-        groups = ['agent:id:*', 'agent:group:*']
-        conn.execute("SELECT name FROM `group` WHERE id IN (SELECT id_group FROM belongs WHERE id_agent = :agent_id)",
-                     {'agent_id': int(agent_id)})
-    result = conn.fetch_all()
-
-    for group in result:
-        groups.append('{0}:{1}'.format('agent:group', group['name']))
-
-    return groups
+from wazuh.agent import WazuhDBQueryAgents, WazuhDBQueryMultigroups
 
 
 def get_agents_info():
     db_global = glob(common.database_path_global)
     if not db_global:
         raise WazuhInternalError(1600)
-    conn = Connection(db_global[0])
-    conn.execute("SELECT id, `group`, manager_host FROM agent")
-    agents_info = conn.fetch_all()
+    agents = WazuhDBQueryAgents(select=['id']).run()['items']
+    agents_list = set()
+    for agent_info in agents:
+        agents_list.add(str(agent_info['id']).zfill(3))
 
-    return agents_info
+    return agents_list
 
 
 def expand_group(group):
     db_global = glob(common.database_path_global)
     if not db_global:
         raise WazuhInternalError(1600)
-    conn = Connection(db_global[0])
-    if group != 'null':
-        conn.execute("SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM `group` WHERE name = :group)",
-                     {'group': group})
-    else:
-        conn.execute("SELECT id FROM agent WHERE `group` IS null")
-    agents = conn.fetch_all()
+    agents_group = WazuhDBQueryMultigroups(group, select=['id']).run()['items']
     agents_ids = list()
-    for agent in agents:
-        agents_ids.append(str(agent['id_agent']).zfill(3))
+    for agent in agents_group:
+        agents_ids.append(str(agent['id']).zfill(3))
 
     return agents_ids
