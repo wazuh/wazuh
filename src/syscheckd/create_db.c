@@ -289,7 +289,7 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
                 default:
                     mdebug1("~~ Unsupported file type(mode:%d): '%s'", mode, file);
                     // Unsupported file type
-                    return -1;
+                    return 0;
             }
         }
     } else {
