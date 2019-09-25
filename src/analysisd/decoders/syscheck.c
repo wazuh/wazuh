@@ -61,6 +61,9 @@ void fim_send_db_query(int * sock, const char * query);
 // Build change comment
 static void fim_generate_comment(char * str, long size, const char * format, const char * a1, const char * a2);
 
+// Process scan info event
+static void fim_process_scan_info(_sdb * sdb, const char * agent_id, fim_scan_event event, cJSON * data);
+
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -1074,6 +1077,14 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
      *     }
      *   }
      * }
+     *
+     * Scan info events:
+     * {
+     *   type:                  "scan_start"|"scan_end"
+     *   data: {
+     *     timestamp:           number
+     *   }
+     * }
      */
 
     cJSON *root_json = NULL;
@@ -1093,9 +1104,11 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
         if (strcmp(type, "event") == 0) {
             fim_process_alert(sdb, lf, data);
             retval = 1;
-        }
-        if (strcmp(type, "scan_info") == 0) {
-            // process scan info message
+        } else if (strcmp(type, "scan_start") == 0) {
+            fim_process_scan_info(sdb, lf->agent_id, FIM_SCAN_START, data);
+            retval = 1;
+        } else if (strcmp(type, "scan_end") == 0) {
+            fim_process_scan_info(sdb, lf->agent_id, FIM_SCAN_END, data);
             retval = 1;
         }
     } else {
@@ -1507,4 +1520,24 @@ void fim_generate_comment(char * str, long size, const char * format, const char
     if (strcmp(a1, a2) != 0) {
         snprintf(str, size, format, a1, a2);
     }
+}
+
+// Process scan info event
+
+void fim_process_scan_info(_sdb * sdb, const char * agent_id, fim_scan_event event, cJSON * data) {
+    cJSON * timestamp = cJSON_GetObjectItem(data, "timestamp");
+
+    if (!cJSON_IsNumber(timestamp)) {
+        mdebug1("No such member \"timestamp\" in FIM scan info event.");
+        return;
+    }
+
+    char query[OS_SIZE_6144];
+
+    if (snprintf(query, sizeof(query), "agent %s syscheck scan_info_update %s %ld", agent_id, event == FIM_SCAN_START ? "start_scan" : "end_scan", (long)timestamp->valuedouble) >= OS_MAXSTR) {
+        merror("FIM decoder: Cannot build save query: input is too long.");
+        return;
+    }
+
+    fim_send_db_query(&sdb->socket, query);
 }
