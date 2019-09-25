@@ -95,9 +95,9 @@ int OS_ReadXMLRules(const char *rulefile,
 
     const char *xml_different_url = "different_url";
 
-    const char *xml_notsame_source_ip = "not_same_source_ip";	
-    const char *xml_notsame_user = "not_same_user";	
-    const char *xml_notsame_agent = "not_same_agent";	
+    const char *xml_notsame_source_ip = "not_same_source_ip";
+    const char *xml_notsame_user = "not_same_user";
+    const char *xml_notsame_agent = "not_same_agent";
     const char *xml_notsame_id = "not_same_id";
     const char *xml_notsame_field = "not_same_field";
     const char *xml_global_frequency = "global_frequency";
