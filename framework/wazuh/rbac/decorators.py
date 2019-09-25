@@ -6,16 +6,10 @@ import copy
 import re
 from functools import wraps
 
-from wazuh.exception import WazuhError
+from wazuh.exception import WazuhError, create_exception_dic
 from wazuh.core.core_utils import get_agents_info, expand_group
 from wazuh.rbac.orm import RolesManager, PoliciesManager
-
-agents = None
-roles = None
-policies = None
-agent_expand = False
-role_expand = False
-policy_expand = False
+from wazuh.results import WazuhResult
 
 
 class Resource:
@@ -23,35 +17,26 @@ class Resource:
         split_resource = resource.split(':')
         self.name_identifier = ':'.join(split_resource[0:2])
         self.value = split_resource[2]
-        self.resource_function = None
-        global agents, roles, policies, agent_expand, role_expand, policy_expand
-        if 'agent' in self.name_identifier and not agent_expand:
-            self.resource_function = _agent_expand_permissions
-            agent_expand = True
-            if agents is None:
-                agents = get_agents_info()
-                agents_ids = set()
-                for agent in agents:
-                    agents_ids.add(str(agent['id']).zfill(3))
-                agents = agents_ids
-        elif 'role' in self.name_identifier and not role_expand:
-            self.resource_function = _role_expand_permissions
-            role_expand = True
+        if 'agent' in self.name_identifier:
+            agents_info = get_agents_info()
+            agents_ids = set()
+            for agent in agents_info:
+                agents_ids.add(str(agent['id']).zfill(3))
+            self.agents = agents_ids
+        elif 'role' in self.name_identifier:
             roles_ids = set()
             with RolesManager() as rm:
                 roles = rm.get_roles()
             for role in roles:
                 roles_ids.add(str(role.id))
-            roles = roles_ids
-        elif 'policy' in self.name_identifier and not policy_expand:
-            self.resource_function = _policy_expand_permissions
-            policy_expand = True
+            self.roles = roles_ids
+        elif 'policy' in self.name_identifier:
             policy_ids = set()
             with PoliciesManager() as pm:
                 policies = pm.get_policies()
             for policy in policies:
                 policy_ids.add(str(policy.id))
-            policies = policy_ids
+            self.policies = policy_ids
 
     def get_name_identifier(self):
         return self.name_identifier
@@ -59,11 +44,62 @@ class Resource:
     def get_value(self):
         return self.value
 
-    def get_function(self, mode, odict):
-        try:
-            return self.resource_function(mode, odict)
-        except Exception:
-            pass
+    def exec_expand_function(self, mode, odict):
+        if self.name_identifier == 'agent:id' or self.name_identifier == 'agent:group':
+            return self._agent_expand_permissions(mode, odict)
+        elif self.name_identifier == 'role:id':
+            return self._role_expand_permissions(mode, odict)
+        elif self.name_identifier == 'policy:id':
+            return self._policy_expand_permissions(mode, odict)
+
+    def _agent_expand_permissions(self, mode, odict):
+        final_permissions = set()
+        for key, value in odict.items():
+            if key.startswith('agent:group'):
+                expanded_group = expand_group(key.split(':')[-1])
+                for agent in expanded_group:
+                    final_permissions.add(agent) if value == 'allow' else final_permissions.discard(agent)
+            elif key.startswith('agent:id:*'):
+                for agent in self.agents:
+                    final_permissions.add(agent) if value == 'allow' else final_permissions.discard(agent)
+            else:
+                final_permissions.add(key.split(':')[-1]) if value == 'allow' \
+                    else final_permissions.discard(key.split(':')[-1])
+        for agent in self.agents:
+            if mode:
+                final_permissions.add(agent)
+
+        return final_permissions
+
+    def _role_expand_permissions(self, mode, odict):
+        final_permissions = set()
+        for key, value in odict.items():
+            if key.startswith('role:id:*'):
+                for role in self.roles:
+                    final_permissions.add(role) if value == 'allow' else final_permissions.discard(role)
+            else:
+                final_permissions.add(key.split(':')[-1]) if value == 'allow' \
+                    else final_permissions.discard(key.split(':')[-1])
+        for role in self.roles:
+            if mode:
+                final_permissions.add(role)
+
+        return final_permissions
+
+    def _policy_expand_permissions(self, mode, odict):
+        final_permissions = set()
+        for key, value in odict.items():
+            if key.startswith('policy:id:*'):
+                for policy in self.policies:
+                    final_permissions.add(policy) if value == 'allow' else final_permissions.discard(policy)
+            else:
+                final_permissions.add(key.split(':')[-1]) if value == 'allow' \
+                    else final_permissions.discard(key.split(':')[-1])
+        for policy in self.policies:
+            if mode:
+                final_permissions.add(policy)
+
+        return final_permissions
 
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
@@ -107,82 +143,6 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
     return req_permissions
 
 
-def _update_set(index, key_effect, to_add, odict, remove=True):
-    op_key = 'deny' if key_effect == 'allow' else 'allow'
-    try:
-        if remove:
-            odict[index][key_effect].remove('*')
-        for element in to_add:
-            if element not in odict[index][op_key]:
-                odict[index][key_effect].add(element)
-    except:
-        pass
-
-
-def _normalization(key, permissions):
-    for resource in permissions:
-        permissions[resource]['allow'] = set(permissions[resource]['allow'])
-        permissions[resource]['deny'] = set(permissions[resource]['deny'])
-    if key not in permissions.keys():
-        permissions[key] = {
-            'allow': set(),
-            'deny': set()
-        }
-
-
-def _agent_expand_permissions(mode, odict):
-    def _cleaner(odict_clean, list_to_delete):
-        for key_to_delete in list_to_delete:
-            odict_clean.pop(key_to_delete)
-
-    # At the moment it is only used for groups
-    global agents
-    clean = set()
-    _normalization('agent:id', odict)
-
-    for key in odict:
-        if key == 'agent:id':
-            _update_set(key, 'allow', agents, odict) if '*' in odict[key]['allow'] \
-                else _update_set(key, 'deny', agents, odict)
-        elif key == 'agent:group':
-            clean.add(key)
-            expand_group(odict['agent:group'], odict['agent:id'])
-
-    _update_set('agent:id', 'allow', agents, odict, False) if mode \
-        else _update_set('agent:id', 'deny', agents, odict, False)
-    _cleaner(odict, clean)
-
-    return odict
-
-
-def _role_expand_permissions(mode, odict):
-    global roles
-    _normalization('role:id', odict)
-
-    for role_key in odict:
-        _update_set(role_key, 'allow', roles, odict) if '*' in odict[role_key]['allow'] \
-            else _update_set(role_key, 'deny', roles, odict)
-
-    _update_set('role:id', 'allow', roles, odict, False) if mode \
-        else _update_set('role:id', 'deny', roles, odict, False)
-
-    return odict
-
-
-def _policy_expand_permissions(mode, odict):
-    global policies
-    _normalization('policy:id', odict)
-
-    for policy_key in odict:
-        _update_set(policy_key, 'allow', policies, odict) if '*' in odict[policy_key]['allow'] \
-            else _update_set(policy_key, 'deny', policies, odict)
-
-    _update_set('role:id', 'allow', policies, odict, False) if mode \
-        else _update_set('role:id', 'deny', policies, odict, False)
-
-    return odict
-
-
 def _match_permissions(req_permissions: dict = None, rbac: list = None):
     """Try to match function required permissions against user permissions to allow or deny execution
 
@@ -192,30 +152,29 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     """
     mode, user_permissions = rbac
     allow_match = dict()
+    black_counter = 0
+    if mode:  # Black
+        if len(user_permissions.keys()) == 0:
+            allow_match['black:mode'] = '*'
+            return allow_match
     for req_action, req_resources in req_permissions.items():
-        actual_index = 0
-        for req_resource in req_resources:
-            try:
-                final_user_permissions = set()
+        # The required action is in user permissions(Preprocessed policies)
+        if req_action in user_permissions.keys():
+            for req_resource in req_resources:
                 user_resources = user_permissions[req_action]
                 r_resource = Resource(req_resource)
-                r_resource.get_function(mode, user_resources)
-                final_user_permissions.update(
-                    set(user_resources[r_resource.get_name_identifier()]['allow']) -
-                    set(user_resources[r_resource.get_name_identifier()]['deny']))
-                reqs = user_resources[r_resource.get_name_identifier()]['allow'] if req_resource.split(':')[-1] == '*'\
-                    else [req_resource]
-                if r_resource.get_name_identifier() not in allow_match.keys():
-                    allow_match[r_resource.get_name_identifier()] = list()
-                for req in reqs:
-                    split_req = req.split(':')[-1]
-                    if split_req in final_user_permissions:
-                        allow_match[r_resource.get_name_identifier()].append(split_req)
-            except KeyError:
-                if mode:  # For black mode, if the resource is not specified, it will be allow
-                    allow_match.append('*')
-                    break
-            actual_index += 1
+                allowed_resources = r_resource.exec_expand_function(mode, user_resources)
+                if len(allowed_resources) > 0:
+                    if r_resource.get_name_identifier() not in allow_match:
+                        allow_match[r_resource.get_name_identifier()] = list()
+                allow_match[r_resource.get_name_identifier()].extend(allowed_resources)
+        else:
+            if mode:
+                black_counter += 1
+                if len(req_resources) == black_counter:
+                    allow_match['black:mode'] = '*'
+            else:
+                break
     return allow_match
 
 
@@ -230,9 +189,13 @@ def expose_resources(actions: list = None, resources: list = None, target_param:
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            import pydevd_pycharm
+            pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
             req_permissions = _get_required_permissions(actions=actions, resources=resources, **kwargs)
             allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
             del kwargs['rbac']
+            if 'black:mode' in allow.keys():  # Black flag
+                return func(*args, **kwargs)
             for index, target in enumerate(target_param):
                 try:
                     if len(allow[list(allow.keys())[index]]) == 0:
@@ -241,5 +204,42 @@ def expose_resources(actions: list = None, resources: list = None, target_param:
                 except Exception:
                     raise WazuhError(4000)
             return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def response_handler(target_params: list = None, extra_fields: list = None):
+    """
+
+    :param target_params:List of input parameters used to calculate resource access
+    :param extra_fields: List of parameter to be added to the response fields
+    :return:
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            affected_items, failed_items, str_priority = func(*args, **kwargs)
+
+            if len(target_params) == 1:
+                original_kwargs = kwargs[target_params[0]]
+                for item in set(original_kwargs) - set(allow[list(allow.keys())[0]][0]):
+                    failed_items.append(create_exception_dic(item, WazuhError(4000)))
+            else:
+                original_kwargs = kwargs[target_params[1]]
+                for item in set(original_kwargs) - set(allow[list(allow.keys())[1]]):
+                    failed_items.append(create_exception_dic('{}:{}'.format(kwargs[target_params[0]], item), WazuhError(4000)))
+
+            final_dict = {'data': {'affected_items': affected_items,
+                                   'total_affected_items': len(affected_items)}
+                          }
+            if failed_items:
+                final_dict['data']['failed_items'] = failed_items
+                final_dict['data']['total_failed_items'] = len(failed_items)
+                final_dict['message'] = str_priority[2] if not affected_items else str_priority[1]
+            else:
+                final_dict['message'] = str_priority[0]
+            for item in extra_fields:
+                final_dict['data'][item] = kwargs[item]
+            return WazuhResult(final_dict, str_priority=str_priority)
         return wrapper
     return decorator

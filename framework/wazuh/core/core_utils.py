@@ -39,7 +39,6 @@ def get_agents_info():
     db_global = glob(common.database_path_global)
     if not db_global:
         raise WazuhInternalError(1600)
-
     conn = Connection(db_global[0])
     conn.execute("SELECT id, `group`, manager_host FROM agent")
     agents_info = conn.fetch_all()
@@ -47,41 +46,17 @@ def get_agents_info():
     return agents_info
 
 
-def expand_group(permissions_dict_group, permissions_dict_id):
-    def _insert_in_groups(effect, group_dict):
-        op_effect = 'deny' if effect == 'allow' else 'allow'
-        if '*' in group_dict[effect]:
-            group_dict[effect].clear()
-            for expanded in expanded_groups:
-                if expanded['name'] not in group_dict[op_effect]:
-                    group_dict[effect].add(expanded['name'])
-
+def expand_group(group):
     db_global = glob(common.database_path_global)
     if not db_global:
         raise WazuhInternalError(1600)
-
     conn = Connection(db_global[0])
-    if '*' in permissions_dict_group['allow'] or '*' in permissions_dict_group['deny']:
-        conn.execute("SELECT name FROM `group`")
-        expanded_groups = conn.fetch_all()
-        _insert_in_groups('allow', permissions_dict_group)
-        _insert_in_groups('deny', permissions_dict_group)
-    for allowed in permissions_dict_group['allow']:
-        conn.execute("SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM `group` WHERE name = :group)",
-                     {'group': allowed})
-    agents_allowed = conn.fetch_all()
-    for agent in agents_allowed:
-        agent_id = str(agent['id_agent']).zfill(3)
-        if agent_id in permissions_dict_id['deny']:
-            permissions_dict_id['deny'].remove(agent_id)
-        permissions_dict_id['allow'].add(agent_id)
+    conn.execute("SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM `group` WHERE name = :group)",
+                 {'group': group})
 
-    for denied in permissions_dict_group['deny']:
-        conn.execute("SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM `group` WHERE name = :group)",
-                     {'group': denied})
-    agents_denied = conn.fetch_all()
-    for agent in agents_denied:
-        agent_id = str(agent['id_agent']).zfill(3)
-        if agent_id in permissions_dict_id['allow']:
-            permissions_dict_id['allow'].remove(agent_id)
-        permissions_dict_id['deny'].add(agent_id)
+    agents = conn.fetch_all()
+    agents_ids = list()
+    for agent in agents:
+        agents_ids.append(str(agent['id_agent']).zfill(3))
+
+    return agents_ids
