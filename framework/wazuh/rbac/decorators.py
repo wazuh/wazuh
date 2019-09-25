@@ -12,7 +12,6 @@ from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import WazuhResult
 
 
-allow = None
 mode = 'black'
 
 
@@ -182,65 +181,71 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     return allow_match
 
 
-def expose_resources(actions: list = None, resources: list = None, target_param: list = None):
+def expose_resources(actions: list = None, resources: list = None, target_param: list = None,
+                     post_proc_func: callable = None, post_proc_extra_fields: list = None):
     """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
+
     :param actions: List of actions exposed by the framework function
     :param resources: List of resources exposed by the framework function
     :param target_param: Name of the input parameter used to calculate resource access
+    :param post_proc_func: Name of the function to use in response post processing
+    :param post_proc_extra_fields: Name of the extra fields used in post processing
     :return: Allow or deny framework function execution
     """
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
             req_permissions = _get_required_permissions(actions=actions, resources=resources, **kwargs)
-            global allow
             allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
             del kwargs['rbac']
-            if 'black:mode' in allow.keys():  # Black flag
+            if 'black:mode' not in allow.keys():  # Black flag
+                for index, target in enumerate(target_param):
+                    try:
+                        if len(allow[list(allow.keys())[index]]) == 0:
+                            raise Exception
+                        kwargs[target] = allow[list(allow.keys())[index]]
+                    except Exception:
+                        raise WazuhError(4000)
+            if post_proc_func is None:
                 return func(*args, **kwargs)
-            for index, target in enumerate(target_param):
-                try:
-                    if len(allow[list(allow.keys())[index]]) == 0:
-                        raise Exception
-                    kwargs[target] = allow[list(allow.keys())[index]]
-                except Exception:
-                    raise WazuhError(4000)
-            return func(*args, **kwargs)
+            else:
+                return post_proc_func(f=func, allow=allow, target=target_param, extra_fields=post_proc_extra_fields,
+                                      *args, **kwargs)
         return wrapper
     return decorator
 
 
-def response_handler(target_params: list = None, extra_fields: list = None):
-    """
-    :param target_params:List of input parameters used to calculate resource access
-    :param extra_fields: List of parameter to be added to the response fields
-    :return:
-    """
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            affected_items, failed_items, str_priority = func(*args, **kwargs)
-            if len(target_params) == 1:
-                original_kwargs = kwargs[target_params[0]]
-                for item in set(original_kwargs) - set(allow[list(allow.keys())[0]][0]):
-                    failed_items.append(create_exception_dic(item, WazuhError(4000)))
-            else:
-                original_kwargs = kwargs[target_params[1]]
-                for item in set(original_kwargs) - set(allow[list(allow.keys())[1]]):
-                    failed_items.append(create_exception_dic('{}:{}'.format(kwargs[target_params[0]], item),
-                                                             WazuhError(4000)))
+def list_response_handler(f: callable = None, allow: dict = None, target: list = None, extra_fields: list = None,
+                          *args, **kwargs):
+    """ Post processor for list responses with affected and failed items
 
-            final_dict = {'data': {'affected_items': affected_items,
-                                   'total_affected_items': len(affected_items)}
-                          }
-            if failed_items:
-                final_dict['data']['failed_items'] = failed_items
-                final_dict['data']['total_failed_items'] = len(failed_items)
-                final_dict['message'] = str_priority[2] if not affected_items else str_priority[1]
-            else:
-                final_dict['message'] = str_priority[0]
-            for item in extra_fields:
-                final_dict['data'][item] = kwargs[item]
-            return WazuhResult(final_dict, str_priority=str_priority)
-        return wrapper
-    return decorator
+    :param f: Function to apply post-processing to
+    :param allow: RBAC filtered input
+    :param target: Name of the input parameters used to calculate resource access
+    :param extra_fields: Additional fields to add to response
+    :param args: Original call args
+    :param kwargs: Original call kwargs
+    :return: Post-processed WazuhResult
+    """
+    affected_items, failed_items, str_priority = f(*args, **kwargs)
+    if len(target) == 1:
+        original_kwargs = kwargs[target[0]]
+        for item in set(original_kwargs) - set(allow[list(allow.keys())[0]][0]):
+            failed_items.append(create_exception_dic(item, WazuhError(4000)))
+    else:
+        original_kwargs = kwargs[target[1]]
+        for item in set(original_kwargs) - set(allow[list(allow.keys())[1]]):
+            failed_items.append(create_exception_dic('{}:{}'.format(kwargs[target[0]], item), WazuhError(4000)))
+
+    final_dict = {'data': {'affected_items': affected_items,
+                           'total_affected_items': len(affected_items)}
+                  }
+    if failed_items:
+        final_dict['data']['failed_items'] = failed_items
+        final_dict['data']['total_failed_items'] = len(failed_items)
+        final_dict['message'] = str_priority[2] if not affected_items else str_priority[1]
+    else:
+        final_dict['message'] = str_priority[0]
+    for item in extra_fields:
+        final_dict['data'][item] = kwargs[item]
+    return WazuhResult(final_dict, str_priority=str_priority)
