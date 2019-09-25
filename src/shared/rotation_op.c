@@ -507,7 +507,7 @@ time_t calc_next_rotation(time_t tm, struct tm *rot, const char units, int inter
     switch (units) {
         case 'w':
             /* Seconds left to the next rotation day depending if its this week or the next */
-            seconds = (interval > rot->tm_wday) ? (interval-rot->tm_wday) * 24 * 3600 : (7-(interval-rot->tm_wday)) * 24 * 3600;
+            seconds = (interval > rot->tm_wday) ? (interval-rot->tm_wday) * 24 * 3600 : (7-(rot->tm_wday-interval)) * 24 * 3600;
             ret = tm + seconds;
             rot = localtime(&ret);
             rot->tm_hour = 0;
@@ -531,6 +531,8 @@ time_t calc_next_rotation(time_t tm, struct tm *rot, const char units, int inter
     rot->tm_min = 0;
     rot->tm_sec = 0;
     ret = mktime(rot);
+
+    mdebug2("Next scheduled rotation: %d/%d/%d %d:%d:%d", rot->tm_mday, rot->tm_mon, rot->tm_year, rot->tm_hour, rot->tm_min, rot->tm_sec);
 
     return ret;
 }
