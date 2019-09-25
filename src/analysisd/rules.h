@@ -184,12 +184,6 @@ typedef struct _RuleInfo {
     char ** not_same_fields;
 
     char ** mitre_id;
-    char ** pci_dss_id;
-    char ** cis_id;
-    char ** gpg_id;
-    char ** gdpr_id;
-    char ** hipaa_id;
-    char ** nist_id;
 } RuleInfo;
 
 
