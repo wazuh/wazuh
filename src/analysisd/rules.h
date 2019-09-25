@@ -34,6 +34,7 @@
 #define NOT_SAME_SRCIP      0xffd /* 0xfff - 0x002  */
 #define NOT_SAME_ID         0xffb /* 0xfff - 0x004  */
 #define NOT_SAME_AGENT      0xff7 /* 0xfff - 0x008 */
+#define GLOBAL_FREQUENCY    0x1000
 
 /* Alert options  - store on a uint16 */
 #define DO_FTS          0x0001
