@@ -13,6 +13,7 @@ from wazuh.results import WazuhResult
 
 
 allow = None
+mode = 'black'
 
 
 class Resource:
@@ -65,11 +66,11 @@ class Resource:
             elif key.startswith('agent:id:*'):
                 for agent in self.agents:
                     final_permissions.add(agent) if value == 'allow' else final_permissions.discard(agent)
-            else:
+            elif key.startswith('agent:id'):
                 final_permissions.add(key.split(':')[-1]) if value == 'allow' \
                     else final_permissions.discard(key.split(':')[-1])
         for agent in self.agents:
-            if mode:
+            if mode == 'black':
                 final_permissions.add(agent)
 
         return final_permissions
@@ -80,11 +81,11 @@ class Resource:
             if key.startswith('role:id:*'):
                 for role in self.roles:
                     final_permissions.add(role) if value == 'allow' else final_permissions.discard(role)
-            else:
+            elif key.startswith('role:id'):
                 final_permissions.add(key.split(':')[-1]) if value == 'allow' \
                     else final_permissions.discard(key.split(':')[-1])
         for role in self.roles:
-            if mode:
+            if mode == 'black':
                 final_permissions.add(role)
 
         return final_permissions
@@ -95,11 +96,11 @@ class Resource:
             if key.startswith('policy:id:*'):
                 for policy in self.policies:
                     final_permissions.add(policy) if value == 'allow' else final_permissions.discard(policy)
-            else:
+            elif key.startswith('policy:id'):
                 final_permissions.add(key.split(':')[-1]) if value == 'allow' \
                     else final_permissions.discard(key.split(':')[-1])
         for policy in self.policies:
-            if mode:
+            if mode == 'black':
                 final_permissions.add(policy)
 
         return final_permissions
@@ -151,18 +152,18 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     :param rbac: User permissions
     :return: Allow or deny
     """
-    mode, user_permissions = rbac
+    global mode
     allow_match = dict()
     black_counter = 0
-    if mode:  # Black
-        if len(user_permissions.keys()) == 0:
+    if mode == 'black':  # Black
+        if len(rbac.keys()) == 0:
             allow_match['black:mode'] = '*'
             return allow_match
     for req_action, req_resources in req_permissions.items():
         # The required action is in user permissions(Preprocessed policies)
-        if req_action in user_permissions.keys():
+        if req_action in rbac.keys():
             for req_resource in req_resources:
-                user_resources = user_permissions[req_action]
+                user_resources = rbac[req_action]
                 r_resource = Resource(req_resource)
                 allowed_resources = r_resource.exec_expand_function(mode, user_resources)
                 if len(allowed_resources) > 0:
@@ -173,7 +174,7 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
                 elif r_resource.get_value() in allowed_resources:
                     allow_match[r_resource.get_name_identifier()].add(r_resource.get_value())
         else:
-            if mode:
+            if mode == 'black':
                 black_counter += 1
                 if len(req_resources) == black_counter:
                     allow_match['black:mode'] = '*'
