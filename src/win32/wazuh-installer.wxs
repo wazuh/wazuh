@@ -86,8 +86,8 @@
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[ADDRESS]&quot;,&quot;[SERVER_PORT]&quot;,&quot;[PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[TIME_RECONNECT]&quot;,&quot;[WAZUH_MANAGER]&quot;,&quot;[WAZUH_MANAGER_PORT]&quot;,&quot;[WAZUH_PROTOCOL]&quot;,&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;,&quot;[WAZUH_TIME_RECONNECT]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
 
-        <CustomAction Id="InstallConfigurationFiles" BinaryKey="UnzipVersionFiles" VBScriptCall="ExtractConfigurationFiles" Return="check" Execute="commit" Impersonate="no" />
-        <CustomAction Id="InstallSCAFiles" BinaryKey="UnzipVersionFiles" VBScriptCall="ExtractSCAFiles" Return="check" Execute="commit" Impersonate="no" />
+        <CustomAction Id="InstallConfigurationFiles" BinaryKey="UnzipVersionFiles" VBScriptCall="ExtractConfigurationFiles" Return="check" Execute="deferred" Impersonate="no" />
+        <CustomAction Id="InstallSCAFiles" BinaryKey="UnzipVersionFiles" VBScriptCall="ExtractSCAFiles" Return="check" Execute="deferred" Impersonate="no" />
 
         <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT]" />
         <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;" />
@@ -181,6 +181,7 @@
             <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
         </UI>
         <InstallExecuteSequence>
+        
             <Custom Action="SetCustomActionDataValue" After="InstallInitialize">NOT Installed</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
             <Custom Action="InstallConfigurationFiles" Before="InstallFinalize">NOT Installed</Custom>
