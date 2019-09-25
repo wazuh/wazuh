@@ -132,6 +132,7 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_notsame_agent = "not_same_agent";
     const char *xml_notsame_id = "not_same_id";
     const char *xml_notsame_field = "not_same_field";
+    const char *xml_global_frequency = "global_frequency";
 
     const char *xml_options = "options";
 
@@ -927,6 +928,9 @@ int Rules_OP_ReadRules(const char *rulefile)
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_notsame_agent) == 0) {
                         config_ruleinfo->context_opts &= NOT_SAME_AGENT;
+                    } else if (strcasecmp(rule_opt[k]->element,
+                                          xml_global_frequency) == 0) {
+                        config_ruleinfo->context_opts &= GLOBAL_FREQUENCY;
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_field) == 0) {
 

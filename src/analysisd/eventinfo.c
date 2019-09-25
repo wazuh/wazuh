@@ -76,6 +76,16 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
             goto end;
         }
 
+        if (!(rule->context_opts & GLOBAL_FREQUENCY)) {
+            if ((!lf->agent_id) || (!my_lf->agent_id)) {
+                continue;
+            }
+
+            if (strcmp(lf->agent_id, my_lf->agent_id) != 0) {
+                continue;
+            }
+        }
+
         /* Check for same ID */
         if (rule->context_opts & SAME_ID) {
             if ((!lf->id) || (!my_lf->id)) {
@@ -296,6 +306,16 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
             goto end;
         }
 
+        if (!(rule->context_opts & GLOBAL_FREQUENCY)) {
+            if ((!lf->agent_id) || (!my_lf->agent_id)) {
+                continue;
+            }
+
+            if (strcmp(lf->agent_id, my_lf->agent_id) != 0) {
+                continue;
+            }
+        }
+
         /* Check for same ID */
         if (rule->context_opts & SAME_ID) {
             if ((!lf->id) || (!my_lf->id)) {
@@ -505,8 +525,18 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             goto end;
         }
 
+        if (!(rule->context_opts & GLOBAL_FREQUENCY)) {
+            if ((!lf->agent_id) || (!my_lf->agent_id)) {
+                continue;
+            }
+
+            if (strcmp(lf->agent_id, my_lf->agent_id) != 0) {
+                continue;
+            }
+        }
+
         /* The category must be the same */
-        else if (lf->decoder_info->type != my_lf->decoder_info->type) {
+        if (lf->decoder_info->type != my_lf->decoder_info->type) {
             goto next_it;
         }
 
