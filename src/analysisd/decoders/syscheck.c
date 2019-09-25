@@ -1095,8 +1095,6 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
         return retval;
     }
 
-    minfo("%s", lf->log);
-
     char * type = cJSON_GetStringValue(cJSON_GetObjectItem(root_json, "type"));
     cJSON * data = cJSON_GetObjectItem(root_json, "data");
 
@@ -1106,10 +1104,8 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
             retval = 1;
         } else if (strcmp(type, "scan_start") == 0) {
             fim_process_scan_info(sdb, lf->agent_id, FIM_SCAN_START, data);
-            retval = 1;
         } else if (strcmp(type, "scan_end") == 0) {
             fim_process_scan_info(sdb, lf->agent_id, FIM_SCAN_END, data);
-            retval = 1;
         }
     } else {
         merror("Invalid FIM event");
