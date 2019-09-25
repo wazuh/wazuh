@@ -48,15 +48,15 @@ class Resource:
     def get_value(self):
         return self.value
 
-    def exec_expand_function(self, mode, odict):
+    def exec_expand_function(self, rbac_mode, odict):
         if self.name_identifier == 'agent:id' or self.name_identifier == 'agent:group':
-            return self._agent_expand_permissions(mode, odict)
+            return self._agent_expand_permissions(rbac_mode, odict)
         elif self.name_identifier == 'role:id':
-            return self._role_expand_permissions(mode, odict)
+            return self._role_expand_permissions(rbac_mode, odict)
         elif self.name_identifier == 'policy:id':
-            return self._policy_expand_permissions(mode, odict)
+            return self._policy_expand_permissions(rbac_mode, odict)
 
-    def _agent_expand_permissions(self, mode, odict):
+    def _agent_expand_permissions(self, rbac_mode, odict):
         final_permissions = set()
         for key, value in odict.items():
             if key.startswith('agent:group'):
@@ -70,12 +70,12 @@ class Resource:
                 final_permissions.add(key.split(':')[-1]) if value == 'allow' \
                     else final_permissions.discard(key.split(':')[-1])
         for agent in self.agents:
-            if mode == 'black':
+            if rbac_mode == 'black':
                 final_permissions.add(agent)
 
         return final_permissions
 
-    def _role_expand_permissions(self, mode, odict):
+    def _role_expand_permissions(self, rbac_mode, odict):
         final_permissions = set()
         for key, value in odict.items():
             if key.startswith('role:id:*'):
@@ -85,12 +85,12 @@ class Resource:
                 final_permissions.add(key.split(':')[-1]) if value == 'allow' \
                     else final_permissions.discard(key.split(':')[-1])
         for role in self.roles:
-            if mode == 'black':
+            if rbac_mode == 'black':
                 final_permissions.add(role)
 
         return final_permissions
 
-    def _policy_expand_permissions(self, mode, odict):
+    def _policy_expand_permissions(self, rbac_mode, odict):
         final_permissions = set()
         for key, value in odict.items():
             if key.startswith('policy:id:*'):
@@ -100,7 +100,7 @@ class Resource:
                 final_permissions.add(key.split(':')[-1]) if value == 'allow' \
                     else final_permissions.discard(key.split(':')[-1])
         for policy in self.policies:
-            if mode == 'black':
+            if rbac_mode == 'black':
                 final_permissions.add(policy)
 
         return final_permissions
@@ -132,7 +132,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                 else:
                     res_list.append("{0}{1}".format(res_base, params))
             # KeyError occurs if required dynamic resources can't be found within request parameters
-            except KeyError as e:
+            except KeyError:
                 raise WazuhError(4014, extra_message={'param': m.group(3)})
         # If we don't find a regex match we obtain the static resource/s
         else:
@@ -229,7 +229,8 @@ def response_handler(target_params: list = None, extra_fields: list = None):
             else:
                 original_kwargs = kwargs[target_params[1]]
                 for item in set(original_kwargs) - set(allow[list(allow.keys())[1]]):
-                    failed_items.append(create_exception_dic('{}:{}'.format(kwargs[target_params[0]], item), WazuhError(4000)))
+                    failed_items.append(create_exception_dic('{}:{}'.format(kwargs[target_params[0]], item),
+                                                             WazuhError(4000)))
 
             final_dict = {'data': {'affected_items': affected_items,
                                    'total_affected_items': len(affected_items)}
