@@ -331,7 +331,7 @@ int init_regex(void) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "syscall");
         return -1;
     }
-    static const char *pattern_dev = " dev=([0-9]*:[0-9]*)";
+    static const char *pattern_dev = " dev=([0-9|a-f|A-F]*:[0-9|a-f|A-F]*)";
     if (regcomp(&regexCompiled_dev, pattern_dev, REG_EXTENDED)) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dev");
         return -1;

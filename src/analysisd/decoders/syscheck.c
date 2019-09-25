@@ -1441,11 +1441,6 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
         }
     }
 
-
-    // Format comment
-
-    fim_generate_comment(change_size, sizeof(change_size), "Size changed from '%s' to '%s'\n", lf->size_before, lf->size_after);
-
     if (lf->inode_before != lf->inode_after) {
         snprintf(change_inode, sizeof(change_inode), "Old inode was: '%ld', now it is '%ld'\n", lf->inode_before, lf->inode_after);
     }
@@ -1454,7 +1449,9 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
         snprintf(change_mtime, sizeof(change_mtime), "Old modification time was: '%ld', now it is '%ld'\n", lf->mtime_before, lf->mtime_after);
     }
 
+    // Format comment
     if (lf->event_type == FIM_MODIFIED) {
+        fim_generate_comment(change_size, sizeof(change_size), "Size changed from '%s' to '%s'\n", lf->size_before, lf->size_after);
         fim_generate_comment(change_perm, sizeof(change_perm), "Permissions changed from '%s' to '%s'\n", lf->perm_before, lf->perm_after);
         fim_generate_comment(change_owner, sizeof(change_owner), "Ownership was '%s', now it is '%s'\n", lf->owner_before, lf->owner_after);
         fim_generate_comment(change_user, sizeof(change_owner), "User name was '%s', now it is '%s'\n", lf->uname_before, lf->uname_after);
