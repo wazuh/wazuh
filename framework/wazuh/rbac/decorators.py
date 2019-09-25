@@ -189,9 +189,8 @@ def expose_resources(actions: list = None, resources: list = None, target_param:
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            import pydevd_pycharm
-            pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
             req_permissions = _get_required_permissions(actions=actions, resources=resources, **kwargs)
+            global allow
             allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
             del kwargs['rbac']
             if 'black:mode' in allow.keys():  # Black flag
@@ -219,7 +218,7 @@ def response_handler(target_params: list = None, extra_fields: list = None):
         @wraps(func)
         def wrapper(*args, **kwargs):
             affected_items, failed_items, str_priority = func(*args, **kwargs)
-
+            global allow
             if len(target_params) == 1:
                 original_kwargs = kwargs[target_params[0]]
                 for item in set(original_kwargs) - set(allow[list(allow.keys())[0]][0]):
