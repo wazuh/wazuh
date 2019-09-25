@@ -51,7 +51,7 @@ static int CheckEventJSON(cJSON *event, cJSON **scan_id, cJSON **id, cJSON **nam
 static int CheckPoliciesJSON(cJSON *event, cJSON **policies);
 static int CheckDumpJSON(cJSON *event, cJSON **elements_sent, cJSON **policy_id, cJSON **scan_id);
 static void FillCheckEventInfo(Eventinfo *lf, cJSON *scan_id, cJSON *id, cJSON *name, cJSON *title, cJSON *description,
-        cJSON *rationale, cJSON *remediation, cJSON *compliance, cJSON *condition, cJSON *reference, cJSON *file,
+        cJSON *rationale, cJSON *remediation, cJSON *compliance, cJSON *reference, cJSON *file,
         cJSON *directory, cJSON *process, cJSON *registry, cJSON *result, cJSON *status, cJSON *reason, char *old_result,
         cJSON *command);
 static void FillScanInfo(Eventinfo *lf, cJSON *scan_id, cJSON *name, cJSON *description, cJSON *pass, cJSON *failed,
@@ -776,14 +776,14 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 if (result){
                     if(strcmp(wdb_response,result->valuestring)) {
                         FillCheckEventInfo(lf, scan_id, id,name, title, description, rationale, remediation,
-                                compliance, condition, reference, file, directory, process, registry, result,
+                                compliance, reference, file, directory, process, registry, result,
                                 status, reason, wdb_response, command
                         );
                     }
                 } else if (status && status->valuestring) {
                     if(strcmp(wdb_response, status->valuestring)) {
                         FillCheckEventInfo(lf, scan_id, id,name, title, description, rationale, remediation,
-                                compliance, condition, reference, file, directory, process, registry, result,
+                                compliance, reference, file, directory, process, registry, result,
                                 status, reason, wdb_response, command
                         );
                     }
@@ -806,14 +806,14 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 if (result) {
                     if(strcmp(wdb_response,result->valuestring)) {
                         FillCheckEventInfo(lf, scan_id, id, name, title, description, rationale, remediation,
-                                compliance, condition, reference, file, directory, process, registry, result,
+                                compliance, reference, file, directory, process, registry, result,
                                 status, reason, NULL, command
                         );
                     }
                 } else if (status && status->valuestring) {
                     if(strcmp(wdb_response, status->valuestring)) {
                         FillCheckEventInfo(lf, scan_id, id, name, title, description, rationale,
-                                remediation, compliance, condition, reference, file, directory,
+                                remediation, compliance, reference, file, directory,
                                 process, registry, result, status, reason, NULL, command
                         );
                     }
@@ -1562,7 +1562,7 @@ static int CheckPoliciesJSON(cJSON *event,cJSON **policies) {
 }
 
 static void FillCheckEventInfo(Eventinfo *lf, cJSON *scan_id, cJSON *id, cJSON *name, cJSON *title, cJSON *description,
-        cJSON *rationale, cJSON *remediation, cJSON *compliance, cJSON *condition, cJSON *reference, cJSON *file,
+        cJSON *rationale, cJSON *remediation, cJSON *compliance, cJSON *reference, cJSON *file,
         cJSON *directory, cJSON *process, cJSON *registry, cJSON *result, cJSON *status, cJSON *reason,
         char *old_result, cJSON *command)
 {
@@ -1648,10 +1648,6 @@ static void FillCheckEventInfo(Eventinfo *lf, cJSON *scan_id, cJSON *id, cJSON *
                 os_free(value);
             }
         }
-    }
-
-    if (condition){
-        fillData(lf, "sca.check.condition", condition->valuestring);
     }
 
     if(reference) {

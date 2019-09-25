@@ -1397,10 +1397,6 @@
                   "remediation": {
                     "type": "keyword"
                   },
-                  "condition": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                  },
                   "compliance": {
                     "properties": {
                       "cis": {
