@@ -5,9 +5,8 @@
 from glob import glob
 
 from wazuh import common
-from wazuh.database import Connection
-from wazuh.exception import WazuhInternalError
 from wazuh.agent import WazuhDBQueryAgents, WazuhDBQueryMultigroups
+from wazuh.exception import WazuhInternalError
 
 
 def get_agents_info():
