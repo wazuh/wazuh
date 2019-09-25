@@ -152,7 +152,6 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     :param rbac: User permissions
     :return: Allow or deny
     """
-    global mode
     allow_match = dict()
     black_counter = 0
     if mode == 'black':  # Black
@@ -221,7 +220,6 @@ def response_handler(target_params: list = None, extra_fields: list = None):
         @wraps(func)
         def wrapper(*args, **kwargs):
             affected_items, failed_items, str_priority = func(*args, **kwargs)
-            global allow
             if len(target_params) == 1:
                 original_kwargs = kwargs[target_params[0]]
                 for item in set(original_kwargs) - set(allow[list(allow.keys())[0]][0]):
