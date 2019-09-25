@@ -652,15 +652,13 @@ cleanup:
         if (result != NULL) {
             EvtClose(result);
         }
-
-        return -1;
     }
 
     if (bookmark != NULL) {
         EvtClose(bookmark);
     }
 
-    return 0;
+    return status ? 0 : -1;
 }
 
 #endif /* EVENTCHANNEL_SUPPORT */
