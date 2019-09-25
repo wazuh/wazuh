@@ -12,6 +12,9 @@ from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import WazuhResult
 
 
+allow = None
+
+
 class Resource:
     def __init__(self, resource):
         split_resource = resource.split(':')
@@ -104,7 +107,6 @@ class Resource:
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
     """Obtain action:resource pairs exposed by the framework function
-
     :param actions: List of exposed actions
     :param resources: List of exposed resources
     :param kwargs: Function kwargs to look for dynamic resources
@@ -145,7 +147,6 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
 
 def _match_permissions(req_permissions: dict = None, rbac: list = None):
     """Try to match function required permissions against user permissions to allow or deny execution
-
     :param req_permissions: Required permissions to allow function execution
     :param rbac: User permissions
     :return: Allow or deny
@@ -166,8 +167,11 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
                 allowed_resources = r_resource.exec_expand_function(mode, user_resources)
                 if len(allowed_resources) > 0:
                     if r_resource.get_name_identifier() not in allow_match:
-                        allow_match[r_resource.get_name_identifier()] = list()
-                allow_match[r_resource.get_name_identifier()].extend(allowed_resources)
+                        allow_match[r_resource.get_name_identifier()] = set()
+                if r_resource.get_value() == '*':
+                    allow_match[r_resource.get_name_identifier()].update(allowed_resources)
+                elif r_resource.get_value() in allowed_resources:
+                    allow_match[r_resource.get_name_identifier()].add(r_resource.get_value())
         else:
             if mode:
                 black_counter += 1
@@ -180,7 +184,6 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
 
 def expose_resources(actions: list = None, resources: list = None, target_param: list = None):
     """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
-
     :param actions: List of actions exposed by the framework function
     :param resources: List of resources exposed by the framework function
     :param target_param: Name of the input parameter used to calculate resource access
@@ -209,7 +212,6 @@ def expose_resources(actions: list = None, resources: list = None, target_param:
 
 def response_handler(target_params: list = None, extra_fields: list = None):
     """
-
     :param target_params:List of input parameters used to calculate resource access
     :param extra_fields: List of parameter to be added to the response fields
     :return:

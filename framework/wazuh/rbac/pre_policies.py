@@ -59,4 +59,3 @@ def optimize_resources():
     cleaner(odict)
 
     return odict
-
