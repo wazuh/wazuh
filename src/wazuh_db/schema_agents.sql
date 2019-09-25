@@ -261,7 +261,8 @@ CREATE TABLE IF NOT EXISTS sca_check (
    `references` TEXT,
    result TEXT,
    `status` TEXT,
-   reason TEXT
+   reason TEXT,
+   condition TEXT
 );
 
 CREATE INDEX IF NOT EXISTS policy_id_index ON sca_check (policy_id);
