@@ -403,9 +403,6 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                     opts & CHECK_INODE ? str_inode : "",
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
                     opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0);
-
-            os_free(user);
-
 #else
             if (opts & CHECK_SIZE) {
                 sprintf(str_size, "%ld", (long)statbuf.st_size);
@@ -439,6 +436,8 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 
             sprintf(str_inode, "%ld", (long)statbuf.st_ino);
 
+            char *user = get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL);
+            char *group = get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid);
             snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%c%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
                     opts & CHECK_SIZE ? '+' : '-',
                     opts & CHECK_PERM ? '+' : '-',
@@ -457,12 +456,14 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                     str_group,
                     opts & CHECK_MD5SUM ? mf_sum : "",
                     opts & CHECK_SHA1SUM ? sf_sum : "",
-                    opts & CHECK_OWNER ? get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL) : "",
-                    opts & CHECK_GROUP ? get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
+                    opts & CHECK_OWNER ? user : "",
+                    opts & CHECK_GROUP ? group : "",
                     str_mtime,
                     opts & CHECK_INODE ? str_inode : "",
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
                     0);
+            os_free(user);
+            os_free(group);
 #endif
 
             os_calloc(1, sizeof(syscheck_node), s_node);
@@ -532,6 +533,8 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 
             os_free(user);
 #else
+            user = get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL);
+            group = get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid);
             snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u!%s:%s:%s:%c %s%s%s",
                 str_size,
                 str_perm,
@@ -539,8 +542,8 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 str_group,
                 opts & CHECK_MD5SUM ? mf_sum : "",
                 opts & CHECK_SHA1SUM ? sf_sum : "",
-                opts & CHECK_OWNER ? get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL) : "",
-                opts & CHECK_GROUP ? get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
+                opts & CHECK_OWNER ? user : "",
+                opts & CHECK_GROUP ? group : "",
                 str_mtime,
                 opts & CHECK_INODE ? str_inode : "",
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
@@ -552,6 +555,9 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
+                
+            os_free(user);
+            os_free(group);
 #endif
             if(max_depth <= syscheck.max_depth){
                 send_syscheck_msg(alert_msg);

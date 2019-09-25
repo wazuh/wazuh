@@ -535,6 +535,8 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
         sprintf(str_inode, "%ld", (long)statbuf.st_ino);
     }
 
+    char *user_name = get_user(file_name, statbuf.st_uid, NULL);
+    char *group_name = get_group(statbuf.st_gid);
     snprintf(newsum, OS_SIZE_4096, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
         str_size,
         str_perm,
@@ -542,12 +544,15 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
         str_group,
         md5sum   == 0 ? "" : mf_sum,
         sha1sum  == 0 ? "" : sf_sum,
-        owner == 0 ? "" : get_user(file_name, statbuf.st_uid, NULL),
-        group == 0 ? "" : get_group(statbuf.st_gid),
+        owner == 0 ? "" : user_name,
+        group == 0 ? "" : group_name,
         str_mtime,
         inode == 0 ? "" : str_inode,
         sha256sum  == 0 ? "" : sf256_sum,
         0);
+
+    os_free(user_name);
+    os_free(group_name);
 #else
     user = get_user(file_name, statbuf.st_uid, &sid);
 
