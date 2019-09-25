@@ -39,7 +39,7 @@ static char __ejlogfile[OS_FLSIZE + 1];
 struct timespec local_timespec;
 
 // Open a valid log or die. No return on error.
-static FILE * openlog(FILE * fp, char path[OS_FLSIZE + 1], const char * logdir, int year, const char * month, const char * tag, int day, const char * ext, const char * lname, int * counter, int rotate);
+static FILE * openlog(FILE * fp, char path[OS_FLSIZE + 1], const char * logdir, int year, const char * month, const char * tag, int day, const char * ext, const char * lname, int * counter, int rotate, __attribute__((unused)) rotation_list *list);
 
 void OS_InitLog()
 {
@@ -97,7 +97,7 @@ int OS_GetLogLocation(int day,int year,char *mon)
         os_strdup(__elogfile, prev_elogfile);
         memset(c_elogfile, '\0', OS_FLSIZE + 1);
         snprintf(c_elogfile, OS_FLSIZE+3, "%s.gz", prev_elogfile);
-        _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, FALSE);
+        _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, FALSE, Config.log_archives_plain);
         if(Config.archives_compress_rotation) {
             if(!IsFile(prev_elogfile)) {
                 w_compress_gzfile(prev_elogfile, c_elogfile);
@@ -121,7 +121,7 @@ int OS_GetLogLocation(int day,int year,char *mon)
         os_strdup(__ejlogfile, prev_ejlogfile);
         memset(c_ejlogfile, '\0', OS_FLSIZE + 1);
         snprintf(c_ejlogfile, OS_FLSIZE+3, "%s.gz", prev_ejlogfile);
-        _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, FALSE);
+        _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, FALSE, Config.log_archives_json);
         if(Config.archives_compress_rotation) {
             if(!IsFile(prev_ejlogfile)) {
                 w_compress_gzfile(prev_ejlogfile, c_ejlogfile);
@@ -145,7 +145,7 @@ int OS_GetLogLocation(int day,int year,char *mon)
         os_strdup(__alogfile, prev_alogfile);
         memset(c_alogfile, '\0', OS_FLSIZE + 1);
         snprintf(c_alogfile, OS_FLSIZE+3, "%s.gz", prev_alogfile);
-        _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, FALSE);
+        _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, FALSE, Config.log_alerts_plain);
         if(Config.alerts_compress_rotation) {
             if(!IsFile(prev_alogfile)) {
                 w_compress_gzfile(prev_alogfile, c_alogfile);
@@ -169,7 +169,7 @@ int OS_GetLogLocation(int day,int year,char *mon)
         os_strdup(__jlogfile, prev_jlogfile);
         memset(c_jlogfile, '\0', OS_FLSIZE + 1);
         snprintf(c_jlogfile, OS_FLSIZE+3, "%s.gz", prev_jlogfile);
-        _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, FALSE);
+        _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, FALSE, Config.log_alerts_json);
         if(Config.alerts_compress_rotation) {
             if(!IsFile(prev_jlogfile)) {
                 w_compress_gzfile(prev_jlogfile, c_jlogfile);
@@ -185,7 +185,7 @@ int OS_GetLogLocation(int day,int year,char *mon)
     }
 
     /* For the firewall events */
-    _fflog = openlog(_fflog, __flogfile, FWLOGS, year, mon, "firewall", day, "log", FWLOGS_DAILY, &__fcounter, FALSE);
+    _fflog = openlog(_fflog, __flogfile, FWLOGS, year, mon, "firewall", day, "log", FWLOGS_DAILY, &__fcounter, FALSE, NULL);
 
     /* Setting the new day */
     __crt_day = day;
@@ -197,13 +197,23 @@ int OS_GetLogLocation(int day,int year,char *mon)
 
 // Open a valid log or die. No return on error.
 
-FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char * month, const char * tag, int day, const char * ext, const char * lname, int * counter, int rotate) {
+FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char * month, const char * tag, int day, const char * ext, const char * lname, int * counter, int rotate, rotation_list *list) {
 
     char prev_path[OS_FLSIZE + 1];
 
     if (fp) {
         if (ftell(fp) == 0) {
             unlink(path);
+            if (list) {
+                /* We need to remove the rotated file from the list */
+                rotation_node *r_node;
+                r_node = list->first;
+                list->first = list->first->next;
+                list->first->prev = NULL;
+                free(r_node->string_value);
+                free(r_node);
+                list->count--;
+            }
         }
 
         fclose(fp);
@@ -273,9 +283,9 @@ void OS_RotateLogs(int day, int year, char *mon) {
     // If more than interval time has passed and the interval rotation is set for any log
     if ((Config.alerts_interval || Config.archives_interval)) {
         // If the rotation for alerts is enabled
-        if (Config.alerts_rotation_enabled && Config.alerts_interval > 0 && current_time > alerts_time) {
+        if (Config.alerts_rotation_enabled && Config.alerts_interval > 0) {
             // Rotate alerts.log
-            if (Config.alerts_log_plain) {
+            if (Config.alerts_log_plain && current_time > alerts_time) {
                 if (_aflog && !fseek(_aflog, 0, SEEK_END) && ftell(_aflog) > 0) {
                     if (Config.log_alerts_plain->last) {
                         os_strdup(Config.log_alerts_plain->last->string_value, previous_log);
@@ -287,7 +297,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                     } else if (__acounter == -1) {
                         __acounter = 0;
                     }
-                    _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, TRUE);
+                    _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, TRUE, Config.log_alerts_plain);
                     memset(c_alogfile, '\0', OS_FLSIZE + 1);
                     snprintf(c_alogfile, OS_FLSIZE, "%s.gz", previous_log);
                     if (Config.alerts_compress_rotation) {
@@ -302,10 +312,11 @@ void OS_RotateLogs(int day, int year, char *mon) {
                     remove_old_logs(path_alerts, Config.alerts_maxage, "alerts");
                     add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
                     os_free(previous_log);
+                    alerts_time = Config.alerts_interval ? calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval) : 0;
                 }
             }
             // Rotate alerts.json
-            if (Config.alerts_log_json) {
+            if (Config.alerts_log_json && current_time > alerts_time_json) {
                 if (_jflog && !fseek(_jflog, 0, SEEK_END) && ftell(_jflog) > 0) {
                     if (Config.log_alerts_json->last) {
                         os_strdup(Config.log_alerts_json->last->string_value, previous_log);
@@ -317,7 +328,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                     } else if (__jcounter == -1) {
                         __jcounter = 0;
                     }
-                    _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, TRUE);
+                    _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, TRUE, Config.log_alerts_json);
                     memset(c_jlogfile, '\0', OS_FLSIZE + 1);
                     snprintf(c_jlogfile, OS_FLSIZE, "%s.gz", previous_log);
                     if (Config.alerts_compress_rotation) {
@@ -332,15 +343,15 @@ void OS_RotateLogs(int day, int year, char *mon) {
                     remove_old_logs(path_alerts, Config.alerts_maxage, "alerts");
                     add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
                     os_free(previous_log);
+                    alerts_time_json = Config.alerts_interval ? calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval) : 0;
                 }
             }
-            alerts_time = Config.alerts_interval ? calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval) : 0;
             __alerts_rsec = local_timespec.tv_sec;
         }
         // If the rotation for archives is enabled
-        if (Config.archives_rotation_enabled && Config.archives_interval > 0 && current_time > archive_time) {
+        if (Config.archives_rotation_enabled && Config.archives_interval > 0) {
             // Rotation for archives.log
-            if (Config.archives_log_plain) {
+            if (Config.archives_log_plain && current_time > archive_time) {
                 if (_eflog && !fseek(_eflog, 0, SEEK_END) && ftell(_eflog) > 0) {
                     if (Config.log_archives_plain->last) {
                         os_strdup(Config.log_archives_plain->last->string_value, previous_log);
@@ -352,7 +363,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                     } else if (__ecounter == -1) {
                         __ecounter = 0;
                     }
-                    _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, TRUE);
+                    _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, TRUE, Config.log_archives_plain);
                     memset(c_elogfile, '\0', OS_FLSIZE + 1);
                     snprintf(c_elogfile, OS_FLSIZE, "%s.gz", previous_log);
                     if (Config.archives_compress_rotation) {
@@ -367,10 +378,11 @@ void OS_RotateLogs(int day, int year, char *mon) {
                     remove_old_logs(path_archives, Config.archives_maxage, "archives");
                     add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
                     os_free(previous_log);
+                    archive_time = Config.archives_interval ? calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval) : 0;
                 }
             }
             // Rotation for archives.json
-            if (Config.archives_log_json) {
+            if (Config.archives_log_json && current_time > archive_time_json) {
                 if (_ejflog && !fseek(_ejflog, 0, SEEK_END) && ftell(_ejflog) > 0) {
                     if (Config.log_archives_json->last) {
                         os_strdup(Config.log_archives_json->last->string_value, previous_log);
@@ -382,7 +394,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                     } else if (__ejcounter == -1) {
                         __ejcounter = 0;
                     }
-                    _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, TRUE);
+                    _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, TRUE, Config.log_archives_json);
                     memset(c_ejflogfile, '\0', OS_FLSIZE + 1);
                     snprintf(c_ejflogfile, OS_FLSIZE, "%s.gz", previous_log);
                     if (Config.archives_compress_rotation) {
@@ -397,10 +409,10 @@ void OS_RotateLogs(int day, int year, char *mon) {
                     remove_old_logs(path_archives, Config.archives_maxage, "archive");
                     add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
                     os_free(previous_log);
+                    archive_time_json = Config.archives_interval ? calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval) : 0;
                 }
             }
             __archives_rsec = local_timespec.tv_sec;
-            archive_time = Config.archives_interval ? calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval) : 0;
         }
     }
 
@@ -419,7 +431,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                 } else if (__acounter == -1) {
                     __acounter = 0;
                 }
-                _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, TRUE);
+                _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, TRUE, Config.log_alerts_plain);
                 memset(c_alogfile, '\0', OS_FLSIZE + 1);
                 snprintf(c_alogfile, OS_FLSIZE, "%s.gz", previous_log);
                 if (Config.alerts_compress_rotation) {
@@ -450,7 +462,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                 } else if (__jcounter == -1) {
                     __jcounter = 0;
                 }
-                _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, TRUE);
+                _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, TRUE, Config.log_alerts_json);
                 memset(c_jlogfile, '\0', OS_FLSIZE + 1);
                 snprintf(c_jlogfile, OS_FLSIZE, "%s.gz", previous_log);
                 if (Config.alerts_compress_rotation) {
@@ -485,7 +497,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                 } else if (__ecounter == -1) {
                     __ecounter = 0;
                 }
-                _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, TRUE);
+                _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, TRUE, Config.log_archives_plain);
                 memset(c_elogfile, '\0', OS_FLSIZE + 1);
                 snprintf(c_elogfile, OS_FLSIZE, "%s.gz", previous_log);
                 if (Config.archives_compress_rotation) {
@@ -516,7 +528,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                 } else if (__ejcounter == -1) {
                     __ejcounter = 0;
                 }
-                _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, TRUE);
+                _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, TRUE, Config.log_archives_json);
                 memset(c_ejflogfile, '\0', OS_FLSIZE + 1);
                 snprintf(c_ejflogfile, OS_FLSIZE, "%s.gz", previous_log);
                 if (Config.archives_compress_rotation) {

@@ -43,9 +43,7 @@ void manage_files(int cday, int cmon, int cyear)
 }
 
 void manage_log(const char * logdir, int cday, int cmon, int cyear, const struct tm * pp_old, const char * tag, const char * ext) {
-    int i;
     char logfile[OS_FLSIZE + 1];
-    char logfile_r[OS_FLSIZE + 1];
     char logfile_old[OS_FLSIZE + 1];
 
     snprintf(logfile, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d", logdir, cyear, months[cmon], tag, cday);

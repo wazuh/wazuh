@@ -89,6 +89,8 @@ EventList *last_events_list;
 time_t current_time;
 time_t alerts_time;
 time_t archive_time;
+time_t alerts_time_json;
+time_t archive_time_json;
 
 /* execd queue */
 static int execdq = 0;
@@ -2505,7 +2507,9 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
 
     /* Calculate when is the next rotation */
     alerts_time = Config.alerts_interval ? calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval) : 0;
+    alerts_time_json = alerts_time;
     archive_time = Config.archives_interval ? calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval) : 0;
+    archive_time_json = archive_time;
 
     while (1) {
         time(&current_time);
@@ -2542,7 +2546,7 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
                 }
 
                 today = day;
-                strncpy(prev_month,mon, 3);
+                strncpy(prev_month, mon, 3);
                 prev_year = year;
             }
         }
