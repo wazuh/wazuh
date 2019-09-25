@@ -12,8 +12,10 @@
 #define MITRE_H
 
 #include "shared.h"
+#include "os_net/os_net.h"
+#include "headers/wazuhdb_op.h"
 
-void mitre_load();
+int mitre_load();
 cJSON * mitre_get_attack(const char * mitre_id);
 
 #endif /* MITRE_H */

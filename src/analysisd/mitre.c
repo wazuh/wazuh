@@ -7,19 +7,23 @@
  * Foundation
  */
 
-#include "shared.h"
 #include "mitre.h"
 
 static OSHash *mitre_table;
 
-void mitre_load(){
+int mitre_load(){
+    int result = 0;
     int hashcheck;
     size_t read;
     long size;
     char * buffer = NULL;
     char path_file[PATH_MAX + 1];
+    char *wazuhdb_query = NULL;
+    char *output = NULL;
+    char *input_json = NULL;
     FILE *fp;
     cJSON *root;
+    cJSON *tactics_json;
     cJSON *type = NULL;
     cJSON *source_name = NULL;
     cJSON *ext_id = NULL;
@@ -31,17 +35,17 @@ void mitre_load(){
     cJSON *kill_chain_phase = NULL;
     cJSON *chain_phase = NULL;
     cJSON *arrayphases = NULL;
-    cJSON *string_tactic;
 
     /* Create hash table */
     mitre_table = OSHash_Create();
 
     /* Load Json File */
     /* Reading enterprise-attack json file */
-    snprintf(path_file, sizeof(path_file), "%s/%s", MITRE_JSON_FILE_DIR, MITRE_JSON_FILE_NAME);
+    snprintf(path_file, sizeof(path_file), "ruleset/mitre/enterprise-attack.json");
     if(fp = fopen(path_file, "r"), !fp) {
         mdebug1("Mitre file info loading failed. File %s parsing error.", path_file);
         merror("Mitre matrix information could not be loaded.");
+        result = -1;
         goto end;
     }
 
@@ -49,6 +53,7 @@ void mitre_load(){
     if (size = get_fp_size(fp), size < 0) {
         mdebug1("Mitre file info loading failed. It was not possible to get file size. File %s", path_file);
         merror("Mitre matrix information could not be loaded.");
+        result = -1;
         goto end;
     }
 
@@ -56,6 +61,7 @@ void mitre_load(){
     if (size > JSON_MAX_FSIZE) {
         mdebug1("Mitre file info loading failed. It exceeds size. File %s", path_file);
         merror("Mitre matrix information could not be loaded.");
+        result = -1;
         goto end;
     }
 
@@ -66,6 +72,7 @@ void mitre_load(){
     if (read = fread(buffer, 1, size, fp), read != (size_t)size && !feof(fp)) {
         mdebug1("Mitre file info loading failed. JSON file cannot be readed. File %s", path_file);
         merror("Mitre matrix information could not be loaded.");
+        result = -1;
         goto end;
     }
     
@@ -77,78 +84,67 @@ void mitre_load(){
         mdebug1("Mitre file info loading failed. JSON file cannot be parsered. File %s", path_file);
         merror("Mitre matrix information could not be loaded.");
         cJSON_Delete(root);
+        result = -1;
         goto end;
     } else {
-        objects = cJSON_GetObjectItem(root, "objects");
-        cJSON_ArrayForEach(object, objects){
-            if(type = cJSON_GetObjectItem(object, "type"), type) {
-                if (strcmp(type->valuestring,"attack-pattern") == 0){
-                    references = cJSON_GetObjectItem(object, "external_references");
-                    cJSON_ArrayForEach(reference, references){
-                        if(source_name = cJSON_GetObjectItem(reference, "source_name"), source_name) {
-                            if (strcmp(source_name->valuestring, "mitre-attack") == 0){
-                                /* All the conditions have been met */
-                                /* Storing the item 'external_id' */
-                                ext_id = cJSON_GetObjectItem(reference, "external_id");
+        if(objects = cJSON_GetObjectItem(root, "objects"), objects) {
+            cJSON_ArrayForEach(object, objects){
+                if(type = cJSON_GetObjectItem(object, "type"), type) {
+                    if(strcmp(type->valuestring,"attack-pattern") == 0){
+                        if(references = cJSON_GetObjectItem(object, "external_references"), references) {
+                            cJSON_ArrayForEach(reference, references){
+                                if(source_name = cJSON_GetObjectItem(reference, "source_name"), source_name) {
+                                    if(strcmp(source_name->valuestring, "mitre-attack") == 0){
+                                        /* All the conditions have been met */
+                                        /* Storing the item 'external_id' */
+                                        ext_id = cJSON_GetObjectItem(reference, "external_id");
 
-                                /* Storing the item 'phase_name' of 'kill_chain_phases' */
-                                arrayphases = cJSON_CreateArray();
-                                kill_chain_phases = cJSON_GetObjectItem(object, "kill_chain_phases");
-                                cJSON_ArrayForEach(kill_chain_phase, kill_chain_phases){
-                                    cJSON_ArrayForEach(chain_phase, kill_chain_phase){
-                                        if(strcmp(chain_phase->string,"phase_name") == 0){
-                                            if(strcmp(chain_phase->valuestring,"privilege-escalation") == 0) {
-                                                string_tactic = cJSON_CreateString("Privilege Escalation");
-                                            } else if (strcmp(chain_phase->valuestring,"defense-evasion") == 0) {
-                                                string_tactic = cJSON_CreateString("Defense Evasion");
-                                            } else if (strcmp(chain_phase->valuestring,"persistence") == 0) {
-                                                string_tactic = cJSON_CreateString("Persistence");
-                                            } else if (strcmp(chain_phase->valuestring,"initial-access") == 0) {
-                                                string_tactic = cJSON_CreateString("Initial Access");
-                                            } else if (strcmp(chain_phase->valuestring,"discovery") == 0) {
-                                                string_tactic = cJSON_CreateString("Discovery");
-                                            } else if (strcmp(chain_phase->valuestring,"credential-access") == 0) {
-                                                string_tactic = cJSON_CreateString("Credential Access");
-                                            } else if (strcmp(chain_phase->valuestring,"execution") == 0) {
-                                                string_tactic = cJSON_CreateString("Execution");
-                                            } else if (strcmp(chain_phase->valuestring,"lateral-movement") == 0) {
-                                                string_tactic = cJSON_CreateString("Lateral Movement");
-                                            } else if (strcmp(chain_phase->valuestring,"collection") == 0) {
-                                                string_tactic = cJSON_CreateString("Collection");
-                                            } else if (strcmp(chain_phase->valuestring,"exfiltration") == 0) {
-                                                string_tactic = cJSON_CreateString("Exfiltration");
-                                            } else if (strcmp(chain_phase->valuestring,"command-and-control") == 0) {
-                                                string_tactic = cJSON_CreateString("Command and Control");
-                                            } else if (strcmp(chain_phase->valuestring,"impact") == 0) {
-                                                string_tactic = cJSON_CreateString("Impact");
-                                            } else {
-                                                string_tactic = cJSON_Duplicate(chain_phase,1);
+                                        /* Storing the item 'phase_name' of 'kill_chain_phases' */
+                                        os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
+                                        snprintf(wazuhdb_query, OS_SIZE_6144, "mitre get_attack %s", ext_id->valuestring);
+
+                                        result = wdb_send_query(wazuhdb_query, &output);
+                                        input_json = wstr_chr(output, ' ');
+                                        tactics_json = cJSON_Parse(input_json);
+
+                                        /* Storing the item 'phase_name' of 'kill_chain_phases' */
+                                        arrayphases = cJSON_CreateArray();
+                                        kill_chain_phases = cJSON_GetObjectItem(tactics_json, "kill_chain_phases");
+                                        cJSON_ArrayForEach(kill_chain_phase, kill_chain_phases) {
+                                            cJSON_ArrayForEach(chain_phase, kill_chain_phase) {
+                                                if(strcmp(chain_phase->string,"phase_name") == 0) {
+                                                    cJSON_AddItemToArray(arrayphases, cJSON_Duplicate(chain_phase,1));
+                                                }
                                             }
-                                            cJSON_AddItemToArray(arrayphases, string_tactic);
                                         }
-                                    }  
-                                }
 
-                                /* Creating and filling the Mitre Hash table */
-                                if(hashcheck = OSHash_Add(mitre_table, ext_id->valuestring, arrayphases), hashcheck == 0) {
-                                    mdebug1("Mitre Hash table adding failed. JSON file cannot be stored. File %s", path_file);
-                                    merror("Mitre matrix information could not be loaded.");
-                                    cJSON_Delete(root);
-                                    goto end;
+                                        /* Creating and filling the Mitre Hash table */
+                                        if(hashcheck = OSHash_Add(mitre_table, ext_id->valuestring, arrayphases), hashcheck == 0) {
+                                            mdebug1("Mitre Hash table adding failed. JSON file cannot be stored. File %s", path_file);
+                                            merror("Mitre matrix information could not be loaded.");
+                                            cJSON_Delete(root);
+                                            cJSON_Delete(tactics_json);
+                                            result = -1;
+                                            goto end;
+                                        }
+                                    }
                                 }
                             }
-                        }    
+                        }
                     }
                 }
             }
         }
     }
     cJSON_Delete(root);
-    goto end;
+    cJSON_Delete(tactics_json);
 
 end:
     fclose(fp);
     os_free(buffer);
+    os_free(wazuhdb_query);
+    os_free(output);
+    return result;
 }
 
 cJSON * mitre_get_attack(const char * mitre_id){
