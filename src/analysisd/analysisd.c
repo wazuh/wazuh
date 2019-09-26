@@ -995,7 +995,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                   rule->comment);
 #endif
 
-
     /* Check if any decoder pre-matched here for syscheck event */
     if(lf->decoder_syscheck_id != 0 && (rule->decoded_as &&
             rule->decoded_as != lf->decoder_syscheck_id)){
@@ -1032,11 +1031,11 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             return (NULL);
         }
     }
-    
+
     /* Check for the system name */
     if (rule->system_name) {
-        if(!lf->systemname){
-            return(NULL);
+        if (!lf->systemname) {
+            return (NULL);
         }
 
         if (!OSMatch_Execute(lf->systemname, strlen(lf->systemname), rule->system_name)) {
@@ -1046,30 +1045,10 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
 
     /* Check for the protocol */
     if (rule->protocol) {
-        if(!lf->protocol){
-            return(NULL);
+        if (!lf->protocol) {
+            return (NULL);
         }
         if (!OSMatch_Execute(lf->protocol, strlen(lf->protocol), rule->protocol)) {
-            return (NULL);
-        }
-    }
-    
-    /* Check for the data */
-    if (rule->data) {
-        if(!lf->data){
-            return(NULL);
-        }
-        if (!OSMatch_Execute(lf->data, strlen(lf->data), rule->data)) {
-            return (NULL);
-        }
-    }
-
-    /* Check for the extra_data */
-    if (rule->extra_data) {
-        if(!lf->extra_data){
-            return(NULL);
-        }
-        if (!OSMatch_Execute(lf->extra_data, strlen(lf->extra_data), rule->extra_data)) {
             return (NULL);
         }
     }
@@ -1254,6 +1233,29 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             }
         }
 
+        /* Check for the data */
+        if (rule->data) {
+            if (!lf->data) {
+                return (NULL);
+            }
+            if (!OSMatch_Execute(lf->data, strlen(lf->data), rule->data)) {
+                return (NULL);
+            }
+        }
+
+        /* Check for the extra_data */
+        if (rule->extra_data) {
+            if(!lf->extra_data){
+                return(NULL);
+            }
+
+            if (!OSMatch_Execute(lf->extra_data,
+                                 strlen(lf->extra_data),
+                                 rule->extra_data)) {
+                return (NULL);
+            }
+        }
+
         /* Check hostname */
         if (rule->hostname) {
             if (!lf->hostname) {
@@ -1415,7 +1417,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     }
                     break;
                 case RULE_SYSTEMNAME:
-                    if(!lf->systemname){
+                    if (!lf->systemname) {
                         return (NULL);
                     }
                     if (!OS_DBSearch(list_holder, lf->systemname)){
@@ -1423,27 +1425,27 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                     }
                     break;
                 case RULE_PROTOCOL:
-                    if(!lf->protocol){
-                        return(NULL);
+                    if (!lf->protocol) {
+                        return (NULL);
                     }
                     if (!OS_DBSearch(list_holder, lf->protocol)){
-                        return(NULL);
+                        return (NULL);
                     }
                     break;
                 case RULE_DATA:
-                    if(!lf->data){
-                        return(NULL);
+                    if (!lf->data) {
+                        return (NULL);
                     }
                     if (!OS_DBSearch(list_holder, lf->data)){
-                        return(NULL);
+                        return (NULL);
                     }
                     break;
                 case RULE_EXTRA_DATA:
-                    if(!lf->extra_data){
-                        return(NULL);
+                    if (!lf->extra_data) {
+                        return (NULL);
                     }
-                    if (!OS_DBSearch(list_holder, lf->extra_data)){
-                        return(NULL);
+                    if (!OS_DBSearch(list_holder, lf->extra_data)) {
+                        return (NULL);
                     }
                     break;
                 case RULE_DYNAMIC:

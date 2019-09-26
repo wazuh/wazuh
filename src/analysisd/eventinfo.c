@@ -1148,8 +1148,6 @@ char* ParseRuleComment(Eventinfo *lf) {
             field = lf->status;
         } else if (strcmp(var, "extra_data") == 0) {
             field = lf->extra_data;
-        } else if (strcmp(var, "url") == 0) {
-            field = lf->url;
         } else if (strcmp(var, "system_name") == 0) {
             field = lf->systemname;
         }
