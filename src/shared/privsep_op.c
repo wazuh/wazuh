@@ -34,14 +34,12 @@ uid_t Privsep_GetUser(const char *name)
 
     getpwnam_r(name, &pw, buffer, len, &result);
     pw_uid = result->pw_uid;
-
-    if (result == NULL) {
-        free(buffer);
-        return ((uid_t)OS_INVALID);
-    }
     os_free(buffer);
 
-    return (pw_uid);
+    if (result == NULL) {
+        return ((uid_t)OS_INVALID);
+    }
+    return pw_uid;
 }
 
 gid_t Privsep_GetGroup(const char *name)
@@ -56,14 +54,12 @@ gid_t Privsep_GetGroup(const char *name)
 
     getgrnam_r(name, &grp, buffer, len, &result);
     gr_gid = result->gr_gid;
-
-    if (result == NULL) {
-        os_free(buffer);
-        return ((gid_t)OS_INVALID);
-    }
     os_free(buffer);
 
-    return (gr_gid);
+    if (result == NULL) {
+        return ((gid_t)OS_INVALID);
+    }
+    return gr_gid;
 }
 
 int Privsep_SetUser(uid_t uid)

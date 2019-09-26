@@ -94,7 +94,7 @@ int main(int argc, char **argv)
         const char *daily_dir = STATQUEUE;
         DIR *daily;
         struct dirent *entry = NULL;
-    
+
         daily = opendir(daily_dir);
         if (!daily) {
             merror_exit("Unable to open: '%s'", daily_dir);

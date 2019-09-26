@@ -1975,7 +1975,7 @@ int cldir_ex_ignore(const char * name, const char ** ignore) {
         return -1;
     }
 
-    while ((dirent = readdir(dir)) != NULL) {
+    while (dirent = readdir(dir), dirent) {
         // Skip "." and ".."
         if ((dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) || w_str_in_array(dirent->d_name, ignore)) {
             continue;
@@ -2436,7 +2436,7 @@ char ** wreaddir(const char * name) {
 
     files = malloc(sizeof(char *));
 
-    while ((dirent = readdir(dir)) != NULL) {
+    while (dirent = readdir(dir), dirent) {
         // Skip "." and ".."
         if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
             continue;

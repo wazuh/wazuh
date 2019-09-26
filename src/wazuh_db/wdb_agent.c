@@ -832,7 +832,7 @@ int wdb_update_groups(const char *dirname) {
         return -1;
     }
 
-    while ((dirent = readdir(dir)) != NULL){
+    while ((dirent = readdir(dir))){
         if (dirent->d_name[0] != '.'){
             char path[PATH_MAX];
             snprintf(path,PATH_MAX,"%s/%s",dirname,dirent->d_name);

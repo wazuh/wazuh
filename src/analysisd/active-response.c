@@ -53,29 +53,17 @@ int AR_ReadConfig(const char *cfgfile)
     fclose(fp);
 
 #ifndef WIN32
-    struct group os_group = { .gr_name = NULL };
-    size_t len = (size_t) sysconf(_SC_GETGR_R_SIZE_MAX);
-    len = len > 0 ? len : 1024;
-    struct group *result = NULL;
-    char *buffer;
-    os_malloc(len, buffer);
-
-    getgrnam_r(USER, &os_group, buffer, len, &result);
-
-    if (result == NULL) {
-        os_free(buffer);
+    gid_t gr_gid;
+    if (gr_gid = Privsep_GetGroup(USER), gr_gid == (uid_t) -1) {
         merror("Could not get ossec gid.");
+        fclose(fp);
         return (OS_INVALID);
     }
 
-    if ((chown(DEFAULTARPATH, (uid_t) - 1, result->gr_gid)) == -1) {
-        os_free(buffer);
+    if ((chown(DEFAULTARPATH, (uid_t) - 1, gr_gid)) == -1) {
         merror("Could not change the group to ossec: %d", errno);
         return (OS_INVALID);
     }
-
-    os_free(buffer);
-
 #endif
 
     /* Set right permission */

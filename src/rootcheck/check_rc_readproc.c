@@ -57,7 +57,7 @@ int read_proc_dir(const char *dir_name, const char *pid, int position)
         return (0);
     }
 
-    while ((readdir(dp)) != NULL) {
+    while ((entry = readdir(dp)) != NULL) {
         char f_name[PATH_MAX + 2];
 
         /* Ignore . and ..  */

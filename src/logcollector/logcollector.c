@@ -750,7 +750,6 @@ void LogCollectorStart()
 
 int update_fname(int i, int j)
 {
-    struct tm *p;
     time_t __ctime = time(0);
     char lfile[OS_FLSIZE + 1];
     size_t ret;
@@ -763,15 +762,15 @@ int update_fname(int i, int j)
         lf = &globs[j].gfiles[i];
     }
 
-    p = localtime_r(&__ctime, &tm_result);
+    localtime_r(&__ctime, &tm_result);
 
     /* Handle file */
-    if (p->tm_mday == _cday) {
+    if (tm_result.tm_mday == _cday) {
         return (0);
     }
 
     lfile[OS_FLSIZE] = '\0';
-    ret = strftime(lfile, OS_FLSIZE, lf->ffile, p);
+    ret = strftime(lfile, OS_FLSIZE, lf->ffile, &tm_result);
     if (ret == 0) {
         merror_exit(PARSE_ERROR, lf->ffile);
     }
@@ -789,7 +788,7 @@ int update_fname(int i, int j)
         return (1);
     }
 
-    _cday = p->tm_mday;
+    _cday = tm_result.tm_mday;
     return (0);
 }
 
@@ -1324,7 +1323,7 @@ int check_pattern_expand(int do_seek) {
                     continue;
                 }
 
-                while ((dirent = readdir(dir)) != NULL) {
+                while (dirent = readdir(dir), dirent) {
 
                     // Skip "." and ".."
                     if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
@@ -2234,7 +2233,7 @@ static void check_pattern_expand_excluded() {
                     continue;
                 }
 
-                while ((readdir(dir)) != NULL) {
+                while (dirent = readdir(dir), dirent) {
 
                     // Skip "." and ".."
                     if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
