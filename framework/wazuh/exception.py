@@ -600,3 +600,16 @@ class WazuhClusterError(WazuhException):
     This type of exception is raised inside the cluster.
     """
     pass
+
+
+def create_exception_dic(item, e):
+    """Creates an exception from an item and it's error codes.
+    """
+    exception_dic = {'id': item, 'error': {'message': e.message}}
+    if isinstance(e, WazuhException):
+        exception_dic['error']['code'] = e.code
+        exception_dic['error']['remediation'] = e.remediation
+    else:
+        exception_dic['error']['code'] = 1000
+
+    return exception_dic
