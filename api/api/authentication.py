@@ -220,8 +220,7 @@ def generate_token(user_id):
     :return: string jwt formatted string
     """
     # Add dummy rbac_policies for developing here
-    mode = False  # Black list
-    rbac_policies = pre_policies.optimize_resources(mode)
+    rbac_policies = pre_policies.optimize_resources()
 
     timestamp = int(time())
     payload = {
@@ -229,8 +228,7 @@ def generate_token(user_id):
         "iat": int(timestamp),
         "exp": int(timestamp + JWT_LIFETIME_SECONDS),
         "sub": str(user_id),
-        "rbac_policies": rbac_policies,
-        "mode": mode  # True if black_list, False if white_list , needs to be replaced with a function to get the mode
+        "rbac_policies": rbac_policies
     }
 
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
@@ -260,6 +258,5 @@ def get_permissions(header):
     payload = decode_token(jwt_token)
 
     permissions = payload['rbac_policies']
-    mode = payload['mode']
 
-    return [mode, permissions]
+    return permissions

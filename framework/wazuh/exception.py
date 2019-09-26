@@ -604,10 +604,9 @@ class WazuhClusterError(WazuhException):
 
 
 def create_exception_dic(item, e):
-    """
+    """Creates an exception from an item and it's error codes.
     """
     exception_dic = {'id': item, 'error': {'message': e.message}}
-
     if isinstance(e, WazuhException):
         exception_dic['error']['code'] = e.code
         exception_dic['error']['remediation'] = e.remediation
