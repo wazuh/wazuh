@@ -383,6 +383,10 @@
               "type": "keyword",
               "doc_values": "true"
             },
+            "extra_data": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
             "system_name": {
               "type": "keyword",
               "doc_values": "true"
