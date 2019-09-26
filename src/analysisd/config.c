@@ -316,7 +316,6 @@ cJSON *getRulesConfig(void) {
 
 cJSON *getManagerLabelsConfig(void) {
 
-    unsigned int i;
     cJSON *root = cJSON_CreateObject();
     cJSON *labels = cJSON_CreateArray();
 
