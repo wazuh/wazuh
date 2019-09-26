@@ -18,27 +18,50 @@
 #define ARGV0 "fs_op"
 #endif
 
-const struct file_system_type network_file_systems[] = {
-    {.name="NFS",  .f_type=0x6969,     .flag=1},
-    {.name="CIFS", .f_type=0xFF534D42, .flag=1},
+#ifdef __linux__
+#define DEVFS       0x00001373
+#define NFS         0x00006969
+#define PROCFS      0x00009fa0
+#define TMPFS       0x01021994
+#define AUFS        0x61756673
+#define SYSFS       0x62656572
+#define OVERLAYFS   0x794c7630
+#define BTRFS       0x9123683E
+#define CIFS        0xFF534D42
+#define ST_NODEV    4
+#elif defined(__FreeBSD__)
+#define NFS         0x3a
+#define DEV         0x71
+#define CIFS        // ToDo
+#elif defined(__MACH__)
+#define NFS         0x2
+#define DEV         0x13
+#define CIFS        0x1c
+#endif
 
+const struct file_system_type network_file_systems[] = {
+#ifdef __linux__
+    {.name="NFS",  .f_type=NFS, .flag=1},
+    {.name="CIFS", .f_type=CIFS, .flag=1},
+#endif
     /*  The last entry must be name=NULL */
     {.name=NULL, .f_type=0, .flag=0}
 };
 
 /* List of filesystem to skip the link count test */
 const struct file_system_type skip_file_systems[] = {
-    {.name="BTRFS", .f_type=0x9123683E, .flag=1},
-    {.name="AUFS", .f_type=0x61756673, .flag=1},
-    {.name="OVERLAYFS", .f_type=0x794c7630, .flag=1},
-
+#ifdef __linux__
+    {.name="BTRFS", .f_type=BTRFS, .flag=1},
+    {.name="AUFS", .f_type=AUFS, .flag=1},
+    {.name="OVERLAYFS", .f_type=OVERLAYFS, .flag=1},
+#endif
     /*  The last entry must be name=NULL */
     {.name=NULL, .f_type=0, .flag=0}
 };
 
 short IsNFS(const char *dir_name)
 {
-#if !defined(WIN32) && (defined(Linux) || defined(FreeBSD))
+#if defined(Linux)
     struct statfs stfs;
 
     /* ignore NFS (0x6969) or CIFS (0xFF534D42) mounts */
@@ -69,7 +92,7 @@ short IsNFS(const char *dir_name)
 
 short skipFS(const char *dir_name)
 {
-#if !defined(WIN32) && (defined(Linux) || defined(FreeBSD))
+#if defined(Linux)
     struct statfs stfs;
 
     if ( ! statfs(dir_name, &stfs) )
@@ -99,7 +122,7 @@ short skipFS(const char *dir_name)
 }
 
 bool HasFilesystem(const char * path, fs_set set) {
-#if defined(Linux) || defined(FreeBSD)
+#ifdef __linux__
     struct statfs stfs;
 
     if (statfs(path, &stfs) == -1) {
@@ -108,16 +131,19 @@ bool HasFilesystem(const char * path, fs_set set) {
     }
 
     switch (stfs.f_type) {
-    case 0x1373:        // DEVFS_SUPER_MAGIC
+    case DEVFS:
+        // Linux 2.6.17 and earlier
         return set.dev;
-    case 0x9fa0:        // PROC_SUPER_MAGIC
+    case NFS:
+         return set.nfs;
+    case PROCFS:
         return set.proc;
-    case 0x1021994:     // TMPFS_MAGIC
-        return set.dev && (stfs.f_flags & 4) == 0;
-    case 0x62656572:    // SYSFS_MAGIC
+    case TMPFS:
+        // In modern Linux, /dev is TMPFS and ~ST_NODEV
+        return set.dev && (stfs.f_flags & ST_NODEV) == 0;
+    case SYSFS:
         return set.sys;
-    case 0x6969:        // NFS_SUPER_MAGIC
-    case 0xFF534D42:    // CIFS_MAGIC_NUMBER
+    case CIFS:
         return set.nfs;
     }
 
