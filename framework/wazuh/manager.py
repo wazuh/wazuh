@@ -62,10 +62,12 @@ def __get_ossec_log_fields(log):
     return datetime.strptime(date, '%Y/%m/%d %H:%M:%S'), category, type_log.lower(), description
 
 
-def ossec_log(filters=None, months=3, offset=0, limit=common.database_limit, sort_by=None,
+def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
     """Gets logs from ossec.log.
 
+    :param type_log: Filters by log type: all, error or info.
+    :param category: Filters by log category (i.e. ossec-remoted).
     :param months: Returns logs of the last n months. By default is 3 months.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
@@ -77,11 +79,6 @@ def ossec_log(filters=None, months=3, offset=0, limit=common.database_limit, sor
     :param q: Defines query to filter.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    # set default values to 'type_log' and 'category' parameters
-    filters = filters if filters is not None else {}
-    type_log = filters.get('type_log', 'all')
-    category = filters.get('category', 'all')
-
     logs = []
 
     first_date = previous_month(months)
@@ -101,9 +98,8 @@ def ossec_log(filters=None, months=3, offset=0, limit=common.database_limit, sor
                         continue
                 else:
                     continue
-
-            # We transform local time (ossec.log) to UTC maintaining time integrity and log format
-            log_line = {'timestamp': log_date.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
+            # We transform local time (ossec.log) to UTC with ISO8601 maintaining time integrity
+            log_line = {'timestamp': log_date.astimezone(timezone.utc),
                         'tag': log_category, 'level': level, 'description': description}
 
             if type_log == 'all':

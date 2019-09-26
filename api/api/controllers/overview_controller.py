@@ -2,16 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-
 import asyncio
-import connexion
-import datetime
 import logging
 
 from api.models.base_model_ import Data
-from api.util import (exception_handler, parse_api_param, raise_if_exc,
-                      remove_nones_to_dict)
-from wazuh import common
+from api.util import exception_handler, raise_if_exc, remove_nones_to_dict
 from wazuh.agent import Agent
 from wazuh.cluster.dapi.dapi import DistributedAPI
 
@@ -20,10 +15,8 @@ logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def get_agents_summary(pretty=False, wait_for_complete=False):
-    """Get full summary of agents.
-
-    Returns a full summary of agents
+def get_overview_agents(pretty=False, wait_for_complete=False):
+    """ Get full summary of agents.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -31,7 +24,7 @@ def get_agents_summary(pretty=False, wait_for_complete=False):
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=Agent.get_full_summary,
+    dapi = DistributedAPI(f=Agent.get_full_overview,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

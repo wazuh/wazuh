@@ -5,74 +5,60 @@
 from wazuh.rbac.auth_context import RBAChecker
 
 
-def convert_to_json_serializable(optimize_policies):
-    for key, value in optimize_policies.items():
-        for key_resource, value_resource in value.items():
-            for key_effect, key_value in value_resource.items():
-                if not isinstance(key_value, list):
-                    optimize_policies[key][key_resource][key_effect] = list(key_value)
-
-    return optimize_policies
+need_clean = dict()
 
 
-def create_initial_dict(mode, resource, odict):
-    if mode:
-        odict[resource] = {
-            'allow': {'*'},
-            'deny': set()
-        }
-    else:
-        odict[resource] = {
-            'allow': set(),
-            'deny': {'*'}
-        }
+class PreProcessor:
+    def __init__(self, odict):
+        self.need_clean = dict()
+        self.odict = odict
 
-    return odict
+    def cleaner(self):
+        actions_to_pop = set()
+        if len(self.need_clean.keys()) > 0:
+            for action, resources in self.need_clean.items():
+                for resource in resources:
+                    self.odict[action].pop(resource)
+                if len(self.odict[action].keys()) == 0:
+                    actions_to_pop.add(action)
+            for action in actions_to_pop:
+                self.odict.pop(action)
+            self.need_clean = dict()
 
-
-def list_manager(resource_value, effect, odict):
-    if effect == 'allow':
-        inverted_effect = 'deny'
-    else:
-        inverted_effect = 'allow'
-
-    if resource_value in odict[inverted_effect]:
-        odict[inverted_effect].remove(resource_value)
-    if resource_value == '*':
-        odict[inverted_effect].clear()
-        odict[effect].clear()
-    if '*' not in odict[effect]:
-        odict[effect].add(resource_value)
-
-
-def modify_odict(mode, action, resources, effect, odict):
-    for resource in resources:
+    def mark_previous_elements(self, resource, action):
         resource_name = ':'.join(resource.split(':')[0:-1])
-        resource_value = resource.split(':')[-1]
-        if resource_name not in odict[action].keys():
-            create_initial_dict(mode, resource_name, odict[action])
+        for key in self.odict[action].keys():
+            if key.startswith(resource_name) or key.startswith('agent:group'):
+                if action not in self.need_clean.keys():
+                    self.need_clean[action] = list()
+                self.need_clean[action].append(key)
 
-        list_manager(resource_value, effect, odict[action][resource_name])
+    def modify_odict(self, resources, effect, action):
+        for resource in resources:
+            if resource.split(':')[-1] == '*':
+                self.mark_previous_elements(resource, action)
+            self.odict[action][resource] = effect
+
+    def process_policy(self, policy):
+        for action in policy['actions']:
+            if action not in self.odict.keys():
+                self.odict[action] = dict()
+            self.modify_odict(policy['resources'], policy['effect'], action)
+
+    def get_optimize_dict(self):
+        return self.odict
 
 
-def process_policy(mode, policy, odict):
-    for action in policy['actions']:
-        if action not in odict.keys():
-            odict[action] = dict()
-        modify_odict(mode, action, policy['resources'], policy['effect'], odict)
-
-
-def optimize_resources(mode=False):
+def optimize_resources():
     # For production
     # rbac = RBAChecker(auth_context='AUTHORIZATION CONTEXT (JSON)')
     # policies = rbac.run()
 
     # Testing
     policies = RBAChecker.run_testing()
-
-    odict = dict()
+    preprocessor = PreProcessor(odict=dict())
     for policy in policies:
-        process_policy(mode, policy, odict)
-    convert_to_json_serializable(odict)
+        preprocessor.process_policy(policy)
+    preprocessor.cleaner()
 
-    return odict
+    return preprocessor.get_optimize_dict()

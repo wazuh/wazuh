@@ -1170,6 +1170,7 @@ components:
             - ossec-syscheckd
             - ossec-testrule
             - sca
+            - verify-agent-conf
             - wazuh-db
             - wazuh-modulesd
             - wazuh-modulesd:agent-key-polling
@@ -2634,7 +2635,6 @@ components:
       description: Filters by policy name.
       schema:
         type: string
-        format: alphanumeric
     notchecked:
       in: query
       name: notchecked
@@ -3655,28 +3655,28 @@ tags:
     description: 'Retrieve information from CIS-CAT scans.'
   - name: cluster
     description: 'Wazuh cluster and nodes management'
-  - name: sca
-    description: 'Policy monitoring'
   - name: decoders
-    description: 'Wazuh decoders management'
+    description: 'Decoders management'
   - name: experimental
     description: 'Not ready for production endpoints. Use with caution'
   - name: lists
-    description: 'CDB lists'
+    description: 'CDB lists management'
   - name: manager
-    description: 'Wazuh manager information, status and logs'
+    description: 'Wazuh manager management'
+  - name: overview
+    description: 'Overwiew of Wazuh'
   - name: rootcheck
     description: 'Detection of rootkit, ports and hidden processes and many other scans.'
   - name: rules
-    description: 'Wazuh ruleset management'
+    description: 'Rules management'
+  - name: sca
+    description: 'Policy monitoring'
+  - name: security
+    description: 'Roles administration and user authentication management'
   - name: syscheck
     description: 'File integrity monitoring.'
   - name: syscollector
-    description: 'Capability to collect interesting information for each agent'
-  - name: security
-    description: 'Roles administration and user authentication'
-  - name: summary
-    description: 'Summary of Wazuh'
+    description: 'Syscollector information'
 
 security:
   - jwt: []
@@ -10865,10 +10865,10 @@ paths:
   /overview/agents:
     get:
       tags:
-      - summary
-      summary: 'Get a full summary of agents'
-      description: 'Returns a dictionary with a full summary of agents.'
-      operationId: api.controllers.summary_controller.get_agents_summary
+      - overview
+      summary: 'Get a full agents overview'
+      description: 'Returns a dictionary with a full agents overview.'
+      operationId: api.controllers.overview_controller.get_overview_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'

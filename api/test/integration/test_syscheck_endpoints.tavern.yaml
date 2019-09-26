@@ -282,13 +282,13 @@ stages:
           totalItems: !anyint
 
     # We implement a dual stage to check sort parameter behaviour
-    # GET /syscheck/000?limit=2&sort=size,date
+    # GET /syscheck/000?limit=2&sort=file,date
   - name: Try to get syscheck scan results for agent 000 using limit and sort ascending filtering
     request:
       <<: *get_syscheck_agent
       params:
         limit: 2
-        sort: size,date
+        sort: file,date
     response:
       status_code: 200
       body:
@@ -305,13 +305,13 @@ stages:
         body:
           sort_item: data.items.0
 
-    # GET /syscheck/000?limit=1&sort=-size,date&offset={sort_offset}
+    # GET /syscheck/000?limit=1&sort=-file,date&offset={sort_offset}
   - name: Try to get syscheck scan results for agent 000 using limit and sort descending filtering
     request:
       <<: *get_syscheck_agent
       params:
         limit: 1
-        sort: -size,date
+        sort: -file,date
         offset: "{sort_offset:s}"
     response:
       status_code: 200
@@ -473,10 +473,6 @@ stages:
 test_name: GET /syscheck/002
 
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
     # GET /syscheck/002
   - name: Try to get syscheck scan results for agent 002
@@ -746,13 +742,13 @@ stages:
           totalItems: !anyint
 
     # We implement a dual stage to check sort parameter behaviour
-    # GET /syscheck/002?limit=2&sort=size,date
+    # GET /syscheck/002?limit=2&sort=file,date
   - name: Try to get syscheck scan results for agent 002 using limit and sort ascending filtering
     request:
       <<: *get_syscheck_agent_002
       params:
         limit: 2
-        sort: size,date
+        sort: file,date
     response:
       status_code: 200
       body:
@@ -769,13 +765,13 @@ stages:
         body:
           sort_item: data.items.0
 
-    # GET /syscheck/002?limit=1&sort=-size,date&offset={sort_offset}
+    # GET /syscheck/002?limit=1&sort=-file,date&offset={sort_offset}
   - name: Try to get syscheck scan results for agent 002 using limit and sort descending filtering
     request:
       <<: *get_syscheck_agent_002
       params:
         limit: 1
-        sort: -size,date
+        sort: -file,date
         offset: "{sort_offset:s}"
     response:
       status_code: 200

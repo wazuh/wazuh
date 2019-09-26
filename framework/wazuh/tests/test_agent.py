@@ -612,12 +612,12 @@ def test_restart_agents_by_group_ko(mock_get_agent_group, mock_ossec_queue,
 
 @patch('wazuh.agent.Agent.get_all_groups')
 @patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_get_full_summary(mock_get_all_groups, test_data):
+def test_get_full_overview(mock_get_all_groups, test_data):
     """Test get_full_sumary method."""
     expected_keys = {'nodes', 'groups', 'agent_os', 'agent_status',
                      'agent_version', 'last_registered_agent'}
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
-        result = Agent.get_full_summary()
+        result = Agent.get_full_overview()
         # check keys of result
         assert(set(result.keys()) == expected_keys)

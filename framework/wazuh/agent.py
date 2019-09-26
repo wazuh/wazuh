@@ -52,8 +52,9 @@ def create_exception_dic(id, e):
 
 class WazuhDBQueryAgents(WazuhDBQuery):
 
-    def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters=None,
-                 default_sort_field='id', min_select_fields=None, remove_extra_fields=True):
+    def __init__(self, offset=0, limit=common.database_limit, sort=None, search=None, select=None, count=True,
+                 get_data=True, query='', filters=None, default_sort_field='id', min_select_fields=None,
+                 remove_extra_fields=True):
         if filters is None:
             filters = {}
         if min_select_fields is None:
@@ -172,7 +173,7 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
 
 
 class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
-    def __init__(self, group_id, query, *args, **kwargs):
+    def __init__(self, group_id, query='', *args, **kwargs):
         self.group_id = group_id
         query = 'group={}'.format(group_id) + (';'+query if query else '')
         WazuhDBQueryAgents.__init__(self, query=query, *args, **kwargs)
@@ -2580,7 +2581,7 @@ class Agent:
         return configuration.upload_group_file(group_id, tmp_file, file_name)
 
     @staticmethod
-    def get_full_summary() -> Dict:
+    def get_full_overview() -> Dict:
         """Get information about agents.
 
         :return: Dictionary with information about agents
