@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _ERROR_MESSAGES__H
-#define _ERROR_MESSAGES__H
+#ifndef ERROR_MESSAGES_H
+#define ERROR_MESSAGES_H
 
 /***  Error messages - English ***/
 
@@ -194,6 +194,7 @@
 #define OPEN_UNABLE     "(1963): Unable to open file '%s'."
 #define NON_TEXT_FILE   "(1964): File '%s' is not ASCII or UTF-8 encoded."
 #define EXCLUDE_FILE    "(1965): File excluded: '%s'."
+#define DUP_FILE_INODE  "(1966): Inode for file '%s' already found. Skipping it."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
@@ -491,4 +492,4 @@
 #define GMF_BUFF_ERROR  "Could not get path because it is too long and was shrunk by (%d) characters with a max of (%d)."
 #define GMF_UNKN_ERROR  "Could not run GetModuleFileName which returned (%ld)."
 
-#endif /* _ERROR_MESSAGES__H */
+#endif /* ERROR_MESSAGES_H */

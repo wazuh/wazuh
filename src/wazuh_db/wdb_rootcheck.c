@@ -11,8 +11,8 @@
 
 #include "wdb.h"
 
-static const char *SQL_INSERT_PM = "INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (datetime(?, 'unixepoch', 'localtime'), datetime(?, 'unixepoch', 'localtime'), ?, ?, ?);";
-static const char *SQL_UPDATE_PM = "UPDATE pm_event SET date_last = datetime(?, 'unixepoch', 'localtime') WHERE log = ?;";
+static const char *SQL_INSERT_PM = "INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (?, ?, ?, ?, ?);";
+static const char *SQL_UPDATE_PM = "UPDATE pm_event SET date_last = ? WHERE log = ?;";
 static const char *SQL_DELETE_PM = "DELETE FROM pm_event;";
 
 /* Get PCI_DSS requirement from log string */

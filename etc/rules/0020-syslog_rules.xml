@@ -68,7 +68,7 @@
     <if_sid>1002</if_sid>
     <match>terminated without error|can't verify hostname: getaddrinfo|</match>
     <match>PPM exceeds tolerance</match>
-    <description>Ignoring known false positives on rule 1002..</description>
+    <description>Ignoring known false positives on rule 1002.</description>
   </rule>
 
   <rule id="1010" level="5">
@@ -109,7 +109,7 @@
   <rule id="2104" level="2">
     <if_sid>2100</if_sid>
     <regex>lookup for \S+ failed</regex>
-    <description>Automount informative message</description>
+    <description>Automount informative message.</description>
   </rule>
 </group> <!-- SYSLOG,NFS -->
 
@@ -141,7 +141,7 @@
 
   <rule id="2502" level="10">
     <match>more authentication failures;|REPEATED login failures</match>
-    <description>syslog: User missed the password more than one time</description>
+    <description>syslog: User missed the password more than one time.</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
   </rule>
 
@@ -155,7 +155,7 @@
 
   <rule id="2504" level="9">
     <match>ILLEGAL ROOT LOGIN|ROOT LOGIN REFUSED</match>
-    <description>syslog: Illegal root login. </description>
+    <description>syslog: Illegal root login.</description>
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.6,</group>
   </rule>
 
@@ -233,19 +233,19 @@
   <rule id="2801" level="0">
     <if_sid>2800</if_sid>
     <match>No configuration file /etc/smartd.conf found</match>
-    <description>Smartd Started but not configured</description>
+    <description>Smartd Started but not configured.</description>
   </rule>
 
   <rule id="2802" level="0">
     <if_sid>2800</if_sid>
     <match>Unable to register ATA device</match>
-    <description>Smartd configuration problem</description>
+    <description>Smartd configuration problem.</description>
   </rule>
 
   <rule id="2803" level="0">
     <if_sid>2800</if_sid>
     <match>No such device or address</match>
-    <description>Device configured but not available to Smartd</description>
+    <description>Device configured but not available to Smartd.</description>
   </rule>
 </group> <!-- SYSLOG,SMARTD -->
 
@@ -255,7 +255,7 @@
 <group name="syslog,linuxkernel,">
   <rule id="5100" level="0" noalert="1">
     <program_name>^kernel</program_name>
-    <description>Pre-match rule for kernel messages</description>
+    <description>Pre-match rule for kernel messages.</description>
   </rule>
 
   <rule id="5101" level="0">
@@ -267,7 +267,7 @@
   <rule id="5102" level="0">
     <if_sid>5100</if_sid>
     <match>modprobe: Can't locate module sound</match>
-    <description>Informative message from the kernel</description>
+    <description>Informative message from the kernel.</description>
   </rule>
 
   <rule id="5103" level="9">
@@ -316,13 +316,13 @@
   <rule id="5109" level="4">
     <if_sid>5100</if_sid>
     <match>I/O error: dev |end_request: I/O error, dev</match>
-    <description>Kernel Input/Output error</description>
+    <description>Kernel Input/Output error.</description>
   </rule>
 
   <rule id="5110" level="4">
     <if_sid>5100</if_sid>
     <match>Forged DCC command from</match>
-    <description>IRC misconfiguration</description>
+    <description>IRC misconfiguration.</description>
   </rule>
 
   <rule id="5111" level="0">
@@ -356,6 +356,64 @@
     <description>Monitor ADSL line is up.</description>
   </rule>
 
+  <rule id="5132" level="11">
+    <if_sid>5100</if_sid>
+    <match>module verification failed</match>
+    <description>Unsigned kernel module was loaded</description>
+  </rule>
+
+  <rule id="5133" level="11">
+    <if_sid>5100</if_sid>
+    <match>PKCS#7 signature not signed with a trusted key</match>
+    <description>Signed but untrusted kernel module was loaded</description>
+  </rule>
+
+  <rule id="5134" level="7">
+    <program_name>^rngd</program_name>
+    <match>failure</match>
+    <description>RNGD failure</description>
+  </rule>
+
+  <rule id="5135" level="7">
+   <if_sid>5100</if_sid>
+   <match>Disk failure</match>
+   <description>RAID disk failure</description>
+  </rule>
+
+  <rule id="5136" level="2">
+   <program_name>^mdadm</program_name>
+   <description>General RAID mdadm event</description>
+  </rule>
+
+  <rule id="5137" level="7">
+   <if_sid>5136</if_sid>
+   <match>Fail</match>
+   <description>RAID mdadm disk failure</description>
+  </rule>
+
+  <rule id="5138" level="7">
+    <if_sid>5100</if_sid>
+    <regex>ata\S+: failed command</regex>
+    <description>General SATA disk failure</description>
+  </rule>
+
+  <rule id="5139" level="7">
+    <if_sid>5100</if_sid>
+    <match>device not ready</match>
+    <description>General device failure</description>
+  </rule>
+
+  <rule id="5140" level="2">
+   <program_name>^zpool</program_name>
+   <description>General ZFS pool event</description>
+  </rule>
+
+  <rule id="5141" level="7">
+    <if_sid>5140</if_sid>
+    <match>cannot import</match>
+    <description>Cannot import a ZFS pool due to an error</description>
+  </rule>
+
   <rule id="5200" level="0">
     <match>^hpiod: unable to ParDevice</match>
     <description>Ignoring hpiod for producing useless logs.</description>
@@ -374,7 +432,7 @@
   <rule id="2831" level="0">
     <if_sid>2830</if_sid>
     <match>^unable to exec</match>
-    <description>Wrong crond configuration</description>
+    <description>Wrong crond configuration.</description>
   </rule>
 
   <rule id="2834" level="5">
@@ -460,7 +518,7 @@
 <group name="syslog,tripwire,">
   <rule id="7101" level="8">
     <match>Integrity Check failed: File could not</match>
-    <description>Problems with the tripwire checking</description>
+    <description>Problems with the tripwire checking.</description>
     <group>pci_dss_10.5.5,pci_dss_10.6.1,gdpr_II_5.1.f,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.9,nist_800_53_AU.6,</group>
   </rule>
 </group> <!-- SYSLOG,TRIPWIRE -->
@@ -471,25 +529,25 @@
 <group name="syslog,adduser,">
   <rule id="5901" level="8">
     <match>^new group</match>
-    <description>New group added to the system</description>
+    <description>New group added to the system.</description>
     <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,</group>
   </rule>
 
   <rule id="5902" level="8">
     <match>^new user|^new account added</match>
-    <description>New user added to the system</description>
+    <description>New user added to the system.</description>
     <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,</group>
   </rule>
 
   <rule id="5903" level="3">
     <match>^delete user|^account deleted|^remove group</match>
-    <description>Group (or user) deleted from the system</description>
+    <description>Group (or user) deleted from the system.</description>
     <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,</group>
   </rule>
 
   <rule id="5904" level="8">
     <match>^changed user</match>
-    <description>Information from the user was changed</description>
+    <description>Information from the user was changed.</description>
     <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,</group>
   </rule>
 
@@ -506,21 +564,28 @@
 <group name="syslog,sudo,">
   <rule id="5400" level="0" noalert="1">
     <decoded_as>sudo</decoded_as>
-    <description>Initial group for sudo messages</description>
+    <description>Initial group for sudo messages.</description>
   </rule>
 
   <rule id="5401" level="5">
     <if_sid>5400</if_sid>
     <match>incorrect password attempt</match>
-    <description>Failed attempt to run sudo</description>
+    <description>Failed attempt to run sudo.</description>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
   </rule>
 
   <rule id="5402" level="3">
     <if_sid>5400</if_sid>
     <regex> ; USER=root ; COMMAND=| ; USER=root ; TSID=\S+ ; COMMAND=</regex>
-    <description>Successful sudo to ROOT executed</description>
+    <description>Successful sudo to ROOT executed.</description>
     <group>pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.6,gpg13_7.8,gpg13_7.13,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.6,</group>
+  </rule>
+
+  <rule id="5407" level="3">
+    <if_sid>5400</if_sid>
+    <regex> ; USER=\S+ ; COMMAND=| ; USER=\S+ ; TSID=\S+ ; COMMAND=</regex>
+    <description>Successful sudo executed.</description>
+    <group>pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.6,gpg13_7.8,gpg13_7.13,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="5403" level="4">
@@ -533,7 +598,7 @@
   <rule id="5404" level="10">
     <if_sid>5401</if_sid>
     <match>3 incorrect password attempts</match>
-    <description>Three failed attempts to run sudo</description>
+    <description>Three failed attempts to run sudo.</description>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
   </rule>
 
@@ -547,7 +612,7 @@
   <rule id="5406" level="5">
     <if_sid>5400</if_sid>
     <match>command not allowed</match>
-    <description>Sudo: Command not allowed</description>
+    <description>Command not allowed.</description>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
   </rule>
 
@@ -558,20 +623,20 @@
 <group name="syslog,pptp,">
   <rule id="9100" level="0" noalert="1">
     <program_name>^pptpd</program_name>
-    <description>PPTPD messages grouped</description>
+    <description>PPTPD messages grouped.</description>
   </rule>
 
   <rule id="9101" level="0">
     <if_sid>9100</if_sid>
     <regex>^GRE: \S+ from \S+ failed: status = -1 </regex>
-    <description>PPTPD failed message (communication error)</description>
+    <description>PPTPD failed message (communication error).</description>
     <info type="link">http://poptop.sourceforge.net/dox/gre-protocol-unavailable.phtml</info>
   </rule>
 
   <rule id="9102" level="0">
     <if_sid>9100</if_sid>
     <match>^tcflush failed: Bad file descriptor</match>
-    <description>PPTPD communication error</description>
+    <description>PPTPD communication error.</description>
   </rule>
 </group>
 
@@ -592,14 +657,14 @@
 <group name="syslog,squid,">
   <rule id="9200" level="0" noalert="1">
     <program_name>^squid</program_name>
-    <description>Squid syslog messages grouped</description>
+    <description>Squid syslog messages grouped.</description>
   </rule>
 
   <rule id="9201" level="0">
     <if_sid>9200</if_sid>
     <match>^ctx: enter level|^sslRead|^urlParse: Illegal |</match>
     <match>^httpReadReply: Request not yet |^httpReadReply: Excess data</match>
-    <description>Squid debug message</description>
+    <description>Squid debug message.</description>
   </rule>
 </group>
 
@@ -730,7 +795,7 @@
 
   <rule id="2943" level="0">
     <match>^nouveau </match>
-    <description>nouveau driver grouping</description>
+    <description>nouveau driver grouping.</description>
   </rule>
 
   <rule id="2944" level="1">
@@ -758,6 +823,28 @@
     <field name="group">sudo</field>
     <description>User added to group sudo.</description>
     <group>gpg13_7.9,gpg13_4.13,gdpr_IV_32.2,</group>
+  </rule>
+
+</group>
+
+<group name="syslog,perdition,">
+  <rule id="2962" level="0">
+    <decoded_as>perdition</decoded_as>
+    <description>Perdition custom app group.</description>
+  </rule>
+
+  <rule id="2963" level="3">
+    <if_sid>2962</if_sid>
+    <match>Connect: </match>
+    <description>perdition: New connection.</description>
+    <group>connection_attempt,pci_dss_10.6.1,</group>
+  </rule>
+
+  <rule id="2964" level="10" frequency="4" timeframe="30">
+    <if_matched_sid>2963</if_matched_sid>
+    <same_source_ip />
+    <description>perdition: Multiple connection attempts from same source.</description>
+    <group>recon,pci_dss_11.4,</group>
   </rule>
 
 </group>

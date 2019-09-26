@@ -127,8 +127,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Launch rotation thread */
 
     rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
-    if (rotate_log && CreateThread(w_rotate_log_thread, (void *)NULL) != 0) {
-        merror_exit(THREAD_ERROR);
+    if (rotate_log) {
+        w_create_thread(w_rotate_log_thread, (void *)NULL);
     }
 
     /* Launch dispatch thread */
@@ -136,9 +136,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
         buffer_init();
 
-        if (CreateThread(dispatch_buffer, (void *)NULL) != 0) {
-            merror_exit(THREAD_ERROR);
-        }
+        w_create_thread(dispatch_buffer, (void *)NULL);
     }else{
         minfo(DISABLED_BUFFER);
     }

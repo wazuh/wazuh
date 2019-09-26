@@ -33,14 +33,14 @@ class InstallCommand(install):
         with open(os.path.join(here, 'wazuh', 'wazuh.json'), 'w') as f:
             json.dump({'install_type': self.install_type,
                        'wazuh_version': self.wazuh_version,
-                       'installation_date': datetime.now().strftime('%a %b %d %H:%M:%S UTC %Y')
+                       'installation_date': datetime.utcnow().strftime('%a %b %d %H:%M:%S UTC %Y')
                        }, f)
         # install.run(self)  # OR: install.do_egg_install(self)
         install.do_egg_install(self)
 
 
 setup(name='wazuh',
-      version='3.10.0',
+      version='3.11.0',
       description='Wazuh control with Python',
       url='https://github.com/wazuh',
       author='Wazuh',

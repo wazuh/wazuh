@@ -5,9 +5,10 @@
 import errno
 import hashlib
 import operator
+
 import socket
 from base64 import b64encode
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from functools import reduce
 from glob import glob
 from json import loads
@@ -15,6 +16,7 @@ from os import chown, chmod, path, makedirs, urandom, listdir, stat, remove
 from platform import platform
 from shutil import copyfile, rmtree
 from time import time, sleep
+from typing import Dict
 
 import fcntl
 import requests
@@ -27,8 +29,8 @@ from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
-    get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-    md5, safe_move
+                        get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
+                        md5, SQLiteBackend, WazuhDBBackend, filter_array_by_query, safe_move
 from wazuh.wdb import WazuhDBConnection
 
 
@@ -53,18 +55,18 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id',
                  min_select_fields={'lastKeepAlive', 'version', 'id'}, remove_extra_fields=True):
+        backend = SQLiteBackend(common.database_path_global)
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select, filters=filters,
                               fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
-                              db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
+                              min_select_fields=min_select_fields, count=count, get_data=get_data, backend=backend,
                               date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'})
         self.remove_extra_fields = remove_extra_fields
 
     def _filter_status(self, status_filter):
         # set the status value to lowercase in case it's a string. If not, the value will be return unmodified.
         status_filter['value'] = getattr(status_filter['value'], 'lower', lambda: status_filter['value'])()
-        result = datetime.now() - timedelta(seconds=common.limit_seconds)
-        self.request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
-
+        result = datetime.utcnow() - timedelta(seconds=common.limit_seconds)
+        self.request['time_active'] = result.replace(tzinfo=timezone.utc).timestamp()
         if status_filter['operator'] == '!=':
             self.query += 'NOT '
 
@@ -112,26 +114,25 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                 return Agent.calculate_status(lastKeepAlive, version is None, today)
             elif field_name == 'group':
                 return value.split(',')
+            elif field_name in ['dateAdd', 'lastKeepAlive']:
+                return datetime.utcfromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
             else:
                 return value
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-        agent_items = [{field: value for field, value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
-                        if value is not None} for db_tuple in self.conn]
-
-        today = datetime.today()
+        today = datetime.utcnow()
 
         # compute 'status' field, format id with zero padding and remove non-user-requested fields.
         # Also remove, extra fields (internal key and registration IP)
         selected_fields = self.select['fields'] - self.extra_fields if self.remove_extra_fields else self.select['fields']
         selected_fields |= {'id'}
-        agent_items = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
-                        for key, value in item.items() if key in selected_fields} for item in agent_items]
+        self._data = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
+                        for key, value in item.items() if key in selected_fields} for item in self._data]
 
-        agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in agent_items]
+        self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in self._data]
 
-        return {'items': agent_items, 'totalItems': self.total_items}
+        return super()._format_data_into_dictionary()
 
     def _parse_legacy_filters(self):
         if 'older_than' in self.legacy_filters:
@@ -156,34 +157,24 @@ class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents): pass
 
 
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
-    def __init__(self, filter_fields, offset, limit, sort, search, select, count, get_data, query, filters={},
-                 default_sort_field='id', min_select_fields={'last_keepalive','version','id'}):
-        WazuhDBQueryGroupBy.__init__(self, filter_fields=filter_fields, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
-                              filters=filters, fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
-                              db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'})
-        self.remove_extra_fields=True
+    def __init__(self, filter_fields, *args, **kwargs):
+        WazuhDBQueryAgents.__init__(self, *args, **kwargs)
+        WazuhDBQueryGroupBy.__init__(self, table=self.table, fields=self.fields, filter_fields=filter_fields,
+                                     default_sort_field=self.default_sort_field, backend=self.backend, *args, **kwargs)
+        self.remove_extra_fields = True
 
 
 class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
-    def __init__(self, group_id, offset, limit, sort, search, select, count, get_data, query, filters={},
-                 default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'},
-                 remove_extra_fields=True):
+    def __init__(self, group_id, query, *args, **kwargs):
         self.group_id = group_id
         query = 'group={}'.format(group_id) + (';'+query if query else '')
-        WazuhDBQueryAgents.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                    filters=filters, default_sort_field=default_sort_field, query=query,
-                                    min_select_fields=min_select_fields, count=count, get_data=get_data,
-                                    remove_extra_fields=remove_extra_fields)
-
+        WazuhDBQueryAgents.__init__(self, query=query, *args, **kwargs)
 
     def _default_query(self):
         return "SELECT {0} FROM agent a LEFT JOIN belongs b ON a.id = b.id_agent" if self.group_id != "null" else "SELECT {0} FROM agent a"
 
-
     def _default_count_query(self):
         return 'COUNT(DISTINCT a.id)'
-
 
     def _get_total_items(self):
         WazuhDBQueryAgents._get_total_items(self)
@@ -249,18 +240,15 @@ class Agent:
 
 
     @staticmethod
-    def calculate_status(last_keep_alive, pending, today=datetime.today()):
+    def calculate_status(last_keep_alive, pending, today=datetime.utcnow()):
         """
         Calculates state based on last keep alive
         """
         if not last_keep_alive:
             return "Never connected"
         else:
-            # divide date in format YY:mm:dd HH:MM:SS to create a datetime object.
-            last_date = datetime(year=int(last_keep_alive[:4]), month=int(last_keep_alive[5:7]), day=int(last_keep_alive[8:10]),
-                                hour=int(last_keep_alive[11:13]), minute=int(last_keep_alive[14:16]), second=int(last_keep_alive[17:19]))
+            last_date = datetime.utcfromtimestamp(last_keep_alive)
             difference = (today - last_date).total_seconds()
-
             return "Disconnected" if difference > common.limit_seconds else ("Pending" if pending else "Active")
 
 
@@ -276,55 +264,6 @@ class Agent:
             raise WazuhException(1701, self.id)
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
-
-
-    def _load_info_from_agent_db(self, table, select, filters={}, or_filters={}, count=False, offset=0, limit=common.database_limit, sort={}, search={}):
-        """
-        Make a request to agent's database using Wazuh DB
-
-        :param table: DB table to retrieve data from
-        :param select: DB fields to retrieve
-        :param filters: filter conditions
-        :param or_filters: filter conditions using or operator.
-        :param sort: Dictionary of form {'fields':[], 'order':'asc'}/{'fields':[], 'order':'desc'}
-        :param search: Dictionary of form {'value': '', 'negation':false, 'fields': []}
-        """
-        self.get_basic_information()  # check if the agent exists
-
-        wdb_conn = WazuhDBConnection()
-
-        query = "agent {} sql select {} from {}".format(self.id, ','.join(select), table)
-
-        if filters:
-            query += " and (" + " and ".join(["{} = '{}'".format(key, value) for key, value in filters.items()]) + ")"
-        if or_filters:
-            query += " or (" + " or ".join(["{} = '{}'".format(key, value) for key, value in or_filters.items()]) + ")"
-
-        if search:
-            query += " and not" if bool(search['negation']) else " and "
-            query += '(' + " or ".join("{} like '%{}%'".format(x, search['value']) for x in select) + ')'
-
-        if "from {} and".format(table) in query:
-            query = query.replace("from {} and".format(table), "from {} where".format(table))
-        elif "from {} or".format(table) in query:
-            query = query.replace("from {} or".format(table), "from {} where".format(table))
-
-        if limit:
-            if limit > common.maximum_database_limit:
-                raise WazuhException(1405, str(limit))
-            query += ' limit {} offset {}'.format(limit, offset)
-        elif limit == 0:
-            raise WazuhException(1406)
-
-        if sort and sort['fields']:
-            str_order = "desc" if sort['order'] == 'asc' else "asc"
-            order_str_fields = []
-            for field in sort['fields']:
-                order_str_field = '{0} {1}'.format(field, str_order)
-                order_str_fields.append(order_str_field)
-            query += ' order by ' + ','.join(order_str_fields)
-
-        return wdb_conn.execute(query, count)
 
 
     def get_basic_information(self, select=None):
@@ -476,7 +415,7 @@ class Agent:
             raise WazuhException(1746, str(e))
 
         # Tell wazuhbd to delete agent database
-        wdb_conn = WazuhDBConnection()
+        wdb_conn = WazuhDBBackend(self.id).connect_to_db()
         wdb_conn.delete_agents_db([self.id])
 
         try:
@@ -650,7 +589,7 @@ class Agent:
 
         conn = Connection(db_global[0])
         conn.execute("SELECT name FROM agent WHERE (id = 0)")
-        manager_name = str(conn.fetch()[0])
+        manager_name = str(conn.fetch())
 
         if name == manager_name:
             raise WazuhException(1705, name)
@@ -794,7 +733,7 @@ class Agent:
         query = "SELECT :attr FROM agent WHERE id = :id"
         request = {'attr':attr, 'id': self.id}
         conn.execute(query, request)
-        query_value = str(conn.fetch()[0])
+        query_value = str(conn.fetch())
 
         return query_value
 
@@ -813,7 +752,6 @@ class Agent:
 
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, query=q, count=True, get_data=True)
 
         data = db_query.run()
@@ -926,6 +864,20 @@ class Agent:
 
             return final_dict
 
+    @staticmethod
+    def restart_agents_by_group(group_id: str) -> Dict:
+        """Restart all the agents which belong to a group.
+
+        :param group_id: Name of the group
+        :return: Confirmation message
+        """
+        # list with agent IDs to restart. Contains key-value pairs.
+        agent_list = Agent.get_agent_group(group_id=group_id,
+                                           select={'fields': ['id']}).get('items')
+        # format agent_list as a list with strings of agent IDs
+        agent_list = [elem.get('id') for elem in agent_list]
+
+        return Agent.restart_agents(agent_id=agent_list)
 
     @staticmethod
     def get_agent_by_name(agent_name, select=None):
@@ -942,7 +894,7 @@ class Agent:
         conn = Connection(db_global[0])
         conn.execute("SELECT id FROM agent WHERE name = :name", {'name': agent_name})
         try:
-            agent_id = str(conn.fetch()[0]).zfill(3)
+            agent_id = str(conn.fetch()).zfill(3)
         except TypeError as e:
             raise WazuhException(1701, agent_name)
 
@@ -987,7 +939,7 @@ class Agent:
         conn = Connection(db_global[0])
         conn.execute("SELECT id FROM `group` WHERE name = :name", {'name': group_name})
         try:
-            group_id = conn.fetch()[0]
+            group_id = conn.fetch()
         except TypeError as e:
             raise WazuhException(1701, group_name)
 
@@ -1139,11 +1091,7 @@ class Agent:
         if not Agent.group_exists(group_id):
             raise WazuhException(1710, group_id)
 
-        # If the new multi group doesnt exists, create it
-        if not Agent.multi_group_exists(agent_group):
-            Agent.create_multi_group(agent_group)
-
-        Agent().set_multi_group(str(agent_id),agent_group)
+        Agent().set_multi_group(str(agent_id), agent_group)
 
         # Check if the multigroup still exists in other agents
         multi_group_list = []
@@ -1193,7 +1141,7 @@ class Agent:
                 remove_agent = True
             else:
                 last_date = datetime.strptime(agent_info['lastKeepAlive'], '%Y-%m-%d %H:%M:%S')
-                difference = (datetime.now() - last_date).total_seconds()
+                difference = (datetime.utcnow() - last_date).total_seconds()
                 if difference >= seconds:
                     remove_agent = True
 
@@ -1220,7 +1168,7 @@ class Agent:
 
 
     @staticmethod
-    def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None, hash_algorithm='md5'):
+    def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None, filters={}, q=''):
         """
         Gets the existing groups.
 
@@ -1228,9 +1176,13 @@ class Agent:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
-        :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
+        :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}.
+            This filter is used to set hash algorithm for getting mergedsum and configsum in this method.
+        :param q: Defines query to filter.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+        # set hash algorithm used to get mergedsum and configsum, 'md5' by default
+        hash_algorithm = filters['hash'] if 'hash' in filters else 'md5'
         try:
             # Connect DB
             db_global = glob(common.database_path_global)
@@ -1255,8 +1207,6 @@ class Agent:
                 if id_group == None:
                     continue
 
-                id_group = id_group[0]
-
                 # Group count
                 query = "SELECT {0} FROM belongs WHERE id_group = :id"
                 request = {'id': id_group}
@@ -1266,7 +1216,7 @@ class Agent:
                 merged_sum = get_hash(full_entry + "/merged.mg", hash_algorithm)
                 conf_sum   = get_hash(full_entry + "/agent.conf", hash_algorithm)
 
-                item = {'count':conn.fetch()[0], 'name': entry}
+                item = {'count': conn.fetch(), 'name': entry}
 
                 if merged_sum:
                     item['mergedSum'] = merged_sum
@@ -1279,6 +1229,9 @@ class Agent:
 
             if search:
                 data = search_array(data, search['value'], search['negation'], fields=['name'])
+
+            if q:
+                data = filter_array_by_query(q, data)
 
             if sort:
                 data = sort_array(data, sort['fields'], sort['order'])
@@ -1476,33 +1429,6 @@ class Agent:
         return msg
 
     @staticmethod
-    def create_multi_group(group_id):
-        """
-        Creates a multi group.
-        :param group_id: Group ID.
-        :return: Confirmation message.
-        """
-
-        if ',' not in group_id:
-            # if there's not , in the group_id, then it isn't a multigroup and therefore the function does nothing
-            return
-
-        # Create group in /var/multigroups
-        try:
-            folder = hashlib.sha256(group_id.encode()).hexdigest()[:8]
-            multi_group_path = "{0}/{1}".format(common.multi_groups_path, folder)
-            mkdir_with_mode(multi_group_path)
-            chown(multi_group_path, common.ossec_uid(), common.ossec_gid())
-            chmod(multi_group_path, 0o770)
-            msg = "Group '{0}' created.".format(group_id)
-            return msg
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise WazuhException(1005, str(e))
-
-        return msg
-
-    @staticmethod
     def remove_multi_group(groups_id):
         """
         Removes groups by IDs.
@@ -1520,10 +1446,7 @@ class Agent:
                 groups_to_remove.append(','.join(group_list))
                 group_list.remove(group_to_remove)
                 if len(group_list) > 1:
-                    # create new multigroup
                     new_group = ','.join(group_list)
-                    if not Agent.multi_group_exists(new_group):
-                        Agent.create_multi_group(new_group)
                 else:
                     new_group = 'default' if not group_list else group_list[0]
 
@@ -1645,7 +1568,7 @@ class Agent:
         """
         Unset a group to a list of agents.
 
-        :param agent_id: List of Agent IDs.
+        :param agent_id_list: List of Agent IDs.
         :param group_id: Group ID.
         :return: Confirmation message.
         """
@@ -1656,7 +1579,7 @@ class Agent:
         if len(agent_id_list) < 1:
             raise WazuhException(1732)
 
-        # raise an exception if group not exists
+        # raise an exception if group does not exist
         if not Agent.group_exists(group_id):
             raise WazuhException(1710)
 
@@ -1800,7 +1723,7 @@ class Agent:
 
 
     @staticmethod
-    def unset_single_group_agent(agent_id, group_id, force):
+    def unset_single_group_agent(agent_id, group_id=None, force=False):
         """
         Unset the agent group. If agent has multigroups, it will preserve all previous groups except the last one.
 
@@ -1825,12 +1748,10 @@ class Agent:
         group_list.remove(group_id)
         if len(group_list) > 1:
             multigroup_name = ','.join(group_list)
-            if not Agent.multi_group_exists(multigroup_name):
-                Agent.create_multi_group(multigroup_name)
         else:
             multigroup_name = 'default' if not group_list else group_list[0]
 
-        Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
+        Agent.unset_all_groups_agent(agent_id=agent_id, force=True, group_id=multigroup_name)
 
         return f"Group '{group_id}' unset for agent '{agent_id}'." if multigroup_name != 'default' else \
                f"Agent {agent_id} set to group default."
@@ -1850,7 +1771,7 @@ class Agent:
 
         conn = Connection(db_global[0])
         conn.execute('select count(*) from agent where `group` = :group_name', {'group_name': multigroup_name})
-        return int(conn.fetch()[0])
+        return int(conn.fetch())
 
 
     @staticmethod
@@ -1941,8 +1862,9 @@ class Agent:
 
         try:
             result = requests.get(versions_url)
-        except requests.exceptions.RequestException as e:
-            raise WazuhException(1713, e.code)
+        except requests.exceptions.RequestException:
+            error = "Selected version repository ({}) isn't reachable".format(versions_url)
+            raise WazuhException(1713, error)
 
         if result.ok:
             versions = [version.split() for version in result.text.split('\n')]
@@ -2574,3 +2496,29 @@ class Agent:
             raise WazuhException(1710)
 
         return configuration.upload_group_file(group_id, tmp_file, file_name)
+
+    @staticmethod
+    def get_full_summary() -> Dict:
+        """Get information about agents.
+        :return: Dictionary with information about agents
+        """
+        # get information from different methods of Agent class
+        stats_distinct_node = Agent.get_distinct_agents(fields={'fields': ['node_name']})
+        groups = Agent.get_all_groups()
+        stats_distinct_os = Agent.get_distinct_agents(fields={'fields': ['os.name',
+                                                      'os.platform', 'os.version']})
+        stats_version = Agent.get_distinct_agents(fields={'fields': ['version']})
+        summary = Agent.get_agents_summary()
+        try:
+            last_registered_agent = Agent.get_agents_overview(limit=1,
+                                                              sort={'fields': ['dateAdd'], 'order': 'desc'},
+                                                              q='id!=000').get('items')[0]
+        except IndexError:  # an IndexError could happen if there are not registered agents
+            last_registered_agent = {}
+        # combine results in an unique dictionary
+        result = {'nodes': stats_distinct_node, 'groups': groups,
+                  'agent_os': stats_distinct_os, 'agent_status': summary,
+                  'agent_version': stats_version,
+                  'last_registered_agent': last_registered_agent}
+
+        return result

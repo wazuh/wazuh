@@ -142,11 +142,11 @@ ifeq (${uname_S},NetBSD)
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 else
 ifeq (${uname_S},OpenBSD)
-#		DEFINES+=-DOpenBSD
+		DEFINES+=-DOpenBSD
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-L/usr/local/lib
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
+		OSSEC_LDFLAGS+=-Wl,-zorigin '-Wl,-rpath,$$ORIGIN/../lib'
 else
 ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
@@ -763,7 +763,11 @@ $(EXTERNAL_CURL)Makefile:
 	cd $(EXTERNAL_CURL) && ./configure --with-darwinssl --disable-ldap --without-libidn2
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
+ifeq (${uname_S},Linux)
 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2
+else
+	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure --disable-ldap --without-libidn2
+endif
 endif
 
 
@@ -1508,13 +1512,16 @@ ifdef TEST
 	OSSEC_LIBS+=${LIBS_TEST}
 endif #TEST
 
-.PHONY: test run_tests build_tests test_valgrind test_coverage
+.PHONY: test run_valgrind_tests run_tests build_tests test_valgrind test_coverage
 
 test: build_tests
 	${MAKE} run_tests
 
+run_valgrind_tests:
+	@$(foreach bin,${test_programs},valgrind --leak-check=full --track-origins=yes --trace-children=no --vgdb=no --gen-suppressions=all --suppressions=tests/valgrind.supp ./${bin} || exit 1;)
+
 run_tests:
-	@$(foreach bin,${test_programs},valgrind --leak-check=full --track-origins=yes --trace-children=no --vgdb=no --error-exitcode=1 --gen-suppressions=all --suppressions=tests/valgrind.supp ./${bin} || exit 1;)
+	@$(foreach bin,${test_programs},./${bin} || exit 1;)
 
 build_tests: external
 	${MAKE} DEBUG=1 TEST=1 ${test_programs}
@@ -1547,14 +1554,14 @@ tap_fluentd_forwarder: tests/tap_fluentd_forwarder.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 test_valgrind: build_tests
-	${MAKE} run_tests
+	${MAKE} run_valgrind_tests
 
 
 test_coverage: build_tests
 	lcov --base-directory . --directory . --zerocounters --rc lcov_branch_coverage=1 --quiet
 	@echo "Running tests\n"
 
-	${MAKE} run_tests
+	${MAKE} run_valgrind_tests
 
 	@echo "\nTests finished."
 

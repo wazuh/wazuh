@@ -18,7 +18,6 @@ void OSRegex_FreePattern(OSRegex *reg)
 {
     int i = 0;
 
-    w_mutex_lock((pthread_mutex_t *)&reg->mutex);
     /* Free the patterns */
     if (reg->patterns) {
         char **pattern = reg->patterns;
@@ -68,7 +67,7 @@ void OSRegex_FreePattern(OSRegex *reg)
     }
 
     free(reg->d_size.prts_str_size);
+    w_mutex_destroy(&reg->mutex);
 
-    w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
     return;
 }

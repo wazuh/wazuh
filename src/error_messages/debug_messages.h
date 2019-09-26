@@ -8,8 +8,8 @@
  * Foundation.
  */
 
- #ifndef _DEBUG_MESSAGES__H
- #define _DEBUG_MESSAGES__H
+#ifndef DEBUG_MESSAGES_H
+#define DEBUG_MESSAGES_H
 
 /* vulnerability-detector messages*/
 #define VU_DOWNLOAD           "(5450): Downloading %s database..."
@@ -184,5 +184,6 @@
 #define FIM_WHODATA_FOLDER_REMOVED          "(6308): File '%s' was inside the removed directory '%s'. It will be notified."
 #define FIM_WHODATA_IGNORE_FILEEVENT        "(6309): Ignoring remove event for file '%s' because it has already been reported."
 #define FIM_CHECKSUM_MSG                    "(6310): Sending msg to the server: '%s'."
+#define FIM_MONITORING_FILES_COUNT          "(6311): Number of indexed files %s scanning: %u."
 
-#endif
+#endif /* DEBUG_MESSAGES_H */

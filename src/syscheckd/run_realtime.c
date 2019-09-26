@@ -245,7 +245,7 @@ int realtime_start()
 {
     minfo(FIM_REALTIME_STARTING);
 
-    pthread_mutex_init(&adddir_mutex, NULL);
+    w_mutex_init(&adddir_mutex, NULL);
 
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
     if (syscheck.realtime == NULL) {
@@ -473,7 +473,7 @@ int realtime_start()
 {
     minfo(FIM_REALTIME_STARTING);
 
-    pthread_mutex_init(&adddir_mutex, NULL);
+    w_mutex_init(&adddir_mutex, NULL);
 
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
 

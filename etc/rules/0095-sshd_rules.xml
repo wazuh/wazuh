@@ -18,7 +18,7 @@
     <match>Bad protocol version identification</match>
     <description>sshd: Possible attack on the ssh server </description>
     <description>(or version gathering).</description>
-    <group>pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
+    <group>recon,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
   </rule>
 
   <rule id="5702" level="5">

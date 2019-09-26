@@ -9,7 +9,7 @@ import socket
 import subprocess
 import time
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timezone
 from glob import glob
 from os import remove, chmod
 from os.path import exists, join
@@ -22,6 +22,7 @@ import fcntl
 
 from wazuh.agent import Agent
 from wazuh import common
+from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml, filter_array_by_query
 from wazuh import configuration
 from wazuh import Wazuh
 from wazuh.cluster.utils import get_manager_status, get_cluster_status, manager_restart, read_cluster_config
@@ -62,19 +63,24 @@ def __get_ossec_log_fields(log):
     return datetime.strptime(date, '%Y/%m/%d %H:%M:%S'), category, type_log.lower(), description
 
 
-def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort=None, search=None):
+def ossec_log(months=3, offset=0, limit=common.database_limit, sort=None, search=None, filters={}, q=''):
     """
     Gets logs from ossec.log.
 
-    :param type_log: Filters by log type: all, error or info.
-    :param category: Filters by log category (i.e. ossec-remoted).
     :param months: Returns logs of the last n months. By default is 3 months.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
     :param search: Looks for items with the specified string.
+    :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}.
+            This filter is used for filtering by 'type_log' (all, error or info) or 'category' (i.e. ossec-remoted).
+    :param q: Defines query to filter.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
+    # set default values to 'type_log' and 'category' parameters
+    type_log = filters.get('type_log', 'all')
+    category = filters.get('category', 'all')
+
     logs = []
 
     first_date = previous_month(months)
@@ -95,7 +101,9 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
                 else:
                     continue
 
-            log_line = {'timestamp': str(log_date), 'tag': log_category, 'level': level, 'description': description}
+            # We transform local time (ossec.log) to UTC maintaining time integrity and log format
+            log_line = {'timestamp': log_date.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
+                        'tag': log_category, 'level': level, 'description': description}
             if type_log == 'all':
                 logs.append(log_line)
             elif type_log.lower() == level.lower():
@@ -114,6 +122,9 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
 
     if search:
         logs = search_array(logs, search['value'], search['negation'])
+
+    if q:
+        logs = filter_array_by_query(q, logs)
 
     if sort:
         if sort['fields']:
