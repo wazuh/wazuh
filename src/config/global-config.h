@@ -118,6 +118,7 @@ typedef struct __Config {
     unsigned int archives_log_json:1;
     unsigned int archives_log_plain:1;
     long int archives_max_size;
+    long int archives_min_size;
     long int archives_interval;
     char archives_interval_units;
     char alerts_interval_units;
@@ -134,6 +135,7 @@ typedef struct __Config {
     unsigned int alerts_log_plain:1;
     OSList *alerts_rotation_files;
     long int alerts_max_size;
+    long int alerts_min_size;
     long int alerts_interval;
     int alerts_rotate;
     int alerts_maxage;

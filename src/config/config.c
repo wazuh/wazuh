@@ -398,6 +398,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
     const char *xml_format = "format";
     const char *xml_rotation = "rotation";
     const char *xml_max_size = "max_size";
+    const char *xml_min_size = "min_size";
     const char *xml_schedule = "schedule";
     const char *xml_rotate = "rotate";
     const char *xml_compress = "compress";
@@ -411,6 +412,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
     /* Zero the elements */
     Config->alerts_enabled = 0;
     Config->alerts_max_size = 0;
+    Config->alerts_min_size = 0;
     Config->alerts_interval = 0;
     Config->alerts_rotate = -1;
     Config->alerts_rotation_enabled = 1;
@@ -421,6 +423,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
 
     Config->archives_enabled = 0;
     Config->archives_max_size = 0;
+    Config->archives_min_size = 0;
     Config->archives_interval = 0;
     Config->archives_rotate = -1;
     Config->archives_rotation_enabled = 1;
@@ -520,6 +523,47 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     return (OS_INVALID);
                             }
                             if (Config->alerts_max_size < 1048576) {
+                                merror("The minimum allowed value for '%s' is 1 MB.", rotation_children[k]->element);
+                                OS_ClearNode(rotation_children);
+                                OS_ClearNode(children);
+                                return (OS_INVALID);
+                            }
+                        } else if (strcmp(rotation_children[k]->element, xml_min_size) == 0) {
+                            char c;
+                            switch (sscanf(rotation_children[k]->content, "%ld%c", &Config->alerts_min_size, &c)) {
+                                case 1:
+                                    break;
+                                case 2:
+                                    switch (c) {
+                                        case 'G':
+                                        case 'g':
+                                            Config->alerts_min_size *= 1073741824;
+                                            break;
+                                        case 'M':
+                                        case 'm':
+                                            Config->alerts_min_size *= 1048576;
+                                            break;
+                                        case 'K':
+                                        case 'k':
+                                            Config->alerts_min_size *= 1024;
+                                            break;
+                                        case 'B':
+                                        case 'b':
+                                            break;
+                                        default:
+                                            merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                            OS_ClearNode(rotation_children);
+                                            OS_ClearNode(children);
+                                            return (OS_INVALID);
+                                    }
+                                    break;
+                                default:
+                                    merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                    OS_ClearNode(rotation_children);
+                                    OS_ClearNode(children);
+                                    return (OS_INVALID);
+                            }
+                            if (Config->alerts_min_size < 1048576) {
                                 merror("The minimum allowed value for '%s' is 1 MB.", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
@@ -715,6 +759,47 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                 OS_ClearNode(children);
                                 return (OS_INVALID);
                             }
+                        } else if (strcmp(rotation_children[k]->element, xml_min_size) == 0) {
+                            char c;
+                            switch (sscanf(rotation_children[k]->content, "%ld%c", &Config->archives_min_size, &c)) {
+                                case 1:
+                                    break;
+                                case 2:
+                                    switch (c) {
+                                        case 'G':
+                                        case 'g':
+                                            Config->archives_min_size *= 1073741824;
+                                            break;
+                                        case 'M':
+                                        case 'm':
+                                            Config->archives_min_size *= 1048576;
+                                            break;
+                                        case 'K':
+                                        case 'k':
+                                            Config->archives_min_size *= 1024;
+                                            break;
+                                        case 'B':
+                                        case 'b':
+                                            break;
+                                        default:
+                                            merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                            OS_ClearNode(rotation_children);
+                                            OS_ClearNode(children);
+                                            return (OS_INVALID);
+                                    }
+                                    break;
+                                default:
+                                    merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                    OS_ClearNode(rotation_children);
+                                    OS_ClearNode(children);
+                                    return (OS_INVALID);
+                            }
+                            if (Config->archives_min_size < 1048576) {
+                                merror("The minimum allowed value for '%s' is 1 MB.", rotation_children[k]->element);
+                                OS_ClearNode(rotation_children);
+                                OS_ClearNode(children);
+                                return (OS_INVALID);
+                            }
                         } else if(strcmp(rotation_children[k]->element, xml_schedule) == 0) {
                             char c;
                             char *end;
@@ -821,14 +906,19 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
         i++;
     }
 
-    if(!Config->alerts_enabled) {
+    if (!Config->alerts_enabled) {
         Config->alerts_log_json = 0;
         Config->alerts_log_plain = 0;
     }
 
-    if(!Config->archives_enabled) {
+    if (!Config->archives_enabled) {
         Config->archives_log_json = 0;
         Config->archives_log_plain = 0;
+    }
+
+    if ((Config->archives_min_size > 0 && Config->archives_max_size > 0) || (Config->alerts_min_size > 0 && Config->alerts_max_size > 0)) {
+        merror("'max_size' and 'min_size' options cannot be used together for log rotation.");
+        return OS_INVALID;
     }
 
     return (0);
