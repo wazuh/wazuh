@@ -65,7 +65,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     struct group *result = NULL;
     char *buffer;
     os_malloc(len, buffer);
-    
+
     getgrnam_r(USER, &os_group, buffer, len, &result);
 
     if (result == NULL) {
