@@ -12,7 +12,7 @@ from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import WazuhResult
 
 
-mode = 'black'
+mode = 'white'
 
 
 class Resource:
@@ -194,24 +194,25 @@ def expose_resources(actions: list = None, resources: list = None, target_param:
             req_permissions = _get_required_permissions(actions=actions, resources=resources, **kwargs)
             allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
             del kwargs['rbac']
+            original_kwargs = copy.deepcopy(kwargs)
             if 'black:mode' not in allow.keys():  # Black flag
                 for index, target in enumerate(target_param):
                     try:
                         if len(allow[list(allow.keys())[index]]) == 0:
                             raise Exception
-                        kwargs[target] = allow[list(allow.keys())[index]]
+                        kwargs[target] = list(allow[list(allow.keys())[index]])
                     except Exception:
                         raise WazuhError(4000)
             if post_proc_func is None:
                 return func(*args, **kwargs)
             else:
-                return post_proc_func(f=func, allow=allow, target=target_param, extra_fields=post_proc_extra_fields,
-                                      *args, **kwargs)
+                return post_proc_func(f=func, original=original_kwargs, allow=allow, target=target_param,
+                                      extra_fields=post_proc_extra_fields, *args, **kwargs)
         return wrapper
     return decorator
 
 
-def list_response_handler(f: callable = None, allow: dict = None, target: list = None, extra_fields: list = None,
+def list_response_handler(f: callable = None, original: dict = None, allow: dict = None, target: list = None, extra_fields: list = None,
                           *args, **kwargs):
     """ Post processor for list responses with affected and failed items
 
@@ -223,15 +224,17 @@ def list_response_handler(f: callable = None, allow: dict = None, target: list =
     :param kwargs: Original call kwargs
     :return: Post-processed WazuhResult
     """
+    if extra_fields is None:
+        extra_fields = list()
     affected_items, failed_items, str_priority = f(*args, **kwargs)
     if len(target) == 1:
-        original_kwargs = kwargs[target[0]]
-        for item in set(original_kwargs) - set(allow[list(allow.keys())[0]][0]):
+        original_kwargs = original[target[0]]
+        for item in set(original_kwargs) - set(list(allow[list(allow.keys())[0]])):
             failed_items.append(create_exception_dic(item, WazuhError(4000)))
     else:
-        original_kwargs = kwargs[target[1]]
-        for item in set(original_kwargs) - set(allow[list(allow.keys())[1]]):
-            failed_items.append(create_exception_dic('{}:{}'.format(kwargs[target[0]], item), WazuhError(4000)))
+        original_kwargs = original[target[1]]
+        for item in set(original_kwargs) - set(list(allow[list(allow.keys())[1]])):
+            failed_items.append(create_exception_dic('{}:{}'.format(original[target[0]], item), WazuhError(4000)))
 
     final_dict = {'data': {'affected_items': affected_items,
                            'total_affected_items': len(affected_items)}
