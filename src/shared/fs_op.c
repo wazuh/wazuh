@@ -98,5 +98,35 @@ short skipFS(const char *dir_name)
     return(0);
 }
 
+bool HasFilesystem(const char * path, fs_set set) {
+#if defined(Linux) || defined(FreeBSD)
+    struct statfs stfs;
+
+    if (statfs(path, &stfs) == -1) {
+        mdebug2("statfs(%s): %s", path, strerror(errno));
+        return false;
+    }
+
+    switch (stfs.f_type) {
+    case 0x1373:        // DEVFS_SUPER_MAGIC
+        return set.dev;
+    case 0x9fa0:        // PROC_SUPER_MAGIC
+        return set.proc;
+    case 0x1021994:     // TMPFS_MAGIC
+        return set.dev && (stfs.f_flags & 4) == 0;
+    case 0x62656572:    // SYSFS_MAGIC
+        return set.sys;
+    case 0x6969:        // NFS_SUPER_MAGIC
+    case 0xFF534D42:    // CIFS_MAGIC_NUMBER
+        return set.nfs;
+    }
+
+#else
+    mdebug2("Attempted to check FS status for '%s'. This operation is not supported on this OS.", path);
+#endif
+
+    return false;
+}
+
 
 /* EOF */

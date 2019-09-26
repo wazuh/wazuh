@@ -88,7 +88,6 @@ int fim_directory (char * path, int dir_position, fim_event_mode mode, whodata_e
     char linked_read_file[PATH_MAX + 1] = {'\0'};
     int options;
     size_t path_size;
-    short is_nfs;
 
     if (!path) {
         merror(NULL_ERROR);
@@ -103,16 +102,6 @@ int fim_directory (char * path, int dir_position, fim_event_mode mode, whodata_e
     if (!dp) {
         merror(FIM_PATH_NOT_OPEN, path, strerror(errno));
         return (-1);
-    }
-
-    // Should we check for NFS?
-    if (syscheck.skip_nfs) {
-        is_nfs = IsNFS(path);
-        if (is_nfs != 0) {
-            // Error will be -1, and 1 means skipped
-            closedir(dp);
-            return (is_nfs);
-        }
     }
 
     if (options & REALTIME_ACTIVE) {
@@ -269,6 +258,12 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
                 merror("Skiping file: '%s'", file);
             }
         } else {
+            // Should we check for NFS/dev/sys/proc?
+
+            if (HasFilesystem(file, syscheck.skip_fs)) {
+                return 0;
+            }
+
             switch(file_stat.st_mode & S_IFMT) {
                 case FIM_REGULAR:
                     // Regular file

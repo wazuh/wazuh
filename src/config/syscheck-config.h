@@ -225,7 +225,7 @@ typedef struct _config {
     int max_depth;                  /* max level of recursivity allowed */
     size_t file_max_size;           /* max file size for calculating hashes */
 
-    short skip_nfs;
+    fs_set skip_fs;
     int rt_delay;                   /* Delay before real-time dispatching (ms) */
 
     int time;                       /* frequency (secs) for syscheck to run */

@@ -38,11 +38,20 @@ struct file_system_type {
     int flag;
 };
 
+typedef struct fs_set {
+    unsigned nfs:1;
+    unsigned dev:1;
+    unsigned sys:1;
+    unsigned proc:1;
+} fs_set;
+
 extern const struct file_system_type network_file_systems[];
 extern const struct file_system_type skip_file_systems[];
 
 short IsNFS(const char *file)  __attribute__((nonnull));
 short skipFS(const char *file)  __attribute__((nonnull));
+
+bool HasFilesystem(const char * path, fs_set set);
 
 #endif
 
