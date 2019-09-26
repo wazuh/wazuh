@@ -161,6 +161,12 @@ int local_start()
     if (ClientConf(cfg) < 0) {
         merror_exit(CLIENT_ERROR);
     }
+
+    if (!Validate_Address(agt->server)){
+        merror(AG_INV_MNGIP, agt->server[0].rip);
+        merror_exit(CLIENT_ERROR);
+    }
+
     if (agt->notify_time == 0) {
         agt->notify_time = NOTIFY_TIME;
     }
@@ -172,11 +178,6 @@ int local_start()
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
     minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
-
-    if (!Validate_Address(agt->server)){
-        merror(AG_INV_MNGIP);
-        merror_exit(CLIENT_ERROR);
-    }
 
     // Resolve hostnames
     rc = 0;

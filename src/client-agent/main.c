@@ -142,7 +142,7 @@ int main(int argc, char **argv)
     }
 
     if (!Validate_Address(agt->server)){
-        merror(AG_INV_MNGIP);
+        merror(AG_INV_MNGIP, agt->server[0].rip);
         merror_exit(CLIENT_ERROR);
     }
 
