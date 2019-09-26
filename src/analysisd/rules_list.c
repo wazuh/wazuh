@@ -15,6 +15,9 @@
 /* Rulenode local  */
 RuleNode *rulenode;
 
+RuleInfo *copy_rules[70000];
+int rules_copied;
+
 /* _OS_Addrule: Internal AddRule */
 static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule);
 static int _AddtoRule(int sid, int level, int none, const char *group,
@@ -46,17 +49,11 @@ static void _remove_ruleNode(RuleNode *parent, int sid_rule);
 static void _free_ruleInfo(RuleInfo *r_info);
 
 /**
- * @brief Copy rule and rules child
- * @param orig Original rule node
- * @param copy Copy rule node
+ * @brief
+ * @param
+ * @param
  */
-static RuleNode *_copy_rule(RuleNode *orig, RuleNode *copy);
-
-/**
- * @brief Add rules to rulenode structure
- * @param r_node rules to add
- */
-static void _add_rules(RuleNode *r_node);
+static void _copy_rule(RuleNode *orig);
 
 
 /* Create the RuleList */
@@ -317,14 +314,29 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
         /* Check if the sigid matches */
         if (r_node->ruleinfo->sigid == sid) {
 
-            RuleNode *aux = NULL;
+            RuleInfo *aux = r_node->ruleinfo;
 
-            aux = _copy_rule(r_node, aux);
-            _remove_ruleNode(rulenode, sid);
-            OS_AddChild(newrule, NULL);
-            _add_rules(aux->child);
-            _free_ruleInfo(aux->ruleinfo);
-            _remove_arrayRuleNode(aux);
+            if(r_node->child){
+                rules_copied = 0;
+                int i;
+
+                _copy_rule(r_node->child);
+
+                _remove_ruleNode(rulenode, sid);
+
+                OS_AddChild(newrule, NULL);
+
+                for (i = 0; i < rules_copied; i++){
+                    OS_AddChild(copy_rules[i], NULL);
+                }
+
+            }
+            else {
+                _remove_ruleNode(rulenode, sid);
+                OS_AddChild(newrule, NULL);
+            }
+
+            _free_ruleInfo(aux);
 
             return (1);
         }
@@ -660,42 +672,19 @@ static void _free_ruleInfo(RuleInfo *r_info)
 }
 
 
-static RuleNode *_copy_rule(RuleNode *orig, RuleNode *copy)
+static void _copy_rule(RuleNode *orig)
 {
-    if (copy) {
-        RuleNode *tmp = orig;
+    RuleNode *tmp = orig;
 
-        while (tmp) {
-            OS_AddChild(tmp->ruleinfo, copy);
+    while (tmp) {
 
-            if (tmp->child) {
-                _copy_rule(tmp->child, copy);
-            }
+        copy_rules[rules_copied] = tmp->ruleinfo;
+        rules_copied++;
 
-            tmp = tmp->next;
-        }
-    }
-    else {
-        copy = _OS_AddRule(copy, orig->ruleinfo);
-
-        if(orig->child){
-            _copy_rule(orig->child, copy);
-        }
-    }
-
-    return copy;
-}
-
-
-static void _add_rules(RuleNode *r_node)
-{
-    while (r_node) {
-        OS_AddChild(r_node->ruleinfo, NULL);
-
-        if (r_node->child){
-            _add_rules(r_node->child);
+        if (tmp->child) {
+            _copy_rule(tmp->child);
         }
 
-        r_node = r_node->next;
+        tmp = tmp->next;
     }
 }
