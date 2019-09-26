@@ -59,6 +59,8 @@ class Resource:
                 for agent in expanded_group:
                     final_permissions.add(agent) if value == 'allow' else final_permissions.discard(agent)
             elif key.startswith('agent:id:*'):
+                if value == 'allow' and self.value not in self.agents and self.value != "*":
+                    final_permissions.add(self.value)
                 for agent in self.agents:
                     final_permissions.add(agent) if value == 'allow' else final_permissions.discard(agent)
             elif key.startswith('agent:id'):
@@ -103,6 +105,7 @@ class Resource:
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
     """Obtain action:resource pairs exposed by the framework function
+
     :param actions: List of exposed actions
     :param resources: List of exposed resources
     :param kwargs: Function kwargs to look for dynamic resources
@@ -143,6 +146,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
 
 def _match_permissions(req_permissions: dict = None, rbac: list = None):
     """Try to match function required permissions against user permissions to allow or deny execution
+
     :param req_permissions: Required permissions to allow function execution
     :param rbac: User permissions
     :return: Allow or deny
@@ -177,17 +181,20 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     return allow_match
 
 
-def expose_resources(actions: list = None, resources: list = None, target_param: list = None,
-                     post_proc_func: callable = None, post_proc_extra_fields: list = None):
+def expose_resources(actions: list = None, resources: list = None, target_params: list = None,
+                     post_proc_func: callable = None, post_proc_kwargs: dict = None):
     """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
 
     :param actions: List of actions exposed by the framework function
     :param resources: List of resources exposed by the framework function
-    :param target_param: Name of the input parameter used to calculate resource access
+    :param target_params: Name of the input parameters used to calculate resource access
     :param post_proc_func: Name of the function to use in response post processing
-    :param post_proc_extra_fields: Name of the extra fields used in post processing
+    :param post_proc_kwargs: Extra parameters used in post processing
     :return: Allow or deny framework function execution
     """
+    if post_proc_kwargs is None:
+        post_proc_kwargs = dict()
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -196,44 +203,40 @@ def expose_resources(actions: list = None, resources: list = None, target_param:
             del kwargs['rbac']
             original_kwargs = copy.deepcopy(kwargs)
             if 'black:mode' not in allow.keys():  # Black flag
-                for index, target in enumerate(target_param):
+                for index, target in enumerate(target_params):
                     try:
                         if len(allow[list(allow.keys())[index]]) == 0:
                             raise Exception
                         kwargs[target] = list(allow[list(allow.keys())[index]])
                     except Exception:
                         raise WazuhError(4000)
+            result = func(*args, **kwargs)
             if post_proc_func is None:
-                return func(*args, **kwargs)
+                return result
             else:
-                return post_proc_func(f=func, original=original_kwargs, allow=allow, target=target_param,
-                                      extra_fields=post_proc_extra_fields, *args, **kwargs)
+                return post_proc_func(result, original=original_kwargs, allowed=allow, target=target_params, **post_proc_kwargs)
         return wrapper
     return decorator
 
 
-def list_response_handler(f: callable = None, original: dict = None, allow: dict = None, target: list = None, extra_fields: list = None,
-                          *args, **kwargs):
+def list_response_handler(result, original: dict = None, allowed: dict = None, target: list = None, **post_proc_kwargs):
     """ Post processor for list responses with affected and failed items
 
-    :param f: Function to apply post-processing to
-    :param allow: RBAC filtered input
-    :param target: Name of the input parameters used to calculate resource access
-    :param extra_fields: Additional fields to add to response
-    :param args: Original call args
-    :param kwargs: Original call kwargs
-    :return: Post-processed WazuhResult
+    :param result:
+    :param original:
+    :param allowed:
+    :param target:
+    :param post_proc_kwargs:
+    :return:
     """
-    if extra_fields is None:
-        extra_fields = list()
-    affected_items, failed_items, str_priority = f(*args, **kwargs)
+    affected_items, failed_items, str_priority = result
     if len(target) == 1:
         original_kwargs = original[target[0]]
-        for item in set(original_kwargs) - set(list(allow[list(allow.keys())[0]])):
+        for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[0]])):
             failed_items.append(create_exception_dic(item, WazuhError(4000)))
     else:
         original_kwargs = original[target[1]]
-        for item in set(original_kwargs) - set(list(allow[list(allow.keys())[1]])):
+        for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[1]])):
             failed_items.append(create_exception_dic('{}:{}'.format(original[target[0]], item), WazuhError(4000)))
 
     final_dict = {'data': {'affected_items': affected_items,
@@ -245,6 +248,8 @@ def list_response_handler(f: callable = None, original: dict = None, allow: dict
         final_dict['message'] = str_priority[2] if not affected_items else str_priority[1]
     else:
         final_dict['message'] = str_priority[0]
-    for item in extra_fields:
-        final_dict['data'][item] = kwargs[item]
+    if 'extra_fields' in post_proc_kwargs.keys():
+        for item in post_proc_kwargs['extra_fields']:
+            final_dict['data'][item] = original[item]
+
     return WazuhResult(final_dict, str_priority=str_priority)
