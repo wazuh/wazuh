@@ -57,26 +57,4 @@ CREATE TABLE IF NOT EXISTS belongs
     PRIMARY KEY (id_agent, id_group)
     );
 
-CREATE TABLE IF NOT EXISTS attack
-    (
-    id TEXT PRIMARY KEY, 
-    json TEXT
-    );
-
-CREATE TABLE IF NOT EXISTS has_phase
-    (
-    attack_id TEXT, 
-    phase_name TEXT,
-    FOREIGN KEY(attack_id) REFERENCES attack(id),
-    PRIMARY KEY (attack_id, phase_name)
-    );
-
-CREATE TABLE IF NOT EXISTS has_platform
-    (
-    attack_id TEXT, 
-    platform_name TEXT,
-    FOREIGN KEY(attack_id) REFERENCES attack(id),
-    PRIMARY KEY (attack_id, platform_name)
-    );
-
 PRAGMA journal_mode=WAL;

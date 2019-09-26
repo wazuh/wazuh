@@ -12,8 +12,6 @@
 #include "wdb.h"
 
 int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output){
-    w_mutex_lock(&wdb->mutex);
-
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_ATTACK_GET) < 0) {
@@ -28,23 +26,18 @@ int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output){
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
         snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", sqlite3_column_text(stmt, 0));
-        w_mutex_unlock(&wdb->mutex);
-        return 1;       
+        return 1;
         break;
     case SQLITE_DONE:
-        w_mutex_unlock(&wdb->mutex);
         return 0;
         break;
     default:
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        w_mutex_unlock(&wdb->mutex);
         return -1;
     }
 }
 
 int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output, struct opt_param *params){
-    w_mutex_lock(&wdb->mutex);
-    
     int r;
     int count;
     int i;
@@ -96,7 +89,6 @@ int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output, struct opt_
         mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         cJSON_Delete(data);
         data = NULL;
-        w_mutex_unlock(&wdb->mutex);
         return -1;
     }
 
@@ -104,13 +96,10 @@ int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output, struct opt_
     snprintf(output, OS_MAXSTR + 1, "%s", out);
     free(out);
     cJSON_Delete(data);
-    w_mutex_unlock(&wdb->mutex);
     return 1;
 }
 
 int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output, struct opt_param *params){
-    w_mutex_lock(&wdb->mutex);
-    
     int r;
     int count;
     int i;
@@ -162,7 +151,6 @@ int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output, struc
         mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         cJSON_Delete(data);
         data = NULL;
-        w_mutex_unlock(&wdb->mutex);
         return -1;
     }
 
@@ -170,6 +158,5 @@ int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output, struc
     snprintf(output, OS_MAXSTR + 1, "%s", out);
     free(out);
     cJSON_Delete(data);
-    w_mutex_unlock(&wdb->mutex);
     return 1;
 }

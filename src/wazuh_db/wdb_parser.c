@@ -493,7 +493,7 @@ int wdb_parse(char * input, char * output) {
             result = -1;
         }
         if (result == 1) result = 0;
-        wdb_close_mitre();
+        wdb_leave(wdb);
         return result;
     } else {
         mdebug1("DB(%s) Invalid DB query actor: %s", sagent_id, actor);

@@ -101,7 +101,6 @@ sqlite3 *wdb_global = NULL;
 wdb_config config;
 pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t mitre_mutex = PTHREAD_MUTEX_INITIALIZER;
 wdb_t * db_pool_begin;
 wdb_t * db_pool_last;
 int db_pool_size;
@@ -189,22 +188,52 @@ end:
 }
 
 wdb_t * wdb_open_mitre() {
+    char id[64] = "mitre";
     char path[PATH_MAX + 1];
-    char s_mitre[64] = "mitre";
     wdb_t * wdb = NULL;
- 
+    wdb_t * new_wdb = NULL;
+
+    // Find BD in pool
+
+    w_mutex_lock(&pool_mutex);
+
+    if (wdb = (wdb_t *)OSHash_Get(open_dbs, id), wdb) {
+        // Checking if database was removed to avoid create it again
+        if (wdb->remove) {
+            w_mutex_lock(&wdb->mutex);
+            wdb->last = time(NULL);
+            w_mutex_unlock(&wdb->mutex);
+            w_mutex_unlock(&pool_mutex);
+            return wdb;
+        }
+        goto success;
+    }
+
     // Try to open DB
-    snprintf(path, sizeof(path), "%s/mitre.db", WDB_DIR);
-    
+
+    snprintf(path, sizeof(path), "%s/%s.db", WDB_DIR, id);
+
     if (sqlite3_open_v2(path, &db_mitre, SQLITE_OPEN_READWRITE, NULL)) {
-        mdebug1("No SQLite mitre database found.");
+        mdebug1("No SQLite database found for '%s', creating.", id);
         sqlite3_close_v2(db_mitre);
         goto end;
 
     } else {
-        wdb = wdb_init(db_mitre, s_mitre);
+        wdb = wdb_init(db_mitre, id);
+        wdb_pool_append(wdb);
+
+        if (new_wdb = wdb_upgrade(wdb), new_wdb != wdb) {
+        // If I had to generate backup and change DB
+        wdb = new_wdb;
+        }
     }
+
+success:
+    w_mutex_lock(&wdb->mutex);
+    wdb->refcount++;
+
 end:
+    w_mutex_unlock(&pool_mutex);
     return wdb;
 }
 
@@ -212,12 +241,6 @@ end:
 void wdb_close_global() {
     sqlite3_close_v2(wdb_global);
     wdb_global = NULL;
-}
-
-/* Close global database */
-void wdb_close_mitre() {
-    sqlite3_close_v2(db_mitre);
-    db_mitre = NULL;
 }
 
 /* Open database for agent */
@@ -758,21 +781,6 @@ void wdb_commit_old() {
     }
     
     w_mutex_unlock(&global_mutex);
-
-    /* Mitre */
-    w_mutex_lock(&mitre_mutex);
-    
-    if (db_mitre != NULL){ 
-        w_mutex_lock(&wdb_mitre->mutex);
-        if (wdb_mitre->transaction && time(NULL) - wdb_mitre->last > config.commit_time) {
-            mdebug2("Committing database for %s", wdb_mitre->id);
-            wdb_commit2(wdb_mitre);
-        }
-        w_mutex_unlock(&wdb_mitre->mutex);
-    }
-    
-    w_mutex_unlock(&mitre_mutex);
-
 }
 
 void wdb_close_old() {
