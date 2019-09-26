@@ -191,6 +191,7 @@ static int wm_fluent_connect(wm_fluent_t * fluent) {
             merror("Cannot set receiving timeout to '%s': %s (%d)", fluent->address, strerror(errno), errno);
         }
     }
+    mdebug2("Connected to '%s'.", fluent->address);
 
     return 0;
 }
@@ -444,7 +445,7 @@ static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * he
     char salt[16];
     char hostname[512] = "";
     os_sha512 shared_key_hexdigest;
-    os_sha512 password;
+    os_sha512 password = {0};
     msgpack_sbuffer sbuf;
     msgpack_packer pk;
     int retval;
@@ -473,6 +474,7 @@ static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * he
         SHA512_Final(md, &ctx);
         OS_SHA512_Hex(md, shared_key_hexdigest);
     }
+
 
     if (helo->auth_size > 0) {
         unsigned char md[SHA512_DIGEST_LENGTH];
@@ -503,12 +505,20 @@ static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * he
     msgpack_pack_str_body(&pk, salt, sizeof(salt));
     msgpack_pack_str(&pk, OS_SHA512_LEN - 1); /* Remove terminator byte */
     msgpack_pack_str_body(&pk, shared_key_hexdigest, OS_SHA512_LEN - 1);
-    msgpack_pack_str(&pk, strlen(fluent->user_name));
-    msgpack_pack_str_body(&pk, fluent->user_name, strlen(fluent->user_name));
 
     if (helo->auth_size > 0) {
-        msgpack_pack_str(&pk, OS_SHA512_LEN - 1); /* Remove terminator byte */
+        msgpack_pack_str(&pk, strlen(fluent->user_name));
+        msgpack_pack_str_body(&pk, fluent->user_name, strlen(fluent->user_name));
+        msgpack_pack_str(&pk, OS_SHA512_LEN - 1);
         msgpack_pack_str_body(&pk, password, OS_SHA512_LEN - 1);
+    } else {
+        if (strlen(fluent->user_name) || strlen(fluent->user_pass)){
+            mwarn("Credentials are configured but fluentd server does not require authentication. Please check your configuration.");
+        }
+        msgpack_pack_str(&pk, 0);
+        msgpack_pack_str_body(&pk, "", 0);
+        msgpack_pack_str(&pk, 0);
+        msgpack_pack_str_body(&pk, "", 0);
     }
 
     /* Send PING message */
@@ -604,7 +614,7 @@ static int wm_fluent_hs_tls(wm_fluent_t * fluent) {
     /* Check the authentication result */
 
     if (!pong->auth_result) {
-        mwarn("Authentication error: the Fluent server rejected the connection: %s", pong->reason ? pong->reason : "");
+        mwarn("Authentication error: the Fluent server rejected the connection: %s", pong->reason ? pong->reason : "Unknown reason");
         goto end;
     }
 
