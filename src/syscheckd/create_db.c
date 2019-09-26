@@ -462,8 +462,6 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                     opts & CHECK_INODE ? str_inode : "",
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
                     0);
-            os_free(user);
-            os_free(group);
 #endif
 
             os_calloc(1, sizeof(syscheck_node), s_node);
@@ -533,8 +531,6 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 
             os_free(user);
 #else
-            user = get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL);
-            group = get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid);
             snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u!%s:%s:%s:%c %s%s%s",
                 str_size,
                 str_perm,
@@ -555,7 +551,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
-                
+
             os_free(user);
             os_free(group);
 #endif

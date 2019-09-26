@@ -60,6 +60,26 @@ static pthread_rwlock_t files_update_rwlock;
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
 
+static char *rand_keepalive_str(char *dst, int size)
+{
+    static const char text[] = "abcdefghijklmnopqrstuvwxyz"
+                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                               "0123456789"
+                               "!@#$%^&*()_+-=;'[],./?";
+    int i;
+    int len;
+    srandom_init();
+    len = os_random() % (size - 10);
+    len = len >= 0 ? len : -len;
+
+    strncpy(dst, "--MARK--: ", 12);
+    for ( i = 10; i < len; ++i ) {
+        dst[i] = text[(unsigned int)os_random() % (sizeof text - 1)];
+    }
+    dst[i] = '\0';
+    return dst;
+}
+
 /* Handle file management */
 void LogCollectorStart()
 {
@@ -69,6 +89,7 @@ void LogCollectorStart()
     int f_free_excluded = 0;
     IT_control f_control = 0;
     IT_control duplicates_removed = 0;
+    char keepalive[1024];
     logreader *current;
 
     /* Create store data */
@@ -718,6 +739,8 @@ void LogCollectorStart()
             f_check = 0;
         }
 
+        rand_keepalive_str(keepalive, KEEPALIVE_SIZE);
+        SendMSG(logr_queue, keepalive, "ossec-keepalive", LOCALFILE_MQ);
         sleep(1);
 
         f_check++;
@@ -1472,6 +1495,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
                 continue;
             }
 
+#ifndef WIN32
             struct stat statCurrent, statDup;
 
             if (strcmp(current->logformat, "eventchannel") && strcmp(current->logformat, "eventlog") &&
@@ -1491,7 +1515,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
 
                 same_inode = (statCurrent.st_ino == statDup.st_ino && statCurrent.st_dev == statDup.st_dev) ? 1 : 0;
             }
-
+#endif
             if (current != dup && (!strcmp(current->file, dup->file) || same_inode)) {
                 if (same_inode) {
                     mdebug1(DUP_FILE_INODE, current->file);
