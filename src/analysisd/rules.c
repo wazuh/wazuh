@@ -1530,12 +1530,6 @@ cleanup:
     free(system_name);
     free(protocol);
     free(data);
-
-
-
-
-
-
     free(rulepath);
     OS_ClearNode(rule);
 
