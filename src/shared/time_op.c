@@ -17,28 +17,6 @@
 #include <mach/mach.h>
 #endif
 
-
-int day_to_int(const char *day)
-{
-    if (!strcmp(day, "monday")) {
-        return 1;
-    } else if (!strcmp(day, "tuesday")) {
-        return 2;
-    } else if (!strcmp(day, "wednesday")) {
-        return 3;
-    } else if (!strcmp(day, "thursday")) {
-        return 4;
-    } else if (!strcmp(day, "friday")) {
-        return 5;
-    } else if (!strcmp(day, "saturday")) {
-        return 6;
-    } else if (!strcmp(day, "sunday")) {
-        return 7;
-    } else {
-        return 0;
-    }
-}
-
 void gettime(struct timespec *ts) {
 #ifdef __MACH__
     clock_serv_t cclock;
@@ -95,3 +73,24 @@ long long int get_windows_file_time_epoch(FILETIME ft) {
 }
 
 #endif
+
+int day_to_int(const char *day)
+{
+    if (!strcmp(day, "monday")) {
+        return 1;
+    } else if (!strcmp(day, "tuesday")) {
+        return 2;
+    } else if (!strcmp(day, "wednesday")) {
+        return 3;
+    } else if (!strcmp(day, "thursday")) {
+        return 4;
+    } else if (!strcmp(day, "friday")) {
+        return 5;
+    } else if (!strcmp(day, "saturday")) {
+        return 6;
+    } else if (!strcmp(day, "sunday")) {
+        return 7;
+    } else {
+        return 0;
+    }
+}

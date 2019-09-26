@@ -16,8 +16,6 @@
 
 #include <time.h>
 
-int day_to_int(const char *day);
-
 void gettime(struct timespec *ts);
 
 // Computes a -= b
@@ -29,5 +27,7 @@ void time_sub(struct timespec * a, const struct timespec * b);
 long long int get_windows_time_epoch();
 long long int get_windows_file_time_epoch(FILETIME ft);
 #endif
+
+int day_to_int(const char *day);
 
 #endif // TIME_OP_H
