@@ -2541,10 +2541,6 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
                     Update_Hour();
                 }
 
-                if (OS_GetLogLocation(day, year, mon) < 0) {
-                    merror_exit("Error allocating log files");
-                }
-
                 today = day;
                 strncpy(prev_month, mon, 3);
                 prev_year = year;

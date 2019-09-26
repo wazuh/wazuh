@@ -532,7 +532,7 @@ time_t calc_next_rotation(time_t tm, struct tm *rot, const char units, int inter
     rot->tm_sec = 0;
     ret = mktime(rot);
 
-    mdebug2("Next scheduled rotation: %d/%d/%d %d:%d:%d", rot->tm_mday, rot->tm_mon, rot->tm_year, rot->tm_hour, rot->tm_min, rot->tm_sec);
+    mdebug2("Next scheduled rotation: %d/%d/%d %d:%d:%d", rot->tm_mday, rot->tm_mon+1, rot->tm_year+1900, rot->tm_hour, rot->tm_min, rot->tm_sec);
 
     return ret;
 }
