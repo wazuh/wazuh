@@ -106,9 +106,9 @@ char *get_master_node(void) {
 }
 
 // Get cluster node name from configuration or environment variables
-char * wm_node_name() {
+char *wm_node_name() {
     const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
-    char * node_name;
+    char *node_name;
 
     OS_XML xml;
 
@@ -130,7 +130,7 @@ char * wm_node_name() {
         node_name = getenv("NODE_NAME");
         
         if (node_name) {
-            return strdup(node_name);
+            return node_name;
         } else {
             mwarn("Cannot find environment variable 'NODE_NAME'");
             return NULL;

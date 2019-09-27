@@ -62,9 +62,9 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 return OS_INVALID;
             } else if ((strcasecmp(node[i]->content, "$NODE_NAME") == 0)||(strcasecmp(node[i]->content, "$HOSTNAME") == 0)) {
                 // Get environment variables
-                char * node_name_var = wm_node_name();
+                char *node_name_var = wm_node_name();
 
-                if (node_name) {
+                if (node_name_var) {
                     free(Config->node_name);
                     os_strdup(node_name_var, Config->node_name);
                     free(node_name_var);
