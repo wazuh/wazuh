@@ -43,69 +43,73 @@ class Resource:
     def get_value(self):
         return self.value
 
-    def exec_expand_function(self, rbac_mode, odict):
+    def exec_expand_function(self, rbac_mode, final_permissions, odict):
+        if self.name_identifier not in final_permissions.keys():
+            final_permissions[self.name_identifier] = set()
         if self.name_identifier == 'agent:id' or self.name_identifier == 'agent:group':
-            return self._agent_expand_permissions(rbac_mode, odict)
+            self._agent_expand_permissions(rbac_mode, final_permissions[self.name_identifier], odict)
         elif self.name_identifier == 'role:id':
-            return self._role_expand_permissions(rbac_mode, odict)
+            final_permissions[self.name_identifier] = self._role_policy_expand_permissions(
+                rbac_mode, final_permissions[self.name_identifier], odict, 'role')
         elif self.name_identifier == 'policy:id':
-            return self._policy_expand_permissions(rbac_mode, odict)
+            self._role_policy_expand_permissions(rbac_mode, final_permissions[self.name_identifier], odict,
+                                                 'policy')
 
-    def _agent_expand_permissions(self, rbac_mode, odict):
-        final_permissions = set()
+    def compose_final_permissions(self, allowed_resources, final_permissions):
+        for permission in allowed_resources:
+            if permission == self.get_value() or self.get_value() == '*':
+                final_permissions.add(permission)
+
+        return final_permissions
+
+    def _agent_expand_permissions(self, final_permissions, rbac_mode, odict):
+        allowed_resources = set()
         for key, value in odict.items():
             if key.startswith('agent:group'):
                 expanded_group = expand_group(key.split(':')[-1])
                 for agent in expanded_group:
-                    final_permissions.add(agent) if value == 'allow' else final_permissions.discard(agent)
+                    allowed_resources.add(agent) if value == 'allow' \
+                        else allowed_resources.discard(agent)
             elif key.startswith('agent:id:*'):
-                if value == 'allow' and self.value not in self.agents and self.value != "*":
-                    final_permissions.add(self.value)
+                if value == 'allow' and self.value not in self.agents:
+                    allowed_resources.add(self.value)
                 for agent in self.agents:
                     final_permissions.add(agent) if value == 'allow' else final_permissions.discard(agent)
+                if value == 'allow':
+                    final_permissions.add(self.get_value())
             elif key.startswith('agent:id'):
-                final_permissions.add(key.split(':')[-1]) if value == 'allow' \
-                    else final_permissions.discard(key.split(':')[-1])
-        for agent in self.agents:
-            if rbac_mode == 'black':
-                final_permissions.add(agent)
+                if value == 'allow':
+                    allowed_resources.add(key.split(':')[-1])
+                elif value == 'deny':
+                    allowed_resources.discard(key.split(':')[-1])
+        if rbac_mode == 'black':
+            for agent in self.agents:
+                allowed_resources.add(agent)
+        self.compose_final_permissions(allowed_resources, final_permissions)
 
-        return final_permissions
-
-    def _role_expand_permissions(self, rbac_mode, odict):
-        final_permissions = set()
+    def _role_policy_expand_permissions(self, rbac_mode, final_permissions, odict, resource_type):
+        system_resources = self.roles if resource_type == 'role' else self.policies
+        allowed_resources = set()
         for key, value in odict.items():
-            if key.startswith('role:id:*'):
-                for role in self.roles:
-                    final_permissions.add(role) if value == 'allow' else final_permissions.discard(role)
-            elif key.startswith('role:id'):
-                final_permissions.add(key.split(':')[-1]) if value == 'allow' \
-                    else final_permissions.discard(key.split(':')[-1])
-        for role in self.roles:
-            if rbac_mode == 'black':
-                final_permissions.add(role)
+            if key.startswith(resource_type + ':id:*'):
+                if value == 'allow' and self.value not in system_resources and self.value != '*':
+                    allowed_resources.add(self.value)
+                for role_policy in system_resources:
+                    final_permissions.add(role_policy) if value == 'allow' else final_permissions.discard(role_policy)
+                if value == 'allow':
+                    final_permissions.add(self.get_value())
+            elif key.startswith(resource_type + ':id'):
+                allowed_resources.add(key.split(':')[-1]) if value == 'allow' \
+                    else allowed_resources.discard(key.split(':')[-1])
+        if rbac_mode == 'black':
+            for policy in system_resources:
+                allowed_resources.add(policy)
 
-        return final_permissions
-
-    def _policy_expand_permissions(self, rbac_mode, odict):
-        final_permissions = set()
-        for key, value in odict.items():
-            if key.startswith('policy:id:*'):
-                for policy in self.policies:
-                    final_permissions.add(policy) if value == 'allow' else final_permissions.discard(policy)
-            elif key.startswith('policy:id'):
-                final_permissions.add(key.split(':')[-1]) if value == 'allow' \
-                    else final_permissions.discard(key.split(':')[-1])
-        for policy in self.policies:
-            if rbac_mode == 'black':
-                final_permissions.add(policy)
-
-        return final_permissions
+        return self.compose_final_permissions(allowed_resources, final_permissions)
 
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
     """Obtain action:resource pairs exposed by the framework function
-
     :param actions: List of exposed actions
     :param resources: List of exposed resources
     :param kwargs: Function kwargs to look for dynamic resources
@@ -146,7 +150,6 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
 
 def _match_permissions(req_permissions: dict = None, rbac: list = None):
     """Try to match function required permissions against user permissions to allow or deny execution
-
     :param req_permissions: Required permissions to allow function execution
     :param rbac: User permissions
     :return: Allow or deny
@@ -158,19 +161,16 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
             allow_match['black:mode'] = '*'
             return allow_match
     for req_action, req_resources in req_permissions.items():
-        # The required action is in user permissions(Preprocessed policies)
-        if req_action in rbac.keys():
+        actual_actions = list()
+        for user_action, user_resources in rbac.items():
+            if req_action == user_action:
+                actual_actions.append(req_action)
+            elif req_action.split(':')[0] == user_action.split(':')[0] and user_action.split(':')[1] == '*':
+                actual_actions.append(req_action.split(':')[0] + ':*')
+        for action in actual_actions:
             for req_resource in req_resources:
-                user_resources = rbac[req_action]
                 r_resource = Resource(req_resource)
-                allowed_resources = r_resource.exec_expand_function(mode, user_resources)
-                if len(allowed_resources) > 0:
-                    if r_resource.get_name_identifier() not in allow_match:
-                        allow_match[r_resource.get_name_identifier()] = set()
-                if r_resource.get_value() == '*':
-                    allow_match[r_resource.get_name_identifier()].update(allowed_resources)
-                elif r_resource.get_value() in allowed_resources:
-                    allow_match[r_resource.get_name_identifier()].add(r_resource.get_value())
+                r_resource.exec_expand_function(mode, allow_match, rbac[action])
         else:
             if mode == 'black':
                 black_counter += 1
@@ -181,20 +181,17 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     return allow_match
 
 
-def expose_resources(actions: list = None, resources: list = None, target_params: list = None,
-                     post_proc_func: callable = None, post_proc_kwargs: dict = None):
+def expose_resources(actions: list = None, resources: list = None, target_param: list = None,
+                     post_proc_func: callable = None, post_proc_extra_fields: list = None):
     """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
 
     :param actions: List of actions exposed by the framework function
     :param resources: List of resources exposed by the framework function
-    :param target_params: Name of the input parameters used to calculate resource access
+    :param target_param: Name of the input parameter used to calculate resource access
     :param post_proc_func: Name of the function to use in response post processing
-    :param post_proc_kwargs: Extra parameters used in post processing
+    :param post_proc_extra_fields: Name of the extra fields used in post processing
     :return: Allow or deny framework function execution
     """
-    if post_proc_kwargs is None:
-        post_proc_kwargs = dict()
-
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -202,20 +199,19 @@ def expose_resources(actions: list = None, resources: list = None, target_params
             allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
             del kwargs['rbac']
             original_kwargs = copy.deepcopy(kwargs)
-            if 'black:mode' not in allow.keys():  # Black flag
-                for index, target in enumerate(target_params):
+            if 'black:mode' not in allow.keys():  # Black flag not in allow
+                for index, target in enumerate(target_param):
                     try:
                         if len(allow[list(allow.keys())[index]]) == 0:
                             raise Exception
                         kwargs[target] = list(allow[list(allow.keys())[index]])
                     except Exception:
                         raise WazuhError(4000)
-            result = func(*args, **kwargs)
             if post_proc_func is None:
-                return result
+                return func(*args, **kwargs)
             else:
-                return post_proc_func(result, original=original_kwargs, allowed=allow, target=target_params,
-                                      **post_proc_kwargs)
+                return post_proc_func(f=func, original=original_kwargs, allow=allow, target=target_param,
+                                      extra_fields=post_proc_extra_fields, *args, **kwargs)
         return wrapper
     return decorator
 
@@ -232,13 +228,14 @@ def list_handler_with_denied(result, original: dict = None, allowed: dict = None
     """
     if len(target) == 1:
         original_kwargs = original[target[0]] if isinstance(original[target[0]], list) else [original[target[0]]]
-        for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[0]])):
-            result['failed_items'].append(create_exception_dic(item, WazuhError(4000)))
+        result['failed_items'].append(
+            create_exception_dic(set(original_kwargs) - set(list(allowed[list(allowed.keys())[0]])), WazuhError(4000)))
     else:
-        original_kwargs = original[target[1]] if isinstance(original[target[1]], list) else list(original[target[1]])
-        for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[1]])):
-            result['failed_items'].append(create_exception_dic('{}:{}'.format(original[target[0]], item),
-                                                               WazuhError(4000)))
+        original_kwargs = original[target[1]] if isinstance(original[target[1]], list) else [original[target[1]]]
+        result['failed_items'].append(
+            create_exception_dic('{}:{}'.format(original[target[0]],
+                                                set(original_kwargs) - set(list(allowed[list(allowed.keys())[1]]))),
+                                 WazuhError(4000)))
 
     return data_response_builder(result, original, **post_proc_kwargs)
 
