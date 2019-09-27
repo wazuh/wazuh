@@ -148,10 +148,6 @@ struct opt_param {
 extern sqlite3 *wdb_global;
 extern wdb_t * db_global;
 
-/* Mitre SQLite database */
-extern sqlite3 *db_mitre;
-extern wdb_t * wdb_mitre;
-
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
 extern char *schema_upgrade_v1_sql;
@@ -167,11 +163,8 @@ extern OSHash * open_dbs;
 int wdb_open_global();
 
 /**
- * @brief Open global database and store in DB pool.
+ * @brief Open global database.
  *  
- * Firtsly, it  searches the BD in pool and if it doesn't find it, it tries to open the BD. 
- * If it can't open the BD, it creates a new one, initilizates it and stores it in the DB pool.
- * If it can open it, it initilizates it and stores it in the DB pool.
  * @pre Must be called once at start up
  * @date 8 Aug 2019
  * @return It returns a locked database or NULL
@@ -182,6 +175,13 @@ int wdb_open_global();
  */
 wdb_t * wdb_t_open_global();
 
+/**
+ * @brief Open mitre database and store in DB poll
+ * 
+ * It is opened every time a Mitre SQL query is done
+ * 
+ * @return wdb_t* Database Structure that store mitre database. 
+ */
 wdb_t * wdb_open_mitre();
 
 /* Close global database */
@@ -611,12 +611,12 @@ int wdb_stmt_cache(wdb_t * wdb, int index);
 int wdb_parse(char * input, char * output);
 
 /**
- * @brief This function parses limit and offset parameters and store in struc opt_param
+ * @brief This function parses limit and offset parameters and store in struct opt_param
  * 
  * An example of use is [limit 10 offset 0] query sentence
- * @param input The path where the global DB will be created or opened
+ * @param input SQL query that starts with [limit ? offset ?]
  * @param output This output is a struct that store limit and offset parameters
- * @return Return -1 if error
+ * @return int Return -1 if it fails
  */
 int wdb_param_parse(char *input, struct opt_param *output);
 

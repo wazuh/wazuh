@@ -107,8 +107,6 @@ wdb_t * db_pool_last;
 int db_pool_size;
 OSHash * open_dbs;
 wdb_t * db_global;
-sqlite3 *db_mitre = NULL;
-wdb_t * wdb_mitre;
 
 /* Open global database. Returns 0 on success or -1 on failure. */
 int wdb_open_global() {
@@ -191,6 +189,7 @@ end:
 wdb_t * wdb_open_mitre() {
     char id[64] = "mitre";
     char path[PATH_MAX + 1];
+    sqlite3 *db;
     wdb_t * wdb = NULL;
     wdb_t * new_wdb = NULL;
 
@@ -214,13 +213,13 @@ wdb_t * wdb_open_mitre() {
 
     snprintf(path, sizeof(path), "%s/%s.db", WDB_DIR, id);
 
-    if (sqlite3_open_v2(path, &db_mitre, SQLITE_OPEN_READWRITE, NULL)) {
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
         mdebug1("No SQLite database found for '%s', creating.", id);
-        sqlite3_close_v2(db_mitre);
+        sqlite3_close_v2(db);
         goto end;
 
     } else {
-        wdb = wdb_init(db_mitre, id);
+        wdb = wdb_init(db, id);
         wdb_pool_append(wdb);
 
         if (new_wdb = wdb_upgrade(wdb), new_wdb != wdb) {
