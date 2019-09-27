@@ -214,42 +214,64 @@ def expose_resources(actions: list = None, resources: list = None, target_params
             if post_proc_func is None:
                 return result
             else:
-                return post_proc_func(result, original=original_kwargs, allowed=allow, target=target_params, **post_proc_kwargs)
+                return post_proc_func(result, original=original_kwargs, allowed=allow, target=target_params,
+                                      **post_proc_kwargs)
         return wrapper
     return decorator
 
 
-def list_response_handler(result, original: dict = None, allowed: dict = None, target: list = None, **post_proc_kwargs):
-    """ Post processor for list responses with affected and failed items
+def list_handler_with_denied(result, original: dict = None, allowed: dict = None, target: list = None,
+                             **post_proc_kwargs):
+    """ Post processor for framework list responses with affected items and failed items
 
-    :param result:
-    :param original:
-    :param allowed:
-    :param target:
-    :param post_proc_kwargs:
-    :return:
+    :param result: Dict with affected_items, failed_items and str_priority
+    :param original: Original input call parameter values
+    :param allowed: Allowed input call parameter values
+    :param target: Name of the input parameters used to calculate resource access
+    :return: WazuhResult
     """
-    affected_items, failed_items, str_priority = result
     if len(target) == 1:
-        original_kwargs = original[target[0]]
+        original_kwargs = original[target[0]] if isinstance(original[target[0]], list) else [original[target[0]]]
         for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[0]])):
-            failed_items.append(create_exception_dic(item, WazuhError(4000)))
+            result['failed_items'].append(create_exception_dic(item, WazuhError(4000)))
     else:
-        original_kwargs = original[target[1]]
+        original_kwargs = original[target[1]] if isinstance(original[target[1]], list) else list(original[target[1]])
         for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[1]])):
-            failed_items.append(create_exception_dic('{}:{}'.format(original[target[0]], item), WazuhError(4000)))
+            result['failed_items'].append(create_exception_dic('{}:{}'.format(original[target[0]], item),
+                                                               WazuhError(4000)))
 
-    final_dict = {'data': {'affected_items': affected_items,
-                           'total_affected_items': len(affected_items)}
+    return data_response_builder(result, original, **post_proc_kwargs)
+
+
+def list_handler_no_denied(result, original: dict = None, allowed: dict = None, target: list = None,
+                           **post_proc_kwargs):
+    """ Post processor for framework list responses with only affected items
+
+    :param result: List with affected_items, failed_items and str_priority
+    :param original: Original input call parameter values
+    :return: WazuhResult
+    """
+    return data_response_builder(result, original, **post_proc_kwargs)
+
+
+def data_response_builder(result, original: dict = None, **post_proc_kwargs):
+    """
+
+    :param result: List with affected_items, failed_items and str_priority
+    :param original: Original input call parameter values
+    :return: WazuhResult
+    """
+    final_dict = {'data': {'affected_items': result['affected_items'],
+                           'total_affected_items': len(result['affected_items'])}
                   }
-    if failed_items:
-        final_dict['data']['failed_items'] = failed_items
-        final_dict['data']['total_failed_items'] = len(failed_items)
-        final_dict['message'] = str_priority[2] if not affected_items else str_priority[1]
+    if result['failed_items']:
+        final_dict['data']['failed_items'] = result['failed_items']
+        final_dict['data']['total_failed_items'] = len(result['failed_items'])
+        final_dict['message'] = result['str_priority'][2] if not result['affected_items'] else result['str_priority'][1]
     else:
-        final_dict['message'] = str_priority[0]
+        final_dict['message'] = result['str_priority'][2] if not result['affected_items'] else result['str_priority'][0]
     if 'extra_fields' in post_proc_kwargs.keys():
         for item in post_proc_kwargs['extra_fields']:
             final_dict['data'][item] = original[item]
 
-    return WazuhResult(final_dict, str_priority=str_priority)
+    return WazuhResult(final_dict, str_priority=result['str_priority'])
