@@ -401,6 +401,30 @@ int wdb_parse(char * input, char * output) {
     } else if(strcmp(actor, "mitre") == 0) {
         query = next;
 
+        if(wdb = wdb_open_mitre(), !wdb) {
+            merror("Couldn't open DB mitre");
+            snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB mitre");
+            return -1;
+        }
+
+        if(strcmp(query, "get_ids") == 0) {
+            char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
+            result = wdb_mitre_ids_get(wdb, result_found);
+            
+            switch (result) {
+                case 0:
+                    snprintf(output, OS_MAXSTR + 1, "err not found");
+                    break;
+                case 1:
+                    snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
+                    break;
+                default:
+                    mdebug1("Cannot query Mitre platform.");
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre platform");
+            }
+            wdb_leave(wdb);
+            return 0;
+        }
         if (next = wstr_chr(query, ' '), !next) {
             mdebug1("Invalid DB query syntax.");
             mdebug2("DB query error near: %s", query);
@@ -409,11 +433,6 @@ int wdb_parse(char * input, char * output) {
         }
         *next++ = '\0';
     
-        if(wdb = wdb_open_mitre(), !wdb) {
-            merror("Couldn't open DB mitre");
-            snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB mitre");
-            return -1;
-        }
         if(strcmp(query, "get_attack") == 0) {
             if(!next) {
                 mdebug1("Invalid DB query syntax.");

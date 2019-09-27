@@ -117,6 +117,7 @@ typedef enum wdb_stmt {
     WDB_STMT_MITRE_PHASE_GET,
     WDB_STMT_MITRE_PLATFORM_GET,
     WDB_STMT_MITRE_TACTICS_GET,
+    WDB_STMT_MITRE_IDS_GET,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -402,7 +403,7 @@ int wdb_commit2(wdb_t * wdb);
  * @param wdb Database struct that includes database that will be queried
  * @param id ID Mitre attack (e.g. T1122)
  * @param output Mitre information corresponding to its ID mitre attack
- * @return int It returns -1 if fails, 0 if it doesn't find Mitre information and 1 if finds it
+ * @return int It returns -1 if it fails, 0 if it doesn't find Mitre information and 1 if it finds it
  */
 int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output);
 
@@ -413,7 +414,7 @@ int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output);
  * @param phase_name It can be Lateral Movement, Execution, Persistence, etc
  * @param output Mitre information limited by limit and offset parameters
  * @param params This struct includes limit and offset parameters
- * @return int It returns -1 if fails, 0 if it doesn't find Mitre information and 1 if finds it
+ * @return int It returns -1 if it fails, 0 if it doesn't find Mitre information and 1 if it finds it
  */
 int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output, struct opt_param *params);
 
@@ -424,19 +425,28 @@ int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output, struct opt_
  * @param platform_name It can be Windows, macOs or Linux
  * @param output Mitre information limited by limit and offset parameters
  * @param params This struct includes limit and offset parameters
- * @return int It returns -1 if fails, 0 if it doesn't find Mitre information and 1 if finds it
+ * @return int It returns -1 if it fails, 0 if it doesn't find Mitre information and 1 if it finds it
  */
 int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output, struct opt_param *params);
 
 /**
- * @brief It gets an string array of the tactic(s) from the has_phase table
+ * @brief It gets a Mitre's tactics array from the has_phase table
  * 
  * @param wdb Database struct that includes database that will be queried
  * @param id_attack ID Mitre attack (e.g. T1122)
- * @param output Array with the tactic(s)
- * @return int It returns -1 if fails, 0 if it doesn't find tactics and 1 if finds them
+ * @param output Mitre's tactics array
+ * @return int It returns -1 if it fails, 0 if it doesn't find tactics and 1 if it finds them
  */
 int wdb_mitre_tactics_get(wdb_t *wdb, char *id_attack, char *output);
+
+/**
+ * @brief It gets a Mitre's IDs array from the attack table
+ * 
+ * @param wdb Database struct that includes database that will be queried
+ * @param output  Mitre's IDs array
+ * @return int It returns -1 if it fails, 0 if it doesn't find IDs and 1 if it finds them
+ */
+int wdb_mitre_ids_get(wdb_t *wdb, char *output);
 
 /**
  * @brief Create global database
