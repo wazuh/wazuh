@@ -427,7 +427,6 @@ int sd_load(sd_config_t **config) {
             return 1;
 
         } else {
-            sd_destroy_content(config);
             return 0;
         }
     } else {
@@ -452,11 +451,11 @@ void sd_destroy_content(sd_config_t **config) {
     if ((*config)->groups) {
         for (i = 0; i < (*config)->n_groups; i++) {
             for (j = 0; j < (*config)->groups[i].n_files; j++) {
-                free((*config)->groups[i].files[j].name);
-                free((*config)->groups[i].files[j].url);
+                os_free((*config)->groups[i].files[j].name);
+                os_free((*config)->groups[i].files[j].url);
             }
-            free((*config)->groups[i].files);
-            free((*config)->groups[i].name);
+            os_free((*config)->groups[i].files);
+            os_free((*config)->groups[i].name);
         }
         os_free((*config)->groups);
     }
@@ -465,6 +464,8 @@ void sd_destroy_content(sd_config_t **config) {
         OSHash_Free((*config)->ptable);
         (*config)->ptable = NULL;
     }
+
+    os_free(*config);
 }
 
 int sd_reload(sd_config_t **config) {

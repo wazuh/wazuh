@@ -202,10 +202,6 @@ int main(int argc, char **argv)
     /* Start up message */
     mdebug2(STARTUP_MSG, (int)getpid());
 
-    sd_config_t *config;
-    sd_init(&config);
-    sd_load(&config);
-
     /* Really start the program */
     i = 0;
     while (logr.conn[i] != 0) {
