@@ -1433,7 +1433,7 @@ int Rules_OP_ReadRules(const char *rulefile)
             if (config_ruleinfo->sigid < 10) {
                 OS_AddRule(config_ruleinfo);
             } else if (config_ruleinfo->alert_opts & DO_OVERWRITE) {
-                if (!OS_AddRuleInfo(NULL, config_ruleinfo,
+                if (!OS_AddRuleInfo(config_ruleinfo,
                                     config_ruleinfo->sigid)) {
                     merror("Overwrite rule '%d' not found.",
                            config_ruleinfo->sigid);

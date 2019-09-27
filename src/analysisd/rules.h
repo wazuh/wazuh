@@ -233,7 +233,7 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode *r_node);
  * @param sid Rule id
  * @return Success 1 if not success 0
  */
-int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid);
+int OS_AddRuleInfo(RuleInfo *newrule, int sid);
 
 /**
  * @brief Mark rules that match specific group (for if_matched_group)
@@ -257,11 +257,12 @@ int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule);
 RuleNode *OS_GetFirstRule(void);
 
 /**
- * @brief Get category node
- * @param category Rule category
+ * @brief Get rule node
+ * @param sigid rule id
+ * @param array array of rules
  * @return node pointer to rule node
  */
-RuleNode *getCategoryRule(u_int8_t category);
+RuleNode *existRule (int sigid, RuleNode *array);
 
 void Rules_OP_CreateRules(void);
 

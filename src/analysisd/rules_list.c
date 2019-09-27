@@ -70,17 +70,6 @@ RuleNode *OS_GetFirstRule()
     return (rulenode_pt);
 }
 
-/* Get initial node */
-RuleNode *getCategoryRule(u_int8_t category)
-{
-    RuleNode *node = rulenode;
-
-    while(node != NULL && node->ruleinfo->category != category)
-        node = node->next;
-
-    return node;
-}
-
 /* Search all rules, including children */
 static int _AddtoRule(int sid, int level, int none, const char *group,
                RuleNode *r_node, RuleInfo *read_rule)
@@ -299,59 +288,44 @@ int OS_AddRule(RuleInfo *read_rule)
 }
 
 /* Add an overwrite rule */
-int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
+int OS_AddRuleInfo(RuleInfo *newrule, int sid)
 {
-    /* If no r_node is given, get first node */
-    if (r_node == NULL) {
-        r_node = OS_GetFirstRule();
-    }
 
-    if (sid == 0) {
+    RuleNode *r_node = existRule(sid, rulenode);
+    RuleInfo *removed;
+    int i;
+
+    if (!r_node) {
         return (0);
     }
+    else {
 
-    while (r_node) {
-        /* Check if the sigid matches */
-        if (r_node->ruleinfo->sigid == sid) {
+        removed = r_node->ruleinfo;
+        minfo("~~~~ %d", r_node->ruleinfo->sigid);
 
-            RuleInfo *aux = r_node->ruleinfo;
-
-            if(r_node->child){
-                rules_copied = 0;
-                int i;
-
-                _copy_rule(r_node->child);
-
-                _remove_ruleNode(rulenode, sid);
-
-                OS_AddChild(newrule, NULL);
-
-                for (i = 0; i < rules_copied; i++){
-                    OS_AddChild(copy_rules[i], NULL);
-                }
-
-            }
-            else {
-                _remove_ruleNode(rulenode, sid);
-                OS_AddChild(newrule, NULL);
-            }
-
-            _free_ruleInfo(aux);
-
-            return (1);
-        }
-
-        /* Check if the child has a rule */
         if (r_node->child) {
-            if (OS_AddRuleInfo(r_node->child, newrule, sid)) {
-                return (1);
+
+            rules_copied = 0;
+            _copy_rule(r_node->child);
+
+            _remove_ruleNode(rulenode, sid);
+
+            OS_AddChild(newrule, NULL);
+
+            for (i = 0; i < rules_copied; i++){
+                OS_AddChild(copy_rules[i], NULL);
             }
         }
+        else {
 
-        r_node = r_node->next;
+            _remove_ruleNode(rulenode, sid);
+            OS_AddChild(newrule, NULL);
+        }
+
+        //_free_ruleInfo(removed);
+
+        return (1);
     }
-
-    return (0);
 }
 
 /* Mark IDs (if_matched_sid) */
@@ -433,6 +407,30 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
 }
 
 
+RuleNode *existRule (int sigid, RuleNode *array)
+{
+    RuleNode *tmp = array, *node = NULL;
+
+    while(tmp != NULL){
+
+        if (tmp->ruleinfo->sigid == sigid) {
+            return tmp;
+        }
+
+        if (tmp->child){
+
+            if(node = existRule(sigid, tmp->child), node != NULL){
+                return node;
+            }
+        }
+
+        tmp = tmp->next;
+    }
+
+    return node;
+}
+
+
 static void _remove_ruleNode (RuleNode *parent, int sid_rule)
 {
     RuleNode *tmp = NULL;
@@ -485,12 +483,13 @@ static void _remove_arrayRuleNode (RuleNode *array)
 {
     RuleNode *tmp = NULL;
 
-    if (array->child){
-        _remove_arrayRuleNode(array->child);
-    }
-
     while (array){
         tmp = array;
+
+        if (tmp->child){
+            _remove_arrayRuleNode(array->child);
+        }
+
         array = array->next;
         free(tmp);
     }
