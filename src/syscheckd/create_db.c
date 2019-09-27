@@ -594,7 +594,7 @@ int fim_insert (char * file, fim_entry_data * data, struct stat *file_stat) {
 
     // Function OSHash_Add_ex doesn't alloc memory for the data of the hash table
     os_calloc(OS_SIZE_128, sizeof(char), inode_key);
-    snprintf(inode_key, OS_SIZE_128, "%ld:%ld", file_stat->st_dev, file_stat->st_ino);
+    snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (long unsigned)file_stat->st_dev, (long unsigned)file_stat->st_ino);
 
     if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), !inode_data) {
         os_calloc(1, sizeof(fim_inode_data), inode_data);
@@ -625,7 +625,7 @@ int fim_update (char * file, fim_entry_data * data) {
     char * inode_key;
 
     os_calloc(OS_SIZE_128, sizeof(char), inode_key);
-    snprintf(inode_key, OS_SIZE_128, "%ld:%ld", data->dev, data->inode);
+    snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)data->dev, (unsigned long)data->inode);
 
     if (!file || strcmp(file, "") == 0 || !inode_key || strcmp(inode_key, "") == 0) {
         merror("Can't update entry invalid file or inode");
@@ -650,7 +650,7 @@ int fim_delete (char * file_name) {
 #ifndef WIN32
         char * inode_key = NULL;
         os_calloc(OS_SIZE_128, sizeof(char), inode_key);
-        snprintf(inode_key, OS_SIZE_128, "%ld:%ld", data->dev, data->inode);
+        snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)data->dev, (unsigned long)data->inode);
         delete_inode_item(inode_key, file_name);
         os_free(inode_key);
 #endif
