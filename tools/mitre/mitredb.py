@@ -28,7 +28,8 @@ def create_connection(db_file):
     """
     conn = None
     try:
-        conn = sqlite3.connect(db_file)
+        conn = sqlite3.connect(db_file, isolation_level=None)
+        conn.execute('pragma journal_mode=wal')
         return conn
     except Error as e:
         print(e)
