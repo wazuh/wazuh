@@ -486,6 +486,30 @@ int wdb_parse(char * input, char * output) {
                         snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre platform");
                 }
             }
+        } else if(strcmp(query, "get_tactics") == 0) {
+            if(!next) {
+                mdebug1("Invalid DB query syntax.");
+                mdebug2("DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                char *id_attack;
+                char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
+
+                id_attack = next;
+                result = wdb_mitre_tactics_get(wdb, id_attack, result_found);
+                switch (result) {
+                    case 0:
+                        snprintf(output, OS_MAXSTR + 1, "err not found");
+                        break;
+                    case 1:
+                        snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
+                        break;
+                    default:
+                        mdebug1("Cannot query Mitre platform.");
+                        snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre platform");
+                }
+            }
         } else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("DB query error near: %s", query);

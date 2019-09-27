@@ -19,8 +19,7 @@ int mitre_load(){
     char * buffer = NULL;
     char path_file[PATH_MAX + 1];
     char *wazuhdb_query = NULL;
-    char *output = NULL;
-    char *input_json = NULL;
+    char *response = NULL;
     FILE *fp;
     cJSON *root;
     cJSON *tactics_json;
@@ -31,10 +30,6 @@ int mitre_load(){
     cJSON *objects = NULL;
     cJSON *reference = NULL;
     cJSON *references = NULL;
-    cJSON *kill_chain_phases = NULL;
-    cJSON *kill_chain_phase = NULL;
-    cJSON *chain_phase = NULL;
-    cJSON *arrayphases = NULL;
 
     /* Create hash table */
     mitre_table = OSHash_Create();
@@ -68,7 +63,7 @@ int mitre_load(){
     /* Allocate memory */
     os_malloc(size+1,buffer);
     
-    // Get file and parse into JSON
+    /* Read file and store it in string */
     if (read = fread(buffer, 1, size, fp), read != (size_t)size && !feof(fp)) {
         mdebug1("Mitre file info loading failed. JSON file cannot be readed. File %s", path_file);
         merror("Mitre matrix information could not be loaded.");
@@ -101,32 +96,29 @@ int mitre_load(){
 
                                         /* Storing the item 'phase_name' of 'kill_chain_phases' */
                                         os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
-                                        snprintf(wazuhdb_query, OS_SIZE_6144, "mitre get_attack %s", ext_id->valuestring);
+                                        snprintf(wazuhdb_query, OS_SIZE_6144, "mitre get_tactics %s", ext_id->valuestring);
+                                        result = wdb_send_query(wazuhdb_query, &response);
+                                        if (response) {
+                                            if (response[0] == 'o' && response[1] == 'k' && response[2] == ' ') {
+                                                /* Storing the item 'phase_name' of 'kill_chain_phases' */
+                                                tactics_json = cJSON_Parse(response+3);
 
-                                        result = wdb_send_query(wazuhdb_query, &output);
-                                        input_json = wstr_chr(output, ' ');
-                                        tactics_json = cJSON_Parse(input_json);
-
-                                        /* Storing the item 'phase_name' of 'kill_chain_phases' */
-                                        arrayphases = cJSON_CreateArray();
-                                        kill_chain_phases = cJSON_GetObjectItem(tactics_json, "kill_chain_phases");
-                                        cJSON_ArrayForEach(kill_chain_phase, kill_chain_phases) {
-                                            cJSON_ArrayForEach(chain_phase, kill_chain_phase) {
-                                                if(strcmp(chain_phase->string,"phase_name") == 0) {
-                                                    cJSON_AddItemToArray(arrayphases, cJSON_Duplicate(chain_phase,1));
-                                                }
+                                                /* Creating and filling the Mitre Hash table */
+                                                if(hashcheck = OSHash_Add(mitre_table, ext_id->valuestring, cJSON_Duplicate(tactics_json,1)), hashcheck == 0) {
+                                                    mdebug1("Mitre Hash table adding failed. JSON file cannot be stored. File %s", path_file);
+                                                    merror("Mitre matrix information could not be loaded.");
+                                                    cJSON_Delete(tactics_json);
+                                                    cJSON_Delete(root);
+                                                    os_free(wazuhdb_query);
+                                                    os_free(response);
+                                                    result = -1;
+                                                    goto end;
+                                                }    
+                                                cJSON_Delete(tactics_json);
                                             }
                                         }
-
-                                        /* Creating and filling the Mitre Hash table */
-                                        if(hashcheck = OSHash_Add(mitre_table, ext_id->valuestring, arrayphases), hashcheck == 0) {
-                                            mdebug1("Mitre Hash table adding failed. JSON file cannot be stored. File %s", path_file);
-                                            merror("Mitre matrix information could not be loaded.");
-                                            cJSON_Delete(root);
-                                            cJSON_Delete(tactics_json);
-                                            result = -1;
-                                            goto end;
-                                        }
+                                        os_free(wazuhdb_query);
+                                        os_free(response);
                                     }
                                 }
                             }
@@ -137,13 +129,10 @@ int mitre_load(){
         }
     }
     cJSON_Delete(root);
-    cJSON_Delete(tactics_json);
 
 end:
     fclose(fp);
     os_free(buffer);
-    os_free(wazuhdb_query);
-    os_free(output);
     return result;
 }
 

@@ -95,6 +95,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_MITRE_ATTACK_GET] = "SELECT json FROM attack WHERE id = ?;",
     [WDB_STMT_MITRE_PHASE_GET] = "SELECT json FROM attack JOIN has_phase ON id = attack_id WHERE phase_name = ? LIMIT ? OFFSET ?;",
     [WDB_STMT_MITRE_PLATFORM_GET] = "SELECT json FROM attack JOIN has_platform ON id = attack_id WHERE platform_name = ? LIMIT ? OFFSET ?;",
+    [WDB_STMT_MITRE_TACTICS_GET] = "SELECT phase_name FROM has_phase WHERE attack_id = ?;"
 };
 
 sqlite3 *wdb_global = NULL;
