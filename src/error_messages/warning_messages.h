@@ -8,8 +8,8 @@
  * Foundation.
  */
 
- #ifndef _WARN_MESSAGES__H
- #define _WARN_MESSAGES__H
+#ifndef WARN_MESSAGES_H
+#define WARN_MESSAGES_H
 
 /* File integrity monitoring warning messages*/
 #define FIM_WARN_ACCESS                         "(6900): Accessing to '%s': [(%d) - (%s)]"
@@ -40,4 +40,4 @@
 #define FIM_INV_REG                             "(1757): Invalid syscheck registry entry: '%s' arch: '%s'."
 #define FIM_REG_OPEN                            "(1758): Unable to open registry key: '%s' arch: '%s'."
 
-#endif
+#endif /* WARN_MESSAGES_H */

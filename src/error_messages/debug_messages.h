@@ -8,8 +8,8 @@
  * Foundation.
  */
 
- #ifndef _DEBUG_MESSAGES__H
- #define _DEBUG_MESSAGES__H
+#ifndef DEBUG_MESSAGES_H
+#define DEBUG_MESSAGES_H
 
 /* vulnerability-detector messages*/
 #define VU_DOWNLOAD           "(5450): Downloading %s database..."
@@ -195,5 +195,6 @@
 #define FIM_DBSYNC_DROP_MESSAGE             "(6316): Dropping message with id (%ld) greater than global id (%ld)."
 #define FIM_DBSYNC_SEND                     "(6317): Sending integrity control message: %s"
 
+#define FIM_MONITORING_FILES_COUNT          "(6318): Number of indexed files %s scanning: %u."
 
-#endif
+#endif /* DEBUG_MESSAGES_H */

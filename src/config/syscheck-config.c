@@ -856,6 +856,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_scan_on_start = "scan_on_start";
     const char *xml_prefilter_cmd = "prefilter_cmd";
     const char *xml_skip_nfs = "skip_nfs";
+    const char *xml_skip_dev = "skip_dev";
+    const char *xml_skip_sys = "skip_sys";
+    const char *xml_skip_proc = "skip_proc";
     const char *xml_nodiff = "nodiff";
     const char *xml_restart_audit = "restart_audit";
     const char *xml_windows_audit_interval = "windows_audit_interval";
@@ -1062,9 +1065,51 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         else if (strcmp(node[i]->element,xml_skip_nfs) == 0)
         {
             if(strcmp(node[i]->content, "yes") == 0)
-                syscheck->skip_nfs = 1;
+                syscheck->skip_fs.nfs = 1;
             else if(strcmp(node[i]->content, "no") == 0)
-                syscheck->skip_nfs = 0;
+                syscheck->skip_fs.nfs = 0;
+            else
+            {
+                merror(XML_VALUEERR,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+        }
+
+        /* Getting if skip_dev. */
+        else if (strcmp(node[i]->element,xml_skip_dev) == 0)
+        {
+            if(strcmp(node[i]->content, "yes") == 0)
+                syscheck->skip_fs.dev = 1;
+            else if(strcmp(node[i]->content, "no") == 0)
+                syscheck->skip_fs.dev = 0;
+            else
+            {
+                merror(XML_VALUEERR,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+        }
+
+        /* Getting if skip_sys */
+        else if (strcmp(node[i]->element,xml_skip_sys) == 0)
+        {
+            if(strcmp(node[i]->content, "yes") == 0)
+                syscheck->skip_fs.sys = 1;
+            else if(strcmp(node[i]->content, "no") == 0)
+                syscheck->skip_fs.sys = 0;
+            else
+            {
+                merror(XML_VALUEERR,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+        }
+
+        /* Getting if skip_proc. */
+        else if (strcmp(node[i]->element,xml_skip_proc) == 0)
+        {
+            if(strcmp(node[i]->content, "yes") == 0)
+                syscheck->skip_fs.proc = 1;
+            else if(strcmp(node[i]->content, "no") == 0)
+                syscheck->skip_fs.proc = 0;
             else
             {
                 merror(XML_VALUEERR,node[i]->element,node[i]->content);
@@ -1408,8 +1453,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 syscheck->send_delay = 1000000 / value;
             }
         } else {
-            merror(XML_INVELEM, node[i]->element);
-            return (OS_INVALID);
+            mwarn(XML_INVELEM, node[i]->element);
         }
     }
 

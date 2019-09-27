@@ -26,7 +26,10 @@ int Read_Syscheck_Config(const char *cfgfile)
 
     syscheck.rootcheck      = 0;
     syscheck.disabled       = SK_CONF_UNPARSED;
-    syscheck.skip_nfs       = 1;
+    syscheck.skip_fs.nfs    = 1;
+    syscheck.skip_fs.dev    = 1;
+    syscheck.skip_fs.sys    = 1;
+    syscheck.skip_fs.proc   = 1;
     syscheck.scan_on_start  = 1;
     syscheck.time           = 43200;
     syscheck.ignore         = NULL;
@@ -160,7 +163,10 @@ cJSON *getSyscheckConfig(void) {
 
     if (syscheck.disabled) cJSON_AddStringToObject(syscfg,"disabled","yes"); else cJSON_AddStringToObject(syscfg,"disabled","no");
     cJSON_AddNumberToObject(syscfg,"frequency",syscheck.time);
-    if (syscheck.skip_nfs) cJSON_AddStringToObject(syscfg,"skip_nfs","yes"); else cJSON_AddStringToObject(syscfg,"skip_nfs","no");
+    cJSON_AddStringToObject(syscfg, "skip_nfs", syscheck.skip_fs.nfs ? "yes" : "no");
+    cJSON_AddStringToObject(syscfg, "skip_dev", syscheck.skip_fs.dev ? "yes" : "no");
+    cJSON_AddStringToObject(syscfg, "skip_sys", syscheck.skip_fs.sys ? "yes" : "no");
+    cJSON_AddStringToObject(syscfg, "skip_proc", syscheck.skip_fs.proc ? "yes" : "no");
     if (syscheck.scan_on_start) cJSON_AddStringToObject(syscfg,"scan_on_start","yes"); else cJSON_AddStringToObject(syscfg,"scan_on_start","no");
     if (syscheck.scan_day) cJSON_AddStringToObject(syscfg,"scan_day",syscheck.scan_day);
     if (syscheck.scan_time) cJSON_AddStringToObject(syscfg,"scan_time",syscheck.scan_time);

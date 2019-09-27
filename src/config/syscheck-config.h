@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __SYSCHECKC_H
-#define __SYSCHECKC_H
+#ifndef SYSCHECKC_H
+#define SYSCHECKC_H
 
 typedef enum fim_event_mode {
     FIM_SCHEDULED,
@@ -226,7 +226,7 @@ typedef struct _config {
     int max_depth;                  /* max level of recursivity allowed */
     size_t file_max_size;           /* max file size for calculating hashes */
 
-    short skip_nfs;
+    fs_set skip_fs;
     int rt_delay;                   /* Delay before real-time dispatching (ms) */
 
     int time;                       /* frequency (secs) for syscheck to run */
@@ -307,4 +307,4 @@ char* check_ascci_hex (char *input);
 
 void log_realtime_status(int);
 
-#endif /* __SYSCHECKC_H */
+#endif /* SYSCHECKC_H */

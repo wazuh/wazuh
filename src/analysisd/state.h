@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _STATE_A__H
-#define _STATE_A__H
+#ifndef STATE_A_H
+#define STATE_A_H
 
 extern unsigned int s_events_syscheck_decoded;
 extern unsigned int s_events_syscollector_decoded;
@@ -72,4 +72,4 @@ void w_inc_winevt_decoded_events();
 void w_inc_dbsync_dispatched_messages();
 void w_reset_stats();
 
-#endif /* _STATE_A__H */
+#endif /* STATE_A_H */

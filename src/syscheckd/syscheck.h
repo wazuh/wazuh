@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __SYSCHECK_H
-#define __SYSCHECK_H
+#ifndef SYSCHECK_H
+#define SYSCHECK_H
 
 #include "config/syscheck-config.h"
 #include "syscheck_op.h"
@@ -248,8 +248,6 @@ void symlink_checker_init();
 int w_update_sacl(const char *obj_path);
 #endif
 
-int fim_delete_hashes(char *file_name);
-
 #ifdef WIN32
 #define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })
 #endif
@@ -389,4 +387,4 @@ cJSON * fim_scan_info_json(fim_scan_event event, long timestamp);
  */
 void fim_send_scan_info(fim_scan_event event);
 
-#endif
+#endif /* SYSCHECK_H */

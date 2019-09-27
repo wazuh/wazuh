@@ -160,6 +160,12 @@ int local_start()
     if (ClientConf(cfg) < 0) {
         merror_exit(CLIENT_ERROR);
     }
+
+    if (!Validate_Address(agt->server)){
+        merror(AG_INV_MNGIP, agt->server[0].rip);
+        merror_exit(CLIENT_ERROR);
+    }
+
     if (agt->notify_time == 0) {
         agt->notify_time = NOTIFY_TIME;
     }

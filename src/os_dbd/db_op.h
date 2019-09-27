@@ -10,8 +10,8 @@
 
 /* Common API for dealing with databases */
 
-#ifndef _OS_DBOP_H
-#define _OS_DBOP_H
+#ifndef OS_DBOP_H
+#define OS_DBOP_H
 
 /* Connect to the database */
 extern void *(*osdb_connect)(const char *host, const char *user, const char *pass, const char *db, unsigned int port, const char *sock);
@@ -48,5 +48,4 @@ void osdb_escapestr(char *str);
  */
 extern const unsigned char insert_map[256];
 
-#endif /* _OS_DBOP_H */
-
+#endif /* OS_DBOP_H */

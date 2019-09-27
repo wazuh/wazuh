@@ -5,7 +5,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.exception import WazuhException
-from wazuh.utils import WazuhDBQuery, WazuhDBQueryDistinct
+from wazuh.utils import WazuhDBQuery, WazuhDBQueryDistinct, SQLiteBackend
 from wazuh.agent import Agent
 from wazuh.database import Connection
 from wazuh.ossec_queue import OssecQueue
@@ -16,18 +16,21 @@ from datetime import datetime
 
 fields = {'status': 'status', 'event': 'log', 'oldDay': 'date_first', 'readDay': 'date_last', 'pci':'pci_dss', 'cis': 'cis'}
 
-class WazuhDBQueryRootcheck(WazuhDBQuery):
 
-    def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data, default_sort_field='date_last', filters={}, fields=fields):
+class WazuhDBQueryRootcheck(WazuhDBQuery):
+    def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data,
+                 default_sort_field='date_last', filters={}, fields=fields):
+
         Agent(agent_id).get_basic_information()  # check if the agent exists
         db_path = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
         if not db_path:
             raise WazuhException(1600)
 
+        backend = SQLiteBackend(db_path[0])
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='pm_event', sort=sort, search=search, select=select,
                               fields=fields, default_sort_field=default_sort_field, default_sort_order='DESC', filters=filters,
-                              query=query, db_path=db_path[0], min_select_fields=set(), count=count, get_data=get_data,
-                              date_fields={'oldDay','readDay'})
+                              query=query, backend=backend, min_select_fields=set(), count=count, get_data=get_data,
+                              date_fields={'oldDay', 'readDay'})
 
     def _parse_filters(self):
         WazuhDBQuery._parse_filters(self)
@@ -65,8 +68,8 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
             else:
                 return value
 
-        return {'items': [{key: format_fields(key, value) for key, value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
-                           if value is not None} for db_tuple in self.conn], 'totalItems': self.total_items}
+        return {'items': [{field: format_fields(field, db_tuple[field]) for field in self.select['fields'] | self.min_select_fields
+                           if field in db_tuple and db_tuple[field] is not None} for db_tuple in self._data], 'totalItems': self.total_items}
 
     @staticmethod
     def _pass_filter(db_filter):
