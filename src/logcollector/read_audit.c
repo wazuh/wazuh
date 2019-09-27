@@ -34,6 +34,12 @@ static void audit_send_msg(char **cache, int top, const char *file, int drop_it,
         free(cache[i]);
     }
 
+    // Drop SOCKADDR events
+    if (strstr(message, "type=SOCKADDR"))
+    {
+        drop_it = 1;
+    }    
+    
     if (!drop_it) {
         message[n] = '\0';
         w_msg_hash_queues_push(message, (char *)file, strlen(message) + 1, targets, LOCALFILE_MQ);
