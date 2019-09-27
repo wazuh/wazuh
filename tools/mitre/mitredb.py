@@ -106,8 +106,12 @@ def insert_platform_table(conn, attack_id, platform_name):
         c.execute(platform_sql, args)
         conn.commit()
     except Error as e:
-        print(e)           
- 
+        print(e)
+
+def find(name, path):
+    for root, dirs, files in os.walk(path):
+        if name in files:
+            return os.path.join(root, name)
  
 def main(database=None):
     """
@@ -174,7 +178,8 @@ def main(database=None):
         print("Error! cannot create the database connection.")
     
     # Parse enterprise-attack.json file:
-    with open('../../etc/mitre/enterprise-attack.json') as json_file:
+    pathfile = find('enterprise-attack.json', '/')
+    with open(pathfile) as json_file:
         datajson = json.load(json_file)
         data = json.dumps(datajson)
         data = data.replace('persistence', 'Persistence')
