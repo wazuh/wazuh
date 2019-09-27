@@ -91,7 +91,7 @@ int fim_configuration_directory (char * path);
 int fim_check_depth(char * path, int dir_position);
 
 //
-fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, fim_event_mode mode, int options);
+fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, fim_event_mode mode, int options);
 
 //
 void init_fim_data_entry(fim_entry_data *data);
@@ -100,7 +100,7 @@ void init_fim_data_entry(fim_entry_data *data);
 void fim_get_checksum (fim_entry_data * data);
 
 //
-int fim_insert (char *file_name, fim_entry_data * data);
+int fim_insert (char *file_name, fim_entry_data * data, struct stat *file_stat);
 
 //
 int fim_update (char * file, fim_entry_data * data);

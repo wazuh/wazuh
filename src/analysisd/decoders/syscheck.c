@@ -1457,11 +1457,6 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
         }
     }
 
-
-    // Format comment
-
-    fim_generate_comment(change_size, sizeof(change_size), "Size changed from '%s' to '%s'\n", lf->size_before, lf->size_after);
-
     if (lf->inode_before != lf->inode_after) {
         snprintf(change_inode, sizeof(change_inode), "Old inode was: '%ld', now it is '%ld'\n", lf->inode_before, lf->inode_after);
     }
@@ -1470,15 +1465,19 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
         snprintf(change_mtime, sizeof(change_mtime), "Old modification time was: '%ld', now it is '%ld'\n", lf->mtime_before, lf->mtime_after);
     }
 
-    fim_generate_comment(change_perm, sizeof(change_perm), "Permissions changed from '%s' to '%s'\n", lf->perm_before, lf->perm_after);
-    fim_generate_comment(change_owner, sizeof(change_owner), "Ownership was '%s', now it is '%s'\n", lf->owner_before, lf->owner_after);
-    fim_generate_comment(change_user, sizeof(change_owner), "User name was '%s', now it is '%s'\n", lf->uname_before, lf->uname_after);
-    fim_generate_comment(change_gowner, sizeof(change_gowner), "Group ownership was '%s', now it is '%s'\n", lf->gowner_before, lf->gowner_after);
-    fim_generate_comment(change_group, sizeof(change_gowner), "Group name was '%s', now it is '%s'\n", lf->gname_before, lf->gname_after);
-    fim_generate_comment(change_md5, sizeof(change_md5), "Old md5sum was: '%s'\nNew md5sum is : '%s'\n", lf->md5_before, lf->md5_after);
-    fim_generate_comment(change_sha1, sizeof(change_sha1), "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n", lf->sha1_before, lf->sha1_after);
-    fim_generate_comment(change_sha256, sizeof(change_sha256), "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n", lf->sha256_before, lf->sha256_after);
-    fim_generate_comment(change_win_attributes, sizeof(change_win_attributes), "Old attributes were: '%s'\nNow they are '%s'\n", lf->win_perm_before, lf->win_perm_after);
+    // Format comment
+    if (lf->event_type == FIM_MODIFIED) {
+        fim_generate_comment(change_size, sizeof(change_size), "Size changed from '%s' to '%s'\n", lf->size_before, lf->size_after);
+        fim_generate_comment(change_perm, sizeof(change_perm), "Permissions changed from '%s' to '%s'\n", lf->perm_before, lf->perm_after);
+        fim_generate_comment(change_owner, sizeof(change_owner), "Ownership was '%s', now it is '%s'\n", lf->owner_before, lf->owner_after);
+        fim_generate_comment(change_user, sizeof(change_owner), "User name was '%s', now it is '%s'\n", lf->uname_before, lf->uname_after);
+        fim_generate_comment(change_gowner, sizeof(change_gowner), "Group ownership was '%s', now it is '%s'\n", lf->gowner_before, lf->gowner_after);
+        fim_generate_comment(change_group, sizeof(change_gowner), "Group name was '%s', now it is '%s'\n", lf->gname_before, lf->gname_after);
+        fim_generate_comment(change_md5, sizeof(change_md5), "Old md5sum was: '%s'\nNew md5sum is : '%s'\n", lf->md5_before, lf->md5_after);
+        fim_generate_comment(change_sha1, sizeof(change_sha1), "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n", lf->sha1_before, lf->sha1_after);
+        fim_generate_comment(change_sha256, sizeof(change_sha256), "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n", lf->sha256_before, lf->sha256_after);
+        fim_generate_comment(change_win_attributes, sizeof(change_win_attributes), "Old attributes were: '%s'\nNow they are '%s'\n", lf->win_perm_before, lf->win_perm_after);
+    }
 
     // Provide information about the file
     char str_time[DATE_LENGTH];
