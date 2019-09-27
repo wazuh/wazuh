@@ -771,7 +771,7 @@ int _unsign(const char * source, char dest[PATH_MAX + 1]) {
         }
     } else {
 #else
-    if (!_mktemp(dest)) {
+    if (_mktemp_s(dest, strlen(dest) + 1)) {
 #endif
         merror("At unsign(): Couldn't create temporary compressed file");
         output = -1;

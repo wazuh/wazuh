@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __SHA1_OP_H
-#define __SHA1_OP_H
+#ifndef SHA1_OP_H
+#define SHA1_OP_H
 
 #include <sys/types.h>
 
@@ -27,4 +27,4 @@ int OS_SHA1_Str2(const char *str, ssize_t length, os_sha1 output) __attribute((n
  */
 void OS_SHA1_Hexdigest(const unsigned char * digest, os_sha1 output);
 
-#endif
+#endif /* SHA1_OP_H */

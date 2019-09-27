@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-#ifndef __SHA512_OP_H
-#define __SHA512_OP_H
+#ifndef SHA512_OP_H
+#define SHA512_OP_H
 
 #include <sys/types.h>
 #include <openssl/sha.h>
@@ -22,4 +22,4 @@ int OS_SHA512_File(const char *fname, os_sha512 output, int mode) __attribute((n
 int OS_SHA512_String(const char *str, os_sha512 output);
 void OS_SHA512_Hex(const unsigned char md[SHA512_DIGEST_LENGTH], os_sha512 output);
 
-#endif
+#endif /* SHA512_OP_H */

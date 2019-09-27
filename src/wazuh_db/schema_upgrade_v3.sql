@@ -1,6 +1,9 @@
 /*
  * SQL Schema for upgrading databases
  * Copyright (C) 2015-2019, Wazuh Inc.
+ *
+ * July, 2019.
+ *
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
 */
@@ -35,6 +38,8 @@ CREATE TABLE IF NOT EXISTS sync_info (
     n_attempts INTEGER DEFAULT 0,
     n_completions INTEGER DEFAULT 0
 );
+
+ALTER TABLE sca_check ADD COLUMN condition TEXT;
 
 INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 3);
 INSERT INTO sync_info (component) VALUES ('fim');

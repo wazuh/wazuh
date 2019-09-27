@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _ERROR_MESSAGES__H
-#define _ERROR_MESSAGES__H
+#ifndef ERROR_MESSAGES_H
+#define ERROR_MESSAGES_H
 
 /***  Error messages - English ***/
 
@@ -252,6 +252,7 @@
 #define AG_NOKEYS_EXIT  "(4109): Unable to start without auth keys. Exiting."
 #define AG_MAX_ERROR    "(4110): Maximum number of agents '%d' reached."
 #define AG_AX_AGENTS    "(4111): Maximum number of agents allowed: '%d'."
+#define AG_INV_MNGIP    "(4112): Invalid server address found: '%s'"
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."
@@ -494,4 +495,4 @@
 #define GMF_BUFF_ERROR  "Could not get path because it is too long and was shrunk by (%d) characters with a max of (%d)."
 #define GMF_UNKN_ERROR  "Could not run GetModuleFileName which returned (%ld)."
 
-#endif /* _ERROR_MESSAGES__H */
+#endif /* ERROR_MESSAGES_H */

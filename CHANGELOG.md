@@ -1,6 +1,20 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.10.2]
+
+### Fixed
+
+- Fix error in Logcollector when reloading localfiles with timestamp wildcards. ([#3995](https://github.com/wazuh/wazuh/pull/3995))
+
+## [v3.10.1]
+
+### Fixed
+
+- Fix error after removing a high volume of agents from a group using the Wazuh API. ([#3907](https://github.com/wazuh/wazuh/issues/3907))
+- Fix error in Remoted when reloading agent keys (busy resource). ([#3988](https://github.com/wazuh/wazuh/issues/3988))
+- Fix invalid read in Remoted counters. ([#3989](https://github.com/wazuh/wazuh/issues/3989))
+
 ## [v3.10.0]
 
 ### Added
@@ -53,6 +67,8 @@ All notable changes to this project will be documented in this file.
 - Fix error message from openssl v1.1.1. ([#3413](https://github.com/wazuh/wazuh/pull/3413))
 - Fix compilation issue for local installation. ([#3339](https://github.com/wazuh/wazuh/pull/3339))
 - Fix exception handling when /tmp have no permissions and tell the user the problem. ([#3401](https://github.com/wazuh/wazuh/pull/3401))
+- Fix who-data alerts when audit logs contain hex fields. ([#3909](https://github.com/wazuh/wazuh/pull/3909))
+- Remove useless `select()` calls in Analysisd decoders. ([#3964](https://github.com/wazuh/wazuh/pull/3964))
 
 ## [v3.9.5] - 2019-08-08
 

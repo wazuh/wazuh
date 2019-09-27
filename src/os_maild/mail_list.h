@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _MAILLIST__H
-#define _MAILLIST__H
+#ifndef MAILLIST_H
+#define MAILLIST_H
 
 /* Events List structure */
 typedef struct _MailNode {
@@ -38,5 +38,4 @@ void FreeMail(MailNode *ml);
 /* Free email msg */
 void FreeMailMsg(MailMsg *ml);
 
-#endif /* _MAILLIST__H */
-
+#endif /* MAILLIST_H */

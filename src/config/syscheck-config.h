@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __SYSCHECKC_H
-#define __SYSCHECKC_H
+#ifndef SYSCHECKC_H
+#define SYSCHECKC_H
 
 typedef enum fim_event_mode {
     FIM_SCHEDULED,
@@ -306,4 +306,4 @@ char* check_ascci_hex (char *input);
 
 void log_realtime_status(int);
 
-#endif /* __SYSCHECKC_H */
+#endif /* SYSCHECKC_H */

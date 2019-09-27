@@ -107,7 +107,7 @@ int main(int argc, char **argv)
                 related_values = argv[optind];
 
                 if (os_report_configfilter(related_of, related_values,
-                                           &r_filter, REPORT_RELATED) < 0) {
+                                           &r_filter, REPORT_RELATED)) {
                     merror_exit(CONFIG_ERROR, "user argument");
                 }
                 optind++;
@@ -120,7 +120,7 @@ int main(int argc, char **argv)
                 filter_value = argv[optind];
 
                 if (os_report_configfilter(filter_by, filter_value,
-                                           &r_filter, REPORT_FILTER) < 0) {
+                                           &r_filter, REPORT_FILTER)) {
                     merror_exit(CONFIG_ERROR, "user argument");
                 }
                 optind++;

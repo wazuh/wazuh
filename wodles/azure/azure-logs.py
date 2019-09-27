@@ -391,7 +391,10 @@ def start_graph():
 				date_time = all_dates["graph"][graph_md5]
 
 			logging.info("Graph: The search starts from the date: {} for query: '{}' ".format(date_time, graph_format_query))
-			graph_url = "{}/{}/{}&$filter=activityDate%20gt%20{}".format(graph_url_base, args.graph_tenant_domain, graph_format_query, date_time)
+			if 'signinEventsV2' in graph_format_query:
+				graph_url = "{}/{}/{}&$filter=createdDateTime+ge+{}".format(graph_url_base, args.graph_tenant_domain, graph_format_query, date_time)
+			else:
+				graph_url = "{}/{}/{}&$filter=activityDate+ge+{}".format(graph_url_base, args.graph_tenant_domain, graph_format_query, date_time)
 			graph_pagination(graph_url, "Graph", graph_headers, graph_md5, all_dates, True)
 		except Exception as e:
 			logging.error("Error: The request for the query could not be made: '{}'.".format(e))

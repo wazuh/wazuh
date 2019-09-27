@@ -10,8 +10,8 @@
 
 #include "shared.h"
 
-#ifndef _CINTEGRATORCONFIG__H
-#define _CINTEGRATORCONFIG__H
+#ifndef CINTEGRATORCONFIG_H
+#define CINTEGRATORCONFIG_H
 
 #ifndef ARGV0
 #define ARGV0 "ossec-integrator"
@@ -34,4 +34,4 @@ typedef struct _IntegratorConfig
     OSMatch *location;
 }IntegratorConfig;
 
-#endif
+#endif /* CINTEGRATORCONFIG_H */

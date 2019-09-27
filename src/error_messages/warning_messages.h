@@ -8,8 +8,8 @@
  * Foundation.
  */
 
- #ifndef _WARN_MESSAGES__H
- #define _WARN_MESSAGES__H
+#ifndef WARN_MESSAGES_H
+#define WARN_MESSAGES_H
 
 /* File integrity monitoring warning messages*/
 #define FIM_WARN_ACCESS                         "(6900): Accessing to '%s': [(%d) - (%s)]"
@@ -35,6 +35,4 @@
 #define FIM_WARN_WHODATA_LOCALPOLICIES          "(6916): Local audit policies could not be configured."
 #define FIM_WARN_WHODATA_EVENT_OVERFLOW         "(6917): Real-time Whodata events queue for Windows has more than %d elements."
 
-#define FIM_WARN_NFS_INOTIFY                    "(6918): '%s' NFS Directories do not support iNotify."
-
-#endif
+#endif /* WARN_MESSAGES_H */

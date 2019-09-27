@@ -242,7 +242,7 @@ checks:
       - cis: ["2.11"]
     condition: none
     rules:
-      - 'c:java -version -> r:1.6.0'
+      - 'c:/usr/libexec/java_home -> r:1.6.0'
 
 # 3.1 Enable security auditing (Scored)
   - id: 8017

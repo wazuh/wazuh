@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-#ifndef __PLUGINDECODER_H
-#define __PLUGINDECODER_H
+#ifndef PLUGINDECODER_H
+#define PLUGINDECODER_H
 
 #include "eventinfo.h"
 
@@ -39,4 +39,4 @@ extern const char *(plugin_decoders[]);
 extern void *(plugin_decoders_init[]);
 extern void *(plugin_decoders_exec[]);
 
-#endif /* __PLUGINDECODER_H */
+#endif /* PLUGINDECODER_H */

@@ -99,6 +99,8 @@ char *w_strtok_r_str_delim(const char *delim, char **remaining_str);
 int w_compare_str(char * source, char * str);
 const char * find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len);
 
+char *decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const size_t buffer_size);
+
 /**
  * @brief Parse boolean string
  *

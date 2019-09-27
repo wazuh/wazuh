@@ -16,9 +16,8 @@
 
 /* Common API for dealing with file system information */
 
-
-#ifndef _OS_FS
-#define _OS_FS
+#ifndef OS_FS
+#define OS_FS
 
 #ifndef WIN32
 
@@ -53,6 +52,6 @@ short skipFS(const char *file)  __attribute__((nonnull));
 
 bool HasFilesystem(const char * path, fs_set set);
 
-#endif
+#endif /* OS_FS */
 
 /* EOF */
