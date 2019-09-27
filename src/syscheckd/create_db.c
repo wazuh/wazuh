@@ -647,7 +647,7 @@ void fim_get_checksum (fim_entry_data * data) {
 
 
 // Inserts a file in the syscheck hash table structure (inodes and paths)
-int fim_insert (char * file, fim_entry_data * data, struct stat *file_stat) {
+int fim_insert (char * file, fim_entry_data * data, __attribute__((unused))struct stat *file_stat) {
     char * inode_key = NULL;
 
     minfo("fim_insert:%p(%s) '%s'", data, file, data->hash_sha256);
