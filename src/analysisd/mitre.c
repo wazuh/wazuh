@@ -14,125 +14,99 @@ static OSHash *mitre_table;
 int mitre_load(){
     int result = 0;
     int hashcheck;
-    size_t read;
-    long size;
-    char * buffer = NULL;
-    char path_file[PATH_MAX + 1];
+    int i;
+    int j;
+    int size_ids;
+    int size_tactics;
+    char path_db[PATH_MAX + 1]= "/var/db/mitre.db" ;
     char *wazuhdb_query = NULL;
     char *response = NULL;
-    FILE *fp;
+    char *ext_id = NULL;
     cJSON *root;
+    cJSON *ids;
+    cJSON *id;
+    cJSON *tactics_array;
     cJSON *tactics_json;
-    cJSON *type = NULL;
-    cJSON *source_name = NULL;
-    cJSON *ext_id = NULL;
-    cJSON *object = NULL;
-    cJSON *objects = NULL;
-    cJSON *reference = NULL;
-    cJSON *references = NULL;
+    cJSON *tactics;
+    cJSON *tactic;
+
 
     /* Create hash table */
     mitre_table = OSHash_Create();
-
-    /* Load Json File */
-    /* Reading enterprise-attack json file */
-    snprintf(path_file, sizeof(path_file), "ruleset/mitre/enterprise-attack.json");
-    if(fp = fopen(path_file, "r"), !fp) {
-        mdebug1("Mitre file info loading failed. File %s parsing error.", path_file);
-        merror("Mitre matrix information could not be loaded.");
-        result = -1;
-        goto end;
-    }
-
-    /* Size of the json file */
-    if (size = get_fp_size(fp), size < 0) {
-        mdebug1("Mitre file info loading failed. It was not possible to get file size. File %s", path_file);
-        merror("Mitre matrix information could not be loaded.");
-        result = -1;
-        goto end;
-    }
-
-    /* Check file size limit */
-    if (size > JSON_MAX_FSIZE) {
-        mdebug1("Mitre file info loading failed. It exceeds size. File %s", path_file);
-        merror("Mitre matrix information could not be loaded.");
-        result = -1;
-        goto end;
-    }
-
-    /* Allocate memory */
-    os_malloc(size+1,buffer);
     
-    /* Read file and store it in string */
-    if (read = fread(buffer, 1, size, fp), read != (size_t)size && !feof(fp)) {
-        mdebug1("Mitre file info loading failed. JSON file cannot be readed. File %s", path_file);
+    /* Get Mitre IDs from Mitre's database */
+    os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
+    snprintf(wazuhdb_query, OS_SIZE_6144, "mitre get_ids");
+    result = wdb_send_query(wazuhdb_query, &response);
+    if (!response) {
+        mdebug1("Mitre info loading failed. Mitre's database query failed. Database: %s", path_db);
         merror("Mitre matrix information could not be loaded.");
         result = -1;
         goto end;
     }
-    
-    /* Adding \0 */
-    buffer[size] = '\0';
 
-    /* First, parse the whole thing */
-    if(root = cJSON_Parse(buffer), !root) {
-        mdebug1("Mitre file info loading failed. JSON file cannot be parsered. File %s", path_file);
+    if (response[0] != 'o' || response[1] != 'k' || response[2] != ' ') {
+        mdebug1("Mitre info loading failed. Mitre's database gave error response. Response: %s", response);
         merror("Mitre matrix information could not be loaded.");
+        os_free(response);
+        result = -1;
+        goto end;
+    }
+
+    /* Parse IDs string */
+    if(root = cJSON_Parse(response+3), !root) {
+        mdebug1("Mitre info loading failed. Mitre's database response cannot be parsered. Response: %s", response);
+        merror("Mitre matrix information could not be loaded.");
+        os_free(response);
         cJSON_Delete(root);
         result = -1;
         goto end;
-    } else {
-        if(objects = cJSON_GetObjectItem(root, "objects"), objects) {
-            cJSON_ArrayForEach(object, objects){
-                if(type = cJSON_GetObjectItem(object, "type"), type) {
-                    if(strcmp(type->valuestring,"attack-pattern") == 0){
-                        if(references = cJSON_GetObjectItem(object, "external_references"), references) {
-                            cJSON_ArrayForEach(reference, references){
-                                if(source_name = cJSON_GetObjectItem(reference, "source_name"), source_name) {
-                                    if(strcmp(source_name->valuestring, "mitre-attack") == 0){
-                                        /* All the conditions have been met */
-                                        /* Storing the item 'external_id' */
-                                        ext_id = cJSON_GetObjectItem(reference, "external_id");
+    }
+    /* Response parameter has to be freed before continuing*/
+    os_free(response);
 
-                                        /* Storing the item 'phase_name' of 'kill_chain_phases' */
-                                        os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
-                                        snprintf(wazuhdb_query, OS_SIZE_6144, "mitre get_tactics %s", ext_id->valuestring);
-                                        result = wdb_send_query(wazuhdb_query, &response);
-                                        if (response) {
-                                            if (response[0] == 'o' && response[1] == 'k' && response[2] == ' ') {
-                                                /* Storing the item 'phase_name' of 'kill_chain_phases' */
-                                                tactics_json = cJSON_Parse(response+3);
+    /* Getting array size */
+    size_ids = cJSON_GetArraySize(root);
+    
+    for (i=0; i<size_ids; i++){
+        /* Getting Mitre attack ID  */
+        ids = cJSON_GetArrayItem(root, i);
+        id = cJSON_GetObjectItem(ids,"id");
+        ext_id = id->valuestring;
 
-                                                /* Creating and filling the Mitre Hash table */
-                                                if(hashcheck = OSHash_Add(mitre_table, ext_id->valuestring, cJSON_Duplicate(tactics_json,1)), hashcheck == 0) {
-                                                    mdebug1("Mitre Hash table adding failed. JSON file cannot be stored. File %s", path_file);
-                                                    merror("Mitre matrix information could not be loaded.");
-                                                    cJSON_Delete(tactics_json);
-                                                    cJSON_Delete(root);
-                                                    os_free(wazuhdb_query);
-                                                    os_free(response);
-                                                    result = -1;
-                                                    goto end;
-                                                }    
-                                                cJSON_Delete(tactics_json);
-                                            }
-                                        }
-                                        os_free(wazuhdb_query);
-                                        os_free(response);
-                                    }
-                                }
-                            }
-                        }
-                    }
+        /* Consulting mitredatabase to get Tactics */
+        snprintf(wazuhdb_query, OS_SIZE_6144, "mitre get_tactics %s", ext_id);
+        result = wdb_send_query(wazuhdb_query, &response);
+
+        if (response) {
+            if (response[0] == 'o' && response[1] == 'k' && response[2] == ' ') {
+                /* Getting tactics and filling the Mitre Hash table */
+                tactics_array = cJSON_CreateArray();
+                tactics_json = cJSON_Parse(response+3);
+                size_tactics = cJSON_GetArraySize(tactics_json);
+                for(j=0; j<size_tactics; j++) {
+                    tactics = cJSON_GetArrayItem(tactics_json, j);
+                    tactic = cJSON_GetObjectItem(tactics,"phase_name");
+                    cJSON_AddItemToArray(tactics_array, cJSON_Duplicate(tactic,1));
                 }
+                if(hashcheck = OSHash_Add(mitre_table, ext_id, tactics_array), hashcheck == 0) {
+                    mdebug1("Mitre Hash table adding failed. Mitre information cannot be stored. Response: %s", response);
+                    merror("Mitre matrix information could not be loaded.");
+                    cJSON_Delete(tactics_json);
+                    cJSON_Delete(root);
+                    os_free(response);
+                    result = -1;
+                    goto end;
+                }    
+                cJSON_Delete(tactics_json);
             }
+            os_free(response);    
         }
     }
     cJSON_Delete(root);
 
 end:
-    fclose(fp);
-    os_free(buffer);
+    os_free(wazuhdb_query);
     return result;
 }
 
