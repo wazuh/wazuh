@@ -1451,94 +1451,113 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
         proc_pidinfo(pid, PROC_PIDLISTFDS, 0, procFDInfo, bufferSize);
         int numberOfProcFDs = bufferSize / PROC_PIDLISTFD_SIZE;
 
+        cJSON* procPorts = cJSON_CreateArray();
         int i;
         for(i = 0; i < numberOfProcFDs; i++) {
-            if(procFDInfo[i].proc_fdtype == PROX_FDTYPE_SOCKET) {
-                struct  proc_bsdinfo pbsd;
-                proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &pbsd, PROC_PIDTBSDINFO_SIZE);
-                struct socket_fdinfo socketInfo;
-                int bytesUsed = proc_pidfdinfo(pid, procFDInfo[i].proc_fd, PROC_PIDFDSOCKETINFO, &socketInfo, PROC_PIDFDSOCKETINFO_SIZE);
-
-                if (bytesUsed != PROC_PIDFDSOCKETINFO_SIZE) {
-                    continue;
-                }
-
-                if (socketInfo.psi.soi_kind != SOCKINFO_TCP && socketInfo.psi.soi_kind != SOCKINFO_IN) {
-                    continue;
-                }
-
-                char laddr[NI_MAXHOST];
-                char faddr[NI_MAXHOST];
-
-                switch(socketInfo.psi.soi_family) {
-                    case AF_INET6: {
-                        struct sockaddr_in6 lsin6 = {0};
-                        lsin6.sin6_family = AF_INET6;
-                        lsin6.sin6_addr  = (struct in6_addr)socketInfo.psi.soi_proto.pri_in.insi_laddr.ina_6;
-                        getnameinfo((struct sockaddr *)&lsin6, sizeof(lsin6), laddr, sizeof(laddr), NULL, 0, NI_NUMERICHOST);
-                        lsin6.sin6_addr  = (struct in6_addr)socketInfo.psi.soi_proto.pri_in.insi_faddr.ina_6;
-                        getnameinfo((struct sockaddr *)&lsin6, sizeof(lsin6), faddr, sizeof(faddr), NULL, 0, NI_NUMERICHOST);
-                        break;
-                    }
-                    case AF_INET: {
-                        struct sockaddr_in lsin = {0};
-                        lsin.sin_family = AF_INET;
-                        lsin.sin_addr = (struct in_addr)socketInfo.psi.soi_proto.pri_in.insi_laddr.ina_46.i46a_addr4;
-                        getnameinfo((struct sockaddr *)&lsin, sizeof(lsin), laddr, sizeof(laddr), NULL, 0, NI_NUMERICHOST);
-                        lsin.sin_addr = (struct in_addr)socketInfo.psi.soi_proto.pri_in.insi_faddr.ina_46.i46a_addr4;
-                        getnameinfo((struct sockaddr *)&lsin, sizeof(lsin), faddr, sizeof(faddr), NULL, 0, NI_NUMERICHOST);
-                        break;
-                    }
-                    default:
-                        continue;
-                }
-
-                char protocol[5];
-                snprintf(protocol, 5, "%s%c",
-                    socketInfo.psi.soi_kind == SOCKINFO_TCP ? "tcp" : "udp",
-                    socketInfo.psi.soi_family == AF_INET6 ? '6' : '\0');
-
-
-                int localPort = (int)ntohs(socketInfo.psi.soi_proto.pri_in.insi_lport);
-                int remotePort = (int)ntohs(socketInfo.psi.soi_proto.pri_in.insi_fport);
-
-                cJSON *object = cJSON_CreateObject();
-                cJSON_AddStringToObject(object, "type", "port");
-                cJSON_AddNumberToObject(object, "ID", random_id);
-                cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-                cJSON *port = cJSON_CreateObject();
-                cJSON_AddItemToObject(object, "port", port);
-                cJSON_AddStringToObject(port, "protocol", protocol);
-                cJSON_AddStringToObject(port, "local_ip", laddr);
-                cJSON_AddNumberToObject(port, "local_port", localPort);
-                cJSON_AddStringToObject(port, "remote_ip", faddr);
-                cJSON_AddNumberToObject(port, "remote_port", remotePort);
-
-                int listening = 0;
-                if (!strncmp(protocol, "tcp", 3)) {
-                    char *port_state = get_port_state((int)socketInfo.psi.soi_proto.pri_tcp.tcpsi_state);
-                    cJSON_AddStringToObject(port, "state", port_state);
-                    if (!strcmp(port_state, "listening")) {
-                        listening = 1;
-                    }
-                    os_free(port_state);
-                }
-
-                cJSON_AddNumberToObject(port, "PID", pid);
-                cJSON_AddStringToObject(port, "process", pbsd.pbi_name);
-
-                if (check_all || listening) {
-                    char *string = cJSON_PrintUnformatted(object);
-                    mtdebug2(WM_SYS_LOGTAG, "sys_ports_mac() sending '%s'", string);
-                    wm_sendmsg(usec, queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
-                    os_free(string);
-                }
-
-                cJSON_Delete(object);
-
+            if(procFDInfo[i].proc_fdtype != PROX_FDTYPE_SOCKET) {
+                continue;
             }
+
+            struct  proc_bsdinfo pbsd;
+            proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &pbsd, PROC_PIDTBSDINFO_SIZE);
+            struct socket_fdinfo socketInfo;
+            int bytesUsed = proc_pidfdinfo(pid, procFDInfo[i].proc_fd, PROC_PIDFDSOCKETINFO, &socketInfo, PROC_PIDFDSOCKETINFO_SIZE);
+
+            if (bytesUsed != PROC_PIDFDSOCKETINFO_SIZE) {
+                continue;
+            }
+
+            if (socketInfo.psi.soi_kind != SOCKINFO_TCP && socketInfo.psi.soi_kind != SOCKINFO_IN) {
+                continue;
+            }
+
+            char laddr[NI_MAXHOST];
+            char faddr[NI_MAXHOST];
+
+            switch(socketInfo.psi.soi_family) {
+                case AF_INET6: {
+                    struct sockaddr_in6 lsin6 = {0};
+                    lsin6.sin6_family = AF_INET6;
+                    lsin6.sin6_addr  = (struct in6_addr)socketInfo.psi.soi_proto.pri_in.insi_laddr.ina_6;
+                    getnameinfo((struct sockaddr *)&lsin6, sizeof(lsin6), laddr, sizeof(laddr), NULL, 0, NI_NUMERICHOST);
+                    lsin6.sin6_addr  = (struct in6_addr)socketInfo.psi.soi_proto.pri_in.insi_faddr.ina_6;
+                    getnameinfo((struct sockaddr *)&lsin6, sizeof(lsin6), faddr, sizeof(faddr), NULL, 0, NI_NUMERICHOST);
+                    break;
+                }
+                case AF_INET: {
+                    struct sockaddr_in lsin = {0};
+                    lsin.sin_family = AF_INET;
+                    lsin.sin_addr = (struct in_addr)socketInfo.psi.soi_proto.pri_in.insi_laddr.ina_46.i46a_addr4;
+                    getnameinfo((struct sockaddr *)&lsin, sizeof(lsin), laddr, sizeof(laddr), NULL, 0, NI_NUMERICHOST);
+                    lsin.sin_addr = (struct in_addr)socketInfo.psi.soi_proto.pri_in.insi_faddr.ina_46.i46a_addr4;
+                    getnameinfo((struct sockaddr *)&lsin, sizeof(lsin), faddr, sizeof(faddr), NULL, 0, NI_NUMERICHOST);
+                    break;
+                }
+                default:
+                    continue;
+            }
+
+            char protocol[5];
+            snprintf(protocol, 5, "%s%c",
+                socketInfo.psi.soi_kind == SOCKINFO_TCP ? "tcp" : "udp",
+                socketInfo.psi.soi_family == AF_INET6 ? '6' : '\0');
+
+
+            int localPort = (int)ntohs(socketInfo.psi.soi_proto.pri_in.insi_lport);
+            int remotePort = (int)ntohs(socketInfo.psi.soi_proto.pri_in.insi_fport);
+
+            cJSON *object = cJSON_CreateObject();
+            cJSON_AddStringToObject(object, "type", "port");
+            cJSON_AddNumberToObject(object, "ID", random_id);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
+
+            cJSON *port = cJSON_CreateObject();
+            cJSON_AddItemToObject(object, "port", port);
+            cJSON_AddStringToObject(port, "protocol", protocol);
+            cJSON_AddStringToObject(port, "local_ip", laddr);
+            cJSON_AddNumberToObject(port, "local_port", localPort);
+            cJSON_AddStringToObject(port, "remote_ip", faddr);
+            cJSON_AddNumberToObject(port, "remote_port", remotePort);
+            cJSON_AddNumberToObject(port, "PID", pid);
+            cJSON_AddStringToObject(port, "process", pbsd.pbi_name);
+
+            int listening = 0;
+            if (!strncmp(protocol, "tcp", 3)) {
+                char *port_state = get_port_state((int)socketInfo.psi.soi_proto.pri_tcp.tcpsi_state);
+                cJSON_AddStringToObject(port, "state", port_state);
+                if (!strcmp(port_state, "listening")) {
+                    listening = 1;
+                }
+                os_free(port_state);
+            }
+
+            cJSON *prev_port = NULL;
+            int found = 0;
+            cJSON_ArrayForEach(prev_port, procPorts) {
+                if(cJSON_Compare(port, prev_port, 1)) {
+                    found = 1;
+                    break;
+                }
+            }
+
+            if (found) {
+                cJSON_Delete(object);
+                continue;
+            }
+
+            cJSON_AddItemToArray(procPorts, cJSON_Duplicate(port, 1));
+
+            if (check_all || listening) {
+                char *string = cJSON_PrintUnformatted(object);
+                mtdebug2(WM_SYS_LOGTAG, "sys_ports_mac() sending '%s'", string);
+                wm_sendmsg(usec, queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+                os_free(string);
+            }
+
+            cJSON_Delete(object);
         }
+
+        cJSON_Delete(procPorts);
         os_free(procFDInfo);
     }
 
