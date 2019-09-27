@@ -32,7 +32,7 @@ void rem_setCounter(int fd, size_t counter) {
     w_mutex_lock(&lock);
     while (fd >= connections.size) {
         os_realloc(connections.list, sizeof(int) * (connections.size + SIZE_BLOCK), connections.list);
-        memset(&connections.list[connections.size], 0, SIZE_BLOCK);
+        memset(&connections.list[connections.size], 0, sizeof(int) * SIZE_BLOCK);
         connections.size = connections.size + SIZE_BLOCK;
     }
     connections.list[fd] = counter;
@@ -42,7 +42,7 @@ void rem_setCounter(int fd, size_t counter) {
 
 size_t rem_getCounter(int fd) {
     w_mutex_lock(&lock);
-    size_t counter = connections.list[fd];
+    size_t counter = (fd >= connections.size) ? 0 : connections.list[fd];
     w_mutex_unlock(&lock);
     return counter;
 }

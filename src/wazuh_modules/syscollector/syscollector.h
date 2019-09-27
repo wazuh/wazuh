@@ -214,6 +214,9 @@ void sys_network_windows(const char* LOCATION);
 // Running processes inventory
 void sys_proc_linux(int queue_fd, const char* LOCATION);
 void sys_proc_windows(const char* LOCATION);
+#ifdef __MACH__
+void sys_proc_mac(int queue_fd, const char* LOCATION);
+#endif
 
 // Read string from a byte array until find a NULL byte
 char* read_string(u_int8_t* bytes);

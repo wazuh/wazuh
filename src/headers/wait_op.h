@@ -8,12 +8,11 @@
  * Foundation
  */
 
-#ifndef __WAIT_OP_H
-#define __WAIT_OP_H
+#ifndef WAIT_OP_H
+#define WAIT_OP_H
 
 void os_setwait(void);
 void os_delwait(void);
 void os_wait(void);
 
-#endif
-
+#endif /* WAIT_OP_H */
