@@ -69,7 +69,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
     cJSON * entry_data = NULL;
     char ** keys;
     int n;
-    int m;
+    int m = 0;
     EVP_MD_CTX * ctx_left = EVP_MD_CTX_create();
     EVP_MD_CTX * ctx_right = EVP_MD_CTX_create();
 
@@ -208,7 +208,7 @@ void fim_sync_dispatch(char * payload) {
     char * end = cJSON_GetStringValue(cJSON_GetObjectItem(root, "end"));
 
     if (begin == NULL || end == NULL) {
-        mdebug1(FIM_DBSYNC_INVALID_ARGUMENT, end);
+        mdebug1(FIM_DBSYNC_INVALID_ARGUMENT, json_arg);
         goto end;
     }
 
