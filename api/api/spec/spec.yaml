@@ -543,10 +543,10 @@ components:
 
     # Security models
     Role_id:
-      type: integer
+      type: string
       description: Role ID.
     Policy_id:
-      type: integer
+      type: string
       description: Policy ID.
     Username:
       type: string
