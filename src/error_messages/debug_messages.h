@@ -102,7 +102,6 @@
 #define FIM_WHODATA_SCAN                    "(6231): The '%s' directory has been scanned after detecting event of new files."
 #define FIM_WHODATA_SCAN_ABORTED            "(6232): Scanning of the '%s' directory is aborted because something has gone wrong."
 #define FIM_WHODATA_CHECKTHREAD             "(6233): Checking thread set to '%d' seconds."
-#define FIM_WHODATA_DEL_ADD                 "(6234): '%s' has been deleted and added after the last scan."
 #define FIM_WHODATA_FULLQUEUE               "(6235): Real-time Whodata events queue for Windows is full. Removing the first '%d'..."
 #define FIM_WHODATA_EVENT_DELETED           "(6236): '%d' events have been deleted from the whodata list."
 #define FIM_WHODATA_EVENTQUEUE_VALUES       "(6237): Whodata event queue values for Windows -> max_size:'%d' | max_remove:'%d' | alert_threshold:'%d'.",

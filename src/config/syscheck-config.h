@@ -108,7 +108,6 @@ typedef struct whodata_evt {
 typedef struct whodata_dir_status {
     int status;
     char object_type;
-    HANDLE hdle;
     SYSTEMTIME last_check;
 } whodata_dir_status;
 
