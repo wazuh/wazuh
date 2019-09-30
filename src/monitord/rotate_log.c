@@ -31,7 +31,7 @@ static const char * MONTHS[] = {
     "Dec"
 };
 
-char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int rotate_json, int daily_rotations, int last_counter) {
+char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int rotate_json, int daily_rotations, int last_counter, rotation_list *list_log, rotation_list *list_json) {
     char year_dir[PATH_MAX];
     char month_dir[PATH_MAX];
     char new_path[PATH_MAX];
@@ -167,7 +167,7 @@ char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int ro
 
     minfo("Starting new log after rotation.");
     // Remove old compressed files
-    remove_old_logs(log_dir, maxage, "logs");
+    remove_old_logs(log_dir, maxage, "logs", list_log, list_json);
     os_free(dir);
     if(rotate_json)
         return strdup(new_path_json);

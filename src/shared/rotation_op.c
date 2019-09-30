@@ -261,7 +261,7 @@ void purge_rotation_list(rotation_list *list, int keep_files) {
     while (node) {
         rotation_node *r_node = node;
 
-        if(unlink(node->string_value) == -1) {
+        if (unlink(node->string_value) == -1) {
             mdebug1("Unable to delete '%s' due to '%s'", node->string_value, strerror(errno));
         } else {
             mdebug2("Removing the rotated file '%s'.", node->string_value);
@@ -272,7 +272,7 @@ void purge_rotation_list(rotation_list *list, int keep_files) {
         } else {
             list->first = node->next;
         }
-        if(node->next) {
+        if (node->next) {
             node->next->prev = node->prev;
         }
 
@@ -280,6 +280,43 @@ void purge_rotation_list(rotation_list *list, int keep_files) {
         free(r_node->string_value);
         free(r_node);
     }
+}
+
+void delete_node(rotation_list *list, char *path) {
+    rotation_node *node;
+
+    if (!list) {
+        return;
+    }
+
+    node = list->last;
+
+    while (node) {
+        if (!strcmp(path, node->string_value)) {
+
+            if (node->prev) {
+                node->prev->next = node->next;
+            } else {
+                list->first = node->next;
+            }
+
+            if (node->next) {
+                node->next->prev = node->prev;
+            } else {
+                list->last = node->prev;
+            }
+
+            list->count--;
+
+            os_free(node->string_value);
+            os_free(node);
+
+            break;
+        }
+
+        node = node->prev;
+    }
+
 }
 
 void add_new_rotation_node(rotation_list *list, char *value, int keep_files) {
@@ -353,7 +390,7 @@ void add_new_rotation_node(rotation_list *list, char *value, int keep_files) {
     }
 }
 
-void remove_old_logs(const char *base_dir, int maxage, const char * type) {
+void remove_old_logs(const char *base_dir, int maxage, const char * type, rotation_list *list_log, rotation_list *list_json) {
     time_t threshold = time(NULL) - (maxage + 1) * 86400;
     char path[PATH_MAX];
     int year;
@@ -373,14 +410,14 @@ void remove_old_logs(const char *base_dir, int maxage, const char * type) {
 
         if (sscanf(dirent->d_name, "%d", &year) > 0) {
             snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-            remove_old_logs_y(path, year, threshold, type);
+            remove_old_logs_y(path, year, threshold, type, list_log, list_json);
         }
     }
 
     closedir(dir);
 }
 
-void remove_old_logs_y(const char * base_dir, int year, time_t threshold, const char * type) {
+void remove_old_logs_y(const char * base_dir, int year, time_t threshold, const char * type, rotation_list *list_log, rotation_list *list_json) {
     char path[PATH_MAX];
     int month;
     DIR *dir;
@@ -408,7 +445,7 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold, const 
         snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
 
         if (month < 12) {
-            remove_old_logs_m(path, year, month, threshold, type);
+            remove_old_logs_m(path, year, month, threshold, type, list_log, list_json);
         } else {
             mwarn("Unexpected folder '%s'", path);
         }
@@ -417,8 +454,9 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold, const 
     closedir(dir);
 }
 
-void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold, const char * type) {
+void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold, const char * type, rotation_list *list_log, rotation_list *list_json) {
     char path[PATH_MAX];
+    char ext[5];
     DIR *dir;
     int day;
     struct dirent *dirent;
@@ -426,7 +464,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     struct tm tm;
     int counter;
 
-    char match_log_simple[PATH_MAX], match_log[PATH_MAX], match_json_simple[PATH_MAX], match_json[PATH_MAX];
+    char match_log_simple[PATH_MAX], match_log[PATH_MAX];
 
     localtime_r(&now, &tm);
 
@@ -441,10 +479,8 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
         return;
     }
 
-    snprintf(match_log_simple, PATH_MAX - 1, "ossec-%s-%%02d.log", type);
-    snprintf(match_log, PATH_MAX - 1, "ossec-%s-%%02d-%%03d.log", type);
-    snprintf(match_json_simple, PATH_MAX - 1, "ossec-%s-%%02d.json", type);
-    snprintf(match_json, PATH_MAX - 1, "ossec-%s-%%02d-%%03d.json", type);
+    snprintf(match_log_simple, PATH_MAX - 1, "ossec-%s-%%02d.%%s", type);
+    snprintf(match_log, PATH_MAX - 1, "ossec-%s-%%02d-%%03d.%%s", type);
 
     while (dirent = readdir(dir), dirent) {
         // Skip "." and ".."
@@ -452,43 +488,41 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             continue;
         }
 
-        if (sscanf(dirent->d_name, match_log_simple, &day) > 0) {
+        if (sscanf(dirent->d_name, match_log_simple, &day, ext) == 2) {
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
-                unlink(path);
+                if (!strcmp(ext, "log"))
+                {
+                    snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
+                    mdebug2("Removing old log '%s'", path);
+                    unlink(path);
+                    delete_node(list_log, path);
+                } else if (!strcmp(ext, "json")) {
+                    snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
+                    mdebug2("Removing old log '%s'", path);
+                    unlink(path);
+                    delete_node(list_json, path);
+                }
             }
         }
 
-        if (sscanf(dirent->d_name, match_log, &day, &counter) > 0) {
+        if (sscanf(dirent->d_name, match_log, &day, &counter, ext) == 3) {
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
-                unlink(path);
-            }
-        }
-
-        if (sscanf(dirent->d_name, match_json_simple, &day) > 0) {
-            tm.tm_mday = day;
-
-            if (mktime(&tm) <= threshold) {
-                snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
-                unlink(path);
-            }
-        }
-
-        if (sscanf(dirent->d_name, match_json, &day, &counter) > 0) {
-            tm.tm_mday = day;
-
-            if (mktime(&tm) <= threshold) {
-                snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
-                unlink(path);
+                if (!strcmp(ext, "log"))
+                {
+                    snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
+                    mdebug2("Removing old log '%s'", path);
+                    unlink(path);
+                    delete_node(list_log, path);
+                } else if (!strcmp(ext, "json")) {
+                    snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
+                    mdebug2("Removing old log '%s'", path);
+                    unlink(path);
+                    delete_node(list_json, path);
+                }
             }
         }
     }

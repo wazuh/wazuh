@@ -28,17 +28,56 @@ const char * MONTHS[] = {
     "Dec"
 };
 
+time_t last_rot_log;
+time_t last_rot_json;
+
+static void rotate_log(rotation_list *list, char *path, char *new_path, int day, int interval, int today, int json, time_t last_rot, time_t now) {
+    int counter;
+    struct tm t;
+    time_t last_day;
+
+    if (list && list->last) {
+        if (interval) {
+            localtime_r(&last_rot, &t);
+            if (t.tm_mday != list->last->first_value) {
+                counter = list->last->second_value;
+            } else {
+                t.tm_hour = 0;
+                t.tm_min = 0;
+                t.tm_sec = 0;
+                last_day = mktime(&t);
+                /* If there are no rotated logs from the day before */
+                counter = now - last_day >= 172800 ? -1 : list->last->second_value;
+            }
+        } else {
+            counter = list->last->second_value;
+        }
+    }
+
+    if (list && list->last && day == list->last->first_value) {
+        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, day != today ? 1 : 0, json, mond.daily_rotations,
+                                counter, mond.log_list_plain, mond.log_list_json);
+    } else {
+        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, day != today ? 1 : 0, json, mond.daily_rotations,
+                                -1, mond.log_list_plain, mond.log_list_json);
+    }
+    if (new_path) {
+        add_new_rotation_node(list, new_path, mond.rotate);
+    }
+    os_free(new_path);
+}
+
 void Monitord()
 {
     time_t tm, n_time, n_time_json;
-    struct tm *p;
+    struct tm p;
     struct tm rot;
     int counter = 0;
 
     char path_ossec[PATH_MAX];
     char path_ossec_json[PATH_MAX];
 
-    struct stat buf;
+    struct stat buf, buf_json;
     off_t size, size_json;
 
     int today = 0;
@@ -47,7 +86,7 @@ void Monitord()
     int thismonth = 0;
     int thisyear = 0;
 
-    char *new_path;
+    char *new_path = NULL;
     char str[OS_SIZE_1024 + 1];
 
     /* Wait a few seconds to settle */
@@ -57,17 +96,17 @@ void Monitord()
 
     /* Get current time before starting */
     tm = time(NULL);
-    p = localtime(&tm);
+    localtime_r(&tm, &p);
 
-    today = p->tm_mday;
-    thismonth = p->tm_mon;
-    thisyear = p->tm_year + 1900;
+    today = p.tm_mday;
+    thismonth = p.tm_mon;
+    thisyear = p.tm_year + 1900;
     today_log = today;
     today_json = today;
 
     /* Calculate when is the next rotation */
     n_time = mond.interval ? calc_next_rotation(tm, &rot, mond.interval_units, mond.interval) : 0;
-    n_time_json = n_time;
+    n_time_json = mond.interval ? n_time : 0;
 
     /* Set internal log path to rotate them */
 #ifdef WIN32
@@ -109,7 +148,7 @@ void Monitord()
     /* Main monitor loop */
     while (1) {
         tm = time(NULL);
-        p = localtime(&tm);
+        localtime_r(&tm, &p);
         counter++;
 
 #ifndef LOCAL
@@ -120,112 +159,77 @@ void Monitord()
         }
 #endif
 
-        if (mond.enabled) {
-            if (mond.rotation_enabled) {
-                if (mond.min_size > 0 && mond.interval > 0) {
-                    if ((stat(path_ossec, &buf) == 0) && mond.ossec_log_plain) {
-                        size = buf.st_size;
-                        if (mond.interval > 0 && tm > n_time && (long) size >= mond.min_size) {
-                            if (mond.log_list_plain && mond.log_list_plain->last && today_log == mond.log_list_plain->last->first_value) {
-                                new_path = w_rotate_log(path_ossec, mond.compress_rotation, mond.maxage, 0, 0, mond.daily_rotations, mond.log_list_plain->last->second_value);
-                            } else {
-                                new_path = w_rotate_log(path_ossec, mond.compress_rotation, mond.maxage, 0, 0, mond.daily_rotations, -1);
-                            }
-                            if (new_path) {
-                                add_new_rotation_node(mond.log_list_plain, new_path, mond.rotate);
-                            }
-                            os_free(new_path);
-                            n_time = calc_next_rotation(tm, &rot, mond.interval_units, mond.interval);
-                            today_log = today_log != p->tm_mday ? p->tm_mday : today_log;
-                        }
-                    }
-                    if ((stat(path_ossec_json, &buf) == 0) && mond.ossec_log_json) {
-                        size_json = buf.st_size;
-                        if (mond.interval > 0 && tm > n_time_json && (long) size_json >= mond.min_size) {
-                            if (mond.log_list_json && mond.log_list_json->last && today_json == mond.log_list_json->last->first_value) {
-                                new_path = w_rotate_log(path_ossec_json, mond.compress_rotation, mond.maxage, 0, 1, mond.daily_rotations, mond.log_list_json->last->second_value);
-                            } else {
-                                new_path = w_rotate_log(path_ossec_json, mond.compress_rotation, mond.maxage, 0, 1, mond.daily_rotations, -1);
-                            }
-                            if (new_path) {
-                                add_new_rotation_node(mond.log_list_json, new_path, mond.rotate);
-                            }
-                            os_free(new_path);
-                            n_time_json = calc_next_rotation(tm, &rot, mond.interval_units, mond.interval);
-                            today_json = today_json != p->tm_mday ? p->tm_mday : today_json;
-                        }
-                    }
+        if (mond.enabled && mond.rotation_enabled) {
+            /* Calculate the logs size only if rotation by size is active */
+            if (mond.min_size > 0 || mond.max_size > 0) {
+                if (stat(path_ossec, &buf) < 0) {
+                    merror("Couldn't stat '%s' file due to '%s'", path_ossec, strerror(errno));
                 } else {
-                    if (mond.max_size > 0) {
-                        if ((stat(path_ossec, &buf) == 0) && mond.ossec_log_plain) {
-                            size = buf.st_size;
-                            /* If log file reachs maximum size, rotate ossec.log */
-                            if ( (long) size >= mond.max_size) {
-                                today_log = today_log != p->tm_mday ? p->tm_mday : today_log;
-                                if (mond.log_list_plain && mond.log_list_plain->last && today_log == mond.log_list_plain->last->first_value) {
-                                    new_path = w_rotate_log(path_ossec, mond.compress_rotation, mond.maxage, 0, 0, mond.daily_rotations, mond.log_list_plain->last->second_value);
-                                } else {
-                                    new_path = w_rotate_log(path_ossec, mond.compress_rotation, mond.maxage, 0, 0, mond.daily_rotations, -1);
-                                }
-                                if (new_path) {
-                                    add_new_rotation_node(mond.log_list_plain, new_path, mond.rotate);
-                                }
-                                os_free(new_path);
-                            }
-                        }
-                        if ((stat(path_ossec_json, &buf) == 0) && mond.ossec_log_json) {
-                            size = buf.st_size;
-                            /* If log file reachs maximum size, rotate ossec.json */
-                            if ( (long) size >= mond.max_size) {
-                                today_json = today_json != p->tm_mday ? p->tm_mday : today_json;
-                                if (mond.log_list_json && mond.log_list_json->last && today_json == mond.log_list_json->last->first_value) {
-                                    new_path = w_rotate_log(path_ossec_json, mond.compress_rotation, mond.maxage, 0, 1, mond.daily_rotations, mond.log_list_json->last->second_value);
-                                } else {
-                                    new_path = w_rotate_log(path_ossec_json, mond.compress_rotation, mond.maxage, 0, 1, mond.daily_rotations, -1);
-                                }
-                                if (new_path) {
-                                    add_new_rotation_node(mond.log_list_json, new_path, mond.rotate);
-                                }
-                                os_free(new_path);
-                            }
-                        }
-                    }
-                    if (mond.rotation_enabled && mond.interval > 0 && tm > n_time) {
-                        if (mond.ossec_log_plain) {
-                            if (mond.log_list_plain && mond.log_list_plain->last && today_log == mond.log_list_plain->last->first_value) {
-                                new_path = w_rotate_log(path_ossec, mond.compress_rotation, mond.maxage, today_log != p->tm_mday ? 1 : 0, 0, mond.daily_rotations, mond.log_list_plain->last->first_value == p->tm_mday ? mond.log_list_json->last->second_value : -1);
-                            } else {
-                                new_path = w_rotate_log(path_ossec, mond.compress_rotation, mond.maxage, today_log != p->tm_mday ? 1 : 0, 0, mond.daily_rotations, -1);
-                            }
-                            if (new_path) {
-                                add_new_rotation_node(mond.log_list_plain, new_path, mond.rotate);
-                            }
-                            os_free(new_path);
-                        }
-                        if (mond.ossec_log_json) {
-                            if (mond.log_list_json && mond.log_list_json->last && today_json == mond.log_list_json->last->first_value) {
-                                new_path = w_rotate_log(path_ossec_json, mond.compress_rotation, mond.maxage, today_json != p->tm_mday ? 1 : 0, 1, mond.daily_rotations, mond.log_list_json->last->first_value == p->tm_mday ? mond.log_list_json->last->second_value : -1);
-                            } else {
-                                new_path = w_rotate_log(path_ossec_json, mond.compress_rotation, mond.maxage, today_json != p->tm_mday ? 1 : 0, 1, mond.daily_rotations, -1);
-                            }
-                            if (new_path) {
-                                add_new_rotation_node(mond.log_list_json, new_path, mond.rotate);
-                            }
-                            os_free(new_path);
-                        }
-                        today_log = today_log != p->tm_mday ? p->tm_mday : today_log;
-                        today_json = today_json != p->tm_mday ? p->tm_mday : today_json;
-                        n_time = calc_next_rotation(tm, &rot, mond.interval_units, mond.interval);
-                    }
+                    size = buf.st_size;
+                }
+                if (stat(path_ossec_json, &buf_json) < 0) {
+                    merror("Couldn't stat '%s' file due to '%s'", path_ossec_json, strerror(errno));
+                } else {
+                    size_json = buf_json.st_size;
                 }
             }
-            if (today != p->tm_mday) {
+
+            /* Rotation by size (min_size) and interval */
+            if (mond.min_size > 0 && mond.interval > 0) {
+                /* Rotate ossec.log by size (min_size) and interval */
+                if (mond.interval > 0 && tm > n_time && (long) size >= mond.min_size && mond.ossec_log_plain) {
+                    rotate_log(mond.log_list_plain, path_ossec, new_path, today_log, 0, p.tm_mday, 0, 0, tm);
+                    n_time = calc_next_rotation(tm, &rot, mond.interval_units, mond.interval);
+                    today_log = today_log != p.tm_mday ? p.tm_mday : today_log;
+                }
+                /* Rotate ossec.json by size (min_size) and interval */
+                if (mond.interval > 0 && tm > n_time_json && (long) size_json >= mond.min_size && mond.ossec_log_json) {
+                    rotate_log(mond.log_list_json, path_ossec_json, new_path, today_json, 0, p.tm_mday, 1, 0, tm);
+                    n_time_json = calc_next_rotation(tm, &rot, mond.interval_units, mond.interval);
+                    today_json = today_json != p.tm_mday ? p.tm_mday : today_json;
+                }
+            } else {
+                /* Rotation by size (max_size) */
+                if (mond.max_size > 0) {
+                    /* If log file reachs maximum size, rotate ossec.log */
+                    if ( (long) size >= mond.max_size && mond.ossec_log_plain) {
+                        today_log = today_log != p.tm_mday ? p.tm_mday : today_log;
+                        rotate_log(mond.log_list_plain, path_ossec, new_path, today_log, 0, p.tm_mday, 0, 0, tm);
+                        last_rot_log = tm;
+                    }
+                    /* If log file reachs maximum size, rotate ossec.json */
+                    if ( (long) size >= mond.max_size && mond.ossec_log_json) {
+                        today_json = today_json != p.tm_mday ? p.tm_mday : today_json;
+                        rotate_log(mond.log_list_json, path_ossec_json, new_path, today_json, 0, p.tm_mday, 1, 0, tm);
+                        last_rot_json = tm;
+                    }
+                }
+                /* Rotation by interval */
+                if (mond.interval > 0 && tm > n_time) {
+                    /* Rotate ossec.log */
+                    if (mond.ossec_log_plain) {
+                        rotate_log(mond.log_list_plain, path_ossec, new_path, today_log, 1, p.tm_mday, 0, last_rot_log, tm);
+                        last_rot_log = tm;
+                    }
+                    /* Rotate ossec.json */
+                    if (mond.ossec_log_json) {
+                        rotate_log(mond.log_list_json, path_ossec_json, new_path, today_json, 1, p.tm_mday, 1, last_rot_json, tm);
+                        last_rot_json = tm;
+                    }
+                    today_log = today_log != p.tm_mday ? p.tm_mday : today_log;
+                    today_json = today_json != p.tm_mday ? p.tm_mday : today_json;
+                    n_time = calc_next_rotation(tm, &rot, mond.interval_units, mond.interval);
+                }
+            }
+        }
+        if (mond.enabled) {
+            if (today != p.tm_mday) {
                 /* Generate reports */
-                generate_reports(today, thismonth, thisyear, p);
+                generate_reports(today, thismonth, thisyear, &p);
                 manage_files(today, thismonth, thisyear);
-                today = p->tm_mday;
-                thismonth = p->tm_mon;
-                thisyear = p->tm_year + 1900;
+                today = p.tm_mday;
+                thismonth = p.tm_mon;
+                thisyear = p.tm_year + 1900;
             }
         }
         sleep(1);

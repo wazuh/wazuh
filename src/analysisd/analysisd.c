@@ -2493,7 +2493,7 @@ next_it:
     }
 }
 
-void * w_log_rotate_thread(__attribute__((unused)) void * args){
+void * w_log_rotate_thread(__attribute__((unused)) void * args) {
 
     int day = 0;
     int year = 0;

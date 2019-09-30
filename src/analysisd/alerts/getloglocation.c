@@ -315,7 +315,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                             }
                         }
                     }
-                    remove_old_logs(path_alerts, Config.alerts_maxage, "alerts");
+                    remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
                     add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
                     os_free(previous_log);
                     alerts_time = Config.alerts_interval ? calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval) : 0;
@@ -348,7 +348,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                             }
                         }
                     }
-                    remove_old_logs(path_alerts, Config.alerts_maxage, "alerts");
+                    remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
                     add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
                     os_free(previous_log);
                     alerts_time_json = Config.alerts_interval ? calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval) : 0;
@@ -385,7 +385,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                             }
                         }
                     }
-                    remove_old_logs(path_archives, Config.archives_maxage, "archives");
+                    remove_old_logs(path_archives, Config.archives_maxage, "archives", Config.log_archives_plain, Config.log_archives_json);
                     add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
                     os_free(previous_log);
                     archive_time = Config.archives_interval ? calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval) : 0;
@@ -418,7 +418,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                             }
                         }
                     }
-                    remove_old_logs(path_archives, Config.archives_maxage, "archive");
+                    remove_old_logs(path_archives, Config.archives_maxage, "archive", Config.log_archives_plain, Config.log_archives_json);
                     add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
                     os_free(previous_log);
                     archive_time_json = Config.archives_interval ? calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval) : 0;
@@ -457,7 +457,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                         }
                     }
                 }
-                remove_old_logs(path_alerts, Config.alerts_maxage, "alerts");
+                remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
                 add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
                 os_free(previous_log);
                 __alerts_rsec = local_timespec.tv_sec;
@@ -489,7 +489,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                         }
                     }
                 }
-                remove_old_logs(path_alerts, Config.alerts_maxage, "alerts");
+                remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
                 add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
                 os_free(previous_log);
                 __alerts_rsec = local_timespec.tv_sec;
@@ -526,7 +526,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                         }
                     }
                 }
-                remove_old_logs(path_archives, Config.archives_maxage, "archive");
+                remove_old_logs(path_archives, Config.archives_maxage, "archive", Config.log_archives_plain, Config.log_archives_json);
                 add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
                 os_free(previous_log);
                 __archives_rsec = local_timespec.tv_sec;
@@ -559,7 +559,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                         }
                     }
                 }
-                remove_old_logs(path_archives, Config.archives_maxage, "archive");
+                remove_old_logs(path_archives, Config.archives_maxage, "archive", Config.log_archives_plain, Config.log_archives_json);
                 add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
                 os_free(previous_log);
                 __archives_rsec = local_timespec.tv_sec;
