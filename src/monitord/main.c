@@ -158,7 +158,7 @@ int main(int argc, char **argv)
 
     c = 0;
     c |= CREPORTS;
-    if (ReadConfig(c, cfg, &mond, NULL) < 0) {
+    if (ReadConfig(c, cfg, &mond, NULL, NULL) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
     }
 

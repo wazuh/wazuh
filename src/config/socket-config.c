@@ -14,7 +14,7 @@
 #include "localfile-config.h"
 
 
-int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
+int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char **output) {
 
     static const char *socket_name = "name";
     static const char *socket_location = "location";
@@ -28,6 +28,7 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
     unsigned int pl = 0;
     unsigned int i = 0;
+    char message[OS_FLSIZE];
 
     /* If config is not set, create it */
     if (!log_config->socket_list) {
@@ -53,16 +54,31 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
     for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return OS_INVALID;
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid NULL content for element: %s.",
+                    node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return OS_INVALID;
         } else if (!strcmp(node[i]->element, socket_name)) {
             // Socket 'agent' is reserved for internal purpose.
             // Defining a new socket with this name is not allowed.
             if (!strcmp(node[i]->content, "agent")) {
-                merror("Invalid socket name 'agent'.");
+                if (output == NULL) {
+                    merror("Invalid socket name 'agent'.");
+                } else {
+                    wm_strcat(output, "Invalid socket name 'agent'.", '\n');
+                }
                 return OS_INVALID;
             }
             free(logf[pl].name);
@@ -75,28 +91,49 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 logf[pl].mode = IPPROTO_TCP;
             } else if (strcasecmp(node[i]->content, "udp") == 0) {
                 logf[pl].mode = IPPROTO_UDP;
+            } else if (output == NULL) {
+                merror("Socket type '%s' is not valid at <%s>. Should be 'udp' or 'tcp'.",
+                    node[i]->content, node[i]->element);
+                return OS_INVALID;
             } else {
-                merror("Socket type '%s' is not valid at <%s>. Should be 'udp' or 'tcp'.", node[i]->content, node[i]->element);
+                snprintf(message, OS_FLSIZE + 1,
+                    "Socket type '%s' is not valid at <%s>. Should be 'udp' or 'tcp'.",
+                    node[i]->content, node[i]->element);
+                wm_strcat(output, message, '\n');
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, socket_prefix)) {
             free(logf[pl].prefix);
             logf[pl].prefix = filter_special_chars(node[i]->content);
-        } else {
+        } else if (output == NULL) {
             merror(XML_INVELEM, node[i]->element);
+            return OS_INVALID;
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Invalid element in the configuration: '%s'.",
+                node[i]->element);
+            wm_strcat(output, message, '\n');
             return OS_INVALID;
         }
     }
 
     /* Missing name */
     if (!(logf[pl].name && *logf[pl].name)) {
-        merror(MISS_SOCK_NAME);
+        if (output == NULL) {
+            merror(MISS_SOCK_NAME);
+        } else {
+            wm_strcat(output, "Missing field 'name' for socket.", '\n');
+        }
         return (OS_INVALID);
     }
 
     /* Missing location */
     if (!(logf[pl].location && *logf[pl].location)) {
-        merror(MISS_SOCK_LOC);
+        if (output == NULL) {
+            merror(MISS_SOCK_LOC);
+        } else {
+            wm_strcat(output, "Missing field 'location' for socket.", '\n');
+        }
         return (OS_INVALID);
     }
 

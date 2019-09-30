@@ -96,8 +96,8 @@ int GlobalConf(const char *cfgfile)
     modules |= CCLUSTER;
 
     /* Read config */
-    if (ReadConfig(modules, cfgfile, &Config, NULL) < 0 ||
-        ReadConfig(CLABELS, cfgfile, &Config.labels, NULL) < 0) {
+    if (ReadConfig(modules, cfgfile, &Config, NULL, NULL) < 0 ||
+        ReadConfig(CLABELS, cfgfile, &Config.labels, NULL, NULL) < 0) {
         return (OS_INVALID);
     }
 

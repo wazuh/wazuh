@@ -111,16 +111,20 @@ int main(int argc, char **argv)
             filepath = type_flag == CRMOTE_CONFIG ? strdup(DEFAULTDIR AGENTCONFIG) : strdup(DEFAULTCPATH);
         }
 
+        char *output = NULL;
         if(type_flag == MANAGER_CFG) {
-            test_manager_conf(filepath);
+            test_manager_conf(filepath, &output);
         }
         else if(type_flag == CAGENT_CGFILE) {
-            test_agent_conf(filepath, type_flag);
+            test_agent_conf(filepath, type_flag, &output);
         }
         else if(type_flag == CRMOTE_CONFIG) {
-            test_remote_conf(filepath, type_flag);
+            test_remote_conf(filepath, type_flag, &output);
         }
 
+        printf("%s\n", output);
+
+        os_free(output);
         os_free(filepath);
     }
     else if (argc > 5) {

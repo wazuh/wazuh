@@ -112,7 +112,7 @@ int main(int argc, char **argv)
     lessdc.entries = NULL;
     lessdc.queue = 0;
 
-    if (ReadConfig(c, cfg, &lessdc, NULL) < 0) {
+    if (ReadConfig(c, cfg, &lessdc, NULL, NULL) < 0) {
         merror_exit(XML_INV_AGENTLESS);
     }
 

@@ -72,7 +72,7 @@ int AR_ReadConfig(const char *cfgfile)
     }
 
     /* Read configuration */
-    if (ReadConfig(modules, cfgfile, ar_commands, active_responses) < 0) {
+    if (ReadConfig(modules, cfgfile, ar_commands, active_responses, NULL) < 0) {
         return (OS_INVALID);
     }
 

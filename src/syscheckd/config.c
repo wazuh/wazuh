@@ -56,7 +56,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
 
     /* Read config */
-    if (ReadConfig(modules, cfgfile, &syscheck, NULL) < 0) {
+    if (ReadConfig(modules, cfgfile, &syscheck, NULL, NULL) < 0) {
         return (OS_INVALID);
     }
 
@@ -65,7 +65,7 @@ int Read_Syscheck_Config(const char *cfgfile)
 
     /* Read shared config */
     modules |= CRMOTE_CONFIG;
-    ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
+    ReadConfig(modules, AGENTCONFIG, &syscheck, NULL, NULL);
 #endif
 
     switch (syscheck.disabled) {

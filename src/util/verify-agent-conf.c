@@ -145,23 +145,23 @@ int main(int argc, char **argv)
     return (error);
 }
 
-int verify_agent_conf(const char * path) {
+int verify_agent_conf(const char *path) {
 
     int type = CRMOTE_CONFIG;
 
-    if (Test_Syscheck(path, type) < 0) {
+    if (Test_Syscheck(path, type, NULL) < 0) {
         return -1;
-    } else if (Test_Rootcheck(path, type) < 0) {
+    } else if (Test_Rootcheck(path, type, NULL) < 0) {
         return -1;
-    } else if (Test_Localfile(path, type) < 0) {
+    } else if (Test_Localfile(path, type, NULL) < 0) {
         return -1;
-    } else if (Test_Client(path, type) < 0) {
+    } else if (Test_Client(path, type, NULL) < 0) {
         return -1;
-    } else if (Test_ClientBuffer(path, type) < 0) {
+    } else if (Test_ClientBuffer(path, type, NULL) < 0) {
         return -1;
-    } else if (Test_WModule(path, type) < 0) {
+    } else if (Test_WModule(path, type, NULL) < 0) {
         return -1;
-    } else if (Test_Labels(path, type) < 0) {
+    } else if (Test_Labels(path, type, NULL) < 0) {
         return -1;
     }
 

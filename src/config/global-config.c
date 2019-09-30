@@ -15,10 +15,11 @@
 #include "config.h"
 
 
-int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
+int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *mailp, char **output)
 {
     int i = 0;
     int j = 0;
+    char  message[OS_FLSIZE];
     unsigned int ign_size = 1;
     const char *xml_ignore = "ignore";
     const char *xml_auto_ignore = "auto_ignore";
@@ -49,43 +50,88 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
 
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL){
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration", '\n');
+            }
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL){
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                        "Invalid NULL content for element: '%s'.",
+                        node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
                 Config->syscheck_auto_ignore = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
                 Config->syscheck_auto_ignore = 0;
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                        node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
             for (j = 0; node[i]->attributes && node[i]->attributes[j]; ++j) {
                 if (strcmp(node[i]->attributes[j], xml_ignore_frequency) == 0) {
                     if (!OS_StrIsNum(node[i]->values[0])) {
-                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        if (output == NULL){
+                            merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        } else {
+                            snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                                    node[i]->attributes[j], node[i]->values[j]);
+                            wm_strcat(output, message, '\n');
+                        }
                         return (OS_INVALID);
                     }
                     Config->syscheck_ignore_frequency = atoi(node[i]->values[0]);
                     if (Config->syscheck_ignore_frequency < 1 || Config->syscheck_ignore_frequency > 99) {
-                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        if (output == NULL){
+                            merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        } else {
+                            snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                                    node[i]->attributes[j], node[i]->values[j]);
+                            wm_strcat(output, message, '\n');
+                        }
                         return (OS_INVALID);
                     }
                 } else if (strcmp(node[i]->attributes[j], xml_ignore_time) == 0) {
                     if (!OS_StrIsNum(node[i]->values[j])) {
-                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        if (output == NULL){
+                            merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        } else {
+                            snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                                    node[i]->attributes[j], node[i]->values[j]);
+                            wm_strcat(output, message, '\n');
+                        }
                         return (OS_INVALID);
                     }
                     Config->syscheck_ignore_time = atoi(node[i]->values[1]);
                     if (Config->syscheck_ignore_time < 0 || Config->syscheck_ignore_time > 43200) {
-                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        if (output == NULL){
+                            merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        } else {
+                            snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                                    node[i]->attributes[j], node[i]->values[j]);
+                            wm_strcat(output, message, '\n');
+                        }
                         return (OS_INVALID);
                     }
-                } else {
+                } else if (output == NULL){
                     merror(XML_INVATTR, node[i]->attributes[j], node[i]->element);
+                    return OS_INVALID;
+                } else {
+                    snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                            node[i]->attributes[j], node[i]->values[j]);
+                    wm_strcat(output, message, '\n');
                     return OS_INVALID;
                 }
             }
@@ -95,16 +141,27 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 Config->syscheck_alert_new = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
                 Config->syscheck_alert_new = 0;
-            } else {
+            } else if (output == NULL){
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                        node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
+                return OS_INVALID;
             }
         } else if (strcmp(node[i]->element, xml_ignore) == 0) {
             ign_size++;
             Config->syscheck_ignore = (char **)
                                       realloc(Config->syscheck_ignore, sizeof(char *)*ign_size);
             if (!Config->syscheck_ignore) {
-                merror(MEM_ERROR, errno, strerror(errno));
+                if (output == NULL){
+                    merror(MEM_ERROR, errno, strerror(errno));
+                } else {
+                    snprintf(message, OS_FLSIZE + 1, "Could not acquire memory due to [(%d)-(%s)].",
+                        errno, strerror(errno));
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
 
@@ -117,9 +174,10 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     return (0);
 }
 
-int Read_Global(XML_NODE node, void *configp, void *mailp)
+int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
 {
     int i = 0;
+    char message[OS_FLSIZE];
 
     /* Whitelist size */
     unsigned int white_size = 1;
@@ -206,10 +264,21 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL){
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration", '\n');
+            }
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL){
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                        "Invalid NULL content for element: '%s'.",
+                        node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_custom_alert_output) == 0) {
             if (Config) {
@@ -233,8 +302,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 if (Mail) {
                     Mail->mn = 0;
                 }
-            } else {
+            } else if (output == NULL){
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                        node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
         }
@@ -248,8 +322,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 if (Config) {
                     Config->prelude = 0;
                 }
-            } else {
+            } else if (output){
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                        node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
         /* GeoIP */
@@ -264,7 +343,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             }
         } else if (strcmp(node[i]->element, xml_prelude_log_level) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                            node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
 
@@ -282,8 +367,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 if (Config) {
                     Config->zeromq_output = 0;
                 }
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                        node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_zeromq_output_uri) == 0) {
@@ -309,8 +399,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 if (Config) {
                     Config->jsonout_output = 0;
                 }
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                        node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
         }
@@ -324,8 +419,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 if (Config) {
                     Config->alerts_log = 0;
                 }
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                        node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
         }
@@ -339,8 +439,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 if (Config) {
                     Config->logall = 0;
                 }
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                        node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
         }
@@ -354,8 +459,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 if (Config) {
                     Config->logall_json = 0;
                 }
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                        node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
         }
@@ -366,7 +476,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         /* Integrity */
         else if (strcmp(node[i]->element, xml_integrity) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                            node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
             if (Config) {
@@ -376,7 +492,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         /* rootcheck */
         else if (strcmp(node[i]->element, xml_rootcheckd) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                            node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
             if (Config) {
@@ -386,7 +508,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         /* hostinfo */
         else if (strcmp(node[i]->element, xml_hostinfo) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                            node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
             if (Config) {
@@ -396,7 +524,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         /* stats */
         else if (strcmp(node[i]->element, xml_stats) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                            node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
             if (Config) {
@@ -404,7 +538,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             }
         } else if (strcmp(node[i]->element, xml_memorysize) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                            node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
             if (Config) {
@@ -425,7 +565,14 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 Config->white_list = (os_ip **)
                                      realloc(Config->white_list, sizeof(os_ip *)*white_size);
                 if (!Config->white_list) {
-                    merror(MEM_ERROR, errno, strerror(errno));
+                    if (output == NULL){
+                        merror(MEM_ERROR, errno, strerror(errno));
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1,
+                                "Could not acquire memory due to [(%d)-(%s)].",
+                                errno, strerror(errno));
+                        wm_strcat(output, message, '\n');
+                    }
                     return (OS_INVALID);
                 }
 
@@ -434,8 +581,14 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 
                 if (!OS_IsValidIP(node[i]->content,
                                   Config->white_list[white_size - 2])) {
-                    merror(INVALID_IP,
-                           node[i]->content);
+                    if (output == NULL){
+                        merror(INVALID_IP, node[i]->content);
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1,
+                                "Invalid IP addres '%s'.",
+                                node[i]->content);
+                        wm_strcat(output, message, '\n');
+                    }
                     return (OS_INVALID);
                 }
             }
@@ -447,7 +600,14 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                                                       sizeof(OSMatch *)*hostname_white_size);
 
                 if (!Config->hostname_white_list) {
-                    merror(MEM_ERROR, errno, strerror(errno));
+                    if (output == NULL){
+                        merror(MEM_ERROR, errno, strerror(errno));
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1,
+                                "Could not acquire memory due to [(%d)-(%s)].",
+                                errno, strerror(errno));
+                        wm_strcat(output, message, '\n');
+                    }
                     return (OS_INVALID);
                 }
                 os_calloc(1,
@@ -459,9 +619,18 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                             node[i]->content,
                             Config->hostname_white_list[hostname_white_size - 2],
                             0)) {
-                    merror(REGEX_COMPILE, node[i]->content,
+                    if (output == NULL){
+                        merror(REGEX_COMPILE, node[i]->content,
                            Config->hostname_white_list
                            [hostname_white_size - 2]->error);
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1,
+                                "Syntax error on regex: '%s': %d.",
+                                node[i]->content,
+                                Config->hostname_white_list
+                                [hostname_white_size - 2]->error);
+                        wm_strcat(output, message, '\n');
+                    }
                     return (-1);
                 }
             }
@@ -476,7 +645,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         else if (strcmp(node[i]->element, xml_emailto) == 0) {
 #ifndef WIN32
             if (!OS_PRegex(node[i]->content, "[a-zA-Z0-9\\._-]+@[a-zA-Z0-9\\._-]")) {
-                merror("Invalid Email address: %s.", node[i]->content);
+                if (output == NULL){
+                    merror("Invalid Email address: %s.", node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                            "Invalid Email address: %s.", node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
 #endif
@@ -484,7 +659,14 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 mailto_size++;
                 Mail->to = (char **) realloc(Mail->to, sizeof(char *)*mailto_size);
                 if (!Mail->to) {
-                    merror(MEM_ERROR, errno, strerror(errno));
+                    if (output == NULL){
+                        merror(MEM_ERROR, errno, strerror(errno));
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1,
+                                "Could not acquire memory due to [(%d)-(%s)].",
+                                errno, strerror(errno));
+                        wm_strcat(output, message, '\n');
+                    }
                     return (OS_INVALID);
                 }
 
@@ -525,20 +707,38 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         } else if (strcmp(node[i]->element, xml_mailmaxperhour) == 0) {
             if (Mail) {
                 if (!OS_StrIsNum(node[i]->content)) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    if (output == NULL){
+                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                                node[i]->element, node[i]->content);
+                        wm_strcat(output, message, '\n');
+                    }
                     return (OS_INVALID);
                 }
                 Mail->maxperhour = atoi(node[i]->content);
 
                 if ((Mail->maxperhour <= 0) || (Mail->maxperhour > 1000000)) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    if (output == NULL){
+                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                                node[i]->element, node[i]->content);
+                        wm_strcat(output, message, '\n');
+                    }
                     return (OS_INVALID);
                 }
             }
         } else if (strcmp(node[i]->element, xml_maillogsource) == 0) {
             if (Mail) {
                 if (OS_StrIsNum(node[i]->content)) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    if (output == NULL){
+                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                                node[i]->element, node[i]->content);
+                        wm_strcat(output, message, '\n');
+                    }
                     return (OS_INVALID);
                 }
 
@@ -589,19 +789,37 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     case 's':
                         break;
                     default:
-                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                        if (output == NULL){
+                            merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                        } else {
+                            snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                                    node[i]->element, node[i]->content);
+                            wm_strcat(output, message, '\n');
+                        }
                         return (OS_INVALID);
                     }
 
                     break;
 
                 default:
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    if (output == NULL){
+                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                                node[i]->element, node[i]->content);
+                        wm_strcat(output, message, '\n');
+                    }
                     return (OS_INVALID);
                 }
 
                 if (Config->rotate_interval < 0) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    if (output == NULL){
+                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                                node[i]->element, node[i]->content);
+                        wm_strcat(output, message, '\n');
+                    }
                     return (OS_INVALID);
                 }
             }
@@ -631,14 +849,26 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     case 'b':
                         break;
                     default:
-                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                        if (output == NULL){
+                            merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                        } else {
+                            snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                                    node[i]->element, node[i]->content);
+                            wm_strcat(output, message, '\n');
+                        }
                         return (OS_INVALID);
                     }
 
                     break;
 
                 default:
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    if (output == NULL){
+                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1, "Invalid value for element '%s': '%s'.",
+                                node[i]->element, node[i]->content);
+                        wm_strcat(output, message, '\n');
+                    }
                     return (OS_INVALID);
                 }
             }
@@ -649,13 +879,26 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 Config->queue_size = strtol(node[i]->content, &end, 10);
 
                 if (*end || Config->queue_size < 1) {
-                    merror("Invalid value for option '<%s>'", xml_queue_size);
+                    if (output == NULL){
+                        merror("Invalid value for option '<%s>'", xml_queue_size);
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1,
+                                "Invalid value for option '<%s>'.", xml_queue_size);
+                        wm_strcat(output, message, '\n');
+                    }
                     return OS_INVALID;
                 }
 
             }
         } else {
-            merror(XML_INVELEM, node[i]->element);
+            if (output == NULL){
+                merror(XML_INVELEM, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                                "Invalid element in the configuration: '%s'.",
+                                node[i]->element);
+                        wm_strcat(output, message, '\n');
+            }
             return (OS_INVALID);
         }
         i++;

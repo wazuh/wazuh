@@ -39,7 +39,7 @@ int OS_ReadDBConf(__attribute__((unused)) int test_config, const char *cfgfile, 
     db_config->maxreconnect = 0;
 
     /* Read configuration */
-    if (ReadConfig(modules, cfgfile, tmp_config, db_config) < 0) {
+    if (ReadConfig(modules, cfgfile, tmp_config, db_config, NULL) < 0) {
         free(tmp_config);
         return (OS_INVALID);
     }

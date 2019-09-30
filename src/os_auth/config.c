@@ -21,7 +21,7 @@ int authd_read_config(const char *path) {
 
     mdebug2("Reading configuration '%s'", path);
 
-    if (ReadConfig(CAUTHD, path, &config, NULL) < 0) {
+    if (ReadConfig(CAUTHD, path, &config, NULL, NULL) < 0) {
         return OS_INVALID;
     }
 

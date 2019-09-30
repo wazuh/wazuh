@@ -54,10 +54,11 @@ static int file_in_list(unsigned int list_size, char *f_name, char *d_name, char
     return (0);
 }
 
-int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
+int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp, char **output)
 {
     int i = 0;
     int retval = 0;
+    char message[OS_FLSIZE];
 
     unsigned int rules_size = 1;
     unsigned int lists_size = 1;
@@ -116,11 +117,21 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     if (node) {
         while (node[i]) {
             if (!node[i]->element) {
-                merror(XML_ELEMNULL);
+                if (output == NULL) {
+                    merror(XML_ELEMNULL);
+                } else {
+                    wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+                }
                 retval = OS_INVALID;
                 goto cleanup;
             } else if (!node[i]->content) {
-                merror(XML_VALUENULL, node[i]->element);
+                if (output == NULL) {
+                    merror(XML_VALUENULL, node[i]->element);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1, "Invalid NULL content for element: %s.",
+                        node[i]->element);
+                    wm_strcat(output, message, '\n');
+                }
                 retval = OS_INVALID;
                 goto cleanup;
             }
@@ -208,7 +219,14 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                 os_realloc(rules_dirs_pattern, sizeof(char *)*rul_dirs_size, rules_dirs_pattern);
 
                 if (!rules_dirs) {
-                    merror(MEM_ERROR, errno, strerror(errno));
+                    if (output == NULL) {
+                        merror(MEM_ERROR, errno, strerror(errno));
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1,
+                            "Could not acquire memory due to [(%d)-(%s)].",
+                            errno, strerror(errno));
+                        wm_strcat(output, message, '\n');
+                    }
                     retval = OS_INVALID;
                     goto cleanup;
                 }
@@ -231,8 +249,16 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                 } else {
                     os_strdup(".xml$", rules_dirs_pattern[rul_dirs_size - 2]);
                 }
-            } else {
+            } else if (output == NULL) {
                 merror(XML_INVELEM, node[i]->element);
+                OSRegex_FreePattern(&regex);
+                retval = OS_INVALID;
+                goto cleanup;
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid element in the configuration: '%s'.",
+                    node[i]->element);
+                wm_strcat(output, message, '\n');
                 OSRegex_FreePattern(&regex);
                 retval = OS_INVALID;
                 goto cleanup;
@@ -280,8 +306,13 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
         OSRegex_FreePattern(&regex);
         if (!OSRegex_Compile(decoder_dirs_pattern[i], &regex, 0)) {
-            merror(CONFIG_ERROR, "pattern in decoder_dir does not compile");
-            merror("Regex would not compile");
+            if (output == NULL){
+                merror(CONFIG_ERROR, "pattern in decoder_dir does not compile");
+                merror("Regex would not compile");
+            } else {
+                wm_strcat(output, "Configuration error at pattern in decoder_dir does not compile", '\n');
+                wm_strcat(output, "Regex would not compile", '\n');
+            }
             retval = OS_INVALID;
             goto cleanup;
         }
@@ -337,8 +368,13 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
         OSRegex_FreePattern(&regex);
         if (!OSRegex_Compile(rules_dirs_pattern[i], &regex, 0)) {
-            merror(CONFIG_ERROR, "pattern in rules_dir does not compile");
-            merror("Regex would not compile");
+            if (output == NULL){
+                merror(CONFIG_ERROR, "pattern in rules_dir does not compile");
+                merror("Regex would not compile");
+            } else {
+                wm_strcat(output, "Configuration error at pattern in rules_dir does not compile", '\n');
+                wm_strcat(output, "Regex would not compile", '\n');
+            }
             retval = OS_INVALID;
             goto cleanup;
         }

@@ -28,10 +28,11 @@ static short eval_bool(const char *str)
 }
 
 /* Read the rootcheck config */
-int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
+int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *mailp, char **output)
 {
     int i = 0;
     rkconfig *rootcheck;
+    char message[OS_FLSIZE];
 
     /* XML Definitions */
     const char *xml_rootkit_files = "rootkit_files";
@@ -72,17 +73,35 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
 
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL){
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration", '\n');
+            }
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL){
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                        "Invalid NULL content for element: '%s'.",
+                        node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return (OS_INVALID);
         }
 
         /* Get frequency */
         else if (strcmp(node[i]->element, xml_time) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
 
@@ -92,13 +111,27 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
         else if (strcmp(node[i]->element, xml_scanall) == 0) {
             rootcheck->scanall = eval_bool(node[i]->content);
             if (rootcheck->scanall == OS_INVALID) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_disabled) == 0) {
             rootcheck->disabled = eval_bool(node[i]->content);
             if (rootcheck->disabled == OS_INVALID) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         }
@@ -107,7 +140,14 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
             rootcheck->skip_nfs = eval_bool(node[i]->content);
             if (rootcheck->skip_nfs == OS_INVALID)
             {
-                merror(XML_VALUEERR,node[i]->element,node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return(OS_INVALID);
             }
         }
@@ -115,7 +155,14 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
         {
             rootcheck->readall = eval_bool(node[i]->content);
             if (rootcheck->readall == OS_INVALID) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_rootkit_files) == 0) {
@@ -160,10 +207,26 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
 
             if (node[i]->attributes && node[i]->values && *node[i]->attributes && *node[i]->values) {
                 if (strcmp(*node[i]->attributes, "type")) {
-                    merror("Invalid attribute for '%s': '%s'.", node[i]->element, *node[i]->attributes);
+                    if (output == NULL){
+                        merror("Invalid attribute for '%s': '%s'.",
+                            node[i]->element, *node[i]->attributes);
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1,
+                            "Invalid attribute for '%s': '%s'.",
+                            node[i]->element, *node[i]->attributes);
+                        wm_strcat(output, message, '\n');
+                    }
                     return OS_INVALID;
                 } else if (strcmp(*node[i]->values, "sregex")) {
-                    merror("Invalid value for '%s': '%s'.", *node[i]->attributes, *node[i]->values);
+                    if (output == NULL){
+                        merror("Invalid value for '%s': '%s'.",
+                            *node[i]->attributes, *node[i]->values);
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1,
+                            "Invalid value for '%s': '%s'.",
+                            *node[i]->attributes, *node[i]->values);
+                        wm_strcat(output, message, '\n');
+                    }
                     return OS_INVALID;
                 }
                 os_calloc(1, sizeof(OSMatch), rootcheck->ignore_sregex[j]);
@@ -172,7 +235,15 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
 #else
                 if (!OSMatch_Compile(rootcheck->ignore[j], rootcheck->ignore_sregex[j], OS_CASE_SENSITIVE)) {
 #endif
-                    merror(REGEX_COMPILE, rootcheck->ignore[j], rootcheck->ignore_sregex[j]->error);
+                    if (output == NULL) {
+                        merror(REGEX_COMPILE, rootcheck->ignore[j],
+                            rootcheck->ignore_sregex[j]->error);
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1,
+                            "Syntax error on regex: '%s': %d.",
+                            rootcheck->ignore[j], rootcheck->ignore_sregex[j]->error);
+                        wm_strcat(output, message, '\n');
+                    }
                     return OS_INVALID;
                 }
             }
@@ -191,50 +262,106 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
         } else if (strcmp(node[i]->element, xml_check_dev) == 0) {
             rootcheck->checks.rc_dev = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_dev == OS_INVALID) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_check_files) == 0) {
             rootcheck->checks.rc_files = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_files == OS_INVALID) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_check_if) == 0) {
             rootcheck->checks.rc_if = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_if == OS_INVALID) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_check_pids) == 0) {
             rootcheck->checks.rc_pids = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_pids == OS_INVALID) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_check_ports) == 0) {
             rootcheck->checks.rc_ports = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_ports == OS_INVALID) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_check_sys) == 0) {
             rootcheck->checks.rc_sys = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_sys == OS_INVALID) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_check_trojans) == 0) {
             rootcheck->checks.rc_trojans = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_trojans == OS_INVALID) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_check_unixaudit) == 0) {
 #ifndef WIN32
             rootcheck->checks.rc_unixaudit = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_unixaudit == OS_INVALID) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
 #endif
@@ -242,7 +369,14 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
 #ifdef WIN32
             rootcheck->checks.rc_winapps = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_winapps == OS_INVALID) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
 #endif
@@ -250,7 +384,14 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
 #ifdef WIN32
             rootcheck->checks.rc_winaudit = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_winaudit == OS_INVALID) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
 #endif
@@ -258,12 +399,25 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
 #ifdef WIN32
             rootcheck->checks.rc_winmalware = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_winmalware == OS_INVALID) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
 #endif
-        } else {
+        } else if (output == NULL){
             merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Invalid element in the configuration: '%s'.",
+                node[i]->element);
+            wm_strcat(output, message, '\n');
             return (OS_INVALID);
         }
         i++;
@@ -271,11 +425,15 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
     return (0);
 }
 
-int Test_Rootcheck(const char *path, int type){
+int Test_Rootcheck(const char *path, int type, char **output){
     rkconfig test_rootcheck = { .workdir = 0 };
 
-    if (ReadConfig(CROOTCHECK | type, path, &test_rootcheck, NULL) < 0) {
-        merror(CONF_READ_ERROR, "Rootcheck");
+    if (ReadConfig(CROOTCHECK | type, path, &test_rootcheck, NULL, output) < 0) {
+        if (output == NULL){
+            merror(CONF_READ_ERROR, "Rootcheck");
+        } else {
+            wm_strcat(output, "ERROR: Invalid configuration in Rootcheck", '\n');
+        }
 	    Free_Rootcheck(&test_rootcheck);
         return OS_INVALID;
     }

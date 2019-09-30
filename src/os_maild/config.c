@@ -47,11 +47,11 @@ int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
     memset(&global, 0, sizeof(_Config));
     global.alerts_log = 1;
 
-    if (ReadConfig(modules, cfgfile, NULL, Mail) < 0) {
+    if (ReadConfig(modules, cfgfile, NULL, Mail, NULL) < 0) {
         return (OS_INVALID);
     }
 
-    if (ReadConfig(CGLOBAL, cfgfile, &global, NULL) < 0) {
+    if (ReadConfig(CGLOBAL, cfgfile, &global, NULL, NULL) < 0) {
         return (OS_INVALID);
     }
 

@@ -1103,7 +1103,8 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
                                 0,
                                 syscheck.filerestrict[dir_position]->raw,
                                 max_depth, syscheck.tag[dir_position],
-                                -1);
+                                -1,
+                                NULL);
         } else {
             dump_syscheck_entry(&syscheck,
                                 real_path,
@@ -1111,7 +1112,8 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
                                 0,
                                 NULL,
                                 max_depth, syscheck.tag[dir_position],
-                                -1);
+                                -1,
+                                NULL);
         }
         /* Check for real time flag */
         if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {

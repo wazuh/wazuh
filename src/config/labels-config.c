@@ -16,10 +16,11 @@ const char *xml_label = "label";
 const char *xml_key = "key";
 const char *xml_hidden = "hidden";
 
-int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
+int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char **output) {
     int i;
     int j;
     const char *key;
+    char message[OS_FLSIZE];
     size_t labels_z = 0;
     wlabel_t **labels = (wlabel_t **)d1;
     label_flags_t flags;
@@ -36,10 +37,21 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
     for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             goto error;
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid NULL content for element: %s.",
+                    node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             goto error;
         } else if (strcmp(node[i]->element, xml_label) == 0) {
             key = NULL;
@@ -49,12 +61,23 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 if (strcmp(node[i]->attributes[j], xml_key) == 0) {
                     if (strlen(node[i]->values[j]) > 0) {
                         if (node[i]->values[j][0] == '_'){
-                            mwarn("Label keys starting with \"_\"  are reserved for internal use. Skipping label '%s'.", node[i]->values[j]);
+                            if (output == NULL) {
+                                mwarn("Label keys starting with \"_\"  are reserved for internal use. Skipping label '%s'.",
+                                    node[i]->values[j]);
+                            } else {
+                                snprintf(message, OS_FLSIZE + 1,
+                                    "WARNING: Label keys starting with \"_\"  are reserved for internal use. Skipping label '%s'.",
+                                    node[i]->values[j]);
+                                wm_strcat(output, message, '\n');
+                            }
                             flags.system = 1;
                         }
                         key = node[i]->values[j];
-                    } else {
+                    } else if (output) {
                         merror("Label with empty key.");
+                        goto error;
+                    } else {
+                        wm_strcat(output, "Label with empty key.", '\n');
                         goto error;
                     }
                 } else if (strcmp(node[i]->attributes[j], xml_hidden) == 0) {
@@ -62,8 +85,14 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                         flags.hidden = 1;
                     else if (strcmp(node[i]->values[j], "no") == 0)
                         flags.hidden = 0;
-                    else {
+                    else if (output == NULL) {
                         merror("Invalid content for attribute '%s'.", node[i]->attributes[j]);
+                        goto error;
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1,
+                            "Invalid content for attribute '%s'.",
+                            node[i]->attributes[j]);
+                        wm_strcat(output, message, '\n');
                         goto error;
                     }
                 }
@@ -74,17 +103,33 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 continue;
 
             if (!key) {
-                merror("Expected 'key' attribute for label.");
+                if (output == NULL) {
+                    merror("Expected 'key' attribute for label.");
+                } else {
+                    wm_strcat(output, "Expected 'key' attribute for label.", '\n');
+                }
                 goto error;
             }
 
             if (strlen(node[i]->content) == 0) {
-                mwarn("Label '%s' is empty.", key);
+                if (output == NULL) {
+                    mwarn("Label '%s' is empty.", key);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "WARNING: Label '%s' is empty.", key);
+                    wm_strcat(output, message, '\n');
+                }
             }
 
             *labels = labels_add(*labels, &labels_z, key, node[i]->content, flags, 1);
-        } else {
+        } else if (output == NULL) {
             merror(XML_INVELEM, node[i]->element);
+            goto error;
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Invalid element in the configuration: '%s'.",
+                node[i]->element);
+            wm_strcat(output, message, '\n');
             goto error;
         }
     }
@@ -96,11 +141,15 @@ error:
     return OS_INVALID;
 }
 
-int Test_Labels(const char *path, int type) {
+int Test_Labels(const char *path, int type, char **output) {
     wlabel_t *test_labels = NULL;
 
-    if (ReadConfig(CLABELS | type, path, &test_labels, NULL) < 0) {
-        merror(CONF_READ_ERROR, "Labels");
+    if (ReadConfig(CLABELS | type, path, &test_labels, NULL, output) < 0) {
+        if (output == NULL){
+            merror(CONF_READ_ERROR, "Labels");
+        } else {
+            wm_strcat(output, "ERROR: Invalid configuration in Labels", '\n');
+        }
         labels_free(test_labels);
         return OS_INVALID;
     }

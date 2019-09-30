@@ -13,9 +13,10 @@
 #include "config.h"
 
 
-int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *config2)
+int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *config2, char **output)
 {
     unsigned int i = 0, j = 0, s = 0;
+    char message[OS_FLSIZE];
 
     /* XML definitions */
     const char *xml_lessd_server = "host";
@@ -55,21 +56,45 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
     /* Read the XML */
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL){
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL){
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1, "Invalid NULL content for element: %s.",
+                        node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_lessd_frequency) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': '%s'.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
 
             lessd_config->entries[s]->frequency = atoi(node[i]->content);
         } else if (strcmp(node[i]->element, xml_lessd_port) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': '%s'.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
 
@@ -108,14 +133,32 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
                      node[i]->content);
 
             if (w_ref_parent_folder(script_path)) {
-                merror("Invalid Agentless type '%s': it contains references to parent folder.", node[i]->content);
+                if (output == NULL){
+                    merror("Invalid Agentless type '%s': it contains references to parent folder.", node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid Agentless type '%s': it contains references to parent folder.",
+                        node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
             if (File_DateofChange(script_path) <= 0) {
-                merror("Unable to find '%s' at '%s'.",
+                if (output == NULL) {
+                    merror("Unable to find '%s' at '%s'.",
                        node[i]->content, AGENTLESSDIRPATH);
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Unable to find '%s' at '%s'.",
+                        node[i]->content, AGENTLESSDIRPATH);
+                    wm_strcat(output, message, '\n');
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
             os_strdup(node[i]->content, lessd_config->entries[s]->type);
@@ -131,12 +174,24 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
             } else if (strcmp(node[i]->content, "periodic_diff") == 0) {
                 lessd_config->entries[s]->state |= LESSD_STATE_PERIODIC;
                 lessd_config->entries[s]->state |= LESSD_STATE_DIFF;
-            } else {
+            } else if (output == NULL){
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid value for element '%s': '%s'.",
+                    node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
+                return (OS_INVALID);
             }
-        } else {
+        } else if (output == NULL){
             merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Invalid element in the configuration: '%s'.",
+                node[i]->element);
+            wm_strcat(output, message, '\n');
             return (OS_INVALID);
         }
         i++;
@@ -146,25 +201,37 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
     if (!lessd_config->entries[s]->server ||
             !lessd_config->entries[s]->state ||
             !lessd_config->entries[s]->type) {
-        merror(XML_INV_MISSOPTS);
+        if (output == NULL){
+            merror(XML_INV_MISSOPTS);
+        } else {
+            wm_strcat(output, "Missing agentless options.", '\n');
+        }
         return (OS_INVALID);
     }
 
     if ((lessd_config->entries[s]->state == LESSD_STATE_PERIODIC) &&
             !lessd_config->entries[s]->frequency) {
-        merror(XML_INV_MISSFREQ);
+        if (output == NULL) {
+            merror(XML_INV_MISSFREQ);
+        } else {
+            wm_strcat(output, "Frequency not set for the periodic option.", '\n');
+        }
         return (OS_INVALID);
     }
 
     return (0);
 }
 
-int Test_Agentlessd(const char *path) {
+int Test_Agentlessd(const char *path, char **output) {
     agentlessd_config *agtless_config;
     os_calloc(1, sizeof(agentlessd_config), agtless_config);
 
-    if(ReadConfig(CAGENTLESS, path, agtless_config, NULL) < 0) {
-        merror(XML_INV_AGENTLESS);
+    if(ReadConfig(CAGENTLESS, path, agtless_config, NULL, output) < 0) {
+        if (output == NULL){
+            merror(XML_INV_AGENTLESS);
+        } else {
+            wm_strcat(output, "ERROR: Invalid configuration in Agentless", '\n');
+        }
         free_AgentlessConfig(agtless_config);
         return OS_INVALID;
     }

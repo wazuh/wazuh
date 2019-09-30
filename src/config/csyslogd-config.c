@@ -12,9 +12,10 @@
 #include "config.h"
 
 
-int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *config2)
+int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *config2, char **output)
 {
     unsigned int i = 0, s = 0;
+    char message[OS_FLSIZE];
 
     /* XML definitions */
     const char *xml_syslog_server = "server";
@@ -54,21 +55,46 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
 
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             goto fail;
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                        "Invalid NULL content for element: %s.",
+                        node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             goto fail;
         } else if (strcmp(node[i]->element, xml_syslog_level) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 goto fail;
             }
 
             syslog_config[s]->level = (unsigned int) atoi(node[i]->content);
         } else if (strcmp(node[i]->element, xml_syslog_port) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 goto fail;
             }
 
@@ -94,7 +120,9 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
                     unsigned int id_i = 0;
 
                     r_id = (unsigned int) atoi(str_pt);
-                    mdebug1("Adding '%d' to syslog alerting", r_id);
+                    if (output == NULL) {
+                        mdebug1("Adding '%d' to syslog alerting", r_id);
+                    }
 
                     if (syslog_config[s]->rule_id) {
                         while (syslog_config[s]->rule_id[id_i]) {
@@ -140,16 +168,29 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
             } else if (strcmp(node[i]->content, "splunk") == 0) {
                 /* Enable the Splunk Key/Value format */
                 syslog_config[s]->format = SPLUNK_CSYSLOG;
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                goto fail;
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid value for element '%s': %s.",
+                    node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 goto fail;
             }
         } else if (strcmp(node[i]->element, xml_syslog_location) == 0) {
             os_calloc(1, sizeof(OSMatch), syslog_config[s]->location);
             if (!OSMatch_Compile(node[i]->content,
                                  syslog_config[s]->location, 0)) {
-                merror(REGEX_COMPILE, node[i]->content,
+                if (output == NULL) {
+                    merror(REGEX_COMPILE, node[i]->content,
                        syslog_config[s]->location->error);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Syntax error on regex: '%s': %d.",
+                        node[i]->content, syslog_config[s]->location->error);
+                    wm_strcat(output, message, '\n');
+                }
                 goto fail;
             }
         } else if (strcmp(node[i]->element, xml_syslog_use_fqdn) == 0) {
@@ -157,20 +198,39 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
                 syslog_config[s]->use_fqdn = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
                 syslog_config[s]->use_fqdn = 0;
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                goto fail;
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid value for element '%s': %s.",
+                    node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 goto fail;
             }
         } else if (strcmp(node[i]->element, xml_syslog_group) == 0) {
             os_calloc(1, sizeof(OSMatch), syslog_config[s]->group);
             if (!OSMatch_Compile(node[i]->content,
                                  syslog_config[s]->group, 0)) {
-                merror(REGEX_COMPILE, node[i]->content,
+                if (output == NULL){
+                    merror(REGEX_COMPILE, node[i]->content,
                        syslog_config[s]->group->error);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Syntax error on regex: '%s': %d.",
+                        node[i]->content, syslog_config[s]->group->error);
+                    wm_strcat(output, message, '\n');
+                }
                 goto fail;
             }
-        } else {
+        } else if (output == NULL) {
             merror(XML_INVELEM, node[i]->element);
+            goto fail;
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Invalid element in the configuration: '%s'.",
+                node[i]->element);
+            wm_strcat(output, message, '\n');
             goto fail;
         }
         i++;
@@ -178,7 +238,11 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
 
     /* We must have at least one entry set */
     if (!syslog_config[s]->server) {
-        merror(XML_INV_CSYSLOG);
+        if (output == NULL){
+            merror(XML_INV_CSYSLOG);
+        } else {
+            wm_strcat(output, "Invalid client-syslog configuration.", '\n');
+        }
         goto fail;
     }
 
@@ -206,7 +270,7 @@ fail:
     return (OS_INVALID);
 }
 
-int Test_CSyslogd(const char *path) {
+int Test_CSyslogd(const char *path, char **output) {
     int fail = 0;
 
     struct SyslogConfig_holder config;
@@ -214,9 +278,13 @@ int Test_CSyslogd(const char *path) {
 
     config.data = syslog_config;
 
-    if (ReadConfig(CSYSLOGD, path, &config, NULL) < 0) {
-        merror(RCONFIG_ERROR,"CSyslogd", path);
-		fail = 1;
+    if (ReadConfig(CSYSLOGD, path, &config, NULL, output) < 0) {
+        if (output == NULL){
+            merror(RCONFIG_ERROR,"CSyslogd", path);
+        } else {
+            wm_strcat(output, "ERROR: Invalid configuration in CSyslogd", '\n');
+        }
+        fail = 1;
     }
 
     // Free Memory

@@ -14,15 +14,16 @@
 #include "config.h"
 #include "headers/sec.h"
 
-int Read_Client_Server(XML_NODE node, agent *logr);
+int Read_Client_Server(XML_NODE node, agent *logr, char **output);
 
-int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2, char **output)
 {
     int i = 0;
     char f_ip[128] = {'\0'};
     char * rip = NULL;
     int port = DEFAULT_SECURE;
     int protocol = IPPROTO_UDP;
+    char message[OS_FLSIZE];
 
     /* XML definitions */
     const char *xml_client_server = "server";
@@ -49,60 +50,132 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         rip = NULL;
         XML_NODE chld_node = NULL;
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid NULL content for element: %s.",
+                    node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return (OS_INVALID);
         }
         /* Get local IP */
         else if (strcmp(node[i]->element, xml_local_ip) == 0) {
             os_strdup(node[i]->content, logr->lip);
             if (OS_IsValidIP(logr->lip, NULL) != 1) {
-                merror(INVALID_IP, logr->lip);
+                if (output == NULL) {
+                    merror(INVALID_IP, logr->lip);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid ip address: '%s'.",
+                        logr->lip);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         }
         /* Get server IP */
         else if (strcmp(node[i]->element, xml_client_ip) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_client_ip);
+            if (output == NULL) {
+                mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_client_ip);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "WARNING: The <%s> tag is deprecated, please use <server><address> instead.",
+                    xml_client_ip);
+                wm_strcat(output, message, '\n');
+            }
 
             if (OS_IsValidIP(node[i]->content, NULL) != 1) {
-                merror(INVALID_IP, node[i]->content);
+                if (output == NULL) {
+                    merror(INVALID_IP, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid ip address: '%s'.",
+                        node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
 
             rip = node[i]->content;
         } else if (strcmp(node[i]->element, xml_client_hostname) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_client_hostname);
+            if (output == NULL) {
+                mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_client_hostname);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "WARNING: The <%s> tag is deprecated, please use <server><address> instead.",
+                    xml_client_hostname);
+                wm_strcat(output, message, '\n');
+            }
             if (strchr(node[i]->content, '/') ==  NULL) {
                 snprintf(f_ip, 127, "%s/", node[i]->content);
                 rip = f_ip;
-            } else {
+            } else if (output == NULL) {
                 merror(AG_INV_HOST, node[i]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid hostname: '%s'.",
+                    node[i]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
 
         } else if (strcmp(node[i]->element, xml_client_port) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <server><port> instead.", xml_client_port);
-
+            if (output == NULL) {
+                mwarn("The <%s> tag is deprecated, please use <server><port> instead.", xml_client_port);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "WARNING: The <%s> tag is deprecated, please use <server><port> instead.",
+                    xml_client_port);
+                wm_strcat(output, message, '\n');
+            }
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
 
             if (port = atoi(node[i]->content), port <= 0 || port > 65535) {
-                merror(PORT_ERROR, port);
+                if (output == NULL) {
+                    merror(PORT_ERROR, port);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid port number: '%d'.",
+                        port);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         }
         /* Get parameters for each configurated server*/
         else if (strcmp(node[i]->element, xml_client_server) == 0) {
             if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
-                merror(XML_INVELEM, node[i]->element);
+                if (output == NULL) {
+                    merror(XML_INVELEM, node[i]->element);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid element in the configuration: '%s'.",
+                        node[i]->element);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
-            if (Read_Client_Server(chld_node, logr) < 0) {
+            if (Read_Client_Server(chld_node, logr, output) < 0) {
                 OS_ClearNode(chld_node);
                 return (OS_INVALID);
             }
@@ -110,23 +183,51 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             OS_ClearNode(chld_node);
         } else if (strcmp(node[i]->element, xml_notify_time) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
             logr->notify_time = atoi(node[i]->content);
 
             if (logr->notify_time < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_max_time_reconnect_try) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
             logr->max_time_reconnect_try = atoi(node[i]->content);
             if (logr->max_time_reconnect_try < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_ar_disabled) == 0) {
@@ -134,8 +235,14 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 logr->execdq = -1;
             } else if (strcmp(node[i]->content, "no") == 0) {
                 logr->execdq = 0;
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid value for element '%s': %s.",
+                    node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_profile_name) == 0) {
@@ -146,33 +253,62 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 logr->flags.auto_restart = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
                 logr->flags.auto_restart = 0;
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid value for element '%s': %s.",
+                    node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_protocol) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <server><protocol> instead.", xml_protocol);
-
+            if (output == NULL) {
+                mwarn("The <%s> tag is deprecated, please use <server><protocol> instead.", xml_protocol);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "WARNING: The <%s> tag is deprecated, please use <server><protocol> instead.",
+                    xml_protocol);
+                wm_strcat(output, message, '\n');
+            }
             if (strcmp(node[i]->content, "tcp") == 0) {
                 protocol = IPPROTO_TCP;
             } else if (strcmp(node[i]->content, "udp") == 0) {
                 protocol = IPPROTO_UDP;
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid value for element '%s': %s.",
+                    node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
         } else if(strcmp(node[i]->element, xml_crypto_method) == 0){
             if(strcmp(node[i]->content, "blowfish") == 0){
                 logr->crypto_method = W_METH_BLOWFISH;
-            }
-            else if(strcmp(node[i]->content, "aes") == 0){
+            } else if(strcmp(node[i]->content, "aes") == 0){
                 logr->crypto_method = W_METH_AES;
-            }else{
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid value for element '%s': %s.",
+                    node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
+                return (OS_INVALID);
             }
-        } else {
+        } else if (output == NULL) {
             merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Invalid element in the configuration: '%s'.",
+                node[i]->element);
+            wm_strcat(output, message, '\n');
             return (OS_INVALID);
         }
 
@@ -202,7 +338,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     return (0);
 }
 
-int Read_Client_Server(XML_NODE node, agent * logr)
+int Read_Client_Server(XML_NODE node, agent * logr, char **output)
 {
     /* XML definitions */
     const char *xml_client_addr = "address";
@@ -214,15 +350,27 @@ int Read_Client_Server(XML_NODE node, agent * logr)
     char * rip = NULL;
     int port = DEFAULT_SECURE;
     int protocol = IPPROTO_UDP;
+    char message[OS_FLSIZE];
 
     /* Get parameters for each configurated server*/
 
     for (j = 0; node[j]; j++) {
         if (!node[j]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return (OS_INVALID);
         } else if (!node[j]->content) {
-            merror(XML_VALUENULL, node[j]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, node[j]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid NULL content for element: %s.",
+                    node[j]->element);
+                wm_strcat(output, message, '\n');
+            }
             return (OS_INVALID);
         }
         /* Get server address (IP or hostname) */
@@ -232,18 +380,38 @@ int Read_Client_Server(XML_NODE node, agent * logr)
             } else if (strchr(node[j]->content, '/') ==  NULL) {
                 snprintf(f_ip, 127, "%s", node[j]->content);
                 rip = f_ip;
-            } else {
+            } else if (output == NULL) {
                 merror(AG_INV_HOST, node[j]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid hostname: '%s'.",
+                    node[j]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
         } else if (strcmp(node[j]->element, xml_client_port) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
-                merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[j]->element, node[j]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
 
             if (port = atoi(node[j]->content), port <= 0 || port > 65535) {
-                merror(PORT_ERROR, port);
+                if (output == NULL) {
+                    merror(PORT_ERROR, port);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid port number: '%d'.",
+                        port);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         } else if (strcmp(node[j]->element, xml_protocol) == 0) {
@@ -251,18 +419,34 @@ int Read_Client_Server(XML_NODE node, agent * logr)
                 protocol = IPPROTO_TCP;
             } else if (strcmp(node[j]->content, "udp") == 0) {
                 protocol = IPPROTO_UDP;
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid value for element '%s': %s.",
+                    node[j]->element, node[j]->content);
+                wm_strcat(output, message, '\n');
+                return (OS_INVALID);
             }
-        } else {
+        } else if (output == NULL) {
             merror(XML_INVELEM, node[j]->element);
+            return (OS_INVALID);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Invalid element in the configuration: '%s'.",
+                node[j]->element);
+            wm_strcat(output, message, '\n');
             return (OS_INVALID);
         }
     }
 
     if (!rip) {
-        merror("No such address in the configuration.");
+        if (output == NULL) {
+            merror("No such address in the configuration.");
+        } else {
+            wm_strcat(output, "No such address in the configuration.", '\n');
+        }
         return (OS_INVALID);
     }
 
@@ -276,11 +460,15 @@ int Read_Client_Server(XML_NODE node, agent * logr)
     return (0);
 }
 
-int Test_Client(const char *path, int type){
+int Test_Client(const char *path, int type, char **output){
     agent test_client = { .server = NULL };
 
-    if (ReadConfig(CCLIENT | type, path, &test_client, NULL) < 0) {
-		merror(CONF_READ_ERROR, "Client");
+    if (ReadConfig(CCLIENT | type, path, &test_client, NULL, output) < 0) {
+        if (output == NULL){
+            merror(CONF_READ_ERROR, "Client");
+        } else {
+            wm_strcat(output, "ERROR: Invalid configuration in Client", '\n');
+        }
         Free_Client(&test_client);
         return OS_INVALID;
 	}

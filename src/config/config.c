@@ -19,14 +19,16 @@
 static int read_main_elements(const OS_XML *xml, int modules,
                               XML_NODE node,
                               void *d1,
-                              void *d2);
+                              void *d2,
+                              char **output);
 
 
 /* Read the main elements of the configuration */
 static int read_main_elements(const OS_XML *xml, int modules,
                               XML_NODE node,
                               void *d1,
-                              void *d2)
+                              void *d2,
+                              char **output)
 {
     int i = 0;
     const char *osglobal = "global";                    /* Server Config */
@@ -62,7 +64,11 @@ static int read_main_elements(const OS_XML *xml, int modules,
         XML_NODE chld_node = NULL;
 
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL){
+                merror(XML_ELEMNULL);                    
+            } else {
+                wm_strcat(output, " Invalid NULL element in the configuration", '\n');
+            }
             goto fail;
         }
 
@@ -70,83 +76,87 @@ static int read_main_elements(const OS_XML *xml, int modules,
 
         if (chld_node && (strcmp(node[i]->element, osglobal) == 0)) {
             if (((modules & CGLOBAL) || (modules & CMAIL))
-                    && (Read_Global(chld_node, d1, d2) < 0)) {
+                    && (Read_Global(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osemailalerts) == 0)) {
-            if ((modules & CMAIL) && (Read_EmailAlerts(chld_node, d1, d2) < 0)) {
+            if ((modules & CMAIL) && (Read_EmailAlerts(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osdbd) == 0)) {
-            if ((modules & CDBD) && (Read_DB(chld_node, d1, d2) < 0)) {
+            if ((modules & CDBD) && (Read_DB(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, oscsyslogd) == 0)) {
-            if ((modules & CSYSLOGD) && (Read_CSyslog(chld_node, d1, d2) < 0)) {
+            if ((modules & CSYSLOGD) && (Read_CSyslog(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if(chld_node && (strcmp(node[i]->element, osintegratord) == 0)) {
-            if((modules & CINTEGRATORD) && (Read_Integrator(chld_node, d1, d2) < 0)) {
+            if((modules & CINTEGRATORD) && (Read_Integrator(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, oscagentless) == 0)) {
-            if ((modules & CAGENTLESS) && (Read_CAgentless(chld_node, d1, d2) < 0)) {
+            if ((modules & CAGENTLESS) && (Read_CAgentless(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osrules) == 0)) {
-            if ((modules & CRULES) && (Read_Rules(chld_node, d1, d2) < 0)) {
+            if ((modules & CRULES) && (Read_Rules(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, ossyscheck) == 0) {
+<<<<<<< HEAD
             if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2, modules) < 0)) {
+=======
+            if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2, output) < 0)) {
+>>>>>>> Introduce variable output to ReadConfig
                 goto fail;
             }
-            if ((modules & CGLOBAL) && (Read_GlobalSK(chld_node, d1, d2) < 0)) {
+            if ((modules & CGLOBAL) && (Read_GlobalSK(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osrootcheck) == 0) {
-            if ((modules & CROOTCHECK) && (Read_Rootcheck(chld_node, d1, d2) < 0)) {
+            if ((modules & CROOTCHECK) && (Read_Rootcheck(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osalerts) == 0)) {
-            if ((modules & CALERTS) && (Read_Alerts(chld_node, d1, d2) < 0)) {
+            if ((modules & CALERTS) && (Read_Alerts(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, oslocalfile) == 0)) {
-            if ((modules & CLOCALFILE) && (Read_Localfile(chld_node, d1, d2) < 0)) {
+            if ((modules & CLOCALFILE) && (Read_Localfile(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osremote) == 0)) {
-            if ((modules & CREMOTE) && (Read_Remote(chld_node, d1, d2) < 0)) {
+            if ((modules & CREMOTE) && (Read_Remote(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
-            if ((modules & CCLIENT) && (Read_Client(xml, chld_node, d1, d2) < 0)) {
+            if ((modules & CCLIENT) && (Read_Client(xml, chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osbuffer) == 0) {
-            if ((modules & CBUFFER) && (Read_ClientBuffer(chld_node, d1, d2) < 0)) {
+            if ((modules & CBUFFER) && (Read_ClientBuffer(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, oscommand) == 0)) {
-            if ((modules & CAR) && (ReadActiveCommands(chld_node, d1, d2) < 0)) {
+            if ((modules & CAR) && (ReadActiveCommands(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osactive_response) == 0)) {
-            if ((modules & CAR) && (ReadActiveResponses(chld_node, d1, d2) < 0)) {
+            if ((modules & CAR) && (ReadActiveResponses(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osreports) == 0)) {
-            if ((modules & CREPORTS) && (Read_CReports(chld_node, d1, d2) < 0)) {
+            if ((modules & CREPORTS) && (Read_CReports(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, oswmodule) == 0) {
             const int cfg_type = modules & CAGENT_CGFILE ? CAGENT_CGFILE : (modules & CRMOTE_CONFIG ? CRMOTE_CONFIG : 0);
-            if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2, cfg_type) < 0)) {
+            if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2, cfg_type, output) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, ossca) == 0) {
-            if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1) < 0)) {
+            if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1, output) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osvulndet) == 0) {
@@ -160,30 +170,35 @@ static int read_main_elements(const OS_XML *xml, int modules,
         }
 #ifndef WIN32
         else if (strcmp(node[i]->element, osfluent_forward) == 0) {
-            if ((modules & CWMODULE) && !(modules & CRMOTE_CONFIG) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {
+            if ((modules & CWMODULE) && !(modules & CRMOTE_CONFIG) && (Read_Fluent_Forwarder(xml, node[i], d1, output) < 0)) {
                 goto fail;
             }
         }
 #endif
         else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
-            if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
+            if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osauthd) == 0) {
-            if ((modules & CAUTHD) && (Read_Authd(chld_node, d1, d2) < 0)) {
+            if ((modules & CAUTHD) && (Read_Authd(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, oslogging) == 0) {
         } else if (chld_node && (strcmp(node[i]->element, oscluster) == 0)) {
-            if ((modules & CCLUSTER) && (Read_Cluster(chld_node, d1, d2) < 0)) {
+            if ((modules & CCLUSTER) && (Read_Cluster(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {
-            if ((modules & CSOCKET) && (Read_Socket(chld_node, d1, d2) < 0)) {
+            if ((modules & CSOCKET) && (Read_Socket(chld_node, d1, d2, output) < 0)) {
                 goto fail;
             }
-        } else {
+        } else if (output == NULL){
             merror(XML_INVELEM, node[i]->element);
+            goto fail;
+        } else {
+            char message[OS_FLSIZE];
+            snprintf(message, OS_FLSIZE + 1, "Invalid element in the configuration: '%s'.", node[i]->element);
+            wm_strcat(output, message, '\n');
             goto fail;
         }
 
@@ -201,7 +216,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 }
 
 /* Read the config files */
-int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
+int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **output)
 {
     int i;
     OS_XML xml;
@@ -225,10 +240,20 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     if (OS_ReadXML(cfgfile, &xml) < 0) {
         if (modules & CRMOTE_CONFIG) {
 #ifndef CLIENT
-            merror(XML_ERROR, cfgfile, xml.err, xml.err_line);
+            if (output == NULL){
+                merror(XML_ERROR, cfgfile, xml.err, xml.err_line);
+            } else {
+                char message[OS_FLSIZE];
+                snprintf(message, OS_FLSIZE + 1, "Error reading XML file '%s': %s (line %d).", cfgfile, xml.err, xml.err_line);
+                wm_strcat(output, message, '\n');
+            }
 #endif
-        } else {
+        } else if (output == NULL){
             merror(XML_ERROR, cfgfile, xml.err, xml.err_line);
+        } else {
+            char message[OS_FLSIZE];
+            snprintf(message, OS_FLSIZE + 1, "Error reading XML file '%s': %s (line %d).", cfgfile, xml.err, xml.err_line);
+            wm_strcat(output, message, '\n');
         }
         return (OS_INVALID);
     }
@@ -242,7 +267,11 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     i = 0;
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL){
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL in the configuration", '\n');
+            }
             OS_ClearNode(node);
             OS_ClearXML(&xml);
             return (OS_INVALID);
@@ -253,8 +282,14 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 
             /* Main element does not need to have any child */
             if (chld_node) {
-                if (read_main_elements(&xml, modules, chld_node, d1, d2) < 0) {
-                    merror(CONFIG_ERROR, cfgfile);
+                if (read_main_elements(&xml, modules, chld_node, d1, d2, output) < 0) {
+                    if (output == NULL){
+                        merror(CONFIG_ERROR, cfgfile);
+                    } else {
+                        char message[OS_FLSIZE];
+                        snprintf(message, OS_FLSIZE + 1, "Configuration error at '%s'.", cfgfile);
+                        wm_strcat(output, message, '\n');
+                    }
                     OS_ClearNode(chld_node);
                     OS_ClearNode(node);
                     OS_ClearXML(&xml);
@@ -280,10 +315,21 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 
                         if (!agentname) {
                             passed_agent_test = 0;
-                            merror("Reading shared configuration. Unable to retrieve the agent name.");
+                            if (output == NULL){
+                                merror("Reading shared configuration. Unable to retrieve the agent name.");
+                            } else {
+                                wm_strcat(output, "Reading shared configuration. Unable to retrive the agent name", '\n');
+                            }
                         } else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE) {
                             int attrlen = strlen(node[i]->values[attrs]);
-                            mwarn("Agent name filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
+                            if (output == NULL){
+                                mwarn("Agent name filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
+                            } else {
+                                char message[OS_FLSIZE];
+                                snprintf(message, OS_FLSIZE + 1, "WARNING: Agent name filter (%d bytes) exceeds the limit (%d)", 
+                                        attrlen, OS_PATTERN_MAXSIZE);
+                                wm_strcat(output, message, '\n');
+                            }
                             passed_agent_test = 0;
                             free(agentname);
                         } else {
@@ -299,10 +345,21 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 
                         if (!agentos) {
                             passed_agent_test = 0;
-                            merror("Reading shared configuration. Unable to retrieve the agent OS.");
+                            if (output == NULL){
+                                merror("Reading shared configuration. Unable to retrieve the agent OS.");
+                            } else {
+                                wm_strcat(output, "Reading shared configuration. Unable to retrive the agent OS", '\n');
+                            }
                         } else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE) {
                             int attrlen = strlen(node[i]->values[attrs]);
-                            mwarn("Agent OS filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
+                            if (output = NULL){
+                                mwarn("Agent OS filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
+                            } else {
+                                char message[OS_FLSIZE];
+                                snprintf(message, OS_FLSIZE + 1, "WARNING: Agent OS filter (%d bytes) exceeds the limit (%d)", 
+                                        attrlen, OS_PATTERN_MAXSIZE);
+                                wm_strcat(output, message, '\n');
+                            }
                             passed_agent_test = 0;
                         } else if (!OS_Match2(node[i]->values[attrs], agentos)) {
                             passed_agent_test = 0;
@@ -314,10 +371,21 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 
                         if (!agentprofile) {
                             passed_agent_test = 0;
-                            merror("Reading shared configuration. Unable to retrieve agent profile.");
+                            if (output == NULL){
+                                merror("Reading shared configuration. Unable to retrieve agent profile.");
+                            } else {
+                                wm_strcat(output, "Reading shared configuration. Unable to retrive the agent profile", '\n');
+                            }
                         } else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE) {
                             int attrlen = strlen(node[i]->values[attrs]);
-                            mwarn("Agent profile filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
+                            if (output == NULL){
+                                mwarn("Agent profile filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
+                            } else {
+                                char message[OS_FLSIZE];
+                                snprintf(message, OS_FLSIZE + 1, "WARNING: Agent profile filter (%d bytes) exceeds the limit (%d)", 
+                                        attrlen, OS_PATTERN_MAXSIZE);
+                                wm_strcat(output, message, '\n');
+                            }
                             passed_agent_test = 0;
                             free(agentprofile);
                         } else {
@@ -327,9 +395,11 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                              */
                             if (!OS_Match2(node[i]->values[attrs], agentprofile)) {
                                 passed_agent_test = 0;
-                                mdebug2("[%s] did not match agent config profile name [%s]",
+                                if (output == NULL){
+                                    mdebug2("[%s] did not match agent config profile name [%s]",
                                        node[i]->values[attrs], agentprofile);
-                            } else {
+                                }
+                            } else if (output == NULL){
                                 mdebug2("Matched agent config profile name [%s]", agentprofile);
                             }
                             free(agentprofile);
@@ -337,7 +407,13 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 #endif
                     } else if (strcmp(xml_agent_overwrite, node[i]->attributes[attrs]) == 0) {
                     } else {
-                        merror(XML_INVATTR, node[i]->attributes[attrs], cfgfile);
+                        if (output == NULL){
+                            merror(XML_INVATTR, node[i]->attributes[attrs], cfgfile);
+                        } else {
+                            char message[OS_FLSIZE];
+                            snprintf(message, OS_FLSIZE + 1, "Configuration error at '%s'.", cfgfile);
+                            wm_strcat(output, message, '\n');
+                        }
 #ifndef CLIENT
                         OS_ClearNode(chld_node);
                         OS_ClearNode(node);
@@ -351,8 +427,10 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 #ifdef CLIENT
             else {
                 char *agentprofile = os_read_agent_profile();
-                mdebug2("agent_config element does not have any attributes.");
-
+                if (output == NULL){
+                    mdebug2("agent_config element does not have any attributes.");
+                }
+                
                 /* if node does not have any attributes, it is a generic config block.
                  * check if agent has a profile name
                  * if agent does not have profile name, then only read this generic
@@ -360,7 +438,9 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                  */
 
                 if (!agentprofile) {
-                    mdebug2("but agent has a profile name.");
+                    if (output == NULL) {
+                        mdebug2("but agent has a profile name.");
+                    }
                     passed_agent_test = 0;
                 } else {
                     free(agentprofile);
@@ -370,8 +450,14 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 
             /* Main element does not need to have any child */
             if (chld_node) {
-                if (passed_agent_test && read_main_elements(&xml, modules, chld_node, d1, d2) < 0) {
-                    merror(CONFIG_ERROR, cfgfile);
+                if (passed_agent_test && read_main_elements(&xml, modules, chld_node, d1, d2, output) < 0) {
+                    if (output == NULL){
+                        merror(CONFIG_ERROR, cfgfile);
+                    } else {
+                        char message[OS_FLSIZE];
+                        snprintf(message, OS_FLSIZE + 1, "Configuration error at '%s'.", cfgfile);
+                        wm_strcat(output, message, '\n');
+                    }
                     OS_ClearNode(chld_node);
                     OS_ClearNode(node);
                     OS_ClearXML(&xml);
@@ -381,7 +467,13 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                 OS_ClearNode(chld_node);
             }
         } else {
-            merror(XML_INVELEM, node[i]->element);
+            if (output == NULL){
+                merror(XML_INVELEM, node[i]->element);
+            } else {
+                char message[OS_FLSIZE];
+                snprintf(message, OS_FLSIZE + 1, "Invalid elemente in the configuration: '%s'.", node[i]->element);
+                wm_strcat(output, message, '\n');
+            } 
             OS_ClearNode(node);
             OS_ClearXML(&xml);
             return (OS_INVALID);
@@ -395,27 +487,39 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     return (0);
 }
 
-int Test_Analysisd(const char *path) {
+int Test_Analysisd(const char *path, char **output) {
     int fail = 0;
     _Config *test_config;
     os_calloc(1, sizeof(_Config), test_config);
 
     int modules = CGLOBAL | CRULES | CALERTS | CCLUSTER;
-    if( (ReadConfig(modules, path, test_config, NULL) < 0) || (ReadConfig(CLABELS, path, &(test_config->labels), NULL) < 0) ) {
-        merror(CONF_READ_ERROR, "Analysisd");
-		fail = 1;
+    if( (ReadConfig(modules, path, test_config, NULL, output) < 0) || (ReadConfig(CLABELS, path, &(test_config->labels), NULL, output) < 0) ) {
+        if (output == NULL){
+            merror(CONF_READ_ERROR, "Analysisd");
+        } else {
+            wm_strcat(output, "ERROR: Invalid configuration in Analysisd", '\n');
+        }
+        fail = 1;
     }
 
     if(!fail) {
         test_config->min_rotate_interval = getDefine_Int("analysisd", "min_rotate_interval", 10, 86400);
 
         if (test_config->rotate_interval && (test_config->rotate_interval < test_config->min_rotate_interval || test_config->rotate_interval > 86400)) {
-            merror("Rotate interval setting must be between %d seconds and one day.", test_config->min_rotate_interval);
+            if (output == NULL){
+                merror("Rotate interval setting must be between %d seconds and one day.", test_config->min_rotate_interval);
+            } else {
+                wm_strcat(output, "ERROR: Invalid configuration in Analysisd", '\n');
+            }
             fail = 1;
         }
 
         if (!fail && test_config->max_output_size && (test_config->max_output_size < 1000000 || test_config->max_output_size > 1099511627776)) {
-            merror("Maximum output size must be between 1 MiB and 1 TiB.");
+            if (output == NULL){
+                merror("Maximum output size must be between 1 MiB and 1 TiB.");
+            } else {
+                wm_strcat(output, "Maximum output size must be between 1 MiB and 1 TiB.", '\n');
+            }
             fail = 1;
         }
     }

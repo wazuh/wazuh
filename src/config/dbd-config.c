@@ -13,10 +13,11 @@
 #include "config.h"
 
 
-int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2)
+int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2, char **output)
 {
     int i = 0;
     DBConfig *db_config;
+    char *message[OS_FLSIZE];
 
     /* XML definitions */
     const char *xml_dbhost = "hostname";
@@ -35,10 +36,21 @@ int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2)
     /* Read the xml */
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL){
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL){
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                        "Invalid NULL content for element: '%s'.",
+                        node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return (OS_INVALID);
         }
         /* Mail notification */
@@ -59,12 +71,24 @@ int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2)
                 db_config->db_type = MYSQLDB;
             } else if (strcmp(node[i]->content, "postgresql") == 0) {
                 db_config->db_type = POSTGDB;
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
+                return (OS_INVALID);
             }
-        } else {
+        } else if (output == NULL) {
             merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                        "Invalid element in the configuration: '%s'.",
+                        node[i]->element);
+            wm_strcat(output, message, '\n');
             return (OS_INVALID);
         }
         i++;
@@ -73,12 +97,16 @@ int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2)
     return (0);
 }
 
-int Test_DBD(const char *path) {
+int Test_DBD(const char *path, char **output) {
     DBConfig *dbdConfig;
     os_calloc(1, sizeof(DBConfig), dbdConfig);
 
-    if(ReadConfig(CDBD, path, NULL, dbdConfig) < 0) {
-        merror(CONF_READ_ERROR, "Database");
+    if(ReadConfig(CDBD, path, NULL, dbdConfig, output) < 0) {
+        if (output == NULL){
+            merror(CONF_READ_ERROR, "Database");
+        } else {
+            wm_strcat(output, "ERROR: Invalid configuration in Database", '\n');
+        }
 		goto fail;
     }
 
@@ -100,19 +128,31 @@ int Test_DBD(const char *path) {
             !dbdConfig->pass ||
             !dbdConfig->db ||
             !dbdConfig->db_type) {
-        merror(DB_MISS_CONFIG);
+        if (output == NULL){
+            merror(DB_MISS_CONFIG);
+        } else {
+            wm_strcat(output, "ERROR: Invalid configuration in Database", '\n');
+        }
         goto fail;
     }
 
     /* Check for config errors */
     if (dbdConfig->db_type == MYSQLDB) {
 #ifndef MYSQL_DATABASE_ENABLED
-        merror(DB_COMPILED, "mysql");
+        if (output == NULL){
+            merror(DB_COMPILED, "mysql");
+        } else {
+            wm_strcat(output, "ERROR: Invalid configuration in Database", '\n');
+        }
         goto fail;
 #endif
     } else if (dbdConfig->db_type == POSTGDB) {
 #ifndef PGSQL_DATABASE_ENABLED
-        merror(DB_COMPILED, "postgresql");
+        if (output){
+            merror(DB_COMPILED, "postgresql");
+        } else {
+            wm_strcat(output, "ERROR: Invalid configuration in Database", '\n');
+        }
         goto fail;
 #endif
     }

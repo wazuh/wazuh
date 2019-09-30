@@ -26,7 +26,7 @@ SyslogConfig **OS_ReadSyslogConf(__attribute__((unused)) int test_config, const 
     config.data = syslog_config;
 
     /* Read configuration */
-    if (ReadConfig(modules, cfgfile, &config, NULL) < 0) {
+    if (ReadConfig(modules, cfgfile, &config, NULL, NULL) < 0) {
         merror_exit(CONFIG_ERROR, cfgfile);
         return (NULL);
     }

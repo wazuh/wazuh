@@ -52,7 +52,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     receive_chunk = (unsigned)getDefine_Int("remoted", "receive_chunk", 1024, 16384);
     buffer_relax = getDefine_Int("remoted", "buffer_relax", 0, 2);
 
-    if (ReadConfig(modules, cfgfile, cfg, NULL) < 0) {
+    if (ReadConfig(modules, cfgfile, cfg, NULL, NULL) < 0) {
         return (OS_INVALID);
     }
 

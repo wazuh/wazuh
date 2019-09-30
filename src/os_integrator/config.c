@@ -23,7 +23,7 @@ void **OS_ReadIntegratorConf(char *cfgfile, IntegratorConfig ***integrator_confi
     modules |= CINTEGRATORD;
 
     /* Reading configuration */
-    if(ReadConfig(modules, cfgfile, integrator_config, NULL) < 0)
+    if(ReadConfig(modules, cfgfile, integrator_config, NULL, NULL) < 0)
     {
         merror_exit(CONFIG_ERROR, cfgfile);
         return(NULL);

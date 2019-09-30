@@ -21,14 +21,14 @@ int Read_Rootcheck_Config(const char *cfgfile)
     int modules = 0;
 
     modules |= CROOTCHECK;
-    if (ReadConfig(modules, cfgfile, &rootcheck, NULL) < 0) {
+    if (ReadConfig(modules, cfgfile, &rootcheck, NULL, NULL) < 0) {
         return (OS_INVALID);
     }
 
 #ifdef CLIENT
     /* Read shared config */
     modules |= CRMOTE_CONFIG;
-    ReadConfig(modules, AGENTCONFIG, &rootcheck, NULL);
+    ReadConfig(modules, AGENTCONFIG, &rootcheck, NULL, NULL);
 #endif
 
     switch (rootcheck.disabled) {

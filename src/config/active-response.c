@@ -24,7 +24,7 @@ int ar_flag = 0;
 
 
 /* Generate a list with all active responses */
-int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
+int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
 {
     OSList *l1 = (OSList *) d1;
     OSList *l2 = (OSList *) d2;
@@ -33,6 +33,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     int r_ar = 0;
     int l_ar = 0;
     int rpt = 0;
+    char message[OS_FLSIZE];
 
     /* Xml options */
     const char *xml_ar_command = "command";
@@ -55,27 +56,52 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     /* Open shared ar file */
     fp = fopen(DEFAULTARPATH, "a");
     if (!fp) {
-        merror(FOPEN_ERROR, DEFAULTARPATH, errno, strerror(errno));
+        if (output == NULL) {
+            merror(FOPEN_ERROR, DEFAULTARPATH, errno, strerror(errno));
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Could not open file '%s' due to [(%d)-(%s)].",
+                DEFAULTARPATH, errno, strerror(errno));
+            wm_strcat(output, message, '\n');
+        }
         return (-1);
     }
 
 #ifndef WIN32
     struct group *os_group;
     if ((os_group = getgrnam(USER)) == NULL) {
-        merror("Could not get ossec gid.");
+        if (output == NULL) {
+            merror("Could not get ossec gid.");
+        } else {
+            wm_strcat(output, "Could not get ossec gid.", '\n');
+        }
         fclose(fp);
         return (-1);
     }
 
     if ((chown(DEFAULTARPATH, (uid_t) - 1, os_group->gr_gid)) == -1) {
-        merror("Could not change the group to ossec: %d", errno);
+        if (output == NULL) {
+            merror("Could not change the group to ossec: %d", errno);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Could not change the group to ossec: %d",
+                errno);
+            wm_strcat(output, message, '\n');
+        }
         fclose(fp);
         return (-1);
     }
 #endif
 
     if ((chmod(DEFAULTARPATH, 0640)) == -1) {
-        merror("Could not chmod to 0640: %d", errno);
+        if (output == NULL) {
+            merror("Could not chmod to 0640: %d", errno);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Could not chmod to 0640: %d",
+                errno);
+            wm_strcat(output, message, '\n');
+        }
         fclose(fp);
         return (-1);
     }
@@ -83,7 +109,14 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     /* Allocate for the active-response */
     tmp_ar = (active_response *) calloc(1, sizeof(active_response));
     if (!tmp_ar) {
-        merror(MEM_ERROR, errno, strerror(errno));
+        if (output == NULL) {
+            merror(MEM_ERROR, errno, strerror(errno));
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Could not acquire memory due to [(%d)-(%s)].",
+                errno, strerror(errno));
+            wm_strcat(output, message, '\n');
+        }
         fclose(fp);
         return (-1);
     }
@@ -103,10 +136,21 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     /* Search for the commands */
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             goto error_invalid;
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid NULL content for element: %s.",
+                    node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             goto error_invalid;
         }
 
@@ -127,7 +171,14 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         } else if (strcmp(node[i]->element, xml_ar_level) == 0) {
             /* Level must be numeric */
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 goto error_invalid;
             }
 
@@ -135,7 +186,14 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
             /* Make sure the level is valid */
             if ((tmp_ar->level < 0) || (tmp_ar->level > 20)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 goto error_invalid;
             }
         } else if (strcmp(node[i]->element, xml_ar_timeout) == 0) {
@@ -145,8 +203,14 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
                 ar_flag = -1;
             } else if (strcmp(node[i]->content, "no") == 0) {
                 /* Don't do anything if disabled is set to "no" */
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                goto error_invalid;
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid value for element '%s': %s.",
+                    node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 goto error_invalid;
             }
         } else if (strcmp(node[i]->element, xml_ar_repeated) == 0) {
@@ -156,8 +220,14 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
             // Nothing to do
         } else if (strcmp(node[i]->element, xml_ca_verification) == 0) {
             // Nothing to do
-        } else {
+        } else if (output == NULL) {
             merror(XML_INVELEM, node[i]->element);
+            goto error_invalid;
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Invalid element in the configuration: '%s'.",
+                node[i]->element);
+            wm_strcat(output, message, '\n');
             goto error_invalid;
         }
         i++;
@@ -168,7 +238,9 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         /* reset ar_flag, the next ar command may not be disabled */
         ar_flag = 0;
         if (tmp_ar->command) {
-            mdebug1("active response command '%s' is disabled", tmp_ar->command);
+            if (output == NULL){
+                mdebug1("active response command '%s' is disabled", tmp_ar->command);
+            }
             free(tmp_ar->command);
         }
         fclose(fp);
@@ -179,7 +251,9 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
     /* Command and location must be there */
     if (!tmp_ar->command || !tmp_location) {
-        mdebug1("Command or location missing");
+        if (output == NULL){
+            mdebug1("Command or location missing");
+        }
         fclose(fp);
         free(tmp_ar);
         free(tmp_location);
@@ -187,7 +261,11 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         if (rpt == 1) {
             return (0);
         }
-        merror(AR_MISS);
+        if (output == NULL) {
+            merror(AR_MISS);
+        } else {
+            wm_strcat(output, "Missing options in the active response " "configuration.", '\n');
+        }
         return (-1);
     }
 
@@ -202,8 +280,12 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
     if (OS_Regex("defined-agent", tmp_location)) {
         if (!tmp_ar->agent_id) {
-            mdebug1("'defined-agent' agent_id not defined");
-            merror(AR_DEF_AGENT);
+            if (output == NULL) {
+                mdebug1("'defined-agent' agent_id not defined");
+                merror(AR_DEF_AGENT);
+            } else {
+                wm_strcat(output, "No agent defined for response.", '\n');
+            }
             fclose(fp);
             free(tmp_ar);
             free(tmp_location);
@@ -219,8 +301,15 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
     /* If we didn't set any value for the location */
     if (tmp_ar->location == 0) {
-        mdebug1("No location defined");
-        merror(AR_INV_LOC, tmp_location);
+        if (output == NULL) {
+            mdebug1("No location defined");
+            merror(AR_INV_LOC, tmp_location);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Invalid active response location: '%s'.",
+                tmp_location);
+            wm_strcat(output, message, '\n');
+        }
         fclose(fp);
         free(tmp_ar);
         free(tmp_location);
@@ -250,8 +339,15 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
         /* Didn't find a valid command */
         if (tmp_ar->ar_cmd == NULL) {
-            mdebug1("Invalid command");
-            merror(AR_INV_CMD, tmp_ar->command);
+            if (output == NULL) {
+                mdebug1("Invalid command");
+                merror(AR_INV_CMD, tmp_ar->command);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid command '%s' in the active response.",
+                    tmp_ar->command);
+                wm_strcat(output, message, '\n');
+            }
             fclose(fp);
             free(tmp_ar);
             return (-1);
@@ -260,14 +356,25 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
     /* Check if timeout is allowed */
     if (tmp_ar->timeout && !tmp_ar->ar_cmd->timeout_allowed) {
-        mdebug1("Timeout is not allowed");
-        minfo(AR_NO_TIMEOUT, tmp_ar->ar_cmd->name);
+        if (output == NULL) {
+            mdebug1("Timeout is not allowed");
+            minfo(AR_NO_TIMEOUT, tmp_ar->ar_cmd->name);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "INFO: Timeout not allowed for command: '%s'.",
+                tmp_ar->ar_cmd->name);
+            wm_strcat(output, message, '\n');
+        }
         tmp_ar->timeout = 0;
     }
 
     /* d1 is the active response list */
     if (!OSList_AddData(l2, (void *)tmp_ar)) {
-        merror(LIST_ADD_ERROR);
+        if (output == NULL){
+            merror(LIST_ADD_ERROR);
+        } else {
+            wm_strcat(output, "Error adding nodes to list.", '\n');
+        }
         fclose(fp);
         free(tmp_ar);
         return (-1);
@@ -276,14 +383,23 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     /* Set a unique active response name */
     tmp_ar->name = (char *) calloc(OS_FLSIZE + 1, sizeof(char));
     if (!tmp_ar->name) {
-        merror_exit(MEM_ERROR, errno, strerror(errno));
+        if (output == NULL) {
+            merror_exit(MEM_ERROR, errno, strerror(errno));
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Could not acquire memory due to [(%d)-(%s)].",
+                errno, strerror(errno));
+            wm_strcat(output, message, '\n');
+        }
     }
     snprintf(tmp_ar->name, OS_FLSIZE, "%s%d",
              tmp_ar->ar_cmd->name,
              tmp_ar->timeout);
 
     /* Add to shared file */
-    mdebug1("Writing command '%s' to '%s'", tmp_ar->command, DEFAULTARPATH);
+    if (output == NULL){
+        mdebug1("Writing command '%s' to '%s'", tmp_ar->command, DEFAULTARPATH);
+    }
     fprintf(fp, "%s - %s - %d\n",
             tmp_ar->name,
             tmp_ar->ar_cmd->executable,
@@ -327,11 +443,12 @@ error_invalid:
     return (OS_INVALID);
 }
 
-int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char **output)
 {
     OSList *l1 = (OSList *) d1;
     int i = 0;
     char *tmp_str = NULL;
+    char message[OS_FLSIZE];
 
     /* Xml values */
     const char *command_name = "name";
@@ -345,7 +462,14 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     /* Allocate the active-response command */
     tmp_command = (ar_command *) calloc(1, sizeof(ar_command));
     if (!tmp_command) {
-        merror(MEM_ERROR, errno, strerror(errno));
+        if (output == NULL) {
+            merror(MEM_ERROR, errno, strerror(errno));
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Could not acquire memory due to [(%d)-(%s)].",
+                errno, strerror(errno));
+            wm_strcat(output, message, '\n');
+        }
         return (-1);
     }
 
@@ -358,12 +482,23 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     /* Search for the commands */
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             free(tmp_str);
             free(tmp_command);
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid NULL content for element: %s.",
+                    node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             free(tmp_str);
             free(tmp_command);
             return (OS_INVALID);
@@ -372,7 +507,14 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
             // The command name must not start with '!'
 
             if (node[i]->content[0] == '!') {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 free(tmp_str);
                 free(tmp_command);
                 return (OS_INVALID);
@@ -389,16 +531,32 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
                 tmp_command->timeout_allowed = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
                 tmp_command->timeout_allowed = 0;
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                free(tmp_str);
+                free(tmp_command);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid value for element '%s': %s.",
+                    node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 free(tmp_str);
                 free(tmp_command);
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, extra_args) == 0) {
             tmp_command->extra_args = strdup(node[i]->content);
-        } else {
+        } else if (output == NULL) {
             merror(XML_INVELEM, node[i]->element);
+            free(tmp_str);
+            free(tmp_command);
+            return (OS_INVALID);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Invalid element in the configuration: '%s'.",
+                node[i]->element);
+            wm_strcat(output, message, '\n');
             free(tmp_str);
             free(tmp_command);
             return (OS_INVALID);
@@ -407,7 +565,11 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     }
 
     if (!tmp_command->name || !tmp_command->executable) {
-        merror(AR_CMD_MISS);
+        if (output == NULL) {
+            merror(AR_CMD_MISS);
+        } else {
+            wm_strcat(output, "Missing command options. " "You must specify a 'name' and 'executable'.", '\n');
+        }
         free(tmp_str);
         free(tmp_command);
         return (-1);
@@ -431,7 +593,11 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
 
     /* Add command to the list */
     if (!OSList_AddData(l1, (void *)tmp_command)) {
-        merror(LIST_ADD_ERROR);
+        if (output == NULL) {
+            merror(LIST_ADD_ERROR);
+        } else {
+            wm_strcat(output, "Error adding nodes to list.", '\n');
+        }
         free(tmp_command);
         return (-1);
     }
@@ -439,7 +605,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     return (0);
 }
 
-int Test_ActiveResponse(const char *path, int type) {
+int Test_ActiveResponse(const char *path, int type, char **output) {
     int fail = 0;
     OSList *test_activecmd;
     OSList *test_activeresp;
@@ -448,13 +614,21 @@ int Test_ActiveResponse(const char *path, int type) {
     test_activeresp = OSList_Create();
 
     if (!test_activecmd || !test_activeresp) {
-        merror(LIST_ERROR, "Attempting to check Active-Response");
+        if (output == NULL){
+            merror(LIST_ERROR, "Attempting to check Active-Response");
+        } else {
+            wm_strcat(output, "Active-Response: Unable to create a new list", '\n');
+        }      
         return OS_INVALID;
     }
 
     /* type indicates local or remote config */
-    if (ReadConfig(CAR | type, path, test_activecmd, test_activeresp) < 0) {
-        merror(CONF_READ_ERROR, "Active-Response");
+    if (ReadConfig(CAR | type, path, test_activecmd, test_activeresp, output) < 0) {
+        if (output == NULL){
+            merror(CONF_READ_ERROR, "Active-Response");
+        } else {
+            wm_strcat(output, "Invalid configuration in Active-Response", '\n');
+        }
         fail = 1;
     }
 
@@ -469,7 +643,7 @@ int Test_ActiveResponse(const char *path, int type) {
     return 0;
 }
 
-int Test_Agent_Active_Response(const char *path) {
+int Test_Agent_Active_Response(const char *path, char **output) {
     const char *(xmlf[]) = {"ossec_config", "active-response", "disabled", NULL};
     const char *(castore[]) = {"ossec_config", "active-response", "ca_store", NULL};
     const char *(caverify[]) = {"ossec_config", "active-response", "ca_verification", NULL};
@@ -478,14 +652,22 @@ int Test_Agent_Active_Response(const char *path) {
 
     OS_XML xml;
     if (OS_ReadXML(path, &xml) < 0) {
-        merror(XML_ERROR, path, xml.err, xml.err_line);
+        if (output == NULL){
+            merror(XML_ERROR, path, xml.err, xml.err_line);
+        } else {
+            wm_strcat(output, "ERROR: Invalid configuration in Active-Response", '\n');
+        }
         return OS_INVALID;
     }
 
     char *disable_entry = OS_GetOneContentforElement(&xml, xmlf);
     if (disable_entry) {
         if ( strcmp(disable_entry, "yes") && strcmp(disable_entry, "no") ) {
-            merror(XML_VALUEERR, "disabled", disable_entry);
+            if (output == NULL){
+                merror(XML_VALUEERR, "disabled", disable_entry);
+            } else {
+                wm_strcat(output, "ERROR: Invalid configuration in Active-Response", '\n');
+            }
             os_free(disable_entry);
             OS_ClearXML(&xml);
             return OS_INVALID;
@@ -538,7 +720,11 @@ next:
         char **repeated_a = OS_StrBreak(',', repeated_t, 5);
 
         if (!repeated_a) {
-            merror(XML_VALUEERR, "repeated_offenders", repeated_t);
+            if (output == NULL){
+                merror(XML_VALUEERR, "repeated_offenders", repeated_t);
+            } else {
+                wm_strcat(output, "ERROR: Invalid configuration in Active-Response", '\n');
+            }
             os_free(repeated_t);
             OS_ClearXML(&xml);
             return OS_INVALID;
@@ -554,7 +740,11 @@ next:
             } else if (strcasecmp(ca_verification[i], "no") == 0) {
                 enable_ca_verification = 0;
             } else {
-                mwarn("Invalid content for tag <%s>: '%s'", caverify[2], ca_verification[i]);
+                if (output == NULL){
+                    mwarn("Invalid content for tag <%s>: '%s'", caverify[2], ca_verification[i]);
+                } else {
+                    wm_strcat(output, "WARNING: Invalid content for a tag in Active-response", '\n');
+                }
             }
         }
 
@@ -565,11 +755,19 @@ next:
     {
         char **wcom_ca_store = OS_GetContents(&xml, castore);
         if (!wcom_ca_store) {
-            minfo("No option <ca_store> defined. Wazuh default CA (%s) will be used.", DEF_CA_STORE);
+            if (output == NULL){
+                minfo("No option <ca_store> defined. Wazuh default CA (%s) will be used.", DEF_CA_STORE);
+            } else {
+                wm_strcat(output, "INFO: No option <ca_store> defined. Wazuh default CA (%s) will be used.", '\n');
+            }
         }
     }
     else {
-        minfo("WPK verification with CA is disabled.");
+        if (output == NULL){
+            minfo("WPK verification with CA is disabled.");
+        } else {
+            wm_strcat(output, "INFO: WPK verification with CA is disabled.", '\n');
+        }
     }
 
     OS_ClearXML(&xml);

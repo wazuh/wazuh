@@ -15,7 +15,7 @@
 
 static short eval_bool(const char *str);
 
-int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
+int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char **output) {
     /* XML Definitions */
     static const char *xml_disabled = "disabled";
     static const char *xml_port = "port";
@@ -37,6 +37,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
     char manager_cert[OS_SIZE_1024];
     char manager_key[OS_SIZE_1024];
+    char message[OS_FLSIZE];
 
     snprintf(manager_cert, OS_SIZE_1024 - 1, "%s/etc/sslmanager.cert", DEFAULTDIR);
     snprintf(manager_key, OS_SIZE_1024 - 1, "%s/etc/sslmanager.key", DEFAULTDIR);
@@ -63,16 +64,34 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
     for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return OS_INVALID;
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid NULL content for element: %s.",
+                    node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return OS_INVALID;
         } else if (!strcmp(node[i]->element, xml_disabled)) {
             short b = eval_bool(node[i]->content);
 
             if (b < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -81,14 +100,28 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             config->port = (unsigned short)atoi(node[i]->content);
 
             if (!config->port) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, xml_use_source_ip)) {
             short b = eval_bool(node[i]->content);
 
             if (b < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -97,7 +130,14 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             short b = eval_bool(node[i]->content);
 
             if (b < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -107,14 +147,28 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             config->force_time = strtol(node[i]->content, &end, 10);
 
             if (*end != '\0') {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, xml_purge)) {
             short b = eval_bool(node[i]->content);
 
             if (b < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -123,7 +177,14 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             short b = eval_bool(node[i]->content);
 
             if (b < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -132,7 +193,14 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             short b = eval_bool(node[i]->content);
 
             if (b < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -147,7 +215,14 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             short b = eval_bool(node[i]->content);
 
             if (b < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -162,13 +237,26 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             short b = eval_bool(node[i]->content);
 
             if (b < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
             config->flags.auto_negotiate = b;
-        } else {
+        } else if (output == NULL) {
             merror(XML_INVELEM, node[i]->element);
+            return OS_INVALID;
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Invalid element in the configuration: '%s'.",
+                node[i]->element);
+            wm_strcat(output, message, '\n');
             return OS_INVALID;
         }
     }
@@ -188,12 +276,16 @@ short eval_bool(const char *str) {
     }
 }
 
-int Test_Authd(const char *path) {
+int Test_Authd(const char *path, char **output) {
     authd_config_t *test_authd;
     os_calloc(1, sizeof(authd_config_t), test_authd);
 
-    if (ReadConfig(CAUTHD, path, test_authd, NULL) < 0) {
-		merror(CONF_READ_ERROR, "Authd");
+    if (ReadConfig(CAUTHD, path, test_authd, NULL, output) < 0) {
+        if (output == NULL){
+            merror(CONF_READ_ERROR, "Authd");
+        } else {
+            wm_strcat(output, "ERROR: Invalid configuration in Authd", '\n');
+        }
         free_authd_config(test_authd);
         return OS_INVALID;
 	}

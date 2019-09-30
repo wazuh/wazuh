@@ -28,7 +28,7 @@ int w_is_worker(void) {
 
     modules |= CCLUSTER;
 
-    if (ReadConfig(modules, cfgfile, &cfg, NULL) < 0) {
+    if (ReadConfig(modules, cfgfile, &cfg, NULL, NULL) < 0) {
         return (OS_INVALID);
     }
 
@@ -84,7 +84,7 @@ char *get_master_node(void) {
 
     modules |= CCLUSTER;
 
-    if (ReadConfig(modules, cfgfile, &cfg, NULL) < 0) {
+    if (ReadConfig(modules, cfgfile, &cfg, NULL, NULL) < 0) {
         master_node = strdup("undefined");
     }
 

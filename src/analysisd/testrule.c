@@ -221,7 +221,7 @@ int main(int argc, char **argv)
             if (!Config.decoders) {
                 /* Legacy loading */
                 /* Read decoders */
-                Read_Rules(NULL, &Config, NULL);
+                Read_Rules(NULL, &Config, NULL, NULL);
 
                 /* New loaded based on file specified in ossec.conf */
                 char **decodersfiles;

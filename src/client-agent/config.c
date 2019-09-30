@@ -44,15 +44,15 @@ int ClientConf(const char *cfgfile)
     os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
 
-    if (ReadConfig(modules, cfgfile, agt, NULL) < 0 ||
-        ReadConfig(CLABELS | CBUFFER, cfgfile, &agt->labels, agt) < 0) {
+    if (ReadConfig(modules, cfgfile, agt, NULL, NULL) < 0 ||
+        ReadConfig(CLABELS | CBUFFER, cfgfile, &agt->labels, agt, NULL) < 0) {
         return (OS_INVALID);
     }
 
 #ifdef CLIENT
     if(agt->flags.remote_conf = getDefine_Int("agent", "remote_conf", 0, 1), agt->flags.remote_conf) {
         remote_conf = agt->flags.remote_conf;
-        ReadConfig(CLABELS | CBUFFER | CRMOTE_CONFIG, AGENTCONFIG, &agt->labels, agt);
+        ReadConfig(CLABELS | CBUFFER | CRMOTE_CONFIG, AGENTCONFIG, &agt->labels, agt, NULL);
     }
 #endif
 

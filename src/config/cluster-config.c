@@ -14,7 +14,7 @@
 #include "global-config.h"
 
 
-int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
+int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char **output) {
 
     static const char *disabled = "disabled";
     static const char *cluster_name = "name";
@@ -34,40 +34,85 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     Config = (_Config *)d1;
     int i;
     int disable_cluster_info = 0;
+    char message[OS_FLSIZE];
 
     Config->hide_cluster_info = 0;
 
     for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return OS_INVALID;
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid NULL content for element: %s.",
+                    node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return OS_INVALID;
         } else if (!strcmp(node[i]->element, cluster_name)) {
             if (!strlen(node[i]->content)) {
-                merror("Cluster name is empty in configuration");
+                if (output == NULL) {
+                    merror("Cluster name is empty in configuration.");
+                } else {
+                    wm_strcat(output, "Cluster name is empty in configuration.", '\n');
+                }
                 return OS_INVALID;
             } else if (strspn(node[i]->content, C_VALID) < strlen(node[i]->content)) {
-                merror("Detected a not allowed character in cluster name: \"%s\". Characters allowed: \"%s\".", node[i]->content, C_VALID);
+                if (output == NULL) {
+                    merror("Detected a not allowed character in cluster name: \"%s\". Characters allowed: \"%s\".", node[i]->content, C_VALID);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Detected a not allowed character in cluster name: \"%s\". Characters allowed: \"%s\".",
+                        node[i]->content, C_VALID);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
             os_strdup(node[i]->content, Config->cluster_name);
         } else if (!strcmp(node[i]->element, node_name)) {
             if (!strlen(node[i]->content)) {
-                merror("Node name is empty in configuration");
+                if (output == NULL) {
+                    merror("Node name is empty in configuration.");
+                } else {
+                    wm_strcat(output, "Node name is empty in configuration.", '\n');
+                }
                 return OS_INVALID;
             } else if (strspn(node[i]->content, C_VALID) < strlen(node[i]->content)) {
-                merror("Detected a not allowed character in node name: \"%s\". Characters allowed: \"%s\".", node[i]->content, C_VALID);
+                if (output == NULL) {
+                    merror("Detected a not allowed character in node name: \"%s\". Characters allowed: \"%s\".", node[i]->content, C_VALID);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Detected a not allowed character in node name: \"%s\". Characters allowed: \"%s\".",
+                        node[i]->content, C_VALID);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
             os_strdup(node[i]->content, Config->node_name);
         } else if (!strcmp(node[i]->element, node_type)) {
             if (!strlen(node[i]->content)) {
-                merror("Node type is empty in configuration");
+                if (output == NULL) {
+                    merror("Node type is empty in configuration.");
+                } else {
+                    wm_strcat(output, "Node type is empty in configuration.", '\n');
+                }
                 return OS_INVALID;
             } else if (strcmp(node[i]->content, "worker") && strcmp(node[i]->content, "client") && strcmp(node[i]->content, "master") )  {
-                merror("Detected a not allowed node type '%s'. Valid types are 'master' and 'worker'.", node[i]->content);
+                if (output == NULL) {
+                    merror("Detected a not allowed node type '%s'. Valid types are 'master' and 'worker'.", node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Detected a not allowed node type '%s'. Valid types are 'master' and 'worker'.",
+                        node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
             os_strdup(node[i]->content, Config->node_type);
@@ -76,7 +121,14 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         } else if (!strcmp(node[i]->element, connection_timeout)) {
         } else if (!strcmp(node[i]->element, disabled)) {
             if (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no")) {
-                merror("Detected a not allowed value for disabled tag '%s'. Valid values are 'yes' and 'no'.", node[i]->content);
+                if (output == NULL) {
+                    merror("Detected a not allowed value for disabled tag '%s'. Valid values are 'yes' and 'no'.", node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Detected a not allowed value for disabled tag '%s'. Valid values are 'yes' and 'no'.",
+                        node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
             if (strcmp(node[i]->content, "yes") == 0) {
@@ -87,17 +139,31 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 Config->hide_cluster_info = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
                 Config->hide_cluster_info = 0;
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid value for element '%s': %s.",
+                    node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, interval)) {
-            mwarn("Detected a deprecated configuration for cluster. Interval option is not longer available.");
+            if (output == NULL){
+                mwarn("Detected a deprecated configuration for cluster. Interval option is not longer available.");
+            }
         } else if (!strcmp(node[i]->element, nodes)) {
         } else if (!strcmp(node[i]->element, port)) {
         } else if (!strcmp(node[i]->element, bind_addr)) {
-        } else {
+        } else if (output == NULL) {
             merror(XML_INVELEM, node[i]->element);
+            return OS_INVALID;
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Invalid element in the configuration: '%s'.",
+                node[i]->content);
+            wm_strcat(output, message, '\n');
             return OS_INVALID;
         }
     }

@@ -34,7 +34,7 @@ int wm_config() {
 
     // Read configuration: ossec.conf
 
-    if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, &agent_cfg) < 0) {
+    if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, &agent_cfg, NULL) < 0) {
         return -1;
     }
 
@@ -42,7 +42,7 @@ int wm_config() {
 #ifdef CLIENT
     // Read configuration: agent.conf
     agent_cfg = 1;
-    ReadConfig(CWMODULE | CRMOTE_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
+    ReadConfig(CWMODULE | CRMOTE_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg, NULL);
 #if defined (__linux__) || (__MACH__)
     wmodule *module;
     module = wm_control_read();

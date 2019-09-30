@@ -13,9 +13,10 @@
 #include "config.h"
 
 
-int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
+int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mailp, char **output)
 {
     int i = 0;
+    char message[OS_FLSIZE];
 
     /* XML definitions */
     const char *xml_email_level = "email_alert_level";
@@ -30,22 +31,44 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
     Config = (_Config *)configp;
 
     if (!Config) {
-        merror("Configuration handle is NULL.");
+        if (output == NULL) {
+            merror("Configuration handle is NULL.");
+        } else {
+            wm_strcat(output, "Configuration handle is NULL.", '\n');
+        }
         return (OS_INVALID);
     }
 
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid NULL content for element: %s.",
+                    node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return (OS_INVALID);
         }
         /* Mail notification */
         else if (strcmp(node[i]->element, xml_email_level) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
 
@@ -54,7 +77,14 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
         /* Log alerts */
         else if (strcmp(node[i]->element, xml_log_level) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
             Config->logbylevel  = (u_int8_t) atoi(node[i]->content);
@@ -66,15 +96,27 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
                 Config->loggeoip = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
                 Config->loggeoip = 0;
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid value for element '%s': %s.",
+                    node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
 
         }
 #endif
-        else {
+        else if (output == NULL) {
             merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Invalid element in the configuration: '%s'.",
+                node[i]->element);
+            wm_strcat(output, message, '\n');
             return (OS_INVALID);
         }
         i++;

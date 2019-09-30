@@ -13,11 +13,12 @@
 #include "config.h"
 
 
-int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void *mailp)
+int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void *mailp, char **output)
 {
     int i = 0;
     unsigned int granto_size = 0;
     unsigned int granto_email_counter = 0;
+    char  message[OS_FLSIZE];
 
     /* XML definitions */
     const char *xml_email_to = "email_to";
@@ -82,16 +83,34 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
 
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL){
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL){
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                        "Invalid NULL content for element: '%s'.",
+                        node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return (OS_INVALID);
         }
         /* Mail notification */
         else if (strcmp(node[i]->element, xml_email_level) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL){
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
 
@@ -122,7 +141,9 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
                     unsigned int id_i = 0;
 
                     r_id = atoi(str_pt);
-                    mdebug1("Adding '%d' to granular e-mail", r_id);
+                    if (output == NULL){
+                        mdebug1("Adding '%d' to granular e-mail", r_id);
+                    }
 
                     if (!Mail->gran_id[granto_size]) {
                         os_calloc(2, sizeof(unsigned int), Mail->gran_id[granto_size]);
@@ -164,8 +185,14 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
                 Mail->gran_format[granto_size] = SMS_FORMAT;
             } else if (strcmp(node[i]->content, "default") == 0 || strcmp(node[i]->content, "full") == 0) {
                 /* Default is full format */
-            } else {
+            } else if (output == NULL){
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid value for element '%s': %s.",
+                    node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_email_donotdelay) == 0) {
@@ -181,20 +208,42 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
             os_calloc(1, sizeof(OSMatch), Mail->gran_location[granto_size]);
             if (!OSMatch_Compile(node[i]->content,
                                  Mail->gran_location[granto_size], 0)) {
-                merror(REGEX_COMPILE, node[i]->content,
-                       Mail->gran_location[granto_size]->error);
+                if (output == NULL){
+                    merror(REGEX_COMPILE, node[i]->content,
+                           Mail->gran_location[granto_size]->error);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                            "Syntax error on regex: '%s': %d.",
+                            node[i]->content,
+                            Mail->gran_location[granto_size]->error);
+                    wm_strcat(output, message, '\n');
+                }
                 return (-1);
             }
         } else if (strcmp(node[i]->element, xml_email_group) == 0) {
             os_calloc(1, sizeof(OSMatch), Mail->gran_group[granto_size]);
             if (!OSMatch_Compile(node[i]->content,
                                  Mail->gran_group[granto_size], 0)) {
-                merror(REGEX_COMPILE, node[i]->content,
-                       Mail->gran_group[granto_size]->error);
+                if (output == NULL){
+                    merror(REGEX_COMPILE, node[i]->content,
+                           Mail->gran_location[granto_size]->error);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                            "Syntax error on regex: '%s': %d.",
+                             node[i]->content,
+                            Mail->gran_location[granto_size]->error);
+                    wm_strcat(output, message, '\n');
+                }
                 return (-1);
             }
-        } else {
+        } else if (output == NULL){
             merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                    "Invalid element in the configuration: '%s'.",
+                    node[i]->element);
+            wm_strcat(output, message, '\n');
             return (OS_INVALID);
         }
         i++;
@@ -245,7 +294,11 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
             Mail->gran_format[granto_size] == FULL_FORMAT) ||
             Mail->gran_to == NULL ||
             Mail->gran_to[granto_size] == NULL) {
-        merror(XML_INV_GRAN_MAIL);
+        if (output == NULL){
+            merror(XML_INV_GRAN_MAIL);
+        } else {
+            wm_strcat(output, "Invalid 'email_alerts' config (missing parameters).", '\n');
+        }    
         return (OS_INVALID);
     }
 

@@ -15,21 +15,36 @@ static const char *XML_NAME = "name";
 
 // Read wodle element
 
-int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_type)
+int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_type, char **output)
 {
     wmodule **wmodules = (wmodule**)d1;
     int agent_cfg = d2 ? *(int *)d2 : 0;
     wmodule *cur_wmodule;
     xml_node **children = NULL;
     wmodule *cur_wmodule_exists;
+    char message[OS_FLSIZE];
 
     if (!node->attributes[0]) {
-        merror("No such attribute '%s' at module.", XML_NAME);
+        if (output == NULL) {
+            merror("No such attribute '%s' at module.", XML_NAME);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "No such attribute '%s' at module.",
+                XML_NAME);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     }
 
     if (strcmp(node->attributes[0], XML_NAME)) {
-        merror("Module attribute is not '%s'.", XML_NAME);
+        if (output == NULL) {
+            merror("Module attribute is not '%s'.", XML_NAME);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Module attribute is not '%s'.",
+                XML_NAME);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     }
 
@@ -61,14 +76,23 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
         *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
 
     if (!cur_wmodule) {
-        merror(MEM_ERROR, errno, strerror(errno));
+        if (output == NULL) {
+            merror(MEM_ERROR, errno, strerror(errno));
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Could not acquire memory due to [(%d)-(%s)].",
+                errno, strerror(errno));
+            wm_strcat(output, message, '\n');
+        }
         return (OS_INVALID);
     }
 
     // Get children
 
     if (children = OS_GetElementsbyNode(xml, node), !children) {
-        mdebug1("Empty configuration for module '%s'.", node->values[0]);
+        if (output == NULL){
+            mdebug1("Empty configuration for module '%s'.", node->values[0]);
+        }
     }
 
     // Select module by name
@@ -112,13 +136,29 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
     else if ( (!strcmp(node->values[0], WM_AWS_CONTEXT.name) || !strcmp(node->values[0], "aws-cloudtrail")) &&
         (cfg_type != CAGENT_CGFILE) && (cfg_type != CRMOTE_CONFIG) ) {
 #ifndef WIN32
-            if (!strcmp(node->values[0], "aws-cloudtrail")) mwarn("Module name 'aws-cloudtrail' is deprecated. Change it to '%s'.", WM_AWS_CONTEXT.name);
+            if (!strcmp(node->values[0], "aws-cloudtrail")) {
+                if (output == NULL) {
+                    mwarn("Module name 'aws-cloudtrail' is deprecated. Change it to '%s'.", WM_AWS_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "WARNING: Module name 'aws-cloudtrail' is deprecated. Change it to '%s'.",
+                        WM_AWS_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
+            }
             if (wm_aws_read(xml, children, cur_wmodule) < 0) {
                 OS_ClearNode(children);
                 return OS_INVALID;
             }
 #else
-        mwarn("The '%s' module is not available on Windows systems. Ignoring.", node->values[0]);
+        if (output == NULL) {
+            mwarn("The '%s' module is not available on Windows systems. Ignoring.", node->values[0]);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "WARNING: The '%s' module is not available on Windows systems. Ignoring.",
+                node->values[0]);
+            wm_strcat(output, message, '\n');
+        }
 #endif
     } else if ( (cfg_type != CRMOTE_CONFIG) && (!strcmp(node->values[0], "docker-listener")) ) {
 #ifndef WIN32
@@ -127,7 +167,14 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
                 return OS_INVALID;
             }
 #else
-        mwarn("The '%s' module is not available on Windows systems. Ignoring it.", node->values[0]);
+        if (output == NULL) {
+            mwarn("The '%s' module is not available on Windows systems. Ignoring it.", node->values[0]);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "WARNING: The '%s' module is not available on Windows systems. Ignoring it",
+                node->values[0]);
+            wm_strcat(output, message, '\n');
+        }
 #endif
     }
 #ifndef WIN32
@@ -154,13 +201,33 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
     else {
         if(!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], AZ_WM_NAME) ||
             !strcmp(node->values[0], KEY_WM_NAME)) {
-            mwarn("The '%s' module only works for the manager.", node->values[0]);
+            if (output == NULL) {
+                mwarn("The '%s' module only works for the manager.", node->values[0]);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "WARNING: The '%s' module only works for the manager.",
+                    node->values[0]);
+                wm_strcat(output, message, '\n');
+            }
         } else if ( !strcmp(node->values[0], WM_AWS_CONTEXT.name) || !strcmp(node->values[0], "aws-cloudtrail") ) {
-            mwarn("The 'AWS' module only works for the manager.");
+            if (output == NULL) {
+                mwarn("The 'AWS' module only works for the manager.");
+            } else {
+                wm_strcat(output, "WARNING: The 'AWS' module only works for the manager.", '\n');
+            }
         } else {
             char *type_str = NULL;
             type_str = cfg_type == CAGENT_CGFILE ? strdup("agent") : (cfg_type == CRMOTE_CONFIG ? strdup("remote") : strdup("manager"));
-            merror("Unknown module '%s' for the %s configuration file.", node->values[0], type_str);
+            if (output == NULL) {
+                merror("Unknown module '%s' for the %s configuration file.", node->values[0], type_str);
+                return OS_INVALID;
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Unknown module '%s' for the %s configuration file.",
+                    node->values[0], type_str);
+                wm_strcat(output, message, '\n');
+                return OS_INVALID;
+            }
             os_free(type_str);
         }
     }
@@ -169,12 +236,13 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
     return 0;
 }
 
-int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
+int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, char **output)
 {
     wmodule **wmodules = (wmodule**)d1;
     wmodule *cur_wmodule;
     xml_node **children = NULL;
     wmodule *cur_wmodule_exists;
+    char message[OS_FLSIZE];
 
     // Allocate memory
     if ((cur_wmodule = *wmodules)) {
@@ -203,13 +271,22 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
         *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
 
     if (!cur_wmodule) {
-        merror(MEM_ERROR, errno, strerror(errno));
+        if (output == NULL) {
+            merror(MEM_ERROR, errno, strerror(errno));
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Could not acquire memory due to [(%d)-(%s)].",
+                errno, strerror(errno));
+            wm_strcat(output, message, '\n');
+        }
         return (OS_INVALID);
     }
 
     // Get children
     if (children = OS_GetElementsbyNode(xml, node), !children) {
-        mdebug1("Empty configuration for module '%s'.", node->element);
+        if (output == NULL){
+            mdebug1("Empty configuration for module '%s'.", node->element);
+        }
     }
 
     //Policy Monitoring Module
@@ -225,12 +302,13 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
 }
 
 #ifndef WIN32
-int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1)
+int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1, char **output)
 {
     wmodule **wmodules = (wmodule**)d1;
     wmodule *cur_wmodule;
     xml_node **children = NULL;
     wmodule *cur_wmodule_exists;
+    char message[OS_FLSIZE];
 
     // Allocate memory
     if ((cur_wmodule = *wmodules)) {
@@ -259,13 +337,22 @@ int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1)
         *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
 
     if (!cur_wmodule) {
-        merror(MEM_ERROR, errno, strerror(errno));
+        if (output == NULL) {
+            merror(MEM_ERROR, errno, strerror(errno));
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Could not acquire memory due to [(%d)-(%s)].",
+                errno, strerror(errno));
+            wm_strcat(output, message, '\n');
+        }
         return (OS_INVALID);
     }
 
     // Get children
     if (children = OS_GetElementsbyNode(xml, node), !children) {
-        mdebug1("Empty configuration for module '%s'.", node->element);
+        if (output == NULL){
+            mdebug1("Empty configuration for module '%s'.", node->element);
+        }
     }
 
     // Fluent Forwarder Module
@@ -281,12 +368,16 @@ int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1)
 }
 #endif
 
-int Test_WModule(const char *path, int type) {
+int Test_WModule(const char *path, int type, char **output) {
     wmodule *test_wmodule;
     os_calloc(1, sizeof(wmodule), test_wmodule);
 
-    if (ReadConfig(CWMODULE | type, path, &test_wmodule, NULL) < 0) {
-        merror(CONF_READ_ERROR, "WModule");
+    if (ReadConfig(CWMODULE | type, path, &test_wmodule, NULL, output) < 0) {
+        if (output == NULL){
+            merror(CONF_READ_ERROR, "WModule");
+        } else {
+            wm_strcat(output, "ERROR: Invalid configuration in WModule", '\n');
+        }
         wm_free(test_wmodule);
         return OS_INVALID;
     }

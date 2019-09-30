@@ -11,9 +11,10 @@
 #include "integrator-config.h"
 #include "config.h"
 
-int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *config2)
+int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *config2, char **output)
 {
     int i = 0,s = 0;
+    char message[OS_FLSIZE];
 
     /* XML definitions */
     char *xml_integrator_name = "name";
@@ -57,19 +58,37 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return(OS_INVALID);
         }
         else if(!node[i]->content)
         {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                        "Invalid NULL content for element: '%s'.",
+                        node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return(OS_INVALID);
         }
         else if(strcmp(node[i]->element, xml_integrator_level) == 0)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return(OS_INVALID);
             }
 
@@ -158,8 +177,15 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
             if(!OSMatch_Compile(node[i]->content,
                                 integrator_config[s]->location, 0))
             {
-                merror(REGEX_COMPILE, node[i]->content,
+                if (output == NULL) {
+                    merror(REGEX_COMPILE, node[i]->content,
                        integrator_config[s]->location->error);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Syntax error on regex: '%s': %d.",
+                        node[i]->content, integrator_config[s]->location->error);
+                    wm_strcat(output, message, '\n');
+                }
                 return(-1);
             }
         }
@@ -168,19 +194,40 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
             os_strdup(node[i]->content, integrator_config[s]->group);
         } else if (strcmp(node[i]->element, xml_integrator_max_log) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR,node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return(OS_INVALID);
             }
 
             integrator_config[s]->max_log = atoi(node[i]->content);
 
             if (integrator_config[s]->max_log < 165 || integrator_config[s]->max_log > 1024) {
-                merror(XML_VALUEERR,node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return(OS_INVALID);
             }
-        } else
+        } else if (output == NULL)
         {
             merror(XML_INVELEM, node[i]->element);
+            return(OS_INVALID);
+        }
+        else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Invalid element in the configuration: '%s'.",
+                node[i]->element);
+            wm_strcat(output, message, '\n');
             return(OS_INVALID);
         }
         i++;
@@ -189,18 +236,26 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
     /* We must have at least one entry set */
     if(!integrator_config[s]->name)
     {
-        merror(XML_INV_INTEGRATOR);
+        if (output == NULL){
+            merror(XML_INV_INTEGRATOR);
+        } else {
+            wm_strcat(output, "Invalid integratord configuration.", '\n');
+        }
         return(OS_INVALID);
     }
 
     return(0);
 }
 
-int Test_Integratord(const char *path) {
+int Test_Integratord(const char *path, char **output) {
     IntegratorConfig **test_integrator = NULL;
 
-    if(ReadConfig(CINTEGRATORD, path, &test_integrator, NULL) < 0) {
-        merror(CONF_READ_ERROR, "Integratord");
+    if(ReadConfig(CINTEGRATORD, path, &test_integrator, NULL, output) < 0) {
+        if (output == NULL){
+            merror(CONF_READ_ERROR, "Integratord");
+        } else {
+            wm_strcat(output, "ERROR: Invalid configuration in Integratord", '\n');
+        }
 		free_integratord(test_integrator);
         return OS_INVALID;
     }

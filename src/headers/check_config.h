@@ -21,10 +21,10 @@
 #include "shared.h"
 #include "config/config.h"
 
-int test_manager_conf(const char *path);
-int test_agent_conf(const char *path, int type);
-int test_remote_conf(const char *path, int type);
-int validate_target(const char *path, int type);
+int test_manager_conf(const char *path, char **output);
+int test_agent_conf(const char *path, int type, char **output);
+int test_remote_conf(const char *path, int type, char **output);
+int validate_target(const char *path, int type, char **output);
 
 
 #endif

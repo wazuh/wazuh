@@ -413,11 +413,11 @@ int wm_osquery_decorators(wm_osquery_monitor_t * osquery)
 
     os_calloc(1, sizeof(wlabel_t), labels);
 
-    if (ReadConfig(CLABELS, DEFAULTCPATH, &labels, NULL) < 0)
+    if (ReadConfig(CLABELS, DEFAULTCPATH, &labels, NULL, NULL) < 0)
         goto end;
 
 #ifdef CLIENT
-    ReadConfig(CLABELS | CRMOTE_CONFIG, AGENTCONFIG, &labels, NULL);
+    ReadConfig(CLABELS | CRMOTE_CONFIG, AGENTCONFIG, &labels, NULL, NULL);
 #endif
 
     // Do we have labels defined?

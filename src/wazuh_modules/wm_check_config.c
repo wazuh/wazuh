@@ -15,6 +15,7 @@
 
 
 #include "wm_check_config.h"
+#include "check_config.h"
 #define WARN_RESULT     "test was successful, however few errors have been found, please inspect your configuration file"
 
 
@@ -240,7 +241,7 @@ fail:
 void test_file(const char *filetype, const char *filepath, char **output) {
 
     int result_code;
-    int timeout = 2000;
+    int timeout = 2000; // Change timeout to an option 
     char *output_msg = NULL;
     char cmd[OS_SIZE_6144] = {0,};
     snprintf(cmd, OS_SIZE_6144, "%s/bin/check_configuration -t %s -f %s", DEFAULTDIR, filetype, filepath);
@@ -248,12 +249,12 @@ void test_file(const char *filetype, const char *filepath, char **output) {
     if (wm_exec(cmd, &output_msg, &result_code, timeout, NULL) < 0) {
         if (result_code == EXECVE_ERROR) {
             // mwarn("Path is invalid or file has insufficient permissions. %s", cmd);
-            wm_strcat(output, "Path is invalid or file has insufficient permissions:", ' ');
+            wm_strcat(output, "WARNING: Path is invalid or file has insufficient permissions:", '\n');
         } else {
             // mwarn("Error executing [%s]", cmd);
-            wm_strcat(output, "Error executing: ", ' ');
+            wm_strcat(output, "WARNING: Error executing: ", '\n');
         }
-        wm_strcat(output, cmd, ' ');
+        wm_strcat(output, cmd, '\n');
         os_free(output_msg);
         return;
     }
@@ -263,7 +264,17 @@ void test_file(const char *filetype, const char *filepath, char **output) {
         size_t lastchar = strlen(output_msg) - 1;
         output_msg[lastchar] = output_msg[lastchar] == '\n' ? '\0' : output_msg[lastchar];
 
-        wm_strcat(output, output_msg, ' ');
+        wm_strcat(output, output_msg, '\n');
+    }
+
+    if(strcmp(filetype, "manager")) {
+        test_manager_conf(filepath, output);
+    } else if(strcmp(filetype, "agent")) {
+        test_agent_conf(filepath, CAGENT_CGFILE, output);
+    } else if(strcmp(filetype, "remote")) {
+        test_remote_conf(filepath, CRMOTE_CONFIG, output);
+    } else {
+        wm_strcat(output, "Unknown value for -t option.", '\n');
     }
 
     os_free(output_msg);

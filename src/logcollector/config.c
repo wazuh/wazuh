@@ -78,14 +78,14 @@ int LogCollectorConfig(const char *cfgfile)
     }
 #endif
 
-    if (ReadConfig(modules, cfgfile, &log_config, NULL) < 0) {
+    if (ReadConfig(modules, cfgfile, &log_config, NULL, NULL) < 0) {
         return (OS_INVALID);
     }
 
 #ifdef CLIENT
     modules |= CRMOTE_CONFIG;
     log_config.agent_cfg = 1;
-    ReadConfig(modules, AGENTCONFIG, &log_config, NULL);
+    ReadConfig(modules, AGENTCONFIG, &log_config, NULL, NULL);
     log_config.agent_cfg = 0;
 #endif
 

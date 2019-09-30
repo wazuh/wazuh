@@ -16,11 +16,12 @@ int maximum_files;
 int current_files;
 int total_files;
 
-int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char **output)
 {
     unsigned int pl = 0;
     unsigned int gl = 0;
     unsigned int i = 0;
+    char message[OS_FLSIZE];
 
     /* XML Definitions */
     const char *xml_localfile_location = "location";
@@ -45,7 +46,13 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     log_config = (logreader_config *)d1;
 
     if (maximum_files && current_files >= maximum_files) {
-        mwarn(FILE_LIMIT, maximum_files);
+        if (output == NULL) {
+            mwarn(FILE_LIMIT, maximum_files);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "WARNING: File limit has been reached (%d). Please reduce the number of files or increase \"logcollector.max_files\".", maximum_files);
+            wm_strcat(output, message, '\n');
+        }
         return 0;
     }
 
@@ -84,18 +91,34 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     i = 0;
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, node[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid NULL content for element: %s.",
+                    node[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_localfile_future) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
                 logf[pl].future = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
                 logf[pl].future = 0;
-            } else {
+            } else if (output == NULL){
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "WARNING: Invalid value for element '%s': %s.",
+                    node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
             }
         } else if (strcmp(node[i]->element, xml_localfile_query) == 0) {
             os_strdup(node[i]->content, logf[pl].query);
@@ -126,8 +149,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             for (j = 0; node[i]->attributes && node[i]->attributes[j]; ++j) {
                 if (strcmp(node[i]->attributes[j], xml_localfile_target) == 0) {
                     target = node[i]->values[j];
+                } else if (output == NULL) {
+                    mwarn("Invalid attribute '%s' for <%s>",
+                        node[i]->attributes[j], xml_localfile_outformat);
                 } else {
-                    mwarn("Invalid attribute '%s' for <%s>", node[i]->attributes[j], xml_localfile_outformat);
+                    snprintf(message, OS_FLSIZE + 1,
+                        "WARNING: Invalid attribute '%s' for <%s>",
+                        node[i]->attributes[j], xml_localfile_outformat);
+                    wm_strcat(output, message, '\n');
                 }
             }
 
@@ -146,12 +175,21 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 if (strcmp(node[i]->attributes[j], "key") == 0) {
                     if (strlen(node[i]->values[j]) > 0) {
                         if (node[i]->values[j][0] == '_'){
-                            mwarn("Labels starting with \"_\"  are reserved for internal use. Skipping label '%s'.", node[i]->values[j]);
+                            if (output == NULL) {
+                                mwarn("Labels starting with \"_\"  are reserved for internal use. Skipping label '%s'.", node[i]->values[j]);
+                            } else {
+                                snprintf(message, OS_FLSIZE + 1,
+                                    "WARNING: Labels starting with \"_\"  are reserved for internal use. Skipping label '%s'.", node[i]->values[j]);
+                                wm_strcat(output, message, '\n');
+                            }
                             flags.system = 1;
                         }
                         key_value = node[i]->values[j];
-                    } else {
+                    } else if (output == NULL) {
                         merror("Label with empty key.");
+                        return (OS_INVALID);
+                    } else {
+                        wm_strcat(output, "Label with empty key.", '\n');
                         return (OS_INVALID);
                     }
                 }
@@ -162,7 +200,11 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 continue;
 
             if (!key_value) {
-                merror("Expected 'key' attribute for label.");
+                if (output == NULL) {
+                    merror("Expected 'key' attribute for label.");
+                } else {
+                    wm_strcat(output, "Expected 'key' attribute for label.", '\n');
+                }
                 return (OS_INVALID);
             }
 
@@ -170,8 +212,13 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         } else if (strcmp(node[i]->element, xml_localfile_command) == 0) {
             /* We don't accept remote commands from the manager - just in case */
             if (log_config->agent_cfg == 1 && log_config->accept_remote == 0) {
-                merror("Remote commands are not accepted from the manager. "
+                if (output == NULL) {
+                    merror("Remote commands are not accepted from the manager. "
                        "Ignoring it on the agent.conf");
+                } else {
+                    wm_strcat(output, "Remote commands are not accepted from the manager. "
+                       "Ignoring it on the agent.conf", '\n');
+                }
 
                 logf[pl].file = NULL;
                 logf[pl].ffile = NULL;
@@ -199,7 +246,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             {
 
                 if (!OS_StrIsNum(node[i]->content)) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    if (output == NULL) {
+                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1,
+                            "Invalid value for element '%s': %s.",
+                            node[i]->element, node[i]->content);
+                        wm_strcat(output, message, '\n');
+                    }
                     return (OS_INVALID);
                 }
 
@@ -255,7 +309,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 }
 
                 if (*p_lf != ':') {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    if (output == NULL) {
+                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1,
+                            "Invalid value for element '%s': %s.",
+                            node[i]->element, node[i]->content);
+                        wm_strcat(output, message, '\n');
+                    }
                     return (OS_INVALID);
                 }
                 p_lf++;
@@ -263,14 +324,28 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 char *end;
 
                 if (logf[pl].linecount = strtol(p_lf, &end, 10), end == p_lf || logf[pl].linecount < 1 ) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    if (output == NULL) {
+                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    } else {
+                        snprintf(message, OS_FLSIZE + 1,
+                            "Invalid value for element '%s': %s.",
+                            node[i]->element, node[i]->content);
+                        wm_strcat(output, message, '\n');
+                    }
                     return (OS_INVALID);
                 }
 
             } else if (strcmp(logf[pl].logformat, EVENTLOG) == 0) {
             } else if (strcmp(logf[pl].logformat, EVENTCHANNEL) == 0) {
             } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        node[i]->element, node[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         } else if (strcasecmp(node[i]->element, xml_localfile_exclude) == 0) {
@@ -285,7 +360,11 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             logf[pl].age  = strtoul(node[i]->content, &endptr, 0);
 
             if (logf[pl].age == 0 || logf[pl].age == UINT_MAX) {
-                merror("Invalid age for localfile");
+                if (output == NULL) {
+                    merror("Invalid age for localfile");
+                } else {
+                    wm_strcat(output, "Invalid age for localfile", '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -306,7 +385,11 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             case '\0':
                 break;
             default:
-                merror("Invalid age for localfile");
+                if (output == NULL) {
+                    merror("Invalid age for localfile");
+                } else {
+                    wm_strcat(output, "Invalid age for localfile", '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -323,13 +406,25 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
             else if (strcmp(node[i]->content,"no") == 0) {
                 logf[pl].filter_binary = 0;
-            } else {
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid value for element '%s': %s.",
+                    node[i]->element, node[i]->content);
+                wm_strcat(output, message, '\n');
                 return (OS_INVALID);
             }
 
-        } else {
+        } else if (output == NULL) {
             merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "Invalid element in the configuration: '%s'.",
+                node[i]->element);
+            wm_strcat(output, message, '\n');
             return (OS_INVALID);
         }
 
@@ -343,7 +438,11 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     /* Missing log format */
     if (!logf[pl].logformat) {
-        merror(MISS_LOG_FORMAT);
+        if (output == NULL) {
+            merror(MISS_LOG_FORMAT);
+        } else {
+            wm_strcat(output, "Missing 'log_format' element.", '\n');
+        }
         return (OS_INVALID);
     }
 
@@ -353,7 +452,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 (strcmp(logf[pl].file, "System") != 0) &&
                 (strcmp(logf[pl].file, "Security") != 0)) {
             /* Invalid event log */
-            minfo(NSTD_EVTLOG, logf[pl].file);
+            if (output == NULL) {
+                minfo(NSTD_EVTLOG, logf[pl].file);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "INFO: Non-standard event log set: '%s'.",
+                    logf[pl].file);
+                wm_strcat(output, message, '\n');
+            }
             return (0);
         }
     }
@@ -361,8 +467,13 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     if ((strcmp(logf[pl].logformat, "command") == 0) ||
             (strcmp(logf[pl].logformat, "full_command") == 0)) {
         if (!logf[pl].command) {
-            merror("Missing 'command' argument. "
+            if (output == NULL) {
+                mwarn("Missing 'command' argument. "
                    "This option will be ignored.");
+            } else {
+                wm_strcat(output, "WARNING: Missing 'command' argument. "
+                   "This option will be ignored.", '\n');
+            }
         }
         total_files++;
     } else {
@@ -381,7 +492,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             hFind = FindFirstFile(logf[pl].file, &ffd);
 
             if (INVALID_HANDLE_VALUE == hFind) {
-                minfo(GLOB_ERROR_WIN, logf[pl].file);
+                if (output == NULL) {
+                    minfo(GLOB_ERROR_WIN, logf[pl].file);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "INFO: Glob error. Invalid pattern: '%s' or no files found.",
+                        logf[pl].file);
+                    wm_strcat(output, message, '\n');
+                }
             }
 
             os_realloc(log_config->globs, (gl + 2)*sizeof(logreader_glob), log_config->globs);
@@ -410,7 +528,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
 
             if (Remove_Localfile(&logf, pl, 0, 0,NULL)) {
-                merror(REM_ERROR, logf[pl].file);
+                if (output == NULL) {
+                    merror(REM_ERROR, logf[pl].file);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Error removing '%s' file.",
+                        logf[pl].file);
+                    wm_strcat(output, message, '\n');
+                }
                 FindClose(hFind);
                 return (OS_INVALID);
             }
@@ -425,7 +550,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             int err;
 
             if (err = glob(logf[pl].file, 0, NULL, &g), err && err != GLOB_NOMATCH) {
-                merror(GLOB_ERROR, logf[pl].file);
+                if (output == NULL) {
+                    mwarn(GLOB_ERROR, logf[pl].file);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "WARNING: Glob error. Invalid pattern: '%s'.",
+                        logf[pl].file);
+                    wm_strcat(output, message, '\n');
+                }
             } else {
                 os_realloc(log_config->globs, (gl + 2)*sizeof(logreader_glob), log_config->globs);
                 os_strdup(logf[pl].file, log_config->globs[gl].gpath);
@@ -455,7 +587,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
             globfree(&g);
             if (Remove_Localfile(&logf, pl, 0, 0,NULL)) {
-                merror(REM_ERROR, logf[pl].file);
+                if (output == NULL) {
+                    merror(REM_ERROR, logf[pl].file);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Error removing '%s' file.",
+                        logf[pl].file);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
             log_config->config = logf;
@@ -485,25 +624,37 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     /* Missing file */
     if (!logf[pl].file) {
-        merror(MISS_FILE);
+        if (output == NULL) {
+            merror(MISS_FILE);
+        } else {
+            wm_strcat(output, "Missing 'location' element.", '\n');
+        }
         return (OS_INVALID);
     }
 
     return (0);
 }
 
-int Test_Localfile(const char *path, int type){
+int Test_Localfile(const char *path, int type, char **output){
     int maximum_lines = getDefine_Int("logcollector", "max_lines", 0, 1000000);
 
     if (maximum_lines > 0 && maximum_lines < 100) {
-        merror("Definition 'logcollector.max_lines' must be 0 or 100..1000000.");
+        if (output == NULL) {
+            merror("Definition 'logcollector.max_lines' must be 0 or 100..1000000.");
+        } else {
+            wm_strcat(output, "Definition 'logcollector.max_lines' must be 0 or 100..1000000.", '\n');
+        }
         return OS_INVALID;
     }
 
 #ifndef WIN32
     rlim_t nofile = getDefine_Int("logcollector", "rlimit_nofile", 1024, 1048576);
     if (maximum_files > (int)nofile - 100) {
-        merror("Definition 'logcollector.max_files' must be lower than ('logcollector.rlimit_nofile' - 100).");
+        if (output == NULL){
+            merror("Definition 'logcollector.max_files' must be lower than ('logcollector.rlimit_nofile' - 100).");
+        } else {
+            wm_strcat(output, "Definition 'logcollector.max_files' must be lower than ('logcollector.rlimit_nofile' - 100).", '\n');
+        }
         return OS_SIZELIM;
     }
 #endif
@@ -513,11 +664,19 @@ int Test_Localfile(const char *path, int type){
     if(type & CRMOTE_CONFIG) {
         test_localfile.agent_cfg = 1;
         test_localfile.accept_remote = 1;
-        mwarn("Remote commands must be accept from the manager. Accepted for testing");
+        if (output == NULL){
+            mwarn("Remote commands must be accept from the manager. Accepted for testing");
+        } else {
+            wm_strcat(output, "WARNING: Remote commands must be accept from the manager. Accepted for testing", '\n');
+        }
     }
 
-    if (ReadConfig(CLOCALFILE | CSOCKET | type, path, &test_localfile, NULL) < 0) {
-        merror(CONF_READ_ERROR, "Localfile");
+    if (ReadConfig(CLOCALFILE | CSOCKET | type, path, &test_localfile, NULL, output) < 0) {
+        if (output == NULL){
+            merror(CONF_READ_ERROR, "Localfile");
+        } else {
+            wm_strcat(output, "ERROR: Invalid configuration in Localfile", '\n');
+        }
         Free_Localfile(&test_localfile);
         return OS_INVALID;
     }
