@@ -232,14 +232,15 @@ def list_handler_with_denied(result, original: dict = None, allowed: dict = None
     """
     if len(target) == 1:
         original_kwargs = original[target[0]] if isinstance(original[target[0]], list) else [original[target[0]]]
-        result['failed_items'].append(
-            create_exception_dic(set(original_kwargs) - set(list(allowed[list(allowed.keys())[0]])), WazuhError(4000)))
+        difference = list(set(original_kwargs) - set(list(allowed[list(allowed.keys())[0]])))
+        if len(difference) > 0:
+            result['failed_items'].append(create_exception_dic(difference, WazuhError(4000)))
     else:
         original_kwargs = original[target[1]] if isinstance(original[target[1]], list) else [original[target[1]]]
-        result['failed_items'].append(
-            create_exception_dic('{}:{}'.format(original[target[0]],
-                                                set(original_kwargs) - set(list(allowed[list(allowed.keys())[1]]))),
-                                 WazuhError(4000)))
+        difference = list(set(original_kwargs) - set(list(allowed[list(allowed.keys())[1]])))
+        if len(difference) > 0:
+            result['failed_items'].append(
+                create_exception_dic('{}:{}'.format(original[target[0]], difference), WazuhError(4000)))
 
     return data_response_builder(result, original, **post_proc_kwargs)
 
