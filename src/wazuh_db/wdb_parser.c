@@ -424,8 +424,8 @@ int wdb_parse(char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
                     break;
                 default:
-                    mdebug1("Cannot query Mitre platform.");
-                    snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre platform");
+                    mdebug1("Cannot query Mitre IDs info.");
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre IDs info");
             }
             wdb_leave(wdb);
             return 0;
@@ -458,8 +458,8 @@ int wdb_parse(char * input, char * output) {
                         snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
                         break;
                     default:
-                        mdebug1("Cannot query Mitre by attack.");
-                        snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre by attack");
+                        mdebug1("Cannot query Mitre info by attack.");
+                        snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre info by attack");
                 }       
             }
         } else if(strcmp(query, "get_phase") == 0) {
@@ -482,8 +482,8 @@ int wdb_parse(char * input, char * output) {
                         snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
                         break;
                     default:
-                        mdebug1("Cannot query Mitre by phase.");
-                        snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre by phase");
+                        mdebug1("Cannot query Mitre info by phase.");
+                        snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre info by phase");
                 }       
             }
         } else if(strcmp(query, "get_platform") == 0) {
@@ -506,8 +506,8 @@ int wdb_parse(char * input, char * output) {
                         snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
                         break;
                     default:
-                        mdebug1("Cannot query Mitre by platform.");
-                        snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre by platform");
+                        mdebug1("Cannot query Mitre info by platform.");
+                        snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre info by platform");
                 }
             }
         } else if(strcmp(query, "get_tactics") == 0) {
