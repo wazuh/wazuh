@@ -8,6 +8,7 @@
 * `data` is never showing a human readable message. To be consistent, it will only contain an object or list of objects. In case
 a human readable message is shown, the new field `message` will be used instead.
 * Changed search negation from `!` to `-`.
+* Changed nested fields from `a_b` to `a.b`
 
 ## Active Response
 ### PUT /active-response
@@ -24,11 +25,6 @@ a human readable message is shown, the new field `message` will be used instead.
 ### DELETE /agents
 * Parameter **ids** must be in query, not in body because DELETE operations can't have a requestBody in OpenAPI 3
 * In response, `msg` key is now moved to new `message` key
-
-### GET /agents
-* Parameter **os.name** renamed to **os_name**
-* Parameter **os.platform** renamed to **os_platform**
-* Parameter **os.version** renamed to **os_version**
 
 ### GET /agents/groups/{group_id}
 
@@ -104,17 +100,17 @@ a human readable message is shown, the new field `message` will be used instead.
 ### PUT /agents/:agent_id/restart
 * In response, `msg` key is now moved to new `message` key
 
-### POST/agents/insert
+### POST /agents/insert
 * Parameter **force** renamed to **force_after**
 
-### GET/agents/:agent_id/key
+### GET /agents/:agent_id/key
 * Response structure changed from `{"data": "agent_key"}` to `{"data": {"key": "agent_key"}}`
 
-### PUT/agents/restart
+### PUT /agents/restart
 * In response, `msg` key is now moved to new `message` key
 * Verb changed to PUT
 
-### PUT/agents/restart
+### PUT /agents/restart
 * In response, `data` key is now moved to new `message` key
 
 ## Cache
@@ -186,16 +182,27 @@ in `dapi_errors` key
 * Changed **ram_free**, **ram_total**, **cpu_cores** type to integer and **cpu_mhz** type to number float
 * Deleded all parameters **agent_id** from all endpoints
 
-### DELETE/experimental/syscheck
+### DELETE /experimental/syscheck
 * In response, `data` key is now moved to new `message` key
 
-### /experimental/syscollector/netiface
-* Changed **mtu**, **tx_packets**, **rx_packets**, **tx_bytes**, **rx_bytes**, **tx_errors**, **rx_errors**, **tx_dropped** and **rx_dropped** parameters to type integer.
+### GET /experimental/syscollector/hardware
+* Parameters **ram_free**, **ram_total**, **cpu_cores**, **cpu_mhz**, **cpu_name** renamed to **ram.free**, **ram.total**, **cpu.cores**, **cpu.mhz**, **cpu.name**
 
-### /experimental/syscollector/processes
+### GET /experimental/syscollector/netiface
+* Parameters **tx_packets**, **rx_packets**, **tx_bytes**, **rx_bytes**, **tx_errors**, **rx_errors**, **tx_dropped** and **rx_dropped** renamed to **tx.packets**, **rx.packets**, **tx.bytes**, **rx.bytes**, **tx.errors**, **rx.errors**, **tx.dropped** and **rx.dropped**
+* Changed **mtu**, **tx.packets**, **rx.packets**, **tx.bytes**, **rx.bytes**, **tx.errors**, **rx.errors**, **tx.dropped** and **rx.dropped** parameters to type integer.
+
+
+### GET /experimental/syscollector/processes
 * Parameter **pid** renamed to **process_pid**
 * Parameter **status** renamed to **process_status**
 * Parameter **name** renamed to **process_name**
+
+### GET /experimental/syscollector/packages
+* Parameter **format** renamed to **package_format**
+
+### GET /experimental/syscollector/ports
+* Parameters **local_ip**, **local_port**, **remote_ip** renamed to **local.ip**, **local.port**, **remote.ip** 
 
 ## Manager
 
@@ -212,62 +219,69 @@ in `dapi_errors` key
 ### GET /manager/stats
 * Changed date format from YYYYMMDD to YYYY-MM-DD
 
-### GET/manager/info
+### GET /manager/info
 * Parameter `openssl_support` is now a boolean.
 
-### PUT/manager/restart
+### PUT /manager/restart
 * In response, `data` key is now moved to new `message` key
 
-### GET/manager/stats/weekly
+### GET /manager/stats/weekly
 * Parameter **hours** changed to **averages**.
 
-### GET/manager/configuration
+### GET /manager/configuration
 * Output now always follow the same structure. See spec schema response carefully.
 
 ## Rootcheck
-### PUT/rootcheck
+### PUT /rootcheck
 * In response, `data` key is now moved to new `message` key
 
-### DELETE/rootcheck
+### DELETE /rootcheck
 * In response, `data` key is now moved to new `message` key
 
-### PUT/rootcheck/:agent_id
+### PUT /rootcheck/:agent_id
 * In response, `data` key is now moved to new `message` key
 
-### DELETE/rootcheck/:agent_id
+### DELETE /rootcheck/:agent_id
 * In response, `data` key is now moved to new `message` key
 
 ## Rules
-### GET/rules/files
+### GET /rules/files
 * Parameter **download** removed
 
-### GET/rules/files/:file/download
+### GET /rules/files/:file/download
 * This endpoint provides the functionality of GET /rules/files with the old removed **download** param 
 
 ## Syscheck
-### PUT/syscheck
+### PUT /syscheck
 * In response, `data` key is now moved to new `message` key
 
-### PUT/syscheck/{agent_id}
+### PUT /syscheck/{agent_id}
 * In response, `data` key is now moved to new `message` key
 
-### DELETE/syscheck/{agent_id}
+### DELETE /syscheck/{agent_id}
 * In response, `data` key is now moved to new `message` key
 
 ## Syscollector
-### /syscollector/:agent_id/netaddr
+### GET /syscollector/:agent_id/netaddr
 * Added **agent_id** parameter.
 
-### /syscollector/:agent_id/netiface
+### GET /syscollector/:agent_id/netiface
+* Added **agent_id** parameter.
+* Parameters **tx_packets**, **rx_packets**, **tx_bytes**, **rx_bytes**, **tx_errors**, **rx_errors**, **tx_dropped** and **rx_dropped** renamed to **tx.packets**, **rx.packets**, **tx.bytes**, **rx.bytes**, **tx.errors**, **rx.errors**, **tx.dropped** and **rx.dropped**
+
+### GET /syscollector/:agent_id/netproto
 * Added **agent_id** parameter.
 
-### /syscollector/:agent_id/netiface
-* Added **agent_id** parameter.
+### GET /syscollector/:agent_id/netproto
+* Added parameter **process** filter
 
-### /syscollector/:agent_id/netaddr
-* Parameter **iface_name** renamed to **iface**
-* Removed parameter **iface_name** from all endpoints
+### GET /syscollector/:agent_id/processes
+* Parameter **pid** renamed to **process_pid**
+* Parameter **status** renamed to **process_status**
+* Parameter **name** renamed to **process_name**
 
+### GET /syscollector/:agent_id/ports
+* Parameters **local_ip**, **local_port**, **remote_ip** renamed to **local.ip**, **local.port**, **remote.ip** 
 
 ## Security
 * These endpoints provide the functionality of RBAC and authentication
