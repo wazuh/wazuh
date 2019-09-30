@@ -1,0 +1,318 @@
+---
+test_name: DELETE /experimental/syscheck
+
+includes:
+  - !include common.yaml
+
+marks:
+  - usefixtures:
+      # We use ciscat environment for experimental tests
+    - ciscat_tests
+
+stages:
+
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+---
+test_name: GET /experimental/ciscat/results
+
+stages:
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - &ciscat_response
+              agent_id: !anystr
+              benchmark: !anystr
+              error: !anyint
+              fail: !anyint
+              notchecked: !anyint
+              pass: !anyint
+              profile: !anystr
+              scan:
+                id: !anyint
+                time: !anystr
+              score: !anyint
+              unknown: !anyint
+            - <<: *ciscat_response
+            - <<: *ciscat_response
+
+---
+test_name: GET /experimental/syscollector/hardware
+
+stages:
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - &hardware_response
+              agent_id: !anystr
+              board_serial: !anystr
+              cpu:
+                cores: !anyint
+                mhz: !anyfloat
+                name: !anystr
+              ram:
+                free: !anyint
+                total: !anyint
+                usage: !anyint
+              scan:
+                id: !anyint
+                time: !anystr
+            - <<: *hardware_response
+            - <<: *hardware_response
+            - <<: *hardware_response
+            - <<: *hardware_response
+            - <<: *hardware_response
+            - <<: *hardware_response
+            - <<: *hardware_response
+            - <<: *hardware_response
+            - <<: *hardware_response
+            - <<: *hardware_response
+
+---
+test_name: GET /experimental/syscollector/netaddr
+
+stages:
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - &netaddr_response
+              address: !anystr
+              broadcast: !anystr
+              iface: !anystr
+              netmask: !anystr
+              proto: !anystr
+              scan:
+                id: !anyint
+            - <<: *netaddr_response
+            - <<: *netaddr_response
+            - <<: *netaddr_response
+            - <<: *netaddr_response
+            - <<: *netaddr_response
+            - <<: *netaddr_response
+            - <<: *netaddr_response
+            - <<: *netaddr_response
+            - <<: *netaddr_response
+            - <<: *netaddr_response
+
+---
+test_name: GET /experimental/syscollector/netiface
+
+stages:
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - &netiface_response
+              mac: !anystr
+              mtu: !anyint
+              name: !anystr
+              rx:
+                bytes: !anyint
+                dropped: !anyint
+                errors: !anyint
+                packets: !anyint
+              scan:
+                id: !anyint
+                time: !anystr
+              state: !anystr
+              tx:
+                bytes: !anyint
+                dropped: !anyint
+                errors: !anyint
+                packets: !anyint
+              type: !anystr
+            - <<: *netiface_response
+            - <<: *netiface_response
+            - <<: *netiface_response
+            - <<: *netiface_response
+            - <<: *netiface_response
+            - <<: *netiface_response
+            - <<: *netiface_response
+            - <<: *netiface_response
+            - <<: *netiface_response
+            - <<: *netiface_response
+
+---
+test_name: GET /experimental/syscollector/netproto
+
+stages:
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - &netproto_response
+              dhcp: !anystr
+              gateway: !anystr
+              iface: !anystr
+              scan:
+                id: !anyint
+              type: !anystr
+            - <<: *netproto_response
+            - <<: *netproto_response
+            - <<: *netproto_response
+            - <<: *netproto_response
+            - <<: *netproto_response
+            - <<: *netproto_response
+            - <<: *netproto_response
+            - <<: *netproto_response
+            - <<: *netproto_response
+            - <<: *netproto_response
+
+---
+test_name: GET /experimental/syscollector/os
+
+stages:
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - &os_response
+              architecture: !anystr
+              hostname: !anystr
+              os:
+                codename: !anystr
+                major: !anystr
+                minor: !anystr
+                name: !anystr
+                platform: !anystr
+                version: !anystr
+              release: !anystr
+              scan:
+                id: !anyint
+                time: !anystr
+              sysname: !anystr
+              version: !anystr
+            - <<: *os_response
+            - <<: *os_response
+            - <<: *os_response
+            - <<: *os_response
+            - <<: *os_response
+            - <<: *os_response
+            - <<: *os_response
+            - <<: *os_response
+            - <<: *os_response
+            - <<: *os_response
+
+---
+test_name: GET /experimental/syscollector/packages
+
+stages:
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items: !anything
+
+---
+test_name: GET /experimental/syscollector/ports
+
+stages:
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items: !anything
+
+---
+test_name: GET /experimental/syscollector/processes
+
+stages:
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items: !anything
