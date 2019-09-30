@@ -55,47 +55,57 @@ class Resource:
             self._role_policy_expand_permissions(rbac_mode, final_permissions[self.name_identifier], odict,
                                                  'policy')
 
-    def _agent_expand_permissions(self, rbac_mode, final_permissions, odict):
+    def compose_final_permissions(self, allowed_resources, final_permissions):
+        for permission in allowed_resources:
+            if permission == self.get_value() or self.get_value() == '*':
+                final_permissions.add(permission)
+
+        return final_permissions
+
+    def _agent_expand_permissions(self, final_permissions, rbac_mode, odict):
+        allowed_resources = set()
         for key, value in odict.items():
             if key.startswith('agent:group'):
                 expanded_group = expand_group(key.split(':')[-1])
                 for agent in expanded_group:
-                    final_permissions.add(agent) if value == 'allow' and agent == self.value \
-                        else final_permissions.discard(agent)
+                    allowed_resources.add(agent) if value == 'allow' \
+                        else allowed_resources.discard(agent)
             elif key.startswith('agent:id:*'):
+                if value == 'allow' and self.value not in self.agents:
+                    allowed_resources.add(self.value)
                 for agent in self.agents:
-                    final_permissions.add(agent) if value == 'allow' and agent == self.value \
-                        else final_permissions.discard(agent)
+                    final_permissions.add(agent) if value == 'allow' else final_permissions.discard(agent)
                 if value == 'allow':
-                    final_permissions.add(self.value)
+                    final_permissions.add(self.get_value())
             elif key.startswith('agent:id'):
-                if value == 'allow' and self.value == key.split(':')[-1]:
-                    final_permissions.add(key.split(':')[-1])
+                if value == 'allow':
+                    allowed_resources.add(key.split(':')[-1])
                 elif value == 'deny':
-                    final_permissions.discard(key.split(':')[-1])
+                    allowed_resources.discard(key.split(':')[-1])
         if rbac_mode == 'black':
             for agent in self.agents:
-                final_permissions.add(agent)
-
-        return final_permissions
+                allowed_resources.add(agent)
+        self.compose_final_permissions(allowed_resources, final_permissions)
 
     def _role_policy_expand_permissions(self, rbac_mode, final_permissions, odict, resource_type):
         system_resources = self.roles if resource_type == 'role' else self.policies
+        allowed_resources = set()
         for key, value in odict.items():
             if key.startswith(resource_type + ':id:*'):
+                if value == 'allow' and self.value not in system_resources and self.value != '*':
+                    allowed_resources.add(self.value)
                 for role_policy in system_resources:
-                    final_permissions.add(role_policy) if value == 'allow' and self.value == role_policy \
-                        else final_permissions.discard(role_policy)
+                    final_permissions.add(role_policy) if value == 'allow' else final_permissions.discard(role_policy)
                 if value == 'allow':
-                    final_permissions.add(self.value)
+                    final_permissions.add(self.get_value())
             elif key.startswith(resource_type + ':id'):
-                final_permissions.add(key.split(':')[-1]) if value == 'allow' and self.value == key.split(':')[-1] \
-                    else final_permissions.discard(key.split(':')[-1])
+                allowed_resources.add(key.split(':')[-1]) if value == 'allow' \
+                    else allowed_resources.discard(key.split(':')[-1])
         if rbac_mode == 'black':
             for policy in system_resources:
-                final_permissions.add(policy)
+                allowed_resources.add(policy)
 
-        return final_permissions
+        return self.compose_final_permissions(allowed_resources, final_permissions)
 
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
@@ -144,8 +154,6 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     :param rbac: User permissions
     :return: Allow or deny
     """
-    import pydevd_pycharm
-    pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
     allow_match = dict()
     black_counter = 0
     if mode == 'black':  # Black
@@ -212,6 +220,27 @@ def expose_resources(actions: list = None, resources: list = None, target_params
     return decorator
 
 
+def merge_errors(failed_items):
+    code_ids = dict()
+    for index, failed_item in enumerate(failed_items):
+        if failed_item['error']['code'] not in code_ids.keys():
+            code_ids[failed_item['error']['code']] = dict()
+            code_ids[failed_item['error']['code']]['ids'] = list()
+            code_ids[failed_item['error']['code']]['index'] = index
+        code_ids[failed_item['error']['code']]['ids'].append(failed_item['id'])
+    final_errors_list = list()
+    error_count = 0
+    for key, error_code in code_ids.items():
+        final_errors_list.append(failed_items[error_code['index']])
+        for item_id in error_code['ids']:
+            if not isinstance(final_errors_list[-1]['id'], list):
+                final_errors_list[-1]['id'] = list()
+            final_errors_list[-1]['id'].append(item_id)
+        error_count += len(error_code['ids'])
+
+    return final_errors_list, error_count
+
+
 def list_handler_with_denied(result, original: dict = None, allowed: dict = None, target: list = None,
                              **post_proc_kwargs):
     """ Post processor for framework list responses with affected items and failed items
@@ -224,15 +253,13 @@ def list_handler_with_denied(result, original: dict = None, allowed: dict = None
     """
     if len(target) == 1:
         original_kwargs = original[target[0]] if isinstance(original[target[0]], list) else [original[target[0]]]
-        difference = list(set(original_kwargs) - set(list(allowed[list(allowed.keys())[0]])))
-        if len(difference) > 0:
-            result['failed_items'].append(create_exception_dic(difference, WazuhError(4000)))
+        for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[0]])):
+            result['failed_items'].append(create_exception_dic(item, WazuhError(4000)))
     else:
-        original_kwargs = original[target[1]] if isinstance(original[target[1]], list) else [original[target[1]]]
-        difference = list(set(original_kwargs) - set(list(allowed[list(allowed.keys())[1]])))
-        if len(difference) > 0:
-            result['failed_items'].append(
-                create_exception_dic('{}:{}'.format(original[target[0]], difference), WazuhError(4000)))
+        original_kwargs = original[target[1]] if isinstance(original[target[1]], list) else list(original[target[1]])
+        for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[1]])):
+            result['failed_items'].append(create_exception_dic('{}:{}'.format(original[target[0]], item),
+                                                               WazuhError(4000)))
 
     return data_response_builder(result, original, **post_proc_kwargs)
 
@@ -259,8 +286,9 @@ def data_response_builder(result, original: dict = None, **post_proc_kwargs):
                            'total_affected_items': len(result['affected_items'])}
                   }
     if result['failed_items']:
-        final_dict['data']['failed_items'] = result['failed_items']
-        final_dict['data']['total_failed_items'] = len(result['failed_items'])
+        failed_result = merge_errors(result['failed_items'])
+        final_dict['data']['failed_items'] = failed_result[0]
+        final_dict['data']['total_failed_items'] = failed_result[1]
         final_dict['message'] = result['str_priority'][2] if not result['affected_items'] else result['str_priority'][1]
     else:
         final_dict['message'] = result['str_priority'][2] if not result['affected_items'] else result['str_priority'][0]

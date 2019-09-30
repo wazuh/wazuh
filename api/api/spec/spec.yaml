@@ -35,9 +35,9 @@ components:
     ListMetadata:
       type: object
       required:
-      - totalItems
+      - total_affected_items
       properties:
-        totalItems:
+        total_affected_items:
           type: integer
           format: int32
           minimum: 0
