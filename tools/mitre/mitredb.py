@@ -17,6 +17,7 @@ import os
 import pwd
 import grp 
 import argparse
+import sys
  
  
 def create_connection(db_file):
@@ -125,6 +126,8 @@ def main(database=None):
     else:
         if not os.path.isdir('/'.join((str(database).split('/')[0:-1]))):
             raise Exception('Error: Directory not found.')
+    
+    pathfile = find('enterprise-attack.json', '/')
 
     sql_delete_attack = """DROP TABLE IF EXISTS attack;"""
  
@@ -132,16 +135,16 @@ def main(database=None):
 
     sql_delete_has_platform = """DROP TABLE IF EXISTS has_platform;"""
  
-    sql_create_attack = """CREATE TABLE attack (id TEXT PRIMARY KEY, json TEXT);"""
+    sql_create_attack = """CREATE TABLE IF NOT EXISTS attack (id TEXT PRIMARY KEY, json TEXT);"""
  
-    sql_create_has_phase = """CREATE TABLE has_phase (
+    sql_create_has_phase = """CREATE TABLE IF NOT EXISTS has_phase (
                                     attack_id TEXT, 
                                     phase_name TEXT,
                                     FOREIGN KEY(attack_id) REFERENCES attack(id),
                                     PRIMARY KEY (attack_id, phase_name)
                                 );"""
 
-    sql_create_has_platform = """CREATE TABLE has_platform (
+    sql_create_has_platform = """CREATE TABLE IF NOT EXISTS has_platform (
                                     attack_id TEXT, 
                                     platform_name TEXT,
                                     FOREIGN KEY(attack_id) REFERENCES attack(id),
@@ -150,19 +153,6 @@ def main(database=None):
  
     # Create a database connection
     conn = create_connection(database)
-
-    # Delete tables
-    if conn is not None:
-        # Delete attack table if exists
-        create_table(conn, sql_delete_attack)
- 
-        # Delete has_phase table if exists
-        create_table(conn, sql_delete_has_phase)
-
-        # Delete has_platform table if exists
-        create_table(conn, sql_delete_has_platform)
-    else:
-        print("Error! cannot create the database connection.")
 
     # Create tables
     if conn is not None:
@@ -175,44 +165,57 @@ def main(database=None):
         # Create has_platform table
         create_table(conn, sql_create_has_platform)
     else:
-        print("Error! cannot create the database connection.")
+        print("Error! Cannot create the database connection.")
     
     # Parse enterprise-attack.json file:
-    pathfile = find('enterprise-attack.json', '/')
-    with open(pathfile) as json_file:
-        datajson = json.load(json_file)
-        data = json.dumps(datajson)
-        data = data.replace('persistence', 'Persistence')
-        data = data.replace('privilege-escalation', 'Privilege Escalation')
-        data = data.replace('defense-evasion', 'Defense Evasion')
-        data = data.replace('discovery', 'Discovery')
-        data = data.replace('credential-access', 'Credential Access')
-        data = data.replace('execution', 'Execution')
-        data = data.replace('lateral-movement', 'Lateral Movement')
-        data = data.replace('collection', 'Collection')
-        data = data.replace('exfiltration', 'Exfiltration')
-        data = data.replace('command-and-control', 'Command and Control')
-        data = data.replace('initial-access', 'Initial Access')
-        data = data.replace('impact', 'Impact')
-        datajson = json.loads(data)
-        for data_object in datajson['objects']:
-            if data_object['type'] == 'attack-pattern' and data_object['external_references'][0]['source_name'] == 'mitre-attack':
-                string_id = json.dumps(data_object['external_references'][0]['external_id']).replace('"', '')
-                string_object = json.dumps(data_object)
+    try: 
+        with open(pathfile) as json_file:
+            datajson = json.load(json_file)
+            data = json.dumps(datajson)
+            data = data.replace('persistence', 'Persistence')
+            data = data.replace('privilege-escalation', 'Privilege Escalation')
+            data = data.replace('defense-evasion', 'Defense Evasion')
+            data = data.replace('discovery', 'Discovery')
+            data = data.replace('credential-access', 'Credential Access')
+            data = data.replace('execution', 'Execution')
+            data = data.replace('lateral-movement', 'Lateral Movement')
+            data = data.replace('collection', 'Collection')
+            data = data.replace('exfiltration', 'Exfiltration')
+            data = data.replace('command-and-control', 'Command and Control')
+            data = data.replace('initial-access', 'Initial Access')
+            data = data.replace('impact', 'Impact')
+            datajson = json.loads(data)
+            for data_object in datajson['objects']:
+                if data_object['type'] == 'attack-pattern' and data_object['external_references'][0]['source_name'] == 'mitre-attack':
+                    string_id = json.dumps(data_object['external_references'][0]['external_id']).replace('"', '')
+                    string_object = json.dumps(data_object)
 
-                # Fill the attack table 
-                insert_attack_table(conn, string_id, string_object)
-                
-                # Fill the phase table
-                n = len(data_object['kill_chain_phases'])
-                for i in range (0,n):
-                    string_phase = json.dumps(data_object['kill_chain_phases'][i]['phase_name']).replace('"', '')
-                    insert_phase_table(conn, string_id, string_phase)
-                
-                # Fill the platform table
-                for platform in data_object['x_mitre_platforms']:
-                    string_platform = json.dumps(platform).replace('"', '')
-                    insert_platform_table(conn,string_id, string_platform)
+                    # Fill the attack table 
+                    insert_attack_table(conn, string_id, string_object)
+                    
+                    # Fill the phase table
+                    n = len(data_object['kill_chain_phases'])
+                    for i in range (0,n):
+                        string_phase = json.dumps(data_object['kill_chain_phases'][i]['phase_name']).replace('"', '')
+                        insert_phase_table(conn, string_id, string_phase)
+                    
+                    # Fill the platform table
+                    for platform in data_object['x_mitre_platforms']:
+                        string_platform = json.dumps(platform).replace('"', '')
+                        insert_platform_table(conn,string_id, string_platform)
+
+    except TypeError as e:
+        print("Mitre JSON File not found")
+        # Delete tables
+        if conn is not None:
+            # Delete attack table if exists
+            create_table(conn, sql_delete_attack)
+    
+            # Delete has_phase table if exists
+            create_table(conn, sql_delete_has_phase)
+
+            # Delete has_platform table if exists
+            create_table(conn, sql_delete_has_platform)
               
     os.chmod(database, 0o660)
     uid = pwd.getpwnam("root").pw_uid
@@ -220,7 +223,6 @@ def main(database=None):
     os.chown(database, uid, gid)
 
     conn.close()
-    print("Mitre database installed correctly")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='This script installs mitre.db in a directory.')
