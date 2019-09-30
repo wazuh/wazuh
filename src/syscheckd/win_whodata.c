@@ -610,7 +610,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     goto clean;
                 }
 
-                if (position = fim_configuration_directory(path), position < 0) {
+                if (position = fim_configuration_directory(path, "file"), position < 0) {
                     // Discard the file or directory if its monitoring has not been activated
                     mdebug2(FIM_WHODATA_NOT_ACTIVE, path);
                     goto clean;
@@ -707,7 +707,7 @@ add_whodata_evt:
                                     mdebug2(FIM_WHODATA_DIRECTORY_SCANNED, path);
                                 } else {
                                     // Check if is a valid directory
-                                    if (position = fim_configuration_directory(path), position < 0) {
+                                    if (position = fim_configuration_directory(path, "file"), position < 0) {
                                     // if (position = find_dir_pos(path, 1, WHODATA_ACTIVE, 1), position < 0) {
                                         mdebug2(FIM_WHODATA_DIRECTORY_DISCARDED, path);
                                         w_evt->scan_directory = 2;

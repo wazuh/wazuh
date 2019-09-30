@@ -121,7 +121,7 @@ short skipFS(const char *dir_name)
     return(0);
 }
 
-bool HasFilesystem(const char * path, fs_set set) {
+bool HasFilesystem(__attribute__((unused))const char * path, __attribute__((unused))fs_set set) {
 #ifdef __linux__
     struct statfs stfs;
 
@@ -149,6 +149,8 @@ bool HasFilesystem(const char * path, fs_set set) {
 
 #else
     mdebug2("Attempted to check FS status for '%s'. This operation is not supported on this OS.", path);
+    (void)path;
+    (void)set;
 #endif
 
     return false;

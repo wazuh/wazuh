@@ -604,7 +604,7 @@ char *w_strtok_r_str_delim(const char *delim, char **remaining_str)
 
 
 // Returns the characters number of the string source if, only if, source is included completely in str, 0 in other case.
-int w_compare_str(char * source, char * str) {
+int w_compare_str(const char * source, const char * str) {
     int matching = 0;
     size_t source_lenght;
 

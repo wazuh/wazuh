@@ -208,6 +208,7 @@ typedef struct fim_entry_data {
     time_t last_event;
     unsigned int scanned;
     os_sha1 checksum;
+    const char *entry_type;
 } fim_entry_data;
 
 typedef struct fim_inode_data {

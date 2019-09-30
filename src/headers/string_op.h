@@ -96,7 +96,7 @@ int w_is_str_in_array(char *const *ar, const char *str);
 char *w_strtok_r_str_delim(const char *delim, char **remaining_str);
 
 // Returns the characters number of the string source if, only if, source is included completely in str, 0 in other case.
-int w_compare_str(char * source, char * str);
+int w_compare_str(const char * source, const char * str);
 const char * find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len);
 
 char *decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const size_t buffer_size);

@@ -59,7 +59,9 @@ void fim_send_sync_msg(const char * msg) {
 /* Send a message related to syscheck change/addition */
 int send_syscheck_msg(const char *msg)
 {
+#ifndef WIN32
     mdebug2(FIM_SEND, msg);
+#endif
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
     struct timespec timeout = { syscheck.send_delay / 1000000, syscheck.send_delay % 1000000 * 1000 };
     nanosleep(&timeout, NULL);

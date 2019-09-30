@@ -1162,7 +1162,7 @@ void * audit_main(int *audit_sock) {
         for (i = 0; i < W_Vector_length(audit_added_dirs); i++) {
             char *path;
             os_strdup(W_Vector_get(audit_added_dirs, i), path);
-            int pos = fim_configuration_directory(path);
+            int pos = fim_configuration_directory(path, "file");
 
             syscheck.opts[pos] &= ~ WHODATA_ACTIVE;
             syscheck.opts[pos] |= REALTIME_ACTIVE;
