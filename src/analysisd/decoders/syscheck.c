@@ -1155,13 +1155,6 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
                 mode = object->valuestring;
             } else if (strcmp(object->string, "type") == 0) {
                 event_type = object->valuestring;
-                if (strcmp("added", event_type) == 0) {
-                    lf->event_type = FIM_ADDED;
-                } else if (strcmp("modified", event_type) == 0) {
-                    lf->event_type = FIM_MODIFIED;
-                } else if (strcmp("deleted", event_type) == 0) {
-                    lf->event_type = FIM_DELETED;
-                }
             } else if (strcmp(object->string, "tags") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_TAG].value);
                 os_strdup(object->valuestring, lf->sk_tag);
@@ -1202,11 +1195,20 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
 
     if (strcmp("added", event_type) == 0) {
         lf->event_type = FIM_ADDED;
+        lf->decoder_info->name = SYSCHECK_NEW;
     } else if (strcmp("modified", event_type) == 0) {
         lf->event_type = FIM_MODIFIED;
+        lf->decoder_info->name = SYSCHECK_MOD;
     } else if (strcmp("deleted", event_type) == 0) {
         lf->event_type = FIM_DELETED;
+        lf->decoder_info->name = SYSCHECK_DEL;
+    } else {
+        mdebug1("Invalid 'type' value '%s' in JSON payload.", event_type);
+        return -1;
     }
+
+    lf->decoder_info->id = getDecoderfromlist(lf->decoder_info->name);
+    lf->decoder_syscheck_id = lf->decoder_info->id;
 
     fim_generate_alert(lf, mode, event_type, event_time, attributes, old_attributes, audit);
 
