@@ -2497,13 +2497,12 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args) {
 
     int day = 0;
     int year = 0;
-    struct tm *p;
+    struct tm p;
     struct tm rot;
     char mon[4] = {0};
 
     /* Get current time before starting */
     time(&current_time);
-    p = localtime(&c_time);
 
     /* Calculate when is the next rotation */
     alerts_time = Config.alerts_interval ? calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval) : 0;
@@ -2513,14 +2512,14 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args) {
 
     while (1) {
         time(&current_time);
-        p = localtime(&c_time);
-        day = p->tm_mday;
-        year = p->tm_year + 1900;
-        strncpy(mon, month[p->tm_mon], 3);
+        localtime_r(&c_time, &p);
+        day = p.tm_mday;
+        year = p.tm_year + 1900;
+        strncpy(mon, month[p.tm_mon], 3);
 
         /* Set the global hour/weekday */
-        __crt_hour = p->tm_hour;
-        __crt_wday = p->tm_wday;
+        __crt_hour = p.tm_hour;
+        __crt_wday = p.tm_wday;
 
         w_mutex_lock(&writer_threads_mutex);
 

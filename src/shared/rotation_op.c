@@ -383,7 +383,9 @@ void add_new_rotation_node(rotation_list *list, char *value, int keep_files) {
         }
         r_node = list->first;
         list->first = list->first->next;
-        list->first->prev = NULL;
+        if (list->first) {
+            list->first->prev = NULL;
+        }
         free(r_node->string_value);
         free(r_node);
         list->count--;

@@ -78,7 +78,7 @@ void Monitord()
     char path_ossec_json[PATH_MAX];
 
     struct stat buf, buf_json;
-    off_t size, size_json;
+    off_t size = 0, size_json = 0;
 
     int today = 0;
     int today_log = 0;

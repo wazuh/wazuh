@@ -473,6 +473,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
                 }
                 if (Config.log_alerts_json && Config.log_alerts_json->last && Config.log_alerts_json->last->first_value == day) {
                     __jcounter = Config.log_alerts_json->last->second_value;
+                    rotate = 1;
                 } else {
                     __jcounter = 0;
                     rotate = 0;

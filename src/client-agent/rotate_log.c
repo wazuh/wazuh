@@ -104,7 +104,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     char path[PATH_MAX];
     char path_json[PATH_MAX];
     struct stat buf, buf_json;
-    off_t size, size_json;
+    off_t size = 0, size_json = 0;
     time_t n_time, n_time_json, now = time(NULL);
     struct tm tm, rot;
     int today_log, today_json;
