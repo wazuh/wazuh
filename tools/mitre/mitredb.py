@@ -154,6 +154,17 @@ def main(database=None):
     # Create a database connection
     conn = create_connection(database)
 
+    # Delete tables
+    if conn is not None:
+        # Delete attack table if exists
+        create_table(conn, sql_delete_attack)
+
+        # Delete has_phase table if exists
+        create_table(conn, sql_delete_has_phase)
+
+        # Delete has_platform table if exists
+        create_table(conn, sql_delete_has_platform)
+
     # Create tables
     if conn is not None:
         # Create attack table
@@ -206,16 +217,8 @@ def main(database=None):
 
     except TypeError as e:
         print("Mitre JSON File not found")
-        # Delete tables
-        if conn is not None:
-            # Delete attack table if exists
-            create_table(conn, sql_delete_attack)
-    
-            # Delete has_phase table if exists
-            create_table(conn, sql_delete_has_phase)
-
-            # Delete has_platform table if exists
-            create_table(conn, sql_delete_has_platform)
+    except KeyError as err:
+        print("JSON Item not found: ")
               
     os.chmod(database, 0o660)
     uid = pwd.getpwnam("root").pw_uid

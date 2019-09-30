@@ -625,7 +625,7 @@ int wdb_parse(char * input, char * output);
  * 
  * An example of use is [limit 10 offset 0] query sentence
  * @param input SQL query that starts with [limit ? offset ?]
- * @param output This output is a struct that store limit and offset parameters
+ * @param output This output is a struct that stores limit and offset parameters
  * @return int Return -1 if it fails
  */
 int wdb_param_parse(char *input, struct opt_param *output);
