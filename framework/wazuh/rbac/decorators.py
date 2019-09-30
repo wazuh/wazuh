@@ -55,57 +55,47 @@ class Resource:
             self._role_policy_expand_permissions(rbac_mode, final_permissions[self.name_identifier], odict,
                                                  'policy')
 
-    def compose_final_permissions(self, allowed_resources, final_permissions):
-        for permission in allowed_resources:
-            if permission == self.get_value() or self.get_value() == '*':
-                final_permissions.add(permission)
-
-        return final_permissions
-
-    def _agent_expand_permissions(self, final_permissions, rbac_mode, odict):
-        allowed_resources = set()
+    def _agent_expand_permissions(self, rbac_mode, final_permissions, odict):
         for key, value in odict.items():
             if key.startswith('agent:group'):
                 expanded_group = expand_group(key.split(':')[-1])
                 for agent in expanded_group:
-                    allowed_resources.add(agent) if value == 'allow' \
-                        else allowed_resources.discard(agent)
+                    final_permissions.add(agent) if value == 'allow' and agent == self.value \
+                        else final_permissions.discard(agent)
             elif key.startswith('agent:id:*'):
-                if value == 'allow' and self.value not in self.agents:
-                    allowed_resources.add(self.value)
                 for agent in self.agents:
-                    final_permissions.add(agent) if value == 'allow' else final_permissions.discard(agent)
+                    final_permissions.add(agent) if value == 'allow' and agent == self.value \
+                        else final_permissions.discard(agent)
                 if value == 'allow':
-                    final_permissions.add(self.get_value())
+                    final_permissions.add(self.value)
             elif key.startswith('agent:id'):
-                if value == 'allow':
-                    allowed_resources.add(key.split(':')[-1])
+                if value == 'allow' and self.value == key.split(':')[-1]:
+                    final_permissions.add(key.split(':')[-1])
                 elif value == 'deny':
-                    allowed_resources.discard(key.split(':')[-1])
+                    final_permissions.discard(key.split(':')[-1])
         if rbac_mode == 'black':
             for agent in self.agents:
-                allowed_resources.add(agent)
-        self.compose_final_permissions(allowed_resources, final_permissions)
+                final_permissions.add(agent)
+
+        return final_permissions
 
     def _role_policy_expand_permissions(self, rbac_mode, final_permissions, odict, resource_type):
         system_resources = self.roles if resource_type == 'role' else self.policies
-        allowed_resources = set()
         for key, value in odict.items():
             if key.startswith(resource_type + ':id:*'):
-                if value == 'allow' and self.value not in system_resources and self.value != '*':
-                    allowed_resources.add(self.value)
                 for role_policy in system_resources:
-                    final_permissions.add(role_policy) if value == 'allow' else final_permissions.discard(role_policy)
+                    final_permissions.add(role_policy) if value == 'allow' and self.value == role_policy \
+                        else final_permissions.discard(role_policy)
                 if value == 'allow':
-                    final_permissions.add(self.get_value())
+                    final_permissions.add(self.value)
             elif key.startswith(resource_type + ':id'):
-                allowed_resources.add(key.split(':')[-1]) if value == 'allow' \
-                    else allowed_resources.discard(key.split(':')[-1])
+                final_permissions.add(key.split(':')[-1]) if value == 'allow' and self.value == key.split(':')[-1] \
+                    else final_permissions.discard(key.split(':')[-1])
         if rbac_mode == 'black':
             for policy in system_resources:
-                allowed_resources.add(policy)
+                final_permissions.add(policy)
 
-        return self.compose_final_permissions(allowed_resources, final_permissions)
+        return final_permissions
 
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
