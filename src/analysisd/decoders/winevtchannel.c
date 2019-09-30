@@ -174,7 +174,7 @@ int DecodeWinevt(Eventinfo *lf){
     const char *jsonErrPtr;
 
     if (received_event = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0), !received_event) {
-        merror("Malformed EventChannel JSON event");
+        merror("Malformed EventChannel JSON event.");
         ret_val = 1;
         cJSON_Delete(json_event);
         cJSON_Delete(json_system_in);
@@ -182,11 +182,11 @@ int DecodeWinevt(Eventinfo *lf){
         cJSON_Delete(json_extra_in);
         goto cleanup;
     }
-    
+
     json_received_event = cJSON_GetObjectItem(received_event, "Event");
 
     if(json_received_event == NULL) {
-        mdebug1("Malformed JSON output received. No 'Event' field found");
+        mdebug1("Malformed JSON received. No 'Event' field found.");
         ret_val = 1;
         cJSON_Delete(json_event);
         cJSON_Delete(json_system_in);
@@ -194,7 +194,7 @@ int DecodeWinevt(Eventinfo *lf){
         cJSON_Delete(json_extra_in);
         goto cleanup;
     }
-     
+
     event = cJSON_PrintUnformatted(json_received_event);
 
     if(event){
@@ -279,7 +279,7 @@ int DecodeWinevt(Eventinfo *lf){
                                         filtered_string = replace_win_format(child_attr[p]->content, 0);
                                         *child_attr[p]->values[l] = tolower(*child_attr[p]->values[l]);
 
-                                        // Save category ID                                        
+                                        // Save category ID
                                         if (!strcmp(child_attr[p]->values[l], "categoryId")){
                                             if (categoryId){
                                                 os_free(categoryId);
@@ -414,7 +414,6 @@ int DecodeWinevt(Eventinfo *lf){
                 }
 
                 cJSON_AddStringToObject(json_system_in, "severityValue", severityValue);
-
 
                 // Event category, subcategory and Audit Policy Changes
 
@@ -736,16 +735,6 @@ int DecodeWinevt(Eventinfo *lf){
 
     json_find_msg = cJSON_GetObjectItem(received_event, "Message");
 
-    if(json_find_msg == NULL) {
-        mdebug1("Malformed JSON output received. No 'Message' field found");
-        ret_val = 1;
-        cJSON_Delete(json_event);
-        cJSON_Delete(json_system_in);
-        cJSON_Delete(json_eventdata_in);
-        cJSON_Delete(json_extra_in);
-        goto cleanup;
-    }
-    
     find_msg = cJSON_PrintUnformatted(json_find_msg);
 
     if(find_msg){
