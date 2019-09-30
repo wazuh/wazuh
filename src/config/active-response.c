@@ -60,26 +60,25 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
 #ifndef WIN32
     struct group os_group = { .gr_name = NULL };
-    size_t len = (size_t) sysconf(_SC_GETGR_R_SIZE_MAX);
+    long int len =  sysconf(_SC_GETGR_R_SIZE_MAX);
     len = len > 0 ? len : 1024;
     struct group *result = NULL;
     char *buffer;
     os_malloc(len, buffer);
 
-    getgrnam_r(USER, &os_group, buffer, len, &result);
-
-    if (result == NULL) {
+    int grname = getgrnam_r(USER, &os_group, buffer, len, &result);
+    if(grname != 0 || result == NULL){
         os_free(buffer);
-        merror("Could not get ossec gid.");
+        merror("Could not get group name.");
         fclose(fp);
-        return (-1);
+        return OS_INVALID;
     }
 
     if ((chown(DEFAULTARPATH, (uid_t) - 1, result->gr_gid)) == -1) {
         os_free(buffer);
-        merror("Could not change the group to ossec: %d", errno);
+        merror("Could not change the group to ossec: %d.", errno);
         fclose(fp);
-        return (-1);
+        return OS_INVALID;
     }
 
     os_free(buffer);
@@ -87,7 +86,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 #endif
 
     if ((chmod(DEFAULTARPATH, 0640)) == -1) {
-        merror("Could not chmod to 0640: %d", errno);
+        merror("Could not chmod to 0640: %d.", errno);
         fclose(fp);
         return (-1);
     }

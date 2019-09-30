@@ -295,7 +295,7 @@ char *OSX_ReleaseName(const int version) {
 os_info *get_unix_version()
 {
     FILE *os_release, *cmd_output, *version_release, *cmd_output_ver;
-    char buff[256];
+    char buff[OS_SIZE_256];
     char *tag, *end;
     char *name = NULL;
     char *id = NULL;

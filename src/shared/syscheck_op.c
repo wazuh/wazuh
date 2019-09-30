@@ -571,7 +571,7 @@ void sk_sum_clean(sk_sum_t * sum) {
 #endif
 
 char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
-    size_t len = (size_t) sysconf(_SC_GETPW_R_SIZE_MAX);
+    long int len = sysconf(_SC_GETPW_R_SIZE_MAX);
     len = len > 0 ? len : 1024;
     struct passwd pwd = { .pw_name = NULL };
     struct passwd *result = NULL;
@@ -587,7 +587,7 @@ char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__(
 }
 
 char *get_group(int gid) {
-    size_t len = (size_t) sysconf(_SC_GETGR_R_SIZE_MAX);
+    long int len = sysconf(_SC_GETGR_R_SIZE_MAX);
     len = len > 0 ? len : 1024;
     struct group group = { .gr_name = NULL };
     struct group *result = NULL;
@@ -595,8 +595,14 @@ char *get_group(int gid) {
     os_malloc(len, buffer);
     char *gr_name;
 
-    getgrgid_r(gid, &group, buffer, len, &result);
-    os_strdup(result ? result->gr_name : "", gr_name);
+    int groupid = getgrgid_r(gid, &group, buffer, len, &result);
+    if(groupid != 0 || result == NULL) {
+        merror("Could not get ossec gid.");
+        gr_name = "";
+    } else {
+        os_strdup(result->gr_name, gr_name);
+    }
+
     os_free(buffer);
 
     return gr_name;

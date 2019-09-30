@@ -24,7 +24,7 @@
 
 uid_t Privsep_GetUser(const char *name)
 {
-    size_t len = (size_t) sysconf(_SC_GETGR_R_SIZE_MAX);
+    long int len =  sysconf(_SC_GETGR_R_SIZE_MAX);
     len = len > 0 ? len : 1024;
     struct passwd pw = { .pw_name = NULL };
     char *buffer;
@@ -42,15 +42,21 @@ uid_t Privsep_GetUser(const char *name)
 gid_t Privsep_GetGroup(const char *name)
 {
     struct group grp = { .gr_name = NULL };
-    size_t len = (size_t) sysconf(_SC_GETGR_R_SIZE_MAX);
+    long int len = sysconf(_SC_GETGR_R_SIZE_MAX);
     len = len > 0 ? len : 1024;
     struct group *result = NULL;
     char *buffer;
     os_malloc(len, buffer);
     gid_t gr_gid;
 
-    getgrnam_r(name, &grp, buffer, len, &result);
-    gr_gid = result ? result->gr_gid : (gid_t )OS_INVALID;
+    int grname = getgrnam_r(name, &grp, buffer, len, &result);
+    if(grname != 0 || result == NULL) {
+        merror("Could not get group name.");
+        gr_gid = OS_INVALID;
+    } else {
+        gr_gid = result->gr_gid;
+    }
+    
     os_free(buffer);
 
     return gr_gid;

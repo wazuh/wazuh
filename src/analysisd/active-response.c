@@ -48,15 +48,13 @@ int AR_ReadConfig(const char *cfgfile)
         merror(FOPEN_ERROR, DEFAULTARPATH, errno, strerror(errno));
         return (OS_INVALID);
     }
-    fprintf(fp, "restart-ossec0 - restart-ossec.sh - 0\n");
-    fprintf(fp, "restart-ossec0 - restart-ossec.cmd - 0\n");
+    fprintf(fp, "restart-ossec0 - restart-ossec.sh - 0\n restart-ossec0 - restart-ossec.cmd - 0\n");
     fclose(fp);
 
 #ifndef WIN32
     gid_t gr_gid;
     if (gr_gid = Privsep_GetGroup(USER), gr_gid == (uid_t) -1) {
         merror("Could not get ossec gid.");
-        fclose(fp);
         return (OS_INVALID);
     }
 
