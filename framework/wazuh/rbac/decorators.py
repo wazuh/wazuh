@@ -181,13 +181,13 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     return allow_match
 
 
-def expose_resources(actions: list = None, resources: list = None, target_param: list = None,
+def expose_resources(actions: list = None, resources: list = None, target_params: list = None,
                      post_proc_func: callable = None, post_proc_extra_fields: list = None):
     """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
 
     :param actions: List of actions exposed by the framework function
     :param resources: List of resources exposed by the framework function
-    :param target_param: Name of the input parameter used to calculate resource access
+    :param target_params: Name of the input parameter used to calculate resource access
     :param post_proc_func: Name of the function to use in response post processing
     :param post_proc_extra_fields: Name of the extra fields used in post processing
     :return: Allow or deny framework function execution
@@ -200,7 +200,7 @@ def expose_resources(actions: list = None, resources: list = None, target_param:
             del kwargs['rbac']
             original_kwargs = copy.deepcopy(kwargs)
             if 'black:mode' not in allow.keys():  # Black flag not in allow
-                for index, target in enumerate(target_param):
+                for index, target in enumerate(target_params):
                     try:
                         if len(allow[list(allow.keys())[index]]) == 0:
                             raise Exception
@@ -210,7 +210,7 @@ def expose_resources(actions: list = None, resources: list = None, target_param:
             if post_proc_func is None:
                 return func(*args, **kwargs)
             else:
-                return post_proc_func(f=func, original=original_kwargs, allow=allow, target=target_param,
+                return post_proc_func(f=func, original=original_kwargs, allow=allow, target=target_params,
                                       extra_fields=post_proc_extra_fields, *args, **kwargs)
         return wrapper
     return decorator

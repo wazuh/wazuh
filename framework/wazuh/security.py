@@ -17,28 +17,37 @@ from wazuh.utils import process_array
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
 
 
-def get_users(offset=0, limit=common.database_limit, sort_by=None,
-              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+def get_users_all(username_list: list = None, offset=0, limit=common.database_limit, sort_by=None,
+                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Get the information of all users
 
-    :return: Information about users
+    :param username_list: Name of the user
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param sort_ascending: Sort in ascending (true) or descending (false) order
+    :param search_text: Text to search
+    :param complementary_search: Find items without the text to search
+    :param search_in_fields: Fields to search in
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
+    affected_items = list()
     with AuthenticationManager() as auth:
-        result = auth.get_users()
+        for username in username_list:
+            user = auth.get_users(username)
+            if user:
+                affected_items.append(user)
 
-    if not result or len(result) == 0:
-        raise WazuhInternalError(5002)
-
-    return process_array(result, search_text=search_text, search_in_fields=search_in_fields,
-                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+    return {'affected_items': affected_items,
+            'failed_items': list(),
+            'str_priority': ['All available users were shown', '', '']}
 
 
-def get_user_id(username: str = None, offset=0, limit=common.database_limit, sort_by=None,
+def get_users(username_list: list = None, offset=0, limit=common.database_limit, sort_by=None,
                 sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Get the information of a specified user
 
-    :param username: Name of the user
+    :param username_list: Name of the user
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
