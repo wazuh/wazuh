@@ -706,7 +706,9 @@ int main_analysisd(int argc, char **argv)
     w_create_thread(asyscom_main, NULL);
     
     /* Load Mitre JSON File and Mitre hash table */
-    mitre_load();
+    if(mitre_load() == -1) {
+        merror("Mitre matrix information could not be loaded.");
+    }
 
     /* Going to main loop */
     OS_ReadMSG(m_queue);

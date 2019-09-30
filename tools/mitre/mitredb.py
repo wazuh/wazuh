@@ -220,6 +220,7 @@ def main(database=None):
     os.chown(database, uid, gid)
 
     conn.close()
+    print("Mitre database installed correctly")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='This script installs mitre.db in a directory.')
