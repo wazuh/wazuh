@@ -95,7 +95,7 @@ if [ $ACTION = "adddns" ]; then
 
    FIRSTRULE="150010"
    while [ 1 ]; do
-       grep "\"$FIRSTRULE\"" ${DIRECTORY}/rules/local_rules.xml > /dev/null 2>&1
+       grep "\"$FIRSTRULE\"" ${DIRECTORY}/etc/rules/local_rules.xml > /dev/null 2>&1
        if [ $? = 0 ]; then
            FIRSTRULE=`expr $FIRSTRULE + 1`
        else
@@ -113,7 +113,7 @@ if [ $ACTION = "adddns" ]; then
      <description>DNS Changed for $FILE</description>
    </rule>
    </group>
-   " >> ${DIRECTORY}/rules/local_rules.xml || MYERR=1;
+   " >> ${DIRECTORY}/etc/rules/local_rules.xml || MYERR=1;
 
    if [ $MYERR = 1 ]; then
        echo "$0: Unable to modify the local rules file.";
@@ -157,7 +157,7 @@ if [ $ACTION = "addsite" ]; then
 
    FIRSTRULE="150010"
    while [ 1 ]; do
-       grep "\"$FIRSTRULE\"" ${DIRECTORY}/rules/local_rules.xml > /dev/null 2>&1
+       grep "\"$FIRSTRULE\"" ${DIRECTORY}/etc/rules/local_rules.xml > /dev/null 2>&1
        if [ $? = 0 ]; then
            FIRSTRULE=`expr $FIRSTRULE + 1`
        else
@@ -175,7 +175,7 @@ if [ $ACTION = "addsite" ]; then
      <description>DNS Changed for $FILE</description>
    </rule>
    </group>
-   " >> ${DIRECTORY}/rules/local_rules.xml || MYERR=1;
+   " >> ${DIRECTORY}/etc/rules/local_rules.xml || MYERR=1;
 
    if [ $MYERR = 1 ]; then
        echo "$0: Unable to modify the local rules file.";
@@ -185,5 +185,3 @@ if [ $ACTION = "addsite" ]; then
    echo "Domain $FILE added to be monitored."
    exit 0;
 fi
-
-
