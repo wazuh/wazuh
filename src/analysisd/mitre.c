@@ -62,11 +62,18 @@ int mitre_load(){
         result = -1;
         goto end;
     }
+
     /* Response parameter has to be freed before continuing*/
     os_free(response);
 
     /* Getting array size */
-    size_ids = cJSON_GetArraySize(root);
+    if(size_ids = cJSON_GetArraySize(root), size_ids == 0) {
+        mdebug1("Mitre info loading failed. Mitre's database response has 0 elements.");
+        merror("Mitre matrix information could not be loaded.");
+        cJSON_Delete(root);
+        result = -1;
+        goto end;
+    }
     
     for (i=0; i<size_ids; i++){
         /* Getting Mitre attack ID  */
@@ -83,7 +90,15 @@ int mitre_load(){
                 /* Getting tactics and filling the Mitre Hash table */
                 tactics_array = cJSON_CreateArray();
                 tactics_json = cJSON_Parse(response+3);
-                size_tactics = cJSON_GetArraySize(tactics_json);
+                if(size_tactics = cJSON_GetArraySize(tactics_json), size_tactics == 0) {
+                    mdebug1("Mitre info loading failed. Mitre's database response has 0 elements. Response: %s", response);
+                    merror("Mitre matrix information could not be loaded.");
+                    cJSON_Delete(tactics_json);
+                    cJSON_Delete(root);
+                    os_free(response);
+                    result = -1;
+                    goto end;    
+                }
                 for(j=0; j<size_tactics; j++) {
                     tactics = cJSON_GetArrayItem(tactics_json, j);
                     tactic = cJSON_GetObjectItem(tactics,"phase_name");
