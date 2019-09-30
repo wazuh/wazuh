@@ -1521,12 +1521,13 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
             cJSON_AddNumberToObject(port, "PID", pid);
             cJSON_AddStringToObject(port, "process", pbsd.pbi_name);
 
-            int listening = 0;
             if (!strncmp(protocol, "tcp", 3)) {
                 char *port_state = get_port_state((int)socketInfo.psi.soi_proto.pri_tcp.tcpsi_state);
                 cJSON_AddStringToObject(port, "state", port_state);
-                if (!strcmp(port_state, "listening")) {
-                    listening = 1;
+                if (strcmp(port_state, "listening") && !check_all) {
+                    os_free(port_state);
+                    cJSON_Delete(object);
+                    continue;
                 }
                 os_free(port_state);
             }
@@ -1547,13 +1548,10 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
 
             cJSON_AddItemToArray(procPorts, cJSON_Duplicate(port, 1));
 
-            if (check_all || listening) {
-                char *string = cJSON_PrintUnformatted(object);
-                mtdebug2(WM_SYS_LOGTAG, "sys_ports_mac() sending '%s'", string);
-                wm_sendmsg(usec, queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
-                os_free(string);
-            }
-
+            char *string = cJSON_PrintUnformatted(object);
+            mtdebug2(WM_SYS_LOGTAG, "sys_ports_mac() sending '%s'", string);
+            wm_sendmsg(usec, queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+            os_free(string);
             cJSON_Delete(object);
         }
 
