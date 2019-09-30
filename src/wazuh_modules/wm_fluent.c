@@ -98,41 +98,48 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
 
     int matrix_index = 0;
     const int MAX_MSG_RECV = 3;
-    char **matrix_buffer = (char **)malloc(MAX_MSG_RECV * sizeof(char*));
+    char **matrix_buffer = NULL;
     int attempts = 0;
 
-    os_malloc(OS_MAXSTR, buffer);
+    os_malloc(MAX_MSG_RECV * sizeof(char *), matrix_buffer);
+    os_calloc(OS_MAXSTR, sizeof(char), buffer);
 
     while (1) {
         // Store logs until MAX_MSG_RECV is reached
         while ((recv_b = recv(server_sock, buffer, OS_MAXSTR - 1, MSG_DONTWAIT)) && matrix_index < MAX_MSG_RECV) {
             // Check if there is a log that was not being taken into account
+            os_calloc(OS_MAXSTR, sizeof(char), matrix_buffer[matrix_index]);
+
             if (aux_buffer != NULL) {
-                os_strdup(aux_buffer, matrix_buffer[matrix_index]);
+                memcpy(matrix_buffer[matrix_index], aux_buffer, strlen(aux_buffer));
+                matrix_buffer[matrix_index][strlen(aux_buffer)] = '\0';
                 matrix_index++;
                 free(aux_buffer);
                 aux_buffer = NULL;
             }
 
-            // Set a timeout of 30 to send the data accumulated
-            if (buffer && strlen(buffer) == 0 || recv_b == -1) {
+            // Set a timeout of 30 seconds to send the data accumulated
+            if (!strcmp(buffer, "") || recv_b == -1) {
                 attempts++;
                 sleep(1);
-                if (attempts >= 30 && matrix_buffer && matrix_buffer[0] != NULL) {
+                if (attempts >= 10 && strcmp(matrix_buffer[0], "") != 0) {
                     attempts = 0;
                     break;
                 }
+                os_free(matrix_buffer[matrix_index]);
                 continue;
             }
 
             attempts = 0;
             buffer[recv_b] = '\0';
 
-            os_strdup(buffer, matrix_buffer[matrix_index]);
-            matrix_index++;
+            if (!matrix_buffer[matrix_index]) {
+                os_calloc(OS_MAXSTR, sizeof(char), matrix_buffer[matrix_index]);
+            }
 
-            os_free(buffer);
-            os_malloc(OS_MAXSTR, buffer);
+            memcpy(matrix_buffer[matrix_index], buffer, strlen(buffer));
+            matrix_buffer[matrix_index][strlen(buffer)] = '\0';
+            matrix_index++;
         }
 
         // When the matrix has MAX_MSG_RECV logs, send them to the fluentd server
@@ -150,9 +157,6 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
             matrix_buffer[i] = '\0';
         }
         matrix_index = 0;
-
-        os_free(buffer);
-        os_malloc(OS_MAXSTR, buffer);
     }
 
     if (fluent->client_sock >= 0) {
