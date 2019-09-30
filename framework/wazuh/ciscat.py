@@ -3,11 +3,11 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import common
-from wazuh.syscollector import get_item_agent
+from wazuh.syscollector import get_item_agent, _get_agent_items
 
 
-def get_ciscat_results(agent_id=None, offset=0, limit=common.database_limit, select=None, search=None, sort=None,
-                       filters=None, q=''):
+def get_ciscat_results(agent_id, offset=0, limit=common.database_limit, select=None, search=None, sort=None,
+                       filters=None, nested=True, array=True, q=''):
     """ Get CIS-CAT results from an agent
 
     :param agent_id: Agent ID to get scan results from
@@ -17,6 +17,8 @@ def get_ciscat_results(agent_id=None, offset=0, limit=common.database_limit, sel
     :param search: Looks for items with the specified string. Begins with '-' for a complementary search
     :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}
     :param filters: Fields to filter by
+    :param nested: Nested fields
+    :param array: Array
     :param q: Defines query to filter in DB.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
@@ -27,4 +29,9 @@ def get_ciscat_results(agent_id=None, offset=0, limit=common.database_limit, sel
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, search=search, sort=sort,
                           filters=filters, valid_select_fields=valid_select_fields,
-                          table=table, nested=True, array=True, query=q)
+                          table=table, nested=nested, array=array, query=q)
+
+
+def get_ciscat_experimental(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort=None, q=''):
+    return _get_agent_items(func=get_ciscat_results, offset=offset, limit=limit, select=select, filters=filters,
+                            search=search, sort=sort, array=True, query=q)
