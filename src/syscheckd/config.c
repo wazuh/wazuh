@@ -52,7 +52,6 @@ int Read_Syscheck_Config(const char *cfgfile)
 #endif
 #ifdef WIN32
     syscheck.registry       = NULL;
-    syscheck.reg_fp         = NULL;
     syscheck.max_fd_win_rt  = 0;
 #endif
     syscheck.prefilter_cmd  = NULL;

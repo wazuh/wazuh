@@ -1606,13 +1606,7 @@ void Free_Syscheck(syscheck_config * config) {
             }
             free(config->registry);
         }
-        if (config->reg_fp) {
-            fclose(config->reg_fp);
-        }
     #endif
-        if (config->fp) {
-            OSHash_Free(config->fp);
-        }
 
         if (config->realtime) {
             OSHash_Free(config->realtime->dirtb);

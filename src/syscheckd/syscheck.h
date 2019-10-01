@@ -20,10 +20,6 @@
 /* Notify list size */
 #define NOTIFY_LIST_SIZE    32
 
-// Number of attributes in the hash table
-#define SK_DB_NATTR 11
-#define SK_DB_REPORT_CHANG 10
-
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
 
 #ifdef WIN32
@@ -39,7 +35,16 @@
 extern syscheck_config syscheck;
 extern int sys_debug_level;
 
-/** Function Prototypes **/
+typedef enum fim_event_type {
+    FIM_ADD,
+    FIM_DELETE,
+    FIM_MODIFICATION
+} fim_event_type;
+
+typedef enum fim_scan_event {
+    FIM_SCAN_START,
+    FIM_SCAN_END
+} fim_scan_event;
 
 /* Win32 does not have lstat */
 #ifdef WIN32
@@ -48,11 +53,7 @@ extern int sys_debug_level;
     #define w_stat(x, y) lstat(x, y)
 #endif
 
-typedef enum fim_event_type {
-    FIM_ADD,
-    FIM_DELETE,
-    FIM_MODIFICATION
-} fim_event_type;
+/** Function Prototypes **/
 
 /* Check the integrity of the files against the saved database */
 void run_check(void);
@@ -67,7 +68,7 @@ int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
 cJSON *getSyscheckConfig(void);
 cJSON *getSyscheckInternalOptions(void);
 
-// TODO: Add description to functions
+// TODO: Add Doxygen description to functions
 
 // Create the database
 int fim_scan();

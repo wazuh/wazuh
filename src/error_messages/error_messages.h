@@ -441,7 +441,7 @@
 
 #define FIM_CRITICAL_ERROR_DB                       "(6696): Unable to create syscheck database. Exiting."
 #define FIM_CRITICAL_ERROR_OUT_MEM                  "(6697): Out of memory. Exiting."
-#define FIM_CRITICAL_ERROR_HASH_CREATE              "(6698): At '%s': OSHash_Create() failed %s. Exiting."
+#define FIM_CRITICAL_DATA_CREATE                    "(6698): Creating Data Structure: %s. Exiting."
 #define FIM_CRITICAL_ERROR_SELECT                   "(6699): At '%s': select(): %s. Exiting."
 
 #define FIM_ERROR_INOTIFY_ADD_MAX_REACHED           "(6700): Unable to add inotify watch to real time monitoring: '%s'. '%d' '%d': The maximum limit of inotify watches has been reached."

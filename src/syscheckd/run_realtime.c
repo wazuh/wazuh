@@ -333,7 +333,7 @@ int realtime_adddir(const char *dir, int whodata)
     int type;
 
     if (!syscheck.wdata.fd && whodata_audit_start()) {
-        merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "realtime_adddir()", strerror(errno));
+        merror_exit(FIM_CRITICAL_DATA_CREATE, "whodata file descriptors");
     }
 
     // This parameter is used to indicate if the file is going to be monitored in Whodata mode,
