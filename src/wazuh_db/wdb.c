@@ -796,7 +796,7 @@ int wdb_stmt_cache(wdb_t * wdb, int index) {
             merror("DB(%s) sqlite3_prepare_v2() stmt(%d): %s", wdb->agent_id, index, sqlite3_errmsg(wdb->db));
             return -1;
         }
-    } else if (sqlite3_reset(wdb->stmt[index]) != SQLITE_OK) {
+    } else if (sqlite3_reset(wdb->stmt[index]) != SQLITE_OK || sqlite3_clear_bindings(wdb->stmt[index]) != SQLITE_OK) {
         mdebug1("DB(%s) sqlite3_reset() stmt(%d): %s", wdb->agent_id, index, sqlite3_errmsg(wdb->db));
 
         // Retry to prepare
