@@ -532,6 +532,7 @@ int DeletePID(const char *name)
 
     if (unlink(file)) {
         mferror(DELETE_ERROR, file, errno, strerror(errno));
+        return (-1);
     }
 
     return (0);
