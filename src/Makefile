@@ -192,11 +192,11 @@ ifndef DISABLE_SHARED
 	DEFINES+=-DENABLE_SHARED
 endif
 
-ifdef DEBUGAD
+ifneq (,$(filter ${DEBUGAD},YES yes y Y 1))
 	DEFINES+=-DDEBUGAD
 endif
 
-ifdef DEBUG
+ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 	OSSEC_CFLAGS+=-g
 else
 	OSSEC_CFLAGS+=-DNDEBUG
@@ -232,7 +232,7 @@ BINCOLOR="\033[37;1m"
 MAKECOLOR="\033[32;1m"
 ENDCOLOR="\033[0m"
 
-ifndef V
+ifeq (,$(filter ${V},YES yes y Y 1))
 	QUIET_CC      = @printf '    %b %b\n' ${CCCOLOR}CC${ENDCOLOR} ${SRCCOLOR}$@${ENDCOLOR} 1>&2;
 	QUIET_LINK    = @printf '    %b %b\n' ${LINKCOLOR}LINK${ENDCOLOR} ${BINCOLOR}$@${ENDCOLOR} 1>&2;
 	QUIET_CCBIN   = @printf '    %b %b\n' ${LINKCOLOR}CC${ENDCOLOR} ${BINCOLOR}$@${ENDCOLOR} 1>&2;
@@ -433,9 +433,9 @@ failtarget:
 help: failtarget
 	@echo
 	@echo "General options: "
-	@echo "   make V=1                     Display full compiler messages"
-	@echo "   make DEBUG=1                 Build with symbols and without optimization"
-	@echo "   make DEBUGAD                 Enables extra debugging logging in ossec-analysisd"
+	@echo "   make V=yes                   Display full compiler messages. Valid values 1, yes, YES, y and Y, in other case V is disabled"
+	@echo "   make DEBUG=yes               Build with symbols and without optimization. Valid values 1, yes, YES, y and Y, in other case DEBUG is disabled"
+	@echo "   make DEBUGAD=yes             Enables extra debugging logging in ossec-analysisd. Valid values 1, yes, YES, y and Y, in other case DEBUGAD is disabled"
 	@echo "   make PREFIX=/path            Install OSSEC to '/path'. Defaults to /var/ossec"
 	@echo "   make MAXAGENTS=NUMBER        Set the number of maximum agents to NUMBER. Defaults to 2048"
 	@echo "   make ONEWAY=no               Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager"
@@ -450,7 +450,7 @@ help: failtarget
 	@echo "   make USE_FRAMEWORK_LIB=0     Use external SQLite library for the framework"
 	@echo "   make USE_MSGPACK_OPT=yes     Use default architecture for building msgpack library"
 	@echo "   make OFLAGS=-Ox              Overrides optimization level"
-	@echo "   make DISABLE_SHARED=true	   Not to build the Wazuh shared library (for unsupported systems)"
+	@echo "   make DISABLE_SHARED=true     Not to build the Wazuh shared library (for unsupported systems)"
 	@echo "   make DISABLE_SYSC=true       Not to build the Syscollector module (for unsupported systems)"
 	@echo "   make DISABLE_CISCAT=true     Not to build the CIS-CAT module (for unsupported systems)"
 	@echo
