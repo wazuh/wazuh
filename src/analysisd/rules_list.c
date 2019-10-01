@@ -29,7 +29,7 @@ static int _AddtoRule(int sid, int level, int none, const char *group,
  *
  * @note Does not remove RuleInfo
  */
-static void _remove_arrayRuleNode(RuleNode *array);
+static void remove_RuleNode(RuleNode *array);
 
 /**
  * @brief Search rule and remove this and childs
@@ -38,7 +38,7 @@ static void _remove_arrayRuleNode(RuleNode *array);
  *
  * @note Does not remove RuleInfo
  */
-static void _remove_ruleNode(RuleNode *parent, int sid_rule);
+static void remove_Rule(RuleNode *parent, int sid_rule);
 
 /**
  * @brief Remove RuleInfo structure.
@@ -301,14 +301,13 @@ int OS_AddRuleInfo(RuleInfo *newrule, int sid)
     else {
 
         removed = r_node->ruleinfo;
-        minfo("~~~~ %d", r_node->ruleinfo->sigid);
 
         if (r_node->child) {
 
             rules_copied = 0;
             _copy_rule(r_node->child);
 
-            _remove_ruleNode(rulenode, sid);
+            remove_Rule(NULL, sid);
 
             OS_AddChild(newrule, NULL);
 
@@ -318,11 +317,11 @@ int OS_AddRuleInfo(RuleInfo *newrule, int sid)
         }
         else {
 
-            _remove_ruleNode(rulenode, sid);
+            remove_Rule(NULL, sid);
             OS_AddChild(newrule, NULL);
         }
 
-        //_free_ruleInfo(removed);
+        _free_ruleInfo(removed);
 
         return (1);
     }
@@ -431,55 +430,70 @@ RuleNode *existRule (int sigid, RuleNode *array)
 }
 
 
-static void _remove_ruleNode (RuleNode *parent, int sid_rule)
+static void remove_Rule (RuleNode *parent, int sid_rule)
 {
     RuleNode *tmp = NULL;
     RuleNode *prev = NULL;
 
-    /* Remove rule from array */
-    if (parent->child->ruleinfo->sigid == sid_rule) {
-
-        tmp = parent->child;
-        parent->child = parent->child->next;
-        tmp->next = NULL;
-        _remove_arrayRuleNode(tmp);
+    if (!parent){
+        parent = OS_GetFirstRule();
     }
-    else {
 
-        prev = parent->child;
-        tmp = prev->next;
+    while (parent){
 
-        while (tmp) {
+        if (parent->child) {
 
-            if (tmp->ruleinfo->sigid == sid_rule) {
+            if (parent->child->ruleinfo->sigid == sid_rule) {
 
-                prev->next = tmp->next;
+                tmp = parent->child;
+                parent->child = parent->child->next;
                 tmp->next = NULL;
-                _remove_arrayRuleNode(tmp);
-                tmp = prev->next;
+
+                remove_RuleNode(tmp);
             }
             else {
-                prev = tmp;
+
+                prev = parent->child;
+                tmp = parent->child->next;
+
+                while (tmp) {
+
+                    if (tmp->ruleinfo->sigid == sid_rule) {
+
+                        prev->next = tmp->next;
+                        tmp->next = NULL;
+
+                        remove_RuleNode(tmp);
+
+                        tmp = prev->next;
+                    }
+                    else {
+
+                        prev = tmp;
+                        tmp = tmp->next;
+                    }
+                }
+            }
+
+            tmp = parent->child;
+
+            while (tmp) {
+
+                if (tmp->child) {
+                    remove_Rule(tmp, sid_rule);
+                }
+
                 tmp = tmp->next;
             }
         }
-    }
 
-    /* Search rule in childs */
-    tmp = parent->child;
-    while (tmp) {
-
-        if(tmp->child){
-            _remove_ruleNode(tmp, sid_rule);
-        }
-
-        tmp = tmp->next;
+        parent = parent->next;
     }
 
 }
 
 
-static void _remove_arrayRuleNode (RuleNode *array)
+static void remove_RuleNode (RuleNode *array)
 {
     RuleNode *tmp = NULL;
 
@@ -487,11 +501,11 @@ static void _remove_arrayRuleNode (RuleNode *array)
         tmp = array;
 
         if (tmp->child){
-            _remove_arrayRuleNode(array->child);
+            remove_RuleNode(array->child);
         }
 
         array = array->next;
-        free(tmp);
+        os_free(tmp);
     }
 }
 
