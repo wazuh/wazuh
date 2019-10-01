@@ -223,7 +223,8 @@ FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char
         rename(prev_path, path);
 
         /* Update the rotation node */
-        list->last->string_value = path;
+        os_free(list->last->string_value);
+        os_strdup(path, list->last->string_value);
         list->last->first_value = day;
         list->last->second_value = 0;
 
@@ -267,17 +268,44 @@ FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char
     return fp;
 }
 
+static void rotate_logs(rotation_list *list, char *log_file, int day, int counter, int rotate, FILE *_flog, const char *month,
+                 int year, const char *folder, const char *log_daily, int compress, const char *ext, const char *tag) {
+    char compress_file[OS_FLSIZE + 1];
+    char *previous_log = NULL;
+
+    if (list->last) {
+        os_strdup(list->last->string_value, previous_log);
+    } else {
+        os_strdup(log_file, previous_log);
+    }
+    if (list && list->last && list->last->first_value == day) {
+        counter = list->last->second_value;
+        rotate = 1;
+    } else {
+        counter = 0;
+        rotate = 0;
+    }
+    openlog(_flog, log_file, folder, year, month, tag, day, ext, log_daily, &counter, rotate, list);
+    memset(compress_file, '\0', OS_FLSIZE + 1);
+    snprintf(compress_file, OS_FLSIZE, "%s.gz", previous_log);
+    if (compress) {
+        if (!IsFile(previous_log)) {
+            w_compress_gzfile(previous_log, compress_file);
+            /* Remove uncompressed file */
+            if (unlink(previous_log) == -1) {
+                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+            }
+        }
+    }
+    os_free(previous_log);
+}
+
 void OS_RotateLogs(int day, int year, char *mon) {
 
-    char c_alogfile[OS_FLSIZE + 1];
-    char c_jlogfile[OS_FLSIZE + 1];
-    char c_ejflogfile[OS_FLSIZE + 1];
-    char c_elogfile[OS_FLSIZE + 1];
-    char *previous_log = NULL;
     char path_alerts[PATH_MAX];
     char path_archives[PATH_MAX];
     struct tm rot;
-    int rotate;
+    int rotate = 0;
 
     snprintf(path_alerts, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGALERTS);
     snprintf(path_archives, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGARCHIVES);
@@ -291,67 +319,21 @@ void OS_RotateLogs(int day, int year, char *mon) {
             // Rotate alerts.log
             if (Config.alerts_min_size ? (_aflog && !fseek(_aflog, 0, SEEK_END) && ftell(_aflog) > Config.alerts_min_size) : 1) {
                 if (Config.alerts_log_plain && current_time > alerts_time) {
-                    if (Config.log_alerts_plain->last) {
-                        os_strdup(Config.log_alerts_plain->last->string_value, previous_log);
-                    } else {
-                        os_strdup(__alogfile, previous_log);
-                    }
-                    if (Config.log_alerts_plain && Config.log_alerts_plain->last && Config.log_alerts_plain->last->first_value == day) {
-                        __acounter = Config.log_alerts_plain->last->second_value;
-                        rotate = 1;
-                    } else {
-                        __acounter = 0;
-                        rotate = 0;
-                    }
-                    _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, rotate, Config.log_alerts_plain);
-                    memset(c_alogfile, '\0', OS_FLSIZE + 1);
-                    snprintf(c_alogfile, OS_FLSIZE, "%s.gz", previous_log);
-                    if (Config.alerts_compress_rotation) {
-                        if (!IsFile(previous_log)) {
-                            w_compress_gzfile(previous_log, c_alogfile);
-                            /* Remove uncompressed file */
-                            if (unlink(previous_log) == -1) {
-                                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
-                            }
-                        }
-                    }
+                    rotate_logs(Config.log_alerts_plain, __alogfile, day, __acounter, rotate, _aflog, mon, year,
+                                ALERTS, ALERTS_DAILY, Config.alerts_compress_rotation, "log", "alerts");
                     remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
                     add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
-                    os_free(previous_log);
-                    alerts_time = Config.alerts_interval ? calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval) : 0;
+                    alerts_time = calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval);
                 }
             }
             // Rotate alerts.json
             if (Config.alerts_min_size ? (_jflog && !fseek(_jflog, 0, SEEK_END) && ftell(_jflog) > Config.alerts_min_size) : 1) {
                 if (Config.alerts_log_json && current_time > alerts_time_json) {
-                    if (Config.log_alerts_json->last) {
-                        os_strdup(Config.log_alerts_json->last->string_value, previous_log);
-                    } else {
-                        os_strdup(__jlogfile, previous_log);
-                    }
-                    if (Config.log_alerts_json && Config.log_alerts_json->last && Config.log_alerts_json->last->first_value == day) {
-                        __jcounter = Config.log_alerts_json->last->second_value;
-                        rotate = 1;
-                    } else {
-                        __jcounter = 0;
-                        rotate = 0;
-                    }
-                    _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, rotate, Config.log_alerts_json);
-                    memset(c_jlogfile, '\0', OS_FLSIZE + 1);
-                    snprintf(c_jlogfile, OS_FLSIZE, "%s.gz", previous_log);
-                    if (Config.alerts_compress_rotation) {
-                        if (!IsFile(previous_log)) {
-                            w_compress_gzfile(previous_log, c_jlogfile);
-                            /* Remove uncompressed file */
-                            if (unlink(previous_log) == -1) {
-                                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
-                            }
-                        }
-                    }
+                    rotate_logs(Config.log_alerts_json, __jlogfile, day, __jcounter, rotate, _jflog, mon, year,
+                                ALERTS, ALERTSJSON_DAILY, Config.alerts_compress_rotation, "json", "alerts");
                     remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
                     add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
-                    os_free(previous_log);
-                    alerts_time_json = Config.alerts_interval ? calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval) : 0;
+                    alerts_time_json = calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval);
                 }
             }
             __alerts_rsec = local_timespec.tv_sec;
@@ -361,67 +343,21 @@ void OS_RotateLogs(int day, int year, char *mon) {
             // Rotation for archives.log
             if (Config.archives_min_size ? (_eflog && !fseek(_eflog, 0, SEEK_END) && ftell(_eflog) > Config.archives_min_size) : 1) {
                 if (Config.archives_log_plain && current_time > archive_time) {
-                    if (Config.log_archives_plain->last) {
-                        os_strdup(Config.log_archives_plain->last->string_value, previous_log);
-                    } else {
-                        os_strdup(__elogfile, previous_log);
-                    }
-                    if (Config.log_archives_plain && Config.log_archives_plain->last && Config.log_archives_plain->last->first_value == day) {
-                        __ecounter = Config.log_archives_plain->last->second_value;
-                        rotate = 1;
-                    } else {
-                        __ecounter = 0;
-                        rotate = 0;
-                    }
-                    _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, rotate, Config.log_archives_plain);
-                    memset(c_elogfile, '\0', OS_FLSIZE + 1);
-                    snprintf(c_elogfile, OS_FLSIZE, "%s.gz", previous_log);
-                    if (Config.archives_compress_rotation) {
-                        if (!IsFile(previous_log)) {
-                            w_compress_gzfile(previous_log, c_elogfile);
-                            /* Remove uncompressed file */
-                            if (unlink(previous_log) == -1) {
-                                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
-                            }
-                        }
-                    }
+                    rotate_logs(Config.log_archives_plain, __elogfile, day, __ecounter, rotate, _eflog, mon, year,
+                                EVENTS, EVENTS_DAILY, Config.archives_compress_rotation, "log", "archive");
                     remove_old_logs(path_archives, Config.archives_maxage, "archives", Config.log_archives_plain, Config.log_archives_json);
                     add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
-                    os_free(previous_log);
-                    archive_time = Config.archives_interval ? calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval) : 0;
+                    archive_time = calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval);
                 }
             }
             // Rotation for archives.json
             if (Config.archives_min_size ? (_ejflog && !fseek(_ejflog, 0, SEEK_END) && ftell(_ejflog) > Config.archives_min_size) : 1) {
                 if (Config.archives_log_json && current_time > archive_time_json) {
-                    if (Config.log_archives_json->last) {
-                        os_strdup(Config.log_archives_json->last->string_value, previous_log);
-                    } else {
-                        os_strdup(__ejlogfile, previous_log);
-                    }
-                    if (Config.log_archives_json && Config.log_archives_json->last && Config.log_archives_json->last->first_value == day) {
-                        __ejcounter = Config.log_archives_json->last->second_value;
-                        rotate = 1;
-                    } else {
-                        __ejcounter = 0;
-                        rotate = 0;
-                    }
-                    _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, rotate, Config.log_archives_json);
-                    memset(c_ejflogfile, '\0', OS_FLSIZE + 1);
-                    snprintf(c_ejflogfile, OS_FLSIZE, "%s.gz", previous_log);
-                    if (Config.archives_compress_rotation) {
-                        if (!IsFile(previous_log)) {
-                            w_compress_gzfile(previous_log, c_ejflogfile);
-                            /* Remove uncompressed file */
-                            if (unlink(previous_log) == -1) {
-                                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
-                            }
-                        }
-                    }
+                    rotate_logs(Config.log_archives_json, __ejlogfile, day, __ejcounter, rotate, _ejflog, mon, year,
+                                EVENTS, EVENTSJSON_DAILY, Config.archives_compress_rotation, "json", "archive");
                     remove_old_logs(path_archives, Config.archives_maxage, "archive", Config.log_archives_plain, Config.log_archives_json);
                     add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
-                    os_free(previous_log);
-                    archive_time_json = Config.archives_interval ? calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval) : 0;
+                    archive_time_json = calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval);
                 }
             }
             __archives_rsec = local_timespec.tv_sec;
@@ -433,66 +369,20 @@ void OS_RotateLogs(int day, int year, char *mon) {
         // Rotate alerts.log only if the size of the file is bigger than max_size
         if (Config.alerts_log_plain) {
             if (_aflog && !fseek(_aflog, 0, SEEK_END) && ftell(_aflog) > Config.alerts_max_size) {
-                if (Config.log_alerts_plain->last) {
-                    os_strdup(Config.log_alerts_plain->last->string_value, previous_log);
-                } else {
-                    os_strdup(__alogfile, previous_log);
-                }
-                if (Config.log_alerts_plain && Config.log_alerts_plain->last && Config.log_alerts_plain->last->first_value == day) {
-                    __acounter = Config.log_alerts_plain->last->second_value;
-                    rotate = 1;
-                } else {
-                    __acounter = 0;
-                    rotate = 0;
-                }
-                _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, rotate, Config.log_alerts_plain);
-                memset(c_alogfile, '\0', OS_FLSIZE + 1);
-                snprintf(c_alogfile, OS_FLSIZE, "%s.gz", previous_log);
-                if (Config.alerts_compress_rotation) {
-                    if (!IsFile(previous_log)) {
-                        w_compress_gzfile(previous_log, c_alogfile);
-                        /* Remove uncompressed file */
-                        if (unlink(previous_log) == -1) {
-                            merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
-                        }
-                    }
-                }
+                rotate_logs(Config.log_alerts_plain, __alogfile, day, __acounter, rotate, _aflog, mon, year,
+                            ALERTS, ALERTS_DAILY, Config.alerts_compress_rotation, "log", "alerts");
                 remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
                 add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
-                os_free(previous_log);
                 __alerts_rsec = local_timespec.tv_sec;
             }
         }
         // Rotate alerts.json only if the size of the file is bigger than max_size
         if (Config.alerts_log_json) {
             if (_jflog && !fseek(_jflog, 0, SEEK_END) && ftell(_jflog) > Config.alerts_max_size) {
-                if (Config.log_alerts_json->last) {
-                    os_strdup(Config.log_alerts_json->last->string_value, previous_log);
-                } else {
-                    os_strdup(__jlogfile, previous_log);
-                }
-                if (Config.log_alerts_json && Config.log_alerts_json->last && Config.log_alerts_json->last->first_value == day) {
-                    __jcounter = Config.log_alerts_json->last->second_value;
-                    rotate = 1;
-                } else {
-                    __jcounter = 0;
-                    rotate = 0;
-                }
-                _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, rotate, Config.log_alerts_json);
-                memset(c_jlogfile, '\0', OS_FLSIZE + 1);
-                snprintf(c_jlogfile, OS_FLSIZE, "%s.gz", previous_log);
-                if (Config.alerts_compress_rotation) {
-                    if (!IsFile(previous_log)) {
-                        w_compress_gzfile(previous_log, c_jlogfile);
-                        /* Remove uncompressed file */
-                        if (unlink(previous_log) == -1) {
-                            merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
-                        }
-                    }
-                }
+                rotate_logs(Config.log_alerts_json, __jlogfile, day, __jcounter, rotate, _jflog, mon, year,
+                            ALERTS, ALERTSJSON_DAILY, Config.alerts_compress_rotation, "json", "alerts");
                 remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
                 add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
-                os_free(previous_log);
                 __alerts_rsec = local_timespec.tv_sec;
             }
         }
@@ -503,66 +393,20 @@ void OS_RotateLogs(int day, int year, char *mon) {
         // Rotate archives.log only if the size of the file is bigger than max_size
         if (Config.archives_log_plain) {
             if (_eflog && !fseek(_eflog, 0, SEEK_END) && ftell(_eflog) > Config.archives_max_size) {
-                if (Config.log_archives_plain->last) {
-                    os_strdup(Config.log_archives_plain->last->string_value, previous_log);
-                } else {
-                    os_strdup(__elogfile, previous_log);
-                }
-                if (Config.log_archives_plain && Config.log_archives_plain->last && Config.log_archives_plain->last->first_value == day) {
-                    __ecounter = Config.log_archives_plain->last->second_value;
-                    rotate = 1;
-                } else {
-                    __ecounter = 0;
-                    rotate = 0;
-                }
-                _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, rotate, Config.log_archives_plain);
-                memset(c_elogfile, '\0', OS_FLSIZE + 1);
-                snprintf(c_elogfile, OS_FLSIZE, "%s.gz", previous_log);
-                if (Config.archives_compress_rotation) {
-                    if (!IsFile(previous_log)) {
-                        w_compress_gzfile(previous_log, c_elogfile);
-                        /* Remove uncompressed file */
-                        if (unlink(previous_log) == -1) {
-                            merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
-                        }
-                    }
-                }
+                rotate_logs(Config.log_archives_plain, __elogfile, day, __ecounter, rotate, _eflog, mon, year,
+                            EVENTS, EVENTS_DAILY, Config.archives_compress_rotation, "log", "archive");
                 remove_old_logs(path_archives, Config.archives_maxage, "archive", Config.log_archives_plain, Config.log_archives_json);
                 add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
-                os_free(previous_log);
                 __archives_rsec = local_timespec.tv_sec;
             }
         }
         // Rotate archives.json only if the size of the file is bigger than max_size
         if (Config.archives_log_json) {
             if (_ejflog && !fseek(_ejflog, 0, SEEK_END) && ftell(_ejflog) > Config.archives_max_size) {
-                if (Config.log_archives_json->last) {
-                    os_strdup(Config.log_archives_json->last->string_value, previous_log);
-                } else {
-                    os_strdup(__ejlogfile, previous_log);
-                }
-                if (Config.log_archives_json && Config.log_archives_json->last && Config.log_archives_json->last->first_value == day) {
-                    __ejcounter = Config.log_archives_json->last->second_value;
-                    rotate = 1;
-                } else {
-                    __ejcounter = 0;
-                    rotate = 0;
-                }
-                _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, rotate, Config.log_archives_json);
-                memset(c_ejflogfile, '\0', OS_FLSIZE + 1);
-                snprintf(c_ejflogfile, OS_FLSIZE, "%s.gz", previous_log);
-                if (Config.archives_compress_rotation) {
-                    if (!IsFile(previous_log)) {
-                        w_compress_gzfile(previous_log, c_ejflogfile);
-                        /* Remove uncompressed file */
-                        if (unlink(previous_log) == -1) {
-                            merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
-                        }
-                    }
-                }
+                rotate_logs(Config.log_archives_json, __ejlogfile, day, __ejcounter, rotate, _ejflog, mon, year,
+                            EVENTS, EVENTSJSON_DAILY, Config.archives_compress_rotation, "json", "archive");
                 remove_old_logs(path_archives, Config.archives_maxage, "archive", Config.log_archives_plain, Config.log_archives_json);
                 add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
-                os_free(previous_log);
                 __archives_rsec = local_timespec.tv_sec;
             }
         }
@@ -579,10 +423,10 @@ void OS_RotateLogs(int day, int year, char *mon) {
     }
     if (Config.archives_rotation_enabled) {
         if (Config.archives_log_plain && Config.log_archives_plain->last && Config.log_archives_plain->last->first_value != day && current_time != archive_time) {
-            _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "alerts", day, "log", EVENTS_DAILY, &__ecounter, 2, Config.log_archives_plain);
+            _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, 2, Config.log_archives_plain);
         }
         if (Config.archives_log_json && Config.log_archives_json->last && Config.log_archives_json->last->first_value != day && current_time != archive_time_json) {
-            _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "alerts", day, "json", EVENTSJSON_DAILY, &__ejcounter, 2, Config.log_archives_json);
+            _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, 2, Config.log_archives_json);
         }
     }
 }
