@@ -7,11 +7,10 @@ import re
 
 from api.authentication import AuthenticationManager
 from wazuh import common
-from wazuh.exception import WazuhError, WazuhInternalError, create_exception_dic
+from wazuh.exception import WazuhError, create_exception_dic
 from wazuh.rbac import orm
 from wazuh.rbac.decorators import expose_resources, list_handler_with_denied, list_handler_no_denied
 from wazuh.rbac.orm import SecurityError
-from wazuh.utils import process_array
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')

@@ -126,7 +126,6 @@ class AuthenticationManager:
         :return: Get all users or a specified one
         """
         users_name = list()
-        users = None
         try:
             if username is not None:
                 users = self.session.query(_User).filter_by(username=username).first()

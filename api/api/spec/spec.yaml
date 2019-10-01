@@ -3631,7 +3631,7 @@ components:
         $ref: '#/components/schemas/Username'
     usernames:
       in: query
-      name: usernames
+      name: username
       description: ID of an user.
       schema:
         type: array
