@@ -365,7 +365,6 @@
 #define FIM_ERROR_WHODATA_HANDLER_REMOVE            "(6626): The handler '%s' could not be removed from the whodata hash table."
 #define FIM_ERROR_WHODATA_HANDLER_EVENT             "(6627): Could not get the time of the event whose handler is '%llu'."
 #define FIM_ERROR_WHODATA_EVENTID                   "(6628): Invalid EventID. The whodata cannot be extracted."
-#define FIM_ERROR_WHODATA_CREATION_DATE             "(6629): The creation date for '%s' could not be extracted."
 #define FIM_ERROR_WHODATA_EVENTADD_DUP              "(6630): The event could not be added to the '%s' hash table because it is duplicated. Target: '%s'."
 #define FIM_ERROR_WHODATA_EVENTADD                  "(6631): The event could not be added to the '%s' hash table. Target: '%s'."
 #define FIM_ERROR_WHODATA_GET_SID                   "(6632): Could not obtain the sid of Everyone. Error '%lu'."
