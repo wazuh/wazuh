@@ -81,34 +81,23 @@ int fim_initialize() {
     // Create store data
     syscheck.fim_entry = rbtree_init();
 
-    // To manage events in whodata mode
+    if (!syscheck.fim_entry) {
+        merror_exit(FIM_CRITICAL_DATA_CREATE, "rb-tree init");
+    }
+
 #ifndef WIN32
-    // Create inodes entries
+    // Create hash table for inodes entries
     syscheck.fim_inode = OSHash_Create();
-#endif
 
-    // To check for deleted files in Scheduled scans
-    syscheck.last_check = OSHash_Create();
-#ifndef WIN32
-    if (!syscheck.fim_entry || !syscheck.fim_inode || !syscheck.last_check)
-#else
-    if (!syscheck.fim_entry || !syscheck.last_check)
-#endif
-    {
-        merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "realtime_adddir()", strerror(errno));
+    if (!syscheck.fim_inode) {
+        merror_exit(FIM_CRITICAL_DATA_CREATE, "inode hash table");
     }
 
-#ifndef WIN32
-    if (!OSHash_setSize(syscheck.fim_inode, OS_SIZE_16)) {
+    if (!OSHash_setSize(syscheck.fim_inode, OS_SIZE_4096)) {
         merror(LIST_ERROR);
         return (0);
     }
 #endif
-
-    if (!OSHash_setSize_ex(syscheck.last_check, OS_SIZE_16)) {
-        merror(LIST_ERROR);
-        return (0);
-    }
 
     rbtree_set_dispose(syscheck.fim_entry, (void (*)(void *))free_entry_data);
     pthread_mutex_init(&syscheck.fim_entry_mutex, NULL);
@@ -170,7 +159,6 @@ int Start_win32_Syscheck()
     }
 
     if (!syscheck.disabled) {
-#ifdef WIN32
 #ifndef WIN_WHODATA
         int whodata_notification = 0;
         /* Remove whodata attributes */
@@ -185,8 +173,6 @@ int Start_win32_Syscheck()
             }
         }
 #endif
-#endif
-
 
         /* Print options */
         r = 0;

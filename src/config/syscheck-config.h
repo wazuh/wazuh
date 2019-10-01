@@ -192,6 +192,7 @@ typedef struct fim_entry_data {
     // Checksum attributes
     unsigned int size;
     char * perm;
+    char * attributes;
     char * uid;
     char * gid;
     char * user_name;
@@ -201,14 +202,15 @@ typedef struct fim_entry_data {
     os_md5 hash_md5;
     os_sha1 hash_sha1;
     os_sha256 hash_sha256;
+
     // Options
-    unsigned long int dev;
     fim_event_mode mode;
-    int options;
     time_t last_event;
-    unsigned int scanned;
-    os_sha1 checksum;
     const char *entry_type;
+    unsigned long int dev;
+    unsigned int scanned;
+    int options;
+    os_sha1 checksum;
 } fim_entry_data;
 
 typedef struct fim_inode_data {
@@ -266,7 +268,6 @@ typedef struct _config {
     registry *registry_ignore;                  /* list of registry entries to ignore */
     registry_regex *registry_ignore_regex;      /* regex of registry entries to ignore */
     registry *registry;                         /* array of registry entries to be scanned */
-    FILE *reg_fp;
     int max_fd_win_rt;
     whodata wdata;
     whodata_event_list w_clist; // List of events cached from Whodata mode in the last seconds
@@ -276,11 +277,6 @@ typedef struct _config {
     char **audit_key;               // Listen audit keys
     int audit_healthcheck;          // Startup health-check for whodata
     int sym_checker_interval;
-
-    OSHash *fp;
-    OSHash *last_check;
-    OSHash *local_hash;
-    OSHash *inode_hash;
 
     rb_tree * fim_entry;
     OSHash * fim_inode;

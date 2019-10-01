@@ -11,16 +11,31 @@
 #ifndef SYSCHECK_OP_H
 #define SYSCHECK_OP_H
 
-#include "analysisd/eventinfo.h"
-
 #ifndef WIN32
 
 #include <sys/types.h>
 #include <pwd.h>
 #include <grp.h>
+
 #define PATH_SEP '/'
 
-// ATTRS
+#else
+
+#include "shared.h"
+#include "aclapi.h"
+#include <sddl.h>
+
+#define BUFFER_LEN 1024
+#define PATH_SEP '\\'
+
+#endif
+
+#include "../syscheckd/syscheck.h"
+#include "analysisd/eventinfo.h"
+#include "os_net/os_net.h"
+
+
+// Windows file attributes
 #define FILE_ATTRIBUTE_READONLY                 0x00000001
 #define FILE_ATTRIBUTE_HIDDEN                   0x00000002
 #define FILE_ATTRIBUTE_SYSTEM                   0x00000004
@@ -64,18 +79,6 @@
 #define FILE_READ_ATTRIBUTES                    0x00000080
 #define FILE_WRITE_ATTRIBUTES                   0x00000100
 
-#else
-
-#include "shared.h"
-#include "aclapi.h"
-
-#define BUFFER_LEN 1024
-#define PATH_SEP '\\'
-
-#endif
-
-// Number of attributes in checksum
-#define FIM_NATTR 11
 /* Fields for rules */
 typedef enum fim_fields {
     FIM_FILE,
@@ -177,11 +180,6 @@ typedef struct sk_sum_t {
     long date_alert;
 } sk_sum_t;
 
-typedef enum fim_scan_event {
-    FIM_SCAN_START,
-    FIM_SCAN_END
-} fim_scan_event;
-
 /* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
    or -1 on failure. */
 int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum);
@@ -201,13 +199,8 @@ int delete_target_file(const char *path);
 
 void sk_sum_clean(sk_sum_t * sum);
 
-int fim_find_child_depth(const char *parent, const char *child);
-
 //Change in Windows paths all slashes for backslashes for compatibility agent<3.4 with manager>=3.4
 void normalize_path(char *path);
-
-//Return an attr from checksum
-char *get_attr_from_checksum(char *checksum, int attr);
 
 char *escape_syscheck_field(char *field);
 
@@ -215,10 +208,6 @@ char *escape_syscheck_field(char *field);
 
 char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
 const char *get_group(int gid);
-void decode_win_attributes(char *str, unsigned int attrs);
-int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array);
-cJSON *attrs_to_json(unsigned int attributes);
-cJSON *perm_to_json(char *permissions);
 
 #else
 
@@ -227,8 +216,15 @@ unsigned int w_get_file_attrs(const char *file_path);
 int w_get_file_permissions(const char *file_path, char *permissions, int perm_size);
 const char *get_group(__attribute__((unused)) int gid);
 char *escape_perm_sum(char *sum);
+int copy_ace_info(void *ace, char *perm, int perm_size);
+int w_get_account_info(SID *sid, char **account_name, char **account_domain);
 
 #endif
+
+void decode_win_attributes(char *str, unsigned int attrs);
+int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array);
+cJSON *attrs_to_json(unsigned int attributes);
+cJSON *perm_to_json(char *permissions);
 
 /**
  * @brief Send a one-way message to Syscheck

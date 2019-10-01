@@ -9,19 +9,9 @@
  */
 
 #include "syscheck_op.h"
-#include "os_net/os_net.h"
 
-#ifdef WIN32
-
-#include "../syscheckd/syscheck.h"
-#include <sddl.h>
-int copy_ace_info(void *ace, char *perm, int perm_size);
-int w_get_account_info(SID *sid, char **account_name, char **account_domain);
-
-#elif !CLIENT
-
+#ifndef CLIENT
 static char *unescape_syscheck_field(char *sum);
-
 #endif
 
 
@@ -52,60 +42,6 @@ char *escape_syscheck_field(char *field) {
     free(esc_it);
 
     return field;
-}
-
-int fim_find_child_depth(const char *parent, const char *child) {
-
-    int length_A = strlen(parent);
-    int length_B = strlen(child);
-
-    char* p_first = strdup(parent);
-    char *p_second = strdup(child);
-
-    char *diff_str;
-
-    if(parent[length_A - 1] == PATH_SEP && length_A >= 2 && parent[length_A - 2] != ':') {
-        p_first[length_A - 1] = '\0';
-    }
-
-    if(child[length_B - 1] == PATH_SEP && length_B >= 2 && child[length_B - 2] != ':') {
-        p_second[length_B - 1] = '\0';
-    }
-
-
-#ifndef WIN32
-    if(strncmp(parent, child, length_A) == 0) {
-#else
-    if(strncasecmp(parent, child, length_A) == 0) {
-#endif
-        diff_str = p_second;
-        diff_str += length_A;
-    }
-#ifndef WIN32
-    else if(strncmp(child, parent, length_B) == 0) {
-#else
-    else if(strncasecmp(child, parent, length_B) == 0) {
-#endif
-        diff_str = p_first;
-        diff_str += length_B;
-    }
-    else{
-        os_free(p_first);
-        os_free(p_second);
-        return INT_MAX;
-    }
-
-    char *c;
-    int child_depth = 0;
-    c = strchr(diff_str, PATH_SEP);
-    while (c != NULL) {
-        child_depth++;
-        c = strchr(c + 1, PATH_SEP);
-    }
-
-    os_free(p_first);
-    os_free(p_second);
-    return child_depth ? child_depth : 1;
 }
 
 void normalize_path(char * path) {
@@ -576,7 +512,7 @@ void sk_sum_clean(sk_sum_t * sum) {
     os_free(sum->win_perm);
 }
 
-#endif
+#endif /* #ifndef CLIENT */
 
 char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
     struct passwd pwd;
@@ -594,6 +530,7 @@ char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__(
 
     os_calloc(bufsize, sizeof(char), buf);
 
+    /* TODO: getpwuid_r don't works on Solaris */
     s = getpwuid_r(uid, &pwd, buf, bufsize, &result);
     if (result == NULL) {
         if (s == 0) {
@@ -617,293 +554,23 @@ const char *get_group(int gid) {
     return group ? group->gr_name : "";
 }
 
-    void decode_win_attributes(char *str, unsigned int attrs) {
-    size_t size;
+/* Send a one-way message to Syscheck */
+void ag_send_syscheck(char * message) {
+    int sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
 
-    size = snprintf(str, OS_SIZE_256, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
-                    attrs & FILE_ATTRIBUTE_ARCHIVE ? "ARCHIVE, " : "",
-                    attrs & FILE_ATTRIBUTE_COMPRESSED ? "COMPRESSED, " : "",
-                    attrs & FILE_ATTRIBUTE_DEVICE ? "DEVICE, " : "",
-                    attrs & FILE_ATTRIBUTE_DIRECTORY ? "DIRECTORY, " : "",
-                    attrs & FILE_ATTRIBUTE_ENCRYPTED ? "ENCRYPTED, " : "",
-                    attrs & FILE_ATTRIBUTE_HIDDEN ? "HIDDEN, " : "",
-                    attrs & FILE_ATTRIBUTE_INTEGRITY_STREAM ? "INTEGRITY_STREAM, " : "",
-                    attrs & FILE_ATTRIBUTE_NORMAL ? "NORMAL, " : "",
-                    attrs & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED ? "NOT_CONTENT_INDEXED, " : "",
-                    attrs & FILE_ATTRIBUTE_NO_SCRUB_DATA ? "NO_SCRUB_DATA, " : "",
-                    attrs & FILE_ATTRIBUTE_OFFLINE ? "OFFLINE, " : "",
-                    attrs & FILE_ATTRIBUTE_READONLY ? "READONLY, " : "",
-                    attrs & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS ? "RECALL_ON_DATA_ACCESS, " : "",
-                    attrs & FILE_ATTRIBUTE_RECALL_ON_OPEN ? "RECALL_ON_OPEN, " : "",
-                    attrs & FILE_ATTRIBUTE_REPARSE_POINT ? "REPARSE_POINT, " : "",
-                    attrs & FILE_ATTRIBUTE_SPARSE_FILE ? "SPARSE_FILE, " : "",
-                    attrs & FILE_ATTRIBUTE_SYSTEM ? "SYSTEM, " : "",
-                    attrs & FILE_ATTRIBUTE_TEMPORARY ? "TEMPORARY, " : "",
-                    attrs & FILE_ATTRIBUTE_VIRTUAL ? "VIRTUAL, " : "");
-    if (size > 2) {
-        str[size - 2] = '\0';
+    if (sock == -1) {
+        merror("dbsync: cannot connect to syscheck: %s (%d)", strerror(errno), errno);
+        return;
     }
+
+    if (OS_SendSecureTCP(sock, strlen(message), message) < 0) {
+        merror("Cannot send message to syscheck: %s (%d)", strerror(errno), errno);
+    }
+
+    close(sock);
 }
 
-int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array) {
-    int writted = 0;
-    int size;
-    char *perm_it = NULL;
-    char *base_it = NULL;
-    char *account_name = NULL;
-    static char *str_a = "allowed";
-    static char *str_d = "denied";
-    static char *str_n = "name";
-    cJSON *perm_type = NULL;
-    cJSON *json_it;
-    char a_type;
-    long mask;
-
-    perm_it = raw_perm;
-    while (perm_it = strchr(perm_it, '|'), perm_it) {
-        // Get the account/group name
-        base_it = ++perm_it;
-        if (perm_it = strchr(perm_it, ','), !perm_it) {
-            goto error;
-        }
-        *perm_it = '\0';
-        os_strdup(base_it, account_name);
-        *perm_it = ',';
-
-        // Get the access type
-        base_it = ++perm_it;
-        if (perm_it = strchr(perm_it, ','), !perm_it) {
-            goto error;
-        }
-        *perm_it = '\0';
-        a_type = *base_it;
-        *perm_it = ',';
-
-        // Get the access mask
-        base_it = ++perm_it;
-        if (perm_it = strchr(perm_it, '|'), perm_it) {
-            *perm_it = '\0';
-            mask = strtol(base_it, NULL, 10);
-            *perm_it = '|';
-        } else {
-            // End of the msg
-            mask = strtol(base_it, NULL, 10);
-        }
-
-        if (perm_array) {
-            cJSON *a_found = NULL;
-            char *perm_type_str;
-
-
-            perm_type_str = (a_type == '0') ? str_a : str_d;
-            for (json_it = perm_array->child; json_it; json_it = json_it->next) {
-                cJSON *obj;
-                if (obj = cJSON_GetObjectItem(json_it, str_n), obj) {
-                    if (!strcmp(obj->valuestring, account_name)) {
-                        if (obj = cJSON_GetObjectItem(json_it, perm_type_str), obj) {
-                            mdebug2("ACL [%s] fragmented. All permissions may not be displayed.", raw_perm);
-                            goto next_it;
-                        }
-                        a_found = json_it;
-                        break;
-                    }
-                }
-            }
-
-            if (perm_type = cJSON_CreateArray(), !perm_type) {
-                goto error;
-            }
-
-            if (mask & GENERIC_READ) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_READ"));
-            if (mask & GENERIC_WRITE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_WRITE"));
-            if (mask & GENERIC_EXECUTE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_EXECUTE"));
-            if (mask & GENERIC_ALL) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_ALL"));
-
-            if (mask & DELETE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("DELETE"));
-            if (mask & READ_CONTROL) cJSON_AddItemToArray(perm_type, cJSON_CreateString("READ_CONTROL"));
-            if (mask & WRITE_DAC) cJSON_AddItemToArray(perm_type, cJSON_CreateString("WRITE_DAC"));
-            if (mask & WRITE_OWNER) cJSON_AddItemToArray(perm_type, cJSON_CreateString("WRITE_OWNER"));
-            if (mask & SYNCHRONIZE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("SYNCHRONIZE"));
-
-            if (mask & FILE_READ_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_READ_DATA"));
-            if (mask & FILE_WRITE_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_WRITE_DATA"));
-            if (mask & FILE_APPEND_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_APPEND_DATA"));
-            if (mask & FILE_READ_EA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_READ_EA"));
-            if (mask & FILE_WRITE_EA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_WRITE_EA"));
-            if (mask & FILE_EXECUTE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_EXECUTE"));
-            if (mask & FILE_READ_ATTRIBUTES) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_READ_ATTRIBUTES"));
-            if (mask & FILE_WRITE_ATTRIBUTES) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_WRITE_ATTRIBUTES"));
-
-            if (!a_found) {
-                if (a_found = cJSON_CreateObject(), !a_found) {
-                    goto error;
-                }
-                cJSON_AddStringToObject(a_found, str_n, account_name);
-                cJSON_AddItemToArray(perm_array, a_found);
-            }
-
-            cJSON_AddItemToObject(a_found, perm_type_str, perm_type);
-            perm_type = NULL;
-            writted = 1;
-        } else if (seq) {
-            writted = snprintf(str, 50, "Permissions changed.\n");
-        } else {
-            size = snprintf(str, str_size, "   %s  (%s) -%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
-                            account_name,
-                            a_type == '0' ? "ALLOWED" : "DENIED",
-                            mask & GENERIC_READ ? " GENERIC_READ," : "",
-                            mask & GENERIC_WRITE ? " GENERIC_WRITE," : "",
-                            mask & GENERIC_EXECUTE ? " GENERIC_EXECUTE," : "",
-                            mask & GENERIC_ALL ? " GENERIC_ALL," : "",
-                            mask & DELETE ? " DELETE," : "",
-                            mask & READ_CONTROL ? " READ_CONTROL," : "",
-                            mask & WRITE_DAC ? " WRITE_DAC," : "",
-                            mask & WRITE_OWNER ? " WRITE_OWNER," : "",
-                            mask & SYNCHRONIZE ? " SYNCHRONIZE," : "",
-                            mask & FILE_READ_DATA ? " FILE_READ_DATA," : "",
-                            mask & FILE_WRITE_DATA ? " FILE_WRITE_DATA," : "",
-                            mask & FILE_APPEND_DATA ? " FILE_APPEND_DATA," : "",
-                            mask & FILE_READ_EA ? " FILE_READ_EA," : "",
-                            mask & FILE_WRITE_EA ? " FILE_WRITE_EA," : "",
-                            mask & FILE_EXECUTE ? " FILE_EXECUTE," : "",
-                            mask & FILE_READ_ATTRIBUTES ? " FILE_READ_ATTRIBUTES," : "",
-                            mask & FILE_WRITE_ATTRIBUTES ? " FILE_WRITE_ATTRIBUTES," : ""
-                        );
-            if (size > 1) {
-                str[size - 1] = '\n';
-            }
-            writted += size;
-            str += size;
-        }
-
-next_it:
-        os_free(account_name);
-        if (!perm_it) {
-            break;
-        }
-    }
-
-    return writted;
-error:
-    if (perm_type) {
-        cJSON_Delete(perm_type);
-    }
-    os_free(account_name);
-    mdebug1("The file permissions could not be decoded: '%s'", raw_perm);
-    *str = '\0';
-    return 0;
-}
-
-cJSON *perm_to_json(char *permissions) {
-    cJSON *perm_array;
-
-    if (perm_array = cJSON_CreateArray(), !perm_array) {
-        return NULL;
-    }
-
-    if (!decode_win_permissions(NULL, 0, permissions, 0, perm_array)) {
-        os_free(perm_array);
-    }
-
-    return perm_array;
-}
-
-cJSON *attrs_to_json(unsigned int attributes) {
-    cJSON *ab_array;
-
-    if (ab_array = cJSON_CreateArray(), !ab_array) {
-        return NULL;
-    }
-
-    if (attributes & FILE_ATTRIBUTE_ARCHIVE) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("ARCHIVE"));
-    }
-    if (attributes & FILE_ATTRIBUTE_COMPRESSED) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("COMPRESSED"));
-    }
-    if (attributes & FILE_ATTRIBUTE_DEVICE) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("DEVICE"));
-    }
-    if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("DIRECTORY"));
-    }
-    if (attributes & FILE_ATTRIBUTE_ENCRYPTED) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("ENCRYPTED"));
-    }
-    if (attributes & FILE_ATTRIBUTE_HIDDEN) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("HIDDEN"));
-    }
-    if (attributes & FILE_ATTRIBUTE_INTEGRITY_STREAM) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("INTEGRITY_STREAM"));
-    }
-    if (attributes & FILE_ATTRIBUTE_NORMAL) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("NORMAL"));
-    }
-    if (attributes & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("NOT_CONTENT_INDEXED"));
-    }
-    if (attributes & FILE_ATTRIBUTE_NO_SCRUB_DATA) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("NO_SCRUB_DATA"));
-    }
-    if (attributes & FILE_ATTRIBUTE_OFFLINE) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("OFFLINE"));
-    }
-    if (attributes & FILE_ATTRIBUTE_READONLY) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("READONLY"));
-    }
-    if (attributes & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("RECALL_ON_DATA_ACCESS"));
-    }
-    if (attributes & FILE_ATTRIBUTE_RECALL_ON_OPEN) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("RECALL_ON_OPEN"));
-    }
-    if (attributes & FILE_ATTRIBUTE_REPARSE_POINT) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("REPARSE_POINT"));
-    }
-    if (attributes & FILE_ATTRIBUTE_SPARSE_FILE) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("SPARSE_FILE"));
-    }
-    if (attributes & FILE_ATTRIBUTE_SYSTEM) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("SYSTEM"));
-    }
-    if (attributes & FILE_ATTRIBUTE_TEMPORARY) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("TEMPORARY"));
-    }
-    if (attributes & FILE_ATTRIBUTE_VIRTUAL) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("VIRTUAL"));
-    }
-    return ab_array;
-}
-
-char *get_attr_from_checksum(char *checksum, int attr) {
-    char *str_attr = NULL;
-    char *str_end = NULL;
-    int i;
-
-    if (attr < 1 || attr > FIM_NATTR) {
-        return NULL;
-    }
-
-    str_attr = checksum;
-
-    for(i = 2; i <= attr && str_attr; i++){
-        str_attr = strchr(str_attr, ':');
-        if(str_attr) {
-            str_attr++;
-        }
-    }
-
-    if (str_attr) {
-        if(str_end = strchr(str_attr, ':'), str_end) {
-            *(str_end++) = '\0';
-        }
-        return str_attr;
-    }
-
-    return NULL;
-}
-
-#else
+#else /* #ifndef WIN32 */
 
 char *escape_perm_sum(char *sum) {
     char *esc_it;
@@ -919,8 +586,7 @@ char *escape_perm_sum(char *sum) {
     return NULL;
 }
 
-char *get_user(const char *path, __attribute__((unused)) int uid, char **sid)
-{
+char *get_user(const char *path, __attribute__((unused)) int uid, char **sid) {
     DWORD dwRtnCode = 0;
     PSID pSidOwner = NULL;
     BOOL bRtnBool = TRUE;
@@ -1198,28 +864,269 @@ const char *get_group(__attribute__((unused)) int gid) {
     return "";
 }
 
-#endif
-
 /* Send a one-way message to Syscheck */
-#ifndef WIN32
-void ag_send_syscheck(char * message) {
-    int sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
-
-    if (sock == -1) {
-        merror("dbsync: cannot connect to syscheck: %s (%d)", strerror(errno), errno);
-        return;
-    }
-
-    if (OS_SendSecureTCP(sock, strlen(message), message) < 0) {
-        merror("Cannot send message to syscheck: %s (%d)", strerror(errno), errno);
-    }
-
-    close(sock);
-}
-#else
 void ag_send_syscheck(char * message) {
     char * response = NULL;
     syscom_dispatch(message, &response);
     free(response);
 }
-#endif
+
+#endif /* # else (ifndef WIN32) */
+
+void decode_win_attributes(char *str, unsigned int attrs) {
+    size_t size;
+
+    size = snprintf(str, OS_SIZE_256, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+                    attrs & FILE_ATTRIBUTE_ARCHIVE ? "ARCHIVE, " : "",
+                    attrs & FILE_ATTRIBUTE_COMPRESSED ? "COMPRESSED, " : "",
+                    attrs & FILE_ATTRIBUTE_DEVICE ? "DEVICE, " : "",
+                    attrs & FILE_ATTRIBUTE_DIRECTORY ? "DIRECTORY, " : "",
+                    attrs & FILE_ATTRIBUTE_ENCRYPTED ? "ENCRYPTED, " : "",
+                    attrs & FILE_ATTRIBUTE_HIDDEN ? "HIDDEN, " : "",
+                    attrs & FILE_ATTRIBUTE_INTEGRITY_STREAM ? "INTEGRITY_STREAM, " : "",
+                    attrs & FILE_ATTRIBUTE_NORMAL ? "NORMAL, " : "",
+                    attrs & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED ? "NOT_CONTENT_INDEXED, " : "",
+                    attrs & FILE_ATTRIBUTE_NO_SCRUB_DATA ? "NO_SCRUB_DATA, " : "",
+                    attrs & FILE_ATTRIBUTE_OFFLINE ? "OFFLINE, " : "",
+                    attrs & FILE_ATTRIBUTE_READONLY ? "READONLY, " : "",
+                    attrs & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS ? "RECALL_ON_DATA_ACCESS, " : "",
+                    attrs & FILE_ATTRIBUTE_RECALL_ON_OPEN ? "RECALL_ON_OPEN, " : "",
+                    attrs & FILE_ATTRIBUTE_REPARSE_POINT ? "REPARSE_POINT, " : "",
+                    attrs & FILE_ATTRIBUTE_SPARSE_FILE ? "SPARSE_FILE, " : "",
+                    attrs & FILE_ATTRIBUTE_SYSTEM ? "SYSTEM, " : "",
+                    attrs & FILE_ATTRIBUTE_TEMPORARY ? "TEMPORARY, " : "",
+                    attrs & FILE_ATTRIBUTE_VIRTUAL ? "VIRTUAL, " : "");
+    if (size > 2) {
+        str[size - 2] = '\0';
+    }
+}
+
+int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array) {
+    int writted = 0;
+    int size;
+    char *perm_it = NULL;
+    char *base_it = NULL;
+    char *account_name = NULL;
+    static char *str_a = "allowed";
+    static char *str_d = "denied";
+    static char *str_n = "name";
+    cJSON *perm_type = NULL;
+    cJSON *json_it;
+    char a_type;
+    long mask;
+
+    perm_it = raw_perm;
+    while (perm_it = strchr(perm_it, '|'), perm_it) {
+        // Get the account/group name
+        base_it = ++perm_it;
+        if (perm_it = strchr(perm_it, ','), !perm_it) {
+            goto error;
+        }
+        *perm_it = '\0';
+        os_strdup(base_it, account_name);
+        *perm_it = ',';
+
+        // Get the access type
+        base_it = ++perm_it;
+        if (perm_it = strchr(perm_it, ','), !perm_it) {
+            goto error;
+        }
+        *perm_it = '\0';
+        a_type = *base_it;
+        *perm_it = ',';
+
+        // Get the access mask
+        base_it = ++perm_it;
+        if (perm_it = strchr(perm_it, '|'), perm_it) {
+            *perm_it = '\0';
+            mask = strtol(base_it, NULL, 10);
+            *perm_it = '|';
+        } else {
+            // End of the msg
+            mask = strtol(base_it, NULL, 10);
+        }
+
+        if (perm_array) {
+            cJSON *a_found = NULL;
+            char *perm_type_str;
+
+
+            perm_type_str = (a_type == '0') ? str_a : str_d;
+            for (json_it = perm_array->child; json_it; json_it = json_it->next) {
+                cJSON *obj;
+                if (obj = cJSON_GetObjectItem(json_it, str_n), obj) {
+                    if (!strcmp(obj->valuestring, account_name)) {
+                        if (obj = cJSON_GetObjectItem(json_it, perm_type_str), obj) {
+                            mdebug2("ACL [%s] fragmented. All permissions may not be displayed.", raw_perm);
+                            goto next_it;
+                        }
+                        a_found = json_it;
+                        break;
+                    }
+                }
+            }
+
+            if (perm_type = cJSON_CreateArray(), !perm_type) {
+                goto error;
+            }
+
+            if (mask & GENERIC_READ) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_READ"));
+            if (mask & GENERIC_WRITE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_WRITE"));
+            if (mask & GENERIC_EXECUTE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_EXECUTE"));
+            if (mask & GENERIC_ALL) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_ALL"));
+
+            if (mask & DELETE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("DELETE"));
+            if (mask & READ_CONTROL) cJSON_AddItemToArray(perm_type, cJSON_CreateString("READ_CONTROL"));
+            if (mask & WRITE_DAC) cJSON_AddItemToArray(perm_type, cJSON_CreateString("WRITE_DAC"));
+            if (mask & WRITE_OWNER) cJSON_AddItemToArray(perm_type, cJSON_CreateString("WRITE_OWNER"));
+            if (mask & SYNCHRONIZE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("SYNCHRONIZE"));
+
+            if (mask & FILE_READ_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_READ_DATA"));
+            if (mask & FILE_WRITE_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_WRITE_DATA"));
+            if (mask & FILE_APPEND_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_APPEND_DATA"));
+            if (mask & FILE_READ_EA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_READ_EA"));
+            if (mask & FILE_WRITE_EA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_WRITE_EA"));
+            if (mask & FILE_EXECUTE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_EXECUTE"));
+            if (mask & FILE_READ_ATTRIBUTES) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_READ_ATTRIBUTES"));
+            if (mask & FILE_WRITE_ATTRIBUTES) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_WRITE_ATTRIBUTES"));
+
+            if (!a_found) {
+                if (a_found = cJSON_CreateObject(), !a_found) {
+                    goto error;
+                }
+                cJSON_AddStringToObject(a_found, str_n, account_name);
+                cJSON_AddItemToArray(perm_array, a_found);
+            }
+
+            cJSON_AddItemToObject(a_found, perm_type_str, perm_type);
+            perm_type = NULL;
+            writted = 1;
+        } else if (seq) {
+            writted = snprintf(str, 50, "Permissions changed.\n");
+        } else {
+            size = snprintf(str, str_size, "   %s  (%s) -%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+                            account_name,
+                            a_type == '0' ? "ALLOWED" : "DENIED",
+                            mask & GENERIC_READ ? " GENERIC_READ," : "",
+                            mask & GENERIC_WRITE ? " GENERIC_WRITE," : "",
+                            mask & GENERIC_EXECUTE ? " GENERIC_EXECUTE," : "",
+                            mask & GENERIC_ALL ? " GENERIC_ALL," : "",
+                            mask & DELETE ? " DELETE," : "",
+                            mask & READ_CONTROL ? " READ_CONTROL," : "",
+                            mask & WRITE_DAC ? " WRITE_DAC," : "",
+                            mask & WRITE_OWNER ? " WRITE_OWNER," : "",
+                            mask & SYNCHRONIZE ? " SYNCHRONIZE," : "",
+                            mask & FILE_READ_DATA ? " FILE_READ_DATA," : "",
+                            mask & FILE_WRITE_DATA ? " FILE_WRITE_DATA," : "",
+                            mask & FILE_APPEND_DATA ? " FILE_APPEND_DATA," : "",
+                            mask & FILE_READ_EA ? " FILE_READ_EA," : "",
+                            mask & FILE_WRITE_EA ? " FILE_WRITE_EA," : "",
+                            mask & FILE_EXECUTE ? " FILE_EXECUTE," : "",
+                            mask & FILE_READ_ATTRIBUTES ? " FILE_READ_ATTRIBUTES," : "",
+                            mask & FILE_WRITE_ATTRIBUTES ? " FILE_WRITE_ATTRIBUTES," : ""
+                        );
+            if (size > 1) {
+                str[size - 1] = '\n';
+            }
+            writted += size;
+            str += size;
+        }
+
+next_it:
+        os_free(account_name);
+        if (!perm_it) {
+            break;
+        }
+    }
+
+    return writted;
+error:
+    if (perm_type) {
+        cJSON_Delete(perm_type);
+    }
+    os_free(account_name);
+    mdebug1("The file permissions could not be decoded: '%s'", raw_perm);
+    *str = '\0';
+    return 0;
+}
+
+cJSON *perm_to_json(char *permissions) {
+    cJSON *perm_array;
+
+    if (perm_array = cJSON_CreateArray(), !perm_array) {
+        return NULL;
+    }
+
+    if (!decode_win_permissions(NULL, 0, permissions, 0, perm_array)) {
+        os_free(perm_array);
+    }
+
+    return perm_array;
+}
+
+cJSON *attrs_to_json(unsigned int attributes) {
+    cJSON *ab_array;
+
+    if (ab_array = cJSON_CreateArray(), !ab_array) {
+        return NULL;
+    }
+
+    if (attributes & FILE_ATTRIBUTE_ARCHIVE) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("ARCHIVE"));
+    }
+    if (attributes & FILE_ATTRIBUTE_COMPRESSED) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("COMPRESSED"));
+    }
+    if (attributes & FILE_ATTRIBUTE_DEVICE) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("DEVICE"));
+    }
+    if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("DIRECTORY"));
+    }
+    if (attributes & FILE_ATTRIBUTE_ENCRYPTED) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("ENCRYPTED"));
+    }
+    if (attributes & FILE_ATTRIBUTE_HIDDEN) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("HIDDEN"));
+    }
+    if (attributes & FILE_ATTRIBUTE_INTEGRITY_STREAM) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("INTEGRITY_STREAM"));
+    }
+    if (attributes & FILE_ATTRIBUTE_NORMAL) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("NORMAL"));
+    }
+    if (attributes & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("NOT_CONTENT_INDEXED"));
+    }
+    if (attributes & FILE_ATTRIBUTE_NO_SCRUB_DATA) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("NO_SCRUB_DATA"));
+    }
+    if (attributes & FILE_ATTRIBUTE_OFFLINE) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("OFFLINE"));
+    }
+    if (attributes & FILE_ATTRIBUTE_READONLY) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("READONLY"));
+    }
+    if (attributes & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("RECALL_ON_DATA_ACCESS"));
+    }
+    if (attributes & FILE_ATTRIBUTE_RECALL_ON_OPEN) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("RECALL_ON_OPEN"));
+    }
+    if (attributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("REPARSE_POINT"));
+    }
+    if (attributes & FILE_ATTRIBUTE_SPARSE_FILE) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("SPARSE_FILE"));
+    }
+    if (attributes & FILE_ATTRIBUTE_SYSTEM) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("SYSTEM"));
+    }
+    if (attributes & FILE_ATTRIBUTE_TEMPORARY) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("TEMPORARY"));
+    }
+    if (attributes & FILE_ATTRIBUTE_VIRTUAL) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("VIRTUAL"));
+    }
+    return ab_array;
+}

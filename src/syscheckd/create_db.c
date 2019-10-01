@@ -477,6 +477,7 @@ int fim_check_depth(char * path, int dir_position) {
 // Get data from file
 fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, fim_event_mode mode, int options) {
     fim_entry_data * data = NULL;
+    minfo("fim_get_data:%s", file_name);
 
     os_calloc(1, sizeof(fim_entry_data), data);
     init_fim_data_entry(data);
@@ -489,11 +490,23 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
 #ifdef WIN32
         int error;
         char perm_unescaped[OS_SIZE_6144 + 1];
+
         if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
             merror(FIM_ERROR_EXTRACT_PERM, file_name, error);
         } else {
-            data->perm = escape_perm_sum(perm_unescaped);
+            int size;
+            minfo("~~~ data perm_unescaped:'%s'", perm_unescaped);
+            os_calloc(OS_SIZE_20480, sizeof(char), data->perm);
+
+            if (size = decode_win_permissions(data->perm, OS_SIZE_20480, escape_perm_sum(perm_unescaped), 0, NULL), size > 1) {
+                os_realloc(data->perm, size + 1, data->perm);
+                minfo("~~~ data permission:'%s'", data->perm);
+            }
         }
+
+        os_calloc(OS_SIZE_256, sizeof(char), data->attributes);
+        decode_win_attributes(data->attributes, w_get_file_attrs(file_name));
+        minfo("~~~ data attributes:'%s'", data->attributes);
 #else
         data->perm = agent_file_perm(file_stat->st_mode);
 #endif
@@ -573,9 +586,10 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
     data->options = options;
     data->last_event = time(NULL);
     data->scanned = 1;
-    // Set file entry type
+    // Set file entry type, registry or file
     data->entry_type = fim_entry_type[0];
     fim_get_checksum(data);
+    minfo("fim_get_data2:%s", file_name);
 
     return data;
 }
@@ -585,6 +599,7 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
 void init_fim_data_entry(fim_entry_data *data) {
     data->size = 0;
     data->perm = NULL;
+    data->attributes = NULL;
     data->uid = NULL;
     data->gid = NULL;
     data->user_name = NULL;
@@ -606,9 +621,10 @@ void fim_get_checksum (fim_entry_data * data) {
 
     size = snprintf(checksum,
             OS_SIZE_128,
-            "%d:%s:%s:%s:%s:%s:%d:%lu:%s:%s:%s",
+            "%d:%s:%s:%s:%s:%s:%s:%d:%lu:%s:%s:%s",
             data->size,
             data->perm,
+            data->attributes,
             data->uid,
             data->gid,
             data->user_name,
@@ -627,9 +643,10 @@ void fim_get_checksum (fim_entry_data * data) {
         os_realloc(checksum, (size + 1) * sizeof(char), checksum);
         snprintf(checksum,
                 size + 1,
-                "%d:%s:%s:%s:%s:%s:%d:%lu:%s:%s:%s",
+                "%d:%s:%s:%s:%s:%s:%s:%d:%lu:%s:%s:%s",
                 data->size,
                 data->perm,
+                data->attributes,
                 data->uid,
                 data->gid,
                 data->user_name,
@@ -930,10 +947,11 @@ cJSON * fim_attributes_json(const fim_entry_data * data) {
         cJSON_AddStringToObject(attributes, "hash_sha256", data->hash_sha256);
     }
 
-    // TODO: Read structure.
+#ifdef WIN32
     if (data->options & CHECK_ATTRS) {
-        cJSON_AddStringToObject(attributes, "win_attributes", "");
+        cJSON_AddStringToObject(attributes, "win_attributes", data->attributes);
     }
+#endif
 
     if (*data->checksum) {
         cJSON_AddStringToObject(attributes, "checksum", data->checksum);
@@ -971,6 +989,12 @@ cJSON * fim_json_compare_attrs(const fim_entry_data * old_data, const fim_entry_
     if ( (old_data->options & CHECK_PERM) && strcmp(old_data->perm, new_data->perm) != 0 ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
     }
+
+#ifdef WIN32
+    if ( (old_data->options & CHECK_ATTRS) && strcmp(old_data->attributes, new_data->attributes) != 0 ) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("attributes"));
+    }
+#endif
 
     if (old_data->options & CHECK_OWNER) {
         if (old_data->uid && new_data->uid && strcmp(old_data->uid, new_data->uid) != 0) {
@@ -1022,18 +1046,20 @@ cJSON * fim_json_compare_attrs(const fim_entry_data * old_data, const fim_entry_
 cJSON * fim_audit_json(const whodata_evt * w_evt) {
     cJSON * fim_audit = cJSON_CreateObject();
 
+    cJSON_AddStringToObject(fim_audit, "path", w_evt->path);
     cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
     cJSON_AddStringToObject(fim_audit, "user_name", w_evt->user_name);
+    cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
+    cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
+#ifndef WIN32
     cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
     cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
-    cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
-    cJSON_AddStringToObject(fim_audit, "path", w_evt->path);
     cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
     cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
     cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
     cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
     cJSON_AddNumberToObject(fim_audit, "ppid", w_evt->ppid);
-    cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
+#endif
 
     return fim_audit;
 }
@@ -1085,6 +1111,9 @@ void free_entry_data(fim_entry_data * data) {
     }
     if (data->perm) {
         os_free(data->perm);
+    }
+    if (data->attributes) {
+        os_free(data->attributes);
     }
     if (data->uid) {
 #ifdef WIN32
