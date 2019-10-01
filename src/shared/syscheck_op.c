@@ -598,7 +598,7 @@ char *get_group(int gid) {
     int groupid = getgrgid_r(gid, &group, buffer, len, &result);
     if(groupid != 0 || result == NULL) {
         merror("Could not get ossec gid.");
-        gr_name = "";
+        os_strdup("", gr_name);
     } else {
         os_strdup(result->gr_name, gr_name);
     }
