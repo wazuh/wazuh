@@ -36,7 +36,7 @@ int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output){
     }
 }
 
-int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output, struct opt_param *params){
+int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output){
     int r;
     int count;
     int i;
@@ -51,8 +51,6 @@ int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output, struct opt_
     stmt = wdb->stmt[WDB_STMT_MITRE_PHASE_GET];
 
     sqlite3_bind_text(stmt, 1, phase_name, -1, NULL);
-    sqlite3_bind_int(stmt, 2, params->limit);
-    sqlite3_bind_int(stmt, 3, params->offset);
 
     data = cJSON_CreateArray();
 
@@ -65,7 +63,7 @@ int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output, struct opt_
                 case SQLITE_FLOAT:
                 case SQLITE_TEXT:
                 case SQLITE_BLOB:
-                    cJSON_AddItemToArray(data, cJSON_CreateString(sqlite3_column_text(stmt, i)));
+                    cJSON_AddItemToArray(data, cJSON_CreateString((const char *)sqlite3_column_text(stmt, i)));
                     break;
 
                 case SQLITE_NULL:
@@ -90,7 +88,7 @@ int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output, struct opt_
     return 1;
 }
 
-int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output, struct opt_param *params){
+int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output){
     int r;
     int count;
     int i;
@@ -105,8 +103,6 @@ int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output, struc
     stmt = wdb->stmt[WDB_STMT_MITRE_PLATFORM_GET];
 
     sqlite3_bind_text(stmt, 1, platform_name, -1, NULL);
-    sqlite3_bind_int(stmt, 2, params->limit);
-    sqlite3_bind_int(stmt, 3, params->offset);
 
     data = cJSON_CreateArray();
 

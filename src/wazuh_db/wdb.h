@@ -140,11 +140,6 @@ typedef struct wdb_config {
     int open_db_limit;
 } wdb_config;
 
-struct opt_param {
-        int limit;
-        int offset;
-    };
-
 /* Global SQLite database */
 extern sqlite3 *wdb_global;
 extern wdb_t * db_global;
@@ -416,7 +411,7 @@ int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output);
  * @param params This struct includes limit and offset parameters
  * @return int It returns -1 if it fails, 0 if it doesn't find Mitre information and 1 if it finds it
  */
-int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output, struct opt_param *params);
+int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output);
 
 /**
  * @brief It gets all the Mitre's information that is related to the platform "platform_name" 
@@ -427,7 +422,7 @@ int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output, struct opt_
  * @param params This struct includes limit and offset parameters
  * @return int It returns -1 if it fails, 0 if it doesn't find Mitre information and 1 if it finds it
  */
-int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output, struct opt_param *params);
+int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output);
 
 /**
  * @brief It gets a Mitre's tactics array from the has_phase table
