@@ -6,11 +6,11 @@ import copy
 import re
 from functools import wraps
 
-from wazuh.exception import WazuhError, create_exception_dic
+from api.authentication import AuthenticationManager
 from wazuh.core.core_utils import get_agents_info, expand_group
+from wazuh.exception import WazuhError, create_exception_dic
 from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import WazuhResult
-
 
 mode = 'white'
 
@@ -18,24 +18,27 @@ mode = 'white'
 class Resource:
     def __init__(self, resource):
         split_resource = resource.split(':')
+        self.name = split_resource[0]
         self.name_identifier = ':'.join(split_resource[0:2])
         self.value = split_resource[2]
+        self.resources = set()
         if 'agent' in self.name_identifier:
-            self.agents = get_agents_info()
+            self.resources = get_agents_info()
         elif 'role' in self.name_identifier:
-            roles_ids = set()
             with RolesManager() as rm:
                 roles = rm.get_roles()
             for role in roles:
-                roles_ids.add(str(role.id))
-            self.roles = roles_ids
+                self.resources.add(str(role.id))
         elif 'policy' in self.name_identifier:
-            policy_ids = set()
             with PoliciesManager() as pm:
                 policies = pm.get_policies()
             for policy in policies:
-                policy_ids.add(str(policy.id))
-            self.policies = policy_ids
+                self.resources.add(str(policy.id))
+        elif 'user' in self.name_identifier:
+            with AuthenticationManager() as auth:
+                users = auth.get_users()
+            for user in users:
+                self.resources.add(user['username'])
 
     def get_name_identifier(self):
         return self.name_identifier
@@ -43,57 +46,33 @@ class Resource:
     def get_value(self):
         return self.value
 
-    def exec_expand_function(self, rbac_mode, final_permissions, odict):
-        if self.name_identifier not in final_permissions.keys():
-            final_permissions[self.name_identifier] = set()
-        if self.name_identifier == 'agent:id' or self.name_identifier == 'agent:group':
-            self._agent_expand_permissions(rbac_mode, final_permissions[self.name_identifier], odict)
-        elif self.name_identifier == 'role:id':
-            final_permissions[self.name_identifier] = self._role_policy_expand_permissions(
-                rbac_mode, final_permissions[self.name_identifier], odict, 'role')
-        elif self.name_identifier == 'policy:id':
-            self._role_policy_expand_permissions(rbac_mode, final_permissions[self.name_identifier], odict,
-                                                 'policy')
-
-    def _agent_expand_permissions(self, rbac_mode, final_permissions, odict):
+    def expand_permissions(self, rbac_mode, final_permissions, odict):
         for key, value in odict.items():
             if key.startswith('agent:group'):
                 expanded_group = expand_group(key.split(':')[-1])
                 for agent in expanded_group:
                     final_permissions.add(agent) if value == 'allow' and agent == self.value \
                         else final_permissions.discard(agent)
-            elif key.startswith('agent:id:*'):
-                for agent in self.agents:
-                    final_permissions.add(agent) if value == 'allow' and agent == self.value \
-                        else final_permissions.discard(agent)
-                if value == 'allow':
+            elif key.startswith(self.name + ':id:*'):
+                for resource in self.resources:
+                    if value == 'allow':
+                        if self.value == resource:
+                            final_permissions.add(resource)
+                        elif self.value == '*':
+                            final_permissions.update(self.resources)
+                            break
+                    else:
+                        final_permissions.discard(resource)
+                if value == 'allow' and self.value != '*':
                     final_permissions.add(self.value)
-            elif key.startswith('agent:id'):
-                if value == 'allow' and self.value == key.split(':')[-1]:
+            elif key.startswith(self.name + ':id'):
+                if value == 'allow' and (self.value == key.split(':')[-1] or self.value == '*'):
                     final_permissions.add(key.split(':')[-1])
-                elif value == 'deny':
+                else:
                     final_permissions.discard(key.split(':')[-1])
         if rbac_mode == 'black':
-            for agent in self.agents:
-                final_permissions.add(agent)
-
-        return final_permissions
-
-    def _role_policy_expand_permissions(self, rbac_mode, final_permissions, odict, resource_type):
-        system_resources = self.roles if resource_type == 'role' else self.policies
-        for key, value in odict.items():
-            if key.startswith(resource_type + ':id:*'):
-                for role_policy in system_resources:
-                    final_permissions.add(role_policy) if value == 'allow' and self.value == role_policy \
-                        else final_permissions.discard(role_policy)
-                if value == 'allow':
-                    final_permissions.add(self.value)
-            elif key.startswith(resource_type + ':id'):
-                final_permissions.add(key.split(':')[-1]) if value == 'allow' and self.value == key.split(':')[-1] \
-                    else final_permissions.discard(key.split(':')[-1])
-        if rbac_mode == 'black':
-            for policy in system_resources:
-                final_permissions.add(policy)
+            for resource in self.resources:
+                final_permissions.add(resource)
 
         return final_permissions
 
@@ -142,7 +121,7 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     """Try to match function required permissions against user permissions to allow or deny execution
     :param req_permissions: Required permissions to allow function execution
     :param rbac: User permissions
-    :return: Allow or deny
+    :return: Dictionary with final permissions
     """
     allow_match = dict()
     black_counter = 0
@@ -160,7 +139,9 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
         for action in actual_actions:
             for req_resource in req_resources:
                 r_resource = Resource(req_resource)
-                r_resource.exec_expand_function(mode, allow_match, rbac[action])
+                if r_resource.get_name_identifier() not in allow_match.keys():
+                    allow_match[r_resource.get_name_identifier()] = set()
+                r_resource.expand_permissions(mode, allow_match[r_resource.get_name_identifier()], rbac[action])
         else:
             if mode == 'black':
                 black_counter += 1
