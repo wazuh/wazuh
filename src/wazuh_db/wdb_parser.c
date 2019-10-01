@@ -12,76 +12,6 @@
 #include "wdb.h"
 #include "external/cJSON/cJSON.h"
 
-int wdb_param_parse(char *input, struct opt_param *output){
-    char * next;
-    char * limit;
-    char * offset;
-    char * n;
-    int limit_n;
-    int offset_n;
-    int result;
-
-    /* Example: [limit 10 offset 0] */
-
-    // Clean string
-    while (*input == ' ' || *input == '\n' || *input == '[') {
-        input++;
-    }
-
-    if (next = wstr_chr(input, ' '), !next) {
-        mdebug1("Invalid parameters parse syntax");
-        mdebug2("DB query: %s", input);
-        merror("err Invalid parameters parse syntax, near '%.32s'", input);
-        return -1;
-    }
-
-    limit = input;
-    *next++ = '\0';
-
-    if (strcmp(limit, "limit") == 0) {
-        n = next;
-
-        if (next = wstr_chr(n, ' '), !next) {
-            mdebug1("Invalid parameter 'limit' parse syntax.");
-            mdebug2("limit parameter error near: %s", n);
-            merror("err Invalid parameter 'limit' parse syntax, near '%.32s'", input);
-            return -1;
-        }
-
-        *next++ = '\0';
-        offset = next;
-
-        if (limit_n = strtol(n, &next, 10), *next) {
-            mdebug1("Invalid limit number: '%s'", n);
-            merror("err Invalid parameter 'limit' parse syntax, near '%.32s'", input);
-            return -1;
-        }
-        output->limit = limit_n;
-        if (next = wstr_chr(offset, ' '), next) {
-            *next++ = '\0';
-        }
-
-        if (strcmp(offset, "offset") == 0) {
-            n = next;
-
-            if (next = wstr_chr(n, ' '), !next) {
-                mdebug1("Invalid parameter 'offset' syntax.");
-                mdebug2("offset parameter error near: %s", n);
-                merror("err Invalid parameter 'offset' parse syntax, near '%.32s'", input);
-                return -1;
-            }
-
-            offset_n = strtol(n, &next, 10);
-            output->offset = offset_n;
-            result = 0;
-        } else {
-            return -1;
-        }
-    } else {
-        return -1;
-    }
-    return result;
-}
 
 int wdb_parse(char * input, char * output) {
     char * actor;
@@ -96,29 +26,9 @@ int wdb_parse(char * input, char * output) {
     char * out;
     int result = 0;
 
-    struct opt_param params;
-
     if (!input) {
         mdebug1("Empty input query.");
         return -1;
-    }
-
-    // Clean string
-    while (*input == ' ' || *input == '\n') {
-        input++;
-    }
-
-    if (*input == '['){
-        input++;
-        if(wdb_param_parse(input, &params) == -1){
-            mdebug1("Invalid parameters parse syntax: %s", input);
-            mdebug2("DB query: %s", input);
-            return -1; 
-        }
-        while (*input != ']'){
-            input++;
-        }
-        input++;
     }
 
     // Clean string
@@ -437,77 +347,26 @@ int wdb_parse(char * input, char * output) {
             return -1;
         }
         *next++ = '\0';
-    
-        if(strcmp(query, "get_attack") == 0) {
-            if(!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+
+        if (strcmp(query, "sql") == 0) {
+            if (!next) {
+                mdebug1("Mitre DB Invalid DB query syntax.");
+                mdebug2("Mitre DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
-                char *attack_id;
-                char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
+                sql = next;
 
-                attack_id = next;
-                result = wdb_mitre_attack_get(wdb, attack_id, result_found);
-                switch (result) {
-                    case 0:
-                        snprintf(output, OS_MAXSTR + 1, "err not found");
-                        break;
-                    case 1:
-                        snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
-                        break;
-                    default:
-                        mdebug1("Cannot query Mitre info by attack.");
-                        snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre info by attack");
-                }       
-            }
-        } else if(strcmp(query, "get_phase") == 0) {
-            if(!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = -1;
-            } else {
-                char *phase;
-                char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
-
-                phase = next;
-                result = wdb_mitre_phases_get(wdb, phase, result_found, &params);
-                switch (result) {
-                    case 0:
-                        snprintf(output, OS_MAXSTR + 1, "err not found");
-                        break;
-                    case 1:
-                        snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
-                        break;
-                    default:
-                        mdebug1("Cannot query Mitre info by phase.");
-                        snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre info by phase");
-                }       
-            }
-        } else if(strcmp(query, "get_platform") == 0) {
-            if(!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = -1;
-            } else {
-                char *platform;
-                char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
-
-                platform = next;
-                result = wdb_mitre_platforms_get(wdb, platform, result_found, &params);
-                switch (result) {
-                    case 0:
-                        snprintf(output, OS_MAXSTR + 1, "err not found");
-                        break;
-                    case 1:
-                        snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
-                        break;
-                    default:
-                        mdebug1("Cannot query Mitre info by platform.");
-                        snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre info by platform");
+                if (data = wdb_exec(wdb->db, sql), data) {
+                    out = cJSON_PrintUnformatted(data);
+                    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+                    free(out);
+                    cJSON_Delete(data);
+                } else {
+                    mdebug1("Mitre DB Cannot execute SQL query.");
+                    mdebug2("Mitre DB SQL query: %s", sql);
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot execute SQL query");
+                    result = -1;
                 }
             }
         } else if(strcmp(query, "get_tactics") == 0) {

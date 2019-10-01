@@ -118,7 +118,6 @@ int mitre_load(){
             } else {
                 mdebug1("Mitre info loading failed. Mitre's database gave error response. Response: %s", response);
                 merror("Mitre matrix information could not be loaded.");
-                cJSON_Delete(tactics_json);
                 cJSON_Delete(root);
                 os_free(response);
                 result = -1;

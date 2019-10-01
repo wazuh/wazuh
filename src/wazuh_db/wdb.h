@@ -620,16 +620,6 @@ int wdb_stmt_cache(wdb_t * wdb, int index);
 
 int wdb_parse(char * input, char * output);
 
-/**
- * @brief This function parses limit and offset parameters and store in struct opt_param
- * 
- * An example of use is [limit 10 offset 0] query sentence
- * @param input SQL query that starts with [limit ? offset ?]
- * @param output This output is a struct that stores limit and offset parameters
- * @return int Return -1 if it fails
- */
-int wdb_param_parse(char *input, struct opt_param *output);
-
 int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output);
