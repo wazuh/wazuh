@@ -76,39 +76,38 @@
 
 // Number of attributes in checksum
 #define FIM_NATTR 11
-// Number of options in checksum hash table
-#define FIM_NOPTS 10
 /* Fields for rules */
-typedef enum sk_syscheck {
-    SK_FILE,
-    SK_SIZE,
-    SK_PERM,
-    SK_UID,
-    SK_GID,
-    SK_MD5,
-    SK_SHA1,
-    SK_UNAME,
-    SK_GNAME,
-    SK_MTIME,
-    SK_INODE,
-    SK_SHA256,
-    SK_ATTRS,
-    SK_CHFIELDS,
-    SK_USER_ID,
-    SK_USER_NAME,
-    SK_GROUP_ID,
-    SK_GROUP_NAME,
-    SK_PROC_NAME,
-    SK_AUDIT_ID,
-    SK_AUDIT_NAME,
-    SK_EFFECTIVE_UID,
-    SK_EFFECTIVE_NAME,
-    SK_PPID,
-    SK_PROC_ID,
-    SK_TAG,
-    SK_SYM_PATH,
-    SK_NFIELDS
-} sk_syscheck;
+typedef enum fim_fields {
+    FIM_FILE,
+    FIM_SIZE,
+    FIM_PERM,
+    FIM_UID,
+    FIM_GID,
+    FIM_MD5,
+    FIM_SHA1,
+    FIM_UNAME,
+    FIM_GNAME,
+    FIM_MTIME,
+    FIM_INODE,
+    FIM_SHA256,
+    FIM_DIFF,
+    FIM_ATTRS,
+    FIM_CHFIELDS,
+    FIM_USER_ID,
+    FIM_USER_NAME,
+    FIM_GROUP_ID,
+    FIM_GROUP_NAME,
+    FIM_PROC_NAME,
+    FIM_AUDIT_ID,
+    FIM_AUDIT_NAME,
+    FIM_EFFECTIVE_UID,
+    FIM_EFFECTIVE_NAME,
+    FIM_PPID,
+    FIM_PROC_ID,
+    FIM_TAG,
+    FIM_SYM_PATH,
+    FIM_NFIELDS
+} fim_fields;
 
 typedef struct __sdb {
     char comment[OS_MAXSTR + 1];
@@ -178,6 +177,11 @@ typedef struct sk_sum_t {
     long date_alert;
 } sk_sum_t;
 
+typedef enum fim_scan_event {
+    FIM_SCAN_START,
+    FIM_SCAN_END
+} fim_scan_event;
+
 /* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
    or -1 on failure. */
 int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum);
@@ -209,7 +213,7 @@ char *escape_syscheck_field(char *field);
 
 #ifndef WIN32
 
-const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
+char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
 const char *get_group(int gid);
 void decode_win_attributes(char *str, unsigned int attrs);
 int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array);
@@ -225,5 +229,12 @@ const char *get_group(__attribute__((unused)) int gid);
 char *escape_perm_sum(char *sum);
 
 #endif
+
+/**
+ * @brief Send a one-way message to Syscheck
+ *
+ * @param message Payload.
+ */
+void ag_send_syscheck(char * message);
 
 #endif /* SYSCHECK_OP_H */

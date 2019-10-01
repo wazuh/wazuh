@@ -12,6 +12,7 @@
 #define SYSCHECK_H
 
 #include "config/syscheck-config.h"
+#include "syscheck_op.h"
 #include "external/cJSON/cJSON.h"
 
 #define MAX_LINE PATH_MAX+256
@@ -25,11 +26,33 @@
 
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
 
+#ifdef WIN32
+#define FIM_REGULAR _S_IFREG
+#define FIM_DIRECTORY _S_IFDIR
+#else
+#define FIM_REGULAR S_IFREG
+#define FIM_DIRECTORY S_IFDIR
+#define FIM_LINK S_IFLNK
+#endif
+
 /* Global config */
 extern syscheck_config syscheck;
 extern int sys_debug_level;
 
 /** Function Prototypes **/
+
+/* Win32 does not have lstat */
+#ifdef WIN32
+    #define w_stat(x, y) stat(x, y)
+#else
+    #define w_stat(x, y) lstat(x, y)
+#endif
+
+typedef enum fim_event_type {
+    FIM_ADD,
+    FIM_DELETE,
+    FIM_MODIFICATION
+} fim_event_type;
 
 /* Check the integrity of the files against the saved database */
 void run_check(void);
@@ -44,14 +67,95 @@ int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
 cJSON *getSyscheckConfig(void);
 cJSON *getSyscheckInternalOptions(void);
 
-/* Create the database */
-int create_db(void);
+// TODO: Add description to functions
 
-/* Check database for changes */
-int run_dbcheck(void);
+// Create the database
+int fim_scan();
 
-/* Scan directory */
-int read_dir(const char *dir_name, const char *link, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link, char silent);
+//
+int fim_directory (char * path, int dir_position, fim_event_mode mode, whodata_evt * w_evt);
+
+//
+int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, whodata_evt * w_evt);
+
+//
+int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt);
+
+//
+void fim_audit_inode_event(whodata_evt * w_evt);
+
+//
+int fim_registry_event (char * key, fim_entry_data * data, int pos);
+
+//
+int fim_configuration_directory(const char * path, const char entry[]);
+
+//
+int fim_check_depth(char * path, int dir_position);
+
+//
+fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, fim_event_mode mode, int options);
+
+//
+void init_fim_data_entry(fim_entry_data *data);
+
+//
+void fim_get_checksum (fim_entry_data * data);
+
+//
+int fim_insert (char *file_name, fim_entry_data * data, struct stat *file_stat);
+
+//
+int fim_update (char * file, fim_entry_data * data);
+
+//
+int fim_delete (char * file_name);
+
+//
+void check_deleted_files();
+
+//
+void delete_inode_item(char *inode, char *file_name);
+
+/**
+ * @brief Produce a file change JSON event
+ *
+ * {
+ *   type:                  "event"
+ *   data: {
+ *     path:                string
+ *     mode:                "scheduled"|"real-time"|"whodata"
+ *     type:                "added"|"deleted"|"modified"
+ *     timestamp:           number
+ *     tags:                string
+ *     content_changes:     string
+ *     changed_attributes:  array   fim_json_compare_attrs()    [Only if old_data]
+ *     old_attributes:      object  fim_attributes_json()       [Only if old_data]
+ *     attributes:          object  fim_attributes_json()
+ *     audit:               object  fim_audit_json()
+ *   }
+ * }
+ *
+ * @param file_name File path.
+ * @param old_data Previous file state.
+ * @param new_data Current file state.
+ * @param dir_position Index of the related configuration stanza.
+ * @param type Type of event: added, deleted or modified.
+ * @param mode Event source.
+ * @param w_evt Audit data structure.
+ * @return File event JSON object.
+ * @retval NULL No changes detected. Do not send an event.
+ */
+cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int pos, fim_event_type type, fim_event_mode mode, whodata_evt *w_evt);
+
+//
+void set_integrity_index(char * file_name, fim_entry_data * data);
+
+//
+void free_entry_data(fim_entry_data * data);
+
+//
+void free_inode_data(fim_inode_data * data);
 
 /* Check the registry for changes */
 void os_winreg_check(void);
@@ -68,6 +172,9 @@ int run_whodata_scan(void);
 /* Process real time queue */
 int realtime_process(void);
 
+/* Delete data form dir_tb hash table */
+void free_syscheck_dirtb_data(char *data);
+
 /* Process the content of the file changes */
 char *seechanges_addfile(const char *filename) __attribute__((nonnull));
 
@@ -81,12 +188,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 
 int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
-
-
-int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
-
-/* Find container directory */
-int find_dir_pos(const char *filename, char full_compare, char check_recursion, int check_find) __attribute__((nonnull(1)));
+void fim_send_sync_msg(const char * msg);
 
 /* Return the version with symbolic link */
 void replace_linked_path(const char *file_name, int dir_position, char *linked_file);
@@ -146,11 +248,143 @@ void symlink_checker_init();
 int w_update_sacl(const char *obj_path);
 #endif
 
-int print_hash_table();
-int fim_delete_hashes(const char * const file_name);
-
 #ifdef WIN32
 #define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })
 #endif
+
+void fim_sync_checksum();
+void fim_sync_checksum_split(const char * start, const char * top, long id);
+void fim_sync_send_list(const char * start, const char * top);
+void fim_sync_dispatch(char * payload);
+long fim_sync_last_message();
+
+/**
+ * @brief Create file attribute set JSON from a FIM entry structure
+ *
+ * Format:
+ * {
+ *   type:        "file"|"registry"
+ *   size:        number
+ *   perm:        string
+ *   user_name:   string
+ *   group_name:  string
+ *   uid:         string
+ *   gid:         string
+ *   inode:       number
+ *   mtime:       number
+ *   hash_md5:    string
+ *   hash_sha1:   string
+ *   hash_sha256: string
+ *   checksum:    string
+ * }
+ *
+ * @param data Pointer to a FIM entry structure.
+ * @pre data is mutex-blocked.
+ * @return Pointer to cJSON structure.
+ */
+cJSON * fim_attributes_json(const fim_entry_data * data);
+
+/**
+ * @brief Create file entry JSON from a FIM entry structure
+ *
+ * Format:
+ * {
+ *   path:              string
+ *   timestamp:         number
+ *   attributes: {
+ *     type:            "file"|"registry"
+ *     size:            number
+ *     perm:            string
+ *     user_name:       string
+ *     group_name:      string
+ *     uid:             string
+ *     gid:             string
+ *     inode:           number
+ *     mtime:           number
+ *     hash_md5:        string
+ *     hash_sha1:       string
+ *     hash_sha256:     string
+ *     win_attributes:  string
+ *     symlink_path:    string
+ *     checksum:        string
+ *   }
+ * }
+ *
+ * @param path Pointer to file path string.
+ * @param data Pointer to a FIM entry structure.
+ * @pre data is mutex-blocked.
+ * @return Pointer to cJSON structure.
+ */
+cJSON * fim_entry_json(const char * path, fim_entry_data * data);
+
+/**
+ * @brief Create file attribute comparison JSON object
+ *
+ * Format: array of strings, with the following possible strings:
+ * - size
+ * - permission
+ * - uid
+ * - user_name
+ * - gid
+ * - group_name
+ * - mtime
+ * - inode (UNIX only)
+ * - md5
+ * - sha1
+ * - sha256
+ *
+ * @param old_data
+ * @param new_data
+ * @return cJSON*
+ */
+cJSON * fim_json_compare_attrs(const fim_entry_data * old_data, const fim_entry_data * new_data);
+
+/**
+ * @brief Create file audit data JSON object
+ *
+ * Format:
+ * {
+ *   user_id:        string
+ *   user_name:      string
+ *   group_id:       string
+ *   group_name:     string
+ *   process_name:   string
+ *   audit_uid:      string
+ *   audit_name:     string
+ *   effective_uid:  string
+ *   effective_name: string
+ *   ppid:           number
+ *   process_id:     number
+ * }
+ *
+ * @param w_evt Pointer to event whodata structure
+ * @return cJSON object pointer.
+ */
+cJSON * fim_audit_json(const whodata_evt * w_evt);
+
+/**
+ * @brief Create scan info JSON event
+ *
+ * Format:
+ * {
+ *   type:          "scan_start"|"scan_end"
+ *   data: {
+ *     timestamp:   number
+ *   }
+ * }
+ *
+ * @param event Event type (start or end).
+ * @param timestamp Datetime in UNIX epoch.
+ * @return cJSON object pointer.
+ */
+
+cJSON * fim_scan_info_json(fim_scan_event event, long timestamp);
+
+/**
+ * @brief Send a scan info event
+ *
+ * @param event Event type (start or end).
+ */
+void fim_send_scan_info(fim_scan_event event);
 
 #endif /* SYSCHECK_H */

@@ -54,7 +54,6 @@ void agent_help()
 /* syscheck main thread */
 void *skthread()
 {
-    minfo("Starting file integrity monitoring thread.");
 
     Start_win32_Syscheck();
 
@@ -309,10 +308,6 @@ int local_start()
     start_agent(1);
     os_delwait();
     update_status(GA_STATUS_ACTIVE);
-
-    /* Send integrity message for agent configs */
-    intcheck_file(cfg, "");
-    intcheck_file(OSSEC_DEFINES, "");
 
     req_init();
 

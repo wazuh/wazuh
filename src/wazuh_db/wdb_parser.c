@@ -463,6 +463,47 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         }
 
         return result;
+    } else if (strcmp(curr, "save2") == 0) {
+        if (wdb_syscheck_save2(wdb, next) == -1) {
+            mdebug1("DB(%s) Cannot save FIM.", wdb->agent_id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save Syscheck");
+            return -1;
+        }
+
+        snprintf(output, OS_MAXSTR + 1, "ok");
+        return 0;
+    } else if (strncmp(curr, "integrity_check_", 16) == 0) {
+        switch (wdbi_query_checksum(wdb, WDB_FIM, curr, next)) {
+        case -1:
+            mdebug1("DB(%s) Cannot query FIM range checksum.", wdb->agent_id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
+            return -1;
+
+        case 0:
+            snprintf(output, OS_MAXSTR + 1, "ok no_data");
+            break;
+
+        case 1:
+            snprintf(output, OS_MAXSTR + 1, "ok checksum_fail");
+            break;
+
+        default:
+            snprintf(output, OS_MAXSTR + 1, "ok ");
+        }
+
+        return 0;
+    } else if (strcmp(curr, "integrity_clear") == 0) {
+        switch (wdbi_query_clear(wdb, WDB_FIM)) {
+        case -1:
+            mdebug1("DB(%s) Cannot query FIM range checksum.", wdb->agent_id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
+            return -1;
+
+        default:
+            snprintf(output, OS_MAXSTR + 1, "ok ");
+        }
+
+        return 0;
     } else {
         mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
         mdebug2("DB query error near: %s", curr);

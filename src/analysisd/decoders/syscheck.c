@@ -18,11 +18,11 @@
 #include "syscheck_op.h"
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
+#include "wazuhdb_op.h"
 
 // Add events into sqlite DB for FIM
 static int fim_db_search (char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *sdb);
-// Send msg to wazuh-db
-static int send_query_wazuhdb (char *wazuhdb_query, char **output, _sdb *sdb);
+
 // Build FIM alert
 static int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb);
 // Build fileds whodata alert
@@ -41,6 +41,28 @@ int fim_database_clean (Eventinfo *lf, _sdb *sdb);
 void sdb_clean(_sdb *localsdb);
 // Get timestamp for last scan from wazuhdb
 int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb);
+
+// Process fim alert
+static int fim_process_alert(_sdb *sdb, Eventinfo *lf, cJSON *event);
+
+// Generate fim alert
+static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
+        time_t event_time, cJSON *attributes, cJSON *old_attributes, cJSON *audit);
+
+// Send save query to Wazuh DB
+static void fim_send_db_save(_sdb * sdb, const char * agent_id, cJSON * data);
+
+// Send delete query to Wazuh DB
+void fim_send_db_delete(_sdb * sdb, const char * agent_id, const char * path);
+
+// Send a query to Wazuh DB
+void fim_send_db_query(int * sock, const char * query);
+
+// Build change comment
+static void fim_generate_comment(char * str, long size, const char * format, const char * a1, const char * a2);
+
+// Process scan info event
+static void fim_process_scan_info(_sdb * sdb, const char * agent_id, fim_scan_event event, cJSON * data);
 
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -68,34 +90,35 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fts = 0;
 
     os_calloc(Config.decoder_order_size, sizeof(char *), fim_decoder->fields);
-    fim_decoder->fields[SK_FILE] = "file";
-    fim_decoder->fields[SK_SIZE] = "size";
-    fim_decoder->fields[SK_PERM] = "perm";
-    fim_decoder->fields[SK_UID] = "uid";
-    fim_decoder->fields[SK_GID] = "gid";
-    fim_decoder->fields[SK_MD5] = "md5";
-    fim_decoder->fields[SK_SHA1] = "sha1";
-    fim_decoder->fields[SK_SHA256] = "sha256";
-    fim_decoder->fields[SK_ATTRS] = "attributes";
-    fim_decoder->fields[SK_UNAME] = "uname";
-    fim_decoder->fields[SK_GNAME] = "gname";
-    fim_decoder->fields[SK_INODE] = "inode";
-    fim_decoder->fields[SK_MTIME] = "mtime";
-    fim_decoder->fields[SK_CHFIELDS] = "changed_fields";
+    fim_decoder->fields[FIM_FILE] = "file";
+    fim_decoder->fields[FIM_SIZE] = "size";
+    fim_decoder->fields[FIM_PERM] = "perm";
+    fim_decoder->fields[FIM_UID] = "uid";
+    fim_decoder->fields[FIM_GID] = "gid";
+    fim_decoder->fields[FIM_MD5] = "md5";
+    fim_decoder->fields[FIM_SHA1] = "sha1";
+    fim_decoder->fields[FIM_UNAME] = "uname";
+    fim_decoder->fields[FIM_GNAME] = "gname";
+    fim_decoder->fields[FIM_MTIME] = "mtime";
+    fim_decoder->fields[FIM_INODE] = "inode";
+    fim_decoder->fields[FIM_SHA256] = "sha256";
+    fim_decoder->fields[FIM_DIFF] = "changed_content";
+    fim_decoder->fields[FIM_ATTRS] = "win_attributes";
+    fim_decoder->fields[FIM_CHFIELDS] = "changed_fields";
+    fim_decoder->fields[FIM_TAG] = "tag";
+    fim_decoder->fields[FIM_SYM_PATH] = "symbolic_path";
 
-    fim_decoder->fields[SK_USER_ID] = "user_id";
-    fim_decoder->fields[SK_USER_NAME] = "user_name";
-    fim_decoder->fields[SK_GROUP_ID] = "group_id";
-    fim_decoder->fields[SK_GROUP_NAME] = "group_name";
-    fim_decoder->fields[SK_PROC_NAME] = "process_name";
-    fim_decoder->fields[SK_AUDIT_ID] = "audit_uid";
-    fim_decoder->fields[SK_AUDIT_NAME] = "audit_name";
-    fim_decoder->fields[SK_EFFECTIVE_UID] = "effective_uid";
-    fim_decoder->fields[SK_EFFECTIVE_NAME] = "effective_name";
-    fim_decoder->fields[SK_PPID] = "ppid";
-    fim_decoder->fields[SK_PROC_ID] = "process_id";
-    fim_decoder->fields[SK_TAG] = "tag";
-    fim_decoder->fields[SK_SYM_PATH] = "symbolic_path";
+    fim_decoder->fields[FIM_USER_ID] = "user_id";
+    fim_decoder->fields[FIM_USER_NAME] = "user_name";
+    fim_decoder->fields[FIM_GROUP_ID] = "group_id";
+    fim_decoder->fields[FIM_GROUP_NAME] = "group_name";
+    fim_decoder->fields[FIM_PROC_NAME] = "process_name";
+    fim_decoder->fields[FIM_AUDIT_ID] = "audit_uid";
+    fim_decoder->fields[FIM_AUDIT_NAME] = "audit_name";
+    fim_decoder->fields[FIM_EFFECTIVE_UID] = "effective_uid";
+    fim_decoder->fields[FIM_EFFECTIVE_NAME] = "effective_name";
+    fim_decoder->fields[FIM_PPID] = "ppid";
+    fim_decoder->fields[FIM_PROC_ID] = "process_id";
 }
 
 // Initialize the necessary information to process the syscheck information
@@ -137,17 +160,19 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     char *w_sum = NULL;
     char *f_name;
 
-    /* Every syscheck message must be in the following format:
+    /* Every syscheck message must be in the following format (OSSEC - Wazuh v3.10):
      * 'checksum' 'filename'
      * or
      * 'checksum'!'extradata' 'filename'
      * or
-     *                                             |v2.1       v3.4   |v3.4         |v3.6 |v3.9
-     *                                             |->         |->    |->           |->   |->
+     *                                             |v2.1       |v3.4  |v3.4         |v3.6  |v3.9               |v1.0
+     *                                             |->         |->    |->           |->   |->                  |->
      * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tags:symbolic_path:silent filename\nreportdiff"
-     *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^^ filename\n^^^diff^^^'
+     *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^^^^^^^^^^^extradata^^^^^^^^^^^^^^^^ filename\n^^^diff^^^
      */
+
     sdb_clean(sdb);
+
     f_name = wstr_chr(lf->log, ' ');
     if (f_name == NULL) {
         mdebug2("Scan's control message agent '%s': '%s'", lf->log, lf->agent_id);
@@ -174,22 +199,8 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     lf->data = strchr(f_name, '\n');
     if (lf->data) {
         *(lf->data++) = '\0';
-        os_strdup(lf->data, lf->data);
-    }
-
-    // Check if file is supposed to be ignored
-    if (Config.syscheck_ignore) {
-        char **ff_ig = Config.syscheck_ignore;
-
-        while (*ff_ig) {
-            if (strncasecmp(*ff_ig, f_name, strlen(*ff_ig)) == 0) {
-                os_free(lf->data);
-                mdebug1("Ignoring file '%s'", f_name);;
-                return (0);
-            }
-
-            ff_ig++;
-        }
+        os_strdup(lf->data, lf->diff);
+        os_strdup(lf->data, lf->fields[FIM_DIFF].value);
     }
 
     // Checksum is at the beginning of the log
@@ -230,7 +241,8 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
     snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck load %s", lf->agent_id, f_name);
 
-    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+    os_calloc(OS_SIZE_6144, sizeof(char), response);
+    db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
     // Fail trying load info from DDBB
 
@@ -284,9 +296,8 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                     lf->agent_id,
                     f_name
             );
-            os_free(response);
-            response = NULL;
-            db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+
+            db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
             switch (db_result) {
             case -2:
@@ -336,9 +347,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                     f_name
             );
             os_free(sym_path);
-            os_free(response);
-            response = NULL;
-            db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+            db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
             switch (db_result) {
             case -2:
@@ -391,8 +400,8 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         sk_fill_event(lf, f_name, &newsum);
 
         /* Dyanmic Fields */
-        lf->nfields = SK_NFIELDS;
-        for (i = 0; i < SK_NFIELDS; i++) {
+        lf->nfields = FIM_NFIELDS;
+        for (i = 0; i < FIM_NFIELDS; i++) {
             os_strdup(lf->decoder_info->fields[i], lf->fields[i].key);
         }
 
@@ -431,85 +440,8 @@ exit_fail:
     return (-1);
 }
 
-
-int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
-
-    int retval = -2;
-    int attempts;
-
-    // Connect to socket if disconnected
-    if (sdb->socket < 0) {
-        for (attempts = 1; attempts <= FIM_MAX_WAZUH_DB_ATTEMPS && (sdb->socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144)) < 0; attempts++) {
-            switch (errno) {
-            case ENOENT:
-                mtinfo(ARGV0, "FIM decoder: Cannot find '%s'. Waiting %d seconds to reconnect.", WDB_LOCAL_SOCK, attempts);
-                break;
-            default:
-                mtinfo(ARGV0, "FIM decoder: Cannot connect to '%s': %s (%d). Waiting %d seconds to reconnect.", WDB_LOCAL_SOCK, strerror(errno), errno, attempts);
-            }
-            sleep(attempts);
-        }
-
-        if (sdb->socket < 0) {
-            mterror(ARGV0, "FIM decoder: Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
-            return retval;
-        }
-    }
-
-    int size = strlen(wazuhdb_query);
-
-    // Send query to Wazuh DB
-    if (OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query) != 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            mterror(ARGV0, "FIM decoder: database socket is full");
-        } else if (errno == EPIPE) {
-            // Retry to connect
-            mterror(ARGV0, "FIM decoder: Connection with wazuh-db lost. Reconnecting.");
-            close(sdb->socket);
-
-            if (sdb->socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144), sdb->socket < 0) {
-                switch (errno) {
-                case ENOENT:
-                    mterror(ARGV0, "FIM decoder: Cannot find '%s'. Please check that Wazuh DB is running.", WDB_LOCAL_SOCK);
-                    break;
-                default:
-                    mterror(ARGV0, "FIM decoder: Cannot connect to '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
-                }
-                return retval;
-            }
-
-            if (OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query)) {
-                mterror(ARGV0, "FIM decoder: in send reattempt (%d) '%s'.", errno, strerror(errno));
-                return retval;
-            }
-        } else {
-            mterror(ARGV0, "FIM decoder: in send (%d) '%s'.", errno, strerror(errno));
-        }
-    }
-
-    retval = -1;
-
-    char response[OS_SIZE_6144];
-
-    // Receive response from socket
-    if (OS_RecvSecureTCP(sdb->socket, response, OS_SIZE_6144 - 1) > 0) {
-        os_strdup(response, *output);
-
-        if (response[0] == 'o' && response[1] == 'k') {
-            retval = 0;
-        } else {
-            mterror(ARGV0, "FIM decoder: Bad response '%s'.", response);
-        }
-    } else {
-        mterror(ARGV0, "FIM decoder: no response from wazuh-db.");
-    }
-
-    return retval;
-}
-
 int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb) {
     int changes = 0;
-    int comment_buf = 0;
     char msg_type[OS_FLSIZE];
 
     switch (lf->event_type) {
@@ -537,7 +469,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     localsdb->size[0] = '\0';
                 } else {
                     changes = 1;
-                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "size", ',');
+                    wm_strcat(&lf->fields[FIM_CHFIELDS].value, "size", ',');
                     snprintf(localsdb->size, OS_FLSIZE,
                              "Size changed from '%s' to '%s'\n",
                              oldsum->size, newsum->size);
@@ -552,29 +484,26 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     localsdb->perm[0] = '\0';
                 } else if (oldsum->perm > 0 && newsum->perm > 0) {
                     changes = 1;
-                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
+                    wm_strcat(&lf->fields[FIM_CHFIELDS].value, "perm", ',');
                     char opstr[10];
                     char npstr[10];
-                    char *old_perm =  agent_file_perm(oldsum->perm);
+                    lf->perm_before =  agent_file_perm(oldsum->perm);
                     char *new_perm =  agent_file_perm(newsum->perm);
 
-                    strncpy(opstr, old_perm, sizeof(opstr) - 1);
+                    strncpy(opstr, lf->perm_before, sizeof(opstr) - 1);
                     strncpy(npstr, new_perm, sizeof(npstr) - 1);
-                    free(old_perm);
                     free(new_perm);
 
                     opstr[9] = npstr[9] = '\0';
                     snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed from "
                              "'%9.9s' to '%9.9s'\n", opstr, npstr);
-
-                    lf->perm_before = oldsum->perm;
                 }
             } else if (oldsum->win_perm && newsum->win_perm) { // Check for Windows permissions
                 if (!strcmp(oldsum->win_perm, newsum->win_perm)) {
                     localsdb->perm[0] = '\0';
                 } else if (*oldsum->win_perm != '\0' && *newsum->win_perm != '\0') {
                     changes = 1;
-                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
+                    wm_strcat(&lf->fields[FIM_CHFIELDS].value, "perm", ',');
                     if (!decode_win_permissions(localsdb->perm, OS_FLSIZE, newsum->win_perm, 1, NULL)) {
                         localsdb->perm[0] = '\0';
                     }
@@ -589,7 +518,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     localsdb->owner[0] = '\0';
                 } else {
                     changes = 1;
-                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "uid", ',');
+                    wm_strcat(&lf->fields[FIM_CHFIELDS].value, "uid", ',');
                     if (oldsum->uname && newsum->uname) {
                         snprintf(localsdb->owner, OS_FLSIZE, "Ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum->uname, oldsum->uid, newsum->uname, newsum->uid);
                         os_strdup(oldsum->uname, lf->uname_before);
@@ -606,7 +535,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     localsdb->gowner[0] = '\0';
                 } else {
                     changes = 1;
-                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "gid", ',');
+                    wm_strcat(&lf->fields[FIM_CHFIELDS].value, "gid", ',');
                     if (oldsum->gname && newsum->gname) {
                         snprintf(localsdb->gowner, OS_FLSIZE, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum->gname, oldsum->gid, newsum->gname, newsum->gid);
                         os_strdup(oldsum->gname, lf->gname_before);
@@ -621,7 +550,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 localsdb->md5[0] = '\0';
             } else {
                 changes = 1;
-                wm_strcat(&lf->fields[SK_CHFIELDS].value, "md5", ',');
+                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "md5", ',');
                 snprintf(localsdb->md5, OS_FLSIZE, "Old md5sum was: '%s'\nNew md5sum is : '%s'\n",
                          oldsum->md5, newsum->md5);
                 os_strdup(oldsum->md5, lf->md5_before);
@@ -632,7 +561,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 localsdb->sha1[0] = '\0';
             } else {
                 changes = 1;
-                wm_strcat(&lf->fields[SK_CHFIELDS].value, "sha1", ',');
+                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "sha1", ',');
                 snprintf(localsdb->sha1, OS_FLSIZE, "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n",
                          oldsum->sha1, newsum->sha1);
                 os_strdup(oldsum->sha1, lf->sha1_before);
@@ -646,14 +575,14 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                         localsdb->sha256[0] = '\0';
                     } else {
                         changes = 1;
-                        wm_strcat(&lf->fields[SK_CHFIELDS].value, "sha256", ',');
+                        wm_strcat(&lf->fields[FIM_CHFIELDS].value, "sha256", ',');
                         snprintf(localsdb->sha256, OS_FLSIZE, "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n",
                                 oldsum->sha256, newsum->sha256);
                         os_strdup(oldsum->sha256, lf->sha256_before);
                     }
                 } else {
                     changes = 1;
-                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "sha256", ',');
+                    wm_strcat(&lf->fields[FIM_CHFIELDS].value, "sha256", ',');
                     snprintf(localsdb->sha256, OS_FLSIZE, "New sha256sum is : '%s'\n", newsum->sha256);
                 }
             } else {
@@ -663,7 +592,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             /* Modification time message */
             if (oldsum->mtime && newsum->mtime && oldsum->mtime != newsum->mtime) {
                 changes = 1;
-                wm_strcat(&lf->fields[SK_CHFIELDS].value, "mtime", ',');
+                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "mtime", ',');
                 char *old_ctime = strdup(ctime(&oldsum->mtime));
                 char *new_ctime = strdup(ctime(&newsum->mtime));
                 old_ctime[strlen(old_ctime) - 1] = '\0';
@@ -680,7 +609,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             /* Inode message */
             if (oldsum->inode && newsum->inode && oldsum->inode != newsum->inode) {
                 changes = 1;
-                wm_strcat(&lf->fields[SK_CHFIELDS].value, "inode", ',');
+                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "inode", ',');
                 snprintf(localsdb->inode, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", oldsum->inode, newsum->inode);
                 lf->inode_before = oldsum->inode;
             } else {
@@ -696,7 +625,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 os_calloc(OS_SIZE_256 + 1, sizeof(char), str_attr_after);
                 decode_win_attributes(str_attr_before, oldsum->attrs);
                 decode_win_attributes(str_attr_after, newsum->attrs);
-                wm_strcat(&lf->fields[SK_ATTRS].value, "attributes", ',');
+                wm_strcat(&lf->fields[FIM_ATTRS].value, "attributes", ',');
                 snprintf(localsdb->attrs, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n", str_attr_before, str_attr_after);
                 lf->attrs_before = oldsum->attrs;
                 free(str_attr_before);
@@ -719,15 +648,9 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     }
 
     // Provide information about the file
-    comment_buf = snprintf(localsdb->comment, OS_MAXSTR, "File"
+    snprintf(localsdb->comment, OS_MAXSTR, "File"
             " '%.756s' "
             "%s\n"
-            "%s"
-            "%s"
-            "%s"
-            "%s"
-            "%s"
-            "%s"
             "%s"
             "%s"
             "%s"
@@ -751,26 +674,13 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             localsdb->sha256,
             localsdb->attrs,
             localsdb->mtime,
-            localsdb->inode,
-            localsdb->user_name,
-            localsdb->audit_name,
-            localsdb->effective_name,
-            localsdb->group_name,
-            localsdb->process_id,
-            localsdb->process_name
+            localsdb->inode
     );
     if(!changes) {
         os_free(lf->data);
         return(-1);
     } else {
-        wm_strcat(&lf->fields[SK_CHFIELDS].value, ",", '\0');
-    }
-
-    if(lf->data) {
-        snprintf(localsdb->comment+comment_buf, OS_MAXSTR-comment_buf, "%s",
-                lf->data);
-        lf->diff = lf->data;
-        lf->data = NULL;
+        wm_strcat(&lf->fields[FIM_CHFIELDS].value, ",", '\0');
     }
 
     // Create a new log message
@@ -915,7 +825,8 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
                 (long int)value
         );
 
-        db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+        os_calloc(OS_SIZE_6144, sizeof(char), response);
+        db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
         switch (db_result) {
         case -2:
@@ -961,8 +872,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
                     (long int)value
             );
 
-            os_free(response);
-            db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+            db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
             switch (db_result) {
             case -2:
@@ -1003,7 +913,8 @@ int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb) {
             file
     );
 
-    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+    os_calloc(OS_SIZE_6144, sizeof(char), response);
+    db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
     switch (db_result) {
     case -2:
@@ -1034,7 +945,8 @@ int fim_database_clean (Eventinfo *lf, _sdb *sdb) {
             lf->agent_id
     );
 
-    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+    os_calloc(OS_SIZE_6144, sizeof(char), response);
+    db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
     switch (db_result) {
     case -2:
@@ -1066,7 +978,8 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
             lf->agent_id
     );
 
-    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+    os_calloc(OS_SIZE_6144, sizeof(char), response);
+    db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
     switch (db_result) {
     case -2:
@@ -1095,4 +1008,539 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
     os_free(wazuhdb_query);
     os_free(response);
     return (1);
+}
+
+
+int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
+    /* Every syscheck message must be in the following JSON format, as of agent version v3.11
+     * {
+     *   type:                  "event"
+     *   data: {
+     *     path:                string
+     *     mode:                "scheduled"|"real-time"|"whodata"
+     *     type:                "added"|"deleted"|"modified"
+     *     timestamp:           number
+     *     changed_attributes: [
+     *       "size"
+     *       "permission"
+     *       "uid"
+     *       "user_name"
+     *       "gid"
+     *       "group_name"
+     *       "mtime"
+     *       "inode"
+     *       "md5"
+     *       "sha1"
+     *       "sha256"
+     *     ]
+     *     tags:                string
+     *     content_changes:     string
+     *     old_attributes: {
+     *       type:              "file"|"registry"
+     *       size:              number
+     *       perm:              string
+     *       user_name:         string
+     *       group_name:        string
+     *       uid:               string
+     *       gid:               string
+     *       inode:             number
+     *       mtime:             number
+     *       hash_md5:          string
+     *       hash_sha1:         string
+     *       hash_sha256:       string
+     *       win_attributes:    string
+     *       symlink_path:      string
+     *       checksum:          string
+     *     }
+     *     attributes: {
+     *       type:              "file"|"registry"
+     *       size:              number
+     *       perm:              string
+     *       user_name:         string
+     *       group_name:        string
+     *       uid:               string
+     *       gid:               string
+     *       inode:             number
+     *       mtime:             number
+     *       hash_md5:          string
+     *       hash_sha1:         string
+     *       hash_sha256:       string
+     *       win_attributes:    string
+     *       symlink_path:      string
+     *       checksum:          string
+     *     }
+     *     audit: {
+     *       user_id:           string
+     *       user_name:         string
+     *       group_id:          string
+     *       group_name:        string
+     *       process_name:      string
+     *       audit_uid:         string
+     *       audit_name:        string
+     *       effective_uid:     string
+     *       effective_name:    string
+     *       ppid:              number
+     *       process_id:        number
+     *     }
+     *   }
+     * }
+     *
+     * Scan info events:
+     * {
+     *   type:                  "scan_start"|"scan_end"
+     *   data: {
+     *     timestamp:           number
+     *   }
+     * }
+     */
+
+    cJSON *root_json = NULL;
+    int retval = 0;
+
+    if (root_json = cJSON_Parse(lf->log), !root_json) {
+        merror("Malformed FIM JSON event");
+        return retval;
+    }
+
+    char * type = cJSON_GetStringValue(cJSON_GetObjectItem(root_json, "type"));
+    cJSON * data = cJSON_GetObjectItem(root_json, "data");
+
+    if (type != NULL && data != NULL) {
+        if (strcmp(type, "event") == 0) {
+            fim_process_alert(sdb, lf, data);
+            retval = 1;
+        } else if (strcmp(type, "scan_start") == 0) {
+            fim_process_scan_info(sdb, lf->agent_id, FIM_SCAN_START, data);
+        } else if (strcmp(type, "scan_end") == 0) {
+            fim_process_scan_info(sdb, lf->agent_id, FIM_SCAN_END, data);
+        }
+    } else {
+        merror("Invalid FIM event");
+        return retval;
+    }
+
+    cJSON_Delete(root_json);
+    return retval;
+}
+
+
+static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
+    cJSON *attributes = NULL;
+    cJSON *old_attributes = NULL;
+    cJSON *audit = NULL;
+    cJSON *object = NULL;
+    char *mode = NULL;
+    char *event_type = NULL;
+    time_t event_time;
+
+    cJSON_ArrayForEach(object, event) {
+        if (object->string == NULL) {
+            mdebug1("FIM event contains an item with no key.");
+            return -1;
+        }
+
+        switch (object->type) {
+        case cJSON_Number:
+            if (strcmp(object->string, "timestamp") == 0) {
+                event_time = (time_t)object->valuedouble;
+            }
+
+            break;
+
+        case cJSON_String:
+            if (strcmp(object->string, "path") == 0) {
+                os_strdup(object->valuestring, lf->filename);
+                os_strdup(object->valuestring, lf->fields[FIM_FILE].value);
+            } else if (strcmp(object->string, "mode") == 0) {
+                mode = object->valuestring;
+            } else if (strcmp(object->string, "type") == 0) {
+                event_type = object->valuestring;
+                if (strcmp("added", event_type) == 0) {
+                    lf->event_type = FIM_ADDED;
+                } else if (strcmp("modified", event_type) == 0) {
+                    lf->event_type = FIM_MODIFIED;
+                } else if (strcmp("deleted", event_type) == 0) {
+                    lf->event_type = FIM_DELETED;
+                }
+            } else if (strcmp(object->string, "tags") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_TAG].value);
+                os_strdup(object->valuestring, lf->sk_tag);
+            } else if (strcmp(object->string, "content_changes") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_DIFF].value);
+            }
+
+            break;
+
+        case cJSON_Array:
+            if (strcmp(object->string, "changed_attributes") == 0) {
+                cJSON *item;
+
+                cJSON_ArrayForEach(item, object) {
+                    wm_strcat(&lf->fields[FIM_CHFIELDS].value, item->valuestring, ',');
+                }
+            }
+
+            break;
+
+        case cJSON_Object:
+            if (strcmp(object->string, "attributes") == 0) {
+                attributes = object;
+            } else if (strcmp(object->string, "old_attributes") == 0) {
+                old_attributes = object;
+            } else if (strcmp(object->string, "audit") == 0) {
+                audit = object;
+            }
+
+            break;
+        }
+    }
+
+    if (event_type == NULL) {
+        mdebug1("No member 'type' in Syscheck JSON payload");
+        return -1;
+    }
+
+    if (strcmp("added", event_type) == 0) {
+        lf->event_type = FIM_ADDED;
+    } else if (strcmp("modified", event_type) == 0) {
+        lf->event_type = FIM_MODIFIED;
+    } else if (strcmp("deleted", event_type) == 0) {
+        lf->event_type = FIM_DELETED;
+    }
+
+    fim_generate_alert(lf, mode, event_type, event_time, attributes, old_attributes, audit);
+
+    switch (lf->event_type) {
+    case FIM_ADDED:
+    case FIM_MODIFIED:
+        fim_send_db_save(sdb, lf->agent_id, event);
+        break;
+
+    case FIM_DELETED:
+        fim_send_db_delete(sdb, lf->agent_id, lf->filename);
+
+    default:
+        ;
+    }
+
+    return 0;
+}
+
+void fim_send_db_save(_sdb * sdb, const char * agent_id, cJSON * data) {
+    cJSON_DeleteItemFromObject(data, "mode");
+    cJSON_DeleteItemFromObject(data, "type");
+    cJSON_DeleteItemFromObject(data, "tags");
+    cJSON_DeleteItemFromObject(data, "content_changes");
+    cJSON_DeleteItemFromObject(data, "changed_attributes");
+    cJSON_DeleteItemFromObject(data, "old_attributes");
+    cJSON_DeleteItemFromObject(data, "audit");
+
+    char * data_plain = cJSON_PrintUnformatted(data);
+    char * query;
+
+    os_malloc(OS_MAXSTR, query);
+
+    if (snprintf(query, OS_MAXSTR, "agent %s syscheck save2 %s", agent_id, data_plain) >= OS_MAXSTR) {
+        merror("FIM decoder: Cannot build save query: input is too long.");
+        goto end;
+    }
+
+    fim_send_db_query(&sdb->socket, query);
+
+end:
+    free(data_plain);
+    free(query);
+}
+
+void fim_send_db_delete(_sdb * sdb, const char * agent_id, const char * path) {
+    char query[OS_SIZE_6144];
+
+    if (snprintf(query, sizeof(query), "agent %s syscheck delete %s", agent_id, path) >= OS_MAXSTR) {
+        merror("FIM decoder: Cannot build save query: input is too long.");
+        return;
+    }
+
+    fim_send_db_query(&sdb->socket, query);
+}
+
+void fim_send_db_query(int * sock, const char * query) {
+    char * response;
+    char * arg;
+
+    os_malloc(OS_MAXSTR, response);
+
+    switch (wdbc_query_ex(sock, query, response, OS_MAXSTR)) {
+    case -2:
+        merror("FIM decoder: Cannot communicate with database.");
+        goto end;
+    case -1:
+        merror("FIM decoder: Cannot get response from database.");
+        goto end;
+    }
+
+    switch (wdbc_parse_result(response, &arg)) {
+    case WDBC_OK:
+        break;
+    case WDBC_ERROR:
+        merror("FIM decoder: Bad response from database: %s", arg);
+        // Fallthrough
+    default:
+        goto end;
+    }
+
+end:
+    free(response);
+}
+
+
+static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
+    time_t event_time, cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
+
+    cJSON *object = NULL;
+    char change_size[OS_FLSIZE + 1] = {'\0'};
+    char change_perm[OS_SIZE_20480 + 1] = {'\0'};
+    char change_owner[OS_FLSIZE + 1] = {'\0'};
+    char change_user[OS_FLSIZE + 1] = {'\0'};
+    char change_gowner[OS_FLSIZE + 1] = {'\0'};
+    char change_group[OS_FLSIZE + 1] = {'\0'};
+    char change_md5[OS_FLSIZE + 1] = {'\0'};
+    char change_sha1[OS_FLSIZE + 1] = {'\0'};
+    char change_sha256[OS_FLSIZE + 1] = {'\0'};
+    char change_mtime[OS_FLSIZE + 1] = {'\0'};
+    char change_inode[OS_FLSIZE + 1] = {'\0'};
+    char change_win_attributes[OS_SIZE_256 + 1] = {'\0'};
+    int it;
+
+    /* Dynamic Fields */
+    lf->nfields = FIM_NFIELDS;
+    for (it = 0; it < FIM_NFIELDS; it++) {
+        os_strdup(lf->decoder_info->fields[it], lf->fields[it].key);
+    }
+
+    cJSON_ArrayForEach(object, attributes) {
+        if (object->string == NULL) {
+            mdebug1("FIM attribute set contains an item with no key.");
+            return -1;
+        }
+
+        switch (object->type) {
+        case cJSON_Number:
+            if (strcmp(object->string, "size") == 0) {
+                os_calloc(OS_SIZE_32, sizeof(char), lf->fields[FIM_SIZE].value);
+                snprintf(lf->fields[FIM_SIZE].value, OS_SIZE_32, "%ld", (long)object->valuedouble);
+                os_strdup(lf->fields[FIM_SIZE].value, lf->size_after);
+            } else if (strcmp(object->string, "inode") == 0) {
+                os_calloc(OS_SIZE_32, sizeof(char), lf->fields[FIM_INODE].value);
+                snprintf(lf->fields[FIM_INODE].value, OS_SIZE_32, "%ld", (long)object->valuedouble);
+                lf->inode_after = (long)object->valuedouble;
+            } else if (strcmp(object->string, "mtime") == 0) {
+                os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_MTIME].value);
+                snprintf(lf->fields[FIM_MTIME].value, OS_SIZE_16, "%d", object->valueint);
+                lf->mtime_after = (long)object->valuedouble;
+            }
+
+            break;
+
+        case cJSON_String:
+            if (strcmp(object->string, "perm") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_PERM].value);
+                os_strdup(object->valuestring, lf->perm_after);
+            } else if (strcmp(object->string, "user_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_UNAME].value);
+                os_strdup(object->valuestring, lf->uname_after);
+            } else if (strcmp(object->string, "group_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_GNAME].value);
+                os_strdup(object->valuestring, lf->gname_after);
+            } else if (strcmp(object->string, "uid") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_UID].value);
+                os_strdup(object->valuestring, lf->owner_after);
+            } else if (strcmp(object->string, "gid") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_GID].value);
+                os_strdup(object->valuestring, lf->gowner_after);
+            } else if (strcmp(object->string, "hash_md5") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_MD5].value);
+                os_strdup(object->valuestring, lf->md5_after);
+            } else if (strcmp(object->string, "hash_sha1") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_SHA1].value);
+                os_strdup(object->valuestring, lf->sha1_after);
+            } else if (strcmp(object->string, "hash_sha256") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_SHA256].value);
+                os_strdup(object->valuestring, lf->sha256_after);
+            } else if (strcmp(object->string, "win_attributes") == 0) {
+                os_strdup(object->valuestring, lf->win_perm_after);
+            } else if (strcmp(object->string, "symlink_path") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_SYM_PATH].value);
+            }
+        }
+    }
+
+    cJSON_ArrayForEach(object, old_attributes) {
+        if (object->string == NULL) {
+            mdebug1("FIM old attribute set contains an item with no key.");
+            return -1;
+        }
+
+        switch (object->type) {
+        case cJSON_Number:
+            if (strcmp(object->string, "size") == 0) {
+                os_calloc(OS_SIZE_32, sizeof(char), lf->size_before);
+                snprintf(lf->size_before, OS_SIZE_32, "%ld", (long)object->valuedouble);
+            } else if (strcmp(object->string, "inode") == 0) {
+                lf->inode_before = (long)object->valuedouble;
+            } else if (strcmp(object->string, "mtime") == 0) {
+                lf->mtime_before = (long)object->valuedouble;
+            }
+
+            break;
+
+        case cJSON_String:
+            if (strcmp(object->string, "perm") == 0) {
+                os_strdup(object->valuestring, lf->perm_before);
+            } else if (strcmp(object->string, "user_name") == 0) {
+                os_strdup(object->valuestring, lf->uname_before);
+            } else if (strcmp(object->string, "group_name") == 0) {
+                os_strdup(object->valuestring, lf->gname_before);
+            } else if (strcmp(object->string, "uid") == 0) {
+                os_strdup(object->valuestring, lf->owner_before);
+            } else if (strcmp(object->string, "gid") == 0) {
+                os_strdup(object->valuestring, lf->gowner_before);
+            } else if (strcmp(object->string, "hash_md5") == 0) {
+                os_strdup(object->valuestring, lf->md5_before);
+            } else if (strcmp(object->string, "hash_sha1") == 0) {
+                os_strdup(object->valuestring, lf->sha1_before);
+            } else if (strcmp(object->string, "hash_sha256") == 0) {
+                os_strdup(object->valuestring, lf->sha256_before);
+            } else if (strcmp(object->string, "win_attributes") == 0) {
+                os_strdup(object->valuestring, lf->win_perm_before);
+            }
+        }
+    }
+
+    cJSON_ArrayForEach(object, audit) {
+        if (object->string == NULL) {
+            mdebug1("FIM audit set contains an item with no key.");
+            return -1;
+        }
+
+        switch (object->type) {
+        case cJSON_Number:
+            if (strcmp(object->string, "ppid") == 0) {
+                os_calloc(OS_SIZE_32, sizeof(char), lf->fields[FIM_PPID].value);
+                snprintf(lf->fields[FIM_PPID].value, OS_SIZE_32, "%ld", (long)object->valuedouble);
+            } else if (strcmp(object->string, "process_id") == 0) {
+                os_calloc(OS_SIZE_32, sizeof(char), lf->fields[FIM_PROC_ID].value);
+                snprintf(lf->fields[FIM_PROC_ID].value, OS_SIZE_32, "%ld", (long)object->valuedouble);
+            }
+
+            break;
+
+        case cJSON_String:
+            if (strcmp(object->string, "user_id") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_USER_ID].value);
+            } else if (strcmp(object->string, "user_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_USER_NAME].value);
+            } else if (strcmp(object->string, "group_id") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_GROUP_ID].value);
+            } else if (strcmp(object->string, "group_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_GROUP_NAME].value);
+            } else if (strcmp(object->string, "process_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_PROC_NAME].value);
+            } else if (strcmp(object->string, "audit_uid") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_AUDIT_ID].value);
+            } else if (strcmp(object->string, "audit_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_AUDIT_NAME].value);
+            } else if (strcmp(object->string, "effective_uid") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_EFFECTIVE_UID].value);
+            } else if (strcmp(object->string, "effective_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_EFFECTIVE_NAME].value);
+            }
+        }
+    }
+
+    // Format comment
+    if (lf->event_type == FIM_MODIFIED) {
+        fim_generate_comment(change_size, sizeof(change_size), "Size changed from '%s' to '%s'\n", lf->size_before, lf->size_after);
+        fim_generate_comment(change_perm, sizeof(change_perm), "Permissions changed from '%s' to '%s'\n", lf->perm_before, lf->perm_after);
+        fim_generate_comment(change_owner, sizeof(change_owner), "Ownership was '%s', now it is '%s'\n", lf->owner_before, lf->owner_after);
+        fim_generate_comment(change_user, sizeof(change_owner), "User name was '%s', now it is '%s'\n", lf->uname_before, lf->uname_after);
+        fim_generate_comment(change_gowner, sizeof(change_gowner), "Group ownership was '%s', now it is '%s'\n", lf->gowner_before, lf->gowner_after);
+        fim_generate_comment(change_group, sizeof(change_gowner), "Group name was '%s', now it is '%s'\n", lf->gname_before, lf->gname_after);
+
+        if (lf->mtime_before != lf->mtime_after) {
+            snprintf(change_mtime, sizeof(change_mtime), "Old modification time was: '%ld', now it is '%ld'\n", lf->mtime_before, lf->mtime_after);
+        }
+        if (lf->inode_before != lf->inode_after) {
+            snprintf(change_inode, sizeof(change_inode), "Old inode was: '%ld', now it is '%ld'\n", lf->inode_before, lf->inode_after);
+        }
+
+        fim_generate_comment(change_md5, sizeof(change_md5), "Old md5sum was: '%s'\nNew md5sum is : '%s'\n", lf->md5_before, lf->md5_after);
+        fim_generate_comment(change_sha1, sizeof(change_sha1), "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n", lf->sha1_before, lf->sha1_after);
+        fim_generate_comment(change_sha256, sizeof(change_sha256), "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n", lf->sha256_before, lf->sha256_after);
+        fim_generate_comment(change_win_attributes, sizeof(change_win_attributes), "Old attributes were: '%s'\nNow they are '%s'\n", lf->win_perm_before, lf->win_perm_after);
+    }
+
+    // Provide information about the file
+    char str_time[DATE_LENGTH];
+    char changed_attributes[OS_SIZE_256];
+
+    strftime(str_time, sizeof(str_time), "%D %T", localtime(&event_time));
+    snprintf(changed_attributes, OS_SIZE_256, "Changed attributes: %s\n", lf->fields[FIM_CHFIELDS].value);
+
+    snprintf(lf->full_log, OS_MAXSTR,
+            "File '%.756s' %s\n"
+            "Mode: %s\n"
+            "Event time: %s\n"
+            "%s"
+            "%s%s%s%s%s%s%s%s%s%s%s%s",
+            lf->fields[FIM_FILE].value, event_type,
+            mode,
+            str_time,
+            lf->fields[FIM_CHFIELDS].value ? changed_attributes : "",
+            change_size,
+            change_perm,
+            change_owner,
+            change_user,
+            change_gowner,
+            change_group,
+            change_md5,
+            change_sha1,
+            change_sha256,
+            change_mtime,
+            change_inode,
+            change_win_attributes
+            //lf->fields[FIM_SYM_PATH].value
+    );
+
+    return 0;
+}
+
+// Build change comment
+
+void fim_generate_comment(char * str, long size, const char * format, const char * a1, const char * a2) {
+    a1 = a1 != NULL ? a1 : "";
+    a2 = a2 != NULL ? a2 : "";
+
+    if (strcmp(a1, a2) != 0) {
+        snprintf(str, size, format, a1, a2);
+    }
+}
+
+// Process scan info event
+
+void fim_process_scan_info(_sdb * sdb, const char * agent_id, fim_scan_event event, cJSON * data) {
+    cJSON * timestamp = cJSON_GetObjectItem(data, "timestamp");
+
+    if (!cJSON_IsNumber(timestamp)) {
+        mdebug1("No such member \"timestamp\" in FIM scan info event.");
+        return;
+    }
+
+    char query[OS_SIZE_6144];
+
+    if (snprintf(query, sizeof(query), "agent %s syscheck scan_info_update %s %ld", agent_id, event == FIM_SCAN_START ? "start_scan" : "end_scan", (long)timestamp->valuedouble) >= OS_MAXSTR) {
+        merror("FIM decoder: Cannot build save query: input is too long.");
+        return;
+    }
+
+    fim_send_db_query(&sdb->socket, query);
 }

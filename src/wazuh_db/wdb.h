@@ -49,6 +49,7 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
     WDB_STMT_FIM_INSERT_ENTRY,
+    WDB_STMT_FIM_INSERT_ENTRY2,
     WDB_STMT_FIM_UPDATE_ENTRY,
     WDB_STMT_FIM_DELETE,
     WDB_STMT_FIM_UPDATE_DATE,
@@ -109,6 +110,12 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_CHECK_RULES_DELETE,
     WDB_STMT_SCA_CHECK_FIND,
     WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
+    WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_FIM_DELETE_AROUND,
+    WDB_STMT_FIM_DELETE_RANGE,
+    WDB_STMT_FIM_CLEAR,
+    WDB_STMT_SYNC_UPDATE_ATTEMPT,
+    WDB_STMT_SYNC_UPDATE_COMPLETION,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -119,6 +126,7 @@ typedef struct wdb_t {
     unsigned int refcount;
     unsigned int transaction:1;
     time_t last;
+    time_t transaction_begin_time;
     pthread_mutex_t mutex;
     struct wdb_t * next;
 } wdb_t;
@@ -126,9 +134,15 @@ typedef struct wdb_t {
 typedef struct wdb_config {
     int sock_queue_size;
     int worker_pool_size;
-    int commit_time;
+    int commit_time_min;
+    int commit_time_max;
     int open_db_limit;
 } wdb_config;
+
+/// Enumeration of components supported by the integrity library.
+typedef enum {
+    WDB_FIM         ///< File integrity monitoring.
+} wdb_component_t;
 
 /* Global SQLite database */
 extern sqlite3 *wdb_global;
@@ -187,11 +201,13 @@ int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, co
 int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size);
 
 int wdb_syscheck_save(wdb_t * wdb, int ftype, char * checksum, const char * file);
+int wdb_syscheck_save2(wdb_t * wdb, const char * payload);
 
 // Find file entry: returns 1 if found, 0 if not, or -1 on error.
 int wdb_fim_find_entry(wdb_t * wdb, const char * path);
 
 int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum_t * sum);
+int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data);
 
 int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum);
 
@@ -305,9 +321,6 @@ char* wdb_agent_group(int id);
 int wdb_create_agent_db(int id, const char *name);
 
 int wdb_create_agent_db2(const char * agent_id);
-
-/* Initialize table metadata Returns 0 on success or -1 on error. */
-int wdb_metadata_initialize (wdb_t *wdb);
 
 /* Insert or update metadata entries. Returns 0 on success or -1 on error. */
 int wdb_fim_fill_metadata(wdb_t * wdb, char *data);
@@ -528,7 +541,6 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
-int wdb_scan_info_init (wdb_t *wdb);
 int wdb_scan_info_find(wdb_t * wdb, const char * module);
 int wdb_scan_info_insert (wdb_t * wdb, const char *module);
 int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, long value);
@@ -543,5 +555,36 @@ wdb_t * wdb_backup(wdb_t *wdb, int version);
 
 /* Create backup for agent. Returns 0 on success or -1 on error. */
 int wdb_create_backup(const char * agent_id, int version);
+
+/**
+ * @brief Query the checksum of a data range
+ *
+ * Check that the accumulated checksum of every item between begin and
+ * end (included) ordered alphabetically matches the checksum provided.
+ *
+ * On success, also delete every file between end and tail (if provided),
+ * none of them included.
+ *
+ * @param wdb Database node.
+ * @param component Name of the component.
+ * @param command Integrity check subcommand: "integrity_check_global", "integrity_check_left" or "integrity_check_right".
+ * @param payload Operation arguments in JSON format.
+ * @pre payload must contain strings "begin", "end" and "checksum", and optionally "tail".
+ * @retval 2 Success: checksum matches.
+ * @retval 1 Success: checksum does not match.
+ * @retval 0 Success: no files were found in this range.
+ * @retval -1 On error.
+ */
+int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * command, const char * payload);
+
+/**
+ * @brief Query a complete table clear
+ *
+ * @param wdb Database node.
+ * @param component Name of the component.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdbi_query_clear(wdb_t * wdb, wdb_component_t component);
 
 #endif

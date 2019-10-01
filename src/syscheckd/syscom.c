@@ -28,12 +28,22 @@ size_t syscom_dispatch(char * command, char ** output){
     if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            mdebug1(FIM_SYSCOM_ARGUMENTS);
+            mdebug1(FIM_SYSCOM_ARGUMENTS, "getconfig");
             *output = strdup("err SYSCOM getconfig needs arguments");
             return strlen(*output);
         }
         return syscom_getconfig(rcv_args, output);
+    } else if (strcmp(rcv_comm, "dbsync") == 0) {
+        if (rcv_args == NULL) {
+            mdebug1(FIM_SYSCOM_ARGUMENTS, "dbsync");
+        } else {
+            fim_sync_dispatch(rcv_args);
+        }
 
+        return 0;
+    } else if (strcmp(rcv_comm, "restart") == 0) {
+        os_set_restart_syscheck();
+        return 0;
     } else {
         mdebug1(FIM_SYSCOM_UNRECOGNIZED_COMMAND, rcv_comm);
         *output = strdup("err Unrecognized command");
@@ -153,8 +163,12 @@ void * syscom_main(__attribute__((unused)) void * arg) {
 
         default:
             length = syscom_dispatch(buffer, &response);
-            OS_SendSecureTCP(peer, length, response);
-            free(response);
+
+            if (length > 0) {
+                OS_SendSecureTCP(peer, length, response);
+                free(response);
+            }
+
             close(peer);
         }
         free(buffer);

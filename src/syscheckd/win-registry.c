@@ -17,91 +17,20 @@
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
 
 /* Default values */
-#define MAX_KEY_LENGTH   255
+#define MAX_KEY_LENGTH   260
 #define MAX_KEY         2048
 #define MAX_VALUE_NAME 16383
 
-/* Places to story the registry values */
-#define SYS_WIN_REG     "syscheck/syscheckregistry.db"
-#define SYS_REG_TMP     "syscheck/syscheck_sum.tmp"
-
 /* Global variables */
 HKEY sub_tree;
-int ig_count = 0;
-int run_count = 0;
+
+static const char *fim_entry_type[] = {
+    "file",
+    "registry"
+};
 
 /* Prototypes */
-void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char * tag);
-
-
-int os_winreg_changed(char *key, char *md5, char *sha1, int arch)
-{
-    char buf[MAX_LINE + 1];
-    char keyname[MAX_LINE + 1];
-
-    buf[MAX_LINE] = '\0';
-
-    snprintf(keyname, MAX_LINE, arch == ARCH_64BIT ? "[x64] %s" : "%s", key);
-
-    /* Seek to the beginning of the db */
-    fseek(syscheck.reg_fp, 0, SEEK_SET);
-
-    while (fgets(buf, MAX_LINE, syscheck.reg_fp) != NULL) {
-        if ((buf[0] != '#') && (buf[0] != ' ') && (buf[0] != '\n')) {
-            char *n_buf;
-
-            /* Remove the \n before reading */
-            n_buf = strchr(buf, '\n');
-            if (n_buf == NULL) {
-                continue;
-            }
-
-            *n_buf = '\0';
-
-            n_buf = strchr(buf, ' ');
-            if (n_buf == NULL) {
-                continue;
-            }
-
-            if (strcmp(n_buf + 1, keyname) != 0) {
-                continue;
-            }
-
-            /* Entry found, check if checksum is the same */
-            *n_buf = '\0';
-            if ((strncmp(buf, md5, sizeof(os_md5) - 1) == 0) &&
-                    (strcmp(buf + sizeof(os_md5) - 1, sha1) == 0)) {
-                /* File didn't change */
-                return (0);
-            }
-
-            /* File did change */
-            return (1);
-        }
-    }
-
-    fseek(syscheck.reg_fp, 0, SEEK_END);
-    fprintf(syscheck.reg_fp, "%s%s %s\n", md5, sha1, keyname);
-    return (1);
-}
-
-/* Notify of registry changes */
-int notify_registry(char *msg, __attribute__((unused)) int send_now)
-{
-    if (SendMSG(syscheck.queue, msg,
-                SYSCHECK_REG, SYSCHECK_MQ) < 0) {
-        merror(QUEUE_SEND);
-
-        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-        }
-
-        /* If we reach here, we can try to send it again */
-        SendMSG(syscheck.queue, msg, SYSCHECK_REG, SYSCHECK_MQ);
-    }
-
-    return (0);
-}
+void os_winreg_open_key(char *subkey, char *fullkey_name, int pos);
 
 /* Check if the registry entry is valid */
 char *os_winreg_sethkey(char *reg_entry)
@@ -147,7 +76,7 @@ char *os_winreg_sethkey(char *reg_entry)
 }
 
 /* Query the key and get all its values */
-void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch, const char * tag)
+void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)//int arch, const char * tag)
 {
     int rc;
     DWORD i, j;
@@ -217,29 +146,24 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch, c
                 }
 
                 /* Open subkey */
-                os_winreg_open_key(new_key, new_key_full, arch, tag);
+                os_winreg_open_key(new_key, new_key_full, pos);
             }
         }
     }
 
     /* Get values (if available) */
     if (value_count) {
-        /* md5 and sha1 sum */
-        os_md5 mf_sum;
-        os_sha1 sf_sum;
-        FILE *checksum_fp;
         char *mt_data;
+        char buffer[OS_MAXSTR];
+        int offset;
 
         /* Clear the values for value_size and data_size */
         value_buffer[MAX_VALUE_NAME] = '\0';
         data_buffer[MAX_VALUE_NAME] = '\0';
-        checksum_fp = fopen(SYS_REG_TMP, "w");
-        if (!checksum_fp) {
-            printf("%s: (1103): Could not open file '%s' due to [(%d)-(%s)].", ARGV0, SYS_REG_TMP, errno, strerror(errno));
-            return;
-        }
 
         /* Get each value */
+        offset = 0;
+        buffer[0] = '\0';
         for (i = 0; i < value_count; i++) {
             value_size = MAX_VALUE_NAME;
             data_size = MAX_VALUE_NAME;
@@ -262,83 +186,86 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch, c
             }
 
             /* Write value name and data in the file (for checksum later) */
-            fprintf(checksum_fp, "%s=", value_buffer);
+            offset += snprintf(buffer + offset, OS_MAXSTR, "%s=", value_buffer);
+            //minfo("value_buffer:'%s'", value_buffer);
             switch (data_type) {
                 case REG_SZ:
                 case REG_EXPAND_SZ:
-                    fprintf(checksum_fp, "%s\n", data_buffer);
+                    offset += snprintf(buffer + offset, OS_MAXSTR - offset, "%s", data_buffer);
+                    //minfo("REG_EXPAND_SZ:'%s'", data_buffer);
                     break;
                 case REG_MULTI_SZ:
                     /* Print multiple strings */
                     mt_data = data_buffer;
 
                     while (*mt_data) {
-                        fprintf(checksum_fp, "%s ", mt_data);
+                        offset += snprintf(buffer + offset, OS_MAXSTR - offset, "%s ", mt_data);
+                        //minfo("REG_MULTI_SZ:'%s'", mt_data);
                         mt_data += strlen(mt_data) + 1;
                     }
-                    fprintf(checksum_fp, "\n");
                     break;
                 case REG_DWORD:
-                    fprintf(checksum_fp, "%08x\n", (unsigned int)*data_buffer);
+                    offset += snprintf(buffer + offset, OS_MAXSTR - offset, "%08x", (unsigned int)*data_buffer);
+                    //minfo("REG_DWORD:'%08x'", (unsigned int)*data_buffer);
                     break;
                 default:
                     for (j = 0; j < data_size; j++) {
-                        fprintf(checksum_fp, "%02x",
-                                (unsigned int)data_buffer[j]);
+                        offset += snprintf(buffer + offset, OS_MAXSTR - offset, "%02x", (unsigned int)data_buffer[j]);
+                        //minfo("default:'%02x'", (unsigned int)data_buffer[j]);
                     }
-                    fprintf(checksum_fp, "\n");
                     break;
             }
         }
 
-        /* Generate checksum of the values */
-        fclose(checksum_fp);
+        fim_entry_data *data;
+        os_calloc(1, sizeof(fim_entry_data), data);
 
-        if (OS_MD5_SHA1_File(SYS_REG_TMP, syscheck.prefilter_cmd, mf_sum, sf_sum, OS_TEXT) == -1) {
-            merror(FOPEN_ERROR, SYS_REG_TMP, errno, strerror(errno));
-            return;
+        init_fim_data_entry(data);
+
+        // Set registry entry type
+        data->entry_type = fim_entry_type[1];
+
+        char path[OS_SIZE_512];
+        snprintf(path, OS_SIZE_512, "%s %s", syscheck.registry[pos].arch == ARCH_64BIT ? "[x64]" : "[x32]", full_key_name);
+
+        data->last_event = time(NULL);
+        data->options |= CHECK_SHA256SUM;
+
+        OS_SHA256_String(buffer, data->hash_sha256);
+        data->scanned = 1;
+
+        OS_SHA1_Str(data->hash_sha256, sizeof(data->hash_sha256), data->checksum);
+
+        minfo("Event: '%s'(%ld):'%s'\ndata:'%s'", path, data->last_event, data->hash_sha256, buffer);
+
+        if (fim_registry_event(path, data, pos) == 0) {
+            free_entry_data(data);
+            minfo("Event no reported");
         }
-
-        /* Look for p_key on the reg db */
-        if (os_winreg_changed(full_key_name, mf_sum, sf_sum, arch)) {
-            char reg_changed[MAX_LINE + 1];
-            snprintf(reg_changed, MAX_LINE, "::::%s:%s::::::!:::::::::::%s: %s%s",
-                     mf_sum, sf_sum, tag ? tag : "", arch == ARCH_64BIT ? "[x64] " : "", full_key_name);
-
-            /* Notify server */
-            notify_registry(reg_changed, 0);
-        }
-
-        ig_count++;
     }
 }
 
 /* Open the registry key */
-void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char *tag)
+void os_winreg_open_key(char *subkey, char *fullkey_name, int pos)
 {
     int i = 0;
     HKEY oshkey;
 
-    /* Sleep X every Y files */
-    if (ig_count >= syscheck.sleep_after) {
-        sleep(syscheck.tsleep);
-        ig_count = 1;
-    }
-    ig_count++;
-
     /* Registry ignore list */
     if (fullkey_name && syscheck.registry_ignore) {
         while (syscheck.registry_ignore[i].entry != NULL) {
-            if (syscheck.registry_ignore[i].arch == arch && strcasecmp(syscheck.registry_ignore[i].entry, fullkey_name) == 0) {
+            if (syscheck.registry_ignore[i].arch == syscheck.registry[pos].arch && strcasecmp(syscheck.registry_ignore[i].entry, fullkey_name) == 0) {
                 mdebug2(FIM_IGNORE_ENTRY, "registry", fullkey_name, syscheck.registry_ignore[i].entry);
                 return;
             }
             i++;
         }
-    } else if (fullkey_name && syscheck.registry_ignore_regex) {
+    }
+
+    if (fullkey_name && syscheck.registry_ignore_regex) {
         i = 0;
         while (syscheck.registry_ignore_regex[i].regex != NULL) {
-            if (syscheck.registry_ignore_regex[i].arch == arch &&
+            if (syscheck.registry_ignore_regex[i].arch == syscheck.registry[pos].arch &&
                 OSMatch_Execute(fullkey_name, strlen(fullkey_name),
                                 syscheck.registry_ignore_regex[i].regex)) {
                 mdebug2(FIM_IGNORE_SREGEX, "registry", fullkey_name, syscheck.registry_ignore_regex[i].regex->raw);
@@ -348,12 +275,12 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char *
         }
     }
 
-    if (RegOpenKeyEx(sub_tree, subkey, 0, KEY_READ | (arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY), &oshkey) != ERROR_SUCCESS) {
-        mwarn(SK_REG_OPEN, subkey);
+    if (RegOpenKeyEx(sub_tree, subkey, 0, KEY_READ | (syscheck.registry[pos].arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY), &oshkey) != ERROR_SUCCESS) {
+        mwarn(FIM_REG_OPEN, subkey, syscheck.registry[pos].arch == ARCH_32BIT ? "[x32]" : "[x64]");
         return;
     }
 
-    os_winreg_querykey(oshkey, subkey, fullkey_name, arch, tag);
+    os_winreg_querykey(oshkey, subkey, fullkey_name, pos);
     RegCloseKey(oshkey);
     return;
 }
@@ -367,18 +294,6 @@ void os_winreg_check()
     /* Debug entries */
     mdebug1(FIM_WINREGISTRY_START);
 
-    /* Zero ig_count before checking */
-    ig_count = 1;
-
-    /* Check if the registry fp is open */
-    if (syscheck.reg_fp == NULL) {
-        syscheck.reg_fp = fopen(SYS_WIN_REG, "w+");
-        if (!syscheck.reg_fp) {
-            merror(FOPEN_ERROR, SYS_WIN_REG, errno, strerror(errno));
-            return;
-        }
-    }
-
     /* Get sub class and a valid registry entry */
     while (syscheck.registry[i].entry != NULL) {
         sub_tree = NULL;
@@ -391,26 +306,20 @@ void os_winreg_check()
         }
 
         /* Read syscheck registry entry */
-        mdebug2(FIM_READING_REGISTRY, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "", syscheck.registry[i].entry);
+        mdebug2(FIM_READING_REGISTRY, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32] ", syscheck.registry[i].entry);
 
         rk = os_winreg_sethkey(syscheck.registry[i].entry);
         if (sub_tree == NULL) {
-            merror(SK_INV_REG, syscheck.registry[i].entry);
+            mwarn(FIM_INV_REG, syscheck.registry[i].entry, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32]");
             *syscheck.registry[i].entry = '\0';
             i++;
             continue;
         }
 
-        os_winreg_open_key(rk, syscheck.registry[i].entry, syscheck.registry[i].arch, syscheck.registry[i].tag);
+        os_winreg_open_key(rk, syscheck.registry[i].entry, i);
         i++;
     }
 
-    /* Notify of db completed */
-    if (run_count > 1) {
-        sleep(syscheck.tsleep * 5);
-    }
-
-    run_count++;
     return;
 }
 #endif /* WIN32 */

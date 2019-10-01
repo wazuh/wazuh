@@ -192,6 +192,19 @@ void OS_LogOutput(Eventinfo *lf)
             printf(" - Size: %s\n", lf->size_after);
         }
 
+        if (lf->perm_after) {
+            printf(" - Permissions: %s\n", lf->fields[FIM_PERM].value);
+        } else if (lf->win_perm_after && *lf->win_perm_after != '\0') {
+            char *permissions_list;
+            int size;
+            os_calloc(OS_SIZE_20480 + 1, sizeof(char), permissions_list);
+            if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, lf->win_perm_after, 0, NULL), size > 1) {
+                os_realloc(permissions_list, size + 1, permissions_list);
+                printf(" - Permissions: \n%s", permissions_list);
+                free(permissions_list);
+            }
+        }
+
         if (lf->mtime_after) {
             printf(" - Date: %s", ctime(&lf->mtime_after));
         }
@@ -236,19 +249,6 @@ void OS_LogOutput(Eventinfo *lf)
             decode_win_attributes(attributes_list, lf->attrs_after);
             printf(" - File attributes: %s\n", attributes_list);
             free(attributes_list);
-        }
-
-        if (lf->perm_after){
-            printf(" - Permissions: %6o\n", lf->perm_after);
-        } else if (lf->win_perm_after && *lf->win_perm_after != '\0') {
-            char *permissions_list;
-            int size;
-            os_calloc(OS_SIZE_20480 + 1, sizeof(char), permissions_list);
-            if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, lf->win_perm_after, 0, NULL), size > 1) {
-                os_realloc(permissions_list, size + 1, permissions_list);
-                printf(" - Permissions: \n%s", permissions_list);
-                free(permissions_list);
-            }
         }
     }
 
@@ -370,11 +370,24 @@ void OS_Log(Eventinfo *lf)
 
     /* FIM events */
 
-    if (lf->filename && lf->event_type != FIM_DELETED) {
+    if (lf->filename) {
         fprintf(_aflog, "Attributes:\n");
 
         if (lf->size_after && *lf->size_after != '\0'){
             fprintf(_aflog, " - Size: %s\n", lf->size_after);
+        }
+
+        if (lf->perm_after) {
+            fprintf(_aflog, " - Permissions: %s\n", lf->fields[FIM_PERM].value);
+        } else if (lf->win_perm_after && *lf->win_perm_after != '\0') {
+            char *permissions_list;
+            int size;
+            os_calloc(OS_SIZE_20480 + 1, sizeof(char), permissions_list);
+            if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, lf->win_perm_after, 0, NULL), size > 1) {
+                os_realloc(permissions_list, size + 1, permissions_list);
+                fprintf(_aflog, " - Permissions: \n%s", permissions_list);
+                free(permissions_list);
+            }
         }
 
         if (lf->mtime_after) {
@@ -419,32 +432,42 @@ void OS_Log(Eventinfo *lf)
             free(attributes_list);
         }
 
-        if (lf->perm_after) {
-            fprintf(_aflog, " - Permissions: %6o\n", lf->perm_after);
-        } else if (lf->win_perm_after && *lf->win_perm_after != '\0') {
-            char *permissions_list;
-            int size;
-            os_calloc(OS_SIZE_20480 + 1, sizeof(char), permissions_list);
-            if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, lf->win_perm_after, 0, NULL), size > 1) {
-                os_realloc(permissions_list, size + 1, permissions_list);
-                fprintf(_aflog, " - Permissions: \n%s", permissions_list);
-                free(permissions_list);
-            }
+        if (lf->fields[FIM_USER_NAME].value && strcmp(lf->fields[FIM_USER_NAME].value, "") != 0) {
+            fprintf(_aflog, " - (Audit) %s: %s\n", lf->fields[FIM_USER_NAME].key, lf->fields[FIM_USER_NAME].value);
         }
-    }
+        if (lf->fields[FIM_AUDIT_NAME].value && strcmp(lf->fields[FIM_AUDIT_NAME].value, "") != 0) {
+            fprintf(_aflog, " - (Audit) %s: %s\n", lf->fields[FIM_AUDIT_NAME].key, lf->fields[FIM_AUDIT_NAME].value);
+        }
+        if (lf->fields[FIM_EFFECTIVE_NAME].value && strcmp(lf->fields[FIM_EFFECTIVE_NAME].value, "") != 0) {
+            fprintf(_aflog, " - (Audit) %s: %s\n", lf->fields[FIM_EFFECTIVE_NAME].key, lf->fields[FIM_EFFECTIVE_NAME].value);
+        }
+        if (lf->fields[FIM_GROUP_NAME].value && strcmp(lf->fields[FIM_GROUP_NAME].value, "") != 0) {
+            fprintf(_aflog, " - (Audit) %s: %s\n", lf->fields[FIM_GROUP_NAME].key, lf->fields[FIM_GROUP_NAME].value);
+        }
+        if (lf->fields[FIM_PROC_ID].value && strcmp(lf->fields[FIM_PROC_ID].value, "") != 0) {
+            fprintf(_aflog, " - (Audit) %s: %s\n", lf->fields[FIM_PROC_ID].key, lf->fields[FIM_PROC_ID].value);
+        }
+        if (lf->fields[FIM_PROC_NAME].value && strcmp(lf->fields[FIM_PROC_NAME].value, "") != 0) {
+            fprintf(_aflog, " - (Audit) %s: %s\n", lf->fields[FIM_PROC_NAME].key, lf->fields[FIM_PROC_NAME].value);
+        }
 
-    if (lf->filename && lf->sk_tag) {
-        if (strcmp(lf->sk_tag, "") != 0) {
-            char * tags;
-            os_strdup(lf->sk_tag, tags);
-            fprintf(_aflog, "\nTags:\n");
-            char * tag;
-            tag = strtok_r(tags, ",", &saveptr);
-            while (tag != NULL) {
-                fprintf(_aflog, " - %s\n", tag);
-                tag = strtok_r(NULL, ",", &saveptr);
+        if (lf->fields[FIM_DIFF].value) {
+            fprintf(_aflog, "\nWhat changed: %s", lf->fields[FIM_DIFF].value);
+        }
+
+        if (lf->sk_tag) {
+            if (strcmp(lf->sk_tag, "") != 0) {
+                char * tags;
+                os_strdup(lf->sk_tag, tags);
+                fprintf(_aflog, "\nTags:\n");
+                char * tag;
+                tag = strtok_r(tags, ",", &saveptr);
+                while (tag != NULL) {
+                    fprintf(_aflog, " - %s\n", tag);
+                    tag = strtok_r(NULL, ",", &saveptr);
+                }
+                free(tags);
             }
-            free(tags);
         }
     }
 

@@ -78,7 +78,8 @@ int main(int argc, char ** argv) {
 
     config.sock_queue_size = getDefine_Int("wazuh_db", "sock_queue_size", 1, 1024);
     config.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
-    config.commit_time = getDefine_Int("wazuh_db", "commit_time", 10, 3600);
+    config.commit_time_min = getDefine_Int("wazuh_db", "commit_time_min", 1, 3600);
+    config.commit_time_max = getDefine_Int("wazuh_db", "commit_time_max", 1, 3600);
     config.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
     nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
 
@@ -96,7 +97,6 @@ int main(int argc, char ** argv) {
 
     // Initialize variables
 
-    //sock_queue = queue_init(config.sock_queue_size);
     open_dbs = OSHash_Create();
     if (!open_dbs) merror_exit("wazuh_db: OSHash_Create() failed");
 
@@ -209,8 +209,11 @@ int main(int argc, char ** argv) {
 
     wnotify_close(notify_queue);
     free(worker_pool);
+    pthread_join(thread_up, NULL);
     pthread_join(thread_gc, NULL);
     wdb_close_all();
+
+    OSHash_Free(open_dbs);
 
     // Reset template here too, remove queue/db/.template.db again
     // Without the prefix, because chrooted at that point

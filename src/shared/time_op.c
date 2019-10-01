@@ -1,7 +1,5 @@
 /*
- * Time operations
  * Copyright (C) 2015-2019, Wazuh Inc.
- * October 4, 2017
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,13 +7,25 @@
  * Foundation.
  */
 
-#ifndef WIN32
+/**
+ * @file time_op.c
+ * @brief Time operations
+ * @author Vikman Fernandez-Castro
+ * @author Jose Rafael Cenit
+ * @author Pablo Navarro
+ * @date October 4, 2017
+ */
+
 #include "shared.h"
+
+#ifndef WIN32
 
 #ifdef __MACH__
 #include <mach/clock.h>
 #include <mach/mach.h>
 #endif
+
+// Get the current calendar time
 
 void gettime(struct timespec *ts) {
 #ifdef __MACH__
@@ -31,35 +41,21 @@ void gettime(struct timespec *ts) {
 #endif
 }
 
-// Computes a -= b
-void time_sub(struct timespec * a, const struct timespec * b) {
-    a->tv_sec -= b->tv_sec;
-    a->tv_nsec -= b->tv_nsec;
+#else
 
-    if (a->tv_nsec < 0) {
-        a->tv_nsec += 1000000000;
-        a->tv_sec--;
-    }
-}
-
-#endif // WIN32
-
-#ifdef WIN32
 #include <windows.h>
 #define EPOCH_DIFFERENCE 11644473600LL
 
+// Get the epoch time
+
 long long int get_windows_time_epoch() {
     FILETIME ft = {0};
-    LARGE_INTEGER li = {0};
 
     GetSystemTimeAsFileTime(&ft);
-    li.LowPart = ft.dwLowDateTime;
-    li.HighPart = ft.dwHighDateTime;
-
-    /* Current machine EPOCH time */
-    long long int c_currenttime_epoch = (li.QuadPart / 10000000) - EPOCH_DIFFERENCE;
-    return c_currenttime_epoch;
+    return get_windows_file_time_epoch(ft);
 }
+
+// Get the epoch time from a FILETIME object
 
 long long int get_windows_file_time_epoch(FILETIME ft) {
     LARGE_INTEGER li = {0};
@@ -72,4 +68,34 @@ long long int get_windows_file_time_epoch(FILETIME ft) {
     return file_time_epoch;
 }
 
+void gettime(struct timespec * ts) {
+    FILETIME ft;
+    GetSystemTimeAsFileTime(&ft);
+
+    LARGE_INTEGER li = {.LowPart = ft.dwLowDateTime, .HighPart = ft.dwHighDateTime};
+
+    // Contains a 64-bit value representing the number of 100-nanosecond intervals since January 1, 1601 (UTC).
+
+    ts->tv_sec = li.QuadPart / 10000000 - EPOCH_DIFFERENCE;
+    ts->tv_nsec = (li.QuadPart % 10000000) * 100;
+}
+
 #endif
+
+// Compute time substraction "a - b"
+
+void time_sub(struct timespec * a, const struct timespec * b) {
+    a->tv_sec -= b->tv_sec;
+    a->tv_nsec -= b->tv_nsec;
+
+    if (a->tv_nsec < 0) {
+        a->tv_nsec += 1000000000;
+        a->tv_sec--;
+    }
+}
+
+// Get the time elapsed between a and b (in seconds)
+
+double time_diff(const struct timespec * a, const struct timespec * b) {
+    return b->tv_sec - a->tv_sec + (b->tv_nsec - a->tv_nsec) / 1e9;
+}

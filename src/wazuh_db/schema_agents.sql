@@ -22,8 +22,9 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     mtime INTEGER,
     inode INTEGER,
     sha256 TEXT,
-    attributes INTEGER DEFAULT 0,
-    symbolic_path TEXT
+    attributes TEXT,
+    symbolic_path TEXT,
+    checksum TEXT
 );
 
 CREATE TABLE IF NOT EXISTS pm_event (
@@ -214,13 +215,13 @@ CREATE TABLE IF NOT EXISTS metadata (
 
 CREATE TABLE IF NOT EXISTS scan_info (
     module TEXT PRIMARY KEY,
-    first_start INTEGER,
-    first_end INTEGER,
-    start_scan INTEGER,
-    end_scan INTEGER,
-    fim_first_check INTEGER,
-    fim_second_check INTEGER,
-    fim_third_check INTEGER
+    first_start INTEGER DEFAULT 0,
+    first_end INTEGER DEFAULT 0,
+    start_scan INTEGER DEFAULT 0,
+    end_scan INTEGER DEFAULT 0,
+    fim_first_check INTEGER DEFAULT 0,
+    fim_second_check INTEGER DEFAULT 0,
+    fim_third_check INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS sca_policy (
@@ -284,5 +285,22 @@ CREATE TABLE IF NOT EXISTS sca_check_compliance (
 );
 
 CREATE INDEX IF NOT EXISTS comp_id_check_index ON sca_check_compliance (id_check);
+
+CREATE TABLE IF NOT EXISTS sync_info (
+    component TEXT PRIMARY KEY,
+    last_attempt INTEGER DEFAULT 0,
+    last_completion INTEGER DEFAULT 0,
+    n_attempts INTEGER DEFAULT 0,
+    n_completions INTEGER DEFAULT 0
+);
+
+BEGIN;
+
+INSERT INTO metadata (key, value) VALUES ('db_version', '3');
+INSERT INTO scan_info (module) VALUES ('fim');
+INSERT INTO scan_info (module) VALUES ('syscollector');
+INSERT INTO sync_info (component) VALUES ('fim');
+
+COMMIT;
 
 PRAGMA journal_mode=WAL;
