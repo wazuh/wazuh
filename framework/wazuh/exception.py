@@ -319,7 +319,7 @@ class WazuhException(Exception):
         1749: {'message': "Downgrading an agent requires the force flag.",
                'remediation': "Use -F to force the downgrade"
                },
-        1750: {'message': 'Could not restart selected agent, active-response is disabled in the agent',
+        1750: {'message': 'Could not send restart command, active-response is disabled in the agent',
                'remediation': "You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`"},
 
         # CDB List: 1800 - 1899
@@ -604,8 +604,13 @@ class WazuhClusterError(WazuhException):
 
 def create_exception_dic(item, e):
     """Creates an exception from an item and it's error codes.
+
+    :param item:
+    :param e:
+    :return:
     """
     exception_dic = {'id': item, 'error': {'message': e.message}}
+
     if isinstance(e, WazuhException):
         exception_dic['error']['code'] = e.code
         exception_dic['error']['remediation'] = e.remediation

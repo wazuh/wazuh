@@ -9,7 +9,7 @@ import ipaddress
 import operator
 import socket
 from base64 import b64encode
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime
 from functools import reduce
 from glob import glob
 from json import loads
@@ -25,168 +25,15 @@ from wazuh import common, configuration
 from wazuh.InputValidator import InputValidator
 from wazuh.cluster.utils import get_manager_status
 from wazuh.database import Connection
-from wazuh.exception import WazuhError, WazuhInternalError
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhError, WazuhInternalError, WazuhException, create_exception_dic
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.results import WazuhResult
-from wazuh.utils import chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
-    get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-    md5, SQLiteBackend, WazuhDBBackend, safe_move, process_array
-
-
-def create_exception_dic(id, e):
-    """
-    Creates a dictionary with a list of agent ids and it's error codes.
-    """
-    exception_dic = {'id': id, 'error': {'message': e.message}}
-
-    if isinstance(e, WazuhException):
-        exception_dic['error']['code'] = e.code
-        exception_dic['error']['remediation'] = e.remediation
-    else:
-        exception_dic['error']['code'] = 1000
-
-    return exception_dic
-
-
-class WazuhDBQueryAgents(WazuhDBQuery):
-
-    def __init__(self, offset=0, limit=common.database_limit, sort=None, search=None, select=None, count=True,
-                 get_data=True, query='', filters=None, default_sort_field='id', min_select_fields=None,
-                 remove_extra_fields=True):
-        if filters is None:
-            filters = {}
-        if min_select_fields is None:
-            min_select_fields = {'lastKeepAlive', 'version', 'id'}
-        backend = SQLiteBackend(common.database_path_global)
-        WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
-                              filters=filters, fields=Agent.fields, default_sort_field=default_sort_field,
-                              default_sort_order='ASC', query=query, backend=backend,
-                              min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive', 'dateAdd'}, extra_fields={'internal_key'})
-        self.remove_extra_fields = remove_extra_fields
-
-    def _filter_status(self, status_filter):
-        # set the status value to lowercase in case it's a string. If not, the value will be return unmodified.
-        status_filter['value'] = getattr(status_filter['value'], 'lower', lambda: status_filter['value'])()
-        result = datetime.utcnow() - timedelta(seconds=common.limit_seconds)
-        self.request['time_active'] = result.replace(tzinfo=timezone.utc).timestamp()
-        if status_filter['operator'] == '!=':
-            self.query += 'NOT '
-
-        if status_filter['value'] == 'active':
-            self.query += '(last_keepalive >= :time_active AND version IS NOT NULL) or id = 0'
-        elif status_filter['value'] == 'disconnected':
-            self.query += 'last_keepalive < :time_active'
-        elif status_filter['value'] == "never_connected":
-            self.query += 'last_keepalive IS NULL AND id != 0'
-        elif status_filter['value'] == 'pending':
-            self.query += 'last_keepalive IS NOT NULL AND version IS NULL'
-        else:
-            raise WazuhError(1729, extra_message=status_filter['value'])
-
-    def _filter_date(self, date_filter, filter_db_name):
-        WazuhDBQuery._filter_date(self, date_filter, filter_db_name)
-        self.query = self.query[:-1] + ' AND id != 0'
-
-    def _sort_query(self, field):
-        if field == 'status':
-            # Order by status ASC is the same that order by last_keepalive DESC.
-            return '{} {}'.format('last_keepAlive', self.sort['order'])
-        elif field == 'os.version':
-            return "CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}".format(self.sort['order'])
-        else:
-            return WazuhDBQuery._sort_query(self, field)
-
-    def _add_search_to_query(self):
-        # since id are stored in database as integers, id searches must be turned into integers to work as expected.
-        if self.search:
-            del self.fields['id']
-            WazuhDBQuery._add_search_to_query(self)
-            self.fields['id'] = 'id'
-            self.query = self.query[:-1] + ' OR id LIKE :search_id)'
-            self.request['search_id'] = int(self.search['value']) if self.search['value'].isdigit() \
-                else self.search['value']
-
-    def _format_data_into_dictionary(self):
-        def format_fields(field_name, value, today, lastKeepAlive=None, version=None):
-            if field_name == 'id':
-                return str(value).zfill(3)
-            elif field_name == 'status':
-                return Agent.calculate_status(lastKeepAlive, version is None, today)
-            elif field_name == 'group':
-                return value.split(',')
-            elif field_name in ['dateAdd', 'lastKeepAlive']:
-                return datetime.utcfromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                return value
-
-        fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
-
-        today = datetime.utcnow()
-
-        # compute 'status' field, format id with zero padding and remove non-user-requested fields.
-        # Also remove, extra fields (internal key and registration IP)
-        selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
-        selected_fields |= {'id'}
-        self._data = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
-                        for key, value in item.items() if key in selected_fields} for item in self._data]
-
-        self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in self._data]
-
-        return super()._format_data_into_dictionary()
-
-    def _parse_legacy_filters(self):
-        if 'older_than' in self.legacy_filters:
-            if self.legacy_filters['older_than'] is not None:
-                self.q += (';' if self.q else '') + \
-                          "(lastKeepAlive>{0};status!=never_connected,dateAdd>{0};status=never_connected)".format(
-                              self.legacy_filters['older_than'])
-            del self.legacy_filters['older_than']
-        WazuhDBQuery._parse_legacy_filters(self)
-
-    def _process_filter(self, field_name, field_filter, q_filter):
-        if field_name == 'group' and q_filter['value'] is not None:
-            field_filter_1, field_filter_2, field_filter_3 = \
-                field_filter + '_1', field_filter + '_2', field_filter + '_3'
-            self.query += '{0} LIKE :{1} OR {0} LIKE :{2} OR {0} LIKE :{3} OR {0} = :{4}'.format(
-                self.fields[field_name], field_filter_1, field_filter_2, field_filter_3, field_filter)
-            self.request[field_filter_1] = '%,' + q_filter['value']
-            self.request[field_filter_2] = q_filter['value'] + ',%'
-            self.request[field_filter_3] = '%,{},%'.format(q_filter['value'])
-            self.request[field_filter] = q_filter['value']
-        else:
-            WazuhDBQuery._process_filter(self, field_name, field_filter, q_filter)
-
-
-class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents):
-    pass
-
-
-class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
-    def __init__(self, filter_fields, *args, **kwargs):
-        WazuhDBQueryAgents.__init__(self, *args, **kwargs)
-        WazuhDBQueryGroupBy.__init__(self, *args, table=self.table, fields=self.fields, filter_fields=filter_fields,
-                                     default_sort_field=self.default_sort_field, backend=self.backend, **kwargs)
-        self.remove_extra_fields = True
-
-
-class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
-    def __init__(self, group_id, query='', *args, **kwargs):
-        self.group_id = group_id
-        query = 'group={}'.format(group_id) + (';'+query if query else '')
-        WazuhDBQueryAgents.__init__(self, query=query, *args, **kwargs)
-
-    def _default_query(self):
-        return "SELECT {0} FROM agent a LEFT JOIN belongs b ON a.id = b.id_agent" if self.group_id != "null" else "SELECT {0} FROM agent a"
-
-    def _default_count_query(self):
-        return 'COUNT(DISTINCT a.id)'
-
-    def _get_total_items(self):
-        WazuhDBQueryAgents._get_total_items(self)
-        self.query += ' GROUP BY a.id '
+from wazuh.utils import chmod_r, chown_r, WazuhVersion, get_hash, WazuhDBQueryDistinct, mkdir_with_mode, \
+    md5, WazuhDBBackend, safe_move, process_array
+from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryDistinctAgents, WazuhDBQueryGroupByAgents, \
+    WazuhDBQueryMultigroups, check_group_exists, send_restart_command
+from wazuh.rbac.decorators import expose_resources, list_handler_with_denied, list_handler_no_denied
 
 
 class Agent:
@@ -245,18 +92,6 @@ class Agent:
 
         return dictionary
 
-    @staticmethod
-    def calculate_status(last_keep_alive, pending, today=datetime.utcnow()):
-        """Calculates state based on last keep alive
-        """
-        if not last_keep_alive:
-            return "never_connected"
-        else:
-            last_date = datetime.utcfromtimestamp(last_keep_alive)
-            difference = (today - last_date).total_seconds()
-            return "disconnected" if difference > common.limit_seconds else ("pending" if pending else "active")
-
-
     def _load_info_from_DB(self, select=None):
         """Gets attributes of existing agent.
         """
@@ -302,18 +137,20 @@ class Agent:
         """
         if self.id == "000":
             raise WazuhError(1703)
-        else:
-            # Check if agent exists and it is active
-            self.get_basic_information()
 
-            if self.status.lower() != 'active':
-                raise WazuhError(1707, extra_message='{0} - {1}'.format(self.id, self.status))
+        # Check if agent exists
+        self.get_basic_information()
 
-            oq = OssecQueue(common.ARQUEUE)
-            ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS, self.id)
-            oq.close()
+        # Check if agent is active
+        if self.status.lower() != 'active':
+            raise WazuhError(1707, extra_message='{0} - {1}'.format(self.id, self.status))
 
-        return ret_msg
+        # Check if agent has active-response enabled
+        agent_conf = self.get_config(self.id, 'com', 'active-response')
+        if agent_conf['active-response']['disabled'] == 'yes':
+            raise WazuhException(1750)
+
+        return send_restart_command(self.id)
 
     @staticmethod
     def use_only_authd():
@@ -652,7 +489,7 @@ class Agent:
 
                     if check_remove:
                         if force == 0 or Agent.check_if_delete_agent(line_data[0], force):
-                            Agent.remove_agent(line_data[0], backup=True)
+                            Agent(line_data[0]).remove(backup=True)
                         else:
                             if check_remove == 1:
                                 raise WazuhError(1705, extra_message=name)
@@ -778,6 +615,32 @@ class Agent:
         return data
 
     @staticmethod
+    @expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
+    def get_agents_all(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+                       filters=None, q=""):
+        """Gets a list of available agents with basic attributes.
+
+        :param agent_list: List of agents ID's.
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+        :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+        :param filters: Defines field filters required by the user.
+        Format: {"field1":"value1", "field2":["value2","value3"]}
+        :param q: Defines query to filter in DB.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+        if filters is None:
+            filters = dict()
+        filters['id'] = agent_list
+        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
+                                      filters=filters, query=q)
+        data = db_query.run()
+
+        return data
+
+    @staticmethod
     def get_distinct_agents(offset=0, limit=common.database_limit, sort=None, search=None, select=None,
                             fields=None, q=""):
         """Gets a list of available agents with basic attributes.
@@ -833,92 +696,77 @@ class Agent:
         return db_query.run()
 
     @staticmethod
-    def restart_agents(agent_id=None, restart_all=False):
-        """Restarts an agent or all agents.
+    @expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"], target_params=["agent_list"],
+                      post_proc_func=list_handler_with_denied)
+    def restart_agents(agent_list=None):
+        """Restarts a list of agents
 
-        :param agent_id: Agent ID of the agent to restart. Can be a list of ID's.
-        :param restart_all: Restarts all agents.
+        :param agent_list: List of agents ID's.
         :return: Message.
         """
-        if restart_all:
-            oq = OssecQueue(common.ARQUEUE)
-            ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS)
-            oq.close()
-            return ret_msg
-        else:
-            if not agent_id:
-                raise WazuhError(1732)
-            failed_ids = list()
-            affected_agents = list()
-            if isinstance(agent_id, list):
-                for id in agent_id:
-                    try:
-                        Agent(id).restart()
-                        affected_agents.append(id)
-                    except WazuhError as e:
-                        failed_ids.append(create_exception_dic(id, e))
-            else:
-                try:
-                    Agent(agent_id).restart()
-                    affected_agents.append(agent_id)
-                except WazuhError as e:
-                    failed_ids.append(create_exception_dic(agent_id, e))
-            if not failed_ids:
-                message = 'All selected agents were restarted'
-            else:
-                message = 'Some agents were not restarted'
+        affected_agents = list()
+        failed_ids = list()
 
-            if failed_ids:
-                final_dict = {'message': message,
-                              'data': {'affected_items': affected_agents,
-                                       'failed_items': failed_ids}
-                              }
-            else:
-                final_dict = {'message': message,
-                              'data': {'affected_items': affected_agents}
-                              }
+        for agent_id in agent_list:
+            try:
+                Agent(agent_id).restart()
+                affected_agents.append(agent_id)
+            except WazuhError as e:
+                failed_ids.append(create_exception_dic(agent_id, e))
 
-            result = WazuhResult(final_dict, str_priority=['Some agents were not restarted',
-                                                           'All selected agents were restarted'])
-
-            return result
+        return {'affected_items': affected_agents,
+                'failed_items': failed_ids,
+                'str_priority': ['Restart command sent to all agents', 'Could not send command to some agents',
+                                 'Could not send command to any agent']}
 
     @staticmethod
-    def restart_agents_by_group(group_id: str) -> Dict:
+    @expose_resources(actions=["agent:restart"], resources=["agent:id:*"], target_params=["agent_list"],
+                      post_proc_func=list_handler_no_denied)
+    def restart_agents_all(agent_list=None):
+        """Restarts a list of agents
+
+        :param agent_list: List of agents ID's.
+        :return: Message.
+        """
+        affected_agents = list()
+
+        for agent_id in agent_list:
+            try:
+                Agent(agent_id).restart()
+                affected_agents.append(agent_id)
+            except Exception as e:
+                pass
+
+        return {'affected_items': affected_agents,
+                'failed_items': list(),
+                'str_priority': ['Restart command sent to all agents', 'Could not send command to some agents',
+                                 'Could not send command to any agent']}
+
+    @staticmethod
+    def restart_agents_by_group(group_id: str, **kwargs) -> Dict:
         """Restart all the agents which belong to a group.
 
         :param group_id: Name of the group
         :return: Confirmation message
         """
-        # list with agent IDs to restart. Contains key-value pairs.
-        agent_list = Agent.get_agent_group(group_id=group_id,
-                                           select={'fields': ['id']}).get('items')
-        # format agent_list as a list with strings of agent IDs
-        agent_list = [elem.get('id') for elem in agent_list]
+        check_group_exists(group_id)
+        data = WazuhDBQueryMultigroups(group_id=group_id, select=['id']).run()
+        agent_list = list(map(operator.itemgetter('id'), data['items']))
 
-        return Agent.restart_agents(agent_id=agent_list)
+        return Agent.restart_agents(agent_list=agent_list, **kwargs)
 
     @staticmethod
-    def get_agent_by_name(agent_name, select=None):
+    def get_agent_by_name(agent_name=None, select=None, **kwargs):
         """Gets an existing agent called agent_name.
 
         :param agent_name: Agent name.
         :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
         :return: The agent.
         """
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhInternalError(1600)
+        data = WazuhDBQueryAgents(filters={'name': agent_name}).run()
+        agent_list = list(map(operator.itemgetter('id'), data['items']))
 
-        conn = Connection(db_global[0])
-        conn.execute("SELECT id FROM agent WHERE name = :name", {'name': agent_name})
-        try:
-            agent_id = str(conn.fetch()).zfill(3)
-        except TypeError as e:
-            raise WazuhError(1701, extra_message=agent_name)
-
-        return Agent.get_agent(agent_id, select)
-
+        return Agent.get_agents(agent_list=agent_list, select=select, **kwargs)
 
     @staticmethod
     def get_agent(agent_id, select=None):
@@ -930,14 +778,36 @@ class Agent:
         """
         data = Agent(agent_id).get_basic_information(select)
 
-        for date_field in {'lastKeepAlive', 'dateAdd'}:
-            date_format = '%Y-%m-%d %H:%M:%S'
-            if date_field in data:
-                data[date_field] = datetime.strptime(data[date_field], date_format)
+        return data
+
+    @staticmethod
+    @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
+    def get_agents(agent_list=None, offset=None, limit=None, sort=None, search=None, select=None, filters=None, q=None):
+        """Gets a list of available agents with basic attributes.
+
+        :param agent_list: List of agents ID's.
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+        :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+        :param filters: Defines field filters required by the user.
+        Format: {"field1":"value1", "field2":["value2","value3"]}
+        :param q: Defines query to filter in DB.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+        if filters is None:
+            filters = dict()
+        filters['id'] = agent_list
+
+        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters,
+                                      query=q)
+        data = db_query.run()
 
         return data
 
     @staticmethod
+    # @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_id}"], target_params=["agent_id"])
     def get_agent_key(agent_id):
         """Get the key of an existing agent.
 
@@ -969,117 +839,87 @@ class Agent:
         return group_id
 
     @staticmethod
-    def remove_agent(agent_id, backup=False, purge=False):
-        """Removes an existing agent.
+    @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"], target_params=["agent_list"],
+                      post_proc_func=list_handler_with_denied, post_proc_kwargs={'extra_fields': ['older_than']})
+    def delete_agents(agent_list=None, backup=False, purge=False, status="all", older_than="7d"):
+        """Deletes a list of agents.
 
-        :param agent_id: Agent ID.
-        :param backup: Create backup before removing the agent.
-        :param purge: Delete definitely from key store.
-        :return: Dictionary with affected_agents (agents removed), failed_ids if it necessary (agents that cannot been
-        removed), and a message.
-        """
-        failed_ids = []
-        affected_agents = []
-        try:
-            if agent_id == "000":
-                raise WazuhError(1703)
-            else:
-                Agent(agent_id).remove(backup, purge)
-                affected_agents.append(agent_id)
-        except WazuhException as e:
-            failed_ids.append(create_exception_dic(agent_id, e))
-
-        if not failed_ids:
-            message = 'All selected agents were deleted'
-        else:
-            message = 'Some agents were not deleted'
-
-        if failed_ids:
-            final_dict = {'message': message,
-                          'data': {'affected_items': affected_agents,
-                                   'failed_items': failed_ids}
-                          }
-        else:
-            final_dict = {'message': message,
-                          'data': {'affected_items': affected_agents}
-                          }
-
-        result = WazuhResult(final_dict, str_priority=['All selected agents were deleted',
-                                                       'Some agents were not deleted'])
-
-        return result
-
-    @staticmethod
-    def remove_agents(list_agent="all", backup=False, purge=False, status="all", older_than="7d"):
-        """Removes an existing agent.
-
-        :param list_agent: List of agents ID's.
+        :param agent_list: List of agents ID's.
         :param backup: Create backup before removing the agent.
         :param purge: Delete definitely from key store.
         :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" |
         "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never_connected agents, uses the register date.
         :param status: Filters by agent status: active, disconnected or never_connected. Multiples statuses separated
         by commas.
-        :return: Dictionary with affected_agents (agents removed), timeframe applied, failed_ids if it necessary
-        (agents that cannot been removed), and a message.
+        :return: Dictionary with affected_agents (deleted agents), timeframe applied, failed_ids if it necessary
+        (agents that could not be deleted), and a message.
         """
-        id_purgeable_agents = list(map(operator.itemgetter('id'),
-                                       Agent.get_agents_overview(filters={'older_than': older_than, 'status': status},
-                                                                 limit=None)['items']))
+        db_query = WazuhDBQueryAgents(limit=None, select=["id"], filters={'older_than': older_than, 'status': status,
+                                                                      'id': agent_list})
+        data = db_query.run()
+        id_purgeable_agents = list(map(operator.itemgetter('id'), data['items']))
 
-        failed_ids = []
-        affected_agents = []
+        failed_ids = list()
+        affected_agents = list()
+        for agent_id in agent_list:
+            try:
+                if agent_id == "000":
+                    raise WazuhError(1703)
+                else:
+                    my_agent = Agent(agent_id)
+                    my_agent._load_info_from_DB()
+                    if agent_id not in id_purgeable_agents:
+                        raise WazuhError(1731, extra_message="The agent has a status different to '{}' or the "
+                                                             "specified time frame 'older_than {}' does not "
+                                                             "apply.".format(status, older_than))
+                    my_agent.remove(backup, purge)
+                    affected_agents.append(agent_id)
+            except WazuhException as e:
+                failed_ids.append(create_exception_dic(agent_id, e))
 
-        if list_agent != "all":
-            for id in list_agent:
+        result = {'affected_items': affected_agents,
+                  'failed_items': failed_ids,
+                  'str_priority': ['All selected agents were deleted',
+                                   'Some agents were not deleted',
+                                   'No agents were deleted']}
+
+        return result
+        
+    @staticmethod
+    @expose_resources(actions=["agent:delete"], resources=["agent:id:*"], target_params=["agent_list"],
+                      post_proc_func=list_handler_no_denied, post_proc_kwargs={'extra_fields': ['older_than']})
+    def delete_agents_all(agent_list=None, backup=False, purge=False, status="all", older_than="7d"):
+        """Deletes all existing agents.
+
+        :param agent_list: List of agents ID's.
+        :param backup: Create backup before removing the agent.
+        :param purge: Delete definitely from key store.
+        :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" |
+        "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never_connected agents, uses the register date.
+        :param status: Filters by agent status: active, disconnected or never_connected. Multiples statuses separated
+        by commas.
+        :return: Dictionary with affected_agents (deleted agents), timeframe applied, failed_ids if it necessary
+        (agents that could not be deleted), and a message.
+        """
+        db_query = WazuhDBQueryAgents(limit=None, select=["id"], filters={'older_than': older_than, 'status': status,
+                                                                          'id': agent_list})
+        data = db_query.run()
+        id_purgeable_agents = list(map(operator.itemgetter('id'), data['items']))
+
+        affected_agents = list()
+        for agent_id in id_purgeable_agents:
+            if agent_id != "000":
                 try:
-                    if id == "000":
-                        raise WazuhError(1703)
-                    else:
-                        my_agent = Agent(id)
-                        my_agent._load_info_from_DB()
-                        if id not in id_purgeable_agents:
-                            raise WazuhError(1731, extra_message="The agent has a status different to '{}' or the "
-                                                                 "specified time frame 'older_than {}' does not "
-                                                                 "apply.".format(status, older_than))
-                        my_agent.remove(backup, purge)
-                        affected_agents.append(id)
-                except WazuhException as e:
-                    failed_ids.append(create_exception_dic(id, e))
-        else:
-            for id in id_purgeable_agents:
-                try:
-                    my_agent = Agent(id)
+                    my_agent = Agent(agent_id)
                     my_agent._load_info_from_DB()
                     my_agent.remove(backup, purge)
-                    affected_agents.append(id)
-                except WazuhException as e:
-                    failed_ids.append(create_exception_dic(id, e))
+                    affected_agents.append(agent_id)
+                except Exception as e:
+                    pass
 
-        if not failed_ids:
-            message = 'All selected agents were deleted' if affected_agents else "No agents were deleted"
-        else:
-            message = 'Some agents were not deleted'
-
-        if failed_ids:
-            final_dict = {'message': message,
-                          'data': {'affected_items': affected_agents,
-                                   'failed_items': failed_ids,
-                                   'older_than': older_than,
-                                   'total_affected_items': len(affected_agents),
-                                   'total_failed_items': len(failed_ids)}
-                          }
-        else:
-            final_dict = {'message': message,
-                          'data': {'affected_items': affected_agents,
-                                   'older_than': older_than,
-                                   'total_affected_items': len(affected_agents)}
-                          }
-
-        result = WazuhResult(final_dict, str_priority=['All selected agents were deleted',
-                                                       'Some agents were not deleted',
-                                                       'No agents were deleted'])
-
+        result = {'affected_items': affected_agents,
+                  'failed_items': list(),
+                  'str_priority': ['Shown agents were deleted', '', 'No agents were deleted']}
         return result
 
     @staticmethod
@@ -1322,6 +1162,7 @@ class Agent:
             return []
 
     @staticmethod
+    # @expose_resources(actions=["agent:read"], resources=["agent:group:{group_id}"], target_params=["group_id"])
     def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
                         filters=None, q=""):
         """Gets the agents in a group
@@ -1337,26 +1178,17 @@ class Agent:
         :param q: Defines query to filter in DB.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        # check whether the group exists or not
-        if group_id != 'null' and not glob("{}/{}".format(common.shared_path, group_id)) and \
-                not glob("{}/{}".format(common.multi_groups_path, group_id)):
-            raise WazuhError(1710, extra_message=group_id)
+        check_group_exists(group_id)
 
         db_query = WazuhDBQueryMultigroups(group_id=group_id, offset=offset, limit=limit, sort=sort, search=search,
                                            select=select, filters=filters, count=True, get_data=True, query=q)
-
         data = db_query.run()
-
-        for date_field in {'lastKeepAlive', 'dateAdd'}:
-            for item in data["items"]:
-                date_format = '%Y-%m-%d %H:%M:%S'
-                if date_field in item:
-                    item[date_field] = datetime.strptime(item[date_field], date_format)
 
         return data
 
     @staticmethod
-    def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None, q="",
+    @expose_resources(actions=["agent:read"], resources=["agent:group:null"], target_params=["agent_list"])
+    def get_agents_without_group(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, q="",
                                  filters=None):
         """Gets the agents without a group
 
@@ -1369,6 +1201,7 @@ class Agent:
         :param q: Defines query to filter in DB.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+        agent_list= None
         return Agent.get_agent_group(group_id="null", offset=offset, limit=limit, sort=sort, search=search,
                                      select=select, q='id!=0' + (';' + q if q else ''), filters=filters)
 
@@ -1864,7 +1697,8 @@ class Agent:
             raise WazuhInternalError(1746)
 
     @staticmethod
-    def get_outdated_agents(offset=0, limit=common.database_limit, sort=None, search=None, select=None, q=""):
+    @expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
+    def get_outdated_agents(agent_list= None, offset=None, limit=None, sort=None, search=None, select=None, q=None):
         """Gets the outdated agents.
 
         :param offset: First item to return.
@@ -1875,27 +1709,32 @@ class Agent:
         :param q: Defines query to filter in DB.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+        filters = dict()
+        filters['id'] = agent_list
+
         # Get manager version
         manager_ = Agent(id=0)
         manager_._load_info_from_DB()
 
-        select = ['version', 'id', 'name'] if select is None else select
-        # Offset value need +1 because manager never is outdate
-        db_query = WazuhDBQueryAgents(offset=offset + 1, limit=limit, sort=sort, search=search, select=select,
-                                      query=q, get_data=True, count=True)
-
-        list_agents_outdated = []
-        query_result = db_query.run()
-
-        for item in query_result['items']:
-            try:
-                if WazuhVersion(item['version']) < WazuhVersion(manager_.version):
-                    list_agents_outdated.append(item)
-            except ValueError:
-                # if an error happens getting agent version, agent is considered as outdated
-                list_agents_outdated.append(item)
-            except KeyError:
-                continue  # a never_connected agent causes a key error
+        data = WazuhDBQueryAgents(offset=offset + 1, limit=limit, sort=sort, search=search, select=select,
+                                  query=f"version!={manager_.version}", get_data=True, count=True)
+        # select = ['version', 'id', 'name'] if select is None else select
+        # # Offset value need +1 because manager never is outdate
+        # db_query = WazuhDBQueryAgents(offset=offset + 1, limit=limit, sort=sort, search=search, select=select,
+        #                               query=q, get_data=True, count=True)
+        #
+        # list_agents_outdated = []
+        # query_result = db_query.run()
+        #
+        # for item in query_result['items']:
+        #     try:
+        #         if WazuhVersion(item['version']) < WazuhVersion(manager_.version):
+        #             list_agents_outdated.append(item)
+        #     except ValueError:
+        #         # if an error happens getting agent version, agent is considered as outdated
+        #         list_agents_outdated.append(item)
+        #     except KeyError:
+        #         continue  # a never_connected agent causes a key error
 
         return {'items': list_agents_outdated, 'totalItems': len(list_agents_outdated)}
 

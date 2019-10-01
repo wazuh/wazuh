@@ -2563,11 +2563,10 @@ components:
         format: int32
         default: 500
         minimum: 1
-    list_agents:
+    agent_list:
       in: query
-      name: list_agents
+      name: agent_list
       description: List of agents IDs (separated by comma)
-      required: true
       schema:
         type: array
         items:
@@ -2720,7 +2719,7 @@ components:
       description: Query to filter results by. For example q=&quot;status=active&quot;
       schema:
         type: string
-        format: query
+#        format: query
     rationale:
       in: query
       name: rationale
@@ -2815,6 +2814,7 @@ components:
           - never_connected
           - disconnected
         minItems: 1
+
     statusRLDParam:
       in: query
       name: status
@@ -3733,12 +3733,12 @@ paths:
       - agents
       summary: Delete agents
       description: |
-        Deletes agents, using a list of them or a criterion based on the status or time of the last connection.
+        Deletes all agents or a list of them with optional criteria based on the status or time of the last connection.
       operationId: api.controllers.agents_controller.delete_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agent_list'
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/older_than'
@@ -3767,12 +3767,13 @@ paths:
     get:
       tags:
       - agents
-      summary: 'Get all agents'
-      description: 'Returns a list with the available agents.'
-      operationId: api.controllers.agents_controller.get_all_agents
+      summary: 'Get agents'
+      description: 'Returns information about all available agents or a list of them'
+      operationId: api.controllers.agents_controller.get_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_list'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/select'
@@ -4221,7 +4222,7 @@ paths:
         - agents
       summary: 'Restart an agent'
       description: 'Restarts the specified agent.'
-      operationId: api.controllers.agents_controller.put_restart_agent
+      operationId: api.controllers.agents_controller.restart_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4367,7 +4368,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agent_list'
         - $ref: '#/components/parameters/group_id'
       responses:
         '200':
@@ -5036,7 +5037,7 @@ paths:
     get:
       tags:
         - agents
-      summary: 'Get agents without group'
+      summary: 'Get all agents without group'
       description: 'Returns a list with the available agents without group.'
       operationId: api.controllers.agents_controller.get_agent_no_group
       parameters:
@@ -5145,23 +5146,13 @@ paths:
     put:
       tags:
       - agents
-      summary: 'Restart a list of agents'
-      operationId: api.controllers.agents_controller.restart_list_agents
+      summary: 'Restarts agents'
+      description: 'Restarts all agents or a list of them'
+      operationId: api.controllers.agents_controller.restart_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-
-      requestBody:
-        content:
-          application/json:
-            schema:
-              properties:
-                ids:
-                  description: Array of agent ID's.
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/AgentID'
-
+        - $ref: '#/components/parameters/agent_list'
       responses:
         '200':
           description: Agents restarted
@@ -5180,26 +5171,6 @@ paths:
                     affected_agents:
                     - '002'
                     - '004'
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-    post:
-      tags:
-      - agents
-      summary: 'Restarts all agents'
-      operationId: api.controllers.agents_controller.restart_all_agents
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: Agents restarted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Restarting all agents"
         default:
           $ref: '#/components/responses/ResponseError'
 

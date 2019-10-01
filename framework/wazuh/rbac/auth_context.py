@@ -289,46 +289,101 @@ class RBAChecker:
     @staticmethod
     def run_testing():
         policies = [
-            # {
-            #     "actions": ["syscheck:put", "syscheck:get", "syscheck:delete"],
-            #     "resources": ["agent:id:*"],
-            #     "effect": "allow"
-            # },
-            # {
-            #     "actions": ["lists:get"],
-            #     "resources": ["list:path:*"],
-            #     "effect": "allow"
-            # },
-            # {
-            #     "actions": ["active_response:command"],
-            #     "resources": ["agent:id:001"],
-            #     "effect": "allow"
-            # },
-            # {
-            #     "actions": ["active_response:command"],
-            #     "resources": ["agent:id:001", "agent:id:002"],
-            #     "effect": "deny"
-            # },
-            # {
-            #     "actions": ["active_response:command"],
-            #     "resources": ["agent:id:001", "agent:id:002", "agent:id:004"],
-            #     "effect": "deny"
-            # },
-            # {
-            #     "actions": ["active_response:command"],
-            #     "resources": ["agent:id:001", "agent:id:002"],
-            #     "effect": "deny"
-            # },
-            # {
-            #     "actions": ["active_response:command"],
-            #     "resources": ["agent:group:default"],
-            #     "effect": "allow"
-            # },
-            # {
-            #     "actions": ["active_response:command"],
-            #     "resources": ["agent:group:group1"],
-            #     "effect": "deny"
-            # }
+            {
+                "actions": ["syscheck:put", "syscheck:get", "syscheck:delete"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["lists:get"],
+                "resources": ["list:path:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:id:001"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:id:001", "agent:id:002"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:id:001", "agent:id:002", "agent:id:004"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:id:001", "agent:id:002"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:group:default"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:group:group1"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["agent:delete"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["agent:delete"],
+                "resources": ["agent:id:099"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["agent:delete"],
+                "resources": ["agent:id:003"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["agent:delete"],
+                "resources": ["agent:group:group1"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["agent:delete"],
+                "resources": ["agent:group:group2"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["agent:delete"],
+                "resources": ["agent:id:004"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["agent:read"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["agent:read"],
+                "resources": ["agent:id:003"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["agent:read"],
+                "resources": ["agent:id:099"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["agent:read"],
+                "resources": ["agent:group:group2"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["agent:read"],
+                "resources": ["agent:group:group1"],
+                "effect": "allow"
+            }
         ]
 
         return policies

@@ -7,6 +7,8 @@ from wazuh import common
 from wazuh.utils import WazuhDBQueryDistinct, WazuhDBQuery, WazuhDBQueryGroupBy, SQLiteBackend, get_fields_to_nest, \
     plain_dict_to_nested_dict
 from wazuh.exception import WazuhError
+from wazuh.ossec_queue import OssecQueue
+from glob import glob
 
 fields = {'id': 'id', 'name': 'name', 'ip': 'coalesce(ip,register_ip)', 'status': 'status',
           'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
@@ -167,3 +169,39 @@ def calculate_status(last_keep_alive, pending, today=datetime.utcnow()):
         last_date = datetime.utcfromtimestamp(last_keep_alive)
         difference = (today - last_date).total_seconds()
         return "disconnected" if difference > common.limit_seconds else ("pending" if pending else "active")
+
+
+def check_group_exists(group_id):
+    """ Check if agent group exists
+
+    :param group_id: Group ID.
+    :return: Exception if group does not exist
+    """
+    if group_id != 'null' and not glob("{}/{}".format(common.shared_path, group_id)) and \
+            not glob("{}/{}".format(common.multi_groups_path, group_id)):
+        raise WazuhError(1710, extra_message=group_id)
+
+
+def send_restart_command(agent_id):
+    """ Send restart command to an agent
+
+    :param agent_id: Agent ID
+    :return OSSEC message
+    """
+    oq = OssecQueue(common.ARQUEUE)
+    ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS, agent_id)
+    oq.close()
+
+    return ret_msg
+
+
+def send_restart_command_all():
+    """Send restart command to all agents
+
+    :return: OSSEC message
+    """
+    oq = OssecQueue(common.ARQUEUE)
+    ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS)
+    oq.close()
+
+    return ret_msg

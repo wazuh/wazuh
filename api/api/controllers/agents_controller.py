@@ -9,6 +9,7 @@ import connexion
 
 import wazuh.configuration as config
 from api import configuration
+from api.authentication import get_permissions
 from api.models.agent_added import AgentAdded
 from api.models.agent_inserted import AgentInserted
 from api.models.agent_list_model import AgentList
@@ -18,32 +19,36 @@ from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
 from wazuh.agent import Agent
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
+from wazuh.common import database_limit
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def delete_agents(pretty=False, wait_for_complete=False, list_agents='all', purge=None, status='all', older_than=None):
+def delete_agents(pretty=False, wait_for_complete=False, agent_list=None, purge=False, status='all', older_than="7d"):
     """Delete agents
 
-    Deletes agents, using a list of them or a criterion based on the status or time of the last connection.
+    Deletes all agents or a list of them with optional criteria based on the status or time of the last connection.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param list_agents: Array of agent ID’s]
+    :param agent_list: List of agent's IDs.
     :param purge: Delete an agent from the key store
+    :param status: Filters by agent status. Use commas to enter multiple statuses.
     :param older_than: Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
     ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, uses the register date.
     :return: AgentAllItemsAffected
     """
-    f_kwargs = {'list_agent': list_agents,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': agent_list,
                 'purge': purge,
                 'status': status,
                 'older_than': older_than
                 }
+    func = Agent.delete_agents_all if agent_list is None else Agent.delete_agents
 
-    dapi = DistributedAPI(f=Agent.remove_agents,
+    dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -57,15 +62,16 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents='all', purg
 
 
 @exception_handler
-def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
-                   status=None, q='', older_than=None, manager=None, version=None, group=None, node_name=None,
-                   name=None, ip=None):
-    """Get all agents
+def get_agents(pretty=False, wait_for_complete=False, agent_list=None, offset=None, limit=None, select=None, sort=None,
+               search=None, status=None, q=None, older_than=None, manager=None, version=None, group=None,
+               node_name=None, name=None, ip=None):
+    """Get agents
 
-    Returns a list with the available agents.
+    Returns information about all agents or a list of them
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param agent_list: List of agent's IDs.
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param select: Select which fields to return (separated by comma)
@@ -84,7 +90,9 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     :param ip: Filters by agent IP
     :return: AllAgents
     """
-    f_kwargs = {'offset': offset,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': agent_list,
+                'offset': offset,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
@@ -106,8 +114,9 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     nested = ['os.version', 'os.name', 'os.platform']
     for field in nested:
         f_kwargs['filters'][field] = connexion.request.args.get(field, None)
+    func = Agent.get_agents_all if agent_list is None else Agent.get_agents
 
-    dapi = DistributedAPI(f=Agent.get_agents_overview,
+    dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -122,15 +131,20 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
 
 
 @exception_handler
-def restart_all_agents(pretty=True, wait_for_complete=False):
-    """Restarts all agents
+def restart_agents(pretty=False, wait_for_complete=False, agent_list=None):
+    """ Restarts all agents
 
+    :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param agent_list: List of agent's IDs.
     :return: CommonResponse
     """
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': agent_list}
+    func = Agent.restart_agents_all if agent_list is None else Agent.restart_agents
 
-    dapi = DistributedAPI(f=Agent.restart_agents,
-                          f_kwargs={'restart_all': True},
+    dapi = DistributedAPI(f=func,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
@@ -196,11 +210,13 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):
     :param purge: Delete an agent from the key store
     :return: AgentItemsAffected
     """
-    f_kwargs = {'agent_id': agent_id,
-                'purge': purge
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': [agent_id],
+                'purge': purge,
+                'older_than': "0s"
                 }
 
-    dapi = DistributedAPI(f=Agent.remove_agent,
+    dapi = DistributedAPI(f=Agent.delete_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -209,6 +225,7 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
     return data, 200
 
@@ -223,11 +240,12 @@ def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):
     :param select: Select which fields to return (separated by comma)
     :return: Agent
     """
-    f_kwargs = {'agent_id': agent_id,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': [agent_id],
                 'select': select
                 }
 
-    dapi = DistributedAPI(f=Agent.get_agent,
+    dapi = DistributedAPI(f=Agent.get_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -414,15 +432,16 @@ def get_agent_key(agent_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def put_restart_agent(agent_id, pretty=False, wait_for_complete=False):
+def restart_agent(agent_id, pretty=False, wait_for_complete=False):
     """Restart an agent.
 
+    :param agent_id: Agent ID. All posible values since 000 onwards.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID. All posible values since 000 onwards.
     :return: CommonResponse
     """
-    f_kwargs = {'agent_id': agent_id}
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': [agent_id]}
 
     dapi = DistributedAPI(f=Agent.restart_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -554,16 +573,16 @@ def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False
 
 
 @exception_handler
-def delete_multiple_agent_group(list_agents, group_id, pretty=False, wait_for_complete=False):
+def delete_multiple_agent_group(group_id, agent_list=None, pretty=False, wait_for_complete=False):
     """Remove multiple agents from a single group.
 
+    :param group_id: Group ID.
+    :param agent_list: Array of agent's IDs.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param list_agents: Array of agent's IDs.
-    :param group_id: Group ID.
     :return: AgentItemsAffected
     """
-    f_kwargs = {'agent_id_list': list_agents,
+    f_kwargs = {'agent_id_list': agent_list,
                 'group_id': group_id}
 
     dapi = DistributedAPI(f=Agent.unset_group_list,
@@ -1048,8 +1067,9 @@ def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=
     :param select: Select which fields to return (separated by comma)
     :return: Data
     """
-    f_kwargs = {'agent_name': agent_name,
-                'select': [x.replace('os_', 'os.') for x in select] if select else select}
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_name': agent_name,
+                'select': select}
 
     dapi = DistributedAPI(f=Agent.get_agent_by_name,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1066,8 +1086,8 @@ def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=
 
 
 @exception_handler
-def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
-                       q=''):
+def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=500, select=None, sort=None, search=None,
+                       q=None):
     """Get agents without group.
 
     :param pretty: Show results in human-readable format
@@ -1081,14 +1101,16 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=No
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: Data
     """
-    f_kwargs = {'offset': offset,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'group_id': 'null',
+                'offset': offset,
                 'limit': limit,
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'q': q}
+                'q': 'id!=0' + (';' + q if q else '')}
 
-    dapi = DistributedAPI(f=Agent.get_agents_without_group,
+    dapi = DistributedAPI(f=Agent.get_agent_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1132,38 +1154,6 @@ def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=No
     response = Data(data)
 
     return response, 200
-
-
-@exception_handler
-def restart_list_agents(pretty=False, wait_for_complete=False):
-    """Restart a list of agents.
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param ids: List of agents ID.
-    :return: AgentItemsAffected
-    """
-    # get body parameters
-    if connexion.request.is_json:
-        agent_list_model = AgentList.from_dict(connexion.request.get_json())
-    else:
-        raise WazuhError(1750)
-    agent_dict = agent_list_model.to_dict()
-    agent_dict['agent_id'] = agent_dict.pop('ids')
-
-    f_kwargs = {**{}, **agent_dict}
-
-    dapi = DistributedAPI(f=Agent.restart_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger
-                          )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-
-    return data, 200
 
 
 @exception_handler
