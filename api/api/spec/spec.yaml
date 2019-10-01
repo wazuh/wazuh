@@ -3633,7 +3633,6 @@ components:
       in: query
       name: usernames
       description: ID of an user.
-      required: true
       schema:
         type: array
         items:
@@ -10711,7 +10710,7 @@ paths:
         - security
       summary: 'Get user information'
       description: 'Get the information of a specified user.'
-      operationId: api.controllers.security_controller.get_user
+      operationId: api.controllers.security_controller.get_users
       parameters:
         - $ref: '#/components/parameters/usernames'
       responses:
@@ -10772,7 +10771,7 @@ paths:
         - security
       summary: 'Delete an user'
       description: "Delete a user by specifying their name"
-      operationId: api.controllers.security_controller.delete_user
+      operationId: api.controllers.security_controller.delete_users
       parameters:
         - $ref: '#/components/parameters/usernames'
       responses:

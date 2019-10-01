@@ -39,7 +39,7 @@ def get_users(username: list = None):
 
     :return: All users data
     """
-    func = security.get_users_all() if username is None else security.get_users()
+    func = security.get_users_all if username is None else security.get_users
     rbac = get_permissions(connexion.request.headers['Authorization'])
     f_kwargs = {'username_list': username, 'rbac': rbac}
     dapi = DistributedAPI(f=func,
@@ -80,8 +80,6 @@ def create_user():
     validate = check_body(f_kwargs)
     if validate is not True:
         raise WazuhError(5005, extra_message='Invalid field found {}'.format(validate))
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs['rbac'] = rbac
     dapi = DistributedAPI(f=security.create_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -94,13 +92,13 @@ def create_user():
 
 
 @exception_handler
-def update_user(username=None):
+def update_user(username):
     """Modify an existent user
 
     :param username: Name of the user to be modified
     :return: User data
     """
-    f_kwargs = {**connexion.request.get_json()}
+    f_kwargs = {'username': username, **connexion.request.get_json()}
     validate = check_body(f_kwargs)
     if validate is not True:
         raise WazuhError(5005, extra_message='Invalid field found {}'.format(validate))
@@ -118,7 +116,7 @@ def update_user(username=None):
 
 
 @exception_handler
-def delete_user(username=None):
+def delete_users(username=None):
     """Delete an existent user
 
     :param username: Name of the user to be removed
@@ -169,9 +167,8 @@ def get_roles(role_ids=None, pretty=False, wait_for_complete=False, offset=0, li
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -229,9 +226,8 @@ def remove_roles(role_ids=None, pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -300,9 +296,8 @@ def get_policies(policy_ids=None, pretty=False, wait_for_complete=False, offset=
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -358,9 +353,8 @@ def remove_policies(policy_ids=None, pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler

@@ -17,7 +17,9 @@ from wazuh.utils import process_array
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
 
 
-def get_users_all(username_list: list = None, offset=0, limit=common.database_limit, sort_by=None,
+@expose_resources(actions=['security:read'], resources=['user:id:*'], target_params=['username_list'],
+                  post_proc_func=list_handler_no_denied)
+def get_users_all(username_list=None, offset=0, limit=common.database_limit, sort_by=None,
                   sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Get the information of all users
 
@@ -43,8 +45,10 @@ def get_users_all(username_list: list = None, offset=0, limit=common.database_li
             'str_priority': ['All available users were shown', '', '']}
 
 
-def get_users(username_list: list = None, offset=0, limit=common.database_limit, sort_by=None,
-                sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+@expose_resources(actions=['security:read'], resources=['user:id:{username_list}'], target_params=['username_list'],
+                  post_proc_func=list_handler_with_denied)
+def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by=None,
+              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Get the information of a specified user
 
     :param username_list: Name of the user
@@ -57,15 +61,18 @@ def get_users(username_list: list = None, offset=0, limit=common.database_limit,
     :param search_in_fields: Fields to search in
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
+    affected_items = list()
+    failed_items = list()
     with AuthenticationManager() as auth:
-        result = auth.get_users(username)
+        for username in username_list:
+            user = auth.get_users(username)
+            affected_items.append(user) if user \
+                else failed_items.append(create_exception_dic(username, WazuhError(5001)))
 
-    if not result or len(result) == 0:
-        raise WazuhError(5001, extra_message='User {} does not exist'.format(username))
-
-    return process_array(result, search_text=search_text, search_in_fields=search_in_fields,
-                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+    return {'affected_items': affected_items,
+            'failed_items': failed_items,
+            'str_priority': ['All specified users were show',
+                             'Some users could not be show', 'No user were shown']}
 
 
 def create_user(username: str = None, password: str = None):
@@ -81,7 +88,7 @@ def create_user(username: str = None, password: str = None):
     result = None
     with AuthenticationManager() as auth:
         if auth.add_user(username, password):
-            result = get_user_id(username)
+            result = auth.get_users(username)
 
     if result is None:
         raise WazuhError(5000, extra_message='The user \'{}\' could not be created'.format(username))
@@ -89,7 +96,9 @@ def create_user(username: str = None, password: str = None):
     return result
 
 
-def update_user(username: str, password: str):
+@expose_resources(actions=['security:read'], resources=['user:id:{username}'], target_params=['username'],
+                  post_proc_func=list_handler_no_denied)
+def update_user(username=None, password=None):
     """Update a specified user
 
     :param username: Name for the new user
@@ -100,15 +109,19 @@ def update_user(username: str, password: str):
         raise WazuhError(5007)
 
     with AuthenticationManager() as auth:
-        query = auth.update_user(username, password)
+        query = auth.update_user(username[0], password)
         if query is False:
-            raise WazuhError(5001, extra_message='The user \'{}\' not exist'.format(username))
+            raise WazuhError(5001, extra_message='The user \'{}\' not exist'.format(username[0]))
         elif query == 'admin':
             raise WazuhError(5004, extra_message='The users wazuh and wazuh-app can not be updated')
 
-    return get_user_id(username)
+    return {'affected_items': auth.get_users(username[0]),
+            'failed_items': list(),
+            'str_priority': ['User modified correctly', '', '']}
 
 
+@expose_resources(actions=['security:read'], resources=['user:id:{username_list}'], target_params=['username_list'],
+                  post_proc_func=list_handler_no_denied)
 def delete_user(username: str):
     """Delete a specified user
 
@@ -122,7 +135,9 @@ def delete_user(username: str):
         elif query == 'admin':
             raise WazuhError(5004, extra_message='The users wazuh and wazuh-app can not be removed')
 
-    return 'User \'{}\' deleted correctly'.format(username)
+    return {'affected_items': username,
+            'failed_items': list(),
+            'str_priority': ['User deleted correctly', '', '']}
 
 
 @expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'], target_params=['role_ids'],
