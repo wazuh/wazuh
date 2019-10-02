@@ -987,8 +987,11 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
     if (fim_start < 0) {
         os_strdup("Unknown", agt_info->syscheck_time);
     } else if (fim_start > fim_end){
+#ifndef SOLARIS
         os_strdup(ctime_r(&fim_start, buf_ptr), timestamp);
-
+#else
+        os_strdup(ctime_r(&fim_start, buf_ptr, sizeof(buf_ptr)), timestamp);
+#endif
         /* Remove newline */
         tmp_str = strchr(timestamp, '\n');
         if (tmp_str) {
@@ -998,8 +1001,11 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
         snprintf(agt_info->syscheck_time, OS_SIZE_128, "%s (Scan in progress)", timestamp);
         os_free(timestamp);
     } else {
+#ifndef SOLARIS
         os_strdup(ctime_r(&fim_start, buf_ptr), agt_info->syscheck_time);
-
+#else
+        os_strdup(ctime_r(&fim_start, buf_ptr, sizeof(buf_ptr)), agt_info->syscheck_time);
+#endif
         /* Remove newline */
         tmp_str = strchr(agt_info->syscheck_time, '\n');
         if (tmp_str) {
@@ -1009,7 +1015,11 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
     if (fim_end < 0) {
         os_strdup("Unknown", agt_info->syscheck_endtime);
     } else {
+#ifndef SOLARIS
         os_strdup(ctime_r(&fim_end, buf_ptr), agt_info->syscheck_endtime);
+#else
+        os_strdup(ctime_r(&fim_end, buf_ptr, sizeof(buf_ptr)), agt_info->syscheck_endtime);
+#endif
     }
 
     /* Agent name of null, means it is the server info */
@@ -1045,8 +1055,11 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
 
             s_time = (time_t)atoi(tmp_str);
 
+#ifndef SOLARIS
             os_strdup(ctime_r(&s_time, buf_ptr), agt_info->rootcheck_time);
-
+#else
+            os_strdup(ctime_r(&s_time, buf_ptr, sizeof(buf_ptr)), agt_info->rootcheck_time);
+#endif
             /* Remove newline */
             tmp_str = strchr(agt_info->rootcheck_time, '\n');
             if (tmp_str) {
@@ -1061,8 +1074,11 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
             time_t s_time = 0;
             tmp_str = buf + 1;
             s_time = (time_t)atoi(tmp_str);
+#ifndef SOLARIS
             os_strdup(ctime_r(&s_time, buf_ptr), agt_info->rootcheck_endtime);
-
+#else
+            os_strdup(ctime_r(&s_time, buf_ptr, sizeof(buf_ptr)), agt_info->rootcheck_endtime);
+#endif
             /* Remove newline */
             tmp_str = strchr(agt_info->rootcheck_endtime, '\n');
             if (tmp_str) {
@@ -1102,8 +1118,11 @@ static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip)
     if (stat(buf, &file_status) < 0) {
         return (strdup("Unknown"));
     }
-
+#ifndef SOLARIS
     return (strdup(ctime_r(&file_status.st_mtime, buf_ptr)));
+#else
+    return (strdup(ctime_r(&file_status.st_mtime, buf_ptr, sizeof(buf_ptr))));
+#endif
 }
 
 /* Internal function. Extract operating system. */
