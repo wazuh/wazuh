@@ -364,6 +364,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             sleep(lapse);
         }
 
+        mdebug2("Performing synchronization check.");
         fim_sync_checksum();
         sleep(syscheck.sync_interval);
     }
