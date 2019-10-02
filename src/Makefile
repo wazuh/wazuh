@@ -155,7 +155,7 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-DOS_BIG_ENDIAN
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-lrt
-ifndef DISABLE_SHARED
+ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 endif
 		OSSEC_CFLAGS+=-pthread
@@ -180,15 +180,15 @@ else
 		OSSEC_LDFLAGS+=-pthread
 endif # winagent
 
-ifndef DISABLE_SYSC
+ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 	DEFINES+=-DENABLE_SYSC
 endif
 
-ifndef DISABLE_CISCAT
+ifeq (,$(filter ${DISABLE_CISCAT},YES yes y Y 1))
 	DEFINES+=-DENABLE_CISCAT
 endif
 
-ifndef DISABLE_SHARED
+ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 	DEFINES+=-DENABLE_SHARED
 endif
 
@@ -206,7 +206,7 @@ endif #DEBUG
 OSSEC_CFLAGS+=${OFLAGS}
 OSSEC_LDFLAGS+=${OFLAGS}
 
-ifneq (,$(filter ${CLEANFULL}, YES yes y Y 1))
+ifneq (,$(filter ${CLEANFULL},YES yes y Y 1))
 	DEFINES+=-DCLEANFULL
 endif
 
@@ -433,27 +433,27 @@ failtarget:
 help: failtarget
 	@echo
 	@echo "General options: "
-	@echo "   make V=yes                   Display full compiler messages. Allowed values are 1, yes, YES, y and Y otherwise, the flag is ignored"
-	@echo "   make DEBUG=yes               Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y otherwise, the flag is ignored"
-	@echo "   make DEBUGAD=yes             Enables extra debugging logging in ossec-analysisd. Allowed values are 1, yes, YES, y and Y otherwise, the flag is ignored"
+	@echo "   make V=yes                   Display full compiler messages. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DEBUG=yes               Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DEBUGAD=yes             Enables extra debugging logging in ossec-analysisd. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PREFIX=/path            Install OSSEC to '/path'. Defaults to /var/ossec"
 	@echo "   make MAXAGENTS=NUMBER        Set the number of maximum agents to NUMBER. Defaults to 2048"
-	@echo "   make ONEWAY=yes              Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y otherwise, the flag is ignored"
-	@echo "   make CLEANFULL=yes           Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y otherwise, the flag is ignored"
+	@echo "   make ONEWAY=yes              Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make CLEANFULL=yes           Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make RESOURCES_URL           Set the Wazuh resources URL"
-	@echo "   make USE_ZEROMQ=yes          Build with zeromq support. Allowed values are 1, yes, YES, y and Y otherwise, the flag is ignored"
-	@echo "   make USE_PRELUDE=yes         Build with prelude support. Allowed values are 1, yes, YES, y and Y otherwise, the flag is ignored"
-	@echo "   make USE_INOTIFY=yes         Build with inotify support. Allowed values are 1, yes, YES, y and Y otherwise, the flag is ignored"
-	@echo "   make BIG_ENDIAN=yes          Build with big endian support. Allowed values are 1, yes, YES, y and Y otherwise, the flag is ignored"
-	@echo "   make USE_SELINUX=yes         Build with SELinux policies. Allowed values are 1, yes, YES, y and Y otherwise, the flag is ignored"
-	@echo "   make USE_AUDIT=yes           Build with audit service support. Allowed values are 1, yes, YES, y and Y otherwise, the flag is ignored"
-	@echo "   make USE_FRAMEWORK_LIB=yes   Use external SQLite library for the framework. Allowed values are 1, yes, YES, y and Y otherwise, the flag is ignored"
-	@echo "   make USE_MSGPACK_OPT=yes     Use default architecture for building msgpack library. Allowed values are 1, yes, YES, y and Y otherwise, the flag is ignored"
+	@echo "   make USE_ZEROMQ=yes          Build with zeromq support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_PRELUDE=yes         Build with prelude support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_INOTIFY=yes         Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make BIG_ENDIAN=yes          Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_SELINUX=yes         Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_AUDIT=yes           Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_FRAMEWORK_LIB=yes   Use external SQLite library for the framework. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_MSGPACK_OPT=yes     Use default architecture for building msgpack library. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make OFLAGS=-Ox              Overrides optimization level"
-	@echo "   make DISABLE_SHARED=true     Not to build the Wazuh shared library (for unsupported systems)"
-	@echo "   make DISABLE_SYSC=true       Not to build the Syscollector module (for unsupported systems)"
-	@echo "   make DISABLE_CISCAT=true     Not to build the CIS-CAT module (for unsupported systems)"
-	@echo "   make OPTIMIZE_CPYTHON=yes    Enable the python compilation for production. The path is  /var/ossec/, you don't have to use OPTIMIZE_CPYTHON, in other case, this is optional. Allowed values are 1, yes, YES, y and Y otherwise, the flag is ignored."
+	@echo "   make DISABLE_SHARED=yes      Not to build the Wazuh shared library (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DISABLE_SYSC=yes        Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DISABLE_CISCAT=yes      Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make OPTIMIZE_CPYTHON=yes    Enable the python compilation for production. The path is  /var/ossec/, you don't have to use OPTIMIZE_CPYTHON, in other case, this is optional. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql          Build with MYSQL Support"
@@ -462,7 +462,7 @@ help: failtarget
 	@echo "                                Use PGSQL_CFLAGS adn PGSQL_LIBS to override defaults"
 	@echo
 	@echo "Geoip support: "
-	@echo "   make USE_GEOIP=yes           Build with GeoIP support. Allowed values are 1, yes, YES, y and Y otherwise, the flag is ignored"
+	@echo "   make USE_GEOIP=yes           Build with GeoIP support. Allowed values are auto 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo
 	@echo "User options: "
 	@echo "   make OSSEC_GROUP=ossec       Set ossec group"
@@ -471,7 +471,7 @@ help: failtarget
 	@echo "   make OSSEC_USER_REM=ossecr   Set ossec user rem"
 	@echo
 	@echo "Examples: Client with debugging enabled"
-	@echo "   make TARGET=agent DEBUG=1"
+	@echo "   make TARGET=agent DEBUG=yes"
 
 .PHONY: settings
 settings:
@@ -877,10 +877,10 @@ external/%.tar.gz:
 #### OSSEC Libs ####
 ####################
 
-ifdef DISABLE_SHARED
+ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 BUILD_LIBS = libwazuh.a $(EXTERNAL_LIBS)
 endif
-ifndef DISABLE_SHARED
+ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 WAZUHEXT_LIB = libwazuhext.$(SHARED)
 BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
 endif
@@ -951,7 +951,7 @@ ifeq (${TARGET},agent)
 	wmodules_c := $(filter-out wazuh_modules/wm_vuln_detector.c,$(wmodules_c))
 endif
 
-ifndef DISABLE_SYSC
+ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/syscollector/*.c)
 endif
 
@@ -965,7 +965,7 @@ wazuh_modules/syscollector/syscollector_win_ext.dll: wazuh_modules/syscollector/
 	${OSSEC_SHARED} ${OSSEC_LDFLAGS} $^ -o $@ $(OSSEC_LIBS) $(JSON_LIB) -liphlpapi -lws2_32
 endif # DLL for Windows
 
-ifndef DISABLE_SYSC
+ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 wazuh_modules/syscollector/%.o: wazuh_modules/syscollector/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 endif
@@ -1065,7 +1065,7 @@ libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os
 
 ### libwazuhext #########
 
-ifndef DISABLE_SHARED
+ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 ifeq (${uname_S},Darwin)
 WAZUH_SHFLAGS=-install_name @rpath/libwazuhext.$(SHARED)
 
@@ -1480,7 +1480,7 @@ ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
 endif
 endif
 
-ifndef DISABLE_SHARED
+ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 build_python: $(WAZUHEXT_LIB)
 endif
 
@@ -1506,7 +1506,7 @@ CFLAGS_TEST = -g -O0 --coverage
 
 # LIBS_TEST = -lcheck -lm -lrt -lsubunit
 
-ifdef TEST
+ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
 	# OSSEC_CFLAGS+=${CFLAGS_TEST} -Itests
 	OSSEC_LDFLAGS+=${CFLAGS_TEST}
@@ -1525,7 +1525,7 @@ run_tests:
 	@$(foreach bin,${test_programs},./${bin} || exit 1;)
 
 build_tests: external
-	${MAKE} DEBUG=1 TEST=1 ${test_programs}
+	${MAKE} DEBUG=yes TEST=yes ${test_programs}
 
 test_c := $(wildcard tests/*.c)
 test_o := $(test_c:.c=.o)
