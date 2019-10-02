@@ -275,7 +275,8 @@ def get_hotfixes_agent(agent_id, offset=0, limit=common.database_limit,
 
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    valid_select_fields = {'scan_id', 'scan_time', 'hotfix'}
+    valid_select_fields = {'scan_id': 'scan_id', 'scan_time': 'scan_time',
+                           'hotfix': 'hotfix'}
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit,
                           select=select, search=search, sort=sort,
