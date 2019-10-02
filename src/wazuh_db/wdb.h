@@ -113,9 +113,6 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_CHECK_RULES_DELETE,
     WDB_STMT_SCA_CHECK_FIND,
     WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
-    WDB_STMT_MITRE_ATTACK_GET,
-    WDB_STMT_MITRE_PHASE_GET,
-    WDB_STMT_MITRE_PLATFORM_GET,
     WDB_STMT_MITRE_TACTICS_GET,
     WDB_STMT_MITRE_IDS_GET,
     WDB_STMT_SIZE
@@ -182,9 +179,6 @@ wdb_t * wdb_open_mitre();
 
 /* Close global database */
 void wdb_close_global();
-
-/* Close global database */
-void wdb_close_mitre();
 
 /* Open database for agent */
 sqlite3* wdb_open_agent(int id_agent, const char *name);
@@ -393,38 +387,6 @@ int wdb_commit(sqlite3 *db);
 int wdb_commit2(wdb_t * wdb);
 
 /**
- * @brief It gets the Mitre's information that is related to ID Mitre attack "id"
- * 
- * @param wdb Database struct that includes database that will be queried
- * @param id ID Mitre attack (e.g. T1122)
- * @param output Mitre information corresponding to its ID mitre attack
- * @return int It returns -1 if it fails, 0 if it doesn't find Mitre information and 1 if it finds it
- */
-int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output);
-
-/**
- * @brief It gets all the Mitre's information that is related to the tactic "phase_name"
- * 
- * @param wdb Database struct that includes database that will be queried
- * @param phase_name It can be Lateral Movement, Execution, Persistence, etc
- * @param output Mitre information limited by limit and offset parameters
- * @param params This struct includes limit and offset parameters
- * @return int It returns -1 if it fails, 0 if it doesn't find Mitre information and 1 if it finds it
- */
-int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output);
-
-/**
- * @brief It gets all the Mitre's information that is related to the platform "platform_name" 
- * 
- * @param wdb Database struct that includes database that will be queried
- * @param platform_name It can be Windows, macOs or Linux
- * @param output Mitre information limited by limit and offset parameters
- * @param params This struct includes limit and offset parameters
- * @return int It returns -1 if it fails, 0 if it doesn't find Mitre information and 1 if it finds it
- */
-int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output);
-
-/**
  * @brief It gets a Mitre's tactics array from the has_phase table
  * 
  * @param wdb Database struct that includes database that will be queried
@@ -444,7 +406,7 @@ int wdb_mitre_tactics_get(wdb_t *wdb, char *id_attack, char *output);
 int wdb_mitre_ids_get(wdb_t *wdb, char *output);
 
 /**
- * @brief Create global database
+ * @brief It creates the global database
  * 
  * @param path The path where the global DB will be create
  * @return It returns 0 if correct or -1 if error
@@ -572,21 +534,21 @@ int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 int wdb_ciscat_del(wdb_t * wdb, const char * scan_id);
 
 /**
- * @brief It initializes a database
+ * @brief It creates a database node that is associated with a database and ID
  * 
- * @param db The Database that you want to initialize
- * @param agente_id The name of the DB so it can be associated with the hast table
- * @return It returns a database or NULL
+ * @param db The database to associate with the node
+ * @param id The ID name to associate with the node
+ * @return It returns a database node
  */
 wdb_t * wdb_init(sqlite3 * db, const char * id);
 
 void wdb_destroy(wdb_t * wdb);
 
 /**
- * @brief It stores a database in DB pool
+ * @brief It stores a database node in DB pool
  * 
- * @param wdb The node DB that you want to append to the DB Pool
- * @return It returns a locked database or NULL
+ * @param wdb The database node that you want to append to the DB Pool
+ * @return It returns a locked database node
  */
 void wdb_pool_append(wdb_t * wdb);
 
@@ -647,10 +609,10 @@ int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output
 int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check);
 
 /**
- * @brief Upgrade agent database to last version
+ * @brief It upgrades database node to last version
  * 
- * @param wdb The node DB that you want to upgrade
- * @return It returns a locked database or NULL
+ * @param wdb The database node that you want to upgrade
+ * @return It returns a database node
  */
 wdb_t * wdb_upgrade(wdb_t *wdb);
 
