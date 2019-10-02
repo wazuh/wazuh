@@ -32,8 +32,13 @@ uid_t Privsep_GetUser(const char *name)
     struct passwd *result = NULL;
     uid_t pw_uid;
 
-    getpwnam_r(name, &pw, buffer, len, &result);
-    pw_uid = result ? result->pw_uid : (uid_t) OS_INVALID;
+#ifndef SOLARIS
+    int pwname = getpwnam_r(name, &pw, buffer, len, &result);
+    pw_uid = pwname != 0 || result == NULL ? (uid_t) OS_INVALID : result->pw_uid;
+#else
+    result = getpwnam_r(name, &pw, buffer, len);
+    pw_uid = result == NULL ? (uid_t) OS_INVALID : result->pw_uid;
+#endif
     os_free(buffer);
 
     return pw_uid;
@@ -49,8 +54,13 @@ gid_t Privsep_GetGroup(const char *name)
     os_malloc(len, buffer);
     gid_t gr_gid;
 
+#ifndef SOLARIS
     int grname = getgrnam_r(name, &grp, buffer, len, &result);
     if(grname != 0 || result == NULL) {
+#else
+    result = getgrnam_r(name, &grp, buffer, len);
+    if(result == NULL) {
+#endif
         merror("Could not get group name.");
         gr_gid = OS_INVALID;
     } else {

@@ -579,8 +579,13 @@ char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__(
     os_malloc(len, buffer);
     char *u_name;
 
-    getpwuid_r(uid, &pwd, buffer, len, &result);
-    os_strdup(result ? result->pw_name : "", u_name);
+#ifndef SOLARIS
+    int pwuid = getpwuid_r(uid, &pwd, buffer, len, &result);
+    os_strdup(pwuid != 0 || result == NULL ? "" : result->pw_name, u_name);
+#else
+    result = getpwuid_r(uid, &pwd, buffer, len);
+    os_strdup(result == NULL ? "" : result->pw_name, u_name);
+#endif
     os_free(buffer);
 
     return u_name;
@@ -595,8 +600,13 @@ char *get_group(int gid) {
     os_malloc(len, buffer);
     char *gr_name;
 
+#ifndef SOLARIS
     int groupid = getgrgid_r(gid, &group, buffer, len, &result);
-    if(groupid != 0 || result == NULL) {
+    if (groupid != 0 || result == NULL) {
+#else
+    result = getgrgid_r(gid, &group, buffer, len);
+    if (result == NULL) {
+#endif
         merror("Could not get ossec gid.");
         os_strdup("", gr_name);
     } else {

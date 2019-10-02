@@ -66,8 +66,13 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     char *buffer;
     os_malloc(len, buffer);
 
+#ifndef SOLARIS
     int grname = getgrnam_r(USER, &os_group, buffer, len, &result);
-    if(grname != 0 || result == NULL){
+    if(grname != 0 || result == NULL) {
+#else
+    result = getgrnam_r(USER, &os_group, buffer, len);
+    if(result == NULL) {
+#endif
         os_free(buffer);
         merror("Could not get group name.");
         fclose(fp);
