@@ -185,7 +185,6 @@ end:
 }
 
 wdb_t * wdb_open_mitre() {
-    char id[64] = "mitre";
     char path[PATH_MAX + 1];
     sqlite3 *db;
     wdb_t * wdb = NULL;
@@ -195,7 +194,7 @@ wdb_t * wdb_open_mitre() {
 
     w_mutex_lock(&pool_mutex);
 
-    if (wdb = (wdb_t *)OSHash_Get(open_dbs, id), wdb) {
+    if (wdb = (wdb_t *)OSHash_Get(open_dbs, WDB_MITRE_NAME), wdb) {
         // Checking if database was removed to avoid create it again
         if (wdb->remove) {
             w_mutex_lock(&wdb->mutex);
@@ -209,15 +208,15 @@ wdb_t * wdb_open_mitre() {
 
     // Try to open DB
 
-    snprintf(path, sizeof(path), "%s/%s.db", WDB_DIR, id);
+    snprintf(path, sizeof(path), "%s/%s.db", WDB_DIR, WDB_MITRE_NAME);
 
     if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-        mdebug1("No SQLite database found for '%s', creating.", id);
+        mdebug1("No SQLite database found for '%s', creating.", WDB_MITRE_NAME);
         sqlite3_close_v2(db);
         goto end;
 
     } else {
-        wdb = wdb_init(db, id);
+        wdb = wdb_init(db, WDB_MITRE_NAME);
         wdb_pool_append(wdb);
 
         if (new_wdb = wdb_upgrade(wdb), new_wdb != wdb) {
