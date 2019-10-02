@@ -206,14 +206,6 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         upd->update_from_year = NVD_REPO_DEFAULT_MIN_YEAR;
         upd->json_format = 1;
         upd->interval = WM_VULNDETECTOR_NVD_UPDATE_INTERVAL;
-        // Set the CPE feed (from NVD)
-        /*
-        os_calloc(1, sizeof(update_node), upd_list[CPE_NDIC]);
-        upd_list[CPE_NDIC]->dist_tag_ref = FEED_CPED;
-        upd_list[CPE_NDIC]->interval = WM_VULNDETECTOR_DEFAULT_CPE_UPDATE_INTERVAL;
-        upd_list[CPE_NDIC]->dist_ext = vu_feed_ext[FEED_CPED];
-        upd_list[CPE_NDIC]->dist_ref = FEED_CPED;
-        */
         // Set the Wazuh CPE dictionary
         os_calloc(1, sizeof(update_node), upd_list[CPE_WDIC]);
         upd_list[CPE_WDIC]->dist_tag_ref = FEED_CPEW;
@@ -238,8 +230,6 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
 
     if (upd_list[os_index]) {
         mwarn("Duplicate OVAL configuration for '%s%s%s'.", upd->dist,  upd->version ? " " : "", upd->version ? upd->version : "");
-        wm_vuldet_free_update_node(upd);
-        free(upd);
         retval = OS_SUPP_SIZE;
         goto end;
     }
@@ -549,12 +539,10 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
     for (j = 0; chld_node[j]; j++) {
         if (!strcmp(chld_node[j]->element, XML_DISABLED)) {
             if (!strcmp(chld_node[j]->content, "yes")) {
-                wm_vuldet_free_update_node(updates[os_index]);
-                os_free(updates[os_index]);
-                updates[os_index] = NULL;
+                wm_vuldet_release_update_node(updates, os_index);
                 if (os_index == CVE_NVD) {
-                    //wm_vuldet_free_update_node(updates[CPE_NDIC]);
-                    updates[CPE_NDIC] = NULL;
+                    wm_vuldet_release_update_node(updates, CPE_WDIC);
+                    wm_vuldet_release_update_node(updates, CVE_MSU);
                 }
                 break;
             } else if (!strcmp(chld_node[j]->content, "no")) {
@@ -570,17 +558,7 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
                 OS_ClearNode(chld_node);
                 return OS_INVALID;
             }
-        } /*else if (!strcmp(chld_node[j]->element, XML_UPDATE_CPE_INTERVAL)) {
-            if (updates[os_index]->dist_ref == FEED_NVD) {
-                if (wm_vuldet_get_interval(chld_node[j]->content, &updates[CPE_NDIC]->interval)) {
-                    merror("Invalid content for '%s' option at module '%s'.", XML_UPDATE_CPE_INTERVAL, WM_VULNDETECTOR_CONTEXT.name);
-                    OS_ClearNode(chld_node);
-                    return OS_INVALID;
-                }
-            } else {
-                mwarn("'%s' only can be used with %s feed.", XML_UPDATE_CPE_INTERVAL, updates[os_index]->dist_tag_ref);
-            }
-        }*/ else if (!strcmp(chld_node[j]->element, XML_UPDATE_FROM_YEAR)) {
+        } else if (!strcmp(chld_node[j]->element, XML_UPDATE_FROM_YEAR)) {
             if (!wm_vuldet_is_valid_year(chld_node[j]->content, &updates[os_index]->update_from_year, RED_HAT_REPO_MIN_YEAR)) {
                 merror("Invalid content for '%s' option at module '%s'.", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name);
                 OS_ClearNode(chld_node);
@@ -710,8 +688,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
         }
 
         if (os_index == CVE_NVD && !flags->patch_scan) {
-            wm_vuldet_free_update_node(updates[CVE_MSU]);
-            os_free(updates[CVE_MSU]);
+            wm_vuldet_release_update_node(updates, CVE_MSU);
         }
 
         mdebug1("Added %s feed. Interval: %lus | Multi path: '%s' | Multi url: '%s' | Update since: %d.",
@@ -815,6 +792,11 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds) {
     }
 
     return 0;
+}
+
+void wm_vuldet_release_update_node(update_node **updates, cve_db node) {
+    wm_vuldet_free_update_node(updates[node]);
+    os_free(updates[node]);
 }
 
 void wm_vuldet_free_update_node(update_node *update) {
