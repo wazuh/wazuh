@@ -116,6 +116,7 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
                 attempts++;
                 if (attempts >= 1000 && strcmp(matrix_buffer[0], "") != 0) {
                     attempts = 0;
+                    os_free(matrix_buffer[matrix_index]);
                     break;
                 }
                 os_free(matrix_buffer[matrix_index]);
@@ -131,7 +132,7 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
             mwarn("Cannot send data to '%s': %s (%d). Reconnecting...", fluent->address, strerror(errno), errno);
         }
 
-        for(int i = 0; i <= matrix_index; i++) {
+        for(int i = 0; i < matrix_index; i++) {
             os_free(matrix_buffer[i]);
         }
         matrix_index = 0;
