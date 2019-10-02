@@ -126,17 +126,21 @@ cJSON *getLabelsConfig(void) {
         return NULL;
     }
 
-    unsigned int i;
     cJSON *root = cJSON_CreateObject();
-    cJSON *labels = cJSON_CreateObject();
+    cJSON *labels = cJSON_CreateArray();
 
     if (agt->labels) {
-        for (i=0;agt->labels[i].key;i++) {
-            cJSON_AddStringToObject(labels,agt->labels[i].key,agt->labels[i].value);
+        unsigned int i;
+        for (i=0; agt->labels[i].key; i++) {
+            cJSON *label = cJSON_CreateObject();
+            cJSON_AddStringToObject(label, "value", agt->labels[i].value);
+            cJSON_AddStringToObject(label, "key", agt->labels[i].key);
+            cJSON_AddStringToObject(label, "hidden", agt->labels[i].flags.hidden ? "yes" : "no");
+            cJSON_AddItemToObject(labels, "", label);
         }
     }
-
-    cJSON_AddItemToObject(root,"labels",labels);
+    
+    cJSON_AddItemToObject(root, "labels", labels);
 
     return root;
 }

@@ -42,11 +42,10 @@ def get_fake_syscheck_db(sql_file):
 ])
 @patch('sqlite3.connect', side_effect=get_fake_syscheck_db('schema_syscheck_test.sql'))
 @patch("wazuh.database.isfile", return_value=True)
-@patch("wazuh.agent.Agent._load_info_from_agent_db", return_value=[{ 'end_scan': '', 'start_scan': ''}])
-def test_last_scan(wazuh_conn_mock, connec_mock, db_mock, version, agent_id):
-    """
-    Test last_scan function
-    """
+@patch("wazuh.syscheck.WazuhDBBackend.execute", return_value=[{'end': '', 'start': ''}])
+@patch('socket.socket.connect')
+def test_last_scan(sock_mock, wazuh_conn_mock, connec_mock, db_mock, version, agent_id):
+    """Test last_scan function."""
     with patch('wazuh.syscheck.Agent.get_basic_information', return_value=version):
         with patch("wazuh.syscheck.glob", return_value=[join(common.database_path_agents, agent_id)+".db"]):
             result = last_scan(agent_id)
@@ -57,9 +56,7 @@ def test_last_scan(wazuh_conn_mock, connec_mock, db_mock, version, agent_id):
 
 @patch("wazuh.agent.Agent.get_basic_information", side_effect=KeyError)
 def test_failed_last_scan_key_error_agent_version(info_mock):
-    """
-    Test last_scan function when a ErrorKey appears
-    """
+    """Test last_scan function when a ErrorKey appears."""
     result = last_scan('001')
 
     assert isinstance(result, dict)
@@ -69,9 +66,7 @@ def test_failed_last_scan_key_error_agent_version(info_mock):
 @patch("wazuh.syscheck.Agent.get_basic_information", return_value={'version': 'Wazuh v3.5.0'})
 @patch("wazuh.syscheck.glob", return_value=None)
 def test_failed_last_scan_not_agent_db(glob_mock, info_mock):
-    """
-    Test failed last_scan function when agent don't exist
-    """
+    """Test failed last_scan function when agent don't exist."""
     with pytest.raises(exception.WazuhException, match=".* 1600 .*"):
         last_scan('001')
 
@@ -87,9 +82,7 @@ def test_failed_last_scan_not_agent_db(glob_mock, info_mock):
 @patch("wazuh.ossec_queue.OssecQueue.close")
 @patch("wazuh.agent.Agent.get_basic_information", return_value={'status': 'active'})
 def test_run(mock_info, mock_close, mock_send_msg, mock_ossec_queue, mock_open, agent_id, all_agents):
-    """
-    Test run function
-    """
+    """Test run function."""
     result = run(agent_id, all_agents)
 
     assert isinstance(result, str)
@@ -97,18 +90,14 @@ def test_run(mock_info, mock_close, mock_send_msg, mock_ossec_queue, mock_open, 
 
 @patch("builtins.open", side_effect=Exception)
 def test_failed_run_exception_open(mock_open):
-    """
-    Test failed run function when an Exception appears when opening a file
-    """
+    """Test failed run function when an Exception appears when opening a file."""
     with pytest.raises(exception.WazuhException, match=".* 1601 .*"):
         run('000')
 
 
 @patch("wazuh.syscheck.Agent.get_basic_information")
 def test_failed_run_agent_not_status(mock_info):
-    """
-    Test failed run function when an agent have status diferent to Active
-    """
+    """Test failed run function when an agent have status diferent to Active."""
     with pytest.raises(exception.WazuhException, match=".* 1604 .*"):
         run('001')
 
@@ -121,9 +110,7 @@ def test_failed_run_agent_not_status(mock_info):
 @patch("wazuh.syscheck.Agent.get_basic_information")
 @patch("wazuh.syscheck.Agent.get_agents_overview", return_value={'items':[{'id':'001'},{'id':'002'},{'id':'003'}]})
 def test_clear(mock_all_agents, mock_info, mock_wbd_conn, agent_id, all_agents):
-    """
-    Test clear function
-    """
+    """Test clear function."""
     result = clear(agent_id, all_agents)
 
     assert isinstance(result, str)
@@ -131,23 +118,22 @@ def test_clear(mock_all_agents, mock_info, mock_wbd_conn, agent_id, all_agents):
 
 @pytest.mark.parametrize('select, filters', [
     (None, {}),
-    ({'fields':['file']}, {}),
-    (None, {'hash':'md5'})
+    ({'fields': ['file']}, {}),
+    (None, {'hash': 'md5'})
 ])
-def test_files(select, filters):
-    """
-    Test files function
-    """
-    with patch("wazuh.syscheck.Agent._load_info_from_agent_db", return_value=[[{'date':0, 'mtime':0}],1]):
+@patch('socket.socket.connect')
+def test_files(mock_socket, select, filters):
+    """Test files function."""
+    with patch("wazuh.syscheck.WazuhDBBackend.execute",
+               return_value=[{'items': [{'date': 0, 'mtime': 0}], 'totalItems': 1}]):
         result = files(select=select, filters=filters)
 
         assert isinstance(result, dict)
         assert set(result.keys()) == {'totalItems', 'items'}
 
 
-def test_failed_files():
-    """
-    Test failed files function when select field isn't valid
-    """
+@patch('socket.socket.connect')
+def test_failed_files(mock_socket):
+    """Test failed files function when select field isn't valid."""
     with pytest.raises(exception.WazuhException, match=".* 1724 .*"):
-        files(select={'fields':['bad_select']})
+        files(select={'fields': ['bad_select']})

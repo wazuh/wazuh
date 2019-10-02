@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __CLOGREMOTE_H
-#define __CLOGREMOTE_H
+#ifndef CLOGREMOTE_H
+#define CLOGREMOTE_H
 
 #define SYSLOG_CONN 1
 #define SECURE_CONN 2
@@ -35,4 +35,4 @@ typedef struct _remoted {
     long queue_size;
 } remoted;
 
-#endif /* __CLOGREMOTE_H */
+#endif /* CLOGREMOTE_H */

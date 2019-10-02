@@ -247,7 +247,7 @@ static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_tot
                    _gpid1 != _kill1 ||
                    _gpid1 != _gsid1) {
             /* See defunct process comment above */
-            if (! (_kill1 == 1 && _gsid1 == 0 && _gpid0 == 0 && _gsid1 == 0) ) {
+            if (! (_kill1 == 1 && _gsid1 == 0 && _gpid0 == 0) ) {
                 char op_msg[OS_SIZE_1024 + 1];
 
                 snprintf(op_msg, OS_SIZE_1024, "Process '%d' hidden from "

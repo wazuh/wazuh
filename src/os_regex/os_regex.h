@@ -10,8 +10,8 @@
 
 /* See README for details */
 
-#ifndef __OS_REGEX_H
-#define __OS_REGEX_H
+#ifndef OS_REGEX_H
+#define OS_REGEX_H
 
 /* size_t */
 #include <stddef.h>
@@ -156,4 +156,4 @@ int OS_StrIsNum(const char *str);
 extern const unsigned char hostname_map[256];
 #define isValidChar(x) (hostname_map[(unsigned char)x])
 
-#endif /* __OS_REGEX_H */
+#endif /* OS_REGEX_H */
