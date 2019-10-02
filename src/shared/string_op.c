@@ -550,7 +550,7 @@ int wstr_end(char *str, const char *str_end) {
     return str_end_len <= str_len && !strcmp(str + str_len - str_end_len, str_end);
 }
 
-void wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str) { // Add to string_op.c
+void wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str) {
     char *new_delim = replace_delim ? replace_delim : delim;
     size_t new_delim_size = strlen(replace_delim ? replace_delim : delim);
     int count = 0;
