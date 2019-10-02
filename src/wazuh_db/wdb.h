@@ -113,8 +113,6 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_CHECK_RULES_DELETE,
     WDB_STMT_SCA_CHECK_FIND,
     WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
-    WDB_STMT_MITRE_TACTICS_GET,
-    WDB_STMT_MITRE_IDS_GET,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -385,25 +383,6 @@ int wdb_begin2(wdb_t * wdb);
 /* Commit transaction */
 int wdb_commit(sqlite3 *db);
 int wdb_commit2(wdb_t * wdb);
-
-/**
- * @brief It gets a Mitre's tactics array from the has_phase table
- * 
- * @param wdb Database struct that includes database that will be queried
- * @param id_attack ID Mitre attack (e.g. T1122)
- * @param output Mitre's tactics array
- * @return int It returns -1 if it fails, 0 if it doesn't find tactics and 1 if it finds them
- */
-int wdb_mitre_tactics_get(wdb_t *wdb, char *id_attack, char *output);
-
-/**
- * @brief It gets a Mitre's IDs array from the attack table
- * 
- * @param wdb Database struct that includes database that will be queried
- * @param output  Mitre's IDs array
- * @return int It returns -1 if it fails, 0 if it doesn't find IDs and 1 if it finds them
- */
-int wdb_mitre_ids_get(wdb_t *wdb, char *output);
 
 /**
  * @brief It creates the global database

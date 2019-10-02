@@ -36,7 +36,7 @@ int mitre_load(){
     
     /* Get Mitre IDs from Mitre's database */
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
-    snprintf(wazuhdb_query, OS_SIZE_6144, "mitre get_ids");
+    snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT id from attack;");
     result = wdb_send_query(wazuhdb_query, &response);
     if (!response) {
         mdebug1("Mitre info loading failed. Mitre's database query failed. Database: %s", path_db);
@@ -46,7 +46,7 @@ int mitre_load(){
     }
 
     if (response[0] != 'o' || response[1] != 'k' || response[2] != ' ') {
-        mdebug1("Mitre info loading failed. Mitre's database gave error response. Response: %s", response);
+        mdebug1("Mitre info loading failed. Query gave an error response: %s", response);
         merror("Mitre matrix information could not be loaded.");
         os_free(response);
         result = -1;
@@ -55,7 +55,7 @@ int mitre_load(){
 
     /* Parse IDs string */
     if(root = cJSON_Parse(response+3), !root) {
-        mdebug1("Mitre info loading failed. Mitre's database response cannot be parsered. Response: %s", response);
+        mdebug1("Mitre info loading failed. Mitre's database response cannot be parsered: %s", response);
         merror("Mitre matrix information could not be loaded.");
         os_free(response);
         cJSON_Delete(root);
@@ -82,7 +82,7 @@ int mitre_load(){
         ext_id = id->valuestring;
 
         /* Consulting mitredatabase to get Tactics */
-        snprintf(wazuhdb_query, OS_SIZE_6144, "mitre get_tactics %s", ext_id);
+        snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT phase_name FROM has_phase WHERE attack_id = '%s';", ext_id);
         result = wdb_send_query(wazuhdb_query, &response);
 
         if (response) {
@@ -91,7 +91,7 @@ int mitre_load(){
                 tactics_array = cJSON_CreateArray();
                 tactics_json = cJSON_Parse(response+3);
                 if(size_tactics = cJSON_GetArraySize(tactics_json), size_tactics == 0) {
-                    mdebug1("Mitre info loading failed. Mitre's database response has 0 elements. Response: %s", response);
+                    mdebug1("Mitre info loading failed. Query's response has 0 elements. Response: %s", response);
                     merror("Mitre matrix information could not be loaded.");
                     cJSON_Delete(tactics_json);
                     cJSON_Delete(root);
@@ -116,7 +116,7 @@ int mitre_load(){
                 cJSON_Delete(tactics_json);
                 os_free(response);    
             } else {
-                mdebug1("Mitre info loading failed. Mitre's database gave error response. Response: %s", response);
+                mdebug1("Mitre info loading failed. Query gave an error response: %s", response);
                 merror("Mitre matrix information could not be loaded.");
                 cJSON_Delete(root);
                 os_free(response);

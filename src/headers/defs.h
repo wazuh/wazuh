@@ -457,10 +457,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #define SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN   "ruleset\\sca"
 
-#define MITRE_JSON_FILE_DIR   "/ruleset/mitre"
-
-#define MITRE_JSON_FILE_NAME "enterprise-attack.json"
-
 #ifdef WIN32
 #define FTELL_TT "%lld"
 #define FTELL_INT64 (int64_t)
