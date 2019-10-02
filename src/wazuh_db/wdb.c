@@ -92,9 +92,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SCA_CHECK_RULES_DELETE] = "DELETE FROM sca_check_rules WHERE id_check NOT IN ( SELECT id FROM sca_check);",
     [WDB_STMT_SCA_CHECK_FIND] = "SELECT id FROM sca_check WHERE policy_id = ?;",
     [WDB_STMT_SCA_CHECK_DELETE_DISTINCT] = "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;",
-    [WDB_STMT_MITRE_ATTACK_GET] = "SELECT json FROM attack WHERE id = ?;",
-    [WDB_STMT_MITRE_PHASE_GET] = "SELECT json FROM attack JOIN has_phase ON id = attack_id WHERE phase_name = ? LIMIT ? OFFSET ?;",
-    [WDB_STMT_MITRE_PLATFORM_GET] = "SELECT json FROM attack JOIN has_platform ON id = attack_id WHERE platform_name = ? LIMIT ? OFFSET ?;",
     [WDB_STMT_MITRE_TACTICS_GET] = "SELECT phase_name FROM has_phase WHERE attack_id = ?;",
     [WDB_STMT_MITRE_IDS_GET] = "SELECT id from attack;"
 };
