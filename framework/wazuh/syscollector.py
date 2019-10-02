@@ -279,8 +279,7 @@ def get_hotfixes_agent(agent_id, offset=0, limit=common.database_limit,
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit,
                           select=select, search=search, sort=sort,
-                          filters=filters, allowed_sort_fields=valid_select_fields,
-                          valid_select_fields=valid_select_fields,
+                          filters=filters, valid_select_fields=valid_select_fields,
                           table='sys_hotfixes', array=True, nested=nested,
                           query=q)
 
