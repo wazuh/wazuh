@@ -15,8 +15,10 @@
 /* Rulenode local  */
 RuleNode *rulenode;
 
-RuleInfo *copy_rules[70000];
-int rules_copied;
+/* It's used to overwrite rules */
+RuleInfo *copied_rules[70000];
+int num_rules_copied;
+
 
 /* _OS_Addrule: Internal AddRule */
 static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule);
@@ -24,7 +26,7 @@ static int _AddtoRule(int sid, int level, int none, const char *group,
                RuleNode *r_node, RuleInfo *read_rule);
 
 /**
- * @brief Remove an array of rules and child arrays
+ * @brief Remove rule and childs
  * @param array Array of rule childs.
  *
  * @note Does not remove RuleInfo
@@ -32,7 +34,7 @@ static int _AddtoRule(int sid, int level, int none, const char *group,
 static void remove_RuleNode(RuleNode *array);
 
 /**
- * @brief Search rule and remove this and childs
+ * @brief Search rule and call remove_RuleNode to remove it
  * @param parent Rule parent
  * @param sid_rule Rule
  *
@@ -41,19 +43,28 @@ static void remove_RuleNode(RuleNode *array);
 static void remove_Rule(RuleNode *parent, int sid_rule);
 
 /**
- * @brief Remove RuleInfo structure.
- * @param r_info RuleInfo structure to remove.
+ * @brief Remove RuleInfo
+ * @param r_info RuleInfo to remove.
+ *
  * @note Not all fields are deleted because some fields are shared by multiples rules.
  * They are lists, sid_search, group_search, sid_prev_matched, group_prev_matched.
  */
-static void _free_ruleInfo(RuleInfo *r_info);
+static void free_RuleInfo(RuleInfo *r_info);
 
 /**
- * @brief
- * @param
- * @param
+ * @brief Saves the reference to the rule child in an array
+ * @param orig Rule parent of all the rules
+ *
+ * @note Saves the reference to the childs in the copies_rules array.
+ * And the childs number is stored in num_rules_copied
  */
-static void _copy_rule(RuleNode *orig);
+static void savesChild(RuleNode *orig);
+
+/**
+ * @brief Sorts the array to make sure that no try to adde rule if its parent has not yet added.
+ * @param sid_rule Parent ID of all the rules
+ */
+static void sortTheCopiedRules(int sid_rule);
 
 
 /* Create the RuleList */
@@ -304,15 +315,16 @@ int OS_AddRuleInfo(RuleInfo *newrule, int sid)
 
         if (r_node->child) {
 
-            rules_copied = 0;
-            _copy_rule(r_node->child);
+            num_rules_copied = 0;
+            savesChild(r_node->child);
+            sortTheCopiedRules(newrule->sigid);
 
             remove_Rule(NULL, sid);
 
             OS_AddChild(newrule, NULL);
 
-            for (i = 0; i < rules_copied; i++){
-                OS_AddChild(copy_rules[i], NULL);
+            for (i = 0; i < num_rules_copied; i++){
+                OS_AddChild(copied_rules[i], NULL);
             }
         }
         else {
@@ -321,7 +333,7 @@ int OS_AddRuleInfo(RuleInfo *newrule, int sid)
             OS_AddChild(newrule, NULL);
         }
 
-        _free_ruleInfo(removed);
+        free_RuleInfo(removed);
 
         return (1);
     }
@@ -510,7 +522,7 @@ static void remove_RuleNode (RuleNode *array)
 }
 
 
-static void _free_ruleInfo(RuleInfo *r_info)
+static void free_RuleInfo(RuleInfo *r_info)
 {
 
     int i;
@@ -685,19 +697,119 @@ static void _free_ruleInfo(RuleInfo *r_info)
 }
 
 
-static void _copy_rule(RuleNode *orig)
+static void savesChild(RuleNode *orig)
 {
     RuleNode *tmp = orig;
 
     while (tmp) {
 
-        copy_rules[rules_copied] = tmp->ruleinfo;
-        rules_copied++;
+        copied_rules[num_rules_copied] = tmp->ruleinfo;
+        num_rules_copied++;
+
+        tmp = tmp->next;
+    }
+
+    tmp = orig;
+    while (tmp) {
 
         if (tmp->child) {
-            _copy_rule(tmp->child);
+            savesChild(tmp->child);
         }
 
         tmp = tmp->next;
     }
+}
+
+static void sortTheCopiedRules(int sid_rule)
+{
+
+    /* Array size and capability */
+    static int CAP = 30;
+    int size;
+    /* Loop index */
+    int i, j, k;
+
+    /* To read all if_sid values */
+    int ifsid[CAP];
+    const char *sid;
+    int val;
+
+    /* To check if parent(s) are before rule */
+    bool is_previously[CAP];
+
+
+    for (i = 1; i < num_rules_copied - 3; i++) {
+
+
+        /*  */
+        if (copied_rules[i]->if_sid) {
+
+            /* Read all if_sid values */
+            sid  = copied_rules[i]->if_sid;
+            size = 0;
+            val = 0;
+
+            do {
+                if ((*sid == ',') || (*sid == ' ')) {
+
+                    val = 0;
+                    continue;
+                }
+                else if ((isdigit((int)*sid)) || (*sid == '\0')) {
+
+                    if (val == 0 && size < CAP) {
+
+                        ifsid[size] = atoi(sid);
+                        size++;
+
+                        val = 1;
+                    }
+                }
+
+            } while (*sid++ != '\0');
+
+        }
+        else if (copied_rules[i]->if_matched_sid != 0) {
+
+            ifsid[size] = copied_rules[i]->if_matched_sid;
+            size++;
+        }
+        else {
+            continue;
+        }
+
+
+        /* Check if parent is before it */
+        for (k = 0; k < CAP; k++){
+            is_previously[k] = 0;
+        }
+
+        for (j = 0; j < i; j++) {
+
+            for (k = 0; k < size; k++){
+
+                if (copied_rules[j]->sigid == ifsid[k] || ifsid[k] == sid_rule){
+                    is_previously[k] = 1;
+                }
+            }
+        }
+
+
+        /* If parent isn't before, it's replace by i+1 */
+        RuleInfo *aux;
+
+        for (k = 0; k < size; k++){
+
+            if (is_previously[k] != 1) {
+
+                aux = copied_rules[i];
+                copied_rules[i] = copied_rules[i+3];
+                copied_rules[i+3] = aux;
+
+                continue;
+            }
+        }
+
+    }
+
 }
