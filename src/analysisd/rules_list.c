@@ -771,6 +771,7 @@ static void sortTheCopiedRules(int sid_rule)
         }
         else if (copied_rules[i]->if_matched_sid != 0) {
 
+            size = 0;
             ifsid[size] = copied_rules[i]->if_matched_sid;
             size++;
         }
@@ -806,7 +807,7 @@ static void sortTheCopiedRules(int sid_rule)
                 copied_rules[i] = copied_rules[i+3];
                 copied_rules[i+3] = aux;
 
-                continue;
+                break;
             }
         }
 
