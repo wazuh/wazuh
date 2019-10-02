@@ -626,7 +626,6 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
 
     if (multi_provider = wm_vuldet_provider_type(pr_name), multi_provider < 0) {
         mwarn("Invalid provider name: %s.", pr_name);
-        free(pr_name);
         return 0;
     }
 
