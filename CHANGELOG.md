@@ -26,6 +26,8 @@ All notable changes to this project will be documented in this file.
 - Fix bugs reported by Clang analyzer. ([#3887](https://github.com/wazuh/wazuh/pull/3887))
 - Fix compilation errors on OpenBSD platform. ([#3105](https://github.com/wazuh/wazuh/pull/3105))
 - Fix on-demand configuration labels section to obtain labels attributes. ([#3490](https://github.com/wazuh/wazuh/pull/3490))
+- Fixed race condition between `wazuh-clusterd` and `wazuh-modulesd` showing a 'No such file or directory' in `cluster.log` when synchronizing agent-info files in a cluster environment ([#4007](https://github.com/wazuh/wazuh/issues/4007))
+- Fixed 'ConnectionError object has no attribute code' error when package repository is not available ([#3441](https://github.com/wazuh/wazuh/issues/3441))
 
 ## [v3.10.2]
 
