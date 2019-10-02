@@ -14,10 +14,18 @@ def get_agents_info():
     return agents_list
 
 
-def expand_group(group):
-    agents_group = WazuhDBQueryMultigroups(group, select=['id']).run()['items']
-    agents_ids = list()
-    for agent in agents_group:
-        agents_ids.append(str(agent['id']).zfill(3))
+def expand_group(group_name):
+    if group_name == '*':
+        data = WazuhDBQueryAgents(select=['group']).run()['items']
+        groups = set()
+        for agent_group in data:
+            groups.update(set(agent_group.get('group', list())))
+    else:
+        groups = {group_name}
+    agents_ids = set()
+    for group in groups:
+        agents_group = WazuhDBQueryMultigroups(group, select=['id']).run()['items']
+        for agent in agents_group:
+            agents_ids.add(str(agent['id']).zfill(3))
 
     return agents_ids

@@ -15,66 +15,62 @@ from wazuh.results import WazuhResult
 mode = 'white'
 
 
-class Resource:
-    def __init__(self, resource):
-        split_resource = resource.split(':')
-        self.name = split_resource[0]
-        self.name_identifier = ':'.join(split_resource[0:2])
-        self.value = split_resource[2]
-        self.resources = set()
-        if 'agent' in self.name_identifier:
-            self.resources = get_agents_info()
-        elif 'role' in self.name_identifier:
-            with RolesManager() as rm:
-                roles = rm.get_roles()
-            for role in roles:
-                self.resources.add(str(role.id))
-        elif 'policy' in self.name_identifier:
-            with PoliciesManager() as pm:
-                policies = pm.get_policies()
-            for policy in policies:
-                self.resources.add(str(policy.id))
-        elif 'user' in self.name_identifier:
-            with AuthenticationManager() as auth:
-                users = auth.get_users()
-            for user in users:
-                self.resources.add(user['username'])
+def _expand_resource(resource_type):
+    if resource_type == 'agent':
+        return get_agents_info()
+    elif resource_type == 'role':
+        with RolesManager() as rm:
+            return rm.get_roles()
+    elif resource_type == 'policy':
+        with PoliciesManager() as pm:
+            return pm.get_policies()
+    elif resource_type == 'user':
+        users_system = set()
+        with AuthenticationManager() as auth:
+            users = auth.get_users()
+        for user in users:
+            users_system.add(user['username'])
+        return users_system
 
-    def get_name_identifier(self):
-        return self.name_identifier
+    return set()
 
-    def get_value(self):
-        return self.value
 
-    def expand_permissions(self, rbac_mode, final_permissions, odict):
-        for key, value in odict.items():
-            if key.startswith('agent:group'):
-                expanded_group = expand_group(key.split(':')[-1])
-                for agent in expanded_group:
-                    final_permissions.add(agent) if value == 'allow' and agent == self.value \
-                        else final_permissions.discard(agent)
-            elif key.startswith(self.name + ':id:*'):
-                for resource in self.resources:
-                    if value == 'allow':
-                        if self.value == resource:
-                            final_permissions.add(resource)
-                        elif self.value == '*':
-                            final_permissions.update(self.resources)
-                            break
-                    else:
-                        final_permissions.discard(resource)
-                if value == 'allow' and self.value != '*':
-                    final_permissions.add(self.value)
-            elif key.startswith(self.name + ':id'):
-                if value == 'allow' and (self.value == key.split(':')[-1] or self.value == '*'):
-                    final_permissions.add(key.split(':')[-1])
-                else:
-                    final_permissions.discard(key.split(':')[-1])
-        if rbac_mode == 'black':
-            for resource in self.resources:
-                final_permissions.add(resource)
+def use_expanded_resource(effect, final_permissions, expanded_resource, req_resources_value):
+    if '*' not in req_resources_value:
+        expanded_resource = expanded_resource.intersection(req_resources_value)
+    if effect == 'allow':
+        final_permissions.update(expanded_resource)
+    else:
+        final_permissions.difference_update(expanded_resource)
 
-        return final_permissions
+
+def expand_permissions(rbac_mode, req_resources, user_permissions_for_resource):
+    final_user_permissions = set()
+    req_resources_value = set()
+    resource_type = req_resources[0].split(':')[0]
+    for element in req_resources:
+        req_resources_value.add(element.split(':')[-1])
+    for user_resource, user_resource_effect in user_permissions_for_resource.items():
+        name, attribute, value = user_resource.split(':')
+        # If there are two different resources in the same module, only the one we need will pass
+        if resource_type != name and attribute != 'group':
+            continue
+
+        expanded_resource = set()
+        if name + ':' + attribute == 'agent:group':
+            expanded_resource = expand_group(value)
+        elif user_resource.startswith(name + ':id:*'):
+            expanded_resource = _expand_resource(name)
+            if user_resource_effect == 'allow' and '*' not in req_resources_value:
+                final_user_permissions.update(req_resources_value - expanded_resource)
+        elif user_resource.startswith(name + ':id'):
+            expanded_resource = {value}
+        use_expanded_resource(user_resource_effect, final_user_permissions, expanded_resource, req_resources_value)
+    if rbac_mode == 'black':
+        for resource in req_resources:
+            final_user_permissions.add(resource)
+
+    return final_user_permissions
 
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
@@ -130,18 +126,8 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
             allow_match['black:mode'] = '*'
             return allow_match
     for req_action, req_resources in req_permissions.items():
-        actual_actions = list()
-        for user_action, user_resources in rbac.items():
-            if req_action == user_action:
-                actual_actions.append(req_action)
-            elif req_action.split(':')[0] == user_action.split(':')[0] and user_action.split(':')[1] == '*':
-                actual_actions.append(req_action.split(':')[0] + ':*')
-        for action in actual_actions:
-            for req_resource in req_resources:
-                r_resource = Resource(req_resource)
-                if r_resource.get_name_identifier() not in allow_match.keys():
-                    allow_match[r_resource.get_name_identifier()] = set()
-                r_resource.expand_permissions(mode, allow_match[r_resource.get_name_identifier()], rbac[action])
+        if req_action in rbac.keys():
+            allow_match[req_action] = expand_permissions(mode, req_resources, rbac[req_action])
         else:
             if mode == 'black':
                 black_counter += 1
