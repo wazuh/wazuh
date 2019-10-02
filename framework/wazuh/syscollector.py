@@ -46,6 +46,7 @@ def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, sea
     :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
     :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
     :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
     :param nested: Fields to nest
 
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
@@ -81,8 +82,8 @@ def get_hardware_agent(agent_id, offset=0, limit=common.database_limit, select={
     :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
     :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
     :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
     :param nested: Fields to nest
-
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     valid_select_fields = {'board_serial': 'board_serial', 'cpu_name': 'cpu_name', 'cpu_cores': 'cpu_cores',
@@ -106,6 +107,7 @@ def get_packages_agent(agent_id, offset=0, limit=common.database_limit, select={
     :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
     :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
     :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
     :param nested: Fields to nest
 
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
@@ -133,6 +135,7 @@ def get_processes_agent(agent_id, offset=0, limit=common.database_limit, select=
     :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
     :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
     :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
     :param nested: Fields to nest
 
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
@@ -162,6 +165,7 @@ def get_ports_agent(agent_id, offset=0, limit=common.database_limit, select={}, 
     :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
     :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
     :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
     :param nested: Fields to nest
 
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
@@ -188,6 +192,7 @@ def get_netaddr_agent(agent_id, offset=0, limit=common.database_limit, select={}
     :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
     :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
     :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
     :param nested: Fields to nest
 
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
@@ -212,6 +217,7 @@ def get_netproto_agent(agent_id, offset=0, limit=common.database_limit, select={
     :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
     :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
     :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
     :param nested: Fields to nest
 
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
@@ -235,6 +241,7 @@ def get_netiface_agent(agent_id, offset=0, limit=common.database_limit, select={
     :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
     :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
     :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
     :param nested: Fields to nest
 
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
@@ -250,7 +257,9 @@ def get_netiface_agent(agent_id, offset=0, limit=common.database_limit, select={
                           nested=nested, query=q)
 
 
-def get_hotfixes_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
+def get_hotfixes_agent(agent_id, offset=0, limit=common.database_limit,
+                       select={}, search={}, sort={}, filters={}, q='',
+                       nested=True):
     """
     Get info about an agent's hotfixes
 
@@ -261,15 +270,19 @@ def get_hotfixes_agent(agent_id, offset=0, limit=common.database_limit, select={
     :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
     :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
     :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
     :param nested: Fields to nest
 
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     valid_select_fields = {'scan_id', 'scan_time', 'hotfix'}
 
-    return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select,
-                         search=search, sort=sort, filters=filters, allowed_sort_fields=valid_select_fields,
-                         valid_select_fields=valid_select_fields, table='sys_hotfixes', array=True, nested=nested)
+    return get_item_agent(agent_id=agent_id, offset=offset, limit=limit,
+                          select=select, search=search, sort=sort,
+                          filters=filters, allowed_sort_fields=valid_select_fields,
+                          valid_select_fields=valid_select_fields,
+                          table='sys_hotfixes', array=True, nested=nested,
+                          query=q)
 
 
 def _get_agent_items(func, offset, limit, select, filters, search, sort, array=False, query=''):
