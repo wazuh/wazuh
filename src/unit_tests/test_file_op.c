@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2015-2019, Wazuh Inc.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -6,10 +15,8 @@
 
 #include "../headers/file_op.h"
 
-// Test
-// int CreatePID(const char *name, int pid)
-
 /* redefinitons/wrapping */
+
 int __wrap_isChroot() {
     return mock();
 }
@@ -36,12 +43,11 @@ int __wrap_unlink(const char *file)
     return mock();
 }
 
-
 /* tests */
 
 void test_CreatePID_success(void **state)
 {
-    (void) state; /* unused */
+    (void) state;
     int ret;
 
     will_return(__wrap_isChroot, 1);
@@ -56,7 +62,7 @@ void test_CreatePID_success(void **state)
 
 void test_CreatePID_failure_chmod(void **state)
 {
-    (void) state; /* unused */
+    (void) state;
     int ret;
 
     will_return(__wrap_isChroot, 1);
@@ -71,7 +77,7 @@ void test_CreatePID_failure_chmod(void **state)
 
 void test_DeletePID_success(void **state)
 {
-    (void) state; /* unused */
+    (void) state;
     int ret;
 
     will_return(__wrap_isChroot, 1);
@@ -85,7 +91,7 @@ void test_DeletePID_success(void **state)
 
 void test_DeletePID_failure(void **state)
 {
-    (void) state; /* unused */
+    (void) state;
     int ret;
 
     will_return(__wrap_isChroot, 0);

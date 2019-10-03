@@ -7,17 +7,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-<<<<<<< HEAD
 #ifndef AUDIT_OP_H
 #define AUDIT_OP_H
-=======
-/** @file audit_op.h
- * A brief file description.
- * A more elaborated file description.
- */
-#ifndef __AUDIT_OP_H
-#define __AUDIT_OP_H
->>>>>>> 3.10-tap-tests-2507
 
 #ifdef ENABLE_AUDIT
 #include <linux/audit.h>

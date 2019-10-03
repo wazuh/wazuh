@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2015-2019, Wazuh Inc.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -9,10 +18,8 @@
 #include "../headers/rbtree_op.h"
 
 
-/* redefinitons/wrapping */
-
-
 /* tests */
+
 static int create_rbtree(void **state)
 {
     rb_tree *tree = rbtree_init();

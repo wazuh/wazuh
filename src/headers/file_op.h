@@ -462,9 +462,6 @@ void w_file_cloexec(FILE * fp);
  */
 void w_descriptor_cloexec(int fd);
 
-<<<<<<< HEAD
-#endif /* FILE_OP_H */
-=======
 
 #ifdef WIN32
 /**
@@ -502,5 +499,4 @@ DWORD FileSizeWin(const char * file);
 
 #endif // Windows
 
-#endif /* __FILE_H */
->>>>>>> 3.10-tap-tests-2507
+#endif /* FILE_OP_H */
