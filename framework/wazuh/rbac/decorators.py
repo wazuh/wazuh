@@ -7,7 +7,7 @@ import re
 from functools import wraps
 
 from api.authentication import AuthenticationManager
-from wazuh.core.core_utils import get_agents_info, expand_group
+from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
 from wazuh.exception import WazuhError, create_exception_dic
 from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import WazuhResult
@@ -18,6 +18,8 @@ mode = 'white'
 def _expand_resource(resource_type):
     if resource_type == 'agent':
         return get_agents_info()
+    elif resource_type == 'group':
+        return get_groups()
     elif resource_type == 'role':
         with RolesManager() as rm:
             return rm.get_roles()
