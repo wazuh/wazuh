@@ -13,9 +13,6 @@
 #include "shared.h"
 
 
-/* Compile a POSIX regex, returning NULL on error
- * Returns 1 if matches, 0 if not
- */
 int OS_PRegex(const char *str, const char *regex)
 {
     regex_t preg;
@@ -39,7 +36,7 @@ int OS_PRegex(const char *str, const char *regex)
     return (1);
 }
 
-// Execute a POSIX regex. Return 1 on success or 0 on error.
+
 int w_regexec(const char * pattern, const char * string, size_t nmatch, regmatch_t * pmatch) {
     regex_t regex;
     int result;
