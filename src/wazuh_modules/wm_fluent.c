@@ -69,6 +69,7 @@ const wm_context WM_FLUENT_CONTEXT = {
 void * wm_fluent_main(wm_fluent_t * fluent) {
     int server_sock;
     char * buffer = NULL;
+    char * aux_buffer = NULL;
     ssize_t recv_b = -1;
 
     // If module is disabled, exit
@@ -96,27 +97,33 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
     }
 
     int matrix_index = 0;
+    const int MAX_MSG_RECV = 3;
     char **matrix_buffer = NULL;
     int attempts = 0;
-    struct timespec tsec;
-    tsec.tv_sec = 0;
-    tsec.tv_nsec = 1000000;
 
-    os_malloc(OS_MAXSTR * sizeof(char *), matrix_buffer);
+    os_malloc(MAX_MSG_RECV * sizeof(char *), matrix_buffer);
     os_calloc(OS_MAXSTR, sizeof(char), buffer);
 
     while (1) {
-        // Store logs for 1 second
-        while ((recv_b = recv(server_sock, buffer, OS_MAXSTR - 1, MSG_DONTWAIT))) {
+        // Store logs until MAX_MSG_RECV is reached
+        while ((recv_b = recv(server_sock, buffer, OS_MAXSTR - 1, MSG_DONTWAIT)) && matrix_index < MAX_MSG_RECV) {
+            // Check if there is a log that was not being taken into account
             os_calloc(OS_MAXSTR, sizeof(char), matrix_buffer[matrix_index]);
 
-            // Set a timeout of 1 second to send the data accumulated
+            if (aux_buffer != NULL) {
+                memcpy(matrix_buffer[matrix_index], aux_buffer, strlen(aux_buffer));
+                matrix_buffer[matrix_index][strlen(aux_buffer)] = '\0';
+                matrix_index++;
+                free(aux_buffer);
+                aux_buffer = NULL;
+            }
+
+            // Set a timeout of 30 seconds to send the data accumulated
             if (!strcmp(buffer, "") || recv_b == -1) {
-                nanosleep(&tsec, NULL);
                 attempts++;
-                if (attempts >= 1000 && strcmp(matrix_buffer[0], "") != 0) {
+                sleep(1);
+                if (attempts >= 10 && strcmp(matrix_buffer[0], "") != 0) {
                     attempts = 0;
-                    os_free(matrix_buffer[matrix_index]);
                     break;
                 }
                 os_free(matrix_buffer[matrix_index]);
@@ -124,19 +131,44 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
             }
 
             attempts = 0;
-            strncpy(matrix_buffer[matrix_index], buffer, recv_b);
+            buffer[recv_b] = '\0';
+
+            if (!matrix_buffer[matrix_index]) {
+                os_calloc(OS_MAXSTR, sizeof(char), matrix_buffer[matrix_index]);
+            }
+
+            memcpy(matrix_buffer[matrix_index], buffer, strlen(buffer));
+            matrix_buffer[matrix_index][strlen(buffer)] = '\0';
             matrix_index++;
         }
 
+        // When the matrix has MAX_MSG_RECV logs, send them to the fluentd server
         if (wm_fluent_send(fluent, matrix_buffer, matrix_index) < 0) {
             mwarn("Cannot send data to '%s': %s (%d). Reconnecting...", fluent->address, strerror(errno), errno);
         }
 
+        if (recv_b > 0 && buffer != NULL) {
+            buffer[recv_b] = '\0';
+            os_strdup(buffer, aux_buffer);
+        }
+
         for(int i = 0; i < matrix_index; i++) {
-            os_free(matrix_buffer[i]);
+            free(matrix_buffer[i]);
+            matrix_buffer[i] = '\0';
         }
         matrix_index = 0;
     }
+
+    if (fluent->client_sock >= 0) {
+        close(fluent->client_sock);
+        fluent->client_sock = -1;
+    }
+
+    for(int i = 0; i < MAX_MSG_RECV; i++) {
+        os_free(matrix_buffer[i]);
+    }
+    os_free(matrix_buffer);
+    os_free(buffer);
 
     return NULL;
 }
