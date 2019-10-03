@@ -166,6 +166,7 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
         if (entry_data = fim_get_data(file_name, file_stat, mode, options), !entry_data) {
             merror("Couldn't get attributes for file: '%s'", file_name);
             os_free(file_stat);
+            w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
     }
@@ -477,7 +478,6 @@ int fim_check_depth(char * path, int dir_position) {
 // Get data from file
 fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, fim_event_mode mode, int options) {
     fim_entry_data * data = NULL;
-    minfo("fim_get_data:%s", file_name);
 
     os_calloc(1, sizeof(fim_entry_data), data);
     init_fim_data_entry(data);
@@ -492,13 +492,15 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
         char perm_unescaped[OS_SIZE_6144 + 1];
 
         if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
-            merror(FIM_ERROR_EXTRACT_PERM, file_name, error);
+            mwarn(FIM_WARN_EXTRACT_PERM, file_name, error);
+            free_entry_data(data);
+            return NULL;
         } else {
             int size;
-            minfo("~~~ data perm_unescaped:'%s'", perm_unescaped);
+            os_strdup(escape_perm_sum(perm_unescaped), data->win_perm_mask);
             os_calloc(OS_SIZE_20480, sizeof(char), data->perm);
 
-            if (size = decode_win_permissions(data->perm, OS_SIZE_20480, escape_perm_sum(perm_unescaped), 0, NULL), size > 1) {
+            if (size = decode_win_permissions(data->perm, OS_SIZE_20480, data->win_perm_mask, 0, NULL), size > 1) {
                 os_realloc(data->perm, size + 1, data->perm);
                 minfo("~~~ data permission:'%s'", data->perm);
             }
@@ -667,8 +669,6 @@ void fim_get_checksum (fim_entry_data * data) {
 int fim_insert (char * file, fim_entry_data * data, __attribute__((unused))struct stat *file_stat) {
     char * inode_key = NULL;
 
-    minfo("fim_insert:%p(%s) '%s'", data, file, data->hash_sha256);
-
     if (rbtree_insert(syscheck.fim_entry, file, data) == NULL) {
         minfo("Duplicate path: '%s'", file);
         return (-1);
@@ -708,8 +708,6 @@ int fim_insert (char * file, fim_entry_data * data, __attribute__((unused))struc
 // Update an entry in the syscheck hash table structure (inodes and paths)
 int fim_update (char * file, fim_entry_data * data) {
     char * inode_key;
-
-    minfo("fim_update:%p(%s) '%s'", data, file, data->hash_sha256);
 
     os_calloc(OS_SIZE_128, sizeof(char), inode_key);
     snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)data->dev, (unsigned long)data->inode);
@@ -908,7 +906,11 @@ cJSON * fim_attributes_json(const fim_entry_data * data) {
     }
 
     if (data->options & CHECK_PERM) {
+#ifdef WIN32
+        cJSON_AddStringToObject(attributes, "perm", data->win_perm_mask);
+#else
         cJSON_AddStringToObject(attributes, "perm", data->perm);
+#endif
     }
 
     if (data->options & CHECK_OWNER) {
@@ -1130,6 +1132,9 @@ void free_entry_data(fim_entry_data * data) {
     }
     if (data->group_name) {
         os_free(data->group_name);
+    }
+    if (data->win_perm_mask) {
+        os_free(data->win_perm_mask);
     }
     os_free(data);
 }

@@ -903,7 +903,7 @@ void decode_win_attributes(char *str, unsigned int attrs) {
 
 int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array) {
     int writted = 0;
-    int size;
+    int size = 0;
     char *perm_it = NULL;
     char *base_it = NULL;
     char *account_name = NULL;
@@ -1004,7 +1004,7 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
         } else if (seq) {
             writted = snprintf(str, 50, "Permissions changed.\n");
         } else {
-            size = snprintf(str, str_size, "   %s  (%s) -%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+            size = snprintf(str, str_size, "%s (%s): %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
                             account_name,
                             a_type == '0' ? "ALLOWED" : "DENIED",
                             mask & GENERIC_READ ? " GENERIC_READ," : "",
@@ -1037,6 +1037,10 @@ next_it:
         if (!perm_it) {
             break;
         }
+    }
+
+    if (str && !seq) {
+        *(str-2) = '\0';
     }
 
     return writted;
