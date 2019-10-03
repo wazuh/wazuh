@@ -112,6 +112,8 @@ typedef struct _Eventinfo {
     long mtime_after;
     long inode_before;
     long inode_after;
+    char *attributes_before;
+    char *attributes_after;
     char *diff;
     char *previous;
     wlabel_t *labels;
