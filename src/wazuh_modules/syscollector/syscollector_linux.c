@@ -508,16 +508,12 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
                     }
 
                     if (!strncmp(info->tag, "install_time", 12)) {    // Format date
-                        char installt[TIME_LENGTH];
+                        char *installt = w_get_timestamp(time(NULL));;
                         struct tm itime;
                         time_t dateint = result;
-                        localtime_r(&dateint, &itime);
-
-                        snprintf(installt,TIME_LENGTH - 1,"%d/%02d/%02d %02d:%02d:%02d",
-                                itime.tm_year + 1900, itime.tm_mon + 1,
-                                itime.tm_mday, itime.tm_hour, itime.tm_min, itime.tm_sec);
 
                         cJSON_AddStringToObject(package, info->tag, installt);
+                        free(installt);
                     } else if (!strncmp(info->tag, "epoch", 5)) {
                         epoch = result;
                     } else {

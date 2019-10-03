@@ -1365,11 +1365,7 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
     struct tm localtm;
     localtime_r(&now, &localtm);
 
-    char *timestamp;
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-    snprintf(timestamp, TIME_LENGTH - 1, "%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     int random_id = os_random();
     if (random_id < 0) {
@@ -1541,12 +1537,7 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     struct tm localtm;
     localtime_r(&now, &localtm);
 
-    char *timestamp;
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp, TIME_LENGTH-1, "%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
 

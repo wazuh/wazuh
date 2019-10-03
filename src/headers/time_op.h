@@ -15,7 +15,7 @@
 
 #include <time.h>
 
-#define TIME_LENGTH     64
+#define TIME_LENGTH     OS_SIZE_128
 
 #ifndef WIN32
 

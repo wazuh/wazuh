@@ -113,7 +113,7 @@ void wm_download_dispatch(char * buffer) {
     char * command;
     char * url;
     char * fpath;
-    char * unsc_fpath;
+    char * unsc_fpath = NULL;
     char * header;
     char * unsc_header = NULL;
     char * data;
@@ -221,9 +221,9 @@ void wm_download_dispatch(char * buffer) {
     }
 
 end:
-    free(unsc_fpath);
-    free(unsc_header);
-    free(unsc_data);
+    os_free(unsc_fpath);
+    os_free(unsc_header);
+    os_free(unsc_data);
 }
 
 // Destroy data
