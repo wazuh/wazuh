@@ -229,8 +229,6 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
     int dir_position = 0;
     int depth = 0;
 
-    mdebug1("~~ Process event(mode:%d): '%s'", mode, file);
-
     if (fim_check_ignore(file) == 1) {
         return (0);
     }
@@ -248,8 +246,8 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
     if (mode == FIM_SCHEDULED || mode == FIM_MODE(syscheck.opts[dir_position])) {
         depth = fim_check_depth(file, dir_position);
         //minfo("~~Depth from parent path: '%d' recursion level:'%d'", depth, syscheck.recursion_level[dir_position]);
-        if(depth >= syscheck.recursion_level[dir_position]) {
-            minfo("~~ Maximum depth reached: %s", file);
+        if(depth > syscheck.recursion_level[dir_position]) {
+            mdebug1("Maximum depth reached: depth:%d recursion_level:%d '%s'", depth, syscheck.recursion_level[dir_position], file);
             return 0;
         }
 
@@ -257,7 +255,7 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
         if (w_stat(file, &file_stat) < 0) {
             // Regular file
             if (fim_check_file(file, dir_position, mode, w_evt) < 0) {
-                merror("Skiping file: '%s'", file);
+                mwarn("Skiping file: '%s'", file);
             }
         } else {
             // Should we check for NFS/dev/sys/proc?
@@ -270,7 +268,7 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
                 case FIM_REGULAR:
                     // Regular file
                     if (fim_check_file(file, dir_position, mode, w_evt) < 0) {
-                        merror("Skip event: '%s'", file);
+                        mwarn("Skip event: '%s'", file);
                     }
                     break;
 
@@ -285,13 +283,13 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
                     break;
 #endif
                 default:
-                    mdebug1("~~ Unsupported file type(mode:%d): '%s'", mode, file);
+                    mdebug2("~~~~ Unsupported file type(mode:%d): '%s'", mode, file);
                     // Unsupported file type
                     return 0;
             }
         }
     } else {
-        minfo("~~~~ Different configuration applied to file '%s'", file);
+        mdebug2("~~~~ Different configuration applied to file '%s'", file);
     }
 
     return 0;
@@ -302,8 +300,6 @@ void fim_audit_inode_event(whodata_evt * w_evt) {
     fim_inode_data * inode_data;
     struct stat file_stat;
     char *key_inodehash;
-
-    mdebug1("~~ Inode event: (%s)'%s'", w_evt->inode, w_evt->path);
 
     os_calloc(OS_SIZE_128, sizeof(char), key_inodehash);
     snprintf(key_inodehash, OS_SIZE_128, "%s:%s", w_evt->dev, w_evt->inode);
@@ -376,7 +372,6 @@ int fim_registry_event (char * key, fim_entry_data * data, int pos) {
         }
         result = 1;
     } else {
-        minfo("fim_registry_event:%p'%s'%s", saved_data, key, saved_data->hash_sha256);
         if (strcmp(saved_data->hash_sha256, data->hash_sha256) != 0) {
             json_event = fim_json_event(key, saved_data, data, pos, FIM_MODIFICATION, 0, NULL);
             fim_update(key, data);
@@ -391,7 +386,6 @@ int fim_registry_event (char * key, fim_entry_data * data, int pos) {
 
     if (json_event && _base_line) {
         json_formated = cJSON_PrintUnformatted(json_event);
-        minfo("json_formated:'%s'", json_formated);
         send_syscheck_msg(json_formated);
         os_free(json_formated);
         cJSON_Delete(json_event);
@@ -446,18 +440,16 @@ int fim_configuration_directory(const char * path, const char entry[]) {
 // Evaluates the depth of the directory or file to check if it exceeds the configured max_depth value
 int fim_check_depth(char * path, int dir_position) {
     char * pos;
-    int depth = 0;
+    int depth = -1;
     unsigned int parent_path_size;
 
     if (!syscheck.dir[dir_position]) {
-        minfo("~~Invalid parent path.");
         return -1;
     }
 
     parent_path_size = strlen(syscheck.dir[dir_position]);
 
     if (parent_path_size > strlen(path)) {
-        minfo("~~Parent directory < path: %s < %s", syscheck.dir[dir_position], path);
         return -1;
     }
 
@@ -502,13 +494,11 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
 
             if (size = decode_win_permissions(data->perm, OS_SIZE_20480, data->win_perm_mask, 0, NULL), size > 1) {
                 os_realloc(data->perm, size + 1, data->perm);
-                minfo("~~~ data permission:'%s'", data->perm);
             }
         }
 
         os_calloc(OS_SIZE_256, sizeof(char), data->attributes);
         decode_win_attributes(data->attributes, w_get_file_attrs(file_name));
-        minfo("~~~ data attributes:'%s'", data->attributes);
 #else
         data->perm = agent_file_perm(file_stat->st_mode);
 #endif
@@ -591,7 +581,6 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
     // Set file entry type, registry or file
     data->entry_type = fim_entry_type[0];
     fim_get_checksum(data);
-    minfo("fim_get_data2:%s", file_name);
 
     return data;
 }
