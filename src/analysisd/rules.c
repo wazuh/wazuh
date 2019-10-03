@@ -2019,11 +2019,7 @@ static void Rule_AddAR(RuleInfo *rule_config)
 
 static void printRuleinfo(const RuleInfo *rule, int node)
 {
-    mdebug1("%d : rule:%d, level %d, timeout: %d",
-           node,
-           rule->sigid,
-           rule->level,
-           rule->ignore_time);
+    mdebug1(RULE_ADDED, rule->sigid, rule->level, node);
 }
 
 /* Add rule to hash */

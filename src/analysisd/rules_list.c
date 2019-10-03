@@ -48,6 +48,15 @@ static void savesChild(RuleNode *orig);
  */
 static void sortTheCopiedRules(int sid_rule);
 
+/**
+ * @brief It is similar to OS_MarkID.
+ * The difference is that this function search for rules that have if_matched_sid equal to the rule ID,
+ * the OS_MakrID purpose does the opposite.
+ * @param Rule to mark if if_matched_sid value is equal to r_info ID value
+ * @param r_info Rule to mark if have rules that their if_matched_sid are equals its ID
+ */
+static void markIdOverwrite (RuleNode *r_node, RuleInfo *r_info);
+
 
 /* Create the RuleList */
 void OS_CreateRuleList()
@@ -308,6 +317,8 @@ int OS_AddRuleInfo(RuleInfo *newrule, int sid)
             for (i = 0; i < num_rules_copied; i++){
                 OS_AddChild(copied_rules[i], NULL);
             }
+
+            markIdOverwrite(NULL, newrule);
         }
         else {
 
@@ -316,6 +327,8 @@ int OS_AddRuleInfo(RuleInfo *newrule, int sid)
         }
 
         free_RuleInfo(removed);
+
+        mdebug1(RULE_OVERWRITE, newrule->sigid);
 
         return (1);
     }
@@ -793,6 +806,40 @@ static void sortTheCopiedRules(int sid_rule)
             }
         }
 
+    }
+
+}
+
+static void markIdOverwrite (RuleNode *r_node, RuleInfo *r_info)
+{
+
+    if (r_node == NULL) {
+        r_node = OS_GetFirstRule();
+    }
+
+    while (r_node) {
+
+        if (r_node->ruleinfo->if_matched_sid == r_info->sigid) {
+
+            if (!r_info->sid_prev_matched) {
+
+                r_info->sid_prev_matched = OSList_Create();
+
+                if (!r_info->sid_prev_matched) {
+                    merror_exit(MEM_ERROR, errno, strerror(errno));
+                }
+            }
+
+            r_node->ruleinfo->sid_search = r_info->sid_prev_matched;
+            r_node->ruleinfo->event_search = (void *(*)(void *, void *, void *))
+                Search_LastSids;
+        }
+
+        if (r_node->child) {
+            markIdOverwrite(r_node->child, r_info);
+        }
+
+        r_node = r_node->next;
     }
 
 }

@@ -186,4 +186,8 @@
 #define FIM_CHECKSUM_MSG                    "(6310): Sending msg to the server: '%s'."
 #define FIM_MONITORING_FILES_COUNT          "(6311): Number of indexed files %s scanning: %u."
 
+/* Analysisd debug messages */
+#define RULE_OVERWRITE                      "(5150): Rule '%d'  overwritten."
+#define RULE_ADDED                          "(5151): Rule '%d' (level: %d). Depth: %d"
+
 #endif /* DEBUG_MESSAGES_H */
