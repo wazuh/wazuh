@@ -37,7 +37,7 @@ size_t syscom_dispatch(char * command, char ** output){
         if (rcv_args == NULL) {
             mdebug1(FIM_SYSCOM_ARGUMENTS, "dbsync");
         } else {
-            fim_sync_dispatch(rcv_args);
+            fim_sync_push_msg(rcv_args);
         }
 
         return 0;

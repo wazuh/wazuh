@@ -803,6 +803,7 @@ static void parse_inventory(syscheck_config * syscheck, XML_NODE node) {
     const char *xml_enabled = "enabled";
     const char *xml_sync_interval = "sync_interval";
     const char *xml_response_timeout = "response_timeout";
+    const char *xml_sync_queue_size = "sync_queue_size";
 
     for (int i = 0; node[i]; i++) {
         if (strcmp(node[i]->element, xml_enabled) == 0) {
@@ -828,6 +829,15 @@ static void parse_inventory(syscheck_config * syscheck, XML_NODE node) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 syscheck->sync_response_timeout = t;
+            }
+        } else if (strcmp(node[i]->element, xml_sync_queue_size) == 0) {
+            char * end;
+            long value = strtol(node[i]->content, &end, 10);
+
+            if (value < 2 || value > 1000000 || *end) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscheck->sync_queue_size = value;
             }
         } else {
             mwarn(XML_INVELEM, node[i]->element);
