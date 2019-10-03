@@ -92,7 +92,6 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         }
         if(lf->generated_rule->mitre_id) {
             int i;
-            int inarray = 0;
             cJSON * mitre;
             cJSON *tactics;
             cJSON * tactic;
@@ -110,15 +109,14 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                     mwarn("Mitre Technique ID %s is not in mitre database.", lf->generated_rule->mitre_id[i]);
                 }
                 cJSON_ArrayForEach(tactic, tactics){
+                    int inarray = 0;
                     /* Check if the element is already in the vector */
                     cJSON_ArrayForEach(element, mitre_tactic_array){
                         if (strcmp(element->valuestring, tactic->valuestring) == 0) {
                             inarray = 1;
                         }
                     }
-                    if (inarray == 1) {
-                        inarray = 0;
-                    } else {
+                    if (!inarray) {
                         cJSON_AddItemToArray(mitre_tactic_array, cJSON_Duplicate(tactic,0));
                     }     
                 }

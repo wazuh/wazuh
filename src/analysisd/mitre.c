@@ -18,7 +18,7 @@ int mitre_load(){
     int j;
     int size_ids;
     int size_tactics;
-    char path_db[PATH_MAX + 1]= "/var/db/mitre.db" ;
+    char path_db[PATH_MAX + 1];
     char *wazuhdb_query = NULL;
     char *response = NULL;
     char *ext_id = NULL;
@@ -30,6 +30,7 @@ int mitre_load(){
     cJSON *tactics;
     cJSON *tactic;
 
+    snprintf(path_db, sizeof(path_db), "%s/%s.db", WDB_DIR, WDB_MITRE_NAME);
 
     /* Create hash table */
     mitre_table = OSHash_Create();
