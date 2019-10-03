@@ -1245,7 +1245,7 @@ int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
         return -1;
     }
 
-    os_calloc(OS_SIZE_1024 + 1, sizeof(char), msg);
+    os_calloc(OS_SIZE_1024, sizeof(char), msg);
 
     if (hotfix = cJSON_GetObjectItem(logJSON, "hotfix"), hotfix) {
         scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
@@ -1270,7 +1270,7 @@ int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
             free(msg);
             return -1;
         } else if (strcmp(msg_type, "hotfix_end") == 0) {
-            snprintf(msg, OS_SIZE_6144 - 1, "agent %s hotfix del %d", lf->agent_id, scan_id->valueint);
+            snprintf(msg, OS_SIZE_1024 - 1, "agent %s hotfix del %d", lf->agent_id, scan_id->valueint);
             if (sc_send_db(msg,socket) < 0) {
                 return -1;
             }

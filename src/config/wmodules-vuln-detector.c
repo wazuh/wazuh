@@ -587,13 +587,14 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
 }
 
 int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **updates, wm_vuldet_flags *flags) {
-    int os_index;
+    int os_index = OS_SUPP_SIZE;
     XML_NODE chld_node = NULL;
     char *pr_name = NULL;
     vu_os_feed *os_list = NULL;
     int result;
     char multi_provider;
     provider_options p_options;
+    int retval = OS_INVALID;
 
     if (pr_name = wm_vuldet_provider_name(node), !pr_name) {
         mwarn("Empty %s name.", XML_PROVIDER);
@@ -607,23 +608,24 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
 
     if (chld_node = OS_GetElementsbyNode(xml, node), !chld_node) {
         merror(XML_INVELEM, node->element);
-        return OS_INVALID;
+        goto end;
     }
 
     if (result = wm_vuldet_provider_enable(chld_node), !result) {
+        retval = 0;
         goto end;
     } else if (result == OS_INVALID) {
-        return OS_INVALID;
+        goto end;
     }
 
     if (!multi_provider) {
         if(wm_vuldet_provider_os_list(chld_node, &os_list)) {
-            return OS_INVALID;
+            goto end;
         }
     }
 
     if (wm_vuldet_read_provider_content(chld_node, pr_name, multi_provider, &p_options)) {
-        return OS_INVALID;
+        goto end;
     }
 
     if (!multi_provider) {
@@ -631,7 +633,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             vu_os_feed *rem = os_list;
 
             if (os_index = wm_vuldet_set_feed_version(pr_name, os_list->version, updates), os_index == OS_INVALID || os_index == OS_SUPP_SIZE) {
-                return OS_INVALID;
+                goto end;
             }
 
             if (os_list->interval) {
@@ -662,7 +664,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
         }
     } else {
         if (os_index = wm_vuldet_set_feed_version(pr_name, NULL, updates), os_index == OS_INVALID || os_index == OS_SUPP_SIZE) {
-            return OS_INVALID;
+            goto end;
         }
 
         if (p_options.update_interval) {
@@ -681,7 +683,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
 
         if (p_options.multi_allowed_os_name) {
             if (wm_vuldet_add_multi_allow_os(updates[os_index], p_options.multi_allowed_os_name, p_options.multi_allowed_os_ver)) {
-                return OS_INVALID;
+                goto end;
             }
         }
 
@@ -698,15 +700,20 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
         flags->update = 1;
     }
 
-    if (updates[os_index]->multi_path && updates[os_index]->multi_url) {
-        os_free(updates[os_index]->multi_url);
-    } else if (updates[os_index]->path && updates[os_index]->url) {
-        os_free(updates[os_index]->url);
+    if (os_index != OS_SUPP_SIZE) {
+        if (updates[os_index]->multi_path && updates[os_index]->multi_url) {
+            os_free(updates[os_index]->multi_url);
+        } else if (updates[os_index]->path && updates[os_index]->url) {
+            os_free(updates[os_index]->url);
+        }
     }
 
+    retval = 0;
 end:
-    OS_ClearNode(chld_node);
-    return 0;
+    if (chld_node) {
+        OS_ClearNode(chld_node);
+    }
+    return retval;
 }
 
 int wm_vuldet_provider_enable(xml_node **node) {
