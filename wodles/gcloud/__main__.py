@@ -22,12 +22,11 @@ max_messages = arguments.max_messages
 log_level = arguments.log_level
 
 # set logger
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 core.set_logger(log_level)
 
 # get Google Cloud client
-client = core.GCloudClient(credentials_file, project_id, subscription_name,
-                           __name__)
+client = core.GCloudClient(credentials_file, project_id, subscription_name)
 
 # check permissions about subscription
 if not client.check_permissions():
@@ -37,5 +36,5 @@ if not client.check_permissions():
 # process messages
 num_processed_messages = client.process_messages(max_messages)
 
-logger.info(f'Received and acknowledged {num_processed_messages} messages. Done.')  # noqa: E501
-print(f'Received and acknowledged {num_processed_messages} messages. Done.')
+logger.info(f'Received and acknowledged {num_processed_messages} messages')  # noqa: E501
+print(f'Received and acknowledged {num_processed_messages} messages')

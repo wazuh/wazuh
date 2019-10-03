@@ -28,19 +28,15 @@ class GCloudClient:
     header = '1:Wazuh-GCloud:'
 
     def __init__(self, credentials_file: str, project_id: str,
-                 subscription_name: str, logger_name: str):
+                 subscription_name: str):
         """Instantiate a GCloudSubscriber object.
 
         :params credentials_file: Path to credentials file
         :params subscription_id: Project ID
         :params subscription_name: Subscription name
-        :params logger_name: Name of logger. Necessary for writing in the same
-            logger than the script which creates an instance of this class
         """
         # get Wazuh paths
         self.wazuh_path, self.wazuh_version, self.wazuh_queue = self.get_wazuh_paths()  # noqa: E501
-        # get logger
-        self.logger = logging.getLogger(logger_name)
         # get subscriber
         self.subscriber = self.get_subscriber_client(credentials_file).api
         self.subscription_path = self.get_subscription_path(project_id,
@@ -62,12 +58,12 @@ class GCloudClient:
                     if version:
                         wazuh_version = version.group(2)
         except FileNotFoundError:
-            self.logger.critical('Wazuh installation not found')
+            logging.critical('Wazuh installation not found')
             sys.exit(1)
 
         if not (wazuh_path and wazuh_version):
-            self.logger.critical("Error reading '/etc/ossec-init.conf' file. "
-                                 "Wodle cannot start.")
+            logging.critical("Error reading '/etc/ossec-init.conf' file. "
+                             "Wodle cannot start.")
             sys.exit(1)
 
         wazuh_queue = os.path.join(wazuh_path, 'queue', 'ossec', 'queue')
@@ -155,9 +151,9 @@ class GCloudClient:
                                             max_messages=max_messages,
                                             return_immediately=True)
         except google_exceptions.DeadlineExceeded:
-            self.logger.warning('Deadline exceeded when pulling messages. '
-                                'No more messages will be retrieved on this '
-                                'execution')
+            logging.warning('Deadline exceeded when pulling messages. '
+                            'No more messages will be retrieved on this '
+                            'execution')
             response = pubsub.types.PullResponse()
 
         return response
@@ -174,7 +170,7 @@ class GCloudClient:
             for message in response.received_messages:
                 self.process_message(message.ack_id, message.message.data)
                 processed_messages += 1  # increment processed_messages counter
-                self.logger.info(f'ACK received from {message.message.data}')  # delete # noqa: E501
+                logging.info(f'ACK received from {message.message.data}')  # delete # noqa: E501
         # get more messages
         response = self.pull_request(max_messages)
 
