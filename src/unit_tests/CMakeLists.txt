@@ -21,6 +21,9 @@ LIST(APPEND tests_flags "-Wl,--wrap,merror -Wl,--wrap,isChroot -Wl,--wrap,chmod 
 LIST(APPEND tests_names "test_integrity_op")
 LIST(APPEND tests_flags " ")
 
+LIST(APPEND tests_names "test_rbtree_op")
+LIST(APPEND tests_flags " ")
+
 # Declare all tests targets
 LIST(LENGTH tests_names count)
 MATH(EXPR count "${count} - 1")
