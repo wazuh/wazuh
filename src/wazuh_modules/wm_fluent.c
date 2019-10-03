@@ -122,7 +122,7 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
             if (!strcmp(buffer, "") || recv_b == -1) {
                 attempts++;
                 sleep(1);
-                if (attempts >= 10 && strcmp(matrix_buffer[0], "") != 0) {
+                if (attempts >= 1 && strcmp(matrix_buffer[0], "") != 0) {
                     attempts = 0;
                     break;
                 }
