@@ -201,10 +201,24 @@ typedef struct _RuleNode {
 
 
 
+/** FIELINFO FUNCTIONS **/
 RuleInfoDetail *zeroinfodetails(int type, const char *data);
 int get_info_attributes(char **attributes, char **values);
 
-/* RuleInfo functions */
+
+
+/** RULEINFO FUNCTIONS **/
+/**
+ * @brief  Initialize RuleInfo
+ * @param id Rule id
+ * @param level Rule level
+ * @param maxsize Maximun event size
+ * @param frequency Number of times the rule must have matched before firing
+ * @param timeframe The timeframe in seconds
+ * @param noalert No trigger any alert if the rule matches
+ * @param ignore_time The time (in seconds) to ignore this rule after firing it (to avoid floods).
+ * @param overwrite To ovwerwrite a exist rule
+ */
 RuleInfo *zerorulemember(int id,
                          int level,
                          int maxsize,
@@ -214,16 +228,32 @@ RuleInfo *zerorulemember(int id,
                          int ignore_time,
                          int overwrite);
 
+/**
+ * @brief Remove RuleInfo
+ * @param r_info RuleInfo to remove.
+ *
+ * @note Not all fields are deleted because some fields are shared by multiples rules.
+ * They are lists, sid_search, group_search, sid_prev_matched, group_prev_matched.
+ */
+void free_RuleInfo(RuleInfo *r_info);
 
-/** Rule_list Functions **/
 
-/* create the rule list */
+
+/** RULELIST FUNCTIONS **/
+
+/**
+ * @brief create the rule list
+ */
 void OS_CreateRuleList(void);
 
-/* Add rule information to the list */
+/**
+ *  @brief Add rule information to the list
+ */
 int OS_AddRule(RuleInfo *read_rule);
 
-/* Add rule information as a child */
+/**
+ *  @brief Add rule information as a child
+ */
 int OS_AddChild(RuleInfo *read_rule, RuleNode *r_node);
 
 /**
@@ -257,12 +287,32 @@ int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule);
 RuleNode *OS_GetFirstRule(void);
 
 /**
- * @brief Get rule node
- * @param sigid rule id
- * @param array array of rules
- * @return node pointer to rule node
+ * @brief Test if a rule id exists
+ * @param sid Rule ID
+ * @param r_node RuleNode
+ * @return 1 if exists, otherwise 0
  */
-RuleNode *existRule (int sigid, RuleNode *array);
+int doesRuleExist(int sid, RuleNode *r_node);
+
+/**
+ * @brief Returns one of the references to the rule
+ * @param sigid Rule ID
+ * @param array RuleNode
+ * @return node RuleNode if rule exist and null overwise
+ *
+ * @note Rule can be duplicate and it's only one reference to it
+ */
+RuleNode *getRuleNode (int sigid, RuleNode *array);
+
+/**
+ * @brief Search rule and call remove_RuleNode to remove it
+ * @param parent Rule parent
+ * @param sid_rule Rule
+ *
+ * @note Does not remove RuleInfo
+ */
+void remove_Rule(RuleNode *parent, int sid_rule);
+
 
 void Rules_OP_CreateRules(void);
 

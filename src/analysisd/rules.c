@@ -31,7 +31,6 @@ static int getattributes(char **attributes,
                   int *maxsize, int *timeframe,
                   int *frequency, int *accuracy,
                   int *noalert, int *ignore_time, int *overwrite);
-static int doesRuleExist(int sid, RuleNode *r_node);
 static void Rule_AddAR(RuleInfo *config_rule);
 static char *loadmemory(char *at, const char *str);
 static void printRuleinfo(const RuleInfo *rule, int node);
@@ -2083,7 +2082,7 @@ int _setlevels(RuleNode *node, int nnode)
 /* Test if a rule id exists
  * return 1 if exists, otherwise 0
  */
-static int doesRuleExist(int sid, RuleNode *r_node)
+int doesRuleExist(int sid, RuleNode *r_node)
 {
     /* Start from the beginning of the list by default */
     if (!r_node) {

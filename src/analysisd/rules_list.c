@@ -26,30 +26,12 @@ static int _AddtoRule(int sid, int level, int none, const char *group,
                RuleNode *r_node, RuleInfo *read_rule);
 
 /**
- * @brief Remove rule and childs
+ * @brief Remove rule array and childs
  * @param array Array of rule childs.
  *
  * @note Does not remove RuleInfo
  */
 static void remove_RuleNode(RuleNode *array);
-
-/**
- * @brief Search rule and call remove_RuleNode to remove it
- * @param parent Rule parent
- * @param sid_rule Rule
- *
- * @note Does not remove RuleInfo
- */
-static void remove_Rule(RuleNode *parent, int sid_rule);
-
-/**
- * @brief Remove RuleInfo
- * @param r_info RuleInfo to remove.
- *
- * @note Not all fields are deleted because some fields are shared by multiples rules.
- * They are lists, sid_search, group_search, sid_prev_matched, group_prev_matched.
- */
-static void free_RuleInfo(RuleInfo *r_info);
 
 /**
  * @brief Saves the reference to the rule child in an array
@@ -302,7 +284,7 @@ int OS_AddRule(RuleInfo *read_rule)
 int OS_AddRuleInfo(RuleInfo *newrule, int sid)
 {
 
-    RuleNode *r_node = existRule(sid, rulenode);
+    RuleNode *r_node = getRuleNode(sid, rulenode);
     RuleInfo *removed;
     int i;
 
@@ -339,7 +321,7 @@ int OS_AddRuleInfo(RuleInfo *newrule, int sid)
     }
 }
 
-/* Mark IDs (if_matched_sid) */
+/* Mark rules that match specific id (for if_matched_sid) */
 int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule)
 {
     /* If no r_node is given, get first node */
@@ -373,7 +355,7 @@ int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule)
     return (0);
 }
 
-/* Mark groups (if_matched_group) */
+/* Mark rules that match specific group (for if_matched_group) */
 int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
 {
     /* If no r_node is given, get first node */
@@ -418,7 +400,7 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
 }
 
 
-RuleNode *existRule (int sigid, RuleNode *array)
+RuleNode *getRuleNode (int sigid, RuleNode *array)
 {
     RuleNode *tmp = array, *node = NULL;
 
@@ -430,7 +412,7 @@ RuleNode *existRule (int sigid, RuleNode *array)
 
         if (tmp->child){
 
-            if(node = existRule(sigid, tmp->child), node != NULL){
+            if(node = getRuleNode(sigid, tmp->child), node != NULL){
                 return node;
             }
         }
@@ -442,7 +424,7 @@ RuleNode *existRule (int sigid, RuleNode *array)
 }
 
 
-static void remove_Rule (RuleNode *parent, int sid_rule)
+void remove_Rule (RuleNode *parent, int sid_rule)
 {
     RuleNode *tmp = NULL;
     RuleNode *prev = NULL;
@@ -522,7 +504,7 @@ static void remove_RuleNode (RuleNode *array)
 }
 
 
-static void free_RuleInfo(RuleInfo *r_info)
+void free_RuleInfo(RuleInfo *r_info)
 {
 
     int i;
@@ -729,7 +711,7 @@ static void sortTheCopiedRules(int sid_rule)
     /* Loop index */
     int i, j, k;
 
-    /* To read all if_sid values */
+    /* To read all if_sid values or if_matched_sid value */
     int ifsid[CAP];
     const char *sid;
     int val;
@@ -741,7 +723,7 @@ static void sortTheCopiedRules(int sid_rule)
     for (i = 1; i < num_rules_copied - 3; i++) {
 
 
-        /*  */
+        /* Read if_sid or if_matched_sid values */
         if (copied_rules[i]->if_sid) {
 
             /* Read all if_sid values */
@@ -796,7 +778,7 @@ static void sortTheCopiedRules(int sid_rule)
         }
 
 
-        /* If parent isn't before, it's replace by i+1 */
+        /* If parent isn't before, it's replace by i+3 */
         RuleInfo *aux;
 
         for (k = 0; k < size; k++){
