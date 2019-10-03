@@ -28,8 +28,6 @@ typedef struct provider_options {
     char *multi_url;
     int multi_url_start;
     int multi_url_end;
-    //char **allowed_os_name;
-    //char **allowed_os_ver;
     char **multi_allowed_os_name;
     char **multi_allowed_os_ver;
     int port;

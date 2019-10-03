@@ -521,7 +521,6 @@ int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 
     stmt = wdb->stmt[WDB_STMT_HOTFIX_INSERT];
 
-
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
     sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
     sqlite3_bind_text(stmt, 3, hotfix, -1, NULL);

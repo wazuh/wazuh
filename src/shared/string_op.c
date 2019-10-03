@@ -558,6 +558,7 @@ void wstr_split(char *str, char *delim, char *replace_delim, int occurrences, ch
     char *str_cpy, *str_cpy_ref;
     char *str_it;
     char **acc_strs;
+    char *saveptr;
 
     if (occurrences < 1) {
         return;
@@ -565,7 +566,7 @@ void wstr_split(char *str, char *delim, char *replace_delim, int occurrences, ch
 
     os_strdup(str, str_cpy);
     str_cpy_ref = str_cpy;
-    str_it = strtok(str_cpy, delim);
+    str_it = strtok_r(str_cpy, delim, &saveptr);
 
     os_calloc(occurrences, sizeof(char *), acc_strs);
 
@@ -602,7 +603,7 @@ void wstr_split(char *str, char *delim, char *replace_delim, int occurrences, ch
             splitted_count++;
             count = -1;
         }
-        str_it = strtok(NULL, delim);
+        str_it = strtok_r(NULL, delim, &saveptr);
     }
 
     // Remove residual terms (they are discarded)
