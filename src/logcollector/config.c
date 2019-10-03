@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -194,7 +194,7 @@ cJSON *getSocketConfig(void) {
 
         cJSON_AddStringToObject(target,"name",logsk[i].name);
         cJSON_AddStringToObject(target,"location",logsk[i].location);
-        if (logsk[i].mode == UDP_PROTO) {
+        if (logsk[i].mode == IPPROTO_UDP) {
             cJSON_AddStringToObject(target,"mode","udp");
         } else {
             cJSON_AddStringToObject(target,"mode","tcp");

@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -51,7 +51,7 @@ int rk_check_file(char *file, char *pattern);
 
 int rk_check_dir(const char *dir, const char *file, char *pattern);
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getRootcheckConfig(void);
 
 /* Check if pattern is present on string */

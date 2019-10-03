@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -28,8 +28,8 @@
 #define SAME_SRCPORT        0x020
 #define SAME_DSTPORT        0x040
 #define SAME_DODIFF         0x100
-#define SAME_FIELD          0x200
-#define NOT_SAME_FIELD      0x400
+#define SAME_FIELD          0x080
+#define NOT_SAME_FIELD      0x800
 #define NOT_SAME_USER       0xffe /* 0xfff - 0x001  */
 #define NOT_SAME_SRCIP      0xffd /* 0xfff - 0x002  */
 #define NOT_SAME_ID         0xffb /* 0xfff - 0x004  */

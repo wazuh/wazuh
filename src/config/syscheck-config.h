@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -140,7 +140,6 @@ typedef struct whodata_directory {
 
 typedef struct whodata {
     OSHash *fd;                         // Open file descriptors
-    OSHash *ignored_paths;              // Files or directories marked as ignored
     OSHash *directories;                // Directories checked by whodata mode
     int interval_scan;                  // Time interval between scans of the checking thread
     int whodata_setup;                  // Worth 1 when there is some directory configured with whodata

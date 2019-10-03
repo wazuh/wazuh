@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 3) as published by the FSF - Free Software
  * Foundation
@@ -163,7 +163,7 @@ static int OS_DBSearchKeyValue(ListRule *lrule, char *key)
             if (!val){
                 return 0;
             }
-          
+
             w_mutex_lock(&lrule->db->cdb.mutex)
             cdb_read(&lrule->db->cdb, val, vlen, vpos);
             w_mutex_unlock(&lrule->db->cdb.mutex);
@@ -310,7 +310,7 @@ int OS_DBSearch(ListRule *lrule, char *key)
             }
             return 0;
         case LR_ADDRESS_MATCH:
-            return OS_DBSeachKeyAddress(lrule, key);
+            return OS_DBSeachKeyAddress(lrule, key) == 1;
         case LR_ADDRESS_NOT_MATCH:
             if (OS_DBSeachKeyAddress(lrule, key) == 0) {
                 return 1;

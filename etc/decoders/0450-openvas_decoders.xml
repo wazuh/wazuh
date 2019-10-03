@@ -85,7 +85,7 @@ Mar 10 10:05:59 hostname md    omp[9140]: Authentication failure for 'admin' fro
 </decoder>
 
 <decoder name="openvasmd">
-  <program_name>^md</program_name>
+  <program_name>^md$</program_name>
 </decoder>
 
 <decoder name="openvasmd">

@@ -26,8 +26,8 @@ CREATE TABLE IF NOT EXISTS agent (
     merged_sum TEXT,
     manager_host TEXT,
     node_name TEXT DEFAULT 'unknown',
-    date_add TEXT NOT NULL,
-    last_keepalive TEXT,
+    date_add INTEGER NOT NULL,
+    last_keepalive INTEGER,
     status TEXT NOT NULL CHECK (status IN ('empty', 'pending', 'updated')) DEFAULT 'empty',
     fim_offset INTEGER NOT NULL DEFAULT 0,
     reg_offset INTEGER NOT NULL DEFAULT 0,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS agent (
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
 CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
 
-INSERT INTO agent (id, ip, register_ip, name, date_add, last_keepalive, `group`) VALUES (0, '127.0.0.1', '127.0.0.1', 'localhost', datetime(CURRENT_TIMESTAMP, 'localtime'), '9999-12-31 23:59:59', NULL);
+INSERT INTO agent (id, ip, register_ip, name, date_add, last_keepalive, `group`) VALUES (0, '127.0.0.1', '127.0.0.1', 'localhost', strftime('%s','now'), 253402300799, NULL);
 
 CREATE TABLE IF NOT EXISTS info (
     key TEXT PRIMARY KEY,

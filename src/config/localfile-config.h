@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -48,6 +48,7 @@ typedef struct _logtarget {
 typedef struct _logreader {
     off_t size;
     int ign;
+    dev_t dev;
 
 #ifdef WIN32
     HANDLE h;

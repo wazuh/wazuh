@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -47,7 +47,7 @@ void resolveHostname(char **hostname, int attempts);
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getClientConfig(void);
 cJSON *getBufferConfig(void);
 cJSON *getLabelsConfig(void);
@@ -76,6 +76,9 @@ int buffer_append(const char *msg);
 
 /* Thread to dispatch messages from the buffer */
 void *dispatch_buffer(void * arg);
+
+/* Initialize sender structure */
+void sender_init();
 
 /* Send message to server */
 int send_msg(const char *msg, ssize_t msg_length);

@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * January 25, 2019.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -647,7 +647,7 @@ end:
 
 static int wm_fluent_send(wm_fluent_t * fluent, const char * str, size_t size) {
     size_t taglen = strlen(fluent->tag);
-    int retval;
+    int retval = -1;
 
     msgpack_sbuffer sbuf;
     msgpack_sbuffer_init(&sbuf);
@@ -671,7 +671,8 @@ static int wm_fluent_send(wm_fluent_t * fluent, const char * str, size_t size) {
         assert(fluent->ssl);
         retval = SSL_write(fluent->ssl, sbuf.data, sbuf.size) == (ssize_t)sbuf.size ? 0 : -1;
     } else {
-        retval = send(fluent->client_sock, sbuf.data, sbuf.size, 0) == (ssize_t)sbuf.size ? 0 : -1;
+        if(sbuf.data)
+            retval = send(fluent->client_sock, sbuf.data, sbuf.size, 0) == (ssize_t)sbuf.size ? 0 : -1;
     }
 
     msgpack_sbuffer_destroy(&sbuf);

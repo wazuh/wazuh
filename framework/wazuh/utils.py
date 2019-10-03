@@ -1,19 +1,18 @@
-
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.exception import WazuhException
 from wazuh.database import Connection
 from wazuh import common
 from tempfile import mkstemp
 from subprocess import call, CalledProcessError
-from os import remove, chmod, chown, path, listdir, close, mkdir, curdir
+from os import remove, chmod, chown, path, listdir, close, mkdir, curdir, rename, utime
 from datetime import datetime, timedelta
 import hashlib
 import json
 import stat
+import shutil
 import re
 import errno
 from itertools import groupby, chain
@@ -53,7 +52,7 @@ def previous_month(n=1):
     :return: First date of the previous n month.
     """
 
-    date = datetime.today().replace(day=1)  # First day of current month
+    date = datetime.utcnow().replace(day=1)  # First day of current month
 
     for i in range(0, int(n)):
         date = (date - timedelta(days=1)).replace(day=1)  # (first_day - 1) = previous month
@@ -346,6 +345,33 @@ def chown_r(filepath, uid, gid):
                 chown_r(itempath, uid, gid)
 
 
+def safe_move(source, target, ownership=(common.ossec_uid(), common.ossec_gid()), time=None, permissions=None):
+    """Moves a file even between filesystems
+
+    This function is useful to move files even when target directory is in a different filesystem from the source.
+    Write permissions are required on target directory.
+
+    :param source: full path to source file
+    :param target: full path to target file
+    :param ownership: tuple in the form (user, group) to be set up after the file is moved
+    :param time: tuple in the form (addition_timestamp, modified_timestamp)
+    :param permissions: string mask in octal notation. I.e.: '0o640'
+    """
+    # Create temp file. Move between 
+    tmp_target = f"{target}.tmp"
+    shutil.move(source, tmp_target, copy_function=shutil.copyfile)
+
+    # Overwrite the file atomically
+    shutil.move(tmp_target, target, copy_function=shutil.copyfile)
+
+    # Set up metadata
+    chown(target, *ownership)
+    if permissions is not None:
+        chmod(target, permissions)
+    if time is not None:
+        utime(target, time)
+
+
 def mkdir_with_mode(name, mode=0o770):
     """
     Creates a directory with specified permissions.
@@ -519,22 +545,22 @@ class WazuhVersion:
 
     def __init__(self, version):
 
-        pattern = r"v?(\d)\.(\d)\.(\d)\-?(alpha|beta|rc)?(\d*)"
+        pattern = r"(?:Wazuh )?v?(\d+)\.(\d+)\.(\d+)\-?(alpha|beta|rc)?(\d*)"
         m = re.match(pattern, version)
 
         if m:
-            self.__mayor = m.group(1)
-            self.__minor = m.group(2)
-            self.__patch = m.group(3)
+            self.__mayor = int(m.group(1))
+            self.__minor = int(m.group(2))
+            self.__patch = int(m.group(3))
             self.__dev = m.group(4)
             self.__dev_ver = m.group(5)
         else:
             raise ValueError("Invalid version format.")
 
     def to_array(self):
-        array = [self.__mayor]
-        array.extend(self.__minor)
-        array.extend(self.__patch)
+        array = [str(self.__mayor)]
+        array.extend(str(self.__minor))
+        array.extend(str(self.__patch))
         if self.__dev:
             array.append(self.__dev)
         if self.__dev_ver:
@@ -867,8 +893,8 @@ class WazuhDBQuery(object):
         if date_filter['value'].isdigit() or re.match(r'\d+[dhms]', date_filter['value']):
             query_operator = '>' if date_filter['operator'] == '<' or date_filter['operator'] == '=' else '<'
             self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
-            self.query += "({0} IS NOT NULL AND CAST(strftime('%s', {0}) AS INTEGER) {1}" \
-                          " CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :{2}) ".format(self.fields[filter_db_name],
+            self.query += "({0} IS NOT NULL AND {0} {1}" \
+                          " strftime('%s', 'now') - :{2}) ".format(self.fields[filter_db_name],
                                                                                                  query_operator,
                                                                                                  date_filter['field'])
         elif re.match(r'\d{4}-\d{2}-\d{2}', date_filter['value']):
@@ -893,7 +919,6 @@ class WazuhDBQuery(object):
         if self.data:
             self._get_data()
             return self._format_data_into_dictionary()
-
 
     def reset(self):
         """

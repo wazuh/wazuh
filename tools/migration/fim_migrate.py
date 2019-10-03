@@ -69,7 +69,7 @@ def _fim_decode(fline):
     fim = None
     timestamp = None
     path = None
-    readed = fline
+    read = fline
     fline = fline[3:-1].split(b' !')
     if len(fline) == 2:
         fim = fline[0]
@@ -81,11 +81,11 @@ def _fim_decode(fline):
             path = parsed[1]
         else:
             logging.error("Couldn't decode line at syscheck database.")
-            logging.debug("Error parsing line: {0}".format(readed))
+            logging.debug("Error parsing line: {0}".format(read))
             return None
     else:
         logging.error("Couldn't decode line at syscheck database.")
-        logging.debug("Error parsing line: {0}".format(readed))
+        logging.debug("Error parsing line: {0}".format(read))
         return None
 
     return fim, timestamp, path

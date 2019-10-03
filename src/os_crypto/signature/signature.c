@@ -2,7 +2,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * June 28, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -212,6 +212,8 @@ X509 * w_wpk_cert(FILE * fp) {
 
     if (cert = PEM_read_bio_X509(bio, NULL, NULL, NULL), !cert) {
         merror("Invalid certificate in WPK file.");
+        BIO_free_all(bio);
+        free(buffer);
         return NULL;
     }
 

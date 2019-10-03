@@ -2,7 +2,7 @@
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -79,6 +79,7 @@ int main(int argc, char **argv)
     r_filter.related_user = 0;
     r_filter.related_file = 0;
 
+    r_filter.report_type = 0;
     r_filter.report_name = NULL;
 
     while ((c = getopt(argc, argv, "Vdhstu:g:D:f:v:n:r:")) != -1) {

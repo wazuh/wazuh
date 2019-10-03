@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * November 25, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -265,32 +265,44 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             return -1;
         }
 
-        if (wm_exec(command, &output, &result_code, data->timeout, NULL) < 0) {
-            if (result_code == EXECVE_ERROR) {
-                mwarn("Cannot run key pulling integration (%s): path is invalid or file has insufficient permissions.", data->exec_path);
-            } else {
-                mwarn("Error executing [%s]", data->exec_path);
-            }
+        int error_flag = 0;
+        switch (wm_exec(command, &output, &result_code, data->timeout, NULL)) {
+            case 0:
+                if (result_code != 0) {
+                    error_flag = 1;
+                    mwarn("Key pulling integration (%s) returned code %d.", data->exec_path, result_code);
+                }
+            break;
+            case WM_ERROR_TIMEOUT:
+                error_flag = 1;
+                mwarn("Timeout received while running key pulling integration (%s)", data->exec_path);
+            break;
+            default:
+                error_flag = 1;
+                if (result_code == EXECVE_ERROR) {
+                    mwarn("Cannot run key pulling integration (%s): path is invalid or file has insufficient permissions.", data->exec_path);
+                } else {
+                    mwarn("Error executing [%s]", data->exec_path);
+                }
+        }
 
-            os_free(command);
+        os_free(command);
+
+        if (error_flag) {
+            os_free(output);
             OSHash_Delete_ex(request_hash,buffer);
             return -1;
-        } else if (result_code != 0) {
-            mwarn("Key pulling integration (%s) returned code %d.", data->exec_path, result_code);
-            os_free(command);
-            OSHash_Delete_ex(request_hash,buffer);
-            return -1;
-        } else {
-            os_free(command);
         }
     }
 
-    agent_infoJSON = cJSON_Parse(output);
+    const char *jsonErrPtr = NULL;
+    agent_infoJSON = cJSON_ParseWithOpts(output, &jsonErrPtr, 0);
 
     if (!agent_infoJSON) {
-        mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
+        mdebug1("Error parsing JSON event. %s", jsonErrPtr ? jsonErrPtr : "");
+        os_free(output);
     } else {
-
+        os_free(output);
         int error = 0;
         cJSON *error_message = NULL;
         cJSON *data_json = NULL;
@@ -306,7 +318,6 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             mdebug1("Malformed JSON output received. No 'error' field found");
             cJSON_Delete (agent_infoJSON);
             OSHash_Delete_ex(request_hash,buffer);
-            os_free(output);
             return -1;
         }
 
@@ -318,14 +329,12 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
                 mdebug1("Malformed JSON output received. No 'message' field found");
                 cJSON_Delete (agent_infoJSON);
                 OSHash_Delete_ex(request_hash,buffer);
-                os_free(output);
                 return -1;
             }
             mdebug1("Could not get a key from %s %s. Error: '%s'.", type == W_TYPE_ID ? "ID" : "IP",
                     request, error_message->valuestring && *error_message->valuestring != '\0' ? error_message->valuestring : "unknown");
             cJSON_Delete (agent_infoJSON);
             OSHash_Delete_ex(request_hash,buffer);
-            os_free(output);
             return -1;
         }
 
@@ -334,7 +343,6 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             mdebug1("Agent data not found.");
             cJSON_Delete (agent_infoJSON);
             OSHash_Delete_ex(request_hash,buffer);
-            os_free(output);
             return -1;
         }
 
@@ -343,7 +351,6 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             mdebug1("Agent ID not found.");
             cJSON_Delete (agent_infoJSON);
             OSHash_Delete_ex(request_hash,buffer);
-            os_free(output);
             return -1;
         }
 
@@ -352,7 +359,6 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             mdebug1("Agent name not found.");
             cJSON_Delete (agent_infoJSON);
             OSHash_Delete_ex(request_hash,buffer);
-            os_free(output);
             return -1;
         }
 
@@ -361,7 +367,6 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             mdebug1("Agent address not found.");
             cJSON_Delete (agent_infoJSON);
             OSHash_Delete_ex(request_hash,buffer);
-            os_free(output);
             return -1;
         }
 
@@ -370,7 +375,6 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             mdebug1("Agent key not found.");
             cJSON_Delete (agent_infoJSON);
             OSHash_Delete_ex(request_hash,buffer);
-            os_free(output);
             return -1;
         }
 
@@ -384,7 +388,6 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
         cJSON_Delete(agent_infoJSON);
     }
 
-    os_free(output);
     OSHash_Delete_ex(request_hash,buffer);
     return 0;
 }

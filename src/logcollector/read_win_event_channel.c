@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -134,7 +134,7 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
     if (publisher == NULL) {
         LSTATUS err = GetLastError();
         char error_msg[OS_SIZE_1024];
-        error_msg[OS_SIZE_1024] = '\0';
+        error_msg[OS_SIZE_1024 - 1] = '\0';
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
                 | FORMAT_MESSAGE_MAX_WIDTH_MASK,
                 NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
@@ -262,6 +262,116 @@ EVT_HANDLE read_bookmark(os_channel *channel)
     return (bookmark);
 }
 
+/* Update the log position of a bookmark */
+int update_bookmark(EVT_HANDLE evt, os_channel *channel)
+{
+    DWORD size = 0;
+    DWORD count = 0;
+    wchar_t *buffer = NULL;
+    int result = 0;
+    int status = 0;
+    EVT_HANDLE bookmark = NULL;
+    FILE *fp = NULL;
+
+    if ((bookmark = EvtCreateBookmark(NULL)) == NULL) {
+        mferror(
+            "Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
+            channel->bookmark_filename,
+            channel->evt_log,
+            GetLastError());
+        goto cleanup;
+    }
+
+    if (!EvtUpdateBookmark(bookmark, evt)) {
+        mferror(
+            "Could not EvtUpdateBookmark() bookmark (%s) for (%s) which returned (%lu)",
+            channel->bookmark_filename,
+            channel->evt_log,
+            GetLastError());
+        goto cleanup;
+    }
+
+    /* Make initial call to determine buffer size */
+    result = EvtRender(NULL,
+                       bookmark,
+                       EvtRenderBookmark,
+                       0,
+                       NULL,
+                       &size,
+                       &count);
+    if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+        mferror(
+            "Could not EvtRender() to get buffer size to update bookmark (%s) for (%s) which returned (%lu)",
+            channel->bookmark_filename,
+            channel->evt_log,
+            GetLastError());
+        goto cleanup;
+    }
+
+    if ((buffer = calloc(size, sizeof(char))) == NULL) {
+        mferror(
+            "Could not calloc() memory to save bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+            channel->bookmark_filename,
+            channel->evt_log,
+            errno,
+            strerror(errno));
+        goto cleanup;
+    }
+
+    if (!EvtRender(NULL,
+                   bookmark,
+                   EvtRenderBookmark,
+                   size,
+                   buffer,
+                   &size,
+                   &count)) {
+        mferror(
+            "Could not EvtRender() bookmark (%s) for (%s) which returned (%lu)",
+            channel->bookmark_filename, channel->evt_log,
+            GetLastError());
+        goto cleanup;
+    }
+
+    if ((fp = fopen(channel->bookmark_filename, "w")) == NULL) {
+        mwarn(
+            "Could not fopen() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+            channel->bookmark_filename,
+            channel->evt_log,
+            errno,
+            strerror(errno));
+        goto cleanup;
+    }
+
+    if ((fwrite(buffer, 1, size, fp)) < size) {
+        mferror(
+            "Could not fwrite() to bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+            channel->bookmark_filename,
+            channel->evt_log,
+            errno,
+            strerror(errno));
+        goto cleanup;
+    }
+
+    fclose(fp);
+
+    /* Success */
+    status = 1;
+
+cleanup:
+    free(buffer);
+
+    if (bookmark != NULL) {
+        EvtClose(bookmark);
+    }
+
+    if (fp) {
+        fclose(fp);
+    }
+
+    return (status);
+}
+
+
 void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 {
     DWORD buffer_length = 0;
@@ -323,7 +433,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
     xml_event = convert_windows_string((LPCWSTR) properties_values);
-    
+
     if (!xml_event) {
         goto cleanup;
     }
@@ -389,6 +499,10 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 
     if (SendMSG(logr_queue, msg_sent, "EventChannel", WIN_EVT_MQ) < 0) {
         merror(QUEUE_SEND);
+    }
+
+    if (channel->bookmark_enabled) {
+        update_bookmark(evt, channel);
     }
 
 cleanup:

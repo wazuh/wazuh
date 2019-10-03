@@ -2,14 +2,13 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import itertools
 import logging
 import argparse
 import operator
 import sys
-from wazuh import Wazuh
 from wazuh.cluster import control, cluster
 
 
@@ -140,8 +139,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
-
-    my_wazuh = Wazuh(get_init=True)
 
     cluster_status = cluster.get_status_json()
     if cluster_status['enabled'] == 'no' or cluster_status['running'] == 'no':

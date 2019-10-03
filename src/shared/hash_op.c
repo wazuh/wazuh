@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -53,7 +53,7 @@ OSHash *OSHash_Create()
     srandom((unsigned int)time(0));
     self->initial_seed = os_getprime((unsigned)os_random() % self->rows);
     self->constant = os_getprime((unsigned)os_random() % self->rows);
-    pthread_rwlock_init(&self->mutex, NULL);
+    w_rwlock_init(&self->mutex, NULL);
     return (self);
 }
 
@@ -294,6 +294,8 @@ int _OSHash_Add(OSHash *self, const char *key, void *data, int update)
         self->table[index] = new_node;
     }
 
+    self->elements = self->elements + 1;
+
     return (2);
 }
 
@@ -443,6 +445,16 @@ void *OSHash_Get_ins(const OSHash *self, const char *key)
     return result;
 }
 
+/* Return the number of elements in the hash table */
+unsigned int OSHash_Get_Elem_ex(OSHash *self) {
+    unsigned int ret;
+    w_rwlock_rdlock((pthread_rwlock_t *)&self->mutex);
+    ret = self->elements;
+    w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
+
+    return ret;
+}
+
 /* Return a pointer to a hash node if found, that hash node is removed from the table */
 void *OSHash_Delete(OSHash *self, const char *key)
 {
@@ -472,6 +484,7 @@ void *OSHash_Delete(OSHash *self, const char *key)
             free(curr_node->key);
             data = curr_node->data;
             free(curr_node);
+            self->elements = self->elements - 1;
             return data;
         }
         prev_node = curr_node;
@@ -526,7 +539,7 @@ OSHash *OSHash_Duplicate(const OSHash *hash) {
     self->free_data_function = hash->free_data_function;
 
     os_calloc(self->rows + 1, sizeof(OSHashNode*), self->table);
-    pthread_rwlock_init(&self->mutex, NULL);
+    w_rwlock_init(&self->mutex, NULL);
 
     for (i = 0; i <= self->rows; i++) {
         next_addr = &self->table[i];
@@ -590,15 +603,14 @@ OSHashNode *OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current
 }
 
 void *OSHash_Clean(OSHash *self, void (*cleaner)(void*)){
-    unsigned int *i;
-    os_calloc(1, sizeof(unsigned int), i);
+    unsigned int i;
     OSHashNode *curr_node;
     OSHashNode *next_node;
 
-    curr_node = OSHash_Begin(self, i);
+    curr_node = OSHash_Begin(self, &i);
     if(curr_node){
         do {
-            next_node = OSHash_Next(self, i, curr_node);
+            next_node = OSHash_Next(self, &i, curr_node);
             if(curr_node->key){
                 free(curr_node->key);
             }
@@ -609,8 +621,6 @@ void *OSHash_Clean(OSHash *self, void (*cleaner)(void*)){
             curr_node = next_node;
         } while (curr_node);
     }
-
-    os_free(i);
 
     /* Free the hash table */
     free(self->table);

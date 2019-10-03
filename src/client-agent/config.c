@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -91,7 +91,7 @@ cJSON *getClientConfig(void) {
             cJSON *server = cJSON_CreateObject();
             cJSON_AddStringToObject(server,"address",agt->server[i].rip);
             cJSON_AddNumberToObject(server,"port",agt->server[i].port);
-            if (agt->server[i].protocol == UDP_PROTO) cJSON_AddStringToObject(server,"protocol","udp"); else cJSON_AddStringToObject(server,"protocol","tcp");
+            if (agt->server[i].protocol == IPPROTO_UDP) cJSON_AddStringToObject(server,"protocol","udp"); else cJSON_AddStringToObject(server,"protocol","tcp");
             cJSON_AddItemToArray(servers,server);
         }
         cJSON_AddItemToObject(client,"server",servers);
