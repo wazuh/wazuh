@@ -71,7 +71,6 @@ void notify_SACL_change(char *dir);
 int whodata_path_filter(char **path);
 void whodata_adapt_path(char **path);
 int whodata_check_arch();
-void whodata_remove_folder(OSHashNode **row, OSHashNode **node, void *data);
 
 // Whodata list operations
 whodata_event_node *whodata_list_add(char *id);
@@ -767,41 +766,6 @@ add_whodata_evt:
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         if (mask & DELETE) {
                             fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
-                            //static char *last_mdir = NULL;
-                            //static time_t last_mdir_tm = 0;
-                            //time_t now = time(NULL);
-
-                            // We will not process deletion events on the same directory in less than WHODATA_DIR_REMOVE_INTERVAL seconds
-                            //if (!last_mdir || strcmp(last_mdir, w_evt->path) ||
-                            //    last_mdir_tm + WHODATA_DIR_REMOVE_INTERVAL < now) {
-                            //    if (w_evt->path) {
-                            //        char *dir_path;
-                            //        char *saved_path;
-
-                            //        saved_path = w_evt->path;
-
-                            //        os_calloc(strlen(w_evt->path) + 2, sizeof(char), dir_path);
-                            //        snprintf(dir_path, strlen(w_evt->path) + 2, "%s\\", w_evt->path);
-                            //        w_evt->path = dir_path;
-
-                            //        // Notify removed files
-                            //        mdebug1(FIM_WHODATA_DIRECTORY_REMOVED, dir_path);
-                            //        OSHash_It_ex(syscheck.fim_entry, 1, (void *) w_evt, whodata_remove_folder);
-                            //        free(dir_path);
-                            //        w_evt->path = saved_path;
-
-                            //        // Find new files
-                            //        fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
-
-                            //        last_mdir_tm = now;
-                            //        free(last_mdir);
-                            //        os_strdup(w_evt->path, last_mdir);
-                            //    } else {
-                            //        mdebug2(FIM_WHODATA_UNCONTROLLED_REMOVE);
-                            //    }
-                            //} else {
-                            //    mdebug2(FIM_WHODATA_IGNORE_EVENT, w_evt->path);
-                            //}
                         } else if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             // Check that a new file has been added
                             GetSystemTime(&w_dir->timestamp);
@@ -1684,44 +1648,6 @@ end:
     }
 
     return retval;
-}
-
-void whodata_remove_folder(OSHashNode **row, OSHashNode **node, void *data) {
-    whodata_evt *w_dir = (whodata_evt *) data;
-    char *dir = w_dir->path;
-
-    if (!strncmp(dir, (*node)->key, strlen(dir))) {
-        syscheck_node *s_node = (syscheck_node *) (*node)->data;
-        OSHashNode *r_node = *node;
-        whodata_evt w_file;
-        memcpy(&w_file, w_dir, sizeof(whodata_evt));
-
-        mdebug2(FIM_WHODATA_FOLDER_REMOVED, (*node)->key, dir);
-
-        w_file.scan_directory = 0;
-        w_file.path = (*node)->key;
-        fim_process_event(dir, FIM_WHODATA, &w_file);
-
-        if ((*node)->next) {
-            (*node)->next->prev = (*node)->prev;
-        }
-
-        if ((*node)->prev) {
-            (*node)->prev->next = (*node)->next;
-        }
-
-        *node = (*node)->next;
-
-        // If the node is the first and last node of the row
-        if (*row == r_node) {
-            *row = r_node->next;
-        }
-
-        free(r_node->key);
-        free(r_node);
-        free(s_node->checksum);
-        free(s_node);
-    }
 }
 
 void whodata_rlist_add(char *id) {

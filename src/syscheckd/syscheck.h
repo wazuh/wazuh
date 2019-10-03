@@ -150,9 +150,6 @@ void delete_inode_item(char *inode, char *file_name);
 cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int pos, fim_event_type type, fim_event_mode mode, whodata_evt *w_evt);
 
 //
-void set_integrity_index(char * file_name, fim_entry_data * data);
-
-//
 void free_entry_data(fim_entry_data * data);
 
 //
@@ -180,12 +177,8 @@ void free_syscheck_dirtb_data(char *data);
 char *seechanges_addfile(const char *filename) __attribute__((nonnull));
 
 /* Generate the whodata csum */
-int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size);
 void init_whodata_event(whodata_evt *w_evt);
 void free_whodata_event(whodata_evt *w_evt);
-
-/* Get checksum changes */
-int c_read_file(const char *file_name, const char *linked_file, const char *oldsum, char *newsum, int dir_position, whodata_evt *evt) __attribute__((nonnull(1,3,4)));
 
 int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));

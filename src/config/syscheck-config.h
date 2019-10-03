@@ -178,16 +178,6 @@ typedef struct registry_regex {
 
 #endif
 
-typedef struct syscheck_node {
-    char *checksum;
-    int dir_position;
-} syscheck_node;
-
-typedef struct fim_status{
-    unsigned int symbolic_links;
-    unsigned int num_files;
-} fim_status;
-
 typedef struct fim_entry_data {
     // Checksum attributes
     unsigned int size;
@@ -225,7 +215,6 @@ typedef struct _config {
     int rootcheck;                  /* set to 0 when rootcheck is disabled */
     int disabled;                   /* is syscheck disabled? */
     int scan_on_start;
-    int realtime_count;
     int max_depth;                  /* max level of recursivity allowed */
     size_t file_max_size;           /* max file size for calculating hashes */
 
@@ -239,9 +228,6 @@ typedef struct _config {
     unsigned int enable_inventory:1;    /* Enable database synchronization */
 
     int *opts;                      /* attributes set in the <directories> tag element */
-
-    char *remote_db;
-    char *db;
 
     char *scan_day;                 /* run syscheck on this day */
     char *scan_time;                /* run syscheck at this time */
@@ -286,7 +272,6 @@ typedef struct _config {
     rtfim *realtime;
 
     char *prefilter_cmd;
-    struct fim_status data;
     int process_priority; // Adjusts the priority of the process (or threads in Windows)
 
 } syscheck_config;

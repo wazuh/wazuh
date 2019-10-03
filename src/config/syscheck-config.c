@@ -1541,8 +1541,6 @@ void Free_Syscheck(syscheck_config * config) {
     if (config) {
         int i;
         free(config->opts);
-        free(config->remote_db);
-        free(config->db);
         free(config->scan_day);
         free(config->scan_time);
         if (config->ignore) {
