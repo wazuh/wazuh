@@ -1236,15 +1236,19 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
 }
 
 int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
-    cJSON *scan_id;
+    char * msg = NULL;
+    cJSON * hotfix;
+    cJSON * scan_id;
+    cJSON * scan_time;
+
     if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
         return -1;
     }
 
-    cJSON *hotfix;
-    char msg[OS_SIZE_1024];
+    os_calloc(OS_SIZE_1024 + 1, sizeof(char), msg);
+
     if (hotfix = cJSON_GetObjectItem(logJSON, "hotfix"), hotfix) {
-        cJSON *scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
+        scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
 
         snprintf(msg, OS_SIZE_1024, "agent %s hotfix save %d|%s|%s|",
                 lf->agent_id,
@@ -1257,16 +1261,21 @@ int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
         }
     } else {
         // Looking for 'end' message.
-        char * msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
+        char * msg_type = NULL;
+
+        msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
 
         if (!msg_type) {
             merror("Invalid message. Type not found.");
+            free(msg);
             return -1;
         } else if (strcmp(msg_type, "hotfix_end") == 0) {
-            snprintf(msg, OS_SIZE_1024, "agent %s hotfix del %d", lf->agent_id, scan_id->valueint);
+            snprintf(msg, OS_SIZE_6144 - 1, "agent %s hotfix del %d", lf->agent_id, scan_id->valueint);
             if (sc_send_db(msg,socket) < 0) {
                 return -1;
             }
+        } else {
+            free(msg);
         }
     }
 

@@ -508,7 +508,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
                     }
 
                     if (!strncmp(info->tag, "install_time", 12)) {    // Format date
-                        char *installt = w_get_timestamp(time(NULL));;
+                        char *installt = w_get_timestamp(result);
 
                         cJSON_AddStringToObject(package, info->tag, installt);
                         free(installt);
