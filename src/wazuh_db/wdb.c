@@ -209,7 +209,7 @@ wdb_t * wdb_open_mitre() {
     snprintf(path, sizeof(path), "%s/%s.db", WDB_DIR, WDB_MITRE_NAME);
 
     if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-        mdebug1("No SQLite database found for '%s', creating.", WDB_MITRE_NAME);
+        merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
         sqlite3_close_v2(db);
         goto end;
 

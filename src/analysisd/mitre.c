@@ -39,7 +39,7 @@ int mitre_load(){
     snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT id from attack;");
     result = wdb_send_query(wazuhdb_query, &response);
     if (!response) {
-        mdebug1("Mitre info loading failed. Mitre's database query failed. Database: %s", path_db);
+        mdebug1("Mitre info loading failed. No response from Mitre database: %s", path_db);
         merror("Mitre matrix information could not be loaded.");
         result = -1;
         goto end;

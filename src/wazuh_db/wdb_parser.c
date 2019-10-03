@@ -318,7 +318,7 @@ int wdb_parse(char * input, char * output) {
 
         if(wdb = wdb_open_mitre(), !wdb) {
             merror("Couldn't open DB mitre");
-            snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB mitre; %s", sqlite3_errmsg(wdb->db));
+            snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB mitre");
             return -1;
         }
 
