@@ -37,12 +37,12 @@ extern const char * INTEGRITY_COMMANDS[];
  * Format (check):
  * {
  *   component:     string
- *   type:          "check"
+ *   type:          "integrity_check_global"|"integrity_check_left"|"integrity_check_right"
  *   data: {
  *     id:          number
  *     begin:       string
  *     end:         string
- *     tail:        string [Optional]
+ *     tail:        string [Only if type="integrity_check_left"]
  *     checksum:    string
  *   }
  * }
@@ -50,7 +50,7 @@ extern const char * INTEGRITY_COMMANDS[];
  * Format (clear):
  * {
  *   component: string
- *   type:      "clear"
+ *   type:      "integrity_clear"
  * }
  *
  * @param component Name of the component.

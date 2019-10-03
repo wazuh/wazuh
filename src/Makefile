@@ -486,6 +486,7 @@ settings:
 	@echo "    ONEWAY:             ${ONEWAY}"
 	@echo "    CLEANFULL:          ${CLEANFULL}"
 	@echo "    RESOURCES_URL:      ${RESOURCES_URL}"
+	@echo "    DISABLE_SHARED:     ${DISABLE_SHARED}"
 	@echo "User settings:"
 	@echo "    OSSEC_GROUP:        ${OSSEC_GROUP}"
 	@echo "    OSSEC_USER:         ${OSSEC_USER}"
