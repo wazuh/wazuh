@@ -345,11 +345,6 @@ stopa()
     echo "$NAME $VERSION Stopped"
 }
 
-buildCDB()
-{
-    ${DIR}/bin/ossec-makelists > /dev/null 2>&1
-}
-
 ### MAIN HERE ###
 
 case "$1" in
@@ -368,7 +363,6 @@ restart)
     testconfig
     lock
     stopa
-    buildCDB
     start
     unlock
     ;;
