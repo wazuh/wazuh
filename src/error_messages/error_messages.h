@@ -337,7 +337,6 @@
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
 #define FIM_ERROR_ACCESING                          "(6601): Error accessing '%s': '%s' (%d)"
-#define FIM_ERROR_EXTRACT_PERM                      "(6602): It was not possible to extract the permissions of '%s'. Error: '%d'."
 #define FIM_ERROR_WHODATA_SUM_MAX                   "(6603): The whodata sum for '%s' file could not be included in the alert as it is too large."
 #define FIM_ERROR_NOTHING_TOCKECK                   "(6604): No directories to check."
 #define FIM_ERROR_CHECK_THREAD                      "(6605): Could not create the Whodata check thread."

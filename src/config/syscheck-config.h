@@ -206,7 +206,8 @@ typedef struct fim_entry_data {
     // Options
     fim_event_mode mode;
     time_t last_event;
-    const char *entry_type;
+    const char * entry_type;
+    char * win_perm_mask;
     unsigned long int dev;
     unsigned int scanned;
     int options;

@@ -427,7 +427,6 @@ void * run_up(__attribute__((unused)) void * args) {
 
         *(name++) = '\0';
         wdb = wdb_open_agent2(atoi(entry));
-        mdebug2("Upgraded DB for agent '%s' in run_up", wdb->agent_id);
         wdb_leave(wdb);
         free(entry);
     }

@@ -18,23 +18,6 @@
 #include <grp.h>
 
 #define PATH_SEP '/'
-
-#else
-
-#include "shared.h"
-#include "aclapi.h"
-#include <sddl.h>
-
-#define BUFFER_LEN 1024
-#define PATH_SEP '\\'
-
-#endif
-
-#include "../syscheckd/syscheck.h"
-#include "analysisd/eventinfo.h"
-#include "os_net/os_net.h"
-
-
 // Windows file attributes
 #define FILE_ATTRIBUTE_READONLY                 0x00000001
 #define FILE_ATTRIBUTE_HIDDEN                   0x00000002
@@ -50,11 +33,7 @@
 #define FILE_ATTRIBUTE_OFFLINE                  0x00001000
 #define FILE_ATTRIBUTE_NOT_CONTENT_INDEXED      0x00002000
 #define FILE_ATTRIBUTE_ENCRYPTED                0x00004000
-#define FILE_ATTRIBUTE_INTEGRITY_STREAM         0x00008000
 #define FILE_ATTRIBUTE_VIRTUAL                  0x00010000
-#define FILE_ATTRIBUTE_NO_SCRUB_DATA            0x00020000
-#define FILE_ATTRIBUTE_RECALL_ON_OPEN           0x00040000
-#define FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS    0x00400000
 
 // Permissions
 // Generic rights
@@ -78,6 +57,27 @@
 #define FILE_EXECUTE                            0x00000020
 #define FILE_READ_ATTRIBUTES                    0x00000080
 #define FILE_WRITE_ATTRIBUTES                   0x00000100
+
+#else
+
+#include "shared.h"
+#include "aclapi.h"
+#include <sddl.h>
+
+#define BUFFER_LEN 1024
+#define PATH_SEP '\\'
+
+#endif
+
+#include "../syscheckd/syscheck.h"
+#include "analysisd/eventinfo.h"
+#include "os_net/os_net.h"
+
+#define FILE_ATTRIBUTE_INTEGRITY_STREAM         0x00008000
+#define FILE_ATTRIBUTE_NO_SCRUB_DATA            0x00020000
+#define FILE_ATTRIBUTE_RECALL_ON_OPEN           0x00040000
+#define FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS    0x00400000
+
 
 /* Fields for rules */
 typedef enum fim_fields {
