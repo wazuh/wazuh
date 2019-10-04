@@ -198,7 +198,7 @@ void Monitord()
                         last_rot_log = tm;
                     }
                     /* If log file reachs maximum size, rotate ossec.json */
-                    if ( (long) size >= mond.max_size && mond.ossec_log_json) {
+                    if ( (long) size_json >= mond.max_size && mond.ossec_log_json) {
                         today_json = today_json != p.tm_mday ? p.tm_mday : today_json;
                         rotate_logs(mond.log_list_json, path_ossec_json, new_path, today_json, 0, p.tm_mday, 1, 0, tm);
                         last_rot_json = tm;

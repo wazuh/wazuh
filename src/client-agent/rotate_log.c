@@ -202,7 +202,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                         last_rot_log = now;
                     }
                     /* If log file reachs maximum size, rotate ossec.json */
-                    if ( (long) size >= mond.max_size && mond.ossec_log_json) {
+                    if ( (long) size_json >= mond.max_size && mond.ossec_log_json) {
                         today_json = today_json != tm.tm_mday ? tm.tm_mday : today_json;
                         rotate_logs(mond.log_list_json, path_json, new_path, today_json, 0, tm.tm_mday, 1, 0, now);
                         last_rot_json = now;
