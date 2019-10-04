@@ -92,6 +92,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         }
         if(lf->generated_rule->mitre_id) {
             int i;
+            const char **mitre_cpy = (const char**)lf->generated_rule->mitre_id;
             cJSON * mitre;
             cJSON *tactics;
             cJSON * tactic;
@@ -100,7 +101,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             /* Creating id array */
             for (i=0; lf->generated_rule->mitre_id[i] != NULL; i++) {
             }
-            cJSON *mitre_id_array = cJSON_CreateStringArray(lf->generated_rule->mitre_id, i);
+            cJSON *mitre_id_array = cJSON_CreateStringArray(mitre_cpy, i);
             cJSON_AddItemToObject(mitre, "id", mitre_id_array);
             /* Creating tactics array */
             cJSON *mitre_tactic_array = cJSON_CreateArray();

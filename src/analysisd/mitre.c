@@ -69,7 +69,7 @@ int mitre_load(){
 
     /* Getting array size */
     if(size_ids = cJSON_GetArraySize(root), size_ids == 0) {
-        mdebug1("Mitre info loading failed. Mitre's database response has 0 elements.");
+        mdebug1("Mitre info loading failed. Query's response has 0 elements.");
         merror("Mitre matrix information could not be loaded.");
         cJSON_Delete(root);
         result = -1;
@@ -82,7 +82,7 @@ int mitre_load(){
         id = cJSON_GetObjectItem(ids,"id");
         ext_id = id->valuestring;
 
-        /* Consulting mitredatabase to get Tactics */
+        /* Consulting mitre database to get Tactics */
         snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT phase_name FROM has_phase WHERE attack_id = '%s';", ext_id);
         result = wdb_send_query(wazuhdb_query, &response);
 
