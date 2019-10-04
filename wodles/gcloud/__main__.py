@@ -8,12 +8,14 @@
 
 """This module processes events from a Google Cloud subscription."""
 
-import core
 import logging
+
+import tools
+from integration import WazuhGCloudSubscriber
 
 try:
     # get script arguments
-    arguments = core.get_script_arguments()
+    arguments = tools.get_script_arguments()
     project = arguments.project
     subscription_id = arguments.subscription_id
     credentials_file = arguments.credentials_file
@@ -22,10 +24,10 @@ try:
 
     # set logger
     logger = logging.getLogger()
-    core.set_logger(log_level)
+    tools.set_logger(log_level)
 
     # get Google Cloud client
-    client = core.GCloudClient(credentials_file, project, subscription_id)
+    client = WazuhGCloudSubscriber(credentials_file, project, subscription_id)
 
     # check permissions about subscription
     client.check_permissions()
