@@ -559,5 +559,25 @@
     },
     "fake_system_resources": {"user:id:*": ["wazuh"]},
     "allowed_resources": [["wazuh-app"]]
+  },
+  {
+    "rbac": {
+      "security:delete": {
+        "user:id:*": "deny",
+        "user:id:wazuh-app": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:delete"],
+        "resources": ["user:id:{user_id}"],
+        "target_params": ["user_id"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "user_id": ["wazuh", "wazuh-app"]
+    },
+    "fake_system_resources": {"user:id:*": ["wazuh"]},
+    "allowed_resources": [["wazuh-app"]]
   }
 ]
