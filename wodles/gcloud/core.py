@@ -15,11 +15,9 @@ import logging
 import os
 import re
 import socket
-import sys
-from typing import Optional
 
-from google.cloud import pubsub_v1 as pubsub
 from google.api_core import exceptions as google_exceptions
+from google.cloud import pubsub_v1 as pubsub
 
 
 class GCloudClient:
@@ -57,14 +55,14 @@ class GCloudClient:
                         continue
                     if version:
                         wazuh_version = version.group(2)
-        except FileNotFoundError:
-            logging.critical('Wazuh installation not found')
-            sys.exit(1)
+        except FileNotFoundError as e:
+            logging.critical('ERROR: Wazuh installation not found')
+            raise e
 
         if not (wazuh_path and wazuh_version):
-            logging.critical("Error reading '/etc/ossec-init.conf' file. "
-                             "Wodle cannot start.")
-            sys.exit(1)
+            error_message = "ERROR: Error reading '/etc/ossec-init.conf' " \
+                "file. Wodle cannot start"
+            raise Exception(error_message)
 
         wazuh_queue = os.path.join(wazuh_path, 'queue', 'ossec', 'queue')
 
@@ -95,26 +93,27 @@ class GCloudClient:
 
         :param msg: Event to be sent
         """
-        json_event = json.dumps(self.format_msg(msg))
-        event = f'{self.header}{json_event}'
+        event_json = json.dumps(self.format_msg(msg))
+        event_final = f'{self.header}{event_json}'.encode(errors='replace')
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
-            s.send(event.encode(encoding='utf-8', errors='ignore'))
+            s.send(event_final)
             s.close()
         except socket.error as e:
             if e.errno == 111:
-                logging.critical('Wazuh must be running')  # check if this function write in the log # noqa: E501
-                sys.exit(1)
+                logging.critical('ERROR: Wazuh must be running')
+                raise e
             else:
-                logging.critical(f'Error sending event to Wazuh: {e}')
+                logging.critical('ERROR: Error sending event to Wazuh')
+                raise e
 
     def format_msg(self, msg: bytes) -> str:
         """Format a message.
 
         :param msg: Message to be formatted
         """
-        return msg.decode(encoding='utf-8', errors='ignore')
+        return msg.decode(errors='replace')
 
     def process_message(self, ack_id: str, data: bytes):
         """Send a message to Wazuh queue.
@@ -125,18 +124,15 @@ class GCloudClient:
         self.send_msg(data)
         self.subscriber.acknowledge(self.subscription_path, [ack_id])
 
-    def check_permissions(self) -> bool:
-        """Check if permissions are OK for executing the wodle.
-
-        :return: True if permissions are OK, False otherwise
-        """
+    def check_permissions(self):
+        """Check if permissions are OK for executing the wodle."""
         required_permissions = {'pubsub.subscriptions.consume'}
         response = self.subscriber.test_iam_permissions(self.subscription_path,
                                                         required_permissions)
-        if required_permissions.difference(response.permissions) == set():
-            return True
-        else:
-            return False
+        if required_permissions.difference(response.permissions) != set():
+            error_message = 'ERROR: No permissions for executing the ' \
+                'wodle from this subscription'
+            raise Exception(error_message)
 
     def pull_request(self, max_messages: int = 100) \
             -> pubsub.types.PullResponse:
@@ -168,11 +164,12 @@ class GCloudClient:
         response = self.pull_request(max_messages)
         while len(response.received_messages) > 0:
             for message in response.received_messages:
-                self.process_message(message.ack_id, message.message.data)
+                message_data = message.message.data
+                logging.debug(f'Processing event:\n{message_data}')
+                self.process_message(message.ack_id, message_data)
                 processed_messages += 1  # increment processed_messages counter
-                logging.info(f'ACK received from {message.message.data}')  # delete # noqa: E501
-        # get more messages
-        response = self.pull_request(max_messages)
+            # get more messages
+            response = self.pull_request(max_messages)
 
         return processed_messages
 
