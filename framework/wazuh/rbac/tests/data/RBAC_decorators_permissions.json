@@ -35,7 +35,7 @@
       "agent_list": []
     },
     "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
-    "allowed_resources": [["001"]]
+    "allowed_resources": [[]]
   },
   {
     "rbac": {
@@ -279,6 +279,62 @@
   },
   {
     "rbac": {
+      "agent:read": {
+        "agent:id:002": "allow",
+        "agent:id:001": "allow",
+        "agent:group:group1": "deny",
+        "agent:group:005": "allow",
+        "agent:id:000": "allow",
+        "agent:group:group2": "allow",
+        "agent:group:group3": "deny",
+        "agent:id:099": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:*"],
+        "target_params": ["agent_list"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": []
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005", "006", "007", "008"],
+      "agent:group:group1": ["001", "004", "005"], "agent:group:group2": ["001", "002", "003", "007"],
+      "agent:group:group3": ["008"]},
+    "allowed_resources": [["000", "001", "002", "003", "005", "007", "099"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:002": "allow",
+        "agent:id:001": "allow",
+        "agent:group:group1": "deny",
+        "agent:group:005": "allow",
+        "agent:id:000": "allow",
+        "agent:group:group2": "allow",
+        "agent:group:group3": "deny",
+        "agent:id:099": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "target_params": ["agent_list"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": ["099", "008", "001", "000"]
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005", "006", "007", "008"],
+      "agent:group:group1": ["001", "004", "005"], "agent:group:group2": ["001", "002", "003", "007"],
+      "agent:group:group3": ["008"]},
+    "allowed_resources": [["000", "001", "099"]]
+  },
+  {
+    "rbac": {
       "security:read": {
         "role:id:2": "allow"
       }
@@ -420,5 +476,88 @@
     },
     "fake_system_resources": {"role:id:*": ["1", "2", "3", "4"], "policy:id:*": ["1", "2", "3", "4", "5", "8"]},
     "allowed_resources": [[], []]
+  },
+  {
+    "rbac": {
+      "security:update": {
+        "role:id:3": "allow",
+        "role:id:8": "deny",
+        "role:id:99": "allow",
+        "policy:id:99": "deny",
+        "policy:id:85": "allow",
+        "policy:id:*": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:update"],
+        "resources": ["role:id:{role_id}", "policy:id:{policy_ids}"],
+        "target_params": ["role_id", "policy_ids"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "role_id": ["3"],
+      "policy_ids": ["85", "9"]
+    },
+    "fake_system_resources": {"role:id:*": ["1", "2", "3", "4"], "policy:id:*": ["1", "2", "3", "4", "5", "8"]},
+    "allowed_resources": [[], []]
+  },
+  {
+    "rbac": {
+      "security:read": {
+        "user:id:*": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:read"],
+        "resources": ["user:id:*"],
+        "target_params": ["user_id"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "user_id": []
+    },
+    "fake_system_resources": {"user:id:*": ["wazuh"]},
+    "allowed_resources": [["wazuh"]]
+  },
+  {
+    "rbac": {
+      "security:read": {
+        "user:id:wazuh": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:read"],
+        "resources": ["user:id:{user_id}"],
+        "target_params": ["user_id"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "user_id": ["wazuh", "wazuh-app"]
+    },
+    "fake_system_resources": {"user:id:*": ["wazuh"]},
+    "allowed_resources": [["wazuh"]]
+  },
+  {
+    "rbac": {
+      "security:read": {
+        "user:id:*": "deny",
+        "user:id:wazuh-app": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:read"],
+        "resources": ["user:id:{user_id}"],
+        "target_params": ["user_id"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "user_id": ["wazuh", "wazuh-app"]
+    },
+    "fake_system_resources": {"user:id:*": ["wazuh"]},
+    "allowed_resources": [["wazuh-app"]]
   }
 ]

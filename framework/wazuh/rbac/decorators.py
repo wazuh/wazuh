@@ -44,11 +44,13 @@ def _expand_resource(resource):
         return {value}
 
 
-def use_expanded_resource(effect, final_permissions, expanded_resource, req_resources_value):
+def use_expanded_resource(effect, final_permissions, expanded_resource, req_resources_value, delete):
     if '*' not in req_resources_value:
         expanded_resource = expanded_resource.intersection(req_resources_value)
     if effect == 'allow':
         final_permissions.update(expanded_resource)
+    elif delete:
+        final_permissions.clear()
     else:
         final_permissions.difference_update(expanded_resource)
 
@@ -72,9 +74,11 @@ def expand_permissions(rbac_mode, req_resources, user_permissions_for_resource, 
             if user_resource_effect == 'allow' and '*' not in req_resources_value[identifier] and value == '*':
                 final_user_permissions[identifier].update(req_resources_value[identifier] - expanded_resource)
             use_expanded_resource(user_resource_effect, final_user_permissions[identifier],
-                                  expanded_resource, req_resources_value[identifier])
+                                  expanded_resource, req_resources_value[identifier],
+                                  value == '*' and user_resource_effect == 'deny')
         except KeyError:  # Multiples resources in action and only one is required
-            pass
+            if len(final_user_permissions[identifier]) == 0:
+                final_user_permissions.pop(identifier)
     if rbac_mode == 'black':
         for resource in req_resources:
             final_user_permissions['black:mode'].add(resource)

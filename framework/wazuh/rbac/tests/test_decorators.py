@@ -46,4 +46,6 @@ def test_expose_resources(mock_create_engine, mock_declarative_base, mock_sessio
         try:
             framework_dummy(rbac=rbac, **function_params)
         except WazuhError as e:
+            for allowed_resource in allowed_resources:
+                assert(len(allowed_resource) == 0)
             assert(e.code == 4000)
