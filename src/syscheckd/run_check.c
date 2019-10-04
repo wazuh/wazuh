@@ -90,7 +90,10 @@ void start_daemon()
     // A higher nice value means a low priority.
 #ifndef WIN32
     mdebug1(FIM_PROCESS_PRIORITY, syscheck.process_priority);
-    nice(syscheck.process_priority);
+
+    if (nice(syscheck.process_priority) == -1) {
+        merror(NICE_ERROR, strerror(errno), errno);
+    }
 #endif
 
     /* Some time to settle */
