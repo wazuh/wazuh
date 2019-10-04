@@ -23,13 +23,16 @@ ADD_COMPILE_OPTIONS(-ggdb)
 
 # Tests list and flags
 LIST(APPEND tests_names "test_file_op")
-LIST(APPEND tests_flags "-Wl,--wrap,merror -Wl,--wrap,isChroot -Wl,--wrap,chmod -Wl,--wrap,File_DateofChange -Wl,--wrap,getpid -Wl,--wrap,unlink")
+LIST(APPEND tests_flags "-Wl,--wrap,isChroot -Wl,--wrap,chmod -Wl,--wrap,File_DateofChange -Wl,--wrap,getpid -Wl,--wrap,unlink")
 
 LIST(APPEND tests_names "test_integrity_op")
 LIST(APPEND tests_flags " ")
 
 LIST(APPEND tests_names "test_rbtree_op")
 LIST(APPEND tests_flags " ")
+
+LIST(APPEND tests_names "test_version_op")
+LIST(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
 # Declare all tests targets
 LIST(LENGTH tests_names count)
