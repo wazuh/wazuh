@@ -250,7 +250,7 @@ void fim_sync_checksum();
 void fim_sync_checksum_split(const char * start, const char * top, long id);
 void fim_sync_send_list(const char * start, const char * top);
 void fim_sync_dispatch(char * payload);
-long fim_sync_last_message();
+void fim_sync_push_msg(const char * msg);
 
 /**
  * @brief Create file attribute set JSON from a FIM entry structure

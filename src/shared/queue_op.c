@@ -111,3 +111,21 @@ void * queue_pop_ex(w_queue_t * queue) {
 
     return data;
 }
+
+void * queue_pop_ex_timedwait(w_queue_t * queue, const struct timespec * abstime) {
+    void * data;
+
+    w_mutex_lock(&queue->mutex);
+
+    while (data = queue_pop(queue), !data) {
+        if (pthread_cond_timedwait(&queue->available, &queue->mutex, abstime) != 0) {
+            w_mutex_unlock(&queue->mutex);
+            return NULL;
+        }
+    }
+
+    w_cond_signal(&queue->available_not_empty);
+    w_mutex_unlock(&queue->mutex);
+
+    return data;
+}

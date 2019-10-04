@@ -22,6 +22,34 @@
 
 static long fim_sync_cur_id;
 static long fim_sync_last_msg_time;
+static w_queue_t * fim_sync_queue;
+
+// Starting data synchronization thread
+void * fim_run_integrity(void * args) {
+    fim_sync_queue = queue_init(syscheck.sync_queue_size);
+
+    while (1) {
+        mdebug2("Performing synchronization check.");
+        fim_sync_checksum();
+
+        // Wait for sync_response_timeout seconds since the last message received, or sync_interval
+
+        struct timespec timeout = { .tv_sec = time(NULL) + syscheck.sync_interval };
+        long margin = fim_sync_last_msg_time + syscheck.sync_response_timeout;
+
+        timeout.tv_sec = timeout.tv_sec > margin ? timeout.tv_sec : margin;
+
+        // Get messages until timeout
+        char * msg;
+
+        while ((msg = queue_pop_ex_timedwait(fim_sync_queue, &timeout))) {
+            fim_sync_dispatch(msg);
+            free(msg);
+        }
+    }
+
+    return args;
+}
 
 void fim_sync_checksum() {
     char ** keys;
@@ -224,6 +252,18 @@ end:
     cJSON_Delete(root);
 }
 
-long fim_sync_last_message() {
-    return fim_sync_last_msg_time;
+void fim_sync_push_msg(const char * msg) {
+
+    if (fim_sync_queue == NULL) {
+        mwarn("A data synchronization response was received before sending the first message.");
+        return;
+    }
+
+    char * copy;
+    os_strdup(msg, copy);
+
+    if (queue_push_ex_block(fim_sync_queue, copy) == -1) {
+        merror("Cannot push a data synchronization message.");
+        free(copy);
+    }
 }

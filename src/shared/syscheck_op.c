@@ -534,11 +534,11 @@ char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__(
     s = getpwuid_r(uid, &pwd, buf, bufsize, &result);
     if (result == NULL) {
         if (s == 0) {
-            mwarn("~~~ User with uid `%d` not found\n", uid);
+            mdebug2("User with uid '%d' not found.\n", uid);
         }
         else {
             errno = s;
-            merror("Failed getting user_name (%d):'%s'\n", errno, strerror(errno));
+            mdebug2("Failed getting user_name (%d): '%s'\n", errno, strerror(errno));
         }
     } else {
         os_strdup(pwd.pw_name, user_name);
