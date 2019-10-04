@@ -8,12 +8,9 @@
  * Foundation
  */
 
-#include <math.h>
-#include <assert.h>
 #include "shared.h"
 #include "syscheck.h"
 #include "syscheck_op.h"
-#include "wazuh_modules/wmodules.h"
 #include "integrity_op.h"
 #include "time_op.h"
 
@@ -69,9 +66,13 @@ int fim_scan() {
     minfo(FIM_FREQUENCY_ENDED);
     fim_send_scan_info(FIM_SCAN_END);
 
-    minfo("The scan has been running during: %.3f sec (%.3f clock sec)",
+    mdebug1("The scan has been running during: %.3f sec (%.3f clock sec)",
             time_diff(&start, &end),
             (double)(clock() - timeCPU_start) / CLOCKS_PER_SEC);
+
+    if (isDebug()) {
+        fim_print_info();
+    }
 
     return 0;
 }
@@ -760,7 +761,7 @@ void check_deleted_files() {
         // File doesn't exist so we have to delete it from the
         // hash tables and send a deletion event.
         if (!data->scanned) {
-            minfo("File '%s' has been deleted.", keys[i]);
+            mdebug1("File '%s' has been deleted.", keys[i]);
 
             if (pos = fim_configuration_directory(keys[i], data->entry_type), pos < 0) {
                 w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -1054,8 +1055,22 @@ cJSON * fim_audit_json(const whodata_evt * w_evt) {
     return fim_audit;
 }
 
+
+// Create scan info JSON event
+
+cJSON * fim_scan_info_json(fim_scan_event event, long timestamp) {
+    cJSON * root = cJSON_CreateObject();
+    cJSON * data = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(root, "type", event == FIM_SCAN_START ? "scan_start" : "scan_end");
+    cJSON_AddItemToObject(root, "data", data);
+    cJSON_AddNumberToObject(data, "timestamp", timestamp);
+
+    return root;
+}
+
 int fim_check_ignore (const char *file_name) {
-    /* Check if the file should be ignored */
+    // Check if the file should be ignored
     if (syscheck.ignore) {
         int i = 0;
         while (syscheck.ignore[i] != NULL) {
@@ -1067,7 +1082,7 @@ int fim_check_ignore (const char *file_name) {
         }
     }
 
-    /* Check in the regex entry */
+    // Check in the regex entry
     if (syscheck.ignore_regex) {
         int i = 0;
         while (syscheck.ignore_regex[i] != NULL) {
@@ -1083,7 +1098,7 @@ int fim_check_ignore (const char *file_name) {
 }
 
 int fim_check_restrict (const char *file_name, OSMatch *restriction) {
-    /* Restrict file types */
+    // Restrict file types
     if (restriction) {
         if (!OSMatch_Execute(file_name, strlen(file_name), restriction)) {
             mdebug1(FIM_FILE_IGNORE_RESTRICT, file_name);
@@ -1142,27 +1157,21 @@ void free_inode_data(fim_inode_data * data) {
     os_free(data);
 }
 
+void fim_print_info() {
+#ifndef WIN32
+    OSHashNode * hash_node;
+    unsigned int inode_it = 0;
+    unsigned inode_items = 0;
+    unsigned inode_paths = 0;
 
-// Create scan info JSON event
-cJSON * fim_scan_info_json(fim_scan_event event, long timestamp) {
-    cJSON * root = cJSON_CreateObject();
-    cJSON * data = cJSON_CreateObject();
+    for (hash_node = OSHash_Begin(syscheck.fim_inode, &inode_it); hash_node; hash_node = OSHash_Next(syscheck.fim_inode, &inode_it, hash_node)) {
+        inode_paths += ((fim_inode_data*)hash_node->data)->items;
+        inode_items++;
+    }
 
-    cJSON_AddStringToObject(root, "type", event == FIM_SCAN_START ? "scan_start" : "scan_end");
-    cJSON_AddItemToObject(root, "data", data);
-    cJSON_AddNumberToObject(data, "timestamp", timestamp);
+    minfo("Entries file path items: %d inode items: %d, inode paths items: %d", rbtree_size(syscheck.fim_entry), inode_paths, inode_items);
 
-    return root;
-}
+#endif
 
-
-// Send a scan info event
-void fim_send_scan_info(fim_scan_event event) {
-    cJSON * json = fim_scan_info_json(event, time(NULL));
-    char * plain = cJSON_PrintUnformatted(json);
-
-    send_syscheck_msg(plain);
-
-    free(plain);
-    cJSON_Delete(json);
+    return;
 }

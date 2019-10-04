@@ -8,7 +8,8 @@
  * Foundation
  */
 
-/* SCHED_BATCH is Linux specific and is only picked up with _GNU_SOURCE */
+
+// SCHED_BATCH is Linux specific and is only picked up with _GNU_SOURCE
 #ifdef __linux__
 #include <sched.h>
 #endif
@@ -18,7 +19,7 @@
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "rootcheck/rootcheck.h"
 
-/* Prototypes */
+// Prototypes
 //static void send_sk_db(int first_scan);
 void * fim_run_realtime(__attribute__((unused)) void * args);
 void * fim_run_integrity(__attribute__((unused)) void * args);
@@ -34,7 +35,7 @@ static void set_priority_windows_thread();
 //static void send_silent_del(char *path);
 #endif
 
-/* Send a message */
+// Send a message
 static void fim_send_msg(char mq, const char * location, const char * msg) {
     if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
         merror(QUEUE_SEND);
@@ -43,12 +44,12 @@ static void fim_send_msg(char mq, const char * location, const char * msg) {
             merror_exit(QUEUE_FATAL, DEFAULTQPATH);
         }
 
-        /* Try to send it again */
+        // Try to send it again
         SendMSG(syscheck.queue, msg, location, mq);
     }
 }
 
-/* Send a data synchronization control message */
+// Send a data synchronization control message
 void fim_send_sync_msg(const char * msg) {
     mdebug2(FIM_DBSYNC_SEND, msg);
     fim_send_msg(DBSYNC_MQ, SYSCHECK, msg);
@@ -56,7 +57,7 @@ void fim_send_sync_msg(const char * msg) {
     nanosleep(&timeout, NULL);
 }
 
-/* Send a message related to syscheck change/addition */
+// Send a message related to syscheck change/addition
 int send_syscheck_msg(const char *msg)
 {
 #ifndef WIN32
@@ -68,8 +69,18 @@ int send_syscheck_msg(const char *msg)
     return (0);
 }
 
+// Send a scan info event
+void fim_send_scan_info(fim_scan_event event) {
+    cJSON * json = fim_scan_info_json(event, time(NULL));
+    char * plain = cJSON_PrintUnformatted(json);
 
-/* Send a message related to rootcheck change/addition */
+    send_syscheck_msg(plain);
+
+    free(plain);
+    cJSON_Delete(json);
+}
+
+// Send a message related to rootcheck change/addition
 int send_rootcheck_msg(const char *msg)
 {
     fim_send_msg(ROOTCHECK_MQ, ROOTCHECK, msg);
@@ -77,7 +88,7 @@ int send_rootcheck_msg(const char *msg)
 }
 
 
-/* Periodically run the integrity checker */
+// Periodically run the integrity checker
 void start_daemon()
 {
     int day_scanned = 0;
@@ -86,6 +97,11 @@ void start_daemon()
     time_t prev_time_sk = 0;
     char curr_hour[12];
     struct tm *p;
+
+    // Some time to settle
+    memset(curr_hour, '\0', 12);
+    sleep(syscheck.tsleep);
+    minfo(FIM_DAEMON_STARTED);
 
     // A higher nice value means a low priority.
 #ifndef WIN32
@@ -96,13 +112,8 @@ void start_daemon()
     }
 #endif
 
-    /* Some time to settle */
-    memset(curr_hour, '\0', 12);
-    sleep(syscheck.tsleep);
-    minfo(FIM_DAEMON_STARTED);
-
 #ifndef WIN32
-    /* Launch rootcheck thread */
+    // Launch rootcheck thread
     w_create_thread(w_rootcheck_thread, &syscheck);
 #else
     if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)w_rootcheck_thread,
@@ -111,9 +122,9 @@ void start_daemon()
     }
 #endif
 
-    /* If the scan time/day is set, reset the syscheck.time/rootcheck.time */
+    // If the scan time/day is set, reset the syscheck.time/rootcheck.time
     if (syscheck.scan_time || syscheck.scan_day) {
-        /* At least once a week */
+        // At least once a week
         syscheck.time = 604800;
     }
 
@@ -125,16 +136,18 @@ void start_daemon()
 
     cldir_ex(diff_dir);
 
-    if (!syscheck.disabled) {
-        minfo(FIM_FREQUENCY_TIME, syscheck.time);
-        fim_scan();
+    if (syscheck.disabled) {
+        return;
     }
 
+    // Create File integrity monitoring base-line
+    minfo(FIM_FREQUENCY_TIME, syscheck.time);
+    fim_scan();
 #ifndef WIN32
-    /* Launch Real-time thread */
+    // Launch Real-time thread
     w_create_thread(fim_run_realtime, &syscheck);
 
-    /* Launch inventory synchronization thread, if enabled */
+    // Launch inventory synchronization thread, if enabled
     if (syscheck.enable_inventory) {
         w_create_thread(fim_run_integrity, &syscheck);
     }
@@ -150,19 +163,18 @@ void start_daemon()
     }
 #endif
 
+    // Launch Whodata real-time thread
     fim_whodata_initialize();
 
-    /* Before entering in daemon mode itself */
+    // Before entering in daemon mode itself
     prev_time_sk = time(0);
 
-    /* If the scan_time or scan_day is set, we need to handle the
-     * current day/time on the loop.
-     */
+    // If the scan_time or scan_day is set, we need to handle the current day/time on the loop.
     if (syscheck.scan_time || syscheck.scan_day) {
         curr_time = time(0);
         p = localtime(&curr_time);
 
-        /* Assign hour/min/sec values */
+        // Assign hour/min/sec values
         snprintf(curr_hour, 9, "%02d:%02d:%02d",
                  p->tm_hour,
                  p->tm_min,
@@ -186,27 +198,27 @@ void start_daemon()
         }
     }
 
-    /* Check every SYSCHECK_WAIT */
+    // Check every SYSCHECK_WAIT
     while (1) {
         int run_now = 0;
         curr_time = time(0);
 
-        /* Check if syscheck should be restarted */
+        // Check if syscheck should be restarted
         run_now = os_check_restart_syscheck();
 
-        /* Check if a day_time or scan_time is set */
+        // Check if a day_time or scan_time is set
         if (syscheck.scan_time || syscheck.scan_day) {
             p = localtime(&curr_time);
 
-            /* Day changed */
+            // Day changed
             if (curr_day != p->tm_mday) {
                 day_scanned = 0;
                 curr_day = p->tm_mday;
             }
 
-            /* Check for the time of the scan */
+            // Check for the time of the scan
             if (!day_scanned && syscheck.scan_time && syscheck.scan_day) {
-                /* Assign hour/min/sec values */
+                // Assign hour/min/sec values
                 snprintf(curr_hour, 9, "%02d:%02d:%02d",
                          p->tm_hour, p->tm_min, p->tm_sec);
 
@@ -216,7 +228,7 @@ void start_daemon()
                     run_now = 1;
                 }
             } else if (!day_scanned && syscheck.scan_time) {
-                /* Assign hour/min/sec values */
+                // Assign hour/min/sec values
                 snprintf(curr_hour, 9, "%02d:%02d:%02d",
                          p->tm_hour, p->tm_min, p->tm_sec);
 
@@ -225,7 +237,7 @@ void start_daemon()
                     day_scanned = 1;
                 }
             } else if (!day_scanned && syscheck.scan_day) {
-                /* Check for the day of the scan */
+                // Check for the day of the scan
                 if (OS_IsonDay(p->tm_wday, syscheck.scan_day)) {
                     run_now = 1;
                     day_scanned = 1;
@@ -233,7 +245,7 @@ void start_daemon()
             }
         }
 
-        /* If time elapsed is higher than the syscheck time, run syscheck time */
+        // If time elapsed is higher than the syscheck time, run syscheck time
         if (((curr_time - prev_time_sk) > syscheck.time) || run_now) {
             fim_scan();
             prev_time_sk = time(0);
@@ -264,7 +276,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
             selecttime.tv_sec = SYSCHECK_WAIT;
             selecttime.tv_usec = 0;
 
-            /* zero-out the fd_set */
+            // zero-out the fd_set
             FD_ZERO (&rfds);
             FD_SET(syscheck.realtime->fd, &rfds);
 
@@ -277,7 +289,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
             if (run_now < 0) {
                 merror(FIM_ERROR_SELECT);
             } else if (run_now == 0) {
-                /* Timeout */
+                // Timeout
             } else if (FD_ISSET (syscheck.realtime->fd, &rfds)) {
                 realtime_process();
             }
@@ -489,4 +501,4 @@ static void send_silent_del(char *path) {
 
 
 #endif
- */
+*/

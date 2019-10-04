@@ -59,7 +59,7 @@ typedef enum fim_scan_event {
 void run_check(void);
 
 /* Run run_check periodically */
-void start_daemon(void) __attribute__((noreturn));
+void start_daemon(void);
 
 /* Read the XML config */
 int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
@@ -111,6 +111,9 @@ int fim_update (char * file, fim_entry_data * data);
 
 //
 int fim_delete (char * file_name);
+
+//
+void fim_print_info();
 
 //
 void check_deleted_files();

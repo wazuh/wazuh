@@ -235,7 +235,7 @@ int Start_win32_Syscheck()
 
     start_daemon();
 
-    exit(0);
+    return 0;
 }
 #endif /* WIN32 */
 
@@ -395,9 +395,6 @@ int main(int argc, char **argv)
         rootcheck_connect();
     }
 
-    /* Initial time to settle */
-    sleep(syscheck.tsleep + 2);
-
     /* Connect to the queue */
     if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
         minfo(FIM_WAITING_QUEUE, DEFAULTQPATH, errno, strerror(errno), 5);
@@ -469,10 +466,6 @@ int main(int argc, char **argv)
         }
     }
 
-    if (syscheck.rootcheck) {
-        mtinfo("rootcheck", STARTUP_MSG, (int)getpid());
-    }
-
     /* Some sync time */
     sleep(syscheck.tsleep * 5);
     fim_initialize();
@@ -490,6 +483,11 @@ int main(int argc, char **argv)
 
     /* Start the daemon */
     start_daemon();
+
+    // We shouldn't reach this point unless syscheck is disabled
+    while(1) {
+        pause();
+    }
 
 }
 

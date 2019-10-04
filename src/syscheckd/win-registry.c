@@ -320,6 +320,8 @@ void os_winreg_check()
         i++;
     }
 
+    mdebug1(FIM_WINREGISTRY_ENDED);
+
     return;
 }
 #endif /* WIN32 */
