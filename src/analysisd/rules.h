@@ -217,7 +217,7 @@ int get_info_attributes(char **attributes, char **values);
  * @param timeframe The timeframe in seconds
  * @param noalert No trigger any alert if the rule matches
  * @param ignore_time The time (in seconds) to ignore this rule after firing it (to avoid floods).
- * @param overwrite To ovwerwrite a exist rule
+ * @param overwrite To overwrite a exist rule
  */
 RuleInfo *zerorulemember(int id,
                          int level,
