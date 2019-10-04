@@ -198,7 +198,10 @@ int wurl_request_gz(const char * url, const char * dest, const char * header, co
         }
     }
 
-    remove(compressed_file);
+    if (remove(compressed_file) < 0) {
+        mdebug1("Could not remove '%s'. Error: %d.", compressed_file, errno);
+    }
+
     return retval;
 }
 

@@ -50,6 +50,8 @@ static int wm_vuldet_add_allow_os(update_node *update, char *os_tags, char old_c
 static int wm_vuldet_add_multi_allow_os(update_node *update, char **src_os, char **dst_os);
 static int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_provider, provider_options *options);
 static char wm_vuldet_provider_type(char *pr_name);
+static void wm_vuldet_remove_os_feed(vu_os_feed *feed, char full_r);
+static void wm_vuldet_remove_os_feed_list(vu_os_feed *feeds);
 
 // Options
 static const char *XML_DISABLED = "disabled";
@@ -516,9 +518,9 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
         merror("Invalid feed '%s' at module '%s'.", feed, WM_VULNDETECTOR_CONTEXT.name);
         return OS_INVALID;
     }
-#ifdef __clang_analyzer__
+#if defined(__clang_analyzer__) || defined(__coverity__)
     else {
-        // Due to a false positive on this Clang Analyzer
+        // Due to a false positive
         version = "NULL";
     }
 #endif
@@ -658,9 +660,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             flags->update = 1;
 
             os_list = os_list->next;
-            free(rem->version);
-            free(rem->allow);
-            free(rem);
+            wm_vuldet_remove_os_feed(rem, 0);
         }
     } else {
         if (os_index = wm_vuldet_set_feed_version(pr_name, NULL, updates), os_index == OS_INVALID || os_index == OS_SUPP_SIZE) {
@@ -713,6 +713,11 @@ end:
     if (chld_node) {
         OS_ClearNode(chld_node);
     }
+
+    if (retval) {
+        wm_vuldet_remove_os_feed_list(os_list);
+    }
+
     return retval;
 }
 
@@ -753,11 +758,11 @@ char *wm_vuldet_provider_name(xml_node *node) {
 int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds) {
     int i;
     int j;
-    vu_os_feed *feeds_it = NULL;
+    vu_os_feed *feeds_it = *feeds;
 
-    for (i = 0; node[i] && node[i]; i++) {
+    for (i = 0; node[i]; i++) {
         if (!strcmp(node[i]->element, XML_OS)) {
-            if (!*feeds) {
+            if (!feeds_it) {
                 os_calloc(1, sizeof(vu_os_feed), *feeds);
                 feeds_it = *feeds;
             } else {
@@ -820,8 +825,8 @@ void wm_vuldet_free_update_node(update_node *update) {
         int section, i;
 
         for (section = 0; section < 2; section++) {
-            char ***multios_src = multios_src = !section ? update->allowed_multios_src_name : update->allowed_multios_src_ver;
-            char **multios_dst = multios_dst = !section ? update->allowed_multios_dst_name : update->allowed_multios_dst_ver;
+            char ***multios_src = !section ? update->allowed_multios_src_name : update->allowed_multios_src_ver;
+            char **multios_dst = !section ? update->allowed_multios_dst_name : update->allowed_multios_dst_ver;
             for (i = 0; multios_src && multios_src[i]; i++) {
                 w_FreeArray(multios_src[i]);
                 free(multios_src[i]);
@@ -850,6 +855,8 @@ void wm_vuldet_set_port_to_url(char **url, int port) {
         url_it += strlen(https_tag);
     } else if (url_it = strstr(*url, http_tag), url_it) {
         url_it += strlen(http_tag);
+    } else {
+        url_it = *url;
     }
 
     if (file = strchr(url_it, '/'), file) {
@@ -962,20 +969,7 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
                 merror("Invalid content for '%s' option at module '%s'.", XML_UPDATE_INTERVAL, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
-        }/* else if (!strcmp(chld_node[i]->element, XML_PATCH_SCAN)) {
-            if (strcasestr(pr_name, vu_feed_tag[FEED_NVD])) {
-                if (!strcmp(chld_node[i]->content, "yes")) {
-                    flags->patch_scan = 1;
-                } else if (!strcmp(chld_node[i]->content, "permissive")) {
-                    flags->patch_scan = 1;
-                    flags->permissive_patch_scan = 1;
-                } else {
-                    flags->patch_scan = 0;
-                }
-            } else {
-                mwarn("'%s' option is only available from the %s provider.", chld_node[i]->element, vu_feed_tag[FEED_NVD]);
-            }
-        }*/ else if (!strcmp(node[i]->element, XML_PATH)) {
+        } else if (!strcmp(node[i]->element, XML_PATH)) {
             if (multi_provider) {
                 os_strdup(node[i]->content, options->multi_path);
             } else {
@@ -1041,6 +1035,24 @@ char wm_vuldet_provider_type(char *pr_name) {
         return 1;
     } else {
         return OS_INVALID;
+    }
+}
+
+void wm_vuldet_remove_os_feed(vu_os_feed *feed, char full_r) {
+    if (full_r) {
+        free(feed->url);
+        free(feed->path);
+    }
+    free(feed->version);
+    free(feed->allow);
+    free(feed);
+}
+
+void wm_vuldet_remove_os_feed_list(vu_os_feed *feeds) {
+    while (feeds) {
+        vu_os_feed *next = feeds->next;
+        wm_vuldet_remove_os_feed(feeds, 1);
+        feeds = next;
     }
 }
 

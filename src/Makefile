@@ -218,6 +218,9 @@ ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
         DEFINES+=-DENABLE_AUDIT
 endif
 
+ifeq (${COVERITY}, YES)
+	DEFINES+=-D__coverity__
+endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra

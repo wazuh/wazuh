@@ -937,7 +937,6 @@ void list_hotfixes(HKEY hKey, int usec, const char * timestamp, int ID, const ch
     long unsigned int cbSecurityDescriptor; // size of security descriptor
     FILETIME ftLastWriteTime;      // last write time
     long unsigned int i, result;
-    char new_hotfix = 0;
 
     // Remove unused variables
 
@@ -1021,9 +1020,6 @@ void list_hotfixes(HKEY hKey, int usec, const char * timestamp, int ID, const ch
             } else {
                 mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, result);
             }
-        }
-        if (!new_hotfix) {
-            mtdebug1(WM_SYS_LOGTAG, "No new hotfixes found.");
         }
     }
 }
