@@ -1107,6 +1107,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                         free(s_norder);
                     } else if (strcasecmp(rule_opt[k]->element, xml_mitre) == 0) {
                         int i;
+                        int l;
                         XML_NODE mitre_opt = NULL;
                         mitre_opt = OS_GetElementsbyNode(&xml, rule_opt[k]);
 
@@ -1123,7 +1124,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                                 break;
                             } else if (strcasecmp(mitre_opt[i]->element, xml_mitre_id) == 0) {
                                 int inarray = 0;
-                                for (int l=0; l<mitre_size; l++) {
+                                for (l=0; l<mitre_size; l++) {
                                     if (strcmp(config_ruleinfo->mitre_id[l],mitre_opt[i]->content)== 0) {
                                         inarray = 1;
                                     }
