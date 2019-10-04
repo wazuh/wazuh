@@ -262,11 +262,11 @@ def test_get_distinct_agents(test_data, fields, expected_items):
 
 
 @patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_get_agents_summary(test_data):
+def test_get_agents_summary_status(test_data):
     """Test get_agents_summary function."""
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
-        summary = Agent.get_agents_summary()
+        summary = Agent.get_agents_summary_status()
         assert summary['active'] == 3
         assert summary['never_connected'] == 1
         assert summary['pending'] == 1
@@ -274,11 +274,11 @@ def test_get_agents_summary(test_data):
 
 
 @patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_get_os_summary(test_data):
+def test_get_agents_summary_os(test_data):
     """Tests get_os_summary function."""
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
-        summary = Agent.get_os_summary()
+        summary = Agent.get_agents_summary_os()
         assert summary['items'] == ['ubuntu']
 
 
@@ -309,9 +309,9 @@ def test_get_config_error(ossec_socket_mock, test_data, agent_id, component, con
         mock_db.return_value = test_data.global_db
         if expected_exception:
             with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-                Agent.get_config(agent_id=agent_id, component=component, configuration=configuration)
+                Agent.get_agents_config(agent_id=agent_id, component=component, configuration=configuration)
         else:
-            res = Agent.get_config(agent_id=agent_id, component=component, configuration=configuration)
+            res = Agent.get_agents_config(agent_id=agent_id, component=component, configuration=configuration)
             assert res == {"message": "value"}
 
 

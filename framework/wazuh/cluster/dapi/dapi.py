@@ -317,9 +317,9 @@ class DistributedAPI:
             :param node_name: Node to forward a request to.
             :return: a JSON response
             """
-            node_name, agent_id = node_name
-            if agent_id and ('agent_id' not in self.f_kwargs or isinstance(self.f_kwargs['agent_id'], list)):
-                self.f_kwargs['agent_id'] = agent_id
+            node_name, agent_list = node_name
+            if agent_list:
+                self.f_kwargs['agent_id' if 'agent_id' in self.f_kwargs else 'agent_list'] = agent_list
             if node_name == 'unknown' or node_name == '' or node_name == self.node_info['node']:
                 # The request will be executed locally if the the node to forward to is unknown, empty or the master
                 # itself
@@ -358,38 +358,32 @@ class DistributedAPI:
         return response
 
     async def get_solver_node(self) -> Dict:
-        """
-        Gets the node(s) that can solve a request, the node(s) that has all the necessary information to answer it.
-        Only called when the request type is 'master_distributed' and the node_type is master.
+        """ Gets the node(s) that can solve a request
 
-        :return: node name and whether the result is list or not
+        Get the node(s) that have all the necessary information to answer the request. Only called when the request type
+        is 'master_distributed' and the node_type is master.
+
+        :return: List of node names with agents
         """
         select_node = ['node_name']
-        if 'agent_id' in self.f_kwargs:
-            # the request is for multiple agents
-            if isinstance(self.f_kwargs['agent_id'], list):
-                agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
-                                                         filters={'id': self.f_kwargs['agent_id']},
-                                                         sort={'fields': ['node_name'], 'order': 'desc'})['items']
-                node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
-                             itertools.groupby(agents, key=operator.itemgetter('node_name'))}
+        if 'agent_id' in self.f_kwargs or 'agent_list' in self.f_kwargs:
+            # Group requested agents by node_name
+            requested_agents = self.f_kwargs.get('agent_list', None) or [self.f_kwargs['agent_id']]
+            system_agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
+                                                            filters={'id': requested_agents},
+                                                            sort={'fields': ['node_name'], 'order': 'desc'})['items']
+            node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
+                         itertools.groupby(system_agents, key=operator.itemgetter('node_name'))}
 
-                # add non existing ids in the master's dictionary entry
-                non_existent_ids = list(set(self.f_kwargs['agent_id']) -
-                                        set(map(operator.itemgetter('id'), agents)))
-                if non_existent_ids:
-                    if self.node_info['node'] in node_name:
-                        node_name[self.node_info['node']].extend(non_existent_ids)
-                    else:
-                        node_name[self.node_info['node']] = non_existent_ids
+            # Add non existing ids in the master's dictionary entry
+            non_existent_ids = list(set(requested_agents) - set(map(operator.itemgetter('id'), system_agents)))
+            if non_existent_ids:
+                if self.node_info['node'] in node_name:
+                    node_name[self.node_info['node']].extend(non_existent_ids)
+                else:
+                    node_name[self.node_info['node']] = non_existent_ids
 
-                return node_name
-            # if the request is only for one agent
-            else:
-                # Get the node where the agent 'agent_id' is reporting
-                node_name = agent.Agent.get_agent(self.f_kwargs['agent_id'],
-                                                  select=select_node)['node_name']
-                return {node_name: [self.f_kwargs['agent_id']]}
+            return node_name
 
         elif 'node_id' in self.f_kwargs:
             node_id = self.f_kwargs['node_id']

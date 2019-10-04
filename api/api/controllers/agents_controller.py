@@ -12,14 +12,13 @@ from api import configuration
 from api.authentication import get_permissions
 from api.models.agent_added import AgentAdded
 from api.models.agent_inserted import AgentInserted
-from api.models.agent_list_model import AgentList
 from api.models.base_model_ import Data
 from api.util import parse_api_param
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
 from wazuh.agent import Agent
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from wazuh.exception import WazuhError
 from wazuh.common import database_limit
+from wazuh.exception import WazuhError
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -260,7 +259,7 @@ def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):
 
 
 @exception_handler
-def get_agent_config(agent_id, component, configuration, pretty=False, wait_for_complete=False):
+def get_agent_config(pretty=False, wait_for_complete=False, agent_id=None, component=None, **kwargs):
     """Get active configuration
 
     Returns the active configuration the agent is currently using. This can be different from the
@@ -271,15 +270,15 @@ def get_agent_config(agent_id, component, configuration, pretty=False, wait_for_
     :param wait_for_complete: Disable timeout response
     :param agent_id: Agent ID. All posible values since 000 onwards.
     :param component: Selected agent's component.
-    :param configuration: Selected agent's configuration to read.
     :return: AgentConfigurationData
     """
-    f_kwargs = {'agent_id': agent_id,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': [agent_id],
                 'component': component,
-                'configuration': configuration
+                'config': kwargs.get('configuration', None)
                 }
 
-    dapi = DistributedAPI(f=Agent.get_config,
+    dapi = DistributedAPI(f=Agent.get_agents_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -294,7 +293,7 @@ def get_agent_config(agent_id, component, configuration, pretty=False, wait_for_
 
 
 @exception_handler
-def delete_agent_group(agent_id, pretty=False, wait_for_complete=False):
+def delete_agent_all_groups(agent_id, pretty=False, wait_for_complete=False):
     """Removes agent from all groups.
 
     Removes the agent from all groups. The agent will automatically revert to the "default" group.
@@ -304,9 +303,10 @@ def delete_agent_group(agent_id, pretty=False, wait_for_complete=False):
     :param agent_id: Agent ID. All posible values since 000 onwards.
     :return: CommonResponse
     """
-    f_kwargs = {'agent_id': agent_id}
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': [agent_id]}
 
-    dapi = DistributedAPI(f=Agent.unset_group,
+    dapi = DistributedAPI(f=Agent.remove_agents_from_all_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -327,14 +327,15 @@ def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):
     Returns whether the agent configuration has been synchronized with the agent
     or not. This can be useful to check after updating a group configuration.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
     :param agent_id: Agent ID. All posible values since 000 onwards.
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout responseç
     :return: AgentSync
     """
-    f_kwargs = {'agent_id': agent_id}
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': [agent_id]}
 
-    dapi = DistributedAPI(f=Agent.get_sync_group,
+    dapi = DistributedAPI(f=Agent.get_agents_sync_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -361,10 +362,11 @@ def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complet
     :param group_id: Group ID.
     :return: CommonResponse
     """
-    f_kwargs = {'agent_id': agent_id,
-                'group_id': group_id}
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': [agent_id],
+                'group_id': group_id,}
 
-    dapi = DistributedAPI(f=Agent.unset_group,
+    dapi = DistributedAPI(f=Agent.remove_agents_from_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -380,7 +382,7 @@ def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complet
 @exception_handler
 def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=False,
                            wait_for_complete=False):
-    """Add an agent to the specified group.
+    """Assign an agent to the specified group.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -389,11 +391,12 @@ def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=
     :param force_single_group: Forces the agent to belong to a single group
     :return: CommonResponse
     """
-    f_kwargs = {'agent_id': agent_id,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': [agent_id],
                 'group_id': group_id,
                 'replace': force_single_group}
 
-    dapi = DistributedAPI(f=Agent.set_group,
+    dapi = DistributedAPI(f=Agent.assign_agents_to_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -415,9 +418,10 @@ def get_agent_key(agent_id, pretty=False, wait_for_complete=False):
     :param agent_id: Agent ID. All posible values since 000 onwards.
     :return: AgentKey
     """
-    f_kwargs = {'agent_id': agent_id}
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': [agent_id]}
 
-    dapi = DistributedAPI(f=Agent.get_agent_key,
+    dapi = DistributedAPI(f=Agent.get_agents_keys,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -465,22 +469,23 @@ def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=
     :param wait_for_complete: Disable timeout response
     :param agent_id: Agent ID. All posible values since 000 onwards.
     :param wpk_repo: WPK repository.
-    :param version: Filters by agents version.
+    :param version: Wazuh version to upgrade to.
     :param use_http: Use protocol http. If it's false use https. By default the value is set to false.
-    :param version: Force upgrade.
+    :param force: Force upgrade.
     :return: CommonResponse
     """
-    f_kwargs = {'agent_id': agent_id,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': [agent_id],
                 'wpk_repo': wpk_repo,
                 'version': version,
                 'use_http': use_http,
                 'force': force}
 
-    dapi = DistributedAPI(f=Agent.upgrade_agent,
+    dapi = DistributedAPI(f=Agent.upgrade_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
-                          wait_for_complete=wait_for_complete,
+                          wait_for_complete=True,  # Force wait_for_complete until timeout problems are resolved
                           pretty=pretty,
                           logger=logger
                           )
@@ -502,11 +507,12 @@ def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, fi
     :type installer: str
     :return: CommonResponse
     """
-    f_kwargs = {'agent_id': agent_id,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': [agent_id],
                 'file_path': file_path,
                 'installer': installer}
 
-    dapi = DistributedAPI(f=Agent.upgrade_agent_custom,
+    dapi = DistributedAPI(f=Agent.upgrade_agents_custom,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -556,7 +562,8 @@ def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False
     :param timeout: Seconds to wait for the agent to respond.
     :return: CommonResponse
     """
-    f_kwargs = {'agent_id': agent_id,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': [agent_id],
                 'timeout': timeout}
 
     dapi = DistributedAPI(f=Agent.get_upgrade_result,
@@ -573,8 +580,8 @@ def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False
 
 
 @exception_handler
-def delete_multiple_agent_group(group_id, agent_list=None, pretty=False, wait_for_complete=False):
-    """Remove multiple agents from a single group.
+def delete_multiple_agent_single_group(group_id, agent_list=None, pretty=False, wait_for_complete=False):
+    """Removes agents assignment from a specified group.
 
     :param group_id: Group ID.
     :param agent_list: Array of agent's IDs.
@@ -582,10 +589,12 @@ def delete_multiple_agent_group(group_id, agent_list=None, pretty=False, wait_fo
     :param wait_for_complete: Disable timeout response
     :return: AgentItemsAffected
     """
-    f_kwargs = {'agent_id_list': agent_list,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': agent_list,
                 'group_id': group_id}
+    func = Agent.remove_all_agents_from_group if agent_list is None else Agent.remove_agents_from_group
 
-    dapi = DistributedAPI(f=Agent.unset_group_list,
+    dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -599,27 +608,24 @@ def delete_multiple_agent_group(group_id, agent_list=None, pretty=False, wait_fo
 
 
 @exception_handler
-def put_multiple_agent_group(group_id, pretty=False, wait_for_complete=False):
+def put_multiple_agent_single_group(group_id, agent_list=None, pretty=False, wait_for_complete=False,
+                                    force_single_group=False):
     """Add multiple agents to a group
 
+    :param group_id: Group ID.
+    :param agent_list: List of agents ID.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param group_id: Group ID.
-    :param agent_id_list: List of agents ID.
+    :param force_single_group: Forces the agent to belong to a single group
     :return: AgentItemsAffected
     """
-    # get body parameters
-    if connexion.request.is_json:
-        agent_list_model = AgentList.from_dict(connexion.request.get_json())
-    else:
-        raise WazuhError(1750)
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'agent_list': agent_list,
+                'group_id': group_id,
+                'replace': force_single_group}
+    func = Agent.assign_all_agents_to_group if agent_list is None else Agent.assign_agents_to_group
 
-    agent_dict = agent_list_model.to_dict()
-    agent_dict['agent_id_list'] = agent_dict.pop('ids')
-
-    f_kwargs = {**{'group_id': group_id}, **agent_dict}
-
-    dapi = DistributedAPI(f=Agent.set_group_list,
+    dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -723,48 +729,38 @@ def delete_group(group_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_agent_in_group(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None,
-                       search=None, status=None, q=''):
+def get_agents_in_group(group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit, select=None,
+                        sort=None, search=None, status=None, q=None):
     """Get agents in a group.
 
     Returns the list of agents that belongs to the specified group.
 
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     :param group_id: Group ID.
-    :type group_id: str
     :param offset: First element to return in the collection
-    :type offset: int
     :param limit: Maximum number of elements to return
-    :type limit: int
     :param select: Select which fields to return (separated by comma)
-    :type select: List[str]
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
-    :type sort: str
     :param search: Looks for elements with the specified string
-    :type search: str
     :param status: Filters by agent status. Use commas to enter multiple statuses.
-    :type status: List[str]
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-    :type q: str
 
-    :return:
+    :return: Data
     """
-    f_kwargs = {'group_id': group_id,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'offset': offset,
                 'limit': limit,
-                'sort': parse_api_param(sort.replace('os_', 'os.') if sort else sort, 'sort'),
+                'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'select': [x.replace('os_', 'os.') for x in select] if select else select,
+                'select': select,
                 'filters': {
                     'status': status,
                 },
-                'q': q}
+                'q': 'group=' + group_id + (';' + q if q else '')}
 
-    dapi = DistributedAPI(f=Agent.get_agent_group,
+    dapi = DistributedAPI(f=Agent.get_agents_all,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1068,10 +1064,10 @@ def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=
     :return: Data
     """
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_name': agent_name,
+                'filters': {'name': agent_name},
                 'select': select}
 
-    dapi = DistributedAPI(f=Agent.get_agent_by_name,
+    dapi = DistributedAPI(f=Agent.get_agents_all,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1086,8 +1082,8 @@ def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=
 
 
 @exception_handler
-def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=500, select=None, sort=None, search=None,
-                       q=None):
+def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=database_limit, select=None, sort=None,
+                       search=None, q=None):
     """Get agents without group.
 
     :param pretty: Show results in human-readable format
@@ -1102,15 +1098,14 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=50
     :return: Data
     """
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'group_id': 'null',
                 'offset': offset,
                 'limit': limit,
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'q': 'id!=0' + (';' + q if q else '')}
+                'q': 'group=null' + (';' + q if q else '')}
 
-    dapi = DistributedAPI(f=Agent.get_agent_group,
+    dapi = DistributedAPI(f=Agent.get_agents_all,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1125,7 +1120,7 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=50
 
 
 @exception_handler
-def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, q=''):
+def get_agent_outdated(pretty=False, wait_for_complete=False, offset=None, limit=None, sort=None, search=None, q=None):
     """Get outdated agents.
 
     :param pretty: Show results in human-readable format
@@ -1134,12 +1129,15 @@ def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=No
     :param limit: Maximum number of elements to return
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
+    :param search: Looks for elements with the specified string
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: Data
     """
-    f_kwargs = {'offset': offset,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'offset': offset,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
                 'q': q}
 
     dapi = DistributedAPI(f=Agent.get_outdated_agents,
@@ -1157,8 +1155,8 @@ def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=No
 
 
 @exception_handler
-def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
-                     fields=None, q=''):
+def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=database_limit, select=None, sort=None,
+                     search=None, fields=None, q=None):
     """Get distinct fields in agents.
 
     Returns all the different combinations that agents have for the selected fields. It also indicates the total number
@@ -1176,10 +1174,11 @@ def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=None
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: Data
     """
-    f_kwargs = {'offset': offset,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'offset': offset,
                 'limit': limit,
-                'select': [x.replace('os_', 'os.') for x in select] if select else select,
-                'sort': parse_api_param(sort.replace('os_', 'os.') if sort else sort, 'sort'),
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'fields': fields,
                 'q': q}
@@ -1199,15 +1198,17 @@ def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=None
 
 
 @exception_handler
-def get_agent_summary(pretty=False, wait_for_complete=False, ):
-    """Get a summary of the available agents.
+def get_agent_summary_status(pretty=False, wait_for_complete=False):
+    """Get agents status summary.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :return: Data
     """
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization'])}
 
-    dapi = DistributedAPI(f=Agent.get_agents_summary,
+    dapi = DistributedAPI(f=Agent.get_agents_summary_status,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
@@ -1221,26 +1222,24 @@ def get_agent_summary(pretty=False, wait_for_complete=False, ):
 
 
 @exception_handler
-def get_agent_summary_os(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, q=''):
-    """Get OS summary.
+def get_agent_summary_os(pretty=False, wait_for_complete=False, offset=None, limit=None, search=None, q=None):
+    """Get agents OS summary.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
     :param search: Looks for elements with the specified string
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: Data
     """
-    f_kwargs = {'offset': offset,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'offset': offset,
                 'limit': limit,
-                'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'q': q}
 
-    dapi = DistributedAPI(f=Agent.get_os_summary,
+    dapi = DistributedAPI(f=Agent.get_agents_summary_os,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

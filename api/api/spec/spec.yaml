@@ -60,7 +60,9 @@ components:
               remediation:
                 type: string
         id:
-          type: string
+          type: array
+          items:
+            type: string
 
     ApiError:
       type: object
@@ -333,7 +335,7 @@ components:
       - disconnected
       description: Agent status. It is calculated based on the last keep alive and the Wazuh version.
 
-    AgentsSummary:
+    AgentsSummaryStatus:
       type: object
       properties:
         total:
@@ -2164,7 +2166,7 @@ components:
               type: integer
               format: int32
         agent_status:
-          $ref: '#/components/schemas/AgentsSummary'
+          $ref: '#/components/schemas/AgentsSummaryStatus'
         agent_version:
           type: object
           description: Recount of the number of Wazuh agents group by version.
@@ -3565,7 +3567,7 @@ components:
     force_single_group:
       in: query
       name: force_single_group
-      description: Wheter to append new group to current agent's group or replace it.
+      description: Whether to append new group to current agent's multigroup or replace it.
       schema:
         type: boolean
     wpk_repo:
@@ -3582,6 +3584,12 @@ components:
       schema:
         type: boolean
         default: false
+    upgrade_version:
+      in: query
+      name: version
+      description: Wazuh version to upgrade to.
+      schema:
+        type: string
     force:
       in: query
       name: force
@@ -4087,7 +4095,7 @@ paths:
         - agents
       summary: 'Removes agent from all groups'
       description: 'Removes the agent from all groups. The agent will automatically revert to the "default" group.'
-      operationId: api.controllers.agents_controller.delete_agent_group
+      operationId: api.controllers.agents_controller.delete_agent_all_groups
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4140,7 +4148,7 @@ paths:
       tags:
         - agents
       summary: 'Remove an agent from a specific group'
-      description: 'Removes an agent from a group. If the agent has multigroups, it will preserve all previous groups except the last one.'
+      description: 'Removes an agent from an specified group. If the agent has multigroups, it will preserve all previous groups except the last one.'
       operationId: api.controllers.agents_controller.delete_agent_single_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -4162,8 +4170,8 @@ paths:
     put:
       tags:
         - agents
-      summary: 'Add agent group'
-      description: 'Adds an agent to the specified group.'
+      summary: 'Assign an agent to a group'
+      description: 'Assign an agent to a specified group'
       operationId: api.controllers.agents_controller.put_agent_single_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -4205,14 +4213,27 @@ paths:
                   - type: object
                     properties:
                       data:
-                        type: object
-                        properties:
-                          key:
-                            type: string
-                            description: Agent key.
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      description: 'Agent ID'
+                                    key:
+                                      type: string
+                                      description: 'Agent key'
               example:
                 data:
-                  key: MDA0IG1haW5fZGF0YWJhc2UgMTAuMC4wLjE1IDIzNGM1Y2MzZjhhNzA2OWY2ZGRjN2I0NDc1MWZmNmE1Zjg3MjExMTJiZWJhNmFhMWUyMDIzNWI4MTBjYWNiM2I=
+                  items:
+                    - id: 001
+                      key: MDA0IG1haW5fZGF0YWJhc2UgMTAuMC4wLjE1IDIzNGM1Y2MzZjhhNzA2OWY2ZGRjN2I0NDc1MWZmNmE1Zjg3MjExMTJiZWJhNmFhMWUyMDIzNWI4MTBjYWNiM2I=
+                  totalItems: 1
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -4259,7 +4280,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/wpk_repo'
-        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/upgrade_version'
         - $ref: '#/components/parameters/use_http'
         - $ref: '#/components/parameters/force'
       responses:
@@ -4362,9 +4383,9 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Remove multiple agents from a single group.'
-      description: 'Removes multiple agents from a specified group.'
-      operationId: api.controllers.agents_controller.delete_multiple_agent_group
+      summary: 'Remove agents assignment from a single group.'
+      description: 'Remove all agents assignment or a list of them from the specified group.'
+      operationId: api.controllers.agents_controller.delete_multiple_agent_single_group
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4394,27 +4415,18 @@ paths:
     put:
       tags:
         - agents
-      summary: 'Add multiple agents to a group'
-      description: 'Adds multiple agents to the specified group.'
-      operationId: api.controllers.agents_controller.put_multiple_agent_group
+      summary: 'Assign agents to a single group'
+      description: 'Assign all agents or a list of them to the specified group.'
+      operationId: api.controllers.agents_controller.put_multiple_agent_single_group
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_list'
         - $ref: '#/components/parameters/group_id'
-
-      requestBody:
-        content:
-          application/json:
-            schema:
-              properties:
-                ids:
-                  description: List of agents ID.
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/AgentID'
+        - $ref: '#/components/parameters/force_single_group'
       responses:
         '200':
-          description: 'Add multiple agents to a group'
+          description: 'Assign multiple agents to a single group'
           content:
             application/json:
               schema:
@@ -4559,7 +4571,7 @@ paths:
         - agents
       summary: 'Get agents in a group'
       description: 'Returns the list of agents that belongs to the specified group.'
-      operationId: api.controllers.agents_controller.get_agent_in_group
+      operationId: api.controllers.agents_controller.get_agents_in_group
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5109,6 +5121,7 @@ paths:
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/query'
       responses:
         '200':
@@ -5234,51 +5247,18 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /agents/summary:
-    get:
-      tags:
-        - agents
-      summary: 'Get agents summary'
-      description: 'Returns a summary of the available agents.'
-      operationId: api.controllers.agents_controller.get_agent_summary
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: 'Get summary of agents'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/AgentsSummary'
-              example:
-                data:
-                  total: 7
-                  active: 2
-                  disconnected: 0
-                  never_connected: 5
-                  pending: 0
-        default:
-          $ref: '#/components/responses/ResponseError'
-
   /agents/summary/os:
     get:
       tags:
         - agents
-      summary: 'Get OS summary'
-      description: 'Returns a summary of the OS.'
+      summary: 'Get agents OS summary'
+      description: 'Returns a summary of the OS of available agents.'
       operationId: api.controllers.agents_controller.get_agent_summary_os
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/query'
       responses:
@@ -5306,6 +5286,38 @@ paths:
                   totalItems: 1
                   items:
                     - ubuntu
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /agents/summary/status:
+    get:
+      tags:
+        - agents
+      summary: 'Get agents status summary'
+      description: 'Returns a summary of the status of available agents.'
+      operationId: api.controllers.agents_controller.get_agent_summary_status
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Get summary of agents'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/AgentsSummaryStatus'
+              example:
+                data:
+                  total: 7
+                  active: 2
+                  disconnected: 0
+                  never_connected: 5
+                  pending: 0
         default:
           $ref: '#/components/responses/ResponseError'
 

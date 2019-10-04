@@ -321,6 +321,8 @@ class WazuhException(Exception):
                },
         1750: {'message': 'Could not send restart command, active-response is disabled in the agent',
                'remediation': "You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`"},
+        1751: {'message': 'Could not assign agent to group',
+               'remediation': 'Agent already belngs to specified group, please select another agent'},
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},

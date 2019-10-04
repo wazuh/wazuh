@@ -383,6 +383,16 @@ class RBAChecker:
                 "actions": ["agent:read"],
                 "resources": ["agent:group:group1"],
                 "effect": "allow"
+            },
+            {
+                "actions": ["agent:modify_group_assignments"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["agent:upgrade"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
             }
         ]
 
