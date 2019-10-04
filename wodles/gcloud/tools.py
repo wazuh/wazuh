@@ -60,8 +60,12 @@ def set_logger(level: int = 1):
 
 def get_wazuh_paths() -> tuple:
     """Get Wazuh paths from ossec-init file."""
-    re_path = re.compile(r'^([DIRECTORY]+)={1}"{1}([\w\/.]+)"{1}$')
-    re_version = re.compile(r'^([VERSION]+)={1}"{1}([\w\/.]+)"{1}$')
+    # regular expressions for getting path and version
+    re_path = re.compile(r'^(DIRECTORY){1}={1}\"{1}([\w\/.]+)\"{1}$')
+    re_version = re.compile(r'^(VERSION){1}={1}\"{1}([\w\/.]+)\"{1}$')
+    # initialize variables
+    wazuh_path = None
+    wazuh_version = None
     try:
         with open('/etc/ossec-init.conf') as f:
             lines = f.readlines()

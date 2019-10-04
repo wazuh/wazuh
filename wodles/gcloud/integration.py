@@ -48,15 +48,15 @@ class WazuhGCloudSubscriber:
         """
         return pubsub.subscriber.Client.from_service_account_file(credentials_file)  # noqa: E501
 
-    def get_subscription_path(self, project_id: str, subscription_name: str) \
+    def get_subscription_path(self, project: str, subscription_id: str) \
             -> str:
         """Get the subscription path.
 
-        :param project_id: Project ID
-        :param subscription_name: Subscription name
+        :param project: Project name
+        :param subscription_id: Subscription ID
         :return: String with the subscription path
         """
-        return self.subscriber.subscription_path(project_id, subscription_name)
+        return self.subscriber.subscription_path(project, subscription_id)
 
     def send_msg(self, msg: bytes):
         """Send an event to the Wazuh queue.
