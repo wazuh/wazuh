@@ -715,6 +715,7 @@ static void savesChild(RuleNode *orig)
     }
 }
 
+
 static void sortTheCopiedRules(int sid_rule)
 {
 
@@ -722,7 +723,7 @@ static void sortTheCopiedRules(int sid_rule)
     static int CAP = 30;
     int size;
     /* Loop index */
-    int i, j, k;
+    int i, j, k, t;
 
     /* To read all if_sid values or if_matched_sid value */
     int ifsid[CAP];
@@ -733,79 +734,82 @@ static void sortTheCopiedRules(int sid_rule)
     bool is_previously[CAP];
 
 
-    for (i = 1; i < num_rules_copied - 3; i++) {
+    for (t = 1; t < num_rules_copied -1; t++){
+
+        for (i = 1; i < num_rules_copied - 1; i++) {
 
 
-        /* Read if_sid or if_matched_sid values */
-        if (copied_rules[i]->if_sid) {
+            /* Read if_sid or if_matched_sid values */
+            if (copied_rules[i]->if_sid) {
 
-            /* Read all if_sid values */
-            sid  = copied_rules[i]->if_sid;
-            size = 0;
-            val = 0;
+                /* Read all if_sid values */
+                sid  = copied_rules[i]->if_sid;
+                size = 0;
+                val = 0;
 
-            do {
-                if ((*sid == ',') || (*sid == ' ')) {
+                do {
+                    if ((*sid == ',') || (*sid == ' ')) {
 
-                    val = 0;
-                    continue;
-                }
-                else if ((isdigit((int)*sid)) || (*sid == '\0')) {
+                        val = 0;
+                        continue;
+                    }
+                    else if ((isdigit((int)*sid)) || (*sid == '\0')) {
 
-                    if (val == 0 && size < CAP) {
+                        if (val == 0 && size < CAP) {
 
-                        ifsid[size] = atoi(sid);
-                        size++;
+                            ifsid[size] = atoi(sid);
+                            size++;
 
-                        val = 1;
+                            val = 1;
+                        }
+                    }
+
+                } while (*sid++ != '\0');
+
+            }
+            else if (copied_rules[i]->if_matched_sid != 0) {
+
+                size = 0;
+                ifsid[size] = copied_rules[i]->if_matched_sid;
+                size++;
+            }
+            else {
+                continue;
+            }
+
+
+            /* Check if parent is before it */
+            for (k = 0; k < CAP; k++){
+                is_previously[k] = 0;
+            }
+
+            for (j = 0; j < i; j++) {
+
+                for (k = 0; k < size; k++){
+
+                    if (copied_rules[j]->sigid == ifsid[k] || ifsid[k] == sid_rule){
+                        is_previously[k] = 1;
                     }
                 }
-
-            } while (*sid++ != '\0');
-
-        }
-        else if (copied_rules[i]->if_matched_sid != 0) {
-
-            size = 0;
-            ifsid[size] = copied_rules[i]->if_matched_sid;
-            size++;
-        }
-        else {
-            continue;
-        }
+            }
 
 
-        /* Check if parent is before it */
-        for (k = 0; k < CAP; k++){
-            is_previously[k] = 0;
-        }
-
-        for (j = 0; j < i; j++) {
+            /* If parent isn't before, it's replace by i+3 */
+            RuleInfo *aux;
 
             for (k = 0; k < size; k++){
 
-                if (copied_rules[j]->sigid == ifsid[k] || ifsid[k] == sid_rule){
-                    is_previously[k] = 1;
+                if (is_previously[k] != 1) {
+
+                    aux = copied_rules[i];
+                    copied_rules[i] = copied_rules[i+1];
+                    copied_rules[i+1] = aux;
+
+                    break;
                 }
             }
+
         }
-
-
-        /* If parent isn't before, it's replace by i+3 */
-        RuleInfo *aux;
-
-        for (k = 0; k < size; k++){
-
-            if (is_previously[k] != 1) {
-
-                aux = copied_rules[i];
-                copied_rules[i] = copied_rules[i+3];
-                copied_rules[i+3] = aux;
-
-                break;
-            }
-        }
-
     }
 
 }
