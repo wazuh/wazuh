@@ -1442,12 +1442,6 @@ int Rules_OP_ReadRules(const char *rulefile)
                 OS_AddChild(config_ruleinfo, NULL);
             }
 
-            /* Clean what we do not need */
-            if (config_ruleinfo->if_group) {
-                free(config_ruleinfo->if_group);
-                config_ruleinfo->if_group = NULL;
-            }
-
             /* Set the event_search pointer */
             if (config_ruleinfo->if_matched_sid) {
                 config_ruleinfo->event_search = (void *(*)(void *, void *, void *))
