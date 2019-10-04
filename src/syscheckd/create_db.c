@@ -97,7 +97,7 @@ int fim_directory (char * path, int dir_position, fim_event_mode mode, whodata_e
     dp = opendir(path);
 
     if (!dp) {
-        merror(FIM_PATH_NOT_OPEN, path, strerror(errno));
+        mwarn(FIM_PATH_NOT_OPEN, path, strerror(errno));
         return (-1);
     }
 
@@ -555,7 +555,7 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
                                         data->hash_sha256,
                                         OS_BINARY,
                                         syscheck.file_max_size) < 0) {
-                merror("Couldn't generate hashes for '%s'", file_name);
+                mdebug1("Couldn't generate hashes for '%s'", file_name);
                 free_entry_data(data);
                 return NULL;
         }
