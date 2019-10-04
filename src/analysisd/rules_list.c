@@ -520,8 +520,6 @@ static void remove_RuleNode (RuleNode *array)
 void free_RuleInfo(RuleInfo *r_info)
 {
 
-    int i;
-
     if (r_info->ignore_fields) {
         os_free(r_info->ignore_fields);
     }
@@ -532,96 +530,6 @@ void free_RuleInfo(RuleInfo *r_info)
 
     if (r_info->group) {
         os_free(r_info->group);
-    }
-
-    if (r_info->match) {
-        OSMatch_FreePattern(r_info->match);
-    }
-
-    if (r_info->regex) {
-        OSRegex_FreePattern(r_info->regex);
-    }
-
-    if (r_info->day_time) {
-        os_free(r_info->day_time);
-    }
-
-    if (r_info->week_day) {
-        os_free(r_info->week_day);
-    }
-
-    if (r_info->srcip) {
-        i = 0;
-        while(r_info->srcip[i]){
-            free(r_info->srcip[i]->ip);
-            free(r_info->srcip[i]);
-            i++;
-        }
-    }
-
-    if (r_info->dstip) {
-        i = 0;
-        while (r_info->dstip[i]){
-            free(r_info->dstip[i]->ip);
-            free(r_info->dstip[i]);
-            i++;
-        }
-    }
-
-    if (r_info->srcgeoip) {
-        OSMatch_FreePattern(r_info->srcgeoip);
-    }
-
-    if (r_info->dstgeoip) {
-        OSMatch_FreePattern(r_info->dstgeoip);
-    }
-
-    if (r_info->srcport) {
-        OSMatch_FreePattern(r_info->srcport);
-    }
-
-    if (r_info->dstport) {
-        OSMatch_FreePattern(r_info->dstport);
-    }
-
-    if (r_info->user) {
-        OSMatch_FreePattern(r_info->user);
-    }
-
-    if (r_info->url) {
-        OSMatch_FreePattern(r_info->url);
-    }
-
-    if (r_info->id) {
-        OSMatch_FreePattern(r_info->id);
-    }
-
-    if (r_info->status) {
-        OSMatch_FreePattern(r_info->status);
-    }
-
-    if (r_info->hostname) {
-        OSMatch_FreePattern(r_info->hostname);
-    }
-
-    if (r_info->program_name) {
-        OSMatch_FreePattern(r_info->program_name);
-    }
-
-    if (r_info->extra_data) {
-        OSMatch_FreePattern(r_info->extra_data);
-    }
-
-    if (r_info->location) {
-        OSMatch_FreePattern(r_info->location);
-    }
-
-    i = 0;
-    while (r_info->fields[i]){
-        os_free(r_info->fields[i]->name);
-        OSRegex_FreePattern(r_info->fields[i]->regex);
-        os_free(r_info->fields[i]);
-        i++;
     }
 
     if (r_info->action) {
@@ -640,15 +548,12 @@ void free_RuleInfo(RuleInfo *r_info)
         os_free(r_info->cve);
     }
 
-    if (r_info->info_details) {
-        RuleInfoDetail *tmp;
+    if (r_info->day_time) {
+        os_free(r_info->day_time);
+    }
 
-        while(r_info->info_details) {
-            tmp = r_info->info_details->next;
-            os_free(r_info->info_details->data);
-            os_free(r_info->info_details);
-            r_info->info_details = tmp;
-        }
+    if (r_info->week_day) {
+        os_free(r_info->week_day);
     }
 
     if (r_info->if_sid) {
@@ -661,14 +566,6 @@ void free_RuleInfo(RuleInfo *r_info)
 
     if (r_info->if_group) {
         os_free(r_info->if_group);
-    }
-
-    if (r_info->if_matched_regex) {
-        OSRegex_FreePattern(r_info->if_matched_regex);
-    }
-
-    if (r_info->if_matched_group) {
-        OSMatch_FreePattern(r_info->if_matched_group);
     }
 
     if (r_info->ar) {
@@ -685,6 +582,150 @@ void free_RuleInfo(RuleInfo *r_info)
 
     if (r_info->not_same_fields) {
         os_free(r_info->not_same_fields);
+    }
+
+    if (r_info->match) {
+        OSMatch_FreePattern(r_info->match);
+        os_free(r_info->match);
+    }
+
+    if (r_info->srcgeoip) {
+        OSMatch_FreePattern(r_info->srcgeoip);
+        os_free(r_info->srcgeoip);
+    }
+
+    if (r_info->dstgeoip) {
+        OSMatch_FreePattern(r_info->dstgeoip);
+        os_free(r_info->dstgeoip);
+    }
+
+    if (r_info->srcport) {
+        OSMatch_FreePattern(r_info->srcport);
+        os_free(r_info->srcport);
+    }
+
+    if (r_info->dstport) {
+        OSMatch_FreePattern(r_info->dstport);
+        os_free(r_info->dstport);
+    }
+
+    if (r_info->user) {
+        OSMatch_FreePattern(r_info->user);
+        os_free(r_info->user);
+    }
+
+    if (r_info->url) {
+        OSMatch_FreePattern(r_info->url);
+        os_free(r_info->url);
+    }
+
+    if (r_info->id) {
+        OSMatch_FreePattern(r_info->id);
+        os_free(r_info->id);
+    }
+
+    if (r_info->status) {
+        OSMatch_FreePattern(r_info->status);
+        os_free(r_info->status);
+    }
+
+    if (r_info->hostname) {
+        OSMatch_FreePattern(r_info->hostname);
+        os_free(r_info->hostname);
+    }
+
+    if (r_info->program_name) {
+        OSMatch_FreePattern(r_info->program_name);
+        os_free(r_info->program_name);
+    }
+
+    if (r_info->extra_data) {
+        OSMatch_FreePattern(r_info->extra_data);
+        os_free(r_info->extra_data);
+    }
+
+    if (r_info->location) {
+        OSMatch_FreePattern(r_info->location);
+        os_free(r_info->location);
+    }
+
+    if (r_info->if_matched_group) {
+        OSMatch_FreePattern(r_info->if_matched_group);
+        os_free(r_info->if_matched_group);
+    }
+
+    if (r_info->if_matched_regex) {
+        OSRegex_FreePattern(r_info->if_matched_regex);
+        os_free(r_info->if_matched_regex);
+    }
+
+    if (r_info->regex) {
+        OSRegex_FreePattern(r_info->regex);
+        os_free(r_info->regex);
+    }
+
+    int i;
+
+    for (i=0; r_info->fields[i]; i++) {
+        os_free(r_info->fields[i]->name);
+        OSRegex_FreePattern(r_info->fields[i]->regex);
+        os_free(r_info->fields[i]->regex);
+        os_free(r_info->fields[i]);
+    }
+
+    if (r_info->srcip) {
+        for (i = 0; r_info->srcip[i]; i++){
+            free(r_info->srcip[i]->ip);
+            free(r_info->srcip[i]);
+        }
+    }
+
+    if (r_info->dstip) {
+        for (i=0; r_info->dstip[i]; i++){
+            free(r_info->dstip[i]->ip);
+            free(r_info->dstip[i]);
+        }
+    }
+
+    if (r_info->info_details) {
+        RuleInfoDetail *tmp;
+
+        while(r_info->info_details) {
+            tmp = r_info->info_details->next;
+            os_free(r_info->info_details->data);
+            os_free(r_info->info_details);
+            r_info->info_details = tmp;
+        }
+    }
+
+    if (r_info->lists) {
+        ListRule *tmp1;
+        ListNode *tmp2;
+
+        while (r_info->lists) {
+
+            tmp1 = r_info->lists;
+            r_info->lists = r_info->lists->next;
+
+            if (tmp1->matcher){
+                OSMatch_FreePattern(tmp1->matcher);
+                os_free(tmp1->matcher);
+            }
+
+            os_free(tmp1->dfield);
+            os_free(tmp1->filename);
+
+            while (tmp1->db) {
+                tmp2 = tmp1->db;
+                tmp1->db = tmp1->db->next;
+
+                os_free(tmp2->cdb_filename);
+                os_free(tmp2->txt_filename);
+                os_free(tmp2);
+            }
+
+            os_free(tmp1);
+        }
     }
 
     os_free(r_info);
