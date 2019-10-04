@@ -1,0 +1,22 @@
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+network.host: <elasticsearch_ip>
+node.name: <node_name>
+cluster.initial_master_nodes: ["node_name"]
+
+# Transport layer
+xpack.security.transport.ssl.enabled: true
+xpack.security.transport.ssl.verification_mode: certificate
+xpack.security.transport.ssl.key: /etc/elasticsearch/certs/elasticsearch.key
+xpack.security.transport.ssl.certificate: /etc/elasticsearch/certs/elasticsearch.crt
+xpack.security.transport.ssl.certificate_authorities: [ "/etc/elasticsearch/certs/ca/ca.crt" ]
+
+# HTTP layer
+xpack.security.http.ssl.enabled: true
+xpack.security.http.ssl.verification_mode: certificate
+xpack.security.http.ssl.key: /etc/elasticsearch/certs/elasticsearch.key
+xpack.security.http.ssl.certificate: /etc/elasticsearch/certs/elasticsearch.crt
+xpack.security.http.ssl.certificate_authorities: [ "/etc/elasticsearch/certs/ca/ca.crt" ]
+
+# Elasticsearch authentication
+xpack.security.enabled: true
