@@ -25,20 +25,20 @@ class GCloudClient:
 
     header = '1:Wazuh-GCloud:'
 
-    def __init__(self, credentials_file: str, project_id: str,
-                 subscription_name: str):
+    def __init__(self, credentials_file: str, project: str,
+                 subscription_id: str):
         """Instantiate a GCloudSubscriber object.
 
         :params credentials_file: Path to credentials file
-        :params subscription_id: Project ID
-        :params subscription_name: Subscription name
+        :params project: Project name
+        :params subscription_id: Subscription ID
         """
         # get Wazuh paths
         self.wazuh_path, self.wazuh_version, self.wazuh_queue = self.get_wazuh_paths()  # noqa: E501
         # get subscriber
         self.subscriber = self.get_subscriber_client(credentials_file).api
-        self.subscription_path = self.get_subscription_path(project_id,
-                                                            subscription_name)
+        self.subscription_path = self.get_subscription_path(project,
+                                                            subscription_id)
 
     def get_wazuh_paths(self) -> tuple:
         """Get Wazuh paths from ossec-init file."""
@@ -180,10 +180,10 @@ def get_script_arguments():
                                      description="Wazuh wodle for monitoring Google Cloud",  # noqa: E501
                                      formatter_class=argparse.RawTextHelpFormatter)  # noqa: E501
 
-    parser.add_argument('-i', '--project_id', dest='project_id',
+    parser.add_argument('-p', '--project', dest='project',
                         help='Project ID', required=True)
 
-    parser.add_argument('-s', '--subscription_name', dest='subscription_name',
+    parser.add_argument('-s', '--subscription_id', dest='subscription_id',
                         help='Subscription name', required=True)
 
     parser.add_argument('-c', '--credentials_file', dest='credentials_file',

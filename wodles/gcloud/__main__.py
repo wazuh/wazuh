@@ -14,8 +14,8 @@ import logging
 try:
     # get script arguments
     arguments = core.get_script_arguments()
-    project_id = arguments.project_id
-    subscription_name = arguments.subscription_name
+    project = arguments.project
+    subscription_id = arguments.subscription_id
     credentials_file = arguments.credentials_file
     max_messages = arguments.max_messages
     log_level = arguments.log_level
@@ -25,7 +25,7 @@ try:
     core.set_logger(log_level)
 
     # get Google Cloud client
-    client = core.GCloudClient(credentials_file, project_id, subscription_name)
+    client = core.GCloudClient(credentials_file, project, subscription_id)
 
     # check permissions about subscription
     client.check_permissions()
