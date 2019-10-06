@@ -30,7 +30,8 @@
  */
 
 static rb_node * rb_init(const char * key, void * value) {
-    rb_node * node = calloc(1, sizeof(rb_node));
+    rb_node * node;
+    os_calloc(1, sizeof(rb_node), node);
     os_strdup(key, node->key);
     node->value = value;
     node->color = RB_RED;
@@ -342,7 +343,7 @@ static char ** rb_keys(rb_node * node, char ** array, unsigned * size) {
         array = rb_keys(node->left, array, size);
     }
 
-    array = realloc(array, sizeof(char *) * (*size + 2));
+    os_realloc(array, sizeof(char *) * (*size + 2), array);
     os_strdup(node->key, array[(*size)++]);
 
     if (node->right != NULL) {
@@ -377,7 +378,7 @@ static char ** rb_range(rb_node * node, const char * min, const char * max, char
 
     if (cmp_min >= 0 && cmp_max <= 0) {
         // min <= node <= max
-        array = realloc(array, sizeof(char *) * (*size + 2));
+        os_realloc(array, sizeof(char *) * (*size + 2), array);
         os_strdup(node->key, array[(*size)++]);
     }
 

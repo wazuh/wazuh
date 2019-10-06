@@ -803,11 +803,17 @@ void audit_parse(char *buffer) {
                 snprintf (dev, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
 
                 char *aux = wstr_chr(dev, ':');
-                *(aux++) = '\0';
 
-                os_calloc(OS_SIZE_64, sizeof(char), w_evt->dev);
-                snprintf(w_evt->dev, OS_SIZE_64, "%s%s", dev, aux);
-                snprintf(w_evt->dev, OS_SIZE_64, "%ld", strtol(w_evt->dev, NULL, 16));
+                if (aux) {
+                    *(aux++) = '\0';
+
+                    os_calloc(OS_SIZE_64, sizeof(char), w_evt->dev);
+                    snprintf(w_evt->dev, OS_SIZE_64, "%s%s", dev, aux);
+                    snprintf(w_evt->dev, OS_SIZE_64, "%ld", strtol(w_evt->dev, NULL, 16));
+                } else {
+                    merror("Couldn't decode device chunk of audit log: colon not found in this string: \"%s\".", dev);
+                }
+
                 free(dev);
             }
 

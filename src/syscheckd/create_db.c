@@ -208,8 +208,8 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (!_base_line && options & CHECK_SEECHANGES && !deleted_flag) {
-        // The first backup is created
-        seechanges_addfile(file_name);
+        // The first backup is created. It should return NULL.
+        free(seechanges_addfile(file_name));
     }
 
     if (json_event && _base_line) {
@@ -649,7 +649,7 @@ void fim_get_checksum (fim_entry_data * data) {
                 data->hash_sha256);
     }
 
-    OS_SHA1_Str(checksum, sizeof(checksum), data->checksum);
+    OS_SHA1_Str(checksum, -1, data->checksum);
     free(checksum);
 }
 
@@ -702,8 +702,7 @@ int fim_update (char * file, fim_entry_data * data) {
     snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)data->dev, (unsigned long)data->inode);
 
     if (!file || strcmp(file, "") == 0 || !inode_key || strcmp(inode_key, "") == 0) {
-        merror("Can't update entry invalid file or inode");
-        // TODO: Consider if we should exit here. Change to debug message
+        merror_exit("Can't update entry invalid file or inode");
     }
 
     if (rbtree_replace(syscheck.fim_entry, file, data) == NULL) {

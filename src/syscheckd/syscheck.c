@@ -100,7 +100,7 @@ int fim_initialize() {
 #endif
 
     rbtree_set_dispose(syscheck.fim_entry, (void (*)(void *))free_entry_data);
-    pthread_mutex_init(&syscheck.fim_entry_mutex, NULL);
+    w_mutex_init(&syscheck.fim_entry_mutex, NULL);
 
     return 0;
 }
