@@ -823,18 +823,14 @@ void sys_hotfixes(const char* LOCATION){
     cJSON *end_evt;
     char *end_evt_str;
 
-    if (isVista) {
-        HOTFIXES_REG = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages";
-    } else {
-        HOTFIXES_REG = "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix";
-    }
+    HOTFIXES_REG = isVista ? "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages" :
+                    "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix";
 
     mtdebug1(WM_SYS_LOGTAG, "Starting installed hotfixes inventory.");
 
     if(result = RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT(HOTFIXES_REG), 0, KEY_READ | KEY_WOW64_64KEY, &main_key), result == ERROR_SUCCESS) {
         mtdebug2(WM_SYS_LOGTAG, "Reading hotfixes from the registry.");
         list_hotfixes(main_key,usec, timestamp, ID, LOCATION);
-
     } else {
         mterror(WM_SYS_LOGTAG, "Could not open the registry '%s'. Error: %lu.", HOTFIXES_REG, result);
     }
@@ -921,7 +917,7 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
     }
 }
 
-void list_hotfixes(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION) {
+void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const char *LOCATION) {
     static OSRegex *hotfix_regex = NULL;
     static OSHash *hotfixes_table;
     char achKey[KEY_LENGTH];   // buffer for subkey name
@@ -954,72 +950,76 @@ void list_hotfixes(HKEY hKey, int usec, const char * timestamp, int ID, const ch
         &cbSecurityDescriptor,   // security descriptor
         &ftLastWriteTime);       // last write time
 
-    if (cSubKeys) {
-        char prev_hotfix[50 + 1] = "x";
+    if (!cSubKeys) {
+        return;
+    }
 
-        if (!hotfix_regex) {
-            const char *hotfix_pattern = "Package_\\d*\\w*for_(\\w+)~";
+    char prev_hotfix[50 + 1] = "x";
 
-            os_calloc(1, sizeof(OSRegex), hotfix_regex);
-            if (!OSRegex_Compile(hotfix_pattern, hotfix_regex, OS_RETURN_SUBSTRING)) {
-                merror(REGEX_COMPILE, hotfix_pattern, hotfix_regex->error);
-                os_free(hotfix_regex);
-                return;
-            }
-            if (hotfixes_table = OSHash_Create(), !hotfixes_table) {
-                merror_exit(MEM_ERROR, errno, strerror(errno));
-            }
+    if (!hotfix_regex) {
+        const char *hotfix_pattern = "Package_\\d*\\w*for_(\\w+)~";
+
+        os_calloc(1, sizeof(OSRegex), hotfix_regex);
+        if (!OSRegex_Compile(hotfix_pattern, hotfix_regex, OS_RETURN_SUBSTRING)) {
+            merror(REGEX_COMPILE, hotfix_pattern, hotfix_regex->error);
+            os_free(hotfix_regex);
+            return;
         }
+        if (hotfixes_table = OSHash_Create(), !hotfixes_table) {
+            merror_exit(MEM_ERROR, errno, strerror(errno));
+        }
+    }
 
-        for (i = 0; i < cSubKeys; i++) {
-            cbName = KEY_LENGTH;
-            if (result = RegEnumKeyEx(hKey, i, achKey, &cbName, NULL, NULL, NULL, &ftLastWriteTime), result == ERROR_SUCCESS) {
-                if (isVista) {
-                    if (OSRegex_Execute(achKey, hotfix_regex)) {
-                        char *hotfix = *hotfix_regex->d_sub_strings;
-                        char *saved_timestamp;
-                        char *extension;
-
-                        if (extension = strchr(hotfix, '_'), extension) {
-                            *extension = '\0';
-                        }
-
-                        // Ignore the hotfix if it is the same as the previous one
-                        if (!strcmp(hotfix, prev_hotfix)) {
-                            continue;
-                        }
-                        snprintf(prev_hotfix, 50, hotfix);
-
-                        if (saved_timestamp = OSHash_Get(hotfixes_table, hotfix), !saved_timestamp) {
-                            os_strdup(timestamp, saved_timestamp);
-                            if (OSHash_Add(hotfixes_table, hotfix, saved_timestamp) != 2) {
-                                free(saved_timestamp);
-                                mterror(WM_SYS_LOGTAG, "Could not add '%s' to the hotfixes hash table.", hotfix);
-                                return;
-                            }
-                        } else {
-                            if (!strcmp(timestamp, saved_timestamp)) {
-                                // It has been reported with this timestamp
-                                continue;
-                            } else {
-                                free(saved_timestamp);
-                                OSHash_Update(hotfixes_table, hotfix, (char *) timestamp);
-                            }
-                        }
-
-                        read_hotfix(hotfix, usec, timestamp, ID, LOCATION);
-                    }
-                    } else {
-                    // Ignore the hotfix if it is the same as the previous one
-                    if (!strcmp(achKey, prev_hotfix)) {
-                        continue;
-                    }
-                    snprintf(prev_hotfix, 50, achKey);
-                    read_hotfix(achKey, usec, timestamp, ID, LOCATION);
+    for (i = 0; i < cSubKeys; i++) {
+        cbName = KEY_LENGTH;
+        if (result = RegEnumKeyEx(hKey, i, achKey, &cbName, NULL, NULL, NULL, &ftLastWriteTime), result == ERROR_SUCCESS) {
+            if (isVista) {
+                if (!OSRegex_Execute(achKey, hotfix_regex)) {
+                    continue;
                 }
+                char *hotfix = *hotfix_regex->d_sub_strings;
+                char *extension;
+
+                if (extension = strchr(hotfix, '_'), extension) {
+                    *extension = '\0';
+                }
+
+                // Ignore the hotfix if it is the same as the previous one
+                if (!strcmp(hotfix, prev_hotfix)) {
+                    continue;
+                }
+                snprintf(prev_hotfix, 50, hotfix);
+
+                char *saved_timestamp;
+                if (saved_timestamp = OSHash_Get(hotfixes_table, hotfix), !saved_timestamp) {
+                    os_strdup(timestamp, saved_timestamp);
+                    if (OSHash_Add(hotfixes_table, hotfix, saved_timestamp) != 2) {
+                        free(saved_timestamp);
+                        mterror(WM_SYS_LOGTAG, "Could not add '%s' to the hotfixes hash table.", hotfix);
+                        return;
+                    }
+                } else {
+                    if (!strcmp(timestamp, saved_timestamp)) {
+                        // It has been reported with this timestamp
+                        continue;
+                    } else {
+                        free(saved_timestamp);
+                        os_strdup(timestamp, saved_timestamp);
+                        OSHash_Update(hotfixes_table, hotfix, (char *) saved_timestamp);
+                    }
+                }
+
+                send_hotfix(hotfix, usec, timestamp, ID, LOCATION);
             } else {
-                mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, result);
+                // Ignore the hotfix if it is the same as the previous one
+                if (!strcmp(achKey, prev_hotfix)) {
+                    continue;
+                }
+                snprintf(prev_hotfix, KEY_LENGTH, achKey);
+                send_hotfix(achKey, usec, timestamp, ID, LOCATION);
             }
+        } else {
+            mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, result);
         }
     }
 }
@@ -1266,10 +1266,12 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
     RegCloseKey(program_key);
 }
 
-void read_hotfix(const char *hotfix, int usec, const char * timestamp, int ID, const char * LOCATION) {
-    cJSON *event;
-    char *str_event;
+void send_hotfix(const char *hotfix, int usec, const char *timestamp, int ID, const char *LOCATION) {
+    if (!strcmp(hotfix, "RollupFix")) {
+        return;
+    }
 
+    cJSON *event;
     if (event = cJSON_CreateObject(), !event) {
         mterror(WM_SYS_LOGTAG, "Could not create the hotfix event.");
         return;
@@ -1279,7 +1281,7 @@ void read_hotfix(const char *hotfix, int usec, const char * timestamp, int ID, c
     cJSON_AddStringToObject(event, "timestamp", timestamp);
     cJSON_AddStringToObject(event, "hotfix", hotfix);
 
-    str_event = cJSON_PrintUnformatted(event);
+    char *str_event = cJSON_PrintUnformatted(event);
     mtdebug2(WM_SYS_LOGTAG, "sys_hotfixes() sending '%s'", str_event);
     wm_sendmsg(usec, 0, str_event, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(event);

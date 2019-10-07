@@ -178,13 +178,13 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
 void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
 
 // Get values about a single hotfix from the registry
-void read_hotfix(const char *hotfix, int usec, const char * timestamp, int ID, const char * LOCATION);
+void send_hotfix(const char *hotfix, int usec, const char *timestamp, int ID, const char *LOCATION);
 
 // List installed programs from the registry
 void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
 
 // List installed hotfixes from the registry
-void list_hotfixes(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION);
+void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const char *LOCATION);
 
 // List Windows users from the registry
 void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION);
