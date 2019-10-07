@@ -9,61 +9,83 @@
 """Framework module for getting information from Wazuh MITRE database."""
 
 from wazuh import common
-from wazuh.exception import WazuhException
-from wazuh.utils import WazuhDBQuery, WazuhDBBackend
+from wazuh.utils import WazuhDBBackend, WazuhDBQuery
 
-field_translations_mitre_attack = {'id': 'id',
-                                   'json': 'json'}
+mitre_fields = {'id': 'id',
+                'json': 'json',
+                'phase_name': 'phase_name',
+                'platform_name': 'platform_name'}
 
-fields_translation_mitre_has_phase = {'attack_id': 'attack_id',
-                                      'has_phase': 'has_phase'}
+select_fields = "id, json, group_concat(DISTINCT platform_name) " \
+                "as platforms, group_concat(DISTINCT phase_name) as phases"
 
-fields_translation_mitre_has_platform = {'attack_id': 'attack_id',
-                                         'platform_name': 'platform_name'}
+from_fields = "attack LEFT JOIN has_phase ON attack.id = has_phase.attack_id" \
+              " LEFT JOIN has_platform ON attack.id = has_platform.attack_id"
 
-default_query_mitre = 'SELECT {0} FROM attack'
+group_by_fields = "GROUP BY id"
+
+count_fields = "COUNT(DISTINCT id)"
+
+default_query = f"SELECT {select_fields} FROM {from_fields} {group_by_fields}"
+
+count_query = f"SELECT {count_fields} FROM {from_fields}"
 
 
 class WazuhDBQueryMitre(WazuhDBQuery):
     """Create a WazuhDB query for getting data from Mitre database."""
 
     def __init__(self, offset, limit, sort, search, select, query,
-                 count, get_data, default_query=default_query_mitre,
-                 default_sort_field='attack_id', filters={},
-                 fields=field_translations_mitre_attack,
-                 count_field='attack_id'):
+                 count, get_data, table='attack',
+                 default_query=default_query,
+                 default_sort_field='id', filters={},
+                 fields=mitre_fields,
+                 count_field='id'):
         """Create an instance of WazuhDBQueryMitre query."""
         self.default_query = default_query
         self.count_field = count_field
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit,
-                              table='attack', sort=sort, search=search,
+                              table=table, sort=sort, search=search,
                               select=select, fields=fields,
                               default_sort_field=default_sort_field,
-                              default_sort_order='DESC', filters=filters,
+                              default_sort_order='ASC', filters=filters,
                               query=query, count=count, get_data=get_data,
-                              date_fields={'end_scan', 'start_scan'},
-                              backend=WazuhDBBackend())
+                              backend=WazuhDBBackend(mitre=True))
 
     def _default_query(self):
         return self.default_query
 
-    def _default_count_query(self):
-        return f"COUNT(DISTINCT {self.count_field})"
+    def _get_total_items(self):
+        final_query = self.query.replace(group_by_fields, '')
+        final_query = final_query.replace(select_fields, count_fields)
+        self.total_items = self.backend.execute(final_query, self.request)
 
-    def execute(self, query, request, count=False):
-        """Execute a query in WazuhDB for getting data from Mitre database."""
-        query = self._substitute_params(query, request)
-        return self.conn.execute(query=f'mitre sql {query}',
-                                 count=count)
+    def _execute_data_query(self):
+        if 'GROUP BY' in self.query:
+            final_query = self.query.replace(group_by_fields, '')
+            pos_order_by = final_query.find('ORDER BY')
+            final_query = final_query[0:pos_order_by] + f' {group_by_fields} '\
+                + final_query[pos_order_by:]
+        self._data = self.backend.execute(final_query, self.request)
 
 
-def get_mitre_data(q="", offset=0, limit=10, sort=None, search=None,
-                   filters={}):
-    """Get data from Mitre database."""
-    db_query = WazuhDBQueryMitre(offset=offset, limit=common.database_limit,
-                                 sort=sort, search=search, select=None,
-                                 count=True, get_data=True, query=q,
-                                 filters=filters)
+def get_attack(attack=None, phase=None, platform=None, offset=0,
+               limit=common.database_limit, sort=None,
+               search=None, q='', filters={}):
+    """Get information from Mitre database."""
+    query = q
+    if attack:
+        query = f'{query};id={attack}' if query else f'id={attack}'
+    if phase:
+        query = f'{query};phase_name={phase}' if query else \
+            f'phase_name={phase}'
+    if platform:
+        query = f'{query};platform_name={platform}' if query else \
+                f'platform_name={platform}'
+
+    db_query = WazuhDBQueryMitre(offset=offset, limit=limit if limit < 10
+                                 else 10, sort=sort, search=search,
+                                 select=None, query=query, count=True,
+                                 get_data=True, filters=filters)
 
     return db_query.run()
