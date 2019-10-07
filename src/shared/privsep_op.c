@@ -21,6 +21,41 @@
 #include "privsep_op.h"
 #include "headers/os_err.h"
 
+struct passwd *w_getpwnam(const char *name, struct passwd *pwd, char *buf, size_t buflen) {
+#ifdef SOLARIS
+    return getpwnam_r(name, pwd, buf, buflen);
+#else
+    struct passwd *result = NULL;
+    return (getpwnam_r(name, pwd, buf, buflen, &result) == 0 && result != NULL) ? result : NULL;
+#endif
+}
+
+struct passwd *w_getpwuid(uid_t uid, struct  passwd  *pwd, char *buf, int  buflen) {
+#ifdef SOLARIS
+    return getpwuid_r(uid, pwd, buf, buflen);
+#else
+    struct passwd *result = NULL;
+    return (getpwuid_r(uid, pwd, buf, buflen, &result) == 0 && result != NULL) ? result : NULL;
+#endif
+}
+
+struct group *w_getgrnam(const  char  *name,  struct group *grp, char *buf, int buflen) {
+#ifdef SOLARIS
+    return getgrnam_r(name, grp, buf, buflen);
+#else
+    struct group *result = NULL;
+    return (getgrnam_r(name, grp, buf, buflen, &result) == 0 && result != NULL) ? result : NULL;
+#endif
+}
+
+struct group *w_getgrgid(gid_t gid, struct group *grp,  char *buf, int buflen) {
+#ifdef SOLARIS
+    return getgrgid_r(gid, grp, buf, buflen);
+#else
+    struct group *result = NULL;
+    return (getgrgid_r(gid, grp, buf, buflen, &result) == 0 && result != NULL) ? result : NULL;
+#endif
+}
 
 uid_t Privsep_GetUser(const char *name)
 {
@@ -32,13 +67,11 @@ uid_t Privsep_GetUser(const char *name)
     struct passwd *result = NULL;
     uid_t pw_uid;
 
-#ifndef SOLARIS
-    int pwname = getpwnam_r(name, &pw, buffer, len, &result);
-    pw_uid = pwname != 0 || result == NULL ? (uid_t) OS_INVALID : result->pw_uid;
-#else
-    result = getpwnam_r(name, &pw, buffer, len);
-    pw_uid = result == NULL ? (uid_t) OS_INVALID : result->pw_uid;
-#endif
+    if (result = w_getpwnam(name, &pw, buffer, len), result) {
+        pw_uid = result->pw_uid;
+    } else {
+        pw_uid = (uid_t) OS_INVALID;
+    }
     os_free(buffer);
 
     return pw_uid;
@@ -54,19 +87,12 @@ gid_t Privsep_GetGroup(const char *name)
     os_malloc(len, buffer);
     gid_t gr_gid;
 
-#ifndef SOLARIS
-    int grname = getgrnam_r(name, &grp, buffer, len, &result);
-    if(grname != 0 || result == NULL) {
-#else
-    result = getgrnam_r(name, &grp, buffer, len);
-    if(result == NULL) {
-#endif
-        merror("Could not get group name.");
-        gr_gid = OS_INVALID;
-    } else {
+    if (result = w_getgrnam(name, &grp, buffer, len), result) {
         gr_gid = result->gr_gid;
+    } else {
+        merror("Could not get group name.");
+        gr_gid = (gid_t) OS_INVALID;
     }
-    
     os_free(buffer);
 
     return gr_gid;
