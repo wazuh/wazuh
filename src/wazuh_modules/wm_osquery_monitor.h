@@ -33,6 +33,6 @@ typedef struct wm_osquery_monitor_t {
    signed int run_daemon:2;
 } wm_osquery_monitor_t;
 
-int wm_osquery_monitor_read(xml_node **nodes, wmodule *module);
+int wm_osquery_monitor_read(xml_node **nodes, wmodule *module, char **output);
 
 #endif

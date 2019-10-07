@@ -77,11 +77,12 @@ static short eval_bool(const char *str)
 }
 
 // Reading function
-int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
+int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, char **output)
 {
     unsigned int i;
     int month_interval = 0;
     wm_sca_t *sca;
+    char message[OS_FLSIZE];
 
     if(!module->data) {
         os_calloc(1, sizeof(wm_sca_t), sca);
@@ -196,7 +197,11 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
     {
         if(!nodes[i]->element)
         {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return OS_INVALID;
         }
         else if (!strcmp(nodes[i]->element, XML_ENABLED))
@@ -204,7 +209,14 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             int enabled = eval_bool(nodes[i]->content);
 
             if(enabled == OS_INVALID){
-                merror("Invalid content for tag '%s'", XML_ENABLED);
+                if (output == NULL) {
+                    merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_SCA_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid content for tag '%s' at module '%s'.",
+                        XML_ENABLED, WM_SCA_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -214,19 +226,40 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         {
             sca->scan_wday = w_validate_wday(nodes[i]->content);
             if (sca->scan_wday < 0 || sca->scan_wday > 6) {
-                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        nodes[i]->element, nodes[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         }
         else if (!strcmp(nodes[i]->element, XML_SCAN_DAY)) {
             if (!OS_StrIsNum(nodes[i]->content)) {
-                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        nodes[i]->element, nodes[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             } else {
                 sca->scan_day = atoi(nodes[i]->content);
                 if (sca->scan_day < 1 || sca->scan_day > 31) {
+                    if (output == NULL) {
                     merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-                    return (OS_INVALID);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        nodes[i]->element, nodes[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
+                return (OS_INVALID);
                 }
             }
         }
@@ -234,7 +267,14 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         {
             sca->scan_time = w_validate_time(nodes[i]->content);
             if (!sca->scan_time) {
-                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid value for element '%s': %s.",
+                        nodes[i]->element, nodes[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return (OS_INVALID);
             }
         }
@@ -243,7 +283,14 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             sca->interval = strtoul(nodes[i]->content, &endptr, 0);
 
             if (sca->interval == 0 || sca->interval == UINT_MAX) {
-                merror("Invalid interval value.");
+                if (output == NULL) {
+                    merror("Invalid interval at module '%s'", WM_SCA_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid interval at module '%s'",
+                        WM_SCA_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -268,12 +315,26 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             case '\0':
                 break;
             default:
-                merror("Invalid interval value.");
+                if (output == NULL) {
+                    merror("Invalid interval at module '%s'", WM_SCA_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid interval at module '%s'",
+                        WM_SCA_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
             if (sca->interval < 60) {
-                mwarn("Interval must be greater than 60 seconds. New interval value: 60s");
+                if (output == NULL) {
+                    mwarn("At module '%s': Interval must be greater than 60 seconds. New interval value: 60s.", WM_SCA_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "WARNING: At module '%s': Interval must be greater than 60 seconds. New interval value: 60s.",
+                        WM_SCA_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 sca->interval = 60;
             }
         }
@@ -283,11 +344,14 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 
             if(scan_on_start == OS_INVALID)
             {
-                merror("Invalid content for tag '%s'", XML_ENABLED);
+                if (output == NULL) {
+                        "Invalid content for tag '%s' at module '%s'.",
+                        XML_ENABLED, WM_SCA_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
-            sca->scan_on_start = scan_on_start;
         }
         else if (!strcmp(nodes[i]->element, XML_POLICIES))
         {
@@ -313,11 +377,18 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                     }
 
                     if(strlen(children[j]->content) >= PATH_MAX) {
-                        merror("Policy path is too long. Max path length is %d.", PATH_MAX);
+                        if (output == NULL){
                         OS_ClearNode(children);
                         return OS_INVALID;
                     } else if (strlen(children[j]->content) == 0) {
-                        merror("Empty policy value.");
+                        if (output == NULL) {
+                            merror("Empty policy value at '%s'.", WM_SCA_CONTEXT.name);
+                        } else {
+                            snprintf(message, OS_FLSIZE + 1,
+                                "Policy path is too long at module '%s'. Max path length is %d",
+                                WM_SCA_CONTEXT.name,PATH_MAX);
+                            wm_strcat(output, message, '\n');
+                        }
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
@@ -325,7 +396,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                     if (is_policy_old(old_policies_filenames, n_old_policies_filenames, children[j]->content)) {
                         /* Silently skip configured but oldly-named policy files */
                         continue;
-                    }
 
                     /* full path resolution */
                     char relative_path[PATH_MAX] = {0};
@@ -387,7 +457,11 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         policies_count++;
                     }
                 } else {
-                    merror(XML_ELEMNULL);
+                    if (output == NULL) {
+                        merror(XML_ELEMNULL);
+                    } else {
+                        wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+                    }
                     OS_ClearNode(children);
                     return OS_INVALID;
                 }
@@ -399,26 +473,48 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             int skip_nfs = eval_bool(nodes[i]->content);
 
             if(skip_nfs == OS_INVALID){
-                merror("Invalid content for tag '%s'", XML_SKIP_NFS);
+                if (output == NULL) {
+                    merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_NFS, WM_SCA_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid content for tag '%s' at module '%s'.",
+                        XML_SKIP_NFS, WM_SCA_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
             sca->skip_nfs = skip_nfs;
         }
-        else
+        else if (output == NULL)
         {
-            mwarn("No such tag <%s>", nodes[i]->element);
+            mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_SCA_CONTEXT.name);
+                nodes[i]->element, WM_SCA_CONTEXT.name);
+            wm_strcat(output, message, '\n');
         }
     }
 
-    // Validate scheduled scan parameters and interval value
 
     if (sca->scan_day && (sca->scan_wday >= 0)) {
-        merror("Options 'day' and 'wday' are not compatible.");
+        if (output == NULL) {
+            merror("At module '%s': 'day' is not compatible with 'wday'.", WM_SCA_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "At module '%s': 'day' is not compatible with 'wday'.",
+                WM_SCA_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     } else if (sca->scan_day) {
         if (!month_interval) {
-            mwarn("Interval must be a multiple of one month. New interval value: 1M");
+            if (output == NULL){
+                mwarn("At module '%s': Interval must be a multiple of one month. New interval value: 1M.", WM_SCA_CONTEXT.name);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "WARNING: At module '%s': Interval must be a multiple of one month. New interval value: 1M.",
+                    WM_SCA_CONTEXT.name);
+                wm_strcat(output, message, '\n');
+            }
             sca->interval = 60; // 1 month
         }
         if (!sca->scan_time)
@@ -426,7 +522,14 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
     } else if (sca->scan_wday >= 0) {
         if (w_validate_interval(sca->interval, 1) != 0) {
             sca->interval = 604800;  // 1 week
-            mwarn("Interval must be a multiple of one week. New interval value: 1w");
+            if (output == NULL){
+                mwarn("At module '%s': Interval must be a multiple of one week. New interval value: 1w.", WM_SCA_CONTEXT.name);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "WARNING: At module '%s': Interval must be a multiple of one week. New interval value: 1w.",
+                    WM_SCA_CONTEXT.name);
+                wm_strcat(output, message, '\n');
+            }
         }
         if (sca->interval == 0)
             sca->interval = 604800;
@@ -435,7 +538,14 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
     } else if (sca->scan_time) {
         if (w_validate_interval(sca->interval, 0) != 0) {
             sca->interval = WM_DEF_INTERVAL;  // 1 day
-            mwarn("Interval must be a multiple of one day. New interval value: 1d");
+            if (output == NULL){
+                mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_SCA_CONTEXT.name);
+            } else {
+                snprintf(message, OS_FLSIZE + 1,
+                    "WARNING: At module '%s': Interval must be a multiple of one day. New interval value: 1d.",
+                    WM_SCA_CONTEXT.name);
+                wm_strcat(output, message, '\n');
+            }
         }
     }
 

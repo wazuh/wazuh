@@ -99,7 +99,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
 
     //osQuery monitor module
     if (!strcmp(node->values[0], WM_OSQUERYMONITOR_CONTEXT.name)) {
-        if (wm_osquery_monitor_read(children, cur_wmodule) < 0) {
+        if (wm_osquery_monitor_read(children, cur_wmodule, output) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
@@ -127,7 +127,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
     }
 #ifdef ENABLE_CISCAT
     else if (!strcmp(node->values[0], WM_CISCAT_CONTEXT.name)) {
-        if (wm_ciscat_read(xml, children, cur_wmodule) < 0) {
+        if (wm_ciscat_read(xml, children, cur_wmodule, output) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
@@ -291,7 +291,7 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, char **output)
 
     //Policy Monitoring Module
     if (!strcmp(node->element, WM_SCA_CONTEXT.name)) {
-        if (wm_sca_read(xml,children, cur_wmodule) < 0) {
+        if (wm_sca_read(xml,children, cur_wmodule, output) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }

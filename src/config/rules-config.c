@@ -128,7 +128,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                 if (output == NULL) {
                     merror(XML_VALUENULL, node[i]->element);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1, "Invalid NULL content for element: %s.",
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid NULL content for element: %s.",
                         node[i]->element);
                     wm_strcat(output, message, '\n');
                 }

@@ -92,26 +92,25 @@ void *wm_chk_conf_main() {
 
                 if(!filepath) {
                     if(strcmp(filetype, "remote")) {
-                        filepath = strdup(DEFAULTDIR AGENTCONFIG);
+                        filepath = strdup(DEFAULTDIR SHAREDCFG_DIR "/default");
                     } else {
                         filepath = strdup(DEFAULTCPATH);
                     }
                 }
 
                 char *output = NULL;
-                /* Now, we go to check the configuration file according to the filetype provided : test manager, agent or remote conf */
                 test_file(filetype, filepath, &output);
 
                 cJSON *temp_obj = cJSON_CreateObject();
                 if(output) {
                     char *aux = strdup(output);
 
-                    if(strstr(aux, "Test OK!") && !(strstr(aux, "ERROR"))) {
+                    if(strstr(aux, "Test OK") && !(strstr(aux, "ERROR"))) {
                         cJSON_AddStringToObject(temp_obj, "error", "0");
-                    } else if(strstr(aux, "Test OK!") && strstr(aux, "ERROR")) {
+                    } else if(strstr(aux, "Test OK") && strstr(aux, "ERROR")) {
                         cJSON_AddStringToObject(temp_obj, "error", "2");
                         cJSON_AddStringToObject(temp_obj, "error_mesage", WARN_RESULT);
-                    } else if(!strstr(aux, "Test OK!")) {
+                    } else if(!strstr(aux, "Test OK")) {
                         cJSON_AddStringToObject(temp_obj, "error", "1");
                     }
                     cJSON_AddStringToObject(temp_obj, "data", aux);
@@ -126,7 +125,7 @@ void *wm_chk_conf_main() {
                 }
 
                 /* Send the test result to API socket */
-                send_message(output);
+                /* send_message(output); */
 
                 os_free(output);
                 cJSON_Delete(temp_obj);

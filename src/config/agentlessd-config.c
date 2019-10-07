@@ -66,8 +66,9 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
             if (output == NULL){
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1, "Invalid NULL content for element: %s.",
-                        node[i]->element);
+                snprintf(message, OS_FLSIZE + 1,
+                    "Invalid NULL content for element: %s.",
+                    node[i]->element);
                 wm_strcat(output, message, '\n');
             }
             return (OS_INVALID);

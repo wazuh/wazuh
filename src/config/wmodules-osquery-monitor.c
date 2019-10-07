@@ -25,10 +25,11 @@ static short eval_bool(const char *str)
 }
 
 // Reading function
-int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
+int wm_osquery_monitor_read(xml_node **nodes, wmodule *module, char **output)
 {
     unsigned int i;
     unsigned int pack_i = 0;
+    char message[OS_FLSIZE];
     wm_osquery_monitor_t *osquery_monitor;
 
     os_calloc(1, sizeof(wm_osquery_monitor_t), osquery_monitor);
@@ -62,7 +63,14 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
         else if (!strcmp(nodes[i]->element, XML_DISABLED))
         {
             if (osquery_monitor->disable = eval_bool(nodes[i]->content), osquery_monitor->disable == OS_INVALID) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_OSQUERYMONITOR_CONTEXT.name);
+                if (output == NULL) {
+                    merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_OSQUERYMONITOR_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid content for tag '%s' at module '%s'.",
+                        XML_DISABLED, WM_OSQUERYMONITOR_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         }
@@ -75,20 +83,31 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
         {
             free(osquery_monitor->log_path);
             osquery_monitor->log_path = strdup(nodes[i]->content);
-            mdebug2("Logpath read: %s", osquery_monitor->log_path);
+            if (output == NULL) {
+                mdebug2("Logpath read: %s", osquery_monitor->log_path);
+            }
         }
         else if(!strcmp(nodes[i]->element, XML_CONFIGPATH))
         {
             free(osquery_monitor->config_path);
             osquery_monitor->config_path = strdup(nodes[i]->content);
-            mdebug2("configPath read: %s", osquery_monitor->config_path);
+            if (output == NULL) {
+                mdebug2("configPath read: %s", osquery_monitor->config_path);
+            }
         } else if (!strcmp(nodes[i]->element, XML_PACK)) {
             wm_osquery_pack_t * pack;
 
             if (!(nodes[i]->attributes && *nodes[i]->attributes)) {
                 return OS_INVALID;
             } else if (strcmp(*nodes[i]->attributes, XML_PACKNAME)) {
-                merror("No such attribute '%s' in osquery element <%s>", *nodes[i]->attributes, XML_PACK);
+                if (output == NULL) {
+                    merror("No such attribute '%s' in osquery element <%s>", *nodes[i]->attributes, XML_PACK);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "No such attribute '%s' in osquery element <%s>",
+                        *nodes[i]->attributes, XML_PACK);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -100,18 +119,39 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
             osquery_monitor->packs[++pack_i] = NULL;
         } else if (!strcmp(nodes[i]->element, XML_ADD_LABELS)) {
             if (osquery_monitor->add_labels = eval_bool(nodes[i]->content), osquery_monitor->add_labels == OS_INVALID) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_ADD_LABELS, WM_OSQUERYMONITOR_CONTEXT.name);
+                if (output == NULL) {
+                    merror("Invalid content for tag '%s' at module '%s'.", XML_ADD_LABELS, WM_OSQUERYMONITOR_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid content for tag '%s' at module '%s'.",
+                        XML_ADD_LABELS, WM_OSQUERYMONITOR_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_DAEMON)) {
             if (osquery_monitor->run_daemon = eval_bool(nodes[i]->content), osquery_monitor->run_daemon == OS_INVALID) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_DAEMON, WM_OSQUERYMONITOR_CONTEXT.name);
+                if (output == NULL) {
+                    merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_DAEMON, WM_OSQUERYMONITOR_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE + 1,
+                        "Invalid content for tag '%s' at module '%s'.",
+                        XML_RUN_DAEMON, WM_OSQUERYMONITOR_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
-        } else {
+        } else if (output == NULL) {
             mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_OSQUERYMONITOR_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE + 1,
+                "No such tag <%s> at module '%s'.",
+                nodes[i]->element, WM_OSQUERYMONITOR_CONTEXT.name);
+            wm_strcat(output, message, '\n');
         }
 
     }
+
+
     return 0;
 }

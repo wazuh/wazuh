@@ -15,7 +15,6 @@
 #include "logcollector/logcollector.h"
 #include "getopt.h"
 #include "headers/check_config.h"
-
 #include "../os_net/os_net.h"
 #include <ifaddrs.h>
 
@@ -108,7 +107,7 @@ int main(int argc, char **argv)
         }
 
         if(!filepath) {
-            filepath = type_flag == CRMOTE_CONFIG ? strdup(DEFAULTDIR AGENTCONFIG) : strdup(DEFAULTCPATH);
+            filepath = type_flag == CRMOTE_CONFIG ? strdup(DEFAULTDIR SHAREDCFG_DIR "/default") : strdup(DEFAULTCPATH);
         }
 
         char *output = NULL;
@@ -121,7 +120,6 @@ int main(int argc, char **argv)
         else if(type_flag == CRMOTE_CONFIG) {
             test_remote_conf(filepath, type_flag, &output);
         }
-
         printf("%s\n", output);
 
         os_free(output);

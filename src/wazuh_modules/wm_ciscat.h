@@ -106,7 +106,7 @@ typedef struct wm_rule_data {
 extern const wm_context WM_CISCAT_CONTEXT;   // Context
 
 // Parse XML configuration
-int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
+int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **output);
 
 #endif // WM_OSCAP
 #endif
