@@ -15,6 +15,13 @@ from wazuh.results import WazuhResult
 mode = 'white'
 
 
+def mode_changer(m):
+    if m != 'white' and m != 'black':
+        raise TypeError
+    global mode
+    mode = m
+
+
 def _expand_resource(resource):
     name, attribute, value = resource.split(':')
     resource_type = ':'.join([name, attribute])
@@ -55,7 +62,7 @@ def use_expanded_resource(effect, final_permissions, expanded_resource, req_reso
         final_permissions.difference_update(expanded_resource)
 
 
-def expand_permissions(rbac_mode, req_resources, user_permissions_for_resource, final_user_permissions):
+def expand_permissions(req_resources, user_permissions_for_resource, final_user_permissions):
     req_resources_value = dict()
     for element in req_resources:
         if ':'.join(element.split(':')[:-1]) not in req_resources_value.keys():
@@ -69,6 +76,8 @@ def expand_permissions(rbac_mode, req_resources, user_permissions_for_resource, 
         if identifier not in final_user_permissions.keys():
             final_user_permissions[identifier] = set()
 
+        if mode == 'black':
+            final_user_permissions[identifier] = _expand_resource(identifier + ':*')
         expanded_resource = _expand_resource(user_resource)
         try:
             if user_resource_effect == 'allow' and '*' not in req_resources_value[identifier] and value == '*':
@@ -79,9 +88,15 @@ def expand_permissions(rbac_mode, req_resources, user_permissions_for_resource, 
         except KeyError:  # Multiples resources in action and only one is required
             if len(final_user_permissions[identifier]) == 0:
                 final_user_permissions.pop(identifier)
-    if rbac_mode == 'black':
-        for resource in req_resources:
-            final_user_permissions['black:mode'].add(resource)
+        if mode == 'black':
+            try:
+                if value in final_user_permissions[identifier]:
+                    final_user_permissions[identifier] = {value}
+                elif '*' not in req_resources_value[identifier] and \
+                        not final_user_permissions[identifier].issubset(req_resources_value[identifier]):
+                    final_user_permissions[identifier] = set()
+            except KeyError:
+                pass
 
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
@@ -128,21 +143,12 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     :return: Dictionary with final permissions
     """
     allow_match = dict()
-    black_counter = 0
-    if mode == 'black':  # Black
-        if len(rbac.keys()) == 0:
-            allow_match['black:mode'] = '*'
-            return allow_match
     for req_action, req_resources in req_permissions.items():
         if req_action in rbac.keys():
-            expand_permissions(mode, req_resources, rbac[req_action], allow_match)
+            expand_permissions(req_resources, rbac[req_action], allow_match)
         else:
-            if mode == 'black':
-                black_counter += 1
-                if len(req_resources) == black_counter:
-                    allow_match['black:mode'] = '*'
-            else:
-                break
+            for req_resource in req_resources:
+                allow_match[':'.join(req_resource.split(':')[:-1])] = _expand_resource(req_resource)
     return allow_match
 
 
@@ -163,6 +169,8 @@ def expose_resources(actions: list = None, resources: list = None, target_params
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            import pydevd_pycharm
+            pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
             req_permissions = _get_required_permissions(actions=actions, resources=resources, **kwargs)
             allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
             del kwargs['rbac']

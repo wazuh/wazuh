@@ -227,5 +227,64 @@
         "agent:group:group2": "deny"
       }
     }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:*"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:003", "agent:id:004", "agent:id:005"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:update"],
+        "resources": ["agent:id:003", "agent:id:004", "agent:id:005"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:delete"],
+        "resources": ["agent:group:*"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:group:*"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:update"],
+        "resources": ["agent:group:group1"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:group:group1", "agent:group:group2"],
+        "effect": "allow"
+      }
+    ],
+    "processed_policies": {
+      "agent:read": {
+        "agent:id:*": "allow",
+        "agent:id:003": "deny",
+        "agent:id:004": "deny",
+        "agent:id:005": "deny",
+        "agent:group:*": "deny",
+        "agent:group:group1": "allow",
+        "agent:group:group2": "allow"
+      },
+      "agent:update": {
+        "agent:id:003": "deny",
+        "agent:id:004": "deny",
+        "agent:id:005": "deny",
+        "agent:group:group1": "allow"
+      },
+      "agent:delete": {
+        "agent:group:*": "allow"
+      }
+    }
   }
 ]

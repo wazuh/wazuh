@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import json
 import os
-
+import pytest
 from wazuh.rbac.pre_policies import optimize_resources
 
 
@@ -16,17 +16,15 @@ permissions = list()
 results = list()
 actual_test = 0
 with open(test_data_path + 'RBAC_preprocessor_policies.json') as f:
-    tests_cases = [test_case for test_case in json.load(f)]
+    file = json.load(f)
+
+inputs = [test_case['no_processed_policies'] for test_case in file]
+outputs = [test_case['processed_policies'] for test_case in file]
 
 
-def test_expose_resources():
+@pytest.mark.parametrize('input, output', zip(inputs, outputs))
+def test_expose_resources(input, output):
 
-    def mock_run():
-        global actual_test
-        actual_test += 1
-        return tests_cases[actual_test - 1]['no_processed_policies']
-
-    with patch('wazuh.rbac.pre_policies.RBAChecker.run', side_effect=mock_run):
-        for index, test_case in enumerate(tests_cases):
-            preprocessed_policies = optimize_resources()
-            assert (preprocessed_policies == tests_cases[index]['processed_policies'])
+    with patch('wazuh.rbac.pre_policies.RBAChecker.run', return_value=input):
+        preprocessed_policies = optimize_resources()
+        assert (preprocessed_policies == output)
