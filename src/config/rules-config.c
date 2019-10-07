@@ -57,6 +57,7 @@ static int file_in_list(unsigned int list_size, char *f_name, char *d_name, char
 int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
+    int t;
     int retval = 0;
 
     unsigned int rules_size = 1;
@@ -392,12 +393,33 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     OSRegex_FreePattern(&regex);
 
 cleanup:
-    free(exclude_decoders);
-    free(exclude_rules);
-    free(decoder_dirs);
-    free(rules_dirs);
-    free(decoder_dirs_pattern);
-    free(rules_dirs_pattern);
+
+    for (t = 0; exclude_decoders[t]; t++){
+        os_free(exclude_decoders[t]);
+    }
+    for (t = 0; exclude_rules[t]; t++){
+        os_free(exclude_rules[t]);
+    }
+    for (t = 0; decoder_dirs[t]; t++) {
+        os_free(decoder_dirs[t]);
+    }
+    for (t = 0; rules_dirs[t]; t++) {
+        os_free(rules_dirs[t]);
+    }
+    for (t = 0; decoder_dirs_pattern[t]; t++){
+        os_free(decoder_dirs_pattern[t]);
+    }
+    for (t = 0; rules_dirs_pattern[t]; t++){
+        os_free(rules_dirs_pattern[t]);
+    }
+
+    os_free(exclude_decoders);
+    os_free(exclude_rules);
+    os_free(decoder_dirs);
+    os_free(rules_dirs);
+    os_free(decoder_dirs_pattern);
+    os_free(rules_dirs_pattern);
+
 
     return retval;
 }

@@ -672,19 +672,22 @@ void free_RuleInfo(RuleInfo *r_info)
         os_free(r_info->fields[i]->regex);
         os_free(r_info->fields[i]);
     }
+    os_free(r_info->fields);
 
     if (r_info->srcip) {
         for (i = 0; r_info->srcip[i]; i++){
-            free(r_info->srcip[i]->ip);
-            free(r_info->srcip[i]);
+            os_free(r_info->srcip[i]->ip);
+            os_free(r_info->srcip[i]);
         }
+        os_free(r_info->srcip);
     }
 
     if (r_info->dstip) {
         for (i=0; r_info->dstip[i]; i++){
-            free(r_info->dstip[i]->ip);
-            free(r_info->dstip[i]);
+            os_free(r_info->dstip[i]->ip);
+            os_free(r_info->dstip[i]);
         }
+        os_free(r_info->dstip);
     }
 
     if (r_info->info_details) {
