@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _ERROR_MESSAGES__H
-#define _ERROR_MESSAGES__H
+#ifndef ERROR_MESSAGES_H
+#define ERROR_MESSAGES_H
 
 /***  Error messages - English ***/
 
@@ -67,7 +67,7 @@
 #define QUEUE_ERROR     "(1210): Queue '%s' not accessible: '%s'."
 #define QUEUE_FATAL     "(1211): Unable to access queue: '%s'. Giving up.."
 #define PID_ERROR       "(1212): Unable to create PID file."
-#define DENYIP_WARN     "(1213): Message from '%s' not allowed."
+#define DENYIP_WARN     "(1213): Message from '%s' not allowed. Cannot find the ID of the agent."
 #define MSG_ERROR       "(1214): Problem receiving message from '%s'."
 #define CLIENT_ERROR    "(1215): No client configured. Exiting."
 #define CONNS_ERROR     "(1216): Unable to connect to '%s': '%s'."
@@ -95,7 +95,7 @@
 #define NO_CONFIG       "(1239): Configuration file not found: '%s'."
 #define INVALID_TIME    "(1240): Invalid time format: '%s'."
 #define INVALID_DAY     "(1241): Invalid day format: '%s'."
-#define ACCEPT_ERROR    "(1242): Couldn't accept TCP connections."
+#define ACCEPT_ERROR    "(1242): Couldn't accept TCP connections: %s (%d)"
 #define RECV_ERROR      "(1243): Couldn't receive message from peer."
 #define DUP_SECURE      "(1244): Can't add more than one secure connection."
 #define SEND_DISCON     "(1245): Sending message to disconnected agent '%s'."
@@ -194,14 +194,15 @@
 #define OPEN_UNABLE     "(1963): Unable to open file '%s'."
 #define NON_TEXT_FILE   "(1964): File '%s' is not ASCII or UTF-8 encoded."
 #define EXCLUDE_FILE    "(1965): File excluded: '%s'."
+#define DUP_FILE_INODE  "(1966): Inode for file '%s' already found. Skipping it."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
 #define NO_AUTHFILE     "(1402): Authentication key file '%s' not found."
 #define ENCFORMAT_ERROR "(1403): Incorrectly formatted message from agent '%s' (host '%s')."
-#define ENCKEY_ERROR    "(1404): Authentication error. Wrong key from '%s'."
+#define ENCKEY_ERROR    "(1404): Authentication error. Wrong key or corrupt payload. Message received from agent '%s' at '%s'."
 #define ENCSIZE_ERROR   "(1405): Message size not valid: '%64s'."
-#define ENCSUM_ERROR    "(1406): Checksum mismatch on message from '%s'."
+#define ENCSUM_ERROR    "(1406): Checksum mismatch. Message received from agent '%s' at '%s'."
 #define ENCTIME_ERROR   "(1407): Duplicated counter for '%s'."
 #define ENC_IP_ERROR    "(1408): Invalid ID %s for the source ip: '%s' (name '%s')."
 #define ENCFILE_CHANGED "(1409): Authentication file changed. Updating."
@@ -251,6 +252,7 @@
 #define AG_NOKEYS_EXIT  "(4109): Unable to start without auth keys. Exiting."
 #define AG_MAX_ERROR    "(4110): Maximum number of agents '%d' reached."
 #define AG_AX_AGENTS    "(4111): Maximum number of agents allowed: '%d'."
+#define AG_INV_MNGIP    "(4112): Invalid server address found: '%s'"
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."
@@ -364,7 +366,6 @@
 #define FIM_ERROR_WHODATA_HANDLER_REMOVE            "(6626): The handler '%s' could not be removed from the whodata hash table."
 #define FIM_ERROR_WHODATA_HANDLER_EVENT             "(6627): Could not get the time of the event whose handler is '%llu'."
 #define FIM_ERROR_WHODATA_EVENTID                   "(6628): Invalid EventID. The whodata cannot be extracted."
-#define FIM_ERROR_WHODATA_CREATION_DATE             "(6629): The creation date for '%s' could not be extracted."
 #define FIM_ERROR_WHODATA_EVENTADD_DUP              "(6630): The event could not be added to the '%s' hash table because it is duplicated. Target: '%s'."
 #define FIM_ERROR_WHODATA_EVENTADD                  "(6631): The event could not be added to the '%s' hash table. Target: '%s'."
 #define FIM_ERROR_WHODATA_GET_SID                   "(6632): Could not obtain the sid of Everyone. Error '%lu'."
@@ -491,4 +492,4 @@
 #define GMF_BUFF_ERROR  "Could not get path because it is too long and was shrunk by (%d) characters with a max of (%d)."
 #define GMF_UNKN_ERROR  "Could not run GetModuleFileName which returned (%ld)."
 
-#endif /* _ERROR_MESSAGES__H */
+#endif /* ERROR_MESSAGES_H */

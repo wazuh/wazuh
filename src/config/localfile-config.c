@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -75,7 +75,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     }
     memset(log_config->globs + gl, 0, sizeof(logreader_glob));
     memset(logf + pl, 0, sizeof(logreader));
-    //os_calloc(1, sizeof(wlabel_t), logf[pl].labels);
+
     logf[pl].ign = 360;
     logf[pl].exists = 1;
     logf[pl].future = 1;
@@ -110,10 +110,12 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
             logf[pl].target = OS_StrBreak(',', node[i]->content, count);
             char * tmp;
-            for (n=0; n<count; n++) {
-                os_strdup(w_strtrim(logf[pl].target[n]), tmp);
-                free(logf[pl].target[n]);
-                logf[pl].target[n] = tmp;
+            if(logf[pl].target) {
+                for (n=0; n<count; n++) {
+                    os_strdup(w_strtrim(logf[pl].target[n]), tmp);
+                    free(logf[pl].target[n]);
+                    logf[pl].target[n] = tmp;
+                }
             }
         } else if (strcmp(node[i]->element, xml_localfile_outformat) == 0) {
             char * target = NULL;
@@ -481,15 +483,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         }
     }
 
-
-    /*
-    if (!logf[pl].labels) {
-        os_calloc(1, sizeof(wlabel_t), logf[pl].labels);
-    }
-    */
-
-
-
     /* Missing file */
     if (!logf[pl].file) {
         merror(MISS_FILE);
@@ -575,6 +568,8 @@ void Free_Logreader(logreader * logf) {
             free(logf->target);
         }
 
+        free(logf->log_target);
+
         labels_free(logf->labels);
 
         if (logf->fp) {
@@ -596,6 +591,7 @@ void Free_Logreader(logreader * logf) {
 int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf) {
     if (*logf) {
         int size = 0;
+        int x;
         while ((*logf)[size].file || (!gl && (*logf)[size].logformat)) {
             size++;
         }
@@ -613,19 +609,9 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *gl
                 }
             #endif
             }
-            if (i != size -1) {
-                memcpy(&(*logf)[i], &(*logf)[size - 1], sizeof(logreader));
-            }
 
-            (*logf)[size - 1].file = NULL;
-            (*logf)[size - 1].fp = NULL;
-
-            if(!gl) {
-                (*logf)[size - 1].target = NULL;
-                (*logf)[size - 1].ffile = NULL;
-                (*logf)[size - 1].logformat = NULL;
-                (*logf)[size - 1].command = NULL;
-                (*logf)[size - 1].exclude = NULL;
+            for (x = i; x < size; x++) {
+                memcpy(&(*logf)[x], &(*logf)[x + 1], sizeof(logreader));
             }
 
             if (!size)

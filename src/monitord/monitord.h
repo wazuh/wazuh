@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _MONITORD_H
-#define _MONITORD_H
+#ifndef MONITORD_H
+#define MONITORD_H
 
 #ifndef ARGV0
 #define ARGV0 "ossec-monitord"
@@ -41,4 +41,4 @@ void * moncom_main(__attribute__((unused)) void * arg);
 /* Global variables */
 extern monitor_config mond;
 
-#endif
+#endif /* MONITORD_H */

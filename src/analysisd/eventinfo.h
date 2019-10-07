@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _EVTINFO__H
-#define _EVTINFO__H
+#ifndef EVTINFO_H
+#define EVTINFO_H
 
 #include "rules.h"
 #include "decoders/decoder.h"
@@ -52,6 +52,7 @@ typedef struct _Eventinfo {
     char *command;
     char *url;
     char *data;
+    char *extra_data;
     char *systemname;
     DynamicField *fields;
     int nfields;
@@ -230,6 +231,7 @@ void *Action_FP(Eventinfo *lf, char *field, const char *order);
 void *ID_FP(Eventinfo *lf, char *field, const char *order);
 void *Url_FP(Eventinfo *lf, char *field, const char *order);
 void *Data_FP(Eventinfo *lf, char *field, const char *order);
+void *Extra_Data_FP(Eventinfo *lf, char *field, const char *order);
 void *Status_FP(Eventinfo *lf, char *field, const char *order);
 void *SystemName_FP(Eventinfo *lf, char *field, const char *order);
 void *DynamicField_FP(Eventinfo *lf, char *field, const char *order);
@@ -242,4 +244,4 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy);
 #define add_lastevt(x, y, z) os_realloc(x, sizeof(char *) * (y + 2), x); \
                              os_strdup(z, x[y]); \
                              x[y + 1] = NULL;
-#endif /* _EVTINFO__H */
+#endif /* EVTINFO_H */

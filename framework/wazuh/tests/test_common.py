@@ -1,6 +1,7 @@
 from unittest.mock import patch
 import pytest
 from os import path, remove
+import os
 from wazuh.common import find_wazuh_path, ossec_uid, ossec_gid
 from grp import getgrnam
 from pwd import getpwnam
@@ -30,19 +31,3 @@ def test_ossec_uid():
 def test_ossec_gid():
     with patch('wazuh.common.getgrnam', return_value=getgrnam("root")):
         ossec_gid()
-
-
-def test_load_metadata_from_file():
-    data = {
-        'install_type': '',
-        'installation_date': '',
-        'wazuh_version': ''
-    }
-    with open(path.join('/var/ossec', 'wazuh.json'), 'w') as f:
-        json.dump(data, f)
-
-    del modules['wazuh.common']
-    with patch('os.path.abspath', return_value='/var/ossec'):
-        import wazuh.common
-
-    remove(path.join('/var/ossec', 'wazuh.json'))

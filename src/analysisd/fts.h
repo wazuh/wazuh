@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef __FTS_H
-#define __FTS_H
+#ifndef FTS_H
+#define FTS_H
 
 #include "eventinfo.h"
 
@@ -34,4 +34,4 @@ void FTS_Flush();
 extern unsigned int fts_minsize_for_str;
 extern int fts_list_size;
 
-#endif /* __FTS_H */
+#endif /* FTS_H */

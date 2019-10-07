@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest.mock import patch
 import pytest
-from wazuh.exception import WazuhException
-from wazuh import active_response
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh.exception import WazuhException
+        from wazuh import active_response
 import os
 
 # all necessary params

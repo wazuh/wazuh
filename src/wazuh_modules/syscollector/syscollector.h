@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * March 9, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -154,6 +154,11 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all);
 // Opened ports inventory for Windows
 void sys_ports_windows(const char* LOCATION, int check_all);
 
+// Opened ports inventory for MAC OS X
+#ifdef __MACH__
+    void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all);
+#endif
+
 // Installed packages inventory for Linux
 void sys_packages_linux(int queue_fd, const char* WM_SYS_LOCATION);
 char * sys_deb_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id);
@@ -214,6 +219,9 @@ void sys_network_windows(const char* LOCATION);
 // Running processes inventory
 void sys_proc_linux(int queue_fd, const char* LOCATION);
 void sys_proc_windows(const char* LOCATION);
+#ifdef __MACH__
+void sys_proc_mac(int queue_fd, const char* LOCATION);
+#endif
 
 // Read string from a byte array until find a NULL byte
 char* read_string(u_int8_t* bytes);
@@ -231,6 +239,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
 void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddrs_ptr, __attribute__((unused)) gateway *gate);
 // Create the interface list
 int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr);
+
+// Initialize hw_info struct values
+void init_hw_info(hw_info *info);
 
 #endif
 #endif

@@ -1,0 +1,26 @@
+:modulename: wazuh
+:has-dashboards: false
+
+== Wazuh module
+
+This module prepares Elasticsearch for ingesting Wazuh alerts and, optionally, Wazuh archives.
+
+include::../include/what-happens.asciidoc[]
+
+[float]
+=== Compatibility
+
+Compatible with Wazuh 3.x and Elastic stack 7.x. The module was tested with Wazuh 3.9 and Elastic stack 7.2. 
+
+include::../include/running-modules.asciidoc[]
+
+[float]
+==== `{fileset}` log fileset settings
+
+include::../include/var-paths.asciidoc[]
+
+:has-dashboards!:
+
+:fileset_ex!:
+
+:modulename!:

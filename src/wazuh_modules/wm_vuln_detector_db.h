@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * January 4, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -82,7 +82,7 @@ static const char *vu_queries[] = {
     "agent %s sql SELECT DISTINCT NAME, VERSION, ARCHITECTURE FROM SYS_PROGRAMS WHERE SCAN_ID = '%s' LIMIT %i OFFSET %i;",
     "agent %s sql SELECT SCAN_ID FROM SYS_PROGRAMS WHERE SCAN_TIME = (SELECT SCAN_TIME FROM SYS_PROGRAMS S1 WHERE NOT EXISTS (SELECT SCAN_TIME FROM SYS_PROGRAMS S2 WHERE S2.SCAN_TIME > S1.SCAN_TIME)) LIMIT 1;",
     "agent %s sql UPDATE SYS_PROGRAMS SET TRIAGED = 1 WHERE SCAN_ID = '%s';",
-    "SELECT OS_NAME, OS_MAJOR, NAME, ID, REGISTER_IP, OS_ARCH FROM AGENT WHERE (STRFTIME('%s', 'NOW', 'LOCALTIME') - STRFTIME('%s', LAST_KEEPALIVE)) < ?;",
+    "SELECT OS_NAME, OS_MAJOR, NAME, ID, REGISTER_IP, OS_ARCH FROM AGENT WHERE (STRFTIME('%s', 'NOW', 'UTC') - LAST_KEEPALIVE) < ?;",
     "BEGIN TRANSACTION;",
     "END TRANSACTION;"
 };

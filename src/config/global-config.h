@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _CCONFIG__H
-#define _CCONFIG__H
+#ifndef CCONFIG_H
+#define CCONFIG_H
 
 #include "shared.h"
 
@@ -116,4 +116,4 @@ typedef struct __Config {
 
 void config_free(_Config *config);
 
-#endif /* _CCONFIG__H */
+#endif /* CCONFIG_H */

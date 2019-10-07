@@ -28,8 +28,8 @@ CREATE TABLE IF NOT EXISTS fim_entry (
 
 CREATE TABLE IF NOT EXISTS pm_event (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    date_first TEXT,
-    date_last TEXT,
+    date_first INTEGER,
+    date_last INTEGER,
     log TEXT,
     pci_dss TEXT,
     cis TEXT
@@ -261,7 +261,8 @@ CREATE TABLE IF NOT EXISTS sca_check (
    `references` TEXT,
    result TEXT,
    `status` TEXT,
-   reason TEXT
+   reason TEXT,
+   condition TEXT
 );
 
 CREATE INDEX IF NOT EXISTS policy_id_index ON sca_check (policy_id);

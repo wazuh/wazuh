@@ -36,7 +36,7 @@
     <options>alert_by_email</options>
     <match>Agent started</match>
     <description>Ossec agent started.</description>
-    <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
+    <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AU.5,</group>
   </rule>
 
   <rule id="504" level="3">
@@ -44,7 +44,7 @@
     <options>alert_by_email</options>
     <match>Agent disconnected</match>
     <description>Ossec agent disconnected.</description>
-    <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
+    <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AU.5,</group>
   </rule>
 
   <rule id="505" level="3">
@@ -52,7 +52,7 @@
     <options>alert_by_email</options>
     <match>Agent removed</match>
     <description>Ossec agent removed.</description>
-    <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
+    <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AU.5,</group>
   </rule>
 
   <rule id="509" level="0">
@@ -174,7 +174,7 @@
     <match>ossec: output: 'netstat listening ports</match>
     <check_diff />
     <description>Listened ports status (netstat) changed (new port opened or closed).</description>
-    <group>pci_dss_10.2.7,pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AU.6,</group>
+    <group>pci_dss_10.2.7,pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="534" level="1">
@@ -233,18 +233,18 @@
     <category>ossec</category>
     <decoded_as>hostinfo_modified</decoded_as>
     <description>Host information changed.</description>
-    <group>hostinfo,pci_dss_10.2.7,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
+    <group>hostinfo,pci_dss_10.2.7,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,</group>
   </rule>
 
   <rule id="581" level="8">
     <category>ossec</category>
     <decoded_as>hostinfo_new</decoded_as>
     <description>Host information added.</description>
-    <group>hostinfo,pci_dss_10.2.7,gpg13_4.13,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
+    <group>hostinfo,pci_dss_10.2.7,gpg13_4.13,hipaa_164.312.b,nist_800_53_AU.14,</group>
   </rule>
 
 
-  <!-- File rotation/reducded rules -->
+  <!-- File rotation/truncation rules -->
   <rule id="591" level="3">
     <if_sid>500</if_sid>
     <match>^ossec: File rotated </match>
@@ -256,7 +256,7 @@
     <if_sid>500</if_sid>
     <match>^ossec: File size reduced</match>
     <description>Log file size reduced.</description>
-    <group>attacks,pci_dss_10.5.2,pci_dss_11.4,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.9,nist_800_53_SC.7,</group>
+    <group>attacks,pci_dss_10.5.2,pci_dss_11.4,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.9,nist_800_53_SI.4,</group>
   </rule>
 
   <rule id="593" level="9">
@@ -306,7 +306,7 @@
     <field name="script">firewall-drop.sh</field>
     <field name="type">add</field>
     <description>Host Blocked by firewall-drop.sh Active Response</description>
-    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
+    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
   </rule>
 
   <rule id="602" level="3">
@@ -314,7 +314,7 @@
     <field name="script">firewall-drop.sh</field>
     <field name="type">delete</field>
     <description>Host Unblocked by firewall-drop.sh Active Response</description>
-    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
+    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
   </rule>
 
   <rule id="603" level="3">
@@ -322,7 +322,7 @@
     <field name="script">host-deny.sh</field>
     <field name="type">add</field>
     <description>Host Blocked by host-deny.sh Active Response</description>
-    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
+    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
   </rule>
 
   <rule id="604" level="3">
@@ -330,7 +330,7 @@
     <field name="script">host-deny.sh</field>
     <field name="type">delete</field>
     <description>Host Unblocked by host-deny.sh Active Response</description>
-    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
+    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
   </rule>
 
   <rule id="605" level="3">
@@ -338,7 +338,7 @@
     <field name="script">route-null</field>
     <field name="type">add</field>
     <description>Host Blocked by $(script) Active Response</description>
-    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
+    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
   </rule>
 
   <rule id="606" level="3">
@@ -346,13 +346,13 @@
     <field name="script">route-null</field>
     <field name="type">delete</field>
     <description>Host Unblocked by $(script) Active Response</description>
-    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
+    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
   </rule>
 
   <rule id="607" level="3">
     <if_sid>600</if_sid>
     <description>Active response: $(script) - $(type)</description>
-    <group>active_response,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
+    <group>active_response,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
   </rule>
 
   <rule id="700" level="0">

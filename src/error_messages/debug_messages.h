@@ -2,14 +2,14 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * January 17, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
- #ifndef _DEBUG_MESSAGES__H
- #define _DEBUG_MESSAGES__H
+#ifndef DEBUG_MESSAGES_H
+#define DEBUG_MESSAGES_H
 
 /* vulnerability-detector messages*/
 #define VU_DOWNLOAD           "(5450): Downloading %s database..."
@@ -79,7 +79,7 @@
 #define FIM_CANNOT_ACCESS_FILE              "(6210): Cannot access '%s': it was removed during scan."
 #define FIM_SCANNING_FILE                   "(6211): File '%s'"
 #define FIM_SIMBOLIC_LINK_DISABLE           "(6212): Follow symbolic links disabled."
-#define FIM_CHECK_LINK_REALPATH             "(6213): Error checking realpath() of link '%s'"
+#define FIM_CHECK_LINK_REALPATH             "(6213): Cannot get the real path of the link '%s'"
 #define FIM_HASH_ADD_FAIL                   "(6214): Not enough memory to add inode to db: '%s' (%s) "
 #define FIM_HASH_UPDATE                     "(6215): Updating path '%s' in inode hash table: '%s' (%s) "
 #define FIM_SCANNING_IRREGFILE              "(6216): IRREG File: '%s'"
@@ -102,7 +102,6 @@
 #define FIM_WHODATA_SCAN                    "(6231): The '%s' directory has been scanned after detecting event of new files."
 #define FIM_WHODATA_SCAN_ABORTED            "(6232): Scanning of the '%s' directory is aborted because something has gone wrong."
 #define FIM_WHODATA_CHECKTHREAD             "(6233): Checking thread set to '%d' seconds."
-#define FIM_WHODATA_DEL_ADD                 "(6234): '%s' has been deleted and added after the last scan."
 #define FIM_WHODATA_FULLQUEUE               "(6235): Real-time Whodata events queue for Windows is full. Removing the first '%d'..."
 #define FIM_WHODATA_EVENT_DELETED           "(6236): '%d' events have been deleted from the whodata list."
 #define FIM_WHODATA_EVENTQUEUE_VALUES       "(6237): Whodata event queue values for Windows -> max_size:'%d' | max_remove:'%d' | alert_threshold:'%d'.",
@@ -184,5 +183,6 @@
 #define FIM_WHODATA_FOLDER_REMOVED          "(6308): File '%s' was inside the removed directory '%s'. It will be notified."
 #define FIM_WHODATA_IGNORE_FILEEVENT        "(6309): Ignoring remove event for file '%s' because it has already been reported."
 #define FIM_CHECKSUM_MSG                    "(6310): Sending msg to the server: '%s'."
+#define FIM_MONITORING_FILES_COUNT          "(6311): Number of indexed files %s scanning: %u."
 
-#endif
+#endif /* DEBUG_MESSAGES_H */

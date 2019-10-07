@@ -4,7 +4,11 @@
 
 #include "../os_regex/os_regex.h"
 #include "../os_regex/os_regex_internal.h"
+#include "../headers/pthreads_op.h"
 #include "tap.h"
+
+#define MAX_TEST_THREADS 10
+pthread_barrier_t   barrier;
 
 int test_success_match() {
 
@@ -744,6 +748,39 @@ int test_fail_str_starts_with() {
     return 1;
 }
 
+void *test_no_rc_exec_thread(__attribute__((unused)) void *regex){
+    pthread_barrier_wait (&barrier);
+    OSRegex_Execute_ex("Pattern", (OSRegex *) regex, NULL);
+}
+
+int test_no_rc_execute() {
+    int i;
+    int error;
+    pthread_t threads[MAX_TEST_THREADS];
+    OSRegex regex;
+
+    if ((error = !OSRegex_Compile("Pattern to compile.", &regex, 0))) {
+        goto end;
+    }
+
+    pthread_barrier_init (&barrier, NULL, MAX_TEST_THREADS);
+
+    for (i = 0; i < MAX_TEST_THREADS; i++) {
+        if (error = CreateThreadJoinable(&threads[i], test_no_rc_exec_thread, &regex), error) {
+            goto end;
+        }
+    }
+
+    for (i = 0; i < MAX_TEST_THREADS; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    OSRegex_FreePattern(&regex);
+end:
+    w_assert_int_eq(error, 0);
+    return 1;
+}
+
 int main(void) {
     printf("\n\n    STARTING TEST - OS_REGEX   \n\n");
 
@@ -837,6 +874,8 @@ int main(void) {
     // Not matching substring at the beginning of string
     TAP_TEST_MSG(test_fail_str_starts_with(), "Not matching substring at the beginning of string.");
 
+    // There is no race condition in OSRegex_Execute_ex
+    TAP_TEST_MSG(test_no_rc_execute(), "There is no race condition in OSRegex_Execute_ex().");
 
     TAP_PLAN;
     TAP_SUMMARY;

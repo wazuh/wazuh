@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -433,10 +433,7 @@ exit_fail:
 
 
 int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
-    char response[OS_SIZE_6144];
-    fd_set fdset;
-    struct timeval timeout = {0, 1000};
-    int size = strlen(wazuhdb_query);
+
     int retval = -2;
     int attempts;
 
@@ -458,6 +455,8 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
             return retval;
         }
     }
+
+    int size = strlen(wazuhdb_query);
 
     // Send query to Wazuh DB
     if (OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query) != 0) {
@@ -488,15 +487,9 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
         }
     }
 
-    // Wait for socket
-    FD_ZERO(&fdset);
-    FD_SET(sdb->socket, &fdset);
-
-    if (select(sdb->socket + 1, &fdset, NULL, NULL, &timeout) < 0) {
-        mterror(ARGV0, "FIM decoder: in select (%d) '%s'.", errno, strerror(errno));
-        return retval;
-    }
     retval = -1;
+
+    char response[OS_SIZE_6144];
 
     // Receive response from socket
     if (OS_RecvSecureTCP(sdb->socket, response, OS_SIZE_6144 - 1) > 0) {
@@ -1086,8 +1079,15 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
     }
 
     output = strchr(response, ' ');
-    *(output++) = '\0';
 
+    if (!output) {
+        merror("FIM decoder: Bad formatted response '%s'", response);
+        os_free(wazuhdb_query);
+        os_free(response);
+        return (-1);
+    }
+
+    *(output++) = '\0';
     *ts = atol(output);
 
     mdebug2("Agent '%s' FIM end_scan '%ld'", lf->agent_id, *ts);

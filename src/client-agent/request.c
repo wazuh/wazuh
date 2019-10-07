@@ -2,7 +2,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * June 2, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -27,9 +27,9 @@ static req_node_t ** req_pool;
 static volatile int pool_i = 0;
 static volatile int pool_j = 0;
 
-static pthread_mutex_t mutex_table = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t pool_available = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t mutex_table;
+static pthread_mutex_t mutex_pool;
+static pthread_cond_t pool_available;
 
 int request_pool;
 int rto_sec;
@@ -45,13 +45,17 @@ void req_init() {
     char *socket_sys = NULL;
     char *socket_wodle = NULL;
     char *socket_agent = NULL;
-    
+
     // Get values from internal options
 
     request_pool = getDefine_Int("remoted", "request_pool", 1, 4096);
     rto_sec = getDefine_Int("remoted", "request_rto_sec", 0, 60);
     rto_msec = getDefine_Int("remoted", "request_rto_msec", 0, 999);
     max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
+
+    w_mutex_init(&mutex_table, NULL);
+    w_mutex_init(&mutex_pool, NULL);
+    w_cond_init(&pool_available, NULL);
 
     // Create hash table and request pool
 
@@ -68,25 +72,25 @@ void req_init() {
         merror("At req_main(): OSHash_Create()");
         goto ret;
     }
-    
+
     socket_log = strdup(SOCKET_LOGCOLLECTOR);
     socket_sys = strdup(SOCKET_SYSCHECK);
     socket_wodle = strdup(SOCKET_WMODULES);
     socket_agent = strdup(SOCKET_AGENT);
-    
+
     if (!socket_log || !socket_sys || !socket_wodle || !socket_agent) {
         merror("At req_main(): failed to allocate socket strings");
         goto ret;
     }
-    
+
     if (OSHash_Add(allowed_sockets, SOCKET_LOGCOLLECTOR, socket_log) != 2 || OSHash_Add(allowed_sockets, SOCKET_SYSCHECK, socket_sys) != 2 || \
     OSHash_Add(allowed_sockets, SOCKET_WMODULES, socket_wodle) != 2 || OSHash_Add(allowed_sockets, SOCKET_AGENT, socket_agent) != 2) {
         merror("At req_main(): failed to add socket strings to hash list");
         goto ret;
     }
-    
+
     success = 1;
-    
+
 ret:
     if (!success) {
         if (req_pool) free(req_pool);
