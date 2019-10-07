@@ -22,21 +22,21 @@ const char * INTEGRITY_COMMANDS[] = {
 
 char * dbsync_check_msg(const char * component, dbsync_msg msg, long id, const char * start, const char * top, const char * tail, const char * checksum) {
     assert(msg < sizeof(INTEGRITY_COMMANDS) / sizeof(char *));
+    assert(id > 0);
 
     cJSON * root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "component", component);
     cJSON_AddStringToObject(root, "type", INTEGRITY_COMMANDS[msg]);
 
+    cJSON * data = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "data", data);
+    cJSON_AddNumberToObject(data, "id", id);
+
     if (msg != INTEGRITY_CLEAR) {
-        assert(id > 0);
         assert(start != NULL);
         assert(top != NULL);
         assert(checksum != NULL);
 
-        cJSON * data = cJSON_CreateObject();
-        cJSON_AddItemToObject(root, "data", data);
-
-        cJSON_AddNumberToObject(data, "id", id);
         cJSON_AddStringToObject(data, "begin", start);
         cJSON_AddStringToObject(data, "end", top);
 

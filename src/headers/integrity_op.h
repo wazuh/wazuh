@@ -54,6 +54,9 @@ extern const char * INTEGRITY_COMMANDS[];
  * {
  *   component: string
  *   type:      "integrity_clear"
+ *   data: {
+ *     id:      number
+ *   }
  * }
  *
  * @param component Name of the component.

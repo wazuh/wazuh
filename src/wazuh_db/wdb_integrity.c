@@ -267,20 +267,42 @@ end:
 }
 
 // Query a complete table clear
-int wdbi_query_clear(wdb_t * wdb, wdb_component_t component) {
+int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payload) {
     const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_CLEAR };
     assert(component < sizeof(INDEXES) / sizeof(int));
 
+    int retval = -1;
+    cJSON * data = cJSON_Parse(payload);
+
+    if (data == NULL) {
+        mdebug1("DB(%s): cannot parse checksum range payload: '%s'", wdb->agent_id, payload);
+        goto end;
+    }
+
+    cJSON * item = cJSON_GetObjectItem(data, "id");
+
+    if (!cJSON_IsNumber(item)) {
+        mdebug1("No such string 'id' in JSON payload.");
+        goto end;
+    }
+
+    long timestamp = item->valuedouble;
+
     if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
-        return -1;
+        goto end;
     }
 
     sqlite3_stmt * stmt = wdb->stmt[INDEXES[component]];
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
-        return -1;
+        goto end;
     }
 
-    return 0;
+    wdbi_update_completion(wdb, component, timestamp);
+    retval = 0;
+
+end:
+    cJSON_Delete(data);
+    return retval;
 }

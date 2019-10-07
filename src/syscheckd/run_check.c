@@ -22,7 +22,6 @@
 // Prototypes
 //static void send_sk_db(int first_scan);
 void * fim_run_realtime(__attribute__((unused)) void * args);
-void * fim_run_integrity(__attribute__((unused)) void * args);
 int fim_whodata_initialize();
 
 
