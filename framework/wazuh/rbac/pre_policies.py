@@ -36,11 +36,11 @@ class PreProcessor:
 
 def optimize_resources():
     # For production
-    rbac = RBAChecker(auth_context='{}')
-    policies = rbac.run()
+    # rbac = RBAChecker(auth_context='{}')
+    # policies = rbac.run()
 
     # Testing
-    # policies = RBAChecker.run_testing()
+    policies = RBAChecker.run_testing()
 
     preprocessor = PreProcessor()
     for policy in policies:
