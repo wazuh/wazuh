@@ -1,11 +1,11 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import itertools
+from wazuh.cluster.utils import get_cluster_status, manager_restart, read_cluster_config
 from wazuh.utils import md5, mkdir_with_mode
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
-from wazuh.manager import status, restart
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
 from wazuh.database import Connection
@@ -89,67 +89,12 @@ def get_cluster_items_worker_intervals():
 
 
 def read_config(config_file=common.ossec_conf):
-    cluster_default_configuration = {
-        'disabled': False,
-        'node_type': 'master',
-        'name': 'wazuh',
-        'node_name': 'node01',
-        'key': '',
-        'port': 1516,
-        'bind_addr': '0.0.0.0',
-        'nodes': ['NODE_IP'],
-        'hidden': 'no'
-    }
+    """
+    Returns the cluster configuration.
 
-    try:
-        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file)
-    except WazuhException as e:
-        if e.code == 1106:
-            # if no cluster configuration is present in ossec.conf, return default configuration but disabling it.
-            cluster_default_configuration['disabled'] = True
-            return cluster_default_configuration
-        else:
-            raise WazuhException(3006, e.message)
-    except Exception as e:
-        raise WazuhException(3006, str(e))
-
-    # if any value is missing from user's cluster configuration, add the default one:
-    for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
-        config_cluster[value_name] = cluster_default_configuration[value_name]
-
-    if isinstance(config_cluster['port'], str) and not config_cluster['port'].isdigit():
-        raise WazuhException(3004, "Cluster port must be an integer.")
-
-    config_cluster['port'] = int(config_cluster['port'])
-    if config_cluster['disabled'] == 'no':
-        config_cluster['disabled'] = False
-    elif config_cluster['disabled'] == 'yes':
-        config_cluster['disabled'] = True
-    elif not isinstance(config_cluster['disabled'], bool):
-        raise WazuhException(3004, "Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'".format(
-            config_cluster['disabled']))
-
-    # if config_cluster['node_name'].upper() == '$HOSTNAME':
-    #     # The HOSTNAME environment variable is not always available in os.environ so use socket.gethostname() instead
-    #     config_cluster['node_name'] = gethostname()
-
-    # if config_cluster['node_name'].upper() == '$NODE_NAME':
-    #     if 'NODE_NAME' in environ:
-    #         config_cluster['node_name'] = environ['NODE_NAME']
-    #     else:
-    #         raise WazuhException(3006, 'Unable to get the $NODE_NAME environment variable')
-
-    # if config_cluster['node_type'].upper() == '$NODE_TYPE':
-    #     if 'NODE_TYPE' in environ:
-    #         config_cluster['node_type'] = environ['NODE_TYPE']
-    #     else:
-    #         raise WazuhException(3006, 'Unable to get the $NODE_TYPE environment variable')
-
-    if config_cluster['node_type'] == 'client':
-        logger.info("Deprecated node type 'client'. Using 'worker' instead.")
-        config_cluster['node_type'] = 'worker'
-
-    return config_cluster
+    return: Dictionary with cluster configuration
+    """
+    return read_cluster_config(config_file=common.ossec_conf)
 
 
 def get_node():
@@ -171,8 +116,12 @@ def check_cluster_status():
 
 
 def get_status_json():
-    return {"enabled": "no" if check_cluster_status() else "yes",
-            "running": "yes" if status()['wazuh-clusterd'] == 'running' else "no"}
+    """
+    Returns the cluster status
+
+    :return: Dictionary with the cluster status.
+    """
+    return get_cluster_status()
 
 
 #
@@ -377,7 +326,7 @@ def restart_all_nodes():
 
     :return: Confirmation message.
     """
-    restart()
+    manager_restart()
     return "Restart request sent"
 
 

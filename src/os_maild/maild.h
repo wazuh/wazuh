@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
-#ifndef _MAILD_H
-#define _MAILD_H
+#ifndef MAILD_H
+#define MAILD_H
 
 #define MAIL_LIST_SIZE      96   /* Max number of emails to be saved */
 #define MAXCHILDPROCESS     6    /* Maximum simultaneous children */
@@ -77,6 +77,16 @@ size_t mailcom_getconfig(const char * section, char ** output);
 MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *mail, MailMsg **msg_sms) __attribute__((nonnull));
 MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *mail, MailMsg **msg_sms) __attribute__((nonnull));
 
+/**
+ * @brief Read cJSON and save in printed with email format
+ * @param item Pointer to the cJSON to read
+ * @param printed Body email
+ * @param body_size Maximun body message size
+ * @param tab Determine the number of tabs on each line
+ * @param counter Count the number of times that is tabulated in a line
+ */
+void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int counter);
+
 /* Send an email */
 int OS_Sendmail(MailConfig *mail, struct tm *p) __attribute__((nonnull));
 int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg) __attribute__((nonnull));
@@ -90,4 +100,4 @@ extern unsigned int   _g_subject_level;
 extern char _g_subject[SUBJECT_SIZE + 2];
 extern MailConfig mail;
 
-#endif
+#endif /* MAILD_H */

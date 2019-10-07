@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -28,6 +28,7 @@
 #include "analysisd.h"
 #include "fts.h"
 #include "cleanevent.h"
+#include "lists_make.h"
 
 /** Internal Functions **/
 void OS_ReadMSG(char *ut_str);
@@ -288,6 +289,7 @@ int main(int argc, char **argv)
                 free(Config.lists);
                 Config.lists = NULL;
             }
+            Lists_OP_MakeAll(0, 0);
         }
         {
             /* Load Rules */

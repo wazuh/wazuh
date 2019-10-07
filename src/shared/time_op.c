@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * October 4, 2017
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -50,7 +50,7 @@ void time_sub(struct timespec * a, const struct timespec * b) {
 
 long long int get_windows_time_epoch() {
     FILETIME ft = {0};
-    LARGE_INTEGER li = {0};  
+    LARGE_INTEGER li = {0};
 
     GetSystemTimeAsFileTime(&ft);
     li.LowPart = ft.dwLowDateTime;
@@ -62,7 +62,7 @@ long long int get_windows_time_epoch() {
 }
 
 long long int get_windows_file_time_epoch(FILETIME ft) {
-    LARGE_INTEGER li = {0};  
+    LARGE_INTEGER li = {0};
 
     li.LowPart = ft.dwLowDateTime;
     li.HighPart = ft.dwHighDateTime;

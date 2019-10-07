@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * May 20, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -165,7 +165,8 @@ char* local_dispatch(const char *input) {
     int ierror;
 
     if (input[0] == '{') {
-        if (request = cJSON_Parse(input), !request) {
+        const char *jsonErrPtr;
+        if (request = cJSON_ParseWithOpts(input, &jsonErrPtr, 0), !request) {
             ierror = EJSON;
             goto fail;
         }
@@ -283,7 +284,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
     // Check for duplicated ID
 
     if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
-        if (force) {
+        if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
             id_exist = keys.keyentries[index]->id;
             minfo("Duplicated ID '%s' (%s). Saving backup.", id, id_exist);
             add_backup(keys.keyentries[index]);

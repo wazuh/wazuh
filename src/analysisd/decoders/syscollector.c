@@ -2,7 +2,7 @@
 * Copyright (C) 2015-2019, Wazuh Inc.
 * August 30, 2017.
 *
-* This program is a free software; you can redistribute it
+* This program is free software; you can redistribute it
 * and/or modify it under the terms of the GNU General Public
 * License (version 2) as published by the FSF - Free Software
 * Foundation.
@@ -75,9 +75,12 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     }
 
     // Parsing event.
-    logJSON = cJSON_Parse(lf->log);
+
+    const char *jsonErrPtr;
+    logJSON = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0);
     if (!logJSON) {
-        mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
+        mdebug1("Error parsing JSON event.");
+        mdebug2("Input JSON: '%s", lf->log);
         return (0);
     }
 
@@ -1561,11 +1564,7 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
 }
 
 int sc_send_db(char *msg, int *sock) {
-    char response[OS_SIZE_128 + 1];
-    ssize_t length;
-    fd_set fdset;
-    struct timeval timeout = {0, 1000};
-    int size = strlen(msg);
+
     int retval = -1;
     int attempts;
 
@@ -1587,6 +1586,8 @@ int sc_send_db(char *msg, int *sock) {
             goto end;
         }
     }
+
+    int size = strlen(msg);
 
     // Send msg to Wazuh DB
     if (OS_SendSecureTCP(*sock, size + 1, msg) != 0) {
@@ -1618,14 +1619,8 @@ int sc_send_db(char *msg, int *sock) {
         }
     }
 
-    // Wait for socket
-    FD_ZERO(&fdset);
-    FD_SET(*sock, &fdset);
-
-    if (select(*sock + 1, &fdset, NULL, NULL, &timeout) < 0) {
-        merror("at sc_send_db(): at select(): %s (%d)", strerror(errno), errno);
-        goto end;
-    }
+    char response[OS_SIZE_128 + 1];
+    ssize_t length;
 
     // Receive response from socket
     length = OS_RecvSecureTCP(*sock, response, OS_SIZE_128);
@@ -1639,7 +1634,7 @@ int sc_send_db(char *msg, int *sock) {
             goto end;
 
         default:
-            response[length] = '\0';
+            response[length >= 0 ? length : 0] = '\0';
 
             if (strcmp(response, "ok")) {
                 merror("at sc_send_db(): received: '%s'", response);
