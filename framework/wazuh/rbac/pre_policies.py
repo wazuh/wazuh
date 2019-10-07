@@ -9,9 +9,9 @@ need_clean = dict()
 
 
 class PreProcessor:
-    def __init__(self, odict):
+    def __init__(self):
         self.need_clean = dict()
-        self.odict = odict
+        self.odict = dict()
 
     def remove_previous_elements(self, resource, action):
         resource_name = ':'.join(resource.split(':')[0:-1])
@@ -36,12 +36,13 @@ class PreProcessor:
 
 def optimize_resources():
     # For production
-    # rbac = RBAChecker(auth_context='AUTHORIZATION CONTEXT (JSON)')
-    # policies = rbac.run()
+    rbac = RBAChecker(auth_context='{}')
+    policies = rbac.run()
 
     # Testing
-    policies = RBAChecker.run_testing()
-    preprocessor = PreProcessor(odict=dict())
+    # policies = RBAChecker.run_testing()
+
+    preprocessor = PreProcessor()
     for policy in policies:
         preprocessor.process_policy(policy)
 
