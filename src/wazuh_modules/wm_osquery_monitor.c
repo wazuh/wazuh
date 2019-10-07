@@ -637,8 +637,10 @@ void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor)
         for (i = 0; osquery_monitor->packs[i]; ++i) {
             free(osquery_monitor->packs[i]->name);
             free(osquery_monitor->packs[i]->path);
+            free(osquery_monitor->packs[i]);
         }
 
+        free(osquery_monitor->packs);
         free(osquery_monitor);
     }
 }

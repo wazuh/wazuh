@@ -31,7 +31,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
                               char **output)
 {
     int i = 0;
-    char message[OS_FLSIZE];
     const char *osglobal = "global";                    /* Server Config */
     const char *osrules = "ruleset";                    /* Server Config */
     const char *ossyscheck = "syscheck";                /* Agent Config  */
@@ -530,6 +529,10 @@ int Test_Analysisd(const char *path, char **output) {
 
     /* Free memory */
     config_free(test_config);
+
+    if (output) {
+        free(test_config);
+    }
 
     if(fail) {
         return OS_INVALID;

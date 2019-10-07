@@ -980,6 +980,7 @@ void config_free(_Config *config) {
         int i = 0;
         while (config->white_list[i]) {
             free(config->white_list[i]->ip);
+            free (config->white_list[i]);
             i++;
         }
         free(config->white_list);
@@ -1020,6 +1021,7 @@ void config_free(_Config *config) {
         int i = 0;
         while (config->hostname_white_list[i]) {
             OSMatch_FreePattern(config->hostname_white_list[i]);
+            free(config->hostname_white_list[i]);
             i++;
         }
         free(config->hostname_white_list);

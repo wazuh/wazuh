@@ -74,11 +74,19 @@ int Test_Maild(const char *path, char **output) {
     /* Free memory */
     config_free(global_config);
     freeMailConfig(mail_config);
+    if (output) {
+        free(global_config);
+        free(mail_config);
+    }
     return 0;
 
 fail:
     config_free(global_config);
     freeMailConfig(mail_config);
+    if (output) {
+        free(global_config);
+        free(mail_config);
+    }
     return OS_INVALID;
 }
 

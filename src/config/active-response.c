@@ -602,6 +602,25 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
         return (-1);
     }
 
+    if (output) {
+        if (tmp_command->name) {
+            free (tmp_command->name);
+        }
+        
+        if (tmp_command->executable) {
+            free (tmp_command->executable);
+        }
+
+        if (tmp_command->extra_args) {
+            free (tmp_command->extra_args);
+        }
+
+        if (tmp_command) {
+            free (tmp_command);
+        }
+
+    }
+
     return (0);
 }
 
@@ -635,6 +654,9 @@ int Test_ActiveResponse(const char *path, int type, char **output) {
     /* Frees the LogReader config struct */
     Free_OSList(test_activecmd);
     Free_OSList(test_activeresp);
+
+    os_free (test_activecmd);
+    os_free (test_activeresp);
 
     if (fail) {
         return OS_INVALID;

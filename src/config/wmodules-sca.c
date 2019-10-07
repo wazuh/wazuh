@@ -184,8 +184,8 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, char **outp
         minfo("Could not open the default SCA ruleset folder '%s': %s", ruleset_path, strerror(open_dir_errno));
     }
 
-    if(!sca->alert_msg) {
-        /* We store up to 255 alerts */
+    if((!sca->alert_msg) && !(output)) {
+        /* We store up to 255 alerts in there */
         os_calloc(256, sizeof(char *), sca->alert_msg);
     }
 

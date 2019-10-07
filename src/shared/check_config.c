@@ -133,6 +133,8 @@ int validate_target(const char *path, int type, char **output) {
                 path, xml.err, xml.err_line);
             wm_strcat(output, message, '\n');
         }
+
+        OS_ClearXML(&xml);
         return (OS_INVALID);
     }
 
@@ -156,7 +158,7 @@ int validate_target(const char *path, int type, char **output) {
         } else if ((type & CRMOTE_CONFIG) && (strcmp(node[i]->element, xml_start_ossec) == 0)) {
             snprintf(message, OS_FLSIZE + 1,
                 "Invalid configuration file target: '%s' when expected: '%s'.", 
-                node[i]->element, xml_start_ossec);
+                node[i]->element, xml_start_agent);
             wm_strcat(output, message, '\n');
             break;
         } else {

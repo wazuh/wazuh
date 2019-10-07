@@ -152,6 +152,5 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module, char **output)
 
     }
 
-
     return 0;
 }
