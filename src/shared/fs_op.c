@@ -148,7 +148,6 @@ bool HasFilesystem(__attribute__((unused))const char * path, __attribute__((unus
     }
 
 #else
-    mdebug2("Attempted to check FS status for '%s'. This operation is not supported on this OS.", path);
     (void)path;
     (void)set;
 #endif

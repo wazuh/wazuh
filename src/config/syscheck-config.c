@@ -363,12 +363,12 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 #endif
 
-        /* Get the options */
+        /* Get the options
         if (!g_attrs || !g_values) {
             mwarn(FIM_NO_OPTIONS, dirs);
             ret = 0;
             goto out_free;
-        }
+        }*/
 
         attrs = g_attrs;
         values = g_values;
@@ -376,8 +376,18 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         /* Default values */
         opts &= ~ CHECK_FOLLOW;
         opts |= SCHEDULED_ACTIVE;
+        opts |= CHECK_SIZE;
+        opts |= CHECK_PERM;
+        opts |= CHECK_OWNER;
+        opts |= CHECK_GROUP;
+        opts |= CHECK_SHA256SUM;
+        opts |= CHECK_MTIME;
+        opts |= CHECK_INODE;
+#ifdef WIN32
+        opts |= CHECK_ATTRS;
+#endif
 
-        while (*attrs && *values) {
+        while (attrs && values && *attrs && *values) {
             /* Check all */
             if (strcmp(*attrs, xml_check_all) == 0) {
                 if (strcmp(*values, "yes") == 0) {
@@ -696,13 +706,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         strncpy(expandedpath, tmp_dir, sizeof(expandedpath) - 1);
 #endif
         ptfile = expandedpath;
-        ptfile += strlen(expandedpath) - 1;
+        int size_expanded = strlen(expandedpath);
+        ptfile += size_expanded - 1;
 
-        if (*ptfile == '/'
-#ifdef WIN32
-            || *ptfile == '\\'
-#endif
-        ) {
+        if (*ptfile == PATH_SEP && size_expanded > 1) {
             *ptfile = '\0';
         }
 
