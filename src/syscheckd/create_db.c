@@ -97,7 +97,7 @@ int fim_directory (char * path, int dir_position, fim_event_mode mode, whodata_e
     dp = opendir(path);
 
     if (!dp) {
-        merror(FIM_PATH_NOT_OPEN, path, strerror(errno));
+        mwarn(FIM_PATH_NOT_OPEN, path, strerror(errno));
         return (-1);
     }
 
@@ -166,6 +166,7 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
         if (entry_data = fim_get_data(file_name, file_stat, mode, options), !entry_data) {
             merror("Couldn't get attributes for file: '%s'", file_name);
             os_free(file_stat);
+            w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
     }
@@ -207,8 +208,8 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (!_base_line && options & CHECK_SEECHANGES && !deleted_flag) {
-        // The first backup is created
-        seechanges_addfile(file_name);
+        // The first backup is created. It should return NULL.
+        free(seechanges_addfile(file_name));
     }
 
     if (json_event && _base_line) {
@@ -228,8 +229,6 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
     int dir_position = 0;
     int depth = 0;
 
-    mdebug1("~~ Process event(mode:%d): '%s'", mode, file);
-
     if (fim_check_ignore(file) == 1) {
         return (0);
     }
@@ -247,8 +246,8 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
     if (mode == FIM_SCHEDULED || mode == FIM_MODE(syscheck.opts[dir_position])) {
         depth = fim_check_depth(file, dir_position);
         //minfo("~~Depth from parent path: '%d' recursion level:'%d'", depth, syscheck.recursion_level[dir_position]);
-        if(depth >= syscheck.recursion_level[dir_position]) {
-            minfo("~~ Maximum depth reached: %s", file);
+        if(depth > syscheck.recursion_level[dir_position]) {
+            mdebug1("Maximum depth reached: depth:%d recursion_level:%d '%s'", depth, syscheck.recursion_level[dir_position], file);
             return 0;
         }
 
@@ -256,7 +255,7 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
         if (w_stat(file, &file_stat) < 0) {
             // Regular file
             if (fim_check_file(file, dir_position, mode, w_evt) < 0) {
-                merror("Skiping file: '%s'", file);
+                mwarn("Skiping file: '%s'", file);
             }
         } else {
             // Should we check for NFS/dev/sys/proc?
@@ -269,7 +268,7 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
                 case FIM_REGULAR:
                     // Regular file
                     if (fim_check_file(file, dir_position, mode, w_evt) < 0) {
-                        merror("Skip event: '%s'", file);
+                        mwarn("Skip event: '%s'", file);
                     }
                     break;
 
@@ -284,13 +283,13 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
                     break;
 #endif
                 default:
-                    mdebug1("~~ Unsupported file type(mode:%d): '%s'", mode, file);
+                    mdebug2("~~~~ Unsupported file type(mode:%d): '%s'", mode, file);
                     // Unsupported file type
                     return 0;
             }
         }
     } else {
-        minfo("~~~~ Different configuration applied to file '%s'", file);
+        mdebug2("~~~~ Different configuration applied to file '%s'", file);
     }
 
     return 0;
@@ -301,8 +300,6 @@ void fim_audit_inode_event(whodata_evt * w_evt) {
     fim_inode_data * inode_data;
     struct stat file_stat;
     char *key_inodehash;
-
-    mdebug1("~~ Inode event: (%s)'%s'", w_evt->inode, w_evt->path);
 
     os_calloc(OS_SIZE_128, sizeof(char), key_inodehash);
     snprintf(key_inodehash, OS_SIZE_128, "%s:%s", w_evt->dev, w_evt->inode);
@@ -375,7 +372,6 @@ int fim_registry_event (char * key, fim_entry_data * data, int pos) {
         }
         result = 1;
     } else {
-        minfo("fim_registry_event:%p'%s'%s", saved_data, key, saved_data->hash_sha256);
         if (strcmp(saved_data->hash_sha256, data->hash_sha256) != 0) {
             json_event = fim_json_event(key, saved_data, data, pos, FIM_MODIFICATION, 0, NULL);
             fim_update(key, data);
@@ -390,7 +386,6 @@ int fim_registry_event (char * key, fim_entry_data * data, int pos) {
 
     if (json_event && _base_line) {
         json_formated = cJSON_PrintUnformatted(json_event);
-        minfo("json_formated:'%s'", json_formated);
         send_syscheck_msg(json_formated);
         os_free(json_formated);
         cJSON_Delete(json_event);
@@ -445,18 +440,16 @@ int fim_configuration_directory(const char * path, const char entry[]) {
 // Evaluates the depth of the directory or file to check if it exceeds the configured max_depth value
 int fim_check_depth(char * path, int dir_position) {
     char * pos;
-    int depth = 0;
+    int depth = -1;
     unsigned int parent_path_size;
 
     if (!syscheck.dir[dir_position]) {
-        minfo("~~Invalid parent path.");
         return -1;
     }
 
     parent_path_size = strlen(syscheck.dir[dir_position]);
 
     if (parent_path_size > strlen(path)) {
-        minfo("~~Parent directory < path: %s < %s", syscheck.dir[dir_position], path);
         return -1;
     }
 
@@ -489,11 +482,23 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
 #ifdef WIN32
         int error;
         char perm_unescaped[OS_SIZE_6144 + 1];
+
         if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
-            merror(FIM_ERROR_EXTRACT_PERM, file_name, error);
+            mwarn(FIM_WARN_EXTRACT_PERM, file_name, error);
+            free_entry_data(data);
+            return NULL;
         } else {
-            data->perm = escape_perm_sum(perm_unescaped);
+            int size;
+            os_strdup(escape_perm_sum(perm_unescaped), data->win_perm_mask);
+            os_calloc(OS_SIZE_20480, sizeof(char), data->perm);
+
+            if (size = decode_win_permissions(data->perm, OS_SIZE_20480, data->win_perm_mask, 0, NULL), size > 1) {
+                os_realloc(data->perm, size + 1, data->perm);
+            }
         }
+
+        os_calloc(OS_SIZE_256, sizeof(char), data->attributes);
+        decode_win_attributes(data->attributes, w_get_file_attrs(file_name));
 #else
         data->perm = agent_file_perm(file_stat->st_mode);
 #endif
@@ -550,7 +555,7 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
                                         data->hash_sha256,
                                         OS_BINARY,
                                         syscheck.file_max_size) < 0) {
-                merror("Couldn't generate hashes for '%s'", file_name);
+                mdebug1("Couldn't generate hashes for '%s'", file_name);
                 free_entry_data(data);
                 return NULL;
         }
@@ -573,7 +578,7 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
     data->options = options;
     data->last_event = time(NULL);
     data->scanned = 1;
-    // Set file entry type
+    // Set file entry type, registry or file
     data->entry_type = fim_entry_type[0];
     fim_get_checksum(data);
 
@@ -585,6 +590,7 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
 void init_fim_data_entry(fim_entry_data *data) {
     data->size = 0;
     data->perm = NULL;
+    data->attributes = NULL;
     data->uid = NULL;
     data->gid = NULL;
     data->user_name = NULL;
@@ -606,9 +612,10 @@ void fim_get_checksum (fim_entry_data * data) {
 
     size = snprintf(checksum,
             OS_SIZE_128,
-            "%d:%s:%s:%s:%s:%s:%d:%lu:%s:%s:%s",
+            "%d:%s:%s:%s:%s:%s:%s:%d:%lu:%s:%s:%s",
             data->size,
             data->perm,
+            data->attributes,
             data->uid,
             data->gid,
             data->user_name,
@@ -627,9 +634,10 @@ void fim_get_checksum (fim_entry_data * data) {
         os_realloc(checksum, (size + 1) * sizeof(char), checksum);
         snprintf(checksum,
                 size + 1,
-                "%d:%s:%s:%s:%s:%s:%d:%lu:%s:%s:%s",
+                "%d:%s:%s:%s:%s:%s:%s:%d:%lu:%s:%s:%s",
                 data->size,
                 data->perm,
+                data->attributes,
                 data->uid,
                 data->gid,
                 data->user_name,
@@ -641,7 +649,7 @@ void fim_get_checksum (fim_entry_data * data) {
                 data->hash_sha256);
     }
 
-    OS_SHA1_Str(checksum, sizeof(checksum), data->checksum);
+    OS_SHA1_Str(checksum, -1, data->checksum);
     free(checksum);
 }
 
@@ -649,8 +657,6 @@ void fim_get_checksum (fim_entry_data * data) {
 // Inserts a file in the syscheck hash table structure (inodes and paths)
 int fim_insert (char * file, fim_entry_data * data, __attribute__((unused))struct stat *file_stat) {
     char * inode_key = NULL;
-
-    minfo("fim_insert:%p(%s) '%s'", data, file, data->hash_sha256);
 
     if (rbtree_insert(syscheck.fim_entry, file, data) == NULL) {
         minfo("Duplicate path: '%s'", file);
@@ -692,14 +698,11 @@ int fim_insert (char * file, fim_entry_data * data, __attribute__((unused))struc
 int fim_update (char * file, fim_entry_data * data) {
     char * inode_key;
 
-    minfo("fim_update:%p(%s) '%s'", data, file, data->hash_sha256);
-
     os_calloc(OS_SIZE_128, sizeof(char), inode_key);
     snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)data->dev, (unsigned long)data->inode);
 
     if (!file || strcmp(file, "") == 0 || !inode_key || strcmp(inode_key, "") == 0) {
-        merror("Can't update entry invalid file or inode");
-        // TODO: Consider if we should exit here. Change to debug message
+        merror_exit("Can't update entry invalid file or inode");
     }
 
     if (rbtree_replace(syscheck.fim_entry, file, data) == NULL) {
@@ -891,7 +894,11 @@ cJSON * fim_attributes_json(const fim_entry_data * data) {
     }
 
     if (data->options & CHECK_PERM) {
+#ifdef WIN32
+        cJSON_AddStringToObject(attributes, "perm", data->win_perm_mask);
+#else
         cJSON_AddStringToObject(attributes, "perm", data->perm);
+#endif
     }
 
     if (data->options & CHECK_OWNER) {
@@ -930,10 +937,11 @@ cJSON * fim_attributes_json(const fim_entry_data * data) {
         cJSON_AddStringToObject(attributes, "hash_sha256", data->hash_sha256);
     }
 
-    // TODO: Read structure.
+#ifdef WIN32
     if (data->options & CHECK_ATTRS) {
-        cJSON_AddStringToObject(attributes, "win_attributes", "");
+        cJSON_AddStringToObject(attributes, "win_attributes", data->attributes);
     }
+#endif
 
     if (*data->checksum) {
         cJSON_AddStringToObject(attributes, "checksum", data->checksum);
@@ -971,6 +979,12 @@ cJSON * fim_json_compare_attrs(const fim_entry_data * old_data, const fim_entry_
     if ( (old_data->options & CHECK_PERM) && strcmp(old_data->perm, new_data->perm) != 0 ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
     }
+
+#ifdef WIN32
+    if ( (old_data->options & CHECK_ATTRS) && strcmp(old_data->attributes, new_data->attributes) != 0 ) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("attributes"));
+    }
+#endif
 
     if (old_data->options & CHECK_OWNER) {
         if (old_data->uid && new_data->uid && strcmp(old_data->uid, new_data->uid) != 0) {
@@ -1022,18 +1036,20 @@ cJSON * fim_json_compare_attrs(const fim_entry_data * old_data, const fim_entry_
 cJSON * fim_audit_json(const whodata_evt * w_evt) {
     cJSON * fim_audit = cJSON_CreateObject();
 
+    cJSON_AddStringToObject(fim_audit, "path", w_evt->path);
     cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
     cJSON_AddStringToObject(fim_audit, "user_name", w_evt->user_name);
+    cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
+    cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
+#ifndef WIN32
     cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
     cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
-    cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
-    cJSON_AddStringToObject(fim_audit, "path", w_evt->path);
     cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
     cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
     cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
     cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
     cJSON_AddNumberToObject(fim_audit, "ppid", w_evt->ppid);
-    cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
+#endif
 
     return fim_audit;
 }
@@ -1086,6 +1102,9 @@ void free_entry_data(fim_entry_data * data) {
     if (data->perm) {
         os_free(data->perm);
     }
+    if (data->attributes) {
+        os_free(data->attributes);
+    }
     if (data->uid) {
 #ifdef WIN32
         LocalFree(data->uid);
@@ -1101,6 +1120,9 @@ void free_entry_data(fim_entry_data * data) {
     }
     if (data->group_name) {
         os_free(data->group_name);
+    }
+    if (data->win_perm_mask) {
+        os_free(data->win_perm_mask);
     }
     os_free(data);
 }

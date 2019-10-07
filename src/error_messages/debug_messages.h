@@ -162,7 +162,7 @@
 #define FIM_CONFIGURATION_FILE              "(6287): Reading configuration file: '%s'."
 #define FIM_SCAL_NOREFRESH                  "(6288): Could not refresh the SACL of '%s'. Its event will not be reported."
 #define FIM_DISCARD_RECYCLEBIN              "(6289): File '%s' is in the recycle bin. It will be discarded."
-#define FIM_PATH_NOT_OPEN                   "(6290): Cannot open '%s': %s "
+
 #define FIM_WHODATA_REPLACELINK             "(6291): Replacing the symbolic link: '%s' -> '%s'."
 
 #define FIM_WHODATA_FILENOEXIST             "(6292): The '%s' file does not exist, but this will be notified when the corresponding event is received."

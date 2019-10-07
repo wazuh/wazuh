@@ -243,12 +243,37 @@ void OS_LogOutput(Eventinfo *lf)
             }
         }
 
+        if (lf->attributes_after) {
+            if (lf->attributes_after && strcmp(lf->attributes_after, "") != 0) {
+                printf(" - File attributes: %s\n", lf->attributes_after);
+            }
+        }
+
         if (lf->attrs_after != 0) {
             char *attributes_list;
             os_calloc(OS_SIZE_256 + 1, sizeof(char), attributes_list);
             decode_win_attributes(attributes_list, lf->attrs_after);
             printf(" - File attributes: %s\n", attributes_list);
             free(attributes_list);
+        }
+
+        if (lf->fields[FIM_USER_NAME].value && strcmp(lf->fields[FIM_USER_NAME].value, "") != 0) {
+            printf(" - (Audit) %s: %s\n", "User name", lf->fields[FIM_USER_NAME].value);
+        }
+        if (lf->fields[FIM_AUDIT_NAME].value && strcmp(lf->fields[FIM_AUDIT_NAME].value, "") != 0) {
+            printf(" - (Audit) %s: %s\n", "Audit name", lf->fields[FIM_AUDIT_NAME].value);
+        }
+        if (lf->fields[FIM_EFFECTIVE_NAME].value && strcmp(lf->fields[FIM_EFFECTIVE_NAME].value, "") != 0) {
+            printf(" - (Audit) %s: %s\n", "Effective name", lf->fields[FIM_EFFECTIVE_NAME].value);
+        }
+        if (lf->fields[FIM_GROUP_NAME].value && strcmp(lf->fields[FIM_GROUP_NAME].value, "") != 0) {
+            printf(" - (Audit) %s: %s\n", "Group name", lf->fields[FIM_GROUP_NAME].value);
+        }
+        if (lf->fields[FIM_PROC_ID].value && strcmp(lf->fields[FIM_PROC_ID].value, "") != 0) {
+            printf(" - (Audit) %s: %s\n", "Process id", lf->fields[FIM_PROC_ID].value);
+        }
+        if (lf->fields[FIM_PROC_NAME].value && strcmp(lf->fields[FIM_PROC_NAME].value, "") != 0) {
+            printf(" - (Audit) %s: %s\n", "Process name", lf->fields[FIM_PROC_NAME].value);
         }
     }
 
@@ -424,6 +449,12 @@ void OS_Log(Eventinfo *lf)
             }
         }
 
+        if (lf->attributes_after) {
+            if (lf->attributes_after && strcmp(lf->attributes_after, "") != 0) {
+                fprintf(_aflog, " - File attributes: %s\n", lf->attributes_after);
+            }
+        }
+
         if (lf->attrs_after != 0) {
             char *attributes_list;
             os_calloc(OS_SIZE_256 + 1, sizeof(char), attributes_list);
@@ -433,22 +464,22 @@ void OS_Log(Eventinfo *lf)
         }
 
         if (lf->fields[FIM_USER_NAME].value && strcmp(lf->fields[FIM_USER_NAME].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", lf->fields[FIM_USER_NAME].key, lf->fields[FIM_USER_NAME].value);
+            fprintf(_aflog, " - (Audit) %s: %s\n", "User name", lf->fields[FIM_USER_NAME].value);
         }
         if (lf->fields[FIM_AUDIT_NAME].value && strcmp(lf->fields[FIM_AUDIT_NAME].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", lf->fields[FIM_AUDIT_NAME].key, lf->fields[FIM_AUDIT_NAME].value);
+            fprintf(_aflog, " - (Audit) %s: %s\n", "Audit name", lf->fields[FIM_AUDIT_NAME].value);
         }
         if (lf->fields[FIM_EFFECTIVE_NAME].value && strcmp(lf->fields[FIM_EFFECTIVE_NAME].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", lf->fields[FIM_EFFECTIVE_NAME].key, lf->fields[FIM_EFFECTIVE_NAME].value);
+            fprintf(_aflog, " - (Audit) %s: %s\n", "Effective name", lf->fields[FIM_EFFECTIVE_NAME].value);
         }
         if (lf->fields[FIM_GROUP_NAME].value && strcmp(lf->fields[FIM_GROUP_NAME].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", lf->fields[FIM_GROUP_NAME].key, lf->fields[FIM_GROUP_NAME].value);
+            fprintf(_aflog, " - (Audit) %s: %s\n", "Group name", lf->fields[FIM_GROUP_NAME].value);
         }
         if (lf->fields[FIM_PROC_ID].value && strcmp(lf->fields[FIM_PROC_ID].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", lf->fields[FIM_PROC_ID].key, lf->fields[FIM_PROC_ID].value);
+            fprintf(_aflog, " - (Audit) %s: %s\n", "Process id", lf->fields[FIM_PROC_ID].value);
         }
         if (lf->fields[FIM_PROC_NAME].value && strcmp(lf->fields[FIM_PROC_NAME].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", lf->fields[FIM_PROC_NAME].key, lf->fields[FIM_PROC_NAME].value);
+            fprintf(_aflog, " - (Audit) %s: %s\n", "Process name", lf->fields[FIM_PROC_NAME].value);
         }
 
         if (lf->fields[FIM_DIFF].value) {

@@ -74,10 +74,6 @@ DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
 DEFINES+=-DGROUPGLOBAL=\"${OSSEC_GROUP}\"
 DEFINES+=-DMAILUSER=\"${OSSEC_USER_MAIL}\"
 
-OSSEC_CFLAGS = ${CFLAGS}
-OSSEC_LDFLAGS = ${LDFLAGS}
-OSSEC_LIBS = $(LIBS)
-
 ifneq (${TARGET},winagent)
 		DEFINES+=-D${uname_S}
 ifeq (${uname_S},Linux)
@@ -89,10 +85,10 @@ ifeq (${uname_S},Linux)
 #		OSSEC_LDFLAGS+=-lmagic
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
-		CFLAGS+=-Wl,--start-group
+		OSSEC_CFLAGS+=-Wl,--start-group
 		USE_AUDIT=yes
 ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
-		CFLAGS+=-I$(EXTERNAL_AUDIT)lib
+		OSSEC_CFLAGS+=-I$(EXTERNAL_AUDIT)lib
 endif
 else
 ifeq (${uname_S},AIX)
@@ -223,7 +219,9 @@ OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
 OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include
 
-
+OSSEC_CFLAGS += ${CFLAGS}
+OSSEC_LDFLAGS += ${LDFLAGS}
+OSSEC_LIBS += $(LIBS)
 
 CCCOLOR="\033[34m"
 LINKCOLOR="\033[34;1m"
@@ -486,6 +484,7 @@ settings:
 	@echo "    ONEWAY:             ${ONEWAY}"
 	@echo "    CLEANFULL:          ${CLEANFULL}"
 	@echo "    RESOURCES_URL:      ${RESOURCES_URL}"
+	@echo "    DISABLE_SHARED:     ${DISABLE_SHARED}"
 	@echo "User settings:"
 	@echo "    OSSEC_GROUP:        ${OSSEC_GROUP}"
 	@echo "    OSSEC_USER:         ${OSSEC_USER}"
@@ -511,6 +510,7 @@ settings:
 	@echo "Compiler:"
 	@echo "    CFLAGS            ${OSSEC_CFLAGS}"
 	@echo "    LDFLAGS           ${OSSEC_LDFLAGS}"
+	@echo "    LIBS              ${OSSEC_LIBS}"
 	@echo "    CC                ${CC}"
 	@echo "    MAKE              ${MAKE}"
 

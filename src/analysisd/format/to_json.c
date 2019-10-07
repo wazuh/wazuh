@@ -180,7 +180,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if (lf->win_perm_before && *lf->win_perm_before != '\0') {
             cJSON *old_perm;
             if (old_perm = perm_to_json(lf->win_perm_before), old_perm) {
-                cJSON_AddItemToObject(file_diff, "win_perm_before", old_perm);
+                cJSON_AddItemToObject(file_diff, "perm_before", old_perm);
             } else {
                 merror("The old permissions could not be added to the JSON alert.");
             }
@@ -190,7 +190,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if (lf->win_perm_after && *lf->win_perm_after != '\0') {
             cJSON *new_perm;
             if (new_perm = perm_to_json(lf->win_perm_after), new_perm) {
-                cJSON_AddItemToObject(file_diff, "win_perm_after", new_perm);
+                cJSON_AddItemToObject(file_diff, "perm_after", new_perm);
             } else {
                 merror("The new permissions could not be added to the JSON alert.");
             }
@@ -256,7 +256,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                     merror("The old attributes could not be added to the JSON alert.");
                 }
             }
+        } else if (lf->attributes_before) {
+            cJSON_AddStringToObject(file_diff, "attrs_before", lf->attributes_before);
         }
+
         if(lf->attrs_after) {
             if (lf->attrs_after != 0) {
                 cJSON *new_attrs;
@@ -266,7 +269,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                     merror("The new attributes could not be added to the JSON alert.");
                 }
             }
+        } else if (lf->attributes_after) {
+            cJSON_AddStringToObject(file_diff, "attrs_after", lf->attributes_after);
         }
+
         if(lf->uname_before) {
             if (strcmp(lf->uname_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "uname_before", lf->uname_before);
@@ -382,7 +388,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
     if(lf->data)
         cJSON_AddStringToObject(data, "data", lf->data);
-    
+
     if(lf->extra_data)
         cJSON_AddStringToObject(data, "extra_data", lf->extra_data);
 
@@ -399,25 +405,25 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON* euser_sect = NULL;
 
         // User section
-        add_json_field(user_sect, "id", lf->user_id, "");
-        add_json_field(user_sect, "name", lf->user_name, "");
+        add_json_field(user_sect, "id", lf->fields[FIM_USER_ID].value, "");
+        add_json_field(user_sect, "name", lf->fields[FIM_USER_NAME].value, "");
 
         // Group sect
-        add_json_field(group_sect, "id", lf->group_id, "");
-        add_json_field(group_sect, "name", lf->group_name, "");
+        add_json_field(group_sect, "id", lf->fields[FIM_GROUP_ID].value, "");
+        add_json_field(group_sect, "name", lf->fields[FIM_GROUP_NAME].value, "");
 
         // Process section
-        add_json_field(process_sect, "id", lf->process_id, "");
-        add_json_field(process_sect, "name", lf->process_name, "");
-        add_json_field(process_sect, "ppid", lf->ppid, "");
+        add_json_field(process_sect, "id", lf->fields[FIM_PROC_ID].value, "");
+        add_json_field(process_sect, "name", lf->fields[FIM_PROC_NAME].value, "");
+        add_json_field(process_sect, "ppid", lf->fields[FIM_PPID].value, "");
 
         // Auser sect
-        add_json_field(auser_sect, "id", lf->audit_uid, "");
-        add_json_field(auser_sect, "name", lf->audit_name, "");
+        add_json_field(auser_sect, "id", lf->fields[FIM_AUDIT_ID].value, "");
+        add_json_field(auser_sect, "name", lf->fields[FIM_AUDIT_NAME].value, "");
 
         // Effective user
-        add_json_field(euser_sect, "id", lf->effective_uid, "");
-        add_json_field(euser_sect, "name", lf->effective_name, "");
+        add_json_field(euser_sect, "id", lf->fields[FIM_EFFECTIVE_UID].value, "");
+        add_json_field(euser_sect, "name", lf->fields[FIM_EFFECTIVE_NAME].value, "");
 
         if (user_sect || process_sect || group_sect || auser_sect || euser_sect) {
             audit_sect = cJSON_CreateObject();

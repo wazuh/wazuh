@@ -20,10 +20,6 @@
 /* Notify list size */
 #define NOTIFY_LIST_SIZE    32
 
-// Number of attributes in the hash table
-#define SK_DB_NATTR 11
-#define SK_DB_REPORT_CHANG 10
-
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
 
 #ifdef WIN32
@@ -39,7 +35,16 @@
 extern syscheck_config syscheck;
 extern int sys_debug_level;
 
-/** Function Prototypes **/
+typedef enum fim_event_type {
+    FIM_ADD,
+    FIM_DELETE,
+    FIM_MODIFICATION
+} fim_event_type;
+
+typedef enum fim_scan_event {
+    FIM_SCAN_START,
+    FIM_SCAN_END
+} fim_scan_event;
 
 /* Win32 does not have lstat */
 #ifdef WIN32
@@ -48,11 +53,7 @@ extern int sys_debug_level;
     #define w_stat(x, y) lstat(x, y)
 #endif
 
-typedef enum fim_event_type {
-    FIM_ADD,
-    FIM_DELETE,
-    FIM_MODIFICATION
-} fim_event_type;
+/** Function Prototypes **/
 
 /* Check the integrity of the files against the saved database */
 void run_check(void);
@@ -67,7 +68,7 @@ int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
 cJSON *getSyscheckConfig(void);
 cJSON *getSyscheckInternalOptions(void);
 
-// TODO: Add description to functions
+// TODO: Add Doxygen description to functions
 
 // Create the database
 int fim_scan();
@@ -149,9 +150,6 @@ void delete_inode_item(char *inode, char *file_name);
 cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int pos, fim_event_type type, fim_event_mode mode, whodata_evt *w_evt);
 
 //
-void set_integrity_index(char * file_name, fim_entry_data * data);
-
-//
 void free_entry_data(fim_entry_data * data);
 
 //
@@ -179,12 +177,8 @@ void free_syscheck_dirtb_data(char *data);
 char *seechanges_addfile(const char *filename) __attribute__((nonnull));
 
 /* Generate the whodata csum */
-int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size);
 void init_whodata_event(whodata_evt *w_evt);
 void free_whodata_event(whodata_evt *w_evt);
-
-/* Get checksum changes */
-int c_read_file(const char *file_name, const char *linked_file, const char *oldsum, char *newsum, int dir_position, whodata_evt *evt) __attribute__((nonnull(1,3,4)));
 
 int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
@@ -256,7 +250,7 @@ void fim_sync_checksum();
 void fim_sync_checksum_split(const char * start, const char * top, long id);
 void fim_sync_send_list(const char * start, const char * top);
 void fim_sync_dispatch(char * payload);
-long fim_sync_last_message();
+void fim_sync_push_msg(const char * msg);
 
 /**
  * @brief Create file attribute set JSON from a FIM entry structure

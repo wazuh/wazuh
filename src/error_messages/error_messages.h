@@ -55,6 +55,7 @@
 #define FTELL_ERROR     "(1139): Could not get position from file '%s' due to [(%d)-(%s)]."
 #define FCLOSE_ERROR  "(1140): Could not close file '%s' due to [(%d)-(%s)]."
 #define GLOB_ERROR_WIN "(1141): Glob error. Invalid pattern: '%s' or no files found."
+#define NICE_ERROR      "(1142): Cannot set process priority: %s (%d)."
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
@@ -337,7 +338,6 @@
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
 #define FIM_ERROR_ACCESING                          "(6601): Error accessing '%s': '%s' (%d)"
-#define FIM_ERROR_EXTRACT_PERM                      "(6602): It was not possible to extract the permissions of '%s'. Error: '%d'."
 #define FIM_ERROR_WHODATA_SUM_MAX                   "(6603): The whodata sum for '%s' file could not be included in the alert as it is too large."
 #define FIM_ERROR_NOTHING_TOCKECK                   "(6604): No directories to check."
 #define FIM_ERROR_CHECK_THREAD                      "(6605): Could not create the Whodata check thread."
@@ -441,7 +441,7 @@
 
 #define FIM_CRITICAL_ERROR_DB                       "(6696): Unable to create syscheck database. Exiting."
 #define FIM_CRITICAL_ERROR_OUT_MEM                  "(6697): Out of memory. Exiting."
-#define FIM_CRITICAL_ERROR_HASH_CREATE              "(6698): At '%s': OSHash_Create() failed %s. Exiting."
+#define FIM_CRITICAL_DATA_CREATE                    "(6698): Creating Data Structure: %s. Exiting."
 #define FIM_CRITICAL_ERROR_SELECT                   "(6699): At '%s': select(): %s. Exiting."
 
 #define FIM_ERROR_INOTIFY_ADD_MAX_REACHED           "(6700): Unable to add inotify watch to real time monitoring: '%s'. '%d' '%d': The maximum limit of inotify watches has been reached."

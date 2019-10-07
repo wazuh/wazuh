@@ -22,11 +22,14 @@
 #include "debug_op.h"
 */
 
+/**
+ * @brief Synchronization message type
+ */
 typedef enum dbsync_msg {
-    INTEGRITY_CHECK_LEFT,
-    INTEGRITY_CHECK_RIGHT,
-    INTEGRITY_CHECK_GLOBAL,
-    INTEGRITY_CLEAR
+    INTEGRITY_CHECK_LEFT,       ///< Splitted chunk: left part.
+    INTEGRITY_CHECK_RIGHT,      ///< Splitted chunk: right part.
+    INTEGRITY_CHECK_GLOBAL,     ///< Global chunk (all files).
+    INTEGRITY_CLEAR             ///< Clear data (no files at all).
 } dbsync_msg;
 
 extern const char * INTEGRITY_COMMANDS[];
@@ -37,12 +40,12 @@ extern const char * INTEGRITY_COMMANDS[];
  * Format (check):
  * {
  *   component:     string
- *   type:          "check"
+ *   type:          "integrity_check_global"|"integrity_check_left"|"integrity_check_right"
  *   data: {
  *     id:          number
  *     begin:       string
  *     end:         string
- *     tail:        string [Optional]
+ *     tail:        string [Only if type="integrity_check_left"]
  *     checksum:    string
  *   }
  * }
@@ -50,10 +53,11 @@ extern const char * INTEGRITY_COMMANDS[];
  * Format (clear):
  * {
  *   component: string
- *   type:      "clear"
+ *   type:      "integrity_clear"
  * }
  *
  * @param component Name of the component.
+ * @param msg Type of the message.
  * @param id Sync session counter (timetamp).
  * @param start First key in the list.
  * @param top Last key in the list.

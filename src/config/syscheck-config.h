@@ -178,20 +178,11 @@ typedef struct registry_regex {
 
 #endif
 
-typedef struct syscheck_node {
-    char *checksum;
-    int dir_position;
-} syscheck_node;
-
-typedef struct fim_status{
-    unsigned int symbolic_links;
-    unsigned int num_files;
-} fim_status;
-
 typedef struct fim_entry_data {
     // Checksum attributes
     unsigned int size;
     char * perm;
+    char * attributes;
     char * uid;
     char * gid;
     char * user_name;
@@ -201,14 +192,16 @@ typedef struct fim_entry_data {
     os_md5 hash_md5;
     os_sha1 hash_sha1;
     os_sha256 hash_sha256;
+
     // Options
-    unsigned long int dev;
     fim_event_mode mode;
-    int options;
     time_t last_event;
+    const char * entry_type;
+    char * win_perm_mask;
+    unsigned long int dev;
     unsigned int scanned;
+    int options;
     os_sha1 checksum;
-    const char *entry_type;
 } fim_entry_data;
 
 typedef struct fim_inode_data {
@@ -222,7 +215,6 @@ typedef struct _config {
     int rootcheck;                  /* set to 0 when rootcheck is disabled */
     int disabled;                   /* is syscheck disabled? */
     int scan_on_start;
-    int realtime_count;
     int max_depth;                  /* max level of recursivity allowed */
     size_t file_max_size;           /* max file size for calculating hashes */
 
@@ -236,9 +228,6 @@ typedef struct _config {
     unsigned int enable_inventory:1;    /* Enable database synchronization */
 
     int *opts;                      /* attributes set in the <directories> tag element */
-
-    char *remote_db;
-    char *db;
 
     char *scan_day;                 /* run syscheck on this day */
     char *scan_time;                /* run syscheck at this time */
@@ -258,6 +247,7 @@ typedef struct _config {
 
     long sync_interval;             /* Synchronization interval (seconds) */
     long sync_response_timeout;     /* Minimum time between receiving a sync response and starting a new sync session */
+    long sync_queue_size;           /* Data synchronization message queue size */
     unsigned max_eps;               /* Maximum events per second. */
     unsigned send_delay;            /* Time delay after send operation (1 / max_eps) (microseconds) */
 
@@ -266,7 +256,6 @@ typedef struct _config {
     registry *registry_ignore;                  /* list of registry entries to ignore */
     registry_regex *registry_ignore_regex;      /* regex of registry entries to ignore */
     registry *registry;                         /* array of registry entries to be scanned */
-    FILE *reg_fp;
     int max_fd_win_rt;
     whodata wdata;
     whodata_event_list w_clist; // List of events cached from Whodata mode in the last seconds
@@ -277,11 +266,6 @@ typedef struct _config {
     int audit_healthcheck;          // Startup health-check for whodata
     int sym_checker_interval;
 
-    OSHash *fp;
-    OSHash *last_check;
-    OSHash *local_hash;
-    OSHash *inode_hash;
-
     rb_tree * fim_entry;
     OSHash * fim_inode;
     pthread_mutex_t fim_entry_mutex;
@@ -289,7 +273,6 @@ typedef struct _config {
     rtfim *realtime;
 
     char *prefilter_cmd;
-    struct fim_status data;
     int process_priority; // Adjusts the priority of the process (or threads in Windows)
 
 } syscheck_config;

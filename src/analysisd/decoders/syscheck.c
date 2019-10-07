@@ -1155,13 +1155,6 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
                 mode = object->valuestring;
             } else if (strcmp(object->string, "type") == 0) {
                 event_type = object->valuestring;
-                if (strcmp("added", event_type) == 0) {
-                    lf->event_type = FIM_ADDED;
-                } else if (strcmp("modified", event_type) == 0) {
-                    lf->event_type = FIM_MODIFIED;
-                } else if (strcmp("deleted", event_type) == 0) {
-                    lf->event_type = FIM_DELETED;
-                }
             } else if (strcmp(object->string, "tags") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_TAG].value);
                 os_strdup(object->valuestring, lf->sk_tag);
@@ -1183,12 +1176,38 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
             break;
 
         case cJSON_Object:
-            if (strcmp(object->string, "attributes") == 0) {
-                attributes = object;
-            } else if (strcmp(object->string, "old_attributes") == 0) {
-                old_attributes = object;
-            } else if (strcmp(object->string, "audit") == 0) {
+
+            if (strcmp(object->string, "audit") == 0) {
                 audit = object;
+            } else {
+                cJSON *element = NULL;
+                char *permissions_list = NULL;
+                char *mask = NULL;
+                int size;
+
+                os_calloc(OS_SIZE_20480 + 1, sizeof(char), permissions_list);
+                element = cJSON_GetObjectItemCaseSensitive(object, "perm");
+
+                if(element && element->type == cJSON_String && element->valuestring[0] == '|') {
+                    os_strdup(element->valuestring, mask);
+                    if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, mask, 0, NULL), size > 1) {
+                        os_realloc(permissions_list, size + 1, permissions_list);
+                    }
+                    cJSON_DeleteItemFromObjectCaseSensitive(object, "perm");
+                    cJSON_AddStringToObject(object, "perm", permissions_list);
+                }
+
+                if (strcmp(object->string, "attributes") == 0) {
+                    attributes = object;
+                    lf->win_perm_after = mask;
+                } else if (strcmp(object->string, "old_attributes") == 0) {
+                    old_attributes = object;
+                    lf->win_perm_before = mask;
+                } else {
+                    os_free(mask);
+                }
+
+                os_free(permissions_list);
             }
 
             break;
@@ -1202,11 +1221,20 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
 
     if (strcmp("added", event_type) == 0) {
         lf->event_type = FIM_ADDED;
+        lf->decoder_info->name = SYSCHECK_NEW;
     } else if (strcmp("modified", event_type) == 0) {
         lf->event_type = FIM_MODIFIED;
+        lf->decoder_info->name = SYSCHECK_MOD;
     } else if (strcmp("deleted", event_type) == 0) {
         lf->event_type = FIM_DELETED;
+        lf->decoder_info->name = SYSCHECK_DEL;
+    } else {
+        mdebug1("Invalid 'type' value '%s' in JSON payload.", event_type);
+        return -1;
     }
+
+    lf->decoder_info->id = getDecoderfromlist(lf->decoder_info->name);
+    lf->decoder_syscheck_id = lf->decoder_info->id;
 
     fim_generate_alert(lf, mode, event_type, event_time, attributes, old_attributes, audit);
 
@@ -1367,7 +1395,8 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
                 os_strdup(object->valuestring, lf->fields[FIM_SHA256].value);
                 os_strdup(object->valuestring, lf->sha256_after);
             } else if (strcmp(object->string, "win_attributes") == 0) {
-                os_strdup(object->valuestring, lf->win_perm_after);
+                os_strdup(object->valuestring, lf->fields[FIM_ATTRS].value);
+                os_strdup(object->valuestring, lf->attributes_after);
             } else if (strcmp(object->string, "symlink_path") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_SYM_PATH].value);
             }
@@ -1411,7 +1440,7 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
             } else if (strcmp(object->string, "hash_sha256") == 0) {
                 os_strdup(object->valuestring, lf->sha256_before);
             } else if (strcmp(object->string, "win_attributes") == 0) {
-                os_strdup(object->valuestring, lf->win_perm_before);
+                os_strdup(object->valuestring, lf->attributes_before);
             }
         }
     }
@@ -1476,7 +1505,7 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
         fim_generate_comment(change_md5, sizeof(change_md5), "Old md5sum was: '%s'\nNew md5sum is : '%s'\n", lf->md5_before, lf->md5_after);
         fim_generate_comment(change_sha1, sizeof(change_sha1), "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n", lf->sha1_before, lf->sha1_after);
         fim_generate_comment(change_sha256, sizeof(change_sha256), "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n", lf->sha256_before, lf->sha256_after);
-        fim_generate_comment(change_win_attributes, sizeof(change_win_attributes), "Old attributes were: '%s'\nNow they are '%s'\n", lf->win_perm_before, lf->win_perm_after);
+        fim_generate_comment(change_win_attributes, sizeof(change_win_attributes), "Old attributes were: '%s'\nNow they are '%s'\n", lf->attributes_before, lf->attributes_after);
     }
 
     // Provide information about the file
@@ -1502,11 +1531,11 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
             change_user,
             change_gowner,
             change_group,
+            change_mtime,
+            change_inode,
             change_md5,
             change_sha1,
             change_sha256,
-            change_mtime,
-            change_inode,
             change_win_attributes
             //lf->fields[FIM_SYM_PATH].value
     );

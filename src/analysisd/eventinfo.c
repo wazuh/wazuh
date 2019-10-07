@@ -770,6 +770,8 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->mtime_after = 0;
     lf->inode_before = 0;
     lf->inode_after = 0;
+    lf->attributes_before = NULL;
+    lf->attributes_after = NULL;
     lf->diff = NULL;
     lf->previous = NULL;
     lf->labels = NULL;
@@ -1022,6 +1024,12 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->gname_after) {
         free(lf->gname_after);
+    }
+    if (lf->attributes_after) {
+        free(lf->attributes_after);
+    }
+    if (lf->attributes_before) {
+        free(lf->attributes_before);
     }
     if (lf->user_id) {
         free(lf->user_id);
@@ -1411,6 +1419,14 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     if(lf->gname_after){
         os_strdup(lf->gname_after,lf_cpy->gname_after);
+    }
+
+    if(lf->attributes_before){
+        os_strdup(lf->attributes_before,lf_cpy->attributes_before);
+    }
+
+    if(lf->attributes_after){
+        os_strdup(lf->attributes_after,lf_cpy->attributes_after);
     }
 
     /* Whodata fields */

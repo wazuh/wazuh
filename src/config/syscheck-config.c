@@ -803,6 +803,7 @@ static void parse_inventory(syscheck_config * syscheck, XML_NODE node) {
     const char *xml_enabled = "enabled";
     const char *xml_sync_interval = "sync_interval";
     const char *xml_response_timeout = "response_timeout";
+    const char *xml_sync_queue_size = "sync_queue_size";
 
     for (int i = 0; node[i]; i++) {
         if (strcmp(node[i]->element, xml_enabled) == 0) {
@@ -816,7 +817,7 @@ static void parse_inventory(syscheck_config * syscheck, XML_NODE node) {
         } else if (strcmp(node[i]->element, xml_sync_interval) == 0) {
             long t = w_parse_time(node[i]->content);
 
-            if (t == -1) {
+            if (t <= 0) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 syscheck->sync_interval = t;
@@ -828,6 +829,15 @@ static void parse_inventory(syscheck_config * syscheck, XML_NODE node) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 syscheck->sync_response_timeout = t;
+            }
+        } else if (strcmp(node[i]->element, xml_sync_queue_size) == 0) {
+            char * end;
+            long value = strtol(node[i]->content, &end, 10);
+
+            if (value < 2 || value > 1000000 || *end) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscheck->sync_queue_size = value;
             }
         } else {
             mwarn(XML_INVELEM, node[i]->element);
@@ -1442,7 +1452,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             char * end;
             long value = strtol(node[i]->content, &end, 10);
 
-            if (value < 0 || value == LONG_MAX || *end) {
+            if (value < 1 || value > 1000000 || *end) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 if (value > 1000000) {
@@ -1541,8 +1551,6 @@ void Free_Syscheck(syscheck_config * config) {
     if (config) {
         int i;
         free(config->opts);
-        free(config->remote_db);
-        free(config->db);
         free(config->scan_day);
         free(config->scan_time);
         if (config->ignore) {
@@ -1606,13 +1614,7 @@ void Free_Syscheck(syscheck_config * config) {
             }
             free(config->registry);
         }
-        if (config->reg_fp) {
-            fclose(config->reg_fp);
-        }
     #endif
-        if (config->fp) {
-            OSHash_Free(config->fp);
-        }
 
         if (config->realtime) {
             OSHash_Free(config->realtime->dirtb);

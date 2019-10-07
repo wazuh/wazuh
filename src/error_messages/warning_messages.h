@@ -37,7 +37,10 @@
 
 #define FIM_WARN_NFS_INOTIFY                    "(6918): '%s' NFS Directories do not support iNotify."
 
-#define FIM_INV_REG                             "(1757): Invalid syscheck registry entry: '%s' arch: '%s'."
-#define FIM_REG_OPEN                            "(1758): Unable to open registry key: '%s' arch: '%s'."
+#define FIM_INV_REG                             "(6919): Invalid syscheck registry entry: '%s' arch: '%s'."
+#define FIM_REG_OPEN                            "(6920): Unable to open registry key: '%s' arch: '%s'."
+
+#define FIM_WARN_EXTRACT_PERM                   "(6921): It was not possible to extract the permissions of '%s'. Error: '%d'."
+#define FIM_PATH_NOT_OPEN                       "(6922): Cannot open '%s': %s"
 
 #endif /* WARN_MESSAGES_H */

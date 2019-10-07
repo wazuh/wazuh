@@ -90,7 +90,10 @@ void start_daemon()
     // A higher nice value means a low priority.
 #ifndef WIN32
     mdebug1(FIM_PROCESS_PRIORITY, syscheck.process_priority);
-    nice(syscheck.process_priority);
+
+    if (nice(syscheck.process_priority) == -1) {
+        merror(NICE_ERROR, strerror(errno), errno);
+    }
 #endif
 
     /* Some time to settle */
@@ -317,19 +320,17 @@ void set_priority_windows_thread() {
 
 
 int fim_whodata_initialize() {
-    int i = 0;
 #if defined INOTIFY_ENABLED || defined WIN32
 
 #ifdef WIN32
     set_priority_windows_thread();
 #endif
 
-    while(syscheck.dir[i]) {
+    for (int i = 0; syscheck.dir[i]; i++) {
         if (syscheck.opts[i] & WHODATA_ACTIVE) {
             //minfo("~~ Adding '%s' to WHODATA", syscheck.dir[i]);
             realtime_adddir(syscheck.dir[i], i + 1);
         }
-        i++;
     }
 
 #ifdef WIN_WHODATA
@@ -347,31 +348,10 @@ int fim_whodata_initialize() {
 
 #else
     mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
-    pthread_exit(NULL);
 #endif
 
     return 0;
 }
-
-
-// Starting data synchronization thread
-void * fim_run_integrity(__attribute__((unused)) void * args) {
-
-    while (1) {
-        long lapse;
-
-        // Wait for sync_response_timeout seconds since the last message received.
-
-        while ((lapse = fim_sync_last_message() + syscheck.sync_response_timeout - time(NULL)) > 0) {
-            mdebug2("Sync: sleeping %ld seconds (response timeout).", lapse);
-            sleep(lapse);
-        }
-
-        fim_sync_checksum();
-        sleep(syscheck.sync_interval);
-    }
-}
-
 
 void log_realtime_status(int next) {
     /*
