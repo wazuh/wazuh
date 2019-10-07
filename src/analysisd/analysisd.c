@@ -1818,9 +1818,13 @@ void * ad_input_main(void * args) {
                     }
                 }
 
-                if (result == -1 && !reported_dbsync) {
-                    mwarn("Database synchronization messge queue is full.");
-                    reported_dbsync = TRUE;
+                if (result == -1) {
+                    w_inc_dropped_events();
+
+                    if (!reported_dbsync) {
+                        mwarn("Database synchronization messge queue is full.");
+                        reported_dbsync = TRUE;
+                    }
                 }
             } else {
 
@@ -2292,6 +2296,7 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
         DispatchDBSync(&ctx, lf);
         w_inc_dbsync_dispatched_messages();
         Free_Eventinfo(lf);
+        free(msg);
     }
 
     return NULL;
