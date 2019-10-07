@@ -739,17 +739,24 @@ void free_RuleInfo(RuleInfo *r_info)
 static void savesChild(RuleNode *orig)
 {
     RuleNode *tmp = orig;
+    bool is_in;
+    int i;
 
     while (tmp) {
 
-        copied_rules[num_rules_copied] = tmp->ruleinfo;
-        num_rules_copied++;
+        is_in = false;
 
-        tmp = tmp->next;
-    }
+        for (i = 0; i < num_rules_copied; i++) {
+            if (tmp->ruleinfo->sigid == copied_rules[i]->sigid){
+                is_in = true;
+                break;
+            }
+        }
 
-    tmp = orig;
-    while (tmp) {
+        if (is_in == false){
+            copied_rules[num_rules_copied] = tmp->ruleinfo;
+            num_rules_copied++;
+        }
 
         if (tmp->child) {
             savesChild(tmp->child);
@@ -757,6 +764,7 @@ static void savesChild(RuleNode *orig)
 
         tmp = tmp->next;
     }
+
 }
 
 
@@ -844,7 +852,6 @@ static void sortTheCopiedRules(int sid_rule)
             for (k = 0; k < size; k++){
 
                 if (is_previously[k] != 1) {
-
                     aux = copied_rules[i];
                     copied_rules[i] = copied_rules[i+1];
                     copied_rules[i+1] = aux;
