@@ -33,6 +33,7 @@
 #define merror_critical(msg, ...) _mterror_critical(WM_FLUENT_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
 #define REQUEST_SIZE 4096
+#define MAX_MSG_RECV 64
 
 #define expect_type(obj, t, str) if (obj.type != t) { mdebug2("Expecting %s", str); goto error; }
 #define expect_string(obj, s) if (strncmp(obj.via.str.ptr, s, obj.via.str.size)) { mdebug2("Expecting string '%s'", s); goto error; }
@@ -49,14 +50,17 @@ static int wm_fluent_ssl_ctx(wm_fluent_t * fluent);
 static int wm_fluent_ssl_connect(wm_fluent_t * fluent);
 static void wm_fluent_helo_free(wm_fluent_helo_t * helo);
 static void wm_fluent_pong_free(wm_fluent_pong_t * pong);
+static void wm_request_message(int server_sock);
 static int wm_fluent_recv(wm_fluent_t * fluent, msgpack_unpacker * unp);
 static int wm_fluent_unpack(wm_fluent_t * fluent, msgpack_unpacker * unp, msgpack_unpacked * result);
 static wm_fluent_helo_t * wm_fluent_recv_helo(wm_fluent_t * fluent);
 static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * helo);
 static wm_fluent_pong_t * wm_fluent_recv_pong(wm_fluent_t * fluent);
 static int wm_fluent_handshake(wm_fluent_t * fluent);
-static int wm_fluent_send(wm_fluent_t * fluent, char ** str, size_t size);
+static int wm_fluent_send(wm_fluent_t * fluent, w_queue_t * queue, size_t size);
 static int wm_fluent_check_config(wm_fluent_t * fluent);
+
+static w_queue_t *msg_queue;
 
 const wm_context WM_FLUENT_CONTEXT = {
     FLUENT_WM_NAME,
@@ -65,11 +69,60 @@ const wm_context WM_FLUENT_CONTEXT = {
     (cJSON * (*)(const void *))wm_fluent_dump
 };
 
+int OS_NonBlock(int sock) {
+    return fcntl(sock, F_SETFL, fcntl(sock, F_GETFL, 0) | O_NONBLOCK);
+}
+
+static void wm_request_message(int server_sock) {
+    ssize_t recv_b;
+    char * copy;
+    int result;
+    int attempts = 0;
+    char * buffer;
+    struct timespec tsec;
+    tsec.tv_sec = 0;
+    tsec.tv_nsec = 1000000;
+
+    os_calloc(OS_MAXSTR, sizeof(char), buffer);
+
+    while ((recv_b = recv(server_sock, buffer, OS_MAXSTR - 1, 0), recv_b) && !queue_full(msg_queue)) {
+
+        if (!strcmp(buffer, "") || recv_b == -1) {
+            nanosleep(&tsec, NULL);
+            attempts++;
+            if (attempts >= 100 && !queue_empty(msg_queue)) {
+                attempts = 0;
+                break;
+            }
+            continue;
+        }
+
+        os_strdup(buffer, copy);
+
+        if(queue_full(msg_queue)){
+            mdebug1("Fluent queue is full.");
+            os_free(copy);
+            break;
+        }
+
+        int result = queue_push_ex(msg_queue, copy);
+
+        if(result < 0){
+            mdebug1("Fluent queue is full.");
+            os_free(copy);
+            break;
+        }
+    }
+
+    os_free(buffer);
+}
+
 // Module main function. It won't return
 void * wm_fluent_main(wm_fluent_t * fluent) {
     int server_sock;
-    char * buffer = NULL;
-    ssize_t recv_b = -1;
+    int s_sock;
+
+    msg_queue = queue_init(MAX_MSG_RECV);
 
     // If module is disabled, exit
     if (fluent->enabled) {
@@ -95,78 +148,16 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
         pthread_exit(NULL);
     }
 
-    int matrix_index = 0;
-    int added_old = 0;
-    char **matrix_buffer = NULL;
-    char *aux_buffer = NULL;
-    int attempts = 0;
-    int MAX_MSG_RECV = 3;
-    struct timespec tsec;
-    tsec.tv_sec = 0;
-    tsec.tv_nsec = 1000000;
+    s_sock = OS_NonBlock(server_sock);
 
-    os_malloc(OS_MAXSTR * sizeof(char *), matrix_buffer);
-    os_calloc(OS_MAXSTR, sizeof(char), buffer);
-
+    /* Main loop */
     while (1) {
-        // Store logs for a second
-        while ((recv_b = recv(server_sock, buffer, OS_MAXSTR - 1, MSG_DONTWAIT)) && matrix_index < MAX_MSG_RECV) {
-            // Check if there is a log that was not being taken into account
-            os_calloc(OS_MAXSTR, sizeof(char), matrix_buffer[matrix_index]);
+        wm_request_message(server_sock);
 
-            added_old = 0;
-
-            if (aux_buffer != NULL) {
-                strncpy(matrix_buffer[matrix_index], aux_buffer, strlen(aux_buffer));
-                matrix_index++;
-                free(aux_buffer);
-                aux_buffer = NULL;
-                added_old = 1;
-            }
-
-            // Set a timeout of 1 second to send the data accumulated
-            if (!strcmp(buffer, "") || recv_b == -1) {
-                nanosleep(&tsec, NULL);
-                attempts++;
-                if (attempts >= 1000 && strcmp(matrix_buffer[0], "") != 0) {
-                    attempts = 0;
-                    if (!added_old) {
-                        os_free(matrix_buffer[matrix_index]);
-                    }
-                    break;
-                }
-                os_free(matrix_buffer[matrix_index]);
-                continue;
-            }
-
-            attempts = 0;
-            if (added_old) {
-                os_calloc(OS_MAXSTR, sizeof(char), matrix_buffer[matrix_index]);
-            }
-            strncpy(matrix_buffer[matrix_index], buffer, recv_b);
-            matrix_index++;
-        }
-
-        if (wm_fluent_send(fluent, matrix_buffer, matrix_index) < 0) {
+        if (wm_fluent_send(fluent, msg_queue, msg_queue->elements) < 0) {
             mwarn("Cannot send data to '%s': %s (%d). Reconnecting...", fluent->address, strerror(errno), errno);
         }
-
-        if (recv_b > 0 && buffer != NULL) {
-            buffer[recv_b] = '\0';
-            os_strdup(buffer, aux_buffer);
-        }
-
-        for(int i = 0; i < matrix_index; i++) {
-            os_free(matrix_buffer[i]);
-        }
-        matrix_index = 0;
     }
-
-    for(int i = 0; i < matrix_index; i++) {
-        os_free(matrix_buffer[i]);
-    }
-    os_free(matrix_buffer);
-    os_free(buffer);
 
     return NULL;
 }
@@ -685,7 +676,7 @@ end:
     return retval;
 }
 
-static int wm_fluent_send(wm_fluent_t * fluent, char ** str, size_t size) {
+static int wm_fluent_send(wm_fluent_t * fluent, w_queue_t * queue, size_t size) {
     size_t taglen = strlen(fluent->tag);
     int retval = -1;
 
@@ -709,13 +700,14 @@ static int wm_fluent_send(wm_fluent_t * fluent, char ** str, size_t size) {
     // Save space for MAX_MSG_RECV entries
     msgpack_pack_array(&pk, size);
 
-    size_t i;
     size_t str_length;
+    char *str;
 
-    for (i = 0; i<size; i++) {
-        str_length = strlen(str[i]);
+    while (!queue_empty(queue)) {
+        str = queue_pop_ex(queue);
+        str_length = strlen(str);
         msgpack_pack_str(&pk, str_length);
-        msgpack_pack_str_body(&pk, str[i], str_length);
+        msgpack_pack_str_body(&pk, str, str_length);
     }
 
     msgpack_pack_map(&pk, 1);
