@@ -127,7 +127,7 @@ def main(database=None):
         if not os.path.isdir('/'.join((str(database).split('/')[0:-1]))):
             raise Exception('Error: Directory not found.')
     
-    pathfile = find('enterprise-attack.json', '/')
+    pathfile = find('enterprise-attack.json', '../..')
 
     sql_delete_attack = """DROP TABLE IF EXISTS attack;"""
  
