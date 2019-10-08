@@ -458,13 +458,12 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold, const 
 
 void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold, const char * type, rotation_list *list_log, rotation_list *list_json) {
     char path[PATH_MAX];
-    char ext[5];
+    char ext[8];
     DIR *dir;
-    int day;
     struct dirent *dirent;
     time_t now = time(NULL);
     struct tm tm;
-    int counter;
+    int counter, day;
 
     char match_log_simple[PATH_MAX], match_log[PATH_MAX];
 
@@ -494,13 +493,13 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                if (!strcmp(ext, "log"))
+                if (!strcmp(ext, "log") || !strcmp(ext, "log.gz"))
                 {
                     snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
                     delete_node(list_log, path);
-                } else if (!strcmp(ext, "json")) {
+                } else if (!strcmp(ext, "json") || !strcmp(ext, "json.gz")) {
                     snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
@@ -513,13 +512,13 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                if (!strcmp(ext, "log"))
+                if (!strcmp(ext, "log") || !strcmp(ext, "log.gz"))
                 {
                     snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
                     delete_node(list_log, path);
-                } else if (!strcmp(ext, "json")) {
+                } else if (!strcmp(ext, "json") || !strcmp(ext, "json.gz")) {
                     snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
@@ -534,37 +533,59 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
 
 time_t calc_next_rotation(time_t tm, struct tm *rot, const char units, int interval)
 {
-    int counter = 24 / interval; /* Number of intervals to rotate in a day */
+    int counter;  /* Number of intervals to rotate in a day */
     int i = 1;
     time_t ret = tm;
-    int seconds;
-    rot = localtime(&ret);
+    int seconds, n_minutes;
+    localtime_r(&ret, rot);
 
     switch (units) {
         case 'w':
             /* Seconds left to the next rotation day depending if its this week or the next */
             seconds = (interval > rot->tm_wday) ? (interval-rot->tm_wday) * 24 * 3600 : (7-(rot->tm_wday-interval)) * 24 * 3600;
             ret = tm + seconds;
-            rot = localtime(&ret);
+            localtime_r(&ret, rot);
             rot->tm_hour = 0;
+            rot->tm_min = 0;
         break;
         case 'h':
+            counter = 24 / interval;
             while (rot->tm_hour >= i*interval && i < counter) {
                 i++;
             }
             /* The next rotation is tomorrow */
             if (i == counter) {
                 ret += 24 * 3600;
-                rot = localtime(&ret);
+                localtime_r(&ret, rot);
                 rot->tm_hour = 0;
             /* The next rotation is today */
             } else {
                 rot->tm_hour = i*interval;
             }
+            rot->tm_min = 0;
+        break;
+        case 'm':
+            counter = 24*60 / interval;
+            n_minutes = (rot->tm_hour*60 + rot->tm_min) / interval;
+            /* The next rotation is tomorrow */
+            if (n_minutes == counter-1) {
+                ret += 24 * 3600;
+                localtime_r(&ret, rot);
+                rot->tm_hour = 0;
+                rot->tm_min = 0;
+            /* The next rotation is today */
+            } else {
+                /* The next rotation will be in the next n_minutes iteration */
+                rot->tm_hour = 0;
+                rot->tm_min = 0;
+                rot->tm_sec = 0;
+                ret = mktime(rot);
+                ret += interval * 60 * (n_minutes + 1);
+                localtime_r(&ret, rot);
+            }
         break;
     }
 
-    rot->tm_min = 0;
     rot->tm_sec = 0;
     ret = mktime(rot);
 

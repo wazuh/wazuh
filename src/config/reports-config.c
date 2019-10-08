@@ -371,6 +371,9 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                     break;
                                 case 2:
                                     switch (c) {
+                                        case 'm':
+                                            rotation_config->interval_units = 'm';
+                                            break;
                                         case 'h':
                                             rotation_config->interval_units = 'h';
                                             break;
@@ -387,8 +390,11 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
-                            if ((24 % rotation_config->interval != 0 && !strcmp(&rotation_config->interval_units, "h")) || (rotation_config->interval > 24 || rotation_config->interval < 1)) {
-                                merror("Value for 'schedule' in <log> not allowed. Allowed values: [1h, 2h, 3h, 4h, 6h, 8h, 12h, monday, tuesday, wednesday, thursday, friday, saturday, sunday].");
+                            if ((24 % rotation_config->interval != 0 && !strcmp(&rotation_config->interval_units, "h"))
+                                || (rotation_config->interval > 60 || rotation_config->interval < 1) ||
+                                (24*60 % rotation_config->interval != 0 && !strcmp(&rotation_config->interval_units, "m"))) {
+                                merror("Value for 'schedule' in <log> not allowed. Allowed values: [1h, 2h, 3h, 4h, 6h, "
+                                       "8h, 12h, monday, tuesday, wednesday, thursday, friday, saturday, sunday].");
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return (OS_INVALID);

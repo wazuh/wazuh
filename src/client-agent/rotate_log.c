@@ -23,7 +23,7 @@ static void init_conf()
 {
     mond.enabled = 0;
     mond.max_size = 0;
-    mond.interval = 0;
+    mond.interval = 24;
     mond.rotate = -1;
     mond.rotation_enabled = 1;
     mond.compress_rotation = 1;
