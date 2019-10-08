@@ -52,6 +52,7 @@ static int wm_vuldet_read_provider_content(xml_node **node, char *name, char mul
 static char wm_vuldet_provider_type(char *pr_name);
 static void wm_vuldet_remove_os_feed(vu_os_feed *feed, char full_r);
 static void wm_vuldet_remove_os_feed_list(vu_os_feed *feeds);
+static void wm_vuldet_clear_provider_options(provider_options options);
 
 // Options
 static const char *XML_DISABLED = "disabled";
@@ -135,7 +136,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
     os_calloc(1, sizeof(update_node), upd);
     upd->interval = WM_VULNDETECTOR_DEFAULT_UPDATE_INTERVAL;
 
-    if (strcasestr(feed, vu_feed_tag[FEED_CANONICAL]) || strcasestr(feed, vu_feed_tag[FEED_UBUNTU])) {
+    if ((strcasestr(feed, vu_feed_tag[FEED_CANONICAL]) || strcasestr(feed, vu_feed_tag[FEED_UBUNTU])) && version) {
         if (!strcmp(version, "12") || strcasestr(version, vu_feed_tag[FEED_PRECISE])) {
             os_index = CVE_PRECISE;
             os_strdup(vu_feed_tag[FEED_PRECISE], upd->version);
@@ -162,7 +163,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             goto end;
         }
         upd->dist_ref = FEED_UBUNTU;
-    } else  if (strcasestr(feed, vu_feed_tag[FEED_DEBIAN])) {
+    } else  if (strcasestr(feed, vu_feed_tag[FEED_DEBIAN]) && version) {
         if (!strcmp(version, "9") || strcasestr(version, vu_feed_tag[FEED_STRETCH])) {
             os_index = CVE_STRETCH;
             os_strdup(vu_feed_tag[FEED_STRETCH], upd->version);
@@ -518,12 +519,6 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
         merror("Invalid feed '%s' at module '%s'.", feed, WM_VULNDETECTOR_CONTEXT.name);
         return OS_INVALID;
     }
-#if defined(__clang_analyzer__) || defined(__coverity__)
-    else {
-        // Due to a false positive
-        version = "NULL";
-    }
-#endif
 
     if (os_index = wm_vuldet_set_feed_version(feed, version, updates), os_index == OS_INVALID) {
         return OS_INVALID;
@@ -570,11 +565,13 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
                 return OS_INVALID;
             }
         } else if (!strcmp(chld_node[j]->element, XML_URL)) {
+            os_free(updates[os_index]->url);
             os_strdup(chld_node[j]->content, updates[os_index]->url);
             if (chld_node[j]->attributes && !strcmp(*chld_node[j]->attributes, XML_PORT)) {
                 updates[os_index]->port = strtol(*chld_node[j]->values, NULL, 10);
             }
         } else if (!strcmp(chld_node[j]->element, XML_PATH)) {
+            os_free(updates[os_index]->path);
             os_strdup(chld_node[j]->content, updates[os_index]->path);
         } else {
             merror("Invalid option '%s' for tag '%s' at module '%s'.", chld_node[j]->element, XML_FEED , WM_VULNDETECTOR_CONTEXT.name);
@@ -715,6 +712,7 @@ end:
     }
 
     if (retval) {
+        wm_vuldet_clear_provider_options(p_options);
         wm_vuldet_remove_os_feed_list(os_list);
     }
 
@@ -971,12 +969,14 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
             }
         } else if (!strcmp(node[i]->element, XML_PATH)) {
             if (multi_provider) {
+                os_free(options->multi_path);
                 os_strdup(node[i]->content, options->multi_path);
             } else {
                 mwarn("'%s' option can only be used in a multi-provider.", node[i]->element);
             }
         } else if (!strcmp(node[i]->element, XML_URL)) {
             if (multi_provider) {
+                os_free(options->multi_url);
                 os_strdup(node[i]->content, options->multi_url);
                 for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
                     if (!strcmp(node[i]->attributes[j], XML_START)) {
@@ -1054,6 +1054,15 @@ void wm_vuldet_remove_os_feed_list(vu_os_feed *feeds) {
         wm_vuldet_remove_os_feed(feeds, 1);
         feeds = next;
     }
+}
+
+void wm_vuldet_clear_provider_options(provider_options options) {
+    os_free(options.multi_path);
+    os_free(options.multi_url);
+    w_FreeArray(options.multi_allowed_os_name);
+    w_FreeArray(options.multi_allowed_os_ver);
+    os_free(options.multi_allowed_os_name);
+    os_free(options.multi_allowed_os_ver);
 }
 
 #endif

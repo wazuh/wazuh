@@ -2203,8 +2203,8 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
 
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid OS info query syntax.");
-            mdebug2("OS info query: %s", release);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", release);
+            mdebug2("OS info query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -2957,8 +2957,6 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
 
         return result;
     } else if (strcmp(curr, "del") == 0) {
-
-        curr = next;
 
         if (!strcmp(next, "NULL"))
             scan_id = NULL;
