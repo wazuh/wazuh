@@ -68,9 +68,9 @@
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
 #define FIM_SCHED_BATCH                     "(6201): Setting SCHED_BATCH returned: '%d'"
 #define FIM_LOCAL_DIFF_DELETE               "(6202): Deleting backup '%s'. Not monitored anymore."
-#define FIM_FILE_IGNORE_RESTRICT            "(6203): Ignoring file '%s' for a restriction..."
-#define FIM_IGNORE_ENTRY                    "(6204): Ignoring '%s' '%s' by '%s'"
-#define FIM_IGNORE_SREGEX                   "(6205): Ignoring '%s' '%s' by sregex '%s'"
+#define FIM_FILE_IGNORE_RESTRICT            "(6203): Ignoring file '%s' due to restriction '%s'"
+#define FIM_IGNORE_ENTRY                    "(6204): Ignoring '%s' '%s' due to '%s'"
+#define FIM_IGNORE_SREGEX                   "(6205): Ignoring '%s' '%s' due to sregex '%s'"
 #define FIM_TAG_ADDED                       "(6206): Adding tag '%s' to directory '%s'."
 
 #define FIM_READING_REGISTRY                "(6207): Attempt to read: '%s%s'"
