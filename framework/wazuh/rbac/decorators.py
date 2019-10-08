@@ -16,6 +16,10 @@ mode = 'white'
 
 
 def mode_changer(m):
+    """Mode changer: This function is used to change the RBAC's mode
+
+    :param m: New RBAC's mode (white or black)
+    """
     if m != 'white' and m != 'black':
         raise TypeError
     global mode
@@ -23,6 +27,11 @@ def mode_changer(m):
 
 
 def _expand_resource(resource):
+    """Expand resource: This function expand a specified resource depending of it type.
+
+    :param resource: Resource to be expanded
+    :return expanded_resource: Returns the result of the resource expansion
+    """
     name, attribute, value = resource.split(':')
     resource_type = ':'.join([name, attribute])
 
@@ -52,6 +61,16 @@ def _expand_resource(resource):
 
 
 def use_expanded_resource(effect, final_permissions, expanded_resource, req_resources_value, delete):
+    """Use expanded resource: After expanding the user permissions, depending on the effect of these we will introduce
+    them or not in the list of final permissions.
+
+    :param effect: This is the effect of these permissions (allow/deny)
+    :param final_permissions: Dictionary with the final permissions of the user
+    :param expanded_resource: Dictionary with the result of the permissions's expansion
+    :param req_resources_value: Dictionary with the required permissions for the input of the user
+    :param delete: (True/False) Flag that indicates if the actual permission is deny all (True -> Delete permissions) or
+    is allow (False -> No delete permissions)
+    """
     if '*' not in req_resources_value:
         expanded_resource = expanded_resource.intersection(req_resources_value)
     if effect == 'allow':
@@ -63,6 +82,13 @@ def use_expanded_resource(effect, final_permissions, expanded_resource, req_reso
 
 
 def black_mode_sanity(final_user_permissions, req_resources_value):
+    """Black mode sanity: This function is responsible for sanitizing the output of the user's final permissions
+    in black mode. Because to do the black mode, we deny the white mode, at the end of the process we must sanitize
+    the output because usually this will contain more permissions than required.
+
+    :param final_user_permissions: Dictionary with the final permissions of the user
+    :param req_resources_value: Dictionary with the required permissions for the input of the user
+    """
     for user_key in list(final_user_permissions.keys()):
         if user_key not in req_resources_value.keys():
             final_user_permissions.pop(user_key)
@@ -71,7 +97,14 @@ def black_mode_sanity(final_user_permissions, req_resources_value):
                 req_resources_value[user_key])
 
 
-def expand_permissions(req_resources, user_permissions_for_resource, final_user_permissions):
+def permissions_processing(req_resources, user_permissions_for_resource, final_user_permissions):
+    """Permissions processing: Given some required resources and the user's permissions on that resource,
+    we extract the user's final permissions on the resource.
+
+    :param req_resources: List of required resources
+    :param user_permissions_for_resource: List of the users's permissions over the specified resource
+    :param final_user_permissions: Dictionary where the final permissions will be inserted
+    """
     req_resources_value = dict()
     for element in req_resources:
         if ':'.join(element.split(':')[:-1]) not in req_resources_value.keys():
@@ -85,11 +118,11 @@ def expand_permissions(req_resources, user_permissions_for_resource, final_user_
             identifier = 'agent:id'
         if identifier not in final_user_permissions.keys():
             final_user_permissions[identifier] = set()
-
         if mode == 'black' and len(final_user_permissions[identifier]) == 0 and identifier not in black_negation:
             final_user_permissions[identifier] = _expand_resource(identifier + ':*')
             black_negation.add(identifier)
         expanded_resource = _expand_resource(user_resource)
+
         try:
             if identifier == '*:*' or \
                     (user_resource_effect == 'allow' and '*' not in req_resources_value[identifier] and value == '*'):
@@ -105,6 +138,7 @@ def expand_permissions(req_resources, user_permissions_for_resource, final_user_
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
     """Obtain action:resource pairs exposed by the framework function
+
     :param actions: List of exposed actions
     :param resources: List of exposed resources
     :param kwargs: Function kwargs to look for dynamic resources
@@ -142,6 +176,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
 
 def _match_permissions(req_permissions: dict = None, rbac: list = None):
     """Try to match function required permissions against user permissions to allow or deny execution
+
     :param req_permissions: Required permissions to allow function execution
     :param rbac: User permissions
     :return: Dictionary with final permissions
@@ -149,7 +184,7 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     allow_match = dict()
     for req_action, req_resources in req_permissions.items():
         if req_action in rbac.keys():
-            expand_permissions(req_resources, rbac[req_action], allow_match)
+            permissions_processing(req_resources, rbac[req_action], allow_match)
         else:
             if mode == 'black':
                 for req_resource in req_resources:
