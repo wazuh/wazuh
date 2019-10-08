@@ -152,22 +152,17 @@ int wdb_open_global();
 /**
  * @brief Open global database.
  *  
- * @pre Must be called once at start up
- * @date 8 Aug 2019
- * @return It returns a locked database or NULL
- * @see wdb_create_global
- * @see wdb_init
- * @see wdb_pool_append
- * @see wdb_upgrade
+ * @pre Must be called once at start up.
+ * @return It returns a locked database or NULL on failure.
  */
 wdb_t * wdb_t_open_global();
 
 /**
- * @brief Open mitre database and store in DB poll
+ * @brief Open mitre database and store in DB poll.
  * 
- * It is opened every time a Mitre SQL query is done
+ * It is opened every time a query to Mitre database is done.
  * 
- * @return wdb_t* Database Structure that store mitre database. 
+ * @return wdb_t* Database Structure that store mitre database or NULL on failure. 
  */
 wdb_t * wdb_open_mitre();
 
@@ -374,10 +369,10 @@ int wdb_commit(sqlite3 *db);
 int wdb_commit2(wdb_t * wdb);
 
 /**
- * @brief It creates the global database
+ * @brief It creates the global database.
  * 
- * @param path The path where the global DB will be create
- * @return It returns 0 if correct or -1 if error
+ * @param path The path where the global DB will be create.
+ * @return It returns 0 if correct or -1 if error.
  */
 int wdb_create_global(const char *path);
 
@@ -502,21 +497,21 @@ int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 int wdb_ciscat_del(wdb_t * wdb, const char * scan_id);
 
 /**
- * @brief It creates a database node that is associated with a database and ID
+ * @brief It creates a database node that is associated with a database and ID.
  * 
- * @param db The database to associate with the node
- * @param id The ID name to associate with the node
- * @return It returns a database node
+ * @param db The database to associate with the node.
+ * @param id The ID name to associate with the node.
+ * @return It returns a database node.
  */
 wdb_t * wdb_init(sqlite3 * db, const char * id);
 
 void wdb_destroy(wdb_t * wdb);
 
 /**
- * @brief It stores a database node in DB pool
+ * @brief It stores a database node in DB pool.
  * 
- * @param wdb The database node that you want to append to the DB Pool
- * @return It returns a locked database node
+ * @param wdb The database node that you want to append to the DB Pool.
+ * @return It returns a locked database node.
  */
 void wdb_pool_append(wdb_t * wdb);
 
@@ -577,10 +572,10 @@ int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output
 int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check);
 
 /**
- * @brief It upgrades database node to last version
+ * @brief It upgrades database node to last version.
  * 
- * @param wdb The database node that you want to upgrade
- * @return It returns a database node
+ * @param wdb The database node that you want to upgrade.
+ * @return It returns a upgraded database node.
  */
 wdb_t * wdb_upgrade(wdb_t *wdb);
 
