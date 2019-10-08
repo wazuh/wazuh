@@ -919,6 +919,8 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
 
 void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const char *LOCATION) {
     static OSRegex *hotfix_regex = NULL;
+    // This table is used to discard already reported hotfixes (same key and same timestamp)
+    // It does not need to be released between iterations (static variable)
     static OSHash *hotfixes_table;
     char achKey[KEY_LENGTH];   // buffer for subkey name
     long unsigned int cbName;                   // size of name string
@@ -965,6 +967,7 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
             os_free(hotfix_regex);
             return;
         }
+
         if (hotfixes_table = OSHash_Create(), !hotfixes_table) {
             merror_exit(MEM_ERROR, errno, strerror(errno));
         }
