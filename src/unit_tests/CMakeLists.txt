@@ -16,6 +16,8 @@ FIND_LIBRARY(WAZUHEXT NAMES libwazuhext.so HINTS "${CMAKE_SOURCE_DIR}/../")
 
 ADD_COMPILE_OPTIONS(-ggdb)
 
+
+# Generate syscheck library
 FILE(GLOB sysfiles ../syscheckd/*.o)
 LIST(REMOVE_ITEM sysfiles ../syscheckd/main.o)
 FILE(GLOB rootfiles ../rootcheck/*.o)
@@ -40,6 +42,7 @@ SET_TARGET_PROPERTIES(
 
 TARGET_LINK_LIBRARIES(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+
 # Tests list and flags
 LIST(APPEND tests_names "test_file_op")
 LIST(APPEND tests_flags "-Wl,--wrap,isChroot -Wl,--wrap,chmod -Wl,--wrap,File_DateofChange -Wl,--wrap,getpid -Wl,--wrap,unlink")
@@ -54,7 +57,8 @@ LIST(APPEND tests_names "test_version_op")
 LIST(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
 LIST(APPEND tests_names "test_create_db")
-LIST(APPEND tests_flags " ") #-Wl,-e,__main
+LIST(APPEND tests_flags " ")
+
 
 # Declare all tests targets
 LIST(LENGTH tests_names count)
