@@ -6,99 +6,73 @@ import copy
 import re
 from functools import wraps
 
+from api.authentication import AuthenticationManager
+from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
 from wazuh.exception import WazuhError, create_exception_dic
-from wazuh.core.core_utils import get_agents_info, expand_group
 from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import WazuhResult
-
 
 mode = 'white'
 
 
-class Resource:
-    def __init__(self, resource):
-        split_resource = resource.split(':')
-        self.name_identifier = ':'.join(split_resource[0:2])
-        self.value = split_resource[2]
-        if 'agent' in self.name_identifier:
-            self.agents = get_agents_info()
-        elif 'role' in self.name_identifier:
-            roles_ids = set()
-            with RolesManager() as rm:
-                roles = rm.get_roles()
-            for role in roles:
-                roles_ids.add(str(role.id))
-            self.roles = roles_ids
-        elif 'policy' in self.name_identifier:
-            policy_ids = set()
-            with PoliciesManager() as pm:
-                policies = pm.get_policies()
-            for policy in policies:
-                policy_ids.add(str(policy.id))
-            self.policies = policy_ids
+def _expand_resource(resource_type):
+    if resource_type == 'agent':
+        return get_agents_info()
+    elif resource_type == 'group':
+        return get_groups()
+    elif resource_type == 'role':
+        with RolesManager() as rm:
+            return rm.get_roles()
+    elif resource_type == 'policy':
+        with PoliciesManager() as pm:
+            return pm.get_policies()
+    elif resource_type == 'user':
+        users_system = set()
+        with AuthenticationManager() as auth:
+            users = auth.get_users()
+        for user in users:
+            users_system.add(user['username'])
+        return users_system
 
-    def get_name_identifier(self):
-        return self.name_identifier
+    return set()
 
-    def get_value(self):
-        return self.value
 
-    def exec_expand_function(self, rbac_mode, odict):
-        if self.name_identifier == 'agent:id' or self.name_identifier == 'agent:group':
-            return self._agent_expand_permissions(rbac_mode, odict)
-        elif self.name_identifier == 'role:id':
-            return self._role_expand_permissions(rbac_mode, odict)
-        elif self.name_identifier == 'policy:id':
-            return self._policy_expand_permissions(rbac_mode, odict)
+def use_expanded_resource(effect, final_permissions, expanded_resource, req_resources_value):
+    if '*' not in req_resources_value:
+        expanded_resource = expanded_resource.intersection(req_resources_value)
+    if effect == 'allow':
+        final_permissions.update(expanded_resource)
+    else:
+        final_permissions.difference_update(expanded_resource)
 
-    def _agent_expand_permissions(self, rbac_mode, odict):
-        final_permissions = set()
-        for key, value in odict.items():
-            if key.startswith('agent:group'):
-                expanded_group = expand_group(key.split(':')[-1])
-                for agent in expanded_group:
-                    final_permissions.add(agent) if value == 'allow' else final_permissions.discard(agent)
-            elif key.startswith('agent:id:*'):
-                for agent in self.agents:
-                    final_permissions.add(agent) if value == 'allow' else final_permissions.discard(agent)
-            elif key.startswith('agent:id'):
-                final_permissions.add(key.split(':')[-1]) if value == 'allow' \
-                    else final_permissions.discard(key.split(':')[-1])
-        for agent in self.agents:
-            if rbac_mode == 'black':
-                final_permissions.add(agent)
 
-        return final_permissions
+def expand_permissions(rbac_mode, req_resources, user_permissions_for_resource):
+    final_user_permissions = set()
+    req_resources_value = set()
+    resource_type = req_resources[0].split(':')[0]
+    for element in req_resources:
+        req_resources_value.add(element.split(':')[-1])
+    for user_resource, user_resource_effect in user_permissions_for_resource.items():
+        name, attribute, value = user_resource.split(':')
+        # If there are two different resources in the same module, only the one we need will pass
+        if resource_type != name and attribute != 'group':
+            continue
 
-    def _role_expand_permissions(self, rbac_mode, odict):
-        final_permissions = set()
-        for key, value in odict.items():
-            if key.startswith('role:id:*'):
-                for role in self.roles:
-                    final_permissions.add(role) if value == 'allow' else final_permissions.discard(role)
-            elif key.startswith('role:id'):
-                final_permissions.add(key.split(':')[-1]) if value == 'allow' \
-                    else final_permissions.discard(key.split(':')[-1])
-        for role in self.roles:
-            if rbac_mode == 'black':
-                final_permissions.add(role)
+        expanded_resource = set()
+        if name + ':' + attribute == 'agent:group':
+            expanded_resource = expand_group(value)
+        elif user_resource.startswith(name + ':id:*'):
+            expanded_resource = _expand_resource(name)
+            if user_resource_effect == 'allow' and '*' not in req_resources_value:
+                final_user_permissions.update(req_resources_value - expanded_resource)
+        elif user_resource.startswith(name + ':id'):
+            expanded_resource = {value}
+        use_expanded_resource(user_resource_effect, final_user_permissions, expanded_resource, req_resources_value)
+    if rbac_mode == 'black':
+        for resource in req_resources:
+            final_user_permissions.add(resource)
 
-        return final_permissions
-
-    def _policy_expand_permissions(self, rbac_mode, odict):
-        final_permissions = set()
-        for key, value in odict.items():
-            if key.startswith('policy:id:*'):
-                for policy in self.policies:
-                    final_permissions.add(policy) if value == 'allow' else final_permissions.discard(policy)
-            elif key.startswith('policy:id'):
-                final_permissions.add(key.split(':')[-1]) if value == 'allow' \
-                    else final_permissions.discard(key.split(':')[-1])
-        for policy in self.policies:
-            if rbac_mode == 'black':
-                final_permissions.add(policy)
-
-        return final_permissions
+    return final_user_permissions
 
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
@@ -145,7 +119,7 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     """Try to match function required permissions against user permissions to allow or deny execution
     :param req_permissions: Required permissions to allow function execution
     :param rbac: User permissions
-    :return: Allow or deny
+    :return: Dictionary with final permissions
     """
     allow_match = dict()
     black_counter = 0
@@ -154,19 +128,8 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
             allow_match['black:mode'] = '*'
             return allow_match
     for req_action, req_resources in req_permissions.items():
-        # The required action is in user permissions(Preprocessed policies)
         if req_action in rbac.keys():
-            for req_resource in req_resources:
-                user_resources = rbac[req_action]
-                r_resource = Resource(req_resource)
-                allowed_resources = r_resource.exec_expand_function(mode, user_resources)
-                if len(allowed_resources) > 0:
-                    if r_resource.get_name_identifier() not in allow_match:
-                        allow_match[r_resource.get_name_identifier()] = set()
-                if r_resource.get_value() == '*':
-                    allow_match[r_resource.get_name_identifier()].update(allowed_resources)
-                elif r_resource.get_value() in allowed_resources:
-                    allow_match[r_resource.get_name_identifier()].add(r_resource.get_value())
+            allow_match[req_action] = expand_permissions(mode, req_resources, rbac[req_action])
         else:
             if mode == 'black':
                 black_counter += 1
@@ -177,17 +140,20 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     return allow_match
 
 
-def expose_resources(actions: list = None, resources: list = None, target_param: list = None,
-                     post_proc_func: callable = None, post_proc_extra_fields: list = None):
+def expose_resources(actions: list = None, resources: list = None, target_params: list = None,
+                     post_proc_func: callable = None, post_proc_kwargs: dict = None):
     """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
 
     :param actions: List of actions exposed by the framework function
     :param resources: List of resources exposed by the framework function
-    :param target_param: Name of the input parameter used to calculate resource access
+    :param target_params: Name of the input parameters used to calculate resource access
     :param post_proc_func: Name of the function to use in response post processing
-    :param post_proc_extra_fields: Name of the extra fields used in post processing
+    :param post_proc_kwargs: Extra parameters used in post processing
     :return: Allow or deny framework function execution
     """
+    if post_proc_kwargs is None:
+        post_proc_kwargs = dict()
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -195,56 +161,98 @@ def expose_resources(actions: list = None, resources: list = None, target_param:
             allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
             del kwargs['rbac']
             original_kwargs = copy.deepcopy(kwargs)
-            if 'black:mode' not in allow.keys():  # Black flag
-                for index, target in enumerate(target_param):
+            if 'black:mode' not in allow.keys():  # Black flag not in allow
+                for index, target in enumerate(target_params):
                     try:
                         if len(allow[list(allow.keys())[index]]) == 0:
                             raise Exception
                         kwargs[target] = list(allow[list(allow.keys())[index]])
                     except Exception:
                         raise WazuhError(4000)
+            result = func(*args, **kwargs)
             if post_proc_func is None:
-                return func(*args, **kwargs)
+                return result
             else:
-                return post_proc_func(f=func, original=original_kwargs, allow=allow, target=target_param,
-                                      extra_fields=post_proc_extra_fields, *args, **kwargs)
+                return post_proc_func(result, original=original_kwargs, allowed=allow, target=target_params,
+                                      **post_proc_kwargs)
         return wrapper
     return decorator
 
 
-def list_response_handler(f: callable = None, original: dict = None, allow: dict = None, target: list = None, extra_fields: list = None,
-                          *args, **kwargs):
-    """ Post processor for list responses with affected and failed items
+def merge_errors(failed_items):
+    code_ids = dict()
+    for index, failed_item in enumerate(failed_items):
+        if failed_item['error']['code'] not in code_ids.keys():
+            code_ids[failed_item['error']['code']] = dict()
+            code_ids[failed_item['error']['code']]['ids'] = list()
+            code_ids[failed_item['error']['code']]['index'] = index
+        code_ids[failed_item['error']['code']]['ids'].append(failed_item['id'])
+    final_errors_list = list()
+    error_count = 0
+    for key, error_code in code_ids.items():
+        final_errors_list.append(failed_items[error_code['index']])
+        for item_id in error_code['ids']:
+            if not isinstance(final_errors_list[-1]['id'], list):
+                final_errors_list[-1]['id'] = list()
+            final_errors_list[-1]['id'].append(item_id)
+        error_count += len(error_code['ids'])
 
-    :param f: Function to apply post-processing to
-    :param allow: RBAC filtered input
+    return final_errors_list, error_count
+
+
+def list_handler_with_denied(result, original: dict = None, allowed: dict = None, target: list = None,
+                             **post_proc_kwargs):
+    """ Post processor for framework list responses with affected items and failed items
+
+    :param result: Dict with affected_items, failed_items and str_priority
+    :param original: Original input call parameter values
+    :param allowed: Allowed input call parameter values
     :param target: Name of the input parameters used to calculate resource access
-    :param extra_fields: Additional fields to add to response
-    :param args: Original call args
-    :param kwargs: Original call kwargs
-    :return: Post-processed WazuhResult
+    :return: WazuhResult
     """
-    if extra_fields is None:
-        extra_fields = list()
-    affected_items, failed_items, str_priority = f(*args, **kwargs)
     if len(target) == 1:
-        original_kwargs = original[target[0]]
-        for item in set(original_kwargs) - set(list(allow[list(allow.keys())[0]])):
-            failed_items.append(create_exception_dic(item, WazuhError(4000)))
+        original_kwargs = original[target[0]] if isinstance(original[target[0]], list) else [original[target[0]]]
+        for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[0]])):
+            result['failed_items'].append(create_exception_dic(item, WazuhError(4000)))
     else:
-        original_kwargs = original[target[1]]
-        for item in set(original_kwargs) - set(list(allow[list(allow.keys())[1]])):
-            failed_items.append(create_exception_dic('{}:{}'.format(original[target[0]], item), WazuhError(4000)))
+        original_kwargs = original[target[1]] if isinstance(original[target[1]], list) else list(original[target[1]])
+        for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[1]])):
+            result['failed_items'].append(create_exception_dic('{}:{}'.format(original[target[0]], item),
+                                                               WazuhError(4000)))
 
-    final_dict = {'data': {'affected_items': affected_items,
-                           'total_affected_items': len(affected_items)}
+    return data_response_builder(result, original, **post_proc_kwargs)
+
+
+def list_handler_no_denied(result, original: dict = None, allowed: dict = None, target: list = None,
+                           **post_proc_kwargs):
+    """ Post processor for framework list responses with only affected items
+
+    :param result: List with affected_items, failed_items and str_priority
+    :param original: Original input call parameter values
+    :return: WazuhResult
+    """
+    return data_response_builder(result, original, **post_proc_kwargs)
+
+
+def data_response_builder(result, original: dict = None, **post_proc_kwargs):
+    """
+
+    :param result: List with affected_items, failed_items and str_priority
+    :param original: Original input call parameter values
+    :return: WazuhResult
+    """
+    final_dict = {'data': {'affected_items': result['affected_items'],
+                           'total_affected_items': len(result['affected_items'])}
                   }
-    if failed_items:
-        final_dict['data']['failed_items'] = failed_items
-        final_dict['data']['total_failed_items'] = len(failed_items)
-        final_dict['message'] = str_priority[2] if not affected_items else str_priority[1]
+    if result['failed_items']:
+        failed_result = merge_errors(result['failed_items'])
+        final_dict['data']['failed_items'] = failed_result[0]
+        final_dict['data']['total_failed_items'] = failed_result[1]
+        final_dict['message'] = result['str_priority'][2] if not result['affected_items'] else result['str_priority'][1]
     else:
-        final_dict['message'] = str_priority[0]
-    for item in extra_fields:
-        final_dict['data'][item] = kwargs[item]
-    return WazuhResult(final_dict, str_priority=str_priority)
+        final_dict['message'] = result['str_priority'][2] if not result['affected_items'] else result['str_priority'][0]
+    if 'extra_fields' in post_proc_kwargs.keys():
+        for item in post_proc_kwargs['extra_fields']:
+            final_dict['data'][item] = original[item]
+
+    return WazuhResult(final_dict, str_priority=result['str_priority'])

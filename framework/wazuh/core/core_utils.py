@@ -6,13 +6,11 @@ from glob import glob
 
 from wazuh import common
 from wazuh.agent import WazuhDBQueryAgents, WazuhDBQueryMultigroups
+from wazuh.database import Connection
 from wazuh.exception import WazuhInternalError
 
 
 def get_agents_info():
-    db_global = glob(common.database_path_global)
-    if not db_global:
-        raise WazuhInternalError(1600)
     agents = WazuhDBQueryAgents(select=['id']).run()['items']
     agents_list = set()
     for agent_info in agents:
@@ -21,13 +19,31 @@ def get_agents_info():
     return agents_list
 
 
-def expand_group(group):
+def get_groups():
     db_global = glob(common.database_path_global)
     if not db_global:
         raise WazuhInternalError(1600)
-    agents_group = WazuhDBQueryMultigroups(group, select=['id']).run()['items']
-    agents_ids = list()
-    for agent in agents_group:
-        agents_ids.append(str(agent['id']).zfill(3))
+    conn = Connection(db_global[0])
+    conn.execute("SELECT name FROM `group`")
+    groups = conn.fetch_all()
+    groups_list = set()
+    for group in groups:
+        groups_list.add(group['name'])
+
+    return groups_list
+
+def expand_group(group_name):
+    if group_name == '*':
+        data = WazuhDBQueryAgents(select=['group']).run()['items']
+        groups = set()
+        for agent_group in data:
+            groups.update(set(agent_group.get('group', list())))
+    else:
+        groups = {group_name}
+    agents_ids = set()
+    for group in groups:
+        agents_group = WazuhDBQueryMultigroups(group, select=['id']).run()['items']
+        for agent in agents_group:
+            agents_ids.add(str(agent['id']).zfill(3))
 
     return agents_ids

@@ -62,7 +62,6 @@ components:
         id:
           type: string
 
-
     ApiError:
       type: object
       required:
@@ -1924,8 +1923,6 @@ components:
           format: int32
           minimum: 0
           description: Packets pending to be transmitted.
-
-
         agent_id:
           $ref: '#/components/schemas/AgentID'
         pid:
@@ -2518,15 +2515,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    format:
-      in: query
-      name: format
-      description: Select output format to return the file. JSON will format the file in JSON format and XML will return the XML raw file in a string.
-      schema:
-        type: string
-        enum:
-        - json
-        - xml
     file_format:
       in: query
       name: format
@@ -2719,13 +2707,6 @@ components:
           minLength: 1
           minimum: 2
           description: Policy ID.
-    policy_name:
-      in: query
-      name: policy_name
-      description: 'Specified and existent policy name'
-      required: True
-      schema:
-        type: string
     purge:
       in: query
       name: purge
@@ -2783,20 +2764,6 @@ components:
         minLength: 1
         minimum: 2
         description: Role ID.
-    role_name:
-      in: query
-      name: role_name
-      description: 'Specified and existent role name'
-      required: True
-      schema:
-        type: string
-    rulesetPath:
-      in: query
-      name: path
-      description: Filters by path.
-      schema:
-        type: string
-        format: ruleset_path
     score:
       in: query
       name: score
@@ -3198,45 +3165,44 @@ components:
       schema:
         type: string
         format: hash
-    ram_free:
+    ram.free:
       in: query
-      name: ram_free
-      description: Filters by ram_free.
+      name: ram.free
+      description: Filters by ram.free.
       schema:
         type: integer
         format: int64
         minimum: 0
-    ram_total:
+    ram.total:
       in: query
-      name: ram_total
-      description: Filters by ram_total.
+      name: ram.total
+      description: Filters by ram.total.
       schema:
         type: integer
         format: int64
         minimum: 0
-    cpu_cores:
+    cpu.cores:
       in: query
-      name: cpu_cores
-      description: Filters by cpu_cores.
+      name: cpu.cores
+      description: Filters by cpu.cores.
       schema:
         type: integer
         format: int32
         minimum: 1
-    cpu_mhz:
+    cpu.mhz:
       in: query
-      name: cpu_mhz
-      description: Filters by cpu_mhz.
+      name: cpu.mhz
+      description: Filters by cpu.mhz.
       schema:
         type: number
         format: float
         minimum: 1
-    cpu_name:
+    cpu.name:
       in: query
-      name: cpu_name
-      description: Filters by cpu_name.
+      name: cpu.name
+      description: Filters by cpu.name.
       schema:
         type: string
-        format: alphanumeric
     board_serial:
       in: query
       name: board_serial
@@ -9025,7 +8991,7 @@ paths:
       tags:
         - experimental
       summary: 'Get CIS-CAT results'
-      description: "Returns the agent's ciscat results info."
+      description: "Returns the agents ciscat results info."
       operationId: api.controllers.experimental_controller.get_cis_cat_results
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -9106,11 +9072,11 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/ram_free'
-        - $ref: '#/components/parameters/ram_total'
-        - $ref: '#/components/parameters/cpu_cores'
-        - $ref: '#/components/parameters/cpu_mhz'
-        - $ref: '#/components/parameters/cpu_name'
+        - $ref: '#/components/parameters/ram.free'
+        - $ref: '#/components/parameters/ram.total'
+        - $ref: '#/components/parameters/cpu.cores'
+        - $ref: '#/components/parameters/cpu.mhz'
+        - $ref: '#/components/parameters/cpu.name'
         - $ref: '#/components/parameters/board_serial'
       responses:
         '200':
@@ -9464,7 +9430,7 @@ paths:
         - $ref: '#/components/parameters/vendor'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/architecture'
-        - $ref: '#/components/parameters/format'
+        - $ref: '#/components/parameters/file_format'
         - $ref: '#/components/parameters/package_version'
       responses:
         '200':
@@ -10095,6 +10061,7 @@ paths:
         - $ref: '#/components/parameters/remote.ip'
         - $ref: '#/components/parameters/tx_queue'
         - $ref: '#/components/parameters/state'
+        - $ref: '#/components/parameters/process'
       responses:
         '200':
           description: "Return a list of agent's packages results"

@@ -41,12 +41,6 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
     :param hipaa: Filters by HIPAA requirement.
     :return: Data object
     """
-    # We access nist-800-53 from connexion request since it is set with an invalid variable name
-    try:
-        nist_800_53 = connexion.request.args['nist-800-53']
-    except KeyError:
-        nist_800_53 = None
-
     f_kwargs = {'offset': offset,
                 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
@@ -61,7 +55,7 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
                 'gdpr': gdpr,
                 'gpg13': gpg13,
                 'hipaa': hipaa,
-                'nist_800_53': nist_800_53}
+                'nist_800_53': connexion.request.args.get('nist-800-53', None)}
 
     dapi = DistributedAPI(f=Rule.get_rules,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
