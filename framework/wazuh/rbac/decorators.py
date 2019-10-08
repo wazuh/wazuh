@@ -251,8 +251,10 @@ def data_response_builder(result, original: dict = None, **post_proc_kwargs):
         final_dict['message'] = result['str_priority'][2] if not result['affected_items'] else result['str_priority'][1]
     else:
         final_dict['message'] = result['str_priority'][2] if not result['affected_items'] else result['str_priority'][0]
-    if 'extra_fields' in post_proc_kwargs.keys():
+    if 'extra_fields' in post_proc_kwargs:
         for item in post_proc_kwargs['extra_fields']:
             final_dict['data'][item] = original[item]
+    if 'extra_affected' in post_proc_kwargs:
+        final_dict['data'][post_proc_kwargs['extra_affected']] = result[post_proc_kwargs['extra_affected']]
 
     return WazuhResult(final_dict, str_priority=result['str_priority'])

@@ -7,6 +7,7 @@ import logging
 
 import connexion
 
+import wazuh.agent as agent
 from api import configuration
 from api.authentication import get_permissions
 from api.models.agent_added import AgentAdded
@@ -14,7 +15,6 @@ from api.models.agent_inserted import AgentInserted
 from api.models.base_model_ import Data
 from api.util import parse_api_param
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
-from wazuh.agent import Agent
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.common import database_limit
 from wazuh.exception import WazuhError
@@ -44,7 +44,7 @@ def delete_agents(pretty=False, wait_for_complete=False, agent_list=None, purge=
                 'status': status,
                 'older_than': older_than
                 }
-    func = Agent.delete_agents_all if agent_list is None else Agent.delete_agents
+    func = agent.delete_agents_all if agent_list is None else agent.delete_agents
 
     dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -112,7 +112,7 @@ def get_agents(pretty=False, wait_for_complete=False, agent_list=None, offset=No
     nested = ['os.version', 'os.name', 'os.platform']
     for field in nested:
         f_kwargs['filters'][field] = connexion.request.args.get(field, None)
-    func = Agent.get_agents_all if agent_list is None else Agent.get_agents
+    func = agent.get_agents_all if agent_list is None else agent.get_agents
 
     dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -139,7 +139,7 @@ def restart_agents(pretty=False, wait_for_complete=False, agent_list=None):
     """
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'agent_list': agent_list}
-    func = Agent.restart_agents_all if agent_list is None else Agent.restart_agents
+    func = agent.restart_agents_all if agent_list is None else agent.restart_agents
 
     dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -181,7 +181,7 @@ def add_agent(pretty=False, wait_for_complete=False):
         else:
             f_kwargs['ip'] = connexion.request.remote_addr
 
-    dapi = DistributedAPI(f=Agent.add_agent,
+    dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -212,7 +212,7 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):
                 'older_than': "0s"
                 }
 
-    dapi = DistributedAPI(f=Agent.delete_agents,
+    dapi = DistributedAPI(f=agent.delete_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -241,7 +241,7 @@ def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):
                 'select': select
                 }
 
-    dapi = DistributedAPI(f=Agent.get_agents,
+    dapi = DistributedAPI(f=agent.get_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -275,7 +275,7 @@ def get_agent_config(pretty=False, wait_for_complete=False, agent_id=None, compo
                 'config': kwargs.get('configuration', None)
                 }
 
-    dapi = DistributedAPI(f=Agent.get_agents_config,
+    dapi = DistributedAPI(f=agent.get_agents_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -303,7 +303,7 @@ def delete_agent_all_groups(agent_id, pretty=False, wait_for_complete=False):
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'agent_list': [agent_id]}
 
-    dapi = DistributedAPI(f=Agent.remove_agents_from_all_groups,
+    dapi = DistributedAPI(f=agent.remove_agents_from_all_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -332,7 +332,7 @@ def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'agent_list': [agent_id]}
 
-    dapi = DistributedAPI(f=Agent.get_agents_sync_group,
+    dapi = DistributedAPI(f=agent.get_agents_sync_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -363,7 +363,7 @@ def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complet
                 'agent_list': [agent_id],
                 'group_id': group_id}
 
-    dapi = DistributedAPI(f=Agent.remove_agents_from_group,
+    dapi = DistributedAPI(f=agent.remove_agents_from_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -393,7 +393,7 @@ def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=
                 'group_id': group_id,
                 'replace': force_single_group}
 
-    dapi = DistributedAPI(f=Agent.assign_agents_to_group,
+    dapi = DistributedAPI(f=agent.assign_agents_to_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -418,7 +418,7 @@ def get_agent_key(agent_id, pretty=False, wait_for_complete=False):
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'agent_list': [agent_id]}
 
-    dapi = DistributedAPI(f=Agent.get_agents_keys,
+    dapi = DistributedAPI(f=agent.get_agents_keys,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -444,7 +444,7 @@ def restart_agent(agent_id, pretty=False, wait_for_complete=False):
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'agent_list': [agent_id]}
 
-    dapi = DistributedAPI(f=Agent.restart_agents,
+    dapi = DistributedAPI(f=agent.restart_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -478,7 +478,7 @@ def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=
                 'use_http': use_http,
                 'force': force}
 
-    dapi = DistributedAPI(f=Agent.upgrade_agents,
+    dapi = DistributedAPI(f=agent.upgrade_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -509,7 +509,7 @@ def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, fi
                 'file_path': file_path,
                 'installer': installer}
 
-    dapi = DistributedAPI(f=Agent.upgrade_agents_custom,
+    dapi = DistributedAPI(f=agent.upgrade_agents_custom,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -536,7 +536,7 @@ def post_new_agent(agent_name, pretty=False, wait_for_complete=False):
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'name': agent_name}
 
-    dapi = DistributedAPI(f=Agent.add_agent,
+    dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -564,7 +564,7 @@ def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False
                 'agent_list': [agent_id],
                 'timeout': timeout}
 
-    dapi = DistributedAPI(f=Agent.get_upgrade_result,
+    dapi = DistributedAPI(f=agent.get_upgrade_result,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -590,7 +590,7 @@ def delete_multiple_agent_single_group(group_id, agent_list=None, pretty=False, 
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'agent_list': agent_list,
                 'group_id': group_id}
-    func = Agent.remove_all_agents_from_group if agent_list is None else Agent.remove_agents_from_group
+    func = agent.remove_all_agents_from_group if agent_list is None else agent.remove_agents_from_group
 
     dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -621,7 +621,7 @@ def put_multiple_agent_single_group(group_id, agent_list=None, pretty=False, wai
                 'agent_list': agent_list,
                 'group_id': group_id,
                 'replace': force_single_group}
-    func = Agent.assign_all_agents_to_group if agent_list is None else Agent.assign_agents_to_group
+    func = agent.assign_all_agents_to_group if agent_list is None else agent.assign_agents_to_group
 
     dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -648,7 +648,7 @@ def delete_groups(list_groups=None, pretty=False, wait_for_complete=False):
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'group_list': list_groups}
 
-    func = Agent.delete_groups_all if list_groups is None else Agent.delete_groups
+    func = agent.delete_groups_all if list_groups is None else agent.delete_groups
     dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -689,7 +689,7 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                 'search_in_fields': ['name'],
                 'hash_algorithm': hash_}
 
-    dapi = DistributedAPI(f=Agent.get_all_groups,
+    dapi = DistributedAPI(f=agent.get_all_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -717,7 +717,7 @@ def delete_single_group(group_id, pretty=False, wait_for_complete=False):
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'group_list': [group_id]}
 
-    dapi = DistributedAPI(f=Agent.delete_groups,
+    dapi = DistributedAPI(f=agent.delete_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -762,7 +762,7 @@ def get_agents_in_group(group_id, pretty=False, wait_for_complete=False, offset=
                 },
                 'q': 'group=' + group_id + (';' + q if q else '')}
 
-    dapi = DistributedAPI(f=Agent.get_agents_all,
+    dapi = DistributedAPI(f=agent.get_agents_all,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -789,7 +789,7 @@ def post_group(group_id, pretty=False, wait_for_complete=False):
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'group_id': group_id}
 
-    dapi = DistributedAPI(f=Agent.create_group,
+    dapi = DistributedAPI(f=agent.create_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -818,7 +818,7 @@ def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, 
                 'offset': offset,
                 'limit': limit}
 
-    dapi = DistributedAPI(f=Agent.get_agent_conf,
+    dapi = DistributedAPI(f=agent.get_agent_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -857,7 +857,7 @@ def put_group_config(body, group_id, pretty=False, wait_for_complete=False):
                 'group_list': [group_id],
                 'file_data': body}
 
-    dapi = DistributedAPI(f=Agent.upload_group_file,
+    dapi = DistributedAPI(f=agent.upload_group_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -896,7 +896,7 @@ def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, l
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'hash_algorithm': hash_}
 
-    dapi = DistributedAPI(f=Agent.get_group_files,
+    dapi = DistributedAPI(f=agent.get_group_files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -926,7 +926,7 @@ def get_group_file_json(group_id, file_name, pretty=False, wait_for_complete=Fal
                 'type_conf': connexion.request.args.get('type', None),
                 'return_format': 'json'}
 
-    dapi = DistributedAPI(f=Agent.get_file_conf,
+    dapi = DistributedAPI(f=agent.get_file_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -956,7 +956,7 @@ def get_group_file_xml(group_id, file_name, pretty=False, wait_for_complete=Fals
                 'type_conf': connexion.request.args.get('type', None),
                 'return_format': 'xml'}
 
-    dapi = DistributedAPI(f=Agent.get_file_conf,
+    dapi = DistributedAPI(f=agent.get_file_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -997,7 +997,7 @@ def insert_agent(pretty=False, wait_for_complete=False):
         else:
             f_kwargs['ip'] = connexion.request.remote_addr
 
-    dapi = DistributedAPI(f=Agent.add_agent,
+    dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1025,7 +1025,7 @@ def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=
                 'filters': {'name': agent_name},
                 'select': select}
 
-    dapi = DistributedAPI(f=Agent.get_agents_all,
+    dapi = DistributedAPI(f=agent.get_agents_all,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1063,7 +1063,7 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=da
                 'search': parse_api_param(search, 'search'),
                 'q': 'group=null' + (';' + q if q else '')}
 
-    dapi = DistributedAPI(f=Agent.get_agents_all,
+    dapi = DistributedAPI(f=agent.get_agents_all,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1098,7 +1098,7 @@ def get_agent_outdated(pretty=False, wait_for_complete=False, offset=None, limit
                 'search': parse_api_param(search, 'search'),
                 'q': q}
 
-    dapi = DistributedAPI(f=Agent.get_outdated_agents,
+    dapi = DistributedAPI(f=agent.get_outdated_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1141,7 +1141,7 @@ def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=data
                 'fields': fields,
                 'q': q}
 
-    dapi = DistributedAPI(f=Agent.get_distinct_agents,
+    dapi = DistributedAPI(f=agent.get_distinct_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1165,7 +1165,7 @@ def get_agent_summary_status(pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization'])}
 
-    dapi = DistributedAPI(f=Agent.get_agents_summary_status,
+    dapi = DistributedAPI(f=agent.get_agents_summary_status,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1197,7 +1197,7 @@ def get_agent_summary_os(pretty=False, wait_for_complete=False, offset=None, lim
                 'search': parse_api_param(search, 'search'),
                 'q': q}
 
-    dapi = DistributedAPI(f=Agent.get_agents_summary_os,
+    dapi = DistributedAPI(f=agent.get_agents_summary_os,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

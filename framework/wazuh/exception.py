@@ -317,7 +317,7 @@ class WazuhException(Exception):
         1747: {'message': "Could not remove agent group assigment from database"},
         1748: {'message': "Could not remove agent files"},
         1749: {'message': "Downgrading an agent requires the force flag.",
-               'remediation': "Use -F to force the downgrade"
+               'remediation': "Use force=1 parameter to force the downgrade"
                },
         1750: {'message': 'Could not send restart command, active-response is disabled in the agent',
                'remediation': "You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`"},

@@ -2,2494 +2,858 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import errno
-import fcntl
 import hashlib
-import ipaddress
 import operator
-import socket
-from base64 import b64encode
-from datetime import date, datetime
-from functools import reduce
 from glob import glob
-from json import loads
-from os import chown, chmod, path, makedirs, urandom, listdir, stat, remove
-from platform import platform
-from shutil import copyfile, rmtree
-from time import time, sleep
-from typing import Dict
-
-import requests
+from os import chmod, path, listdir
+from shutil import copyfile
 
 from wazuh import common, configuration
 from wazuh.InputValidator import InputValidator
-from wazuh.cluster.utils import get_manager_status
-from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryDistinctAgents, WazuhDBQueryGroupByAgents, \
-    WazuhDBQueryMultigroups, check_group_exists, send_restart_command
+from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryDistinctAgents, WazuhDBQueryGroupByAgents
 from wazuh.database import Connection
 from wazuh.exception import WazuhError, WazuhInternalError, WazuhException, create_exception_dic
-from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.rbac.decorators import expose_resources, list_handler_with_denied, list_handler_no_denied
-from wazuh.results import WazuhResult
-from wazuh.utils import chmod_r, chown_r, WazuhVersion, get_hash, WazuhDBQueryDistinct, mkdir_with_mode, \
-    md5, WazuhDBBackend, safe_move, process_array
+from wazuh.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, \
+    md5, process_array
+from wazuh.core.core_agent import Agent
 
 
-class Agent:
-    """OSSEC Agent object.
+@expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
+def get_agents_all(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, 
+                   filters=None, q=''):
+    """Gets a list of available agents with basic attributes.
+
+    :param agent_list: List of agents ID's.
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+    :param filters: Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+    :param q: Defines query to filter in DB.
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    fields = {'id': 'id', 'name': 'name', 'ip': 'coalesce(ip,register_ip)', 'status': 'status',
-              'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
-              'version': 'version', 'manager': 'manager_host', 'dateAdd': 'date_add',
-              'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
-              'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor',
-              'os.uname': 'os_uname', 'os.arch': 'os_arch', 'os.build': 'os_build',
-              'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key': 'internal_key',
-              'registerIP': 'register_ip'}
+    if filters is None:
+        filters = dict()
+    filters['id'] = agent_list
+    db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, 
+                                  query=q)
+    data = db_query.run()
 
-    def __init__(self, id=None, name=None, ip=None, key=None, force=-1):
-        """Initialize an agent.
+    return data
 
-        :param: id: When the agent exists
-        :param: name and ip: Add an agent (generate id and key automatically)
-        :param: name, ip and force: Add an agent (generate id and key automatically), removing old agent with same IP if
-        disconnected since <force> seconds.
-        :param: name, ip, id, key: Insert an agent with an existent id and key
-        :param: name, ip, id, key, force: Insert an agent with an existent id and key, removing old agent with same IP
-         if disconnected since <force> seconds.
-        """
-        self.id = id
-        self.name = name
-        self.ip = ip
-        self.internal_key = key
-        self.os = {}
-        self.version = None
-        self.dateAdd = None
-        self.lastKeepAlive = None
-        self.status = None
-        self.key = None
-        self.configSum = None
-        self.mergedSum = None
-        self.group = None
-        self.manager = None
-        self.node_name = None
-        self.registerIP = ip
 
-        # if the method has only been called with an ID parameter, no new agent should be added.
-        # Otherwise, a new agent must be added
-        if name is not None and ip is not None:
-            self._add(name=name, ip=ip, id=id, key=key, force=force)
+@expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
+def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, 
+                        fields=None, q=''):
+    """ Gets all the different combinations that agents have for the selected fields. It also indicates the total
+    number of agents that have each combination.
 
-    def __str__(self):
-        return str(self.to_dict())
+    :param agent_list: List of agents ID's.
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+    :param q: Defines query to filter in DB.
+    :param fields: Fields to group by
+    :return: Dict: {data:{'items': List of items, 'totalItems': Number of items (without applying the limit)}}
+    """
+    db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, offset=offset, limit=limit, sort=sort, search=search, 
+                                         select=select, query=q, filters={'id': agent_list}, min_select_fields=set(), 
+                                         count=True, get_data=True)
+    data = db_query.run()
+    
+    return data
 
-    def to_dict(self):
-        dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os,
-                      'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive,
-                      'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum,
-                      'group': self.group, 'manager': self.manager, 'node_name': self.node_name}
 
-        return dictionary
+@expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
+def get_agents_summary_status(agent_list=None):
+    """Counts the number of agents by status.
 
-    def _load_info_from_DB(self, select=None):
-        """Gets attributes of existing agent.
-        """
-        db_query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select=select,
-                                      query="id={}".format(self.id), count=False, get_data=True,
-                                      remove_extra_fields=False)
+    :param agent_list: List of agents ID's.
+    :return: Dictionary with keys: total, active, disconnected, never_connected, pending and values: count
+    """
+    db_query = WazuhDBQueryAgents(limit=None, select=['status'], filters={'id': agent_list})
+    data = db_query.run()
+
+    result = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
+    for agent in data['items']:
+        result[agent['status']] += 1
+        result['total'] += 1
+
+    return result
+
+
+@expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
+def get_agents_summary_os(agent_list=None, offset=None, limit=None, search=None, q=None):
+    """Gets a list of available OS.
+
+    :param agent_list: List of agents ID's.
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param search: Looks for items with the specified string.
+    :param q: Query to filter results.
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+    db_query = WazuhDBQueryDistinctAgents(offset=offset, limit=limit, search=search, select=['os.platform'],
+                                          filters={'id': agent_list}, default_sort_field='os_platform', query=q,
+                                          min_select_fields=set())
+    data = db_query.run()
+
+    return data
+
+
+@expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"], target_params=["agent_list"],
+                  post_proc_func=list_handler_with_denied)
+def restart_agents(agent_list=None):
+    """Restarts a list of agents
+
+    :param agent_list: List of agents ID's.
+    :return: Message.
+    """
+    affected_agents = list()
+    failed_ids = list()
+    for agent_id in agent_list:
         try:
-            data = db_query.run()['items'][0]
-        except IndexError:
-            raise WazuhError(1701, extra_message=str(self.id))
+            Agent(agent_id).restart()
+            affected_agents.append(agent_id)
+        except WazuhError as e:
+            failed_ids.append(create_exception_dic(agent_id, e))
 
-        list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
+    return {'affected_items': affected_agents,
+            'failed_items': failed_ids,
+            'str_priority': ['Restart command sent to all agents',
+                             'Could not send command to some agents',
+                             'Could not send command to any agent']}
 
-    def get_basic_information(self, select=None):
-        """Gets public attributes of existing agent.
-        """
-        self._load_info_from_DB(select)
-        fields = set(self.fields.keys()) & set(select) if select is not None \
-            else set(self.fields.keys()) - {'internal_key'}
-        return {field: getattr(self, field) for field in map(lambda x: x.split('.')[0], fields) if getattr(self, field)}
 
-    def compute_key(self):
-        str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.registerIP, self.internal_key)
-        return b64encode(str_key.encode()).decode()
+@expose_resources(actions=["agent:restart"], resources=["agent:id:*"], target_params=["agent_list"],
+                  post_proc_func=list_handler_no_denied)
+def restart_agents_all(agent_list=None):
+    """Restarts a list of agents
 
-    def get_key(self):
-        """Gets agent key.
-
-        :return: Agent key.
-        """
-        self._load_info_from_DB()
-        if self.id != "000":
-            self.key = self.compute_key()
-        else:
-            raise WazuhError(1703)
-
-        return self.key
-
-    def restart(self):
-        """Restarts the agent.
-
-        :return: Message generated by OSSEC.
-        """
-        if self.id == "000":
-            raise WazuhError(1703)
-
-        # Check if agent exists
-        self.get_basic_information()
-
-        # Check if agent is active
-        if self.status.lower() != 'active':
-            raise WazuhError(1707, extra_message='{0} - {1}'.format(self.id, self.status))
-
-        # Check if agent has active-response enabled
-        agent_conf = self.getconfig('com', 'active-response')
-        if agent_conf['active-response']['disabled'] == 'yes':
-            raise WazuhException(1750)
-
-        return send_restart_command(self.id)
-
-    @staticmethod
-    def use_only_authd():
-        """Function to know the value of the option "use_only_authd" in API configuration
-        """
+    :param agent_list: List of agents ID's.
+    :return: Message.
+    """
+    affected_agents = list()
+    for agent_id in agent_list:
         try:
-            with open(common.api_config_path) as f:
-                data = f.readlines()
+            Agent(agent_id).restart()
+            affected_agents.append(agent_id)
+        except WazuhError:
+            pass
 
-            use_only_authd = list(filter(lambda x: x.strip().startswith('config.use_only_authd'), data))
+    return {'affected_items': affected_agents,
+            'failed_items': list(),
+            'str_priority': ['Restart command sent to all agents',
+                             'Could not send command to some agents',
+                             'Could not send command to any agent']}
 
-            return loads(use_only_authd[0][:-2].strip().split(' = ')[1]) if use_only_authd != [] else False
-        except IOError:
-            return False
 
-    def remove(self, backup=False, purge=False):
-        """Deletes the agent.
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
+def get_agents(agent_list=None, offset=None, limit=None, sort=None, search=None, select=None, filters=None, q=None):
+    """Gets a list of available agents with basic attributes.
 
-        :param backup: Create backup before removing the agent.
-        :param purge: Delete definitely from key store.
-        :return: Message.
-        """
+    :param agent_list: List of agents ID's.
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+    :param filters: Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+    :param q: Defines query to filter in DB.
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+    if filters is None:
+        filters = dict()
+    filters['id'] = agent_list
+    db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, 
+                                  query=q)
+    data = db_query.run()
 
-        manager_status = get_manager_status()
-        is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
+    return data
 
-        if self.use_only_authd():
-            if not is_authd_running:
-                raise WazuhInternalError(1726)
 
-        if not is_authd_running:
-            data = self._remove_manual(backup, purge)
-        else:
-            data = self._remove_authd(purge)
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
+def get_agents_keys(agent_list=None):
+    """Get the key of existing agents
 
-        return data
-
-    def _remove_authd(self, purge=False):
-        """Deletes the agent.
-
-        :param purge: Delete definitely from key store.
-        :return: Message.
-        """
-        msg = {"function": "remove", "arguments": {"id": str(self.id).zfill(3), "purge": purge}}
-
-        authd_socket = OssecSocketJSON(common.AUTHD_SOCKET)
-        authd_socket.send(msg)
-        data = authd_socket.receive()
-        authd_socket.close()
-
-        return data
-
-    def _remove_manual(self, backup=False, purge=False):
-        """Deletes the agent.
-
-        :param backup: Create backup before removing the agent.
-        :param purge: Delete definitely from key store.
-        :return: Message.
-        """
-        # Check if agent exists
-        self._load_info_from_DB()
-
-        f_keys_temp = '{0}.tmp'.format(common.client_keys)
-
+    :param agent_list: List of agents ID's.
+    :return: Agent key.
+    """
+    items = list()
+    for agent_id in agent_list:
         try:
-            agent_found = False
-            with open(common.client_keys) as client_keys, open(f_keys_temp, 'w') as client_keys_tmp:
-                try:
-                    for line in client_keys.readlines():
-                        id, name, ip, key = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
-                        if self.id == id and name[0] not in '#!':
-                            if not purge:
-                                client_keys_tmp.write('{0} !{1} {2} {3}\n'.format(id, name, ip, key))
+            items.append({'id': agent_id, 'key': Agent(agent_id).get_key()})
+        except WazuhError:
+            pass
 
-                            agent_found = True
-                        else:
-                            client_keys_tmp.write(line)
-                except Exception as e:
-                    remove(f_keys_temp)
-                    raise e
+    return {'items': items, 'totalItems': len(items)}
 
-            if not agent_found:
-                remove(f_keys_temp)
-                raise WazuhError(1701, extra_message=str(self.id))
+
+@expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"], target_params=["agent_list"],
+                  post_proc_func=list_handler_with_denied, post_proc_kwargs={'extra_fields': ['older_than']})
+def delete_agents(agent_list=None, backup=False, purge=False, status="all", older_than="7d"):
+    """Deletes a list of agents.
+
+    :param agent_list: List of agents ID's.
+    :param backup: Create backup before removing the agent.
+    :param purge: Delete definitely from key store.
+    :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" |
+    "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never_connected agents, uses the register date.
+    :param status: Filters by agent status: active, disconnected or never_connected. Multiples statuses separated
+    by commas.
+    :return: Dictionary with affected_agents (deleted agents), timeframe applied, failed_ids if it necessary
+    (agents that could not be deleted), and a message.
+    """
+    db_query = WazuhDBQueryAgents(limit=None, select=["id"], filters={'older_than': older_than, 'status': status,
+                                                                      'id': agent_list})
+    data = db_query.run()
+    id_purgeable_agents = list(map(operator.itemgetter('id'), data['items']))
+
+    failed_ids = list()
+    affected_agents = list()
+    for agent_id in agent_list:
+        try:
+            if agent_id == "000":
+                raise WazuhError(1703)
             else:
-                f_keys_st = stat(common.client_keys)
-                chown(f_keys_temp, common.ossec_uid(), common.ossec_gid())
-                chmod(f_keys_temp, f_keys_st.st_mode)
-        except Exception as e:
-            raise WazuhInternalError(1746, extra_message=str(e))
+                my_agent = Agent(agent_id)
+                my_agent.load_info_from_db()
+                if agent_id not in id_purgeable_agents:
+                    raise WazuhError(1731, extra_message="The agent has a status different to '{0}' or the specified "
+                                                         "time frame 'older_than {1}' does not apply."
+                                                         .format(status, older_than))
+                my_agent.remove(backup, purge)
+                affected_agents.append(agent_id)
+        except WazuhException as e:
+            failed_ids.append(create_exception_dic(agent_id, e))
 
-        # Tell wazuhbd to delete agent database
-        wdb_conn = WazuhDBBackend(self.id).connect_to_db()
-        wdb_conn.delete_agents_db([self.id])
+    result = {'affected_items': affected_agents,
+              'failed_items': failed_ids,
+              'str_priority': ['All selected agents were deleted',
+                               'Some agents were not deleted',
+                               'No agents were deleted']}
 
-        try:
-            # remove agent from groups
-            db_global = glob(common.database_path_global)
-            if not db_global:
-                raise WazuhError(1600)
+    return result
 
-            conn = Connection(db_global[0])
-            conn.execute('DELETE FROM belongs WHERE id_agent = :id_agent', {'id_agent': int(self.id)})
-            conn.commit()
-        except Exception as e:
-            raise WazuhInternalError(1747, extra_message=str(e))
 
-        try:
-            # Remove rid file
-            rids_file = path.join(common.ossec_path, 'queue/rids', self.id)
-            if path.exists(rids_file):
-                remove(rids_file)
+@expose_resources(actions=["agent:delete"], resources=["agent:id:*"], target_params=["agent_list"],
+                  post_proc_func=list_handler_no_denied, post_proc_kwargs={'extra_fields': ['older_than']})
+def delete_agents_all(agent_list=None, backup=False, purge=False, status="all", older_than="7d"):
+    """Deletes all existing agents.
 
-            if backup:
-                # Create backup directory
-                # /var/ossec/backup/agents/yyyy/Mon/dd/id-name-ip[tag]
-                date_part = date.today().strftime('%Y/%b/%d')
-                main_agent_backup_dir = path.join(common.backup_path,
-                                                  f'agents/{date_part}/{self.id}-{self.name}-{self.registerIP}')
-                agent_backup_dir = main_agent_backup_dir
+    :param agent_list: List of agents ID's.
+    :param backup: Create backup before removing the agent.
+    :param purge: Delete definitely from key store.
+    :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" |
+    "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never_connected agents, uses the register date.
+    :param status: Filters by agent status: active, disconnected or never_connected. Multiples statuses separated by
+    commas.
+    :return: Dictionary with affected_agents (deleted agents), timeframe applied, failed_ids if it necessary (agents
+    that could not be deleted), and a message.
+    """
+    db_query = WazuhDBQueryAgents(limit=None, select=["id"], filters={'older_than': older_than, 'status': status,
+                                                                      'id': agent_list})
+    data = db_query.run()
+    id_purgeable_agents = list(map(operator.itemgetter('id'), data['items']))
 
-                not_agent_dir = True
-                i = 0
-                while not_agent_dir:
-                    if path.exists(agent_backup_dir):
-                        i += 1
-                        agent_backup_dir = '{0}-{1}'.format(main_agent_backup_dir, str(i).zfill(3))
-                    else:
-                        makedirs(agent_backup_dir)
-                        chmod_r(agent_backup_dir, 0o750)
-                        not_agent_dir = False
-            else:
-                agent_backup_dir = ''
-
-            # Move agent file
-            agent_files = [
-                ('{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.registerIP),
-                 '{0}/agent-info'.format(agent_backup_dir)),
-                ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.registerIP),
-                 '{0}/rootcheck'.format(agent_backup_dir)),
-                ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id),
-                 '{0}/agent-group'.format(agent_backup_dir)),
-                ('{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id),
-                 '{}/var_db'.format(agent_backup_dir)),
-                ('{}/queue/diff/{}'.format(common.ossec_path, self.name), '{}/diff'.format(agent_backup_dir))
-            ]
-
-            for agent_file, backup_file in agent_files:
-                if path.exists(agent_file):
-                    if not backup:
-                        if path.isdir(agent_file):
-                            rmtree(agent_file)
-                        else:
-                            remove(agent_file)
-                    elif not path.exists(backup_file):
-                        safe_move(agent_file, backup_file, permissions=0o660)
-
-            # Overwrite client.keys
-            safe_move(f_keys_temp, common.client_keys, permissions=0o640)
-        except Exception as e:
-            raise WazuhInternalError(1748, extra_message=str(e))
-
-        return 'Agent deleted successfully.'
-
-    def _add(self, name, ip, id=None, key=None, force=-1):
-        """Adds an agent to OSSEC.
-        2 uses:
-            - name and ip [force]: Add an agent like manage_agents (generate id and key).
-            - name, ip, id, key [force]: Insert an agent with an existing id and key.
-
-        :param name: name of the new agent.
-        :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
-        :param id: ID of the new agent.
-        :param key: Key of the new agent.
-        :param force: Remove old agents with same IP if disconnected since <force> seconds
-        :return: Agent ID.
-        """
-        ip = ip.lower()
-        if ip != 'any':
-            if ip.find('/') > 0:
-                try:
-                    ipaddress.ip_network(ip)
-                except Exception:
-                    WazuhError(1706, extra_message=ip)
-            else:
-                try:
-                    ipaddress.ip_address(ip)
-                except Exception:
-                    raise WazuhError(1706, extra_message=ip)
-
-        manager_status = get_manager_status()
-        is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
-
-        if self.use_only_authd():
-            if not is_authd_running:
-                raise WazuhInternalError(1726)
-
-        if not is_authd_running:
-            data = self._add_manual(name, ip, id, key, force)
-        else:
-            data = self._add_authd(name, ip, id, key, force)
-
-        return data
-
-    def _add_authd(self, name, ip, id=None, key=None, force=-1):
-        """Adds an agent to OSSEC using authd.
-        2 uses:
-            - name and ip [force]: Add an agent like manage_agents (generate id and key).
-            - name, ip, id, key [force]: Insert an agent with an existing id and key.
-
-        :param name: name of the new agent.
-        :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
-        :param id: ID of the new agent.
-        :param key: Key of the new agent.
-        :param force: Remove old agents with same IP if disconnected since <force> seconds
-        :return: Agent ID.
-        """
-        # Check arguments
-        if id:
-            id = id.zfill(3)
-
-        if key and len(key) < 64:
-            raise WazuhError(1709)
-
-        force = force if type(force) == int else int(force)
-
-        # Checks if the values are added
-        lock_file = open("{}/var/run/.api_lock".format(common.ossec_path), 'a+')
-        fcntl.lockf(lock_file, fcntl.LOCK_EX)
-        with open(common.client_keys) as f_k:
+    affected_agents = list()
+    for agent_id in id_purgeable_agents:
+        if agent_id != "000":
             try:
-                for line in f_k.readlines():
-                    if not line.strip():  # ignore empty lines
-                        continue
-                    if line[0] in '# ':  # starts with # or ' '
-                        continue
+                my_agent = Agent(agent_id)
+                my_agent.load_info_from_db()
+                my_agent.remove(backup, purge)
+                affected_agents.append(agent_id)
+            except WazuhError:
+                pass
 
-                    line_data = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
+    result = {'affected_items': affected_agents,
+              'failed_items': list(),
+              'str_priority': ['Shown agents were deleted',
+                               '',
+                               'No agents were deleted']}
 
-                    if id and id == line_data[0]:
-                        raise WazuhError(1708, extra_message=id)
-                    if name == line_data[1]:
-                        if force < 0:
-                            raise WazuhError(1705, extra_message=name)
-                    if ip != 'any' and ip == line_data[2]:
-                        if force < 0:
-                            raise WazuhError(1706, extra_message=ip)
-            except WazuhError as e:
-                raise e
+    return result
 
-        msg = ""
-        if name and ip:
-            if id and key:
-                msg = {"function": "add", "arguments": {"name": name, "ip": ip, "id": id, "key": key, "force": force}}
-            else:
-                msg = {"function": "add", "arguments": {"name": name, "ip": ip, "force": force}}
 
-        authd_socket = OssecSocketJSON(common.AUTHD_SOCKET)
-        authd_socket.send(msg)
-        data = authd_socket.receive()
-        authd_socket.close()
+@expose_resources(actions=["agent:create"], resources=["*:*:*"], target_params=["*"])
+def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1):
+    """Adds a new Wazuh agent.
 
-        self.id = data['id']
-        self.internal_key = data['key']
-        self.key = self.compute_key()
+    :param name: name of the new agent.
+    :param agent_id: id of the new agent.
+    :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
+    :param key: name of the new agent.
+    :param force_time: Remove old agent with same IP if disconnected since <force_time> seconds.
+    :return: Agent ID.
+    """
+    # Check length of agent name
+    if len(name) > 128:
+        raise WazuhError(1738)
 
-    def _add_manual(self, name, ip, id=None, key=None, force=-1):
-        """Adds an agent to OSSEC manually.
-        2 uses:
-            - name and ip [force]: Add an agent like manage_agents (generate id and key).
-            - name, ip, id, key [force]: Insert an agent with an existing id and key.
+    new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force_time)
 
-        :param name: name of the new agent.
-        :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
-        :param id: ID of the new agent.
-        :param key: Key of the new agent.
-        :param force: Remove old agents with same IP if disconnected since <force> seconds
-        :return: Agent ID.
-        """
-        # Check arguments
-        if id:
-            id = id.zfill(3)
+    return {'id': new_agent.id, 'key': new_agent.key}
 
-        if key and len(key) < 64:
-            raise WazuhError(1709)
 
-        force = force if type(force) == int else int(force)
+@expose_resources(actions=["group:read"], resources=["group:id:*"], target_params=["group_list"])
+def get_all_groups(group_list=None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
+                   search_text=None, complementary_search=False, search_in_fields=None, hash_algorithm='md5'):
+    """Gets the existing groups.
 
-        # Check manager name
+    :param group_list: List of Group names.
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort_by: Fields to sort the items by
+    :param sort_ascending: Sort in ascending (true) or descending (false) order
+    :param search_text: Text to search
+    :param complementary_search: Find items without the text to search
+    :param search_in_fields: Fields to search in
+    :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+    try:
+        # Connect DB
         db_global = glob(common.database_path_global)
         if not db_global:
             raise WazuhInternalError(1600)
 
         conn = Connection(db_global[0])
-        conn.execute("SELECT name FROM agent WHERE (id = 0)")
-        manager_name = str(conn.fetch())
 
-        if name == manager_name:
-            raise WazuhError(1705, extra_message=name)
+        # Group names
+        data = []
+        for group in group_list:
+            full_entry = path.join(common.shared_path, group)
 
-        # Check if ip, name or id exist in client.keys
-        last_id = 0
-        lock_file = open("{}/var/run/.api_lock".format(common.ossec_path), 'a+')
-        fcntl.lockf(lock_file, fcntl.LOCK_EX)
-        with open(common.client_keys) as f_k:
-            try:
-                for line in f_k.readlines():
-                    if not line.strip():  # ignore empty lines
-                        continue
+            # Get the id of the group
+            query = "SELECT id FROM `group` WHERE name = :group_id"
+            request = {'group_id': group}
+            conn.execute(query, request)
+            id_group = conn.fetch()
 
-                    if line[0] in '# ':  # starts with # or ' '
-                        continue
+            if id_group is None:
+                continue
 
-                    line_data = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
+            # Group count
+            query = "SELECT {0} FROM belongs WHERE id_group = :id"
+            request = {'id': id_group}
+            conn.execute(query.format('COUNT(*)'), request)
 
-                    line_id = int(line_data[0])
-                    if last_id < line_id:
-                        last_id = line_id
+            # merged.mg and agent.conf sum
+            merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
+            conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
 
-                    if line_data[1][0] in '#!':  # name starts with # or !
-                        continue
+            item = {'count': conn.fetch(), 'name': group}
 
-                    check_remove = 0
-                    if id and id == line_data[0]:
-                        raise WazuhError(1708, extra_message=id)
-                    if name == line_data[1]:
-                        if force < 0:
-                            raise WazuhError(1705, extra_message=name)
-                        else:
-                            check_remove = 1
-                    if ip != 'any' and ip == line_data[2]:
-                        if force < 0:
-                            raise WazuhError(1706, extra_message=ip)
-                        else:
-                            check_remove = 2
+            if merged_sum:
+                item['mergedSum'] = merged_sum
 
-                    if check_remove:
-                        if force == 0 or Agent.check_if_delete_agent(line_data[0], force):
-                            Agent(line_data[0]).remove(backup=True)
-                        else:
-                            if check_remove == 1:
-                                raise WazuhError(1705, extra_message=name)
-                            else:
-                                raise WazuhError(1706, extra_message=ip)
+            if conf_sum:
+                item['configSum'] = conf_sum
 
-                if not id:
-                    agent_id = str(last_id + 1).zfill(3)
-                else:
-                    agent_id = id
+            data.append(item)
+    except WazuhError as e:
+        raise e
+    except Exception as e:
+        raise WazuhInternalError(1736, extra_message=str(e))
 
-                if not key:
-                    # Generate key
-                    epoch_time = int(time())
-                    str1 = "{0}{1}{2}".format(epoch_time, name, platform())
-                    str2 = "{0}{1}".format(ip, agent_id)
-                    hash1 = hashlib.md5(str1.encode())
-                    hash1.update(urandom(64))
-                    hash2 = hashlib.md5(str2.encode())
-                    hash1.update(urandom(64))
-                    agent_key = hash1.hexdigest() + hash2.hexdigest()
-                else:
-                    agent_key = key
+    return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
 
-                # Tmp file
-                f_keys_temp = '{0}.tmp'.format(common.client_keys)
-                open(f_keys_temp, 'a').close()
 
-                f_keys_st = stat(common.client_keys)
-                chown(f_keys_temp, common.ossec_uid(), common.ossec_gid())
-                chmod(f_keys_temp, f_keys_st.st_mode)
+@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], target_params=["group_list"])
+def get_group_files(group_list=None, offset=0, limit=common.database_limit, search_text=None, search_in_fields=None,
+                    complementary_search=False, sort_by=None, sort_ascending=True, hash_algorithm='md5'):
+    """Gets the group files.
 
-                copyfile(common.client_keys, f_keys_temp)
-
-                # Write key
-                with open(f_keys_temp, 'a') as f_kt:
-                    f_kt.write('{0} {1} {2} {3}\n'.format(agent_id, name, ip, agent_key))
-
-                # Overwrite client.keys
-                safe_move(f_keys_temp, common.client_keys, permissions=f_keys_st.st_mode)
-            except WazuhException as ex:
-                fcntl.lockf(lock_file, fcntl.LOCK_UN)
-                lock_file.close()
-                raise ex
-            except Exception as e:
-                fcntl.lockf(lock_file, fcntl.LOCK_UN)
-                lock_file.close()
-                raise WazuhError(1725, extra_message=str(e))
-
-            fcntl.lockf(lock_file, fcntl.LOCK_UN)
-            lock_file.close()
-
-        self.id = agent_id
-        self.internal_key = agent_key
-        self.key = self.compute_key()
-
-    @staticmethod
-    def _remove_single_group(group_id):
-        """Remove the group in every agent.
-
-        :param group_id: Group ID.
-        :return: Confirmation message.
-        """
-        if group_id.lower() == "default":
-            raise WazuhError(1712)
-
+    :param group_list: List of Group names.
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort_by: Fields to sort the items by
+    :param sort_ascending: Sort in ascending (true) or descending (false) order
+    :param search_text: Text to search
+    :param complementary_search: Find items without the text to search
+    :param search_in_fields: Fields to search in
+    :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+    # We access unique group_id from list, this may change if and when we decide to add option to get files for
+    # a list of groups
+    group_id = group_list[0]
+    group_path = common.shared_path
+    if group_id:
         if not Agent.group_exists(group_id):
             raise WazuhError(1710, extra_message=group_id)
+        group_path = path.join(common.shared_path, group_id)
 
-        ids = list(map(operator.itemgetter('id'), Agent.get_agent_group(group_id=group_id, limit=None)['items']))
+    if not path.exists(group_path):
+        raise WazuhError(1006, extra_message=group_path)
 
-        # Remove group directory
-        group_path = "{0}/{1}".format(common.shared_path, group_id)
-        group_backup = "{0}/groups/{1}_{2}".format(common.backup_path, group_id, int(time()))
-        if path.exists(group_path):
-            safe_move(group_path, group_backup, permissions=0o660)
-
-        msg = "Group '{0}' removed.".format(group_id)
-
-        return {'message': msg, 'affected_items': ids}
-
-    def get_agent_attr(self, attr):
-        """Returns a string with an agent's os name
-        """
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhInternalError(1600)
-
-        conn = Connection(db_global[0])
-        query = "SELECT :attr FROM agent WHERE id = :id"
-        request = {'attr': attr, 'id': self.id}
-        conn.execute(query, request)
-        query_value = str(conn.fetch())
-
-        return query_value
-
-    @staticmethod
-    def get_agents_overview(offset=0, limit=common.database_limit, sort=None, search=None, select=None,
-                            filters=None, q=""):
-        """Gets a list of available agents with basic attributes.
-
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-        :param filters: Defines field filters required by the user.
-        Format: {"field1":"value1", "field2":["value2","value3"]}
-        :param q: Defines query to filter in DB.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      filters=filters, query=q)
-        data = db_query.run()
-
-        return data
-
-    @staticmethod
-    @expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
-    def get_agents_all(agent_list=None, offset=None, limit=None, sort=None, search=None, select=None, filters=None,
-                       q=None):
-        """Gets a list of available agents with basic attributes.
-
-        :param agent_list: List of agents ID's.
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-        :param filters: Defines field filters required by the user.
-        Format: {"field1":"value1", "field2":["value2","value3"]}
-        :param q: Defines query to filter in DB.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        if filters is None:
-            filters = dict()
-        filters['id'] = agent_list
-        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      filters=filters, query=q)
-        data = db_query.run()
-
-        return data
-
-    @staticmethod
-    @expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
-    def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None,
-                            select=None, fields=None, q=''):
-        """ Gets all the different combinations that agents have for the selected fields. It also indicates the total
-        number of agents that have each combination.
-
-        :param agent_list: List of agents ID's.
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-        :param q: Defines query to filter in DB.
-        :param fields: Fields to group by
-        :return: Dict: {data:{'items': List of items, 'totalItems': Number of items (without applying the limit)}}
-        """
-        db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, offset=offset, limit=limit, sort=sort,
-                                             search=search, select=select, query=q, filters={'id': agent_list},
-                                             min_select_fields=set(), count=True, get_data=True)
-        data = db_query.run()
-        return data
-
-    @staticmethod
-    @expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
-    def get_agents_summary_status(agent_list=None):
-        """Counts the number of agents by status.
-
-        :param agent_list: List of agents ID's.
-        :return: Dictionary with keys: total, active, disconnected, never_connected, pending and values: count
-        """
-        db_query = WazuhDBQueryAgents(limit=None, select=['status'], filters={'id': agent_list})
-        data = db_query.run()
-
-        result = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
-        for agent in data['items']:
-            result[agent['status']] += 1
-            result['total'] += 1
-
-        return result
-
-    @staticmethod
-    @expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
-    def get_agents_summary_os(agent_list=None, offset=None, limit=None, search=None, q=None):
-        """Gets a list of available OS.
-
-        :param agent_list: List of agents ID's.
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param search: Looks for items with the specified string.
-        :param q: Query to filter results.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        db_query = WazuhDBQueryDistinctAgents(offset=offset, limit=limit, search=search, select=['os.platform'],
-                                              filters={'id': agent_list}, default_sort_field='os_platform', query=q,
-                                              min_select_fields=set())
-        data = db_query.run()
-
-        return data
-
-    @staticmethod
-    @expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"], target_params=["agent_list"],
-                      post_proc_func=list_handler_with_denied)
-    def restart_agents(agent_list=None):
-        """Restarts a list of agents
-
-        :param agent_list: List of agents ID's.
-        :return: Message.
-        """
-        affected_agents = list()
-        failed_ids = list()
-
-        for agent_id in agent_list:
+    try:
+        data = []
+        for entry in listdir(group_path):
+            item = dict()
             try:
-                Agent(agent_id).restart()
-                affected_agents.append(agent_id)
-            except WazuhError as e:
-                failed_ids.append(create_exception_dic(agent_id, e))
-
-        return {'affected_items': affected_agents,
-                'failed_items': failed_ids,
-                'str_priority': ['Restart command sent to all agents', 'Could not send command to some agents',
-                                 'Could not send command to any agent']}
-
-    @staticmethod
-    @expose_resources(actions=["agent:restart"], resources=["agent:id:*"], target_params=["agent_list"],
-                      post_proc_func=list_handler_no_denied)
-    def restart_agents_all(agent_list=None):
-        """Restarts a list of agents
-
-        :param agent_list: List of agents ID's.
-        :return: Message.
-        """
-        affected_agents = list()
-        for agent_id in agent_list:
-            try:
-                Agent(agent_id).restart()
-                affected_agents.append(agent_id)
-            except Exception as e:
-                pass
-
-        return {'affected_items': affected_agents,
-                'failed_items': list(),
-                'str_priority': ['Restart command sent to all agents', 'Could not send command to some agents',
-                                 'Could not send command to any agent']}
-
-    @staticmethod
-    def restart_agents_by_group(group_id: str, **kwargs) -> Dict:
-        """Restart all the agents which belong to a group.
-
-        :param group_id: Name of the group
-        :return: Confirmation message
-        """
-        check_group_exists(group_id)
-        data = WazuhDBQueryMultigroups(group_id=group_id, select=['id']).run()
-        agent_list = list(map(operator.itemgetter('id'), data['items']))
-
-        return Agent.restart_agents(agent_list=agent_list, **kwargs)
-
-    # @staticmethod
-    # def get_agent_by_name(agent_name=None, select=None, **kwargs):
-    #     """Gets an existing agent called agent_name.
-    #
-    #     :param agent_name: Agent name.
-    #     :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-    #     :return: The agent.
-    #     """
-    #     # data = WazuhDBQueryAgents(filters={'name': agent_name}).run()
-    #     # agent_list = list(map(operator.itemgetter('id'), data['items']))
-    #
-    #     return Agent.get_agents_all(select=select, filters={'name': agent_name}, **kwargs)
-
-    @staticmethod
-    def get_agent(agent_id, select=None):
-        """Gets an existing agent.
-
-        :param agent_id: Agent ID.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :return: The agent.
-        """
-        data = Agent(agent_id).get_basic_information(select)
-
-        return data
-
-    @staticmethod
-    @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
-    def get_agents(agent_list=None, offset=None, limit=None, sort=None, search=None, select=None, filters=None, q=None):
-        """Gets a list of available agents with basic attributes.
-
-        :param agent_list: List of agents ID's.
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-        :param filters: Defines field filters required by the user.
-        Format: {"field1":"value1", "field2":["value2","value3"]}
-        :param q: Defines query to filter in DB.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        if filters is None:
-            filters = dict()
-        filters['id'] = agent_list
-        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      filters=filters, query=q)
-        data = db_query.run()
-
-        return data
-
-    @staticmethod
-    @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
-    def get_agents_keys(agent_list=None):
-        """Get the key of an existing agent.
-
-        :param agent_list: List of agents ID's.
-        :return: Agent key.
-        """
-        items = list()
-        for agent_id in agent_list:
-            try:
-                items.append({'id': agent_id, 'key': Agent(agent_id).get_key()})
-            except Exception as e:
-                pass
-
-        return {'items': items, 'totalItems': len(items)}
-
-    @staticmethod
-    def get_group_by_name(group_name):
-        """
-        Gets an existing group called group_name.
-
-        :param group_name: Group name.
-        :return: The group id.
-        """
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhInternalError(1600)
-
-        conn = Connection(db_global[0])
-        conn.execute("SELECT id FROM `group` WHERE name = :name", {'name': group_name})
-        try:
-            group_id = conn.fetch()
-        except TypeError as e:
-            raise WazuhError(1701, extra_message=group_name)
-
-        return group_id
-
-    @staticmethod
-    @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"], target_params=["agent_list"],
-                      post_proc_func=list_handler_with_denied, post_proc_kwargs={'extra_fields': ['older_than']})
-    def delete_agents(agent_list=None, backup=False, purge=False, status="all", older_than="7d"):
-        """Deletes a list of agents.
-
-        :param agent_list: List of agents ID's.
-        :param backup: Create backup before removing the agent.
-        :param purge: Delete definitely from key store.
-        :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" |
-        "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never_connected agents, uses the register date.
-        :param status: Filters by agent status: active, disconnected or never_connected. Multiples statuses separated
-        by commas.
-        :return: Dictionary with affected_agents (deleted agents), timeframe applied, failed_ids if it necessary
-        (agents that could not be deleted), and a message.
-        """
-        db_query = WazuhDBQueryAgents(limit=None, select=["id"], filters={'older_than': older_than, 'status': status,
-                                                                      'id': agent_list})
-        data = db_query.run()
-        id_purgeable_agents = list(map(operator.itemgetter('id'), data['items']))
-
-        failed_ids = list()
-        affected_agents = list()
-        for agent_id in agent_list:
-            try:
-                if agent_id == "000":
-                    raise WazuhError(1703)
-                else:
-                    my_agent = Agent(agent_id)
-                    my_agent._load_info_from_DB()
-                    if agent_id not in id_purgeable_agents:
-                        raise WazuhError(1731, extra_message="The agent has a status different to '{}' or the "
-                                                             "specified time frame 'older_than {}' does not "
-                                                             "apply.".format(status, older_than))
-                    my_agent.remove(backup, purge)
-                    affected_agents.append(agent_id)
-            except WazuhException as e:
-                failed_ids.append(create_exception_dic(agent_id, e))
-
-        result = {'affected_items': affected_agents,
-                  'failed_items': failed_ids,
-                  'str_priority': ['All selected agents were deleted',
-                                   'Some agents were not deleted',
-                                   'No agents were deleted']}
-
-        return result
-        
-    @staticmethod
-    @expose_resources(actions=["agent:delete"], resources=["agent:id:*"], target_params=["agent_list"],
-                      post_proc_func=list_handler_no_denied, post_proc_kwargs={'extra_fields': ['older_than']})
-    def delete_agents_all(agent_list=None, backup=False, purge=False, status="all", older_than="7d"):
-        """Deletes all existing agents.
-
-        :param agent_list: List of agents ID's.
-        :param backup: Create backup before removing the agent.
-        :param purge: Delete definitely from key store.
-        :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" |
-        "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never_connected agents, uses the register date.
-        :param status: Filters by agent status: active, disconnected or never_connected. Multiples statuses separated
-        by commas.
-        :return: Dictionary with affected_agents (deleted agents), timeframe applied, failed_ids if it necessary
-        (agents that could not be deleted), and a message.
-        """
-        db_query = WazuhDBQueryAgents(limit=None, select=["id"], filters={'older_than': older_than, 'status': status,
-                                                                          'id': agent_list})
-        data = db_query.run()
-        id_purgeable_agents = list(map(operator.itemgetter('id'), data['items']))
-
-        affected_agents = list()
-        for agent_id in id_purgeable_agents:
-            if agent_id != "000":
-                try:
-                    my_agent = Agent(agent_id)
-                    my_agent._load_info_from_DB()
-                    my_agent.remove(backup, purge)
-                    affected_agents.append(agent_id)
-                except Exception as e:
-                    pass
-
-        result = {'affected_items': affected_agents,
-                  'failed_items': list(),
-                  'str_priority': ['Shown agents were deleted', '', 'No agents were deleted']}
-        return result
-
-    @staticmethod
-    def add_agent(name, ip='any', force_time=-1):
-        """Adds a new agent to OSSEC.
-
-        :param name: name of the new agent.
-        :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
-        :param force_time: Remove old agent with same IP if disconnected since <force> seconds.
-        :return: Agent ID.
-        """
-        # check length of agent name
-        if len(name) > 128:
-            raise WazuhError(1738)
-
-        new_agent = Agent(name=name, ip=ip, force=force_time)
-        return {'id': new_agent.id, 'key': new_agent.key}
-
-    @staticmethod
-    def add_group_to_agent(agent_id, group_id, force=False, replace=False):
-        """Adds an existing group to an agent
-
-        :param group_id: name of the group.
-        :param agent_id: ID of the agent.
-        :param force: Do not check if agent exists
-        :param replace: Whether to append new group to current agent's group or replace it.
-        :return: Agent ID.
-        """
-        # Check if agent exists
-        if not force:
-            Agent(agent_id).get_basic_information()
-
-        if agent_id == "000":
-            raise WazuhError(1703)
-
-        if replace:
-            multigroup_name = group_id
-        else:
-            # Get agent's group
-            group_path = path.join(common.groups_path, agent_id)
-            try:
-                with open(group_path) as f:
-                    multigroup_name = f.read().replace('\n', '')
-            except Exception as e:
-                raise WazuhError(1005)
-
-            # Check if the group already belongs to the agent
-            if group_id in multigroup_name.split(','):
-                raise WazuhError(1751)
-
-            multigroup_name = (multigroup_name + ',' if multigroup_name else '') + group_id
-
-        # Check multigroup limit
-        if Agent().check_multigroup_limit(agent_id):
-            raise WazuhError(1737)
-
-        # Update group file
-        Agent.set_agent_group_file(agent_id, multigroup_name)
-
-        return f"Agent {agent_id} assigned to {group_id}"
-
-    @staticmethod
-    def insert_agent(name, id, key, ip='any', force_time=-1):
-        """Create a new agent providing the id, name, ip and key to the Manager.
-
-        :param id: id of the new agent.
-        :param name: name of the new agent.
-        :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
-        :param key: name of the new agent.
-        :param force_time: Remove old agent with same IP if disconnected since <force_time> seconds.
-        :return: Agent ID.
-        """
-        new_agent = Agent(name=name, ip=ip, id=id, key=key, force=force_time)
-        return {'id': new_agent.id, 'key': new_agent.key}
-
-    @staticmethod
-    def check_if_delete_agent(id, seconds):
-        """Check if we should remove an agent: if time from last connection is greater thant <seconds>.
-
-        :param id: id of the new agent.
-        :param seconds: Number of seconds.
-        :return: True if time from last connection is greater thant <seconds>.
-        """
-        remove_agent = False
-        agent_info = Agent(id=id).get_basic_information()
-
-        if 'lastKeepAlive' in agent_info:
-            if agent_info['lastKeepAlive'] == 0:
-                remove_agent = True
-            else:
-                last_date = datetime.strptime(agent_info['lastKeepAlive'], '%Y-%m-%d %H:%M:%S')
-                difference = (datetime.utcnow() - last_date).total_seconds()
-                if difference >= seconds:
-                    remove_agent = True
-
-        return remove_agent
-
-    @staticmethod
-    def get_all_groups_sql(offset=0, limit=common.database_limit, sort=None, search=None):
-        """Gets the existing groups.
-
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        db_query = WazuhDBQueryDistinct(offset=offset, limit=limit, sort=sort, search=search, select=['name'],
-                                        fields={'name': '`group`'}, count=True, get_data=True, table='agent',
-                                        db_path=common.database_path_global, default_sort_field='`group`')
-        db_query.run()
-
-        return {'totalItems': db_query.total_items, 'items': [tuple[0] for tuple in db_query.conn]}
-
-    @staticmethod
-    def get_all_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True, search_text=None,
-                       complementary_search=False, search_in_fields=None, hash_algorithm='md5', q=''):
-        """Gets the existing groups.
-
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort_by: Fields to sort the items by
-        :param sort_ascending: Sort in ascending (true) or descending (false) order
-        :param search_text: Text to search
-        :param complementary_search: Find items without the text to search
-        :param search_in_fields: Fields to search in
-        :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
-        :param q: Defines query to filter.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        try:
-            # Connect DB
-            db_global = glob(common.database_path_global)
-            if not db_global:
-                raise WazuhInternalError(1600)
-
-            conn = Connection(db_global[0])
-
-            # Group names
-            data = []
-            for entry in listdir(common.shared_path):
-                full_entry = path.join(common.shared_path, entry)
-                if not path.isdir(full_entry):
-                    continue
-
-                # Get the id of the group
-                query = "SELECT id FROM `group` WHERE name = :group_id"
-                request = {'group_id': entry}
-                conn.execute(query, request)
-                id_group = conn.fetch()
-
-                if id_group is None:
-                    continue
-
-                # Group count
-                query = "SELECT {0} FROM belongs WHERE id_group = :id"
-                request = {'id': id_group}
-                conn.execute(query.format('COUNT(*)'), request)
-
-                # merged.mg and agent.conf sum
-                merged_sum = get_hash(full_entry + "/merged.mg", hash_algorithm)
-                conf_sum = get_hash(full_entry + "/agent.conf", hash_algorithm)
-
-                item = {'count': conn.fetch(), 'name': entry}
-
-                if merged_sum:
-                    item['mergedSum'] = merged_sum
-
-                if conf_sum:
-                    item['configSum'] = conf_sum
-
+                item['filename'] = entry
+                item['hash'] = get_hash(path.join(group_path, entry), hash_algorithm)
                 data.append(item)
-        except WazuhError as e:
-            raise e
-        except Exception as e:
-            raise WazuhInternalError(1736, extra_message=str(e))
-
-        return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
-                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                             offset=offset, limit=limit, q=q)
-
-    @staticmethod
-    def group_exists_sql(group_id):
-        """Checks if the group exists
-
-        :param group_id: Group ID.
-        :return: True if group exists, False otherwise
-        """
-        # Input Validation of group_id
-        if not InputValidator().group(group_id):
-            raise WazuhError(1722)
-
-        db_query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select=['group'],
-                                      query="group=" + group_id, count=True, get_data=False)
-        db_query.run()
-
-        return bool(db_query.total_items)
-
-    @staticmethod
-    def group_exists(group_id):
-        """Checks if the group exists
-
-        :param group_id: Group ID.
-        :return: True if group exists, False otherwise
-        """
-        # Input Validation of group_id
-        if not InputValidator().group(group_id):
-            raise WazuhError(1722)
-
-        if path.exists("{0}/{1}".format(common.shared_path, group_id)):
-            return True
-        else:
-            return False
-
-    @staticmethod
-    def multi_group_exists(group_id):
-        """Checks if the group exists
-
-        :param group_id: Group ID.
-        :return: String of groups if group exists, an empty list otherwise
-        """
-        all_multigroups = []
-        for file in listdir(common.groups_path):
-            filepath = path.join(common.groups_path, file)
-            f = open(filepath, 'r')
-            all_multigroups.append(f.read())
-            f.close()
-        if group_id in all_multigroups:
-            return all_multigroups
-        else:
-            return []
-
-    @staticmethod
-    # @expose_resources(actions=["agent:read"], resources=["agent:group:{group_id}"], target_params=["group_id"])
-    def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
-                        filters=None, q=""):
-        """Gets the agents in a group
-
-        :param group_id: Group ID.
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :param filters: Defines field filters required by the user.
-        Format: {"field1":"value1", "field2":["value2","value3"]}
-        :param q: Defines query to filter in DB.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        check_group_exists(group_id)
-
-        db_query = WazuhDBQueryMultigroups(group_id=group_id, offset=offset, limit=limit, sort=sort, search=search,
-                                           select=select, filters=filters, count=True, get_data=True, query=q)
-        data = db_query.run()
-
-        return data
-
-    @staticmethod
-    @expose_resources(actions=["agent:read"], resources=["agent:group:null"], target_params=["agent_list"])
-    def get_agents_without_group(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, q="",
-                                 filters=None):
-        """Gets the agents without a group
-
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :param filters: Values to filter by on database (legacy format).
-        :param q: Defines query to filter in DB.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        agent_list= None
-        return Agent.get_agent_group(group_id="null", offset=offset, limit=limit, sort=sort, search=search,
-                                     select=select, q='id!=0' + (';' + q if q else ''), filters=filters)
-
-    @staticmethod
-    def get_group_files(group_id=None, offset=0, limit=common.database_limit, search_text=None, search_in_fields=None,
-                        complementary_search=False, sort_by=None, sort_ascending=True, hash_algorithm='md5'):
-        """Gets the group files.
-
-        :param group_id: Group ID.
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort_by: Fields to sort the items by
-        :param sort_ascending: Sort in ascending (true) or descending (false) order
-        :param search_text: Text to search
-        :param complementary_search: Find items without the text to search
-        :param search_in_fields: Fields to search in
-        :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        group_path = common.shared_path
-        if group_id:
-            if not Agent.group_exists(group_id):
-                raise WazuhError(1710, extra_message=group_id)
-            group_path = "{0}/{1}".format(common.shared_path, group_id)
-
-        if not path.exists(group_path):
-            raise WazuhError(1006, extra_message=group_path)
-
-        try:
-            data = []
-            for entry in listdir(group_path):
-                item = {}
-                try:
-                    item['filename'] = entry
-                    item['hash'] = get_hash('{}/{}'.format(group_path, entry), hash_algorithm)
-                    data.append(item)
-                except (OSError, IOError):
-                    pass
-
-            try:
-                # ar.conf
-                ar_path = "{0}/ar.conf".format(common.shared_path)
-                data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
             except (OSError, IOError):
                 pass
 
-            return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
-                                 complementary_search=complementary_search, sort_by=sort_by,
-                                 sort_ascending=sort_ascending, offset=offset, limit=limit)
+        try:
+            # ar.conf
+            ar_path = path.join(common.shared_path, 'ar.conf')
+            data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
+        except (OSError, IOError):
+            pass
+
+        return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             offset=offset, limit=limit)
+    except WazuhError as e:
+        raise e
+    except Exception as e:
+        raise WazuhInternalError(1727, extra_message=str(e))
+
+
+@expose_resources(actions=["group:create"], resources=["*:*:*"], target_params=["*"])
+def create_group(group_id):
+    """Creates a group.
+
+    :param group_id: Group ID.
+    :return: Confirmation message.
+    """
+    # Input Validation of group_id
+    if not InputValidator().group(group_id):
+        raise WazuhError(1722)
+
+    group_path = path.join(common.shared_path, group_id)
+
+    if group_id.lower() == "default" or path.exists(group_path):
+        raise WazuhError(1711, extra_message=group_id)
+
+    # Create group in /etc/shared
+    group_def_path = path.join(common.shared_path, 'agent-template.conf')
+    try:
+        mkdir_with_mode(group_path)
+        copyfile(group_def_path, path.join(group_path, 'agent.conf'))
+        chown_r(group_path, common.ossec_uid(), common.ossec_gid())
+        chmod_r(group_path, 0o660)
+        chmod(group_path, 0o770)
+        msg = "Group '{0}' created.".format(group_id)
+    except Exception as e:
+        raise WazuhInternalError(1005, extra_message=str(e))
+
+    return msg
+
+
+@expose_resources(actions=["group:delete"], resources=["group:id:{group_list}"], target_params=["group_list"],
+                  post_proc_func=list_handler_with_denied, post_proc_kwargs={'extra_affected': 'affected_agents'})
+def delete_groups(group_list=None):
+    """Delete a list of groups and remove it from every agent assignments.
+
+    :param group_list: List of Group names.
+    :return: Confirmation message.
+    """
+    failed_groups = list()
+    affected_groups = list()
+    affected_agents = list()
+    for group_id in group_list:
+        try:
+            removed = Agent.delete_single_group(group_id)
+            affected_groups.append(group_id)
+            affected_agents += removed['affected_items']
+            Agent.remove_multi_group(set(group_id.lower()))
+        except WazuhException as e:
+            failed_groups.append(create_exception_dic(group_id, e))
+
+    result = {'affected_items': affected_groups,
+              'failed_items': failed_groups,
+              'affected_agents': list(set(affected_agents)),
+              'str_priority': ['All selected groups were deleted',
+                               'Some groups were not deleted',
+                               'No groups were deleted']}
+
+    return result
+
+
+@expose_resources(actions=["group:delete"], resources=["group:id:*"], target_params=["group_list"],
+                  post_proc_func=list_handler_no_denied, post_proc_kwargs={'extra_affected': 'affected_agents'})
+def delete_groups_all(group_list=None):
+    """Delete a list of groups and remove it from every agent assignments.
+
+    :param group_list: List of Group names.
+    :return: Confirmation message.
+    """
+    affected_groups = list()
+    affected_agents = list()
+    for group_id in group_list:
+        try:
+            removed = Agent.delete_single_group(group_id)
+            affected_groups.append(group_id)
+            affected_agents += removed['affected_items']
+            Agent.remove_multi_group(set(group_id.lower()))
+        except WazuhError:
+            pass
+
+    result = {'affected_items': affected_groups,
+              'failed_items': list(),
+              'affected_agents': list(set(affected_agents)),
+              'str_priority': ['All shown groups were deleted',
+                               '',
+                               'No groups were deleted']}
+    return result
+
+
+@expose_resources(actions=["agent:modify_group_assignments"], resources=["agent:id:{agent_list}"],
+                  target_params=["agent_list"], post_proc_func=list_handler_with_denied)
+def assign_agents_to_group(group_id=None, agent_list=None, replace=False):
+    """Assign a list of agents to a group
+
+    :param group_id: Group ID.
+    :param agent_list: List of Agent IDs.
+    :param replace: Whether to append new group to current agent's group or replace it.
+    :return: Confirmation message.
+    """
+    failed_ids = list()
+    affected_agents = list()
+
+    # Check if the group exists
+    if not Agent.group_exists(group_id):
+        raise WazuhError(1710)
+
+    for agent_id in agent_list:
+        try:
+            Agent.add_group_to_agent(agent_id=agent_id, group_id=group_id, replace=replace)
+            affected_agents.append(agent_id)
+        except WazuhException as e:
+            failed_ids.append(create_exception_dic(agent_id, e))
+
+    result = {'affected_items': affected_agents,
+              'failed_items': failed_ids,
+              'str_priority': ['All selected agents were assigned to {0}{1}'.format
+                               (group_id, ' and removed from the other groups' if replace else ''),
+                               'Some agents were not assigned to {0}{1}'.format
+                               (group_id, ' and removed from the other groups' if replace else ''),
+                               'No agents assigned to {0}'.format(group_id)]}
+
+    return result
+
+
+@expose_resources(actions=["agent:modify_group_assignments"], resources=["agent:id:*"], target_params=["agent_list"],
+                  post_proc_func=list_handler_no_denied)
+def assign_all_agents_to_group(group_id=None, agent_list=None, replace=False):
+    """Assign all agents to a group
+
+    :param group_id: Group ID.
+    :param agent_list: List of Agent IDs.
+    :param replace: Whether to append new group to current agent's group or replace it.
+    :return: Confirmation message.
+    """
+    affected_agents = list()
+
+    # Check if the group exists
+    if not Agent.group_exists(group_id):
+        raise WazuhError(1710)
+
+    for agent_id in agent_list:
+        try:
+            Agent.add_group_to_agent(agent_id=agent_id, group_id=group_id, replace=replace)
+            affected_agents.append(agent_id)
+        except WazuhError:
+            pass
+
+    result = {'affected_items': affected_agents,
+              'failed_items': list(),
+              'str_priority': ['All shown agents were assigned to {0}{1}'.format
+                               (group_id, ' and removed from the other groups' if replace else ''),
+                               '',
+                               'No agents assigned to {0}'.format(group_id)]}
+
+    return result
+
+
+@expose_resources(actions=["agent:modify_group_assignments"], resources=["agent:id:{agent_list}"],
+                  target_params=["agent_list"], post_proc_func=list_handler_with_denied)
+def remove_agents_from_group(group_id=None, agent_list=None):
+    """Removes agents assignment from a specified group
+
+    :param group_id: Group ID.
+    :param agent_list: List of Agent IDs.
+    :return: Confirmation message.
+    """
+    failed_ids = list()
+    affected_agents = list()
+
+    # Check if the group exists
+    if not Agent.group_exists(group_id):
+        raise WazuhError(1710)
+
+    for agent_id in agent_list:
+        try:
+            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=False)
+            affected_agents.append(agent_id)
+        except WazuhException as e:
+            failed_ids.append(create_exception_dic(agent_id, e))
+
+    result = {'affected_items': affected_agents,
+              'failed_items': failed_ids,
+              'str_priority': ['All selected agents were removed from {}'.format(group_id),
+                               'Some agents were not removed from {}'.format(group_id),
+                               'No agents removed from {}'.format(group_id)]}
+
+    return result
+
+
+@expose_resources(actions=["agent:modify_group_assignments"], resources=["agent:id:*"], target_params=["agent_list"],
+                  post_proc_func=list_handler_no_denied)
+def remove_all_agents_from_group(group_id=None, agent_list=None):
+    """Removes all agents assignment from a specified group
+
+    :param agent_list: List of Agent IDs.
+    :param group_id: Group ID.
+    :return: Confirmation message.
+    """
+    affected_agents = list()
+
+    # Check if the group exists
+    if not Agent.group_exists(group_id):
+        raise WazuhError(1710)
+
+    for agent_id in agent_list:
+        try:
+            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=False)
+            affected_agents.append(agent_id)
+        except WazuhError:
+            pass
+
+    result = {'affected_items': affected_agents,
+              'failed_items': list(),
+              'str_priority': ['All shown agents were removed from {0}'.format(group_id),
+                               '',
+                               'No agents removed from {0}'.format(group_id)]}
+
+    return result
+
+
+@expose_resources(actions=["agent:modify_group_assignments"], resources=["agent:id:{agent_list}"],
+                  target_params=["agent_list"], post_proc_func=list_handler_with_denied)
+def remove_agents_from_all_groups(agent_list=None, force=False):
+    """Removes a list of agents assigment from all groups
+
+    :param agent_list: List of agents ID's.
+    :param force: Do not check if agent exists
+    :return: Confirmation message.
+    """
+    affected_agents = list()
+    failed_ids = list()
+    for agent_id in agent_list:
+        try:
+            if agent_id == '000':
+                raise WazuhError(1703)
+            else:
+                if not force:
+                    Agent(agent_id).get_basic_information()  # Check if agent exists
+                Agent.set_agent_group_file(agent_id, 'default')  # Reset agent assignment to 'default' group
+                affected_agents.append(agent_id)
+        except WazuhException as e:
+            failed_ids.append(create_exception_dic(agent_id, e))
+
+    result = {'affected_items': affected_agents,
+              'failed_items': failed_ids,
+              'str_priority': ['All selected agents were removed from all groups. Group reverted to default.',
+                               'Some agents were not removed from from all groups. Affected agents group reverted to '
+                               'default',
+                               'No agents removed from from all groups']}
+
+    return result
+
+
+@expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
+def get_outdated_agents(agent_list=None, offset=None, limit=None, sort=None, search=None, select=None, q=None):
+    """Gets the outdated agents.
+
+    :param agent_list: List of agents ID's.
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param search: Looks for items with the specified string.
+    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+    :param q: Defines query to filter in DB.
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+    filters = dict()
+    filters['id'] = agent_list
+
+    # Get manager version
+    manager = Agent(id='000')
+    manager.load_info_from_db()
+
+    db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
+                                  query=f"version!={manager.version}" + (';' + q if q else ''), filters=filters)
+    data = db_query.run()
+
+    return data
+
+
+@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
+def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, chunk_size=None, use_http=False):
+    """Read upgrade result output from agent.
+
+    :param agent_list: List of agents ID's.
+    :param wpk_repo: URL for WPK download
+    :param version: Version to upgrade to
+    :param force: force the update even if it is a downgrade
+    :param chunk_size: size of each update chunk
+    :param use_http: False for HTTPS protocol, True for HTTP protocol
+    :return: Upgrade message.
+    """
+    # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
+    # agents
+    agent_id = agent_list[0]
+
+    return Agent(agent_id).upgrade(wpk_repo=wpk_repo, version=version, force=True if int(force) == 1 else False,
+                                   chunk_size=chunk_size, use_http=use_http)
+
+
+@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
+def get_upgrade_result(agent_list=None, timeout=3):
+    """Read upgrade result output from agent.
+
+    :param agent_list: List of agents ID's.
+    :param timeout: Maximum time for the call to be considered failed
+    :return: Upgrade result.
+    """
+    # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
+    # agents
+    agent_id = agent_list[0]
+
+    return Agent(agent_id).upgrade_result(timeout=int(timeout))
+
+
+@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
+def upgrade_agents_custom(agent_list=None, file_path=None, installer=None):
+    """Read upgrade result output from agent.
+
+    :param agent_list: List of agents ID's.
+    :param file_path: Path to the installation file
+    :param installer: Selected installer
+    :return: Upgrade message.
+    """
+    if not file_path or not installer:
+        raise WazuhInternalError(1307)
+
+    # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
+    # agents
+    agent_id = agent_list[0]
+
+    return Agent(agent_id).upgrade_custom(file_path=file_path, installer=installer)
+
+
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
+def get_agents_config(agent_list=None, component=None, config=None):
+    """Read selected configuration from agent.
+
+    :param agent_list: List of agents ID's.
+    :param component: Selected component
+    :param config: Configuration to get, written on disk
+    :return: Loaded configuration in JSON.
+    """
+    # We access unique agent_id from list, this may change if and when we decide a final way to handle get responses
+    # with failed ids and a list of agents
+    agent_id = agent_list[0]
+    my_agent = Agent(agent_id)
+    my_agent.load_info_from_db()
+
+    if my_agent.status != "active":
+        raise WazuhError(1740)
+
+    return my_agent.getconfig(component=component, config=config)
+
+
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
+def get_agents_sync_group(agent_list=None):
+    """Get agents configuration sync status.
+
+    :param agent_list: List of agents ID's.
+    :return Sync status
+    """
+    # We access unique agent_id from list, this may change when we decide a final way to handle get responses with
+    # failed ids
+    agent_id = agent_list[0]
+    if agent_id == "000":
+        raise WazuhError(1703)
+    else:
+        try:
+            # Check if agent exists and it is active
+            agent_info = Agent(agent_id).get_basic_information()
+            # Check if it has a multigroup
+            if len(agent_info['group']) > 1:
+                multi_group = ','.join(agent_info['group'])
+                multi_group = hashlib.sha256(multi_group.encode()).hexdigest()[:8]
+                agent_group_merged_path = path.join(common.multi_groups_path, multi_group, "merged.mg")
+            else:
+                agent_group_merged_path = path.join(common.shared_path, agent_info['group'][0], "merged.mg")
+            return {'synced': md5(agent_group_merged_path) == agent_info['mergedSum']}
+        except (IOError, KeyError):
+            # The file couldn't be opened and therefore the group has not been synced
+            return {'synced': False}
         except WazuhError as e:
             raise e
         except Exception as e:
-            raise WazuhInternalError(1727, extra_message=str(e))
-
-    @staticmethod
-    def create_group(group_id):
-        """Creates a group.
-
-        :param group_id: Group ID.
-        :return: Confirmation message.
-        """
-        # Input Validation of group_id
-        if not InputValidator().group(group_id):
-            raise WazuhError(1722)
-
-        group_path = "{0}/{1}".format(common.shared_path, group_id)
-
-        if group_id.lower() == "default" or path.exists(group_path):
-            raise WazuhError(1711, extra_message=group_id)
-
-        # Create group in /etc/shared
-        group_def_path = "{0}/agent-template.conf".format(common.shared_path)
-        try:
-            mkdir_with_mode(group_path)
-            copyfile(group_def_path, group_path + "/agent.conf")
-            chown_r(group_path, common.ossec_uid(), common.ossec_gid())
-            chmod_r(group_path, 0o660)
-            chmod(group_path, 0o770)
-            msg = "Group '{0}' created.".format(group_id)
-        except Exception as e:
-            raise WazuhInternalError(1005, extra_message=str(e))
-
-        return msg
-
-    @staticmethod
-    def create_multi_group(group_id):
-        """Creates a multi group.
-
-        :param group_id: Group ID.
-        :return: Confirmation message.
-        """
-        if ',' not in group_id:
-            # if there's not , in the group_id, then it isn't a multigroup and therefore the function does nothing
-            return
-
-        # Create group in /var/multigroups
-        msg = None
-        try:
-            folder = hashlib.sha256(group_id.encode()).hexdigest()[:8]
-            multi_group_path = "{0}/{1}".format(common.multi_groups_path, folder)
-            mkdir_with_mode(multi_group_path)
-            chown(multi_group_path, common.ossec_uid(), common.ossec_gid())
-            chmod(multi_group_path, 0o770)
-            msg = "Group '{0}' created.".format(group_id)
-            return msg
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise WazuhInternalError(1005, extra_message=str(e))
-        return msg
-
-    @staticmethod
-    def remove_multi_group(groups_id):
-        """Removes groups by IDs.
-
-        :param groups_id: list with Groups ID.
-        """
-        groups_to_remove = []
-        for agent_id in listdir("{0}".format(common.groups_path)):
-            agent_group = Agent.get_agents_group_file(agent_id)
-
-            new_group = ''
-            group_list = agent_group.split(',')
-            for group_to_remove in groups_id & set(group_list):
-                # remove the group
-                groups_to_remove.append(','.join(group_list))
-                group_list.remove(group_to_remove)
-                if len(group_list) > 1:
-                    # create new multigroup
-                    new_group = ','.join(group_list)
-                else:
-                    new_group = 'default' if not group_list else group_list[0]
-
-            if new_group:
-                # Add multigroup
-                Agent.set_agent_group_file(agent_id, new_group)
-
-    @staticmethod
-    def remove_group(group_id):
-        """Remove the group in every agent.
-
-        :param group_id: Group ID.
-        :return: Confirmation message.
-        """
-        # Input Validation of group_id
-        if not InputValidator().group(group_id):
-            raise WazuhError(1722)
-
-        # Connect DB
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhInternalError(1600)
-
-        failed_ids = []
-        ids = []
-        affected_agents = []
-        if isinstance(group_id, list):
-            for id in group_id:
-                # if id.lower() == "default":
-                #     raise WazuhError(1712)
-                try:
-                    removed = Agent._remove_single_group(id)
-                    ids.append(id)
-                    affected_agents += removed['affected_items']
-                    Agent.remove_multi_group(set(map(lambda x: x.lower(), group_id)))
-                except WazuhException as e:
-                    failed_ids.append(create_exception_dic(id, e))
-        else:
-            # if group_id.lower() == "default":
-            #     raise WazuhError(1712)
-            try:
-                removed = Agent._remove_single_group(group_id)
-                ids.append(group_id)
-                affected_agents += removed['affected_items']
-                Agent.remove_multi_group({group_id.lower()})
-            except WazuhException as e:
-                failed_ids.append(create_exception_dic(group_id, e))
-
-        if not failed_ids:
-            message = 'All selected groups were deleted'
-            final_dict = {'message': message,
-                          'data': {'affected_items': ids,
-                                   'affected_agents': affected_agents}
-                          }
-        else:
-            message = 'Some groups were not deleted'
-            final_dict = {'message': message,
-                          'data': {'failed_items': failed_ids,
-                                   'affected_items': ids,
-                                   'affected_agents': affected_agents}
-                          }
-
-        result = WazuhResult(final_dict, str_priority=['All selected groups were deleted',
-                                                       'Some groups were not deleted'])
-
-        return result
-
-    @staticmethod
-    def set_group(agent_id, group_id, force=False, replace=False):
-        """Set a group to an agent.
-
-        :param agent_id: Agent ID.
-        :param group_id: Group ID.
-        :param force: No check if agent exists
-        :param replace: Replace agent group instead of appending.
-        :return: Confirmation message.
-        """
-        if replace:
-            return Agent.replace_group(agent_id=agent_id, group_id=group_id, force=force)
-        else:
-            return Agent.add_group_to_agent(agent_id=agent_id, group_id=group_id, force=force)
-
-    @staticmethod
-    @expose_resources(actions=["agent:modify_group_assignments"], resources=["agent:id:{agent_list}"],
-                      target_params=["agent_list"], post_proc_func=list_handler_with_denied)
-    def assign_agents_to_group(group_id=None, agent_list=None, replace=False):
-        """Assign a list of agents to a group
-
-        :param group_id: Group ID.
-        :param agent_list: List of Agent IDs.
-        :param replace: Whether to append new group to current agent's group or replace it.
-        :return: Confirmation message.
-        """
-        failed_ids = list()
-        affected_agents = list()
-
-        # Check if the group exists
-        if not Agent.group_exists(group_id):
-            raise WazuhError(1710)
-
-        for agent_id in agent_list:
-            try:
-                Agent.add_group_to_agent(agent_id=agent_id, group_id=group_id, replace=replace)
-                affected_agents.append(agent_id)
-            except WazuhException as e:
-                failed_ids.append(create_exception_dic(agent_id, e))
-
-        result = {'affected_items': affected_agents,
-                  'failed_items': failed_ids,
-                  'str_priority': ['All selected agents were assigned to {0}{1}'.format
-                                   (group_id, ' and removed from the other groups' if replace else ''),
-                                   'Some agents were not assigned to {0}{1}'.format
-                                   (group_id, ' and removed from the other groups' if replace else ''),
-                                   'No agents assigned to {0}'.format(group_id)]}
-
-        return result
-
-    @staticmethod
-    @expose_resources(actions=["agent:modify_group_assignments"], resources=["agent:id:*"],
-                      target_params=["agent_list"], post_proc_func=list_handler_no_denied)
-    def assign_all_agents_to_group(group_id=None, agent_list=None, replace=False):
-        """Assign all agents to a group
-
-        :param group_id: Group ID.
-        :param agent_list: List of Agent IDs.
-        :param replace: Whether to append new group to current agent's group or replace it.
-        :return: Confirmation message.
-        """
-        affected_agents = list()
-
-        # Check if the group exists
-        if not Agent.group_exists(group_id):
-            raise WazuhError(1710)
-
-        for agent_id in agent_list:
-            try:
-                Agent.add_group_to_agent(agent_id=agent_id, group_id=group_id, replace=replace)
-                affected_agents.append(agent_id)
-            except WazuhException:
-                pass
-
-        result = {'affected_items': affected_agents,
-                  'failed_items': list(),
-                  'str_priority': ['All shown agents were assigned to {0}{1}'.format
-                                   (group_id, ' and removed from the other groups' if replace else ''),
-                                   '',
-                                   'No agents assigned to {0}'.format(group_id)]}
-
-        return result
-
-    @staticmethod
-    @expose_resources(actions=["agent:modify_group_assignments"], resources=["agent:id:{agent_list}"],
-                      target_params=["agent_list"], post_proc_func=list_handler_with_denied)
-    def remove_agents_from_group(group_id=None, agent_list=None):
-        """Removes agents assignment from a specified group
-
-        :param group_id: Group ID.
-        :param agent_list: List of Agent IDs.
-        :return: Confirmation message.
-        """
-        failed_ids = list()
-        affected_agents = list()
-
-        # Raise an exception if group does not exist
-        if not Agent.group_exists(group_id):
-            raise WazuhError(1710)
-
-        for agent_id in agent_list:
-            try:
-                Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=False)
-                affected_agents.append(agent_id)
-            except WazuhException as e:
-                failed_ids.append(create_exception_dic(agent_id, e))
-
-        result = {'affected_items': affected_agents,
-                  'failed_items': failed_ids,
-                  'str_priority': ['All selected agents were removed from {}'.format(group_id),
-                                   'Some agents were not removed from {}'.format(group_id),
-                                   'No agents removed from {}'.format(group_id)]}
-
-        return result
-
-    @staticmethod
-    @expose_resources(actions=["agent:modify_group_assignments"], resources=["agent:id:*"],
-                      target_params=["agent_list"], post_proc_func=list_handler_no_denied)
-    def remove_all_agents_from_group(group_id=None, agent_list=None):
-        """Removes all agents assignment from a specified group
-
-        :param agent_list: List of Agent IDs.
-        :param group_id: Group ID.
-        :return: Confirmation message.
-        """
-        affected_agents = list()
-
-        # Raise an exception if group does not exist
-        if not Agent.group_exists(group_id):
-            raise WazuhError(1710)
-
-        for agent_id in agent_list:
-            try:
-                Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=False)
-                affected_agents.append(agent_id)
-            except WazuhException:
-                pass
-
-        result = {'affected_items': affected_agents,
-                  'failed_items': list(),
-                  'str_priority': ['All shown agents were removed from {0}'.format(group_id),
-                                   '',
-                                   'No agents removed from {0}'.format(group_id)]}
-
-        return result
-
-    @staticmethod
-    def get_agents_group_file(agent_id):
-        group_path, group_name = "{}/{}".format(common.groups_path, agent_id), ""
-        if path.exists(group_path):
-            with open(group_path) as f:
-                group_name = f.read().strip()
-
-        return group_name
-
-    @staticmethod
-    def set_agent_group_file(agent_id, group_id):
-        try:
-            agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
-            new_file = not path.exists(agent_group_path)
-
-            with open(agent_group_path, 'w') as f_group:
-                f_group.write(group_id)
-
-            if new_file:
-                chown(agent_group_path, common.ossec_uid(), common.ossec_gid())
-                chmod(agent_group_path, 0o660)
-        except Exception as e:
-            raise WazuhInternalError(1005, extra_message=str(e))
-
-    @staticmethod
-    def replace_group(agent_id, group_id, force=False):
-        """Replaces a group to an agent.
-
-        :param agent_id: Agent ID.
-        :param group_id: Group ID.
-        :param force: No check if agent exists
-        :return: Confirmation message.
-        """
-        # Input Validation of group_id
-        if not InputValidator().group(group_id):
-            raise WazuhError(1722)
-
-        agent_id = agent_id.zfill(3)
-        if agent_id == "000":
-            raise WazuhError(1703)
-
-        # Check if agent exists
-        if not force:
-            Agent(agent_id).get_basic_information()
-
-        # Assign group in /queue/agent-groups
-        Agent.set_agent_group_file(agent_id, group_id)
-
-        # Create group in /etc/shared
-        if not Agent.group_exists(group_id):
-            Agent.create_group(group_id)
-
-        return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
-
-    @staticmethod
-    def set_multi_group(agent_id, group_id, force=False):
-        """Set a multi group to an agent.
-
-        :param agent_id: Agent ID.
-        :param group_id: Group ID.
-        :param force: No check if agent exists
-        :return: Confirmation message.
-        """
-        # Input Validation of all groups_id
-        if not reduce(operator.iand, map(InputValidator().group, group_id.split(','))):
-            raise WazuhError(1722, extra_message=group_id)
-
-        agent_id = agent_id.zfill(3)
-        if agent_id == "000":
-            raise WazuhError(1703)
-
-        # Check if agent exists
-        if not force:
-            Agent(agent_id).get_basic_information()
-
-        # Assign group in /queue/agent-groups
-        Agent.set_agent_group_file(agent_id, group_id)
-
-        return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
-
-    @staticmethod
-    def check_multigroup_limit(agent_id):
-        """An agent can belong to <common.max_groups_per_multigroup> groups as maximum. This function checks
-        that limit is not yet reached.
-
-        :param agent_id: Agent ID to check
-        :return: True if the limit is reached, False otherwise
-        """
-        group_read = Agent.get_agents_group_file(agent_id)
-        if group_read:
-            return len(group_read.split(',')) >= common.max_groups_per_multigroup
-        else:
-            # In case that the agent is not connected and has no assigned group, the file is not created.
-            # So, the limit is not reached.
-            return False
-
-    @staticmethod
-    def unset_group(agent_id, group_id=None, force=False):
-        """Unset the agent group.
-
-        :param agent_id: Agent ID.
-        :param group_id: Group ID.
-        :param force: No check if agent exists
-        :return: Confirmation message.
-        """
-        if group_id is None:
-            return Agent.unset_all_groups_agent(agent_id=agent_id, force=force)
-        else:
-            return Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=force)
-
-    @staticmethod
-    def unset_single_group_agent(agent_id, group_id, force):
-        """Unset the agent group. If agent has multigroups, it will preserve all previous groups except the last one.
-
-        :param agent_id: Agent ID.
-        :param group_id: Group ID.
-        :param force: No check if agent exists
-        :return: Confirmation message.
-        """
-        # Check if agent exists
-        if not force:
-            Agent(agent_id).get_basic_information()
-
-        if agent_id == "000":
-            raise WazuhError(1703)
-
-        # Get agent's group
-        group_name = Agent.get_agents_group_file(agent_id)
-        group_list = group_name.split(',')
-        # Check agent belongs to group group_id
-        if group_id not in group_list:
-            raise WazuhError(1734)
-        elif group_id == 'default' and len(group_list) == 1:
-            raise WazuhError(1745)
-        # Remove group from group_list
-        group_list.remove(group_id)
-        set_default = False
-        if len(group_list) > 1:
-            multigroup_name = ','.join(group_list)
-        elif not group_list:
-            set_default = True
-            multigroup_name = 'default'
-        else:
-            multigroup_name = group_list[0]
-        # Update group file
-        Agent.set_agent_group_file(agent_id, multigroup_name)
-
-        return f"Agent '{agent_id}' removed from '{group_id}'. " + ("Agent reassigned to group default."
-                                                                    if set_default else "")
-
-    @staticmethod
-    def get_number_of_agents_in_multigroup(multigroup_name):
-        """Returns the number of agents belonging to a multigroup
-
-        :param multigroup_name: name of the multigroup
-        :return:
-        """
-        # Connect DB
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhInternalError(1600)
-
-        conn = Connection(db_global[0])
-        conn.execute('select count(*) from agent where `group` = :group_name', {'group_name': multigroup_name})
-        return int(conn.fetch())
-
-    @staticmethod
-    @expose_resources(actions=["agent:modify_group_assignments"], resources=["agent:id:{agent_list}"],
-                      target_params=["agent_list"], post_proc_func=list_handler_with_denied)
-    def remove_agents_from_all_groups(agent_list=None, force=False):
-        """Removes a list of agents assigment from all groups
-
-        :param agent_list: List of agents ID's.
-        :param force: Do not check if agent exists
-        :return: Confirmation message.
-        """
-        affected_agents = list()
-        failed_ids = list()
-        for agent_id in agent_list:
-            try:
-                if agent_id == '000':
-                    raise WazuhError(1703)
-                else:
-                    if not force:
-                        Agent(agent_id).get_basic_information()  # Check if agent exists
-                    Agent.set_agent_group_file(agent_id, 'default')  # Reset agent assignment to 'default' group
-                    affected_agents.append(agent_id)
-            except WazuhException as e:
-                failed_ids.append(create_exception_dic(agent_id, e))
-
-        result = {'affected_items': affected_agents,
-                  'failed_items': failed_ids,
-                  'str_priority': ['All selected agents were removed from all groups. Group reverted to default.',
-                                   'Some agents were not removed from from all groups. Affected agents group reverted '
-                                   'to default',
-                                   'No agents removed from from all groups']}
-
-        return result
-
-    @staticmethod
-    @expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
-    def get_outdated_agents(agent_list=None, offset=None, limit=None, sort=None, search=None, select=None, q=None):
-        """Gets the outdated agents.
-
-        :param agent_list: List of agents ID's.
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :param q: Defines query to filter in DB.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        filters = dict()
-        filters['id'] = agent_list
-
-        # Get manager version
-        manager = Agent(id='000')
-        manager._load_info_from_DB()
-
-        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      query=f"version!={manager.version}" + (';' + q if q else ''), filters=filters)
-        data = db_query.run()
-
-        return data
-
-    @staticmethod
-    def _get_protocol(wpk_repo, use_http=False):
-        protocol = ""
-        if "http://" not in wpk_repo and "https://" not in wpk_repo:
-            protocol = "https://" if not use_http else "http://"
-
-        return protocol
-
-    def _get_versions(self, wpk_repo=common.wpk_repo_url, version=None, use_http=False):
-        """Generates a list of available versions for its distribution and version.
-        """
-        invalid_platforms = ["darwin", "solaris", "aix", "hpux", "bsd"]
-        not_valid_versions = [("sles", 11), ("rhel", 5), ("centos", 5)]
-
-        if self.os['platform'] in invalid_platforms or \
-                (self.os['platform'], int(self.os['major'])) in not_valid_versions:
-            error = "The WPK for this platform is not available."
-            raise WazuhInternalError(1713, extra_message=str(error))
-
-        protocol = self._get_protocol(wpk_repo, use_http)
-        if (version is None or WazuhVersion(version) >= WazuhVersion("v3.4.0")) and self.os['platform'] != "windows":
-            versions_url = protocol + wpk_repo + "linux/" + self.os['arch'] + "/versions"
-        else:
-            if self.os['platform'] == "windows":
-                versions_url = protocol + wpk_repo + "windows/versions"
-            elif self.os['platform'] == "ubuntu":
-                versions_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + \
-                               self.os['minor'] + "/" + self.os['arch'] + "/versions"
-            else:
-                versions_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + \
-                               self.os['arch'] + "/versions"
-
-        try:
-            result = requests.get(versions_url)
-        except requests.exceptions.RequestException:
-            error = "Selected version repository ({}) isn't reachable".format(versions_url)
-            raise WazuhInternalError(1713, extra_message=error)
-
-        if result.ok:
-            versions = [version.split() for version in result.text.split('\n')]
-            versions = list(filter(lambda x: len(x) > 0, versions))
-        else:
-            error = "Can't access to the versions file in {}".format(versions_url)
-            raise WazuhInternalError(1713, extra_message=str(error))
-
-        return versions
-
-    def _get_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, use_http=False):
-        """Searchs latest Wazuh WPK file for its distribution and version.
-        Downloads the WPK if it is not in the upgrade folder.
-        """
-        # Get manager version
-        manager_ = Agent(id=0)
-        manager_._load_info_from_DB()
-        manager_ver = WazuhVersion(manager_.version)
-        if debug:
-            print("Manager version: {0}".format(manager_ver))
-
-        agent_new_ver = None
-        agent_new_shasum = None
-        versions = self._get_versions(wpk_repo=wpk_repo, version=version, use_http=use_http)
-        if not version:
-            if WazuhVersion(versions[0]) == manager_ver:
-                agent_new_ver = versions[0]
-                agent_new_shasum = versions[1]
-        else:
-            if WazuhVersion(versions[0]) == WazuhVersion(version):
-                agent_new_ver = versions[0]
-                agent_new_shasum = versions[1]
-        if not agent_new_ver:
-            raise WazuhInternalError(1718, extra_message=version)
-
-        # Comparing versions
-        agent_ver = self.version
-
-        if manager_ver < WazuhVersion(agent_new_ver) and not force:
-            raise WazuhError(1717, extra_message="Manager: {0} / Agent: {1} -> {2}".format(manager_ver, agent_ver, agent_new_ver))
-
-        if WazuhVersion(agent_ver) >= WazuhVersion(agent_new_ver) and not force:
-            raise WazuhError(1749, extra_message="Agent: {0} -> {1}".format(agent_ver, agent_new_ver))
-
-        if debug:
-            print("Agent version: {0}".format(agent_ver))
-            print("Agent new version: {0}".format(agent_new_ver))
-
-        protocol = self._get_protocol(wpk_repo, use_http)
-        # Generating file name
-        if self.os['platform'] == "windows":
-            wpk_file = "wazuh_agent_{0}_{1}.wpk".format(agent_new_ver, self.os['platform'])
-            wpk_url = protocol + wpk_repo + "windows/" + wpk_file
-
-        else:
-            if version is None or WazuhVersion(version) >= WazuhVersion("v3.4.0"):
-                wpk_file = "wazuh_agent_{0}_linux_{1}.wpk".format(agent_new_ver, self.os['arch'])
-                wpk_url = protocol + wpk_repo + "linux/" + self.os['arch'] + "/" + wpk_file
-
-            else:
-                if self.os['platform'] == "ubuntu":
-                    wpk_file = "wazuh_agent_{0}_{1}_{2}.{3}_{4}.wpk".format(agent_new_ver,
-                                                                            self.os['platform'], self.os['major'],
-                                                                            self.os['minor'], self.os['arch'])
-                    wpk_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + \
-                              self.os['minor'] + "/" + self.os['arch'] + "/" + wpk_file
-                else:
-                    wpk_file = "wazuh_agent_{0}_{1}_{2}_{3}.wpk".format(agent_new_ver, self.os['platform'],
-                                                                        self.os['major'], self.os['arch'])
-                    wpk_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + \
-                              self.os['arch'] + "/" + wpk_file
-
-        wpk_file_path = "{0}/var/upgrade/{1}".format(common.ossec_path, wpk_file)
-
-        # If WPK is already downloaded
-        if path.isfile(wpk_file_path):
-            # Get SHA1 file sum
-            sha1hash = hashlib.sha1(open(wpk_file_path, 'rb').read()).hexdigest()
-            # Comparing SHA1 hash
-            if not sha1hash == agent_new_shasum:
-                if debug:
-                    print("Downloaded file SHA1 does not match "
-                          "(downloaded: {0} / repository: {1})".format(sha1hash, agent_new_shasum))
-            else:
-                if debug:
-                    print("WPK file already downloaded: {0} - SHA1SUM: {1}".format(wpk_file_path, sha1hash))
-                return [wpk_file, sha1hash]
-
-        # Download WPK file
-        if debug:
-            print("Downloading WPK file from: {0}".format(wpk_url))
-
-        try:
-            result = requests.get(wpk_url)
-        except requests.exceptions.RequestException as e:
-            raise WazuhInternalError(1714, extra_message=str(e))
-
-        if result.ok:
-            with open(wpk_file_path, 'wb') as fd:
-                for chunk in result.iter_content(chunk_size=128):
-                    fd.write(chunk)
-        else:
-            error = "Can't access to the WPK file in {}".format(wpk_url)
-            raise WazuhInternalError(1714, extra_message=str(error))
-
-        # Get SHA1 file sum
-        sha1hash = hashlib.sha1(open(wpk_file_path, 'rb').read()).hexdigest()
-        # Comparing SHA1 hash
-        if not sha1hash == agent_new_shasum:
-            raise WazuhInternalError(1714)
-
-        if debug:
-            print("WPK file downloaded: {0} - SHA1SUM: {1}".format(wpk_file_path, sha1hash))
-
-        return [wpk_file, sha1hash]
-
-    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None,
-                       chunk_size=None, rl_timeout=-1, timeout=common.open_retries, use_http=False):
-        """Sends WPK file to agent.
-        """
-        if not chunk_size:
-            chunk_size = common.wpk_chunk_size
-        # Check WPK file
-        _get_wpk = self._get_wpk_file(wpk_repo=wpk_repo, debug=debug, version=version, force=force, use_http=use_http)
-        wpk_file = _get_wpk[0]
-        file_sha1 = _get_wpk[1]
-        wpk_file_size = stat("{0}/var/upgrade/{1}".format(common.ossec_path, wpk_file)).st_size
-        if debug:
-            print("Upgrade PKG: {0} ({1} KB)".format(wpk_file, wpk_file_size / 1024))
-
-        # Sending reset lock timeout
-        s = OssecSocket(common.REQUEST_SOCKET)
-        msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
-        s.send(msg.encode())
-        if debug:
-            print("MSG SENT: {0}".format(str(msg)))
-        data = s.receive().decode()
-        s.close()
-        if debug:
-            print("RESPONSE: {0}".format(data))
-        if not data.startswith('ok'):
-            raise WazuhException(1715, data.replace("err ",""))
-
-        # Open file on agent
-        s = OssecSocket(common.REQUEST_SOCKET)
-        msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
-        s.send(msg.encode())
-        if debug:
-            print("MSG SENT: {0}".format(str(msg)))
-        data = s.receive().decode()
-        s.close()
-        if debug:
-            print("RESPONSE: {0}".format(data))
-        counter = 0
-        while data.startswith('err') and counter < timeout:
-            sleep(common.open_sleep)
-            counter = counter + 1
-            s = OssecSocket(common.REQUEST_SOCKET)
-            msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
-            s.send(msg.encode())
-            if debug:
-                print("MSG SENT: {0}".format(str(msg)))
-            data = s.receive().decode()
-            s.close()
-            if debug:
-                print("RESPONSE: {0}".format(data))
-        if not data.startswith('ok'):
-            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
-
-        # Sending reset lock timeout
-        s = OssecSocket(common.REQUEST_SOCKET)
-        msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
-        s.send(msg.encode())
-        if debug:
-            print("MSG SENT: {0}".format(str(msg)))
-        data = s.receive().decode()
-        s.close()
-        if debug:
-            print("RESPONSE: {0}".format(data))
-        if not data.startswith('ok'):
-            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
-
-        # Sending file to agent
-        if debug:
-            print("Chunk size: {0} bytes".format(chunk_size))
-        file = open(common.ossec_path + "/var/upgrade/" + wpk_file, "rb")
-        if not file:
-            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
-        if debug:
-            print("Sending: {0}".format(common.ossec_path + "/var/upgrade/" + wpk_file))
-        try:
-            # start_time = time()
-            bytes_read = file.read(chunk_size)
-            bytes_read_acum = 0
-            while bytes_read:
-                s = OssecSocket(common.REQUEST_SOCKET)
-                msg = "{0} com write {1} {2} ".format(str(self.id).zfill(3), str(len(bytes_read)), wpk_file)
-                s.send(msg.encode() + bytes_read)
-                data = s.receive().decode()
-                s.close()
-                if not data.startswith('ok'):
-                    raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
-                bytes_read = file.read(chunk_size)
-                if show_progress:
-                    bytes_read_acum = bytes_read_acum + len(bytes_read)
-                    show_progress(int(bytes_read_acum * 100 / wpk_file_size) +
-                                  (bytes_read_acum * 100 % wpk_file_size > 0))
-            # elapsed_time = time() - start_time
-        finally:
-            file.close()
-
-        # Close file on agent
-        s = OssecSocket(common.REQUEST_SOCKET)
-        msg = "{0} com close {1}".format(str(self.id).zfill(3), wpk_file)
-        s.send(msg.encode())
-        if debug:
-            print("MSG SENT: {0}".format(str(msg)))
-        data = s.receive().decode()
-        s.close()
-        if debug:
-            print("RESPONSE: {0}".format(data))
-        if not data.startswith('ok'):
-            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
-
-        # Get file SHA1 from agent and compare
-        s = OssecSocket(common.REQUEST_SOCKET)
-        msg = "{0} com sha1 {1}".format(str(self.id).zfill(3), wpk_file)
-        s.send(msg.encode())
-        if debug:
-            print("MSG SENT: {0}".format(str(msg)))
-        data = s.receive().decode()
-        s.close()
-        if debug:
-            print("RESPONSE: {0}".format(data))
-        if not data.startswith('ok '):
-            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
-        rcv_sha1 = data.split(' ')[1]
-        if rcv_sha1 == file_sha1:
-            return ["WPK file sent", wpk_file]
-        else:
-            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
-
-    def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None, chunk_size=None,
-                rl_timeout=-1, use_http=False):
-        """Upgrade agent using a WPK file.
-        """
-        if int(self.id) == 0:
-            raise WazuhError(1703)
-
-        self._load_info_from_DB()
-
-        # Check if agent is active.
-        if not self.status == 'active':
-            raise WazuhError(1720)
-
-        # Check if remote upgrade is available for the selected agent version
-        if WazuhVersion(self.version) < WazuhVersion("3.0.0-alpha4"):
-            raise WazuhError(1719, extra_message=str(version))
-
-        if self.os['platform'] == "windows" and int(self.os['major']) < 6:
-            raise WazuhInternalError(1721, extra_message=self.os['name'])
-
-        if wpk_repo is None:
-            wpk_repo = common.wpk_repo_url
-
-        if not wpk_repo.endswith('/'):
-            wpk_repo = wpk_repo + '/'
-
-        # Send file to agent
-        sending_result = self._send_wpk_file(wpk_repo=wpk_repo, debug=debug, version=version, force=force,
-                                             show_progress=show_progress, chunk_size=chunk_size,
-                                             rl_timeout=rl_timeout, use_http=use_http)
-        if debug:
-            print(sending_result[0])
-
-        # Send upgrading command
-        s = OssecSocket(common.REQUEST_SOCKET)
-        if self.os['platform'] == "windows":
-            msg = "{0} com upgrade {1} upgrade.bat".format(str(self.id).zfill(3), sending_result[1])
-        else:
-            msg = "{0} com upgrade {1} upgrade.sh".format(str(self.id).zfill(3), sending_result[1])
-        s.send(msg.encode())
-        if debug:
-            print("MSG SENT: {0}".format(str(msg)))
-        data = s.receive().decode()
-        s.close()
-
-        if debug:
-            print("RESPONSE: {0}".format(data))
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        if data.startswith('ok'):
-            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): started. "
-                      "Current version: {2}".format(str(self.id).zfill(3), self.name, self.version)).encode(),
-                     common.ossec_path + "/queue/ossec/queue")
-            s.close()
-            return "Upgrade procedure started"
-        else:
-            s.close()
-            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): aborted: {2}".format(
-                str(self.id).zfill(3), self.name, data.replace("err ", ""))).encode(), common.ossec_path +
-                     "/queue/ossec/queue")
-            raise WazuhError(1716, extra_message=data.replace("err ", ""))
-
-    @staticmethod
-    @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
-    def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, chunk_size=None, use_http=False):
-        """Read upgrade result output from agent.
-
-        :param agent_list: List of agents ID's.
-        :param wpk_repo: URL for WPK download
-        :param version: Version to upgrade to
-        :param force: force the update even if it is a downgrade
-        :param chunk_size: size of each update chunk
-        :param use_http: False for HTTPS protocol, True for HTTP protocol
-        :return: Upgrade message.
-        """
-        # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
-        # agents
-        agent_id = agent_list[0]
-        return Agent(agent_id).upgrade(wpk_repo=wpk_repo, version=version, force=True if int(force) == 1 else False,
-                                       chunk_size=chunk_size, use_http=use_http)
-
-    def upgrade_result(self, debug=False, timeout=common.upgrade_result_retries):
-        """Read upgrade result output from agent.
-        """
-        sleep(1)
-        if self.id == "000":
-            raise WazuhError(1703)
-        self._load_info_from_DB()
-        s = OssecSocket(common.REQUEST_SOCKET)
-        msg = "{0} com upgrade_result".format(str(self.id).zfill(3))
-        s.send(msg.encode())
-        if debug:
-            print("MSG SENT: {0}".format(str(msg)))
-        data = s.receive().decode()
-        s.close()
-        if debug:
-            print("RESPONSE: {0}".format(data))
-        counter = 0
-        while data.startswith('err') and counter < timeout:
-            sleep(common.upgrade_result_sleep)
-            counter = counter + 1
-            s = OssecSocket(common.REQUEST_SOCKET)
-            msg = str(self.id).zfill(3) + " com upgrade_result"
-            s.send(msg.encode())
-            if debug:
-                print("MSG SENT: {0}".format(str(msg)))
-            data = s.receive().decode()
-            s.close()
-            if debug:
-                print("RESPONSE: {0}".format(data))
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        if data.startswith('ok 0'):
-            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): succeeded. "
-                      "New version: {2}".format(str(self.id).zfill(3), self.name, self.version)).encode(),
-                     common.ossec_path + "/queue/ossec/queue")
-            s.close()
-            return "Agent upgraded successfully"
-        elif data.startswith('ok 2'):
-            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): failed: "
-                      "restored to previous version".format(str(self.id).zfill(3), self.name)).encode(),
-                     common.ossec_path + "/queue/ossec/queue")
-            s.close()
-            raise WazuhError(1716, extra_message="Agent restored to previous version")
-        else:
-            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): lost: {2}".format(
-                str(self.id).zfill(3), self.name, data.replace("err ", ""))).encode(), common.ossec_path +
-                     "/queue/ossec/queue")
-            s.close()
-            raise WazuhError(1716, extra_message=data.replace("err ", ""))
-
-    @staticmethod
-    @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
-    def get_upgrade_result(agent_list=None, timeout=3):
-        """Read upgrade result output from agent.
-
-        :param agent_list: List of agents ID's.
-        :param timeout: Maximum time for the call to be considered failed
-        :return: Upgrade result.
-        """
-        # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
-        # agents
-        agent_id = agent_list[0]
-
-        return Agent(agent_id).upgrade_result(timeout=int(timeout))
-
-    def _send_custom_wpk_file(self, file_path, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1,
-                              timeout=common.open_retries):
-        """Sends custom WPK file to agent.
-        """
-        if not chunk_size:
-            chunk_size = common.wpk_chunk_size
-
-        # Check WPK file
-        if not path.isfile(file_path):
-            raise WazuhError(1006)
-
-        wpk_file = path.basename(file_path)
-        wpk_file_size = stat(file_path).st_size
-        if debug:
-            print("Custom WPK file: {0} ({1} KB)".format(wpk_file, wpk_file_size / 1024))
-
-        # Sending reset lock timeout
-        s = OssecSocket(common.REQUEST_SOCKET)
-        msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
-        s.send(msg.encode())
-        if debug:
-            print("MSG SENT: {0}".format(str(msg)))
-        data = s.receive().decode()
-        s.close()
-        if debug:
-            print("RESPONSE: {0}".format(data))
-        if not data.startswith('ok'):
-            raise WazuhInternalError(1715, extra_message=data.replace("err ",""))
-
-        # Open file on agent
-        s = OssecSocket(common.REQUEST_SOCKET)
-        msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
-        s.send(msg.encode())
-        if debug:
-            print("MSG SENT: {0}".format(str(msg)))
-        data = s.receive().decode()
-        s.close()
-        if debug:
-            print("RESPONSE: {0}".format(data))
-        counter = 0
-        while data.startswith('err') and counter < timeout:
-            sleep(common.open_sleep)
-            counter = counter + 1
-            s = OssecSocket(common.REQUEST_SOCKET)
-            msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
-            s.send(msg.encode())
-            if debug:
-                print("MSG SENT: {0}".format(str(msg)))
-            data = s.receive().decode()
-            s.close()
-            if debug:
-                print("RESPONSE: {0}".format(data))
-        if not data.startswith('ok'):
-            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
-
-        # Sending file to agent
-        if debug:
-            print("Chunk size: {0} bytes".format(chunk_size))
-        file = open(file_path, "rb")
-        if not file:
-            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
-        try:
-            # start_time = time()
-            bytes_read = file.read(chunk_size)
-            file_sha1 = hashlib.sha1(bytes_read)
-            bytes_read_acum = 0
-            while bytes_read:
-                s = OssecSocket(common.REQUEST_SOCKET)
-                msg = "{0} com write {1} {2} ".format(str(self.id).zfill(3), str(len(bytes_read)), wpk_file)
-                s.send(msg.encode() + bytes_read)
-                # data = s.receive().decode()
-                s.close()
-                if not data.startswith('ok'):
-                    raise WazuhException(1715, data.replace("err ",""))
-                bytes_read = file.read(chunk_size)
-                file_sha1.update(bytes_read)
-                if show_progress:
-                    bytes_read_acum = bytes_read_acum + len(bytes_read)
-                    show_progress(int(bytes_read_acum * 100 / wpk_file_size) +
-                                  (bytes_read_acum * 100 % wpk_file_size > 0))
-            # elapsed_time = time() - start_time
-            calc_sha1 = file_sha1.hexdigest()
-            if debug:
-                print("FILE SHA1: {0}".format(calc_sha1))
-        finally:
-            file.close()
-
-        # Close file on agent
-        s = OssecSocket(common.REQUEST_SOCKET)
-        msg = "{0} com close {1}".format(str(self.id).zfill(3), wpk_file)
-        s.send(msg.encode())
-        if debug:
-            print("MSG SENT: {0}".format(str(msg)))
-        data = s.receive().decode()
-        s.close()
-        if debug:
-            print("RESPONSE: {0}".format(data))
-        if not data.startswith('ok'):
-            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
-
-        # Get file SHA1 from agent and compare
-        s = OssecSocket(common.REQUEST_SOCKET)
-        msg = "{0} com sha1 {1}".format(str(self.id).zfill(3), wpk_file)
-        s.send(msg.encode())
-        if debug:
-            print("MSG SENT: {0}".format(str(msg)))
-        data = s.receive().decode()
-        s.close()
-        if debug:
-            print("RESPONSE: {0}".format(data))
-        if not data.startswith('ok '):
-            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
-        rcv_sha1 = data.split(' ')[1]
-        if calc_sha1 == rcv_sha1:
-            return ["WPK file sent", wpk_file]
-        else:
-            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
-
-    def upgrade_custom(self, file_path, installer, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1):
-        """Upgrade agent using a custom WPK file.
-        """
-        if self.id == "000":
-            raise WazuhError(1703)
-
-        self._load_info_from_DB()
-
-        # Check if agent is active.
-        if not self.status == 'active':
-            raise WazuhError(1720)
-
-        # Send file to agent
-        sending_result = self._send_custom_wpk_file(file_path, debug, show_progress, chunk_size, rl_timeout)
-        if debug:
-            print(sending_result[0])
-
-        # Send installing command
-        s = OssecSocket(common.REQUEST_SOCKET)
-        msg = "{0} com upgrade {1} {2}".format(str(self.id).zfill(3), sending_result[1], installer)
-        s.send(msg.encode())
-        if debug:
-            print("MSG SENT: {0}".format(str(msg)))
-        data = s.receive().decode()
-        s.close()
-        if debug:
-            print("RESPONSE: {0}".format(data))
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        if data.startswith('ok'):
-            s.sendto(("1:wazuh-upgrade:wazuh: Custom installation on agent {0} ({1}): started.".format(
-                str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
-            s.close()
-            return "Installation started"
-        else:
-            s.sendto(("1:wazuh-upgrade:wazuh: Custom installation on agent {0} ({1}): aborted: {2}".format(
-                str(self.id).zfill(3), self.name, data.replace("err ", ""))).encode(), common.ossec_path +
-                     "/queue/ossec/queue")
-            s.close()
-            raise WazuhError(1716, extra_message=data.replace("err ", ""))
-
-    @staticmethod
-    @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
-    def upgrade_agents_custom(agent_list=None, file_path=None, installer=None):
-        """Read upgrade result output from agent.
-
-        :param agent_list: List of agents ID's.
-        :param file_path: Path to the installation file
-        :param installer: Selected installer
-        :return: Upgrade message.
-        """
-        if not file_path or not installer:
-            raise WazuhInternalError(1307)
-
-        # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
-        # agents
-        agent_id = agent_list[0]
-        return Agent(agent_id).upgrade_custom(file_path=file_path, installer=installer)
-
-    def getconfig(self, component, config):
-        """Read agent loaded configuration.
-        """
-        # checks if agent version is compatible with this feature
-        self._load_info_from_DB()
-        if self.version is None:
-            raise WazuhInternalError(1015)
-
-        agent_version = WazuhVersion(self.version.split(" ")[1])
-        required_version = WazuhVersion("v3.7.0")
-        if agent_version < required_version:
-            raise WazuhInternalError(1735, extra_message="Minimum required version is " + str(required_version))
-
-        return configuration.get_active_configuration(self.id, component, config)
-
-    @staticmethod
-    @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
-    def get_agents_config(agent_list=None, component=None, config=None):
-        """Read selected configuration from agent.
-
-        :param agent_list: List of agents ID's.
-        :param component: Selected component
-        :param config: Configuration to get, written on disk
-        :return: Loaded configuration in JSON.
-        """
-        # We access unique agent_id from list, this may change if and when we decide a final way to handle get responses
-        # with failed ids and a list of agents
-        agent_id = agent_list[0]
-        my_agent = Agent(agent_id)
-        my_agent._load_info_from_DB()
-
-        if my_agent.status != "active":
-            raise WazuhError(1740)
-
-        return my_agent.getconfig(component=component, config=config)
-
-    @staticmethod
-    @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
-    def get_agents_sync_group(agent_list=None):
-        """Get agents configuration sync status.
-
-        :param agent_list: List of agents ID's.
-        :return Sync status
-        """
-        # We access unique agent_id from list, this may change when we decide a final way to handle get responses with
-        # failed ids
-        agent_id = agent_list[0]
-        if agent_id == "000":
-            raise WazuhError(1703)
-        else:
-            try:
-                # Check if agent exists and it is active
-                agent_info = Agent(agent_id).get_basic_information()
-                # Check if it has a multigroup
-                if len(agent_info['group']) > 1:
-                    multi_group = ','.join(agent_info['group'])
-                    multi_group = hashlib.sha256(multi_group.encode()).hexdigest()[:8]
-                    agent_group_merged_path = path.join(common.multi_groups_path, multi_group, "merged.mg")
-                else:
-                    agent_group_merged_path = path.join(common.shared_path, agent_info['group'][0], "merged.mg")
-                return {'synced': md5(agent_group_merged_path) == agent_info['mergedSum']}
-            except (IOError, KeyError):
-                # The file couldn't be opened and therefore the group has not been synced
-                return {'synced': False}
-            except WazuhError as e:
-                raise e
-            except Exception as e:
-                raise WazuhInternalError(1739, extra_message=str(e))
-
-    @staticmethod
-    def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename='agent.conf', return_format=None):
-        """Returns agent.conf as dictionary.
-        :return: agent.conf as dictionary.
-        """
-        if group_id:
-            if not Agent.group_exists(group_id):
-                raise WazuhError(1710, extra_message=str(group_id))
-
-        return configuration.get_agent_conf(group_id, offset, limit, filename, return_format)
-
-    @staticmethod
-    def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
-        """Returns the configuration file as dictionary.
-        :return: configuration file as dictionary.
-        """
-        if group_id:
-            if not Agent.group_exists(group_id):
-                raise WazuhError(1710, extra_message=group_id)
-
-        return configuration.get_file_conf(filename, group_id, type_conf, return_format)
-
-    @staticmethod
-    def upload_group_file(group_id, tmp_file, file_name='agent.conf'):
-        """Updates a group file
-
-        :param group_id: Group to update
-        :param tmp_file: Relative path of temporary file to upload
-        :param file_name: File name to update
-        :return: Confirmation message in string
-        """
-        # check if the group exists
-        if not Agent.group_exists(group_id):
-            raise WazuhError(1710)
-
-        return configuration.upload_group_file(group_id, tmp_file, file_name)
-
-    @staticmethod
-    def get_full_overview() -> Dict:
-        """Get information about agents.
-
-        :return: Dictionary with information about agents
-        """
-        # get information from different methods of Agent class
-        stats_distinct_node = Agent.get_distinct_agents(fields=['node_name'])
-        groups = Agent.get_all_groups()
-        stats_distinct_os = Agent.get_distinct_agents(fields=['os.name',
-                                                      'os.platform', 'os.version'])
-        stats_version = Agent.get_distinct_agents(fields=['version'])
-        summary = Agent.get_agents_summary_status()
-        try:
-            last_registered_agent = Agent.get_agents_overview(limit=1,
-                                                              sort={'fields': ['dateAdd'], 'order': 'desc'},
-                                                              q='id!=000').get('items')[0]
-        except IndexError:  # an IndexError could happen if there are not registered agents
-            last_registered_agent = {}
-        # combine results in an unique dictionary
-        result = {'nodes': stats_distinct_node, 'groups': groups,
-                  'agent_os': stats_distinct_os, 'agent_status': summary,
-                  'agent_version': stats_version,
-                  'last_registered_agent': last_registered_agent}
-
-        return result
+            raise WazuhInternalError(1739, extra_message=str(e))
+
+
+@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], target_params=["group_list"])
+def get_file_conf(group_list=None, type_conf=None, return_format=None, filename=None):
+    """ Reads configuration file for specified group
+
+    :param group_list: List of Group names.
+    :param type_conf: Type of file
+    :param return_format: Format of the answer (xml or json)
+    :param filename: Filename to read config from.
+    :return: agent.conf as dictionary.
+    """
+    # We access unique group_id from list, this may change if and when we decide to add option to get configuration
+    # files for a list of groups
+    group_id = group_list[0]
+
+    return configuration.get_file_conf(filename, group_id=group_id, type_conf=type_conf, return_format=return_format)
+
+
+@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], target_params=["group_list"])
+def get_agent_conf(group_list=None, offset=0, limit=common.database_limit, filename='agent.conf'):
+    """ Reads agent conf for specified group
+
+    :param group_list: List of Group names.
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param filename: Filename to read config from.
+    :return: agent.conf as dictionary.
+    """
+    # We access unique group_id from list, this may change if and when we decide to add option to get agent conf for
+    # a list of groups
+    group_id = group_list[0]
+
+    return configuration.get_agent_conf(group_id=group_id, offset=offset, limit=limit, filename=filename)
+
+
+@expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], target_params=["group_list"])
+def upload_group_file(group_list=None, file_data=None, file_name='agent.conf'):
+    """Updates a group file
+
+    :param group_list: List of Group names.
+    :param file_data: Relative path of temporary file to upload
+    :param file_name: File name to update
+    :return: Confirmation message in string
+    """
+    # We access unique group_id from list, this may change if and when we decide to add option to update files for
+    # a list of groups
+    group_id = group_list[0]
+
+    return configuration.upload_group_file(group_id, file_data, file_name=file_name)

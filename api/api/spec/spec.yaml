@@ -2577,7 +2577,6 @@ components:
       in: query
       name: list_groups
       description: Array of group's IDs
-      required: true
       schema:
         type: array
         items:
@@ -3910,15 +3909,21 @@ paths:
                   name:
                     description: Agent name.
                     type: string
+                    format: names
                   ip:
                     description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option behind_proxy_server to yes at api.yaml and make sure the proxy is setting HTTP header 'X-Forwarded-For' with origin IP address. Allowed values: IP, IP/NET, ANY"
                     type: string
+                    format: alphanumeric
                   force_time:
                     description: Remove the old agent with the same IP if disconnected since <force_time> seconds.
                     type: integer
-                    minimum: 1
+                    format: int32
+                    minimum: 0
                 required:
                 - name
+              example:
+                name: NewHost_2
+                ip: 10.0.10.11
       responses:
         '200':
           description: 'Add an agent'
@@ -4449,9 +4454,9 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Delete a list of groups'
-      description: Deletes multiple groups.
-      operationId: api.controllers.agents_controller.delete_list_group
+      summary: 'Delete groups'
+      description: 'Deletes all groups or a list of them'
+      operationId: api.controllers.agents_controller.delete_groups
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4485,7 +4490,7 @@ paths:
       tags:
         - agents
       summary: 'Get all groups'
-      description: 'Returns a list containing basic information about each agent group such as number of agents belonging to the group and the checksums of the configuration and shared files.'
+      description: 'Returns a list containing basic information about each group such as number of agents belonging to the group and the checksums of the configuration and shared files.'
       operationId: api.controllers.agents_controller.get_list_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -4538,7 +4543,7 @@ paths:
         - agents
       summary: 'Delete group'
       description: 'Deletes a group. Agents that were assigned only to the deleted group will automatically revert to the "default" group.'
-      operationId: api.controllers.agents_controller.delete_group
+      operationId: api.controllers.agents_controller.delete_single_group
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4914,40 +4919,6 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /agents/groups/{group_id}/files/{file_name}:
-    put:
-      tags:
-        - agents
-      summary: 'Upload file into a group'
-      operationId: api.controllers.agents_controller.put_group_file
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_id'
-        - $ref: '#/components/parameters/file_name'
-
-      requestBody:
-        required: true
-        content:
-          application/xml:
-            schema:
-              properties:
-                tmp_file:
-                  description: Updated file
-                  type: string
-
-      responses:
-        '200':
-          description: 'Post group file'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: Agent configuration was updated successfully
-        default:
-          $ref: '#/components/responses/ResponseError'
-
   /agents/insert:
     post:
       tags:
@@ -4983,6 +4954,7 @@ paths:
                     description: Remove the old agent with the same IP if disconnected since <force_time> seconds.
                     type: integer
                     format: int32
+                    minimum: 0
                 required:
                   - name
               example:

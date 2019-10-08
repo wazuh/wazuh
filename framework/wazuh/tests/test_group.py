@@ -42,7 +42,7 @@ def test_sucessfully_remove_single_group_agent(agent_patch, unset_groups_patch, 
     agent_patch.return_value = AgentMock(agent_id, agent_groups)
 
     with patch('wazuh.agent.Agent.multi_group_exists', return_value=False):
-        ret_msg = Agent.unset_single_group_agent(agent_id, group_id, False)
+        ret_msg = Agent.unset_single_group_agent(agent_id, group_id, force=False)
 
     assert ret_msg == (f"Agent {agent_id} set to group default." if expected_new_group == 'default' else
                        f"Group '{group_id}' unset for agent '{agent_id}'.")
@@ -67,4 +67,4 @@ def test_failed_remove_single_group_agent(agent_patch, get_groups_patch, agent_g
         get_groups_patch.return_value = agent_groups
         agent_patch.return_value = AgentMock(agent_id, agent_groups)
 
-        Agent.unset_single_group_agent(agent_id, group_id, False)
+        Agent.unset_single_group_agent(agent_id, group_id, force=False)
