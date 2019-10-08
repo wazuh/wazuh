@@ -318,8 +318,6 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
         cur_wmodule = (wmodule *) d1;
     }
 
-
-
     os_calloc(1, sizeof(wm_vuldet_t), vuldet);
     vuldet->flags.run_on_start = 1;
     vuldet->flags.patch_scan = 1;
@@ -493,6 +491,7 @@ static int wm_vuldet_read_deprecated_multifeed_tag(xml_node *node, update_node *
             }
             updates[os_index]->interval = interval;
             updates[os_index]->attempted = 0;
+            updates[os_index]->old_config = 1;
         }
     }
 
@@ -580,6 +579,7 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
         }
     }
 
+    updates[os_index]->old_config = 1;
     OS_ClearNode(chld_node);
 
     return 0;
@@ -897,7 +897,7 @@ int wm_vuldet_add_allow_os(update_node *update, char *os_tags, char old_config) 
             merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, os_tags);
             return OS_INVALID;
         }
-        update->allowed_os_name[size + 1] = NULL;
+        update->allowed_os_name[size + 2] = NULL;
     } else {
         merror("The 'allow' option can only be used with single-providers.");
         return OS_INVALID;
