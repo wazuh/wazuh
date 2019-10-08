@@ -13,13 +13,32 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../)
 FIND_LIBRARY(WAZUHLIB NAMES libwazuh.a HINTS "${CMAKE_SOURCE_DIR}/../")
 FIND_LIBRARY(WAZUHEXT NAMES libwazuhext.so HINTS "${CMAKE_SOURCE_DIR}/../")
 
+
+ADD_COMPILE_OPTIONS(-ggdb)
+
+FILE(GLOB sysfiles ../syscheckd/*.o)
+LIST(REMOVE_ITEM sysfiles ../syscheckd/main.o)
+FILE(GLOB rootfiles ../rootcheck/*.o)
+
+ADD_LIBRARY(SYSCHECK_O STATIC ${sysfiles})
+ADD_LIBRARY(ROOTCHECK_O STATIC ${rootfiles})
+
 SET_SOURCE_FILES_PROPERTIES(
+  ${sysfiles}
+  ${rootfiles}
   PROPERTIES
   EXTERNAL_OBJECT true
   GENERATED true
-)
+  )
 
-ADD_COMPILE_OPTIONS(-ggdb)
+SET_TARGET_PROPERTIES(
+  SYSCHECK_O
+  ROOTCHECK_O
+  PROPERTIES
+  LINKER_LANGUAGE C
+  )
+
+TARGET_LINK_LIBRARIES(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Tests list and flags
 LIST(APPEND tests_names "test_file_op")
@@ -34,6 +53,9 @@ LIST(APPEND tests_flags " ")
 LIST(APPEND tests_names "test_version_op")
 LIST(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
+LIST(APPEND tests_names "test_create_db")
+LIST(APPEND tests_flags " ") #-Wl,-e,__main
+
 # Declare all tests targets
 LIST(LENGTH tests_names count)
 MATH(EXPR count "${count} - 1")
@@ -47,6 +69,7 @@ FOREACH(i RANGE ${count})
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
+        SYSCHECK_O
         -lcmocka
         -fprofile-arcs
         -ftest-coverage
