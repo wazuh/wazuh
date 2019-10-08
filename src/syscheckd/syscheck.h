@@ -69,6 +69,8 @@ cJSON *getSyscheckConfig(void);
 cJSON *getSyscheckInternalOptions(void);
 
 // TODO: Add Doxygen description to functions
+//
+void read_internal(int debug_level);
 
 // Create the database
 int fim_scan();
