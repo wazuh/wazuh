@@ -7,7 +7,6 @@ import logging
 
 import connexion
 
-import wazuh.configuration as config
 from api import configuration
 from api.authentication import get_permissions
 from api.models.agent_added import AgentAdded
@@ -161,20 +160,18 @@ def add_agent(pretty=False, wait_for_complete=False):
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param name: Agent name.
-    :param ip: If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set
-    the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY
-    :param force_time: Remove the old agent with the same IP if disconnected since <force_time> seconds.
     :return: AgentIdKeyData
     """
-    # get body parameters
+    # Get body parameters
     if connexion.request.is_json:
         agent_added_model = AgentAdded.from_dict(connexion.request.get_json())
     else:
         raise WazuhError(1750)
 
-    f_kwargs = {**{}, **agent_added_model.to_dict()}
+    f_kwargs = agent_added_model.to_dict()
+    f_kwargs['rbac'] = get_permissions(connexion.request.headers['Authorization'])
 
+    # Get IP if not given
     if not f_kwargs['ip']:
         if configuration.read_api_config()['behind_proxy_server']:
             try:
@@ -207,7 +204,7 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):
     :param wait_for_complete: Disable timeout response
     :param agent_id: Agent ID. All posible values since 000 onwards.
     :param purge: Delete an agent from the key store
-    :return: AgentItemsAffected
+    :return: Data
     """
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'agent_list': [agent_id],
@@ -226,7 +223,7 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -364,7 +361,7 @@ def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complet
     """
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'agent_list': [agent_id],
-                'group_id': group_id,}
+                'group_id': group_id}
 
     dapi = DistributedAPI(f=Agent.remove_agents_from_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -536,7 +533,8 @@ def post_new_agent(agent_name, pretty=False, wait_for_complete=False):
     :param agent_name: Agent name used when the agent was registered.
     :return: AgentIdKeyData
     """
-    f_kwargs = {'name': agent_name}
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'name': agent_name}
 
     dapi = DistributedAPI(f=Agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -639,17 +637,19 @@ def put_multiple_agent_single_group(group_id, agent_list=None, pretty=False, wai
 
 
 @exception_handler
-def delete_list_group(list_groups, pretty=False, wait_for_complete=False):
-    """Delete a list of groups.
+def delete_groups(list_groups=None, pretty=False, wait_for_complete=False):
+    """Delete all of groups or a list of them.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param list_groups: Array of group's IDs.
     :return: AgentGroupDeleted
     """
-    f_kwargs = {'group_id': list_groups}
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'group_list': list_groups}
 
-    dapi = DistributedAPI(f=Agent.remove_group,
+    func = Agent.delete_groups_all if list_groups is None else Agent.delete_groups
+    dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -679,7 +679,8 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     :return: Data
     """
     hash_ = connexion.request.args.get('hash', 'md5')  # Select algorithm to generate the returned checksums.
-    f_kwargs = {'offset': offset,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'offset': offset,
                 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['name'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
@@ -703,7 +704,7 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
 
 
 @exception_handler
-def delete_group(group_id, pretty=False, wait_for_complete=False):
+def delete_single_group(group_id, pretty=False, wait_for_complete=False):
     """Delete group.
 
     Deletes a group. Agents that were assigned only to the deleted group will automatically revert to the default group.
@@ -713,9 +714,10 @@ def delete_group(group_id, pretty=False, wait_for_complete=False):
     :param group_id: Group ID.
     :return: AgentGroupDeleted
     """
-    f_kwargs = {'group_id': group_id}
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'group_list': [group_id]}
 
-    dapi = DistributedAPI(f=Agent.remove_group,
+    dapi = DistributedAPI(f=Agent.delete_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -784,7 +786,8 @@ def post_group(group_id, pretty=False, wait_for_complete=False):
     :param group_id: Group ID.
     :return: message
     """
-    f_kwargs = {'group_id': group_id}
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'group_id': group_id}
 
     dapi = DistributedAPI(f=Agent.create_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -800,7 +803,7 @@ def post_group(group_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None):
+def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit):
     """Get group configuration defined in the `agent.conf` file.
 
     :param pretty: Show results in human-readable format
@@ -810,11 +813,12 @@ def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, 
     :param limit: Maximum number of elements to return
     :return: Data
     """
-    f_kwargs = {'group_id': group_id,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'group_list': [group_id],
                 'offset': offset,
                 'limit': limit}
 
-    dapi = DistributedAPI(f=config.get_agent_conf,
+    dapi = DistributedAPI(f=Agent.get_agent_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -835,17 +839,13 @@ def put_group_config(body, group_id, pretty=False, wait_for_complete=False):
     Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration
     tags/syntax.
 
+    :param body: Body parameters
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param group_id: Group ID.
     :return: CommonResponse
     """
-    try:
-        connexion.request.headers['Content-type']
-    except KeyError:
-        return 'Content-type header is mandatory', 400
-
-    # parse body to utf-8
+    # Parse body to utf-8
     try:
         body = body.decode('utf-8')
     except UnicodeDecodeError:
@@ -853,10 +853,11 @@ def put_group_config(body, group_id, pretty=False, wait_for_complete=False):
     except AttributeError:
         return 'Body is empty', 400
 
-    f_kwargs = {'group_id': group_id,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'group_list': [group_id],
                 'file_data': body}
 
-    dapi = DistributedAPI(f=config.upload_group_file,
+    dapi = DistributedAPI(f=Agent.upload_group_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -870,7 +871,8 @@ def put_group_config(body, group_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
+def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit, sort=None,
+                    search=None):
     """Get the files placed under the group directory
 
     :param pretty: Show results in human-readable format
@@ -884,7 +886,8 @@ def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, l
     :return: Data
     """
     hash_ = connexion.request.args.get('hash', 'md5')  # Select algorithm to generate the returned checksums.
-    f_kwargs = {'group_id': group_id,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'group_list': [group_id],
                 'offset': offset,
                 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ["filename"],
@@ -915,17 +918,15 @@ def get_group_file_json(group_id, file_name, pretty=False, wait_for_complete=Fal
     :param wait_for_complete: Disable timeout response
     :param group_id: Group ID.
     :param file_name: Filename
-    :param type: Type of file.
     :return: Data
     """
-    type_ = connexion.request.args.get('type')
-
-    f_kwargs = {'group_id': group_id,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'group_list': [group_id],
                 'filename': file_name,
-                'type_conf': type_,
+                'type_conf': connexion.request.args.get('type', None),
                 'return_format': 'json'}
 
-    dapi = DistributedAPI(f=config.get_file_conf,
+    dapi = DistributedAPI(f=Agent.get_file_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -946,18 +947,16 @@ def get_group_file_xml(group_id, file_name, pretty=False, wait_for_complete=Fals
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param group_id: Group ID.
-    ::param file_name: Filename
-    :param type_: Type of file.
+    :param file_name: Filename
     :return: Data
     """
-    type_ = connexion.request.args.get('type_')
-
-    f_kwargs = {'group_id': group_id,
+    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
+                'group_list': [group_id],
                 'filename': file_name,
-                'type_conf': type_,
+                'type_conf': connexion.request.args.get('type', None),
                 'return_format': 'xml'}
 
-    dapi = DistributedAPI(f=config.get_file_conf,
+    dapi = DistributedAPI(f=Agent.get_file_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -969,49 +968,6 @@ def get_group_file_xml(group_id, file_name, pretty=False, wait_for_complete=Fals
     response = connexion.lifecycle.ConnexionResponse(body=data["message"], mimetype='application/xml')
 
     return response
-
-
-@exception_handler
-def put_group_file(body, group_id, file_name, pretty=False, wait_for_complete=False):
-    """Update group configuration.
-
-    Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration
-    tags/syntax.
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param group_id: Group ID.
-    :param file_name: File name
-    :return: CommonResponse
-    """
-    try:
-        connexion.request.headers['Content-type']
-    except KeyError:
-        return 'Content-type header is mandatory', 400
-
-    # Parse body to utf-8
-    try:
-        body = body.decode('utf-8')
-    except UnicodeDecodeError:
-        return 'Error parsing body request to UTF-8', 400
-    except AttributeError:
-        return 'Body is empty', 400
-
-    f_kwargs = {'group_id': group_id,
-                'file_name': file_name,
-                'file_data': body}
-
-    dapi = DistributedAPI(f=config.upload_group_file,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger
-                          )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-
-    return data, 200
 
 
 @exception_handler
@@ -1027,7 +983,9 @@ def insert_agent(pretty=False, wait_for_complete=False):
         agent_inserted_model = AgentInserted.from_dict(connexion.request.get_json())
     else:
         raise WazuhError(1750)
-    f_kwargs = {**{}, **agent_inserted_model.to_dict()}
+
+    f_kwargs = agent_inserted_model.to_dict()
+    f_kwargs['rbac'] = get_permissions(connexion.request.headers['Authorization'])
 
     # Get IP if not given
     if not f_kwargs['ip']:
@@ -1039,7 +997,7 @@ def insert_agent(pretty=False, wait_for_complete=False):
         else:
             f_kwargs['ip'] = connexion.request.remote_addr
 
-    dapi = DistributedAPI(f=Agent.insert_agent,
+    dapi = DistributedAPI(f=Agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
