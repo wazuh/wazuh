@@ -123,6 +123,34 @@
   {
     "no_processed_policies": [
       {
+        "actions": ["agent:delete", "agent:update", "security:read"],
+        "resources": ["agent:id:*"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:*"],
+        "effect": "allow"
+      }
+    ],
+    "processed_policies": {
+      "agent:read": {
+        "agent:id:*" : "allow"
+      },
+      "agent:delete": {
+        "agent:id:*" : "deny"
+      },
+      "agent:update": {
+        "agent:id:*": "deny"
+      },
+      "security:read": {
+        "agent:id:*": "deny"
+      }
+    }
+  },
+  {
+    "no_processed_policies": [
+      {
         "actions": ["agent:read"],
         "resources": ["agent:id:*"],
         "effect": "allow"
@@ -284,6 +312,49 @@
       },
       "agent:delete": {
         "agent:group:*": "allow"
+      }
+    }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["agent:create"],
+        "resources": ["*"],
+        "effect": "allow"
+      }
+    ],
+    "processed_policies": {
+      "agent:create": {
+        "*:*:*": "allow"
+      }
+    }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["agent:create"],
+        "resources": ["*"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:create"],
+        "resources": ["*"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["agent:create"],
+        "resources": ["*"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["agent:create"],
+        "resources": ["*"],
+        "effect": "deny"
+      }
+    ],
+    "processed_policies": {
+      "agent:create": {
+        "*:*:*": "deny"
       }
     }
   }

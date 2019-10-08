@@ -14,8 +14,9 @@ class PreProcessor:
         self.odict = dict()
 
     def remove_previous_elements(self, resource, action):
-        resource_name = ':'.join(resource.split(':')[0:-1])
-        if resource.split(':')[-1] == '*':
+        split_resource = resource.split(':')
+        resource_name = ':'.join(resource.split(':')[0:-1]) if len(split_resource) > 1 else '*:*:*'
+        if split_resource[-1] == '*':
             for key in list(self.odict[action].keys()):
                 if key.startswith(resource_name) or key.startswith('agent:group'):
                     self.odict[action].pop(key)
@@ -27,6 +28,7 @@ class PreProcessor:
             if action not in self.odict.keys():
                 self.odict[action] = dict()
             for resource in policy['resources']:
+                resource = resource if resource != '*' else '*:*:*'
                 self.remove_previous_elements(resource, action)
                 self.odict[action][resource] = policy['effect']
 

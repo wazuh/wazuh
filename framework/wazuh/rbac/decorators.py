@@ -62,25 +62,37 @@ def use_expanded_resource(effect, final_permissions, expanded_resource, req_reso
         final_permissions.difference_update(expanded_resource)
 
 
+def black_mode_sanity(final_user_permissions, req_resources_value):
+    for user_key in list(final_user_permissions.keys()):
+        if user_key not in req_resources_value.keys():
+            final_user_permissions.pop(user_key)
+        elif req_resources_value[user_key] != {'*'}:
+            final_user_permissions[user_key] = final_user_permissions[user_key].intersection(
+                req_resources_value[user_key])
+
+
 def expand_permissions(req_resources, user_permissions_for_resource, final_user_permissions):
     req_resources_value = dict()
     for element in req_resources:
         if ':'.join(element.split(':')[:-1]) not in req_resources_value.keys():
             req_resources_value[':'.join(element.split(':')[:-1])] = set()
         req_resources_value[':'.join(element.split(':')[:-1])].add(element.split(':')[-1])
+    black_negation = set()
     for user_resource, user_resource_effect in user_permissions_for_resource.items():
         name, attribute, value = user_resource.split(':')
         identifier = name + ':' + attribute
-        if name + ':' + attribute == 'agent:group':
+        if identifier == 'agent:group':
             identifier = 'agent:id'
         if identifier not in final_user_permissions.keys():
             final_user_permissions[identifier] = set()
 
-        if mode == 'black':
+        if mode == 'black' and len(final_user_permissions[identifier]) == 0 and identifier not in black_negation:
             final_user_permissions[identifier] = _expand_resource(identifier + ':*')
+            black_negation.add(identifier)
         expanded_resource = _expand_resource(user_resource)
         try:
-            if user_resource_effect == 'allow' and '*' not in req_resources_value[identifier] and value == '*':
+            if identifier == '*:*' or \
+                    (user_resource_effect == 'allow' and '*' not in req_resources_value[identifier] and value == '*'):
                 final_user_permissions[identifier].update(req_resources_value[identifier] - expanded_resource)
             use_expanded_resource(user_resource_effect, final_user_permissions[identifier],
                                   expanded_resource, req_resources_value[identifier],
@@ -88,15 +100,7 @@ def expand_permissions(req_resources, user_permissions_for_resource, final_user_
         except KeyError:  # Multiples resources in action and only one is required
             if len(final_user_permissions[identifier]) == 0:
                 final_user_permissions.pop(identifier)
-        if mode == 'black':
-            try:
-                if value in final_user_permissions[identifier]:
-                    final_user_permissions[identifier] = {value}
-                elif '*' not in req_resources_value[identifier] and \
-                        not final_user_permissions[identifier].issubset(req_resources_value[identifier]):
-                    final_user_permissions[identifier] = set()
-            except KeyError:
-                pass
+    mode == 'black' and black_mode_sanity(final_user_permissions, req_resources_value)
 
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
@@ -109,7 +113,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
     # We expose required resources for the request
     res_list = list()
     for resource in resources:
-        m = re.search(r'^(\w+:\w+:)(\w+|\*|{(\w+)})$', resource)
+        m = re.search(r'^([a-z*]+:[a-z*]+:)(\w+|\*|{(\w+)})$', resource)
         res_base = m.group(1)
         # If we find a '{' in the regex we obtain the dynamic resource/s
         if '{' in m.group(2):
@@ -147,8 +151,15 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
         if req_action in rbac.keys():
             expand_permissions(req_resources, rbac[req_action], allow_match)
         else:
-            for req_resource in req_resources:
-                allow_match[':'.join(req_resource.split(':')[:-1])] = _expand_resource(req_resource)
+            if mode == 'black':
+                for req_resource in req_resources:
+                    expanded_resource = _expand_resource(req_resource)
+                    if expanded_resource:
+                        allow_match[':'.join(req_resource.split(':')[:-1])] = expanded_resource
+                    else:
+                        allow_match['*:*'] = {'*'}
+            else:
+                break
     return allow_match
 
 
@@ -169,20 +180,18 @@ def expose_resources(actions: list = None, resources: list = None, target_params
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            import pydevd_pycharm
-            pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
             req_permissions = _get_required_permissions(actions=actions, resources=resources, **kwargs)
             allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
             del kwargs['rbac']
             original_kwargs = copy.deepcopy(kwargs)
-            if 'black:mode' not in allow.keys():  # Black flag not in allow
-                for index, target in enumerate(target_params):
-                    try:
-                        if len(allow[list(allow.keys())[index]]) == 0:
-                            raise Exception
+            for index, target in enumerate(target_params):
+                try:
+                    if len(allow[list(allow.keys())[index]]) == 0:
+                        raise Exception
+                    if target != '*':  # Resourceless
                         kwargs[target] = list(allow[list(allow.keys())[index]])
-                    except Exception:
-                        raise WazuhError(4000)
+                except Exception:
+                    raise WazuhError(4000)
             result = func(*args, **kwargs)
             if post_proc_func is None:
                 return result

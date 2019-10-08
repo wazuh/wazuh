@@ -1,0 +1,44 @@
+[
+  {
+    "rbac": {
+      "agent:create": {
+        "*:*:*": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:create"],
+        "resources": ["*:*:*"],
+        "target_params": ["*"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "allowed": true
+  },
+  {
+    "rbac": {
+      "agent:create": {
+        "*:*:*": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:create"],
+        "resources": ["*:*:*"],
+        "target_params": ["*"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "allowed": false
+  },
+  {
+    "rbac": {
+    },
+    "decorator_params": {
+        "actions": ["agent:create"],
+        "resources": ["*:*:*"],
+        "target_params": ["*"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "allowed": false
+  }
+]
