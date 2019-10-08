@@ -52,7 +52,7 @@ static void init_conf()
     mond.min_size_rotate = 0;
     mond.size_rotate = 0;
     mond.interval_rotate = 0;
-    mond.interval_units = 's';
+    mond.interval_units = 'h';
     mond.size_units = mond.min_size_units ='B';
     mond.maxage = 31;
     mond.day_wait = mond.day_wait == -1 ? 10 : mond.day_wait;
