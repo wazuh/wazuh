@@ -413,7 +413,8 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
     Config->alerts_enabled = 0;
     Config->alerts_max_size = 0;
     Config->alerts_min_size = 0;
-    Config->alerts_interval = 0;
+    Config->alerts_interval = 24;
+    Config->alerts_interval_units = 'h';
     Config->alerts_rotate = -1;
     Config->alerts_rotation_enabled = 1;
     Config->alerts_compress_rotation = 1;
@@ -424,7 +425,8 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
     Config->archives_enabled = 0;
     Config->archives_max_size = 0;
     Config->archives_min_size = 0;
-    Config->archives_interval = 0;
+    Config->archives_interval = 24;
+    Config->archives_interval_units = 'h';
     Config->archives_rotate = -1;
     Config->archives_rotation_enabled = 1;
     Config->archives_compress_rotation = 1;

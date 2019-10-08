@@ -303,12 +303,12 @@ cJSON *getMonitorLogging(void) {
     char *json_format = "json_format";
     char *plain_format = "plain_format";
     char *compress_rotation = "compress_rotation";
-    char *rotation_interval = "rotation_interval";
+    char *rotation_schedule = "schedule";
     char *saved_rotations = "saved_rotations";
-    char *size_rotation = "size_rotation";
+    char *maxsize = "maxsize";
     char *maxage = "maxage";
     char *day_wait = "day_wait";
-    char *min_size_rotation = "min_size_rotation";
+    char *minsize = "minsize";
     cJSON *root;
     cJSON *logging;
     char aux[50];
@@ -323,14 +323,14 @@ cJSON *getMonitorLogging(void) {
         cJSON_AddStringToObject(logging, json_format, mond.ossec_log_json ? "yes" : "no");
         if (mond.rotation_enabled) {
             cJSON_AddStringToObject(logging, compress_rotation, mond.compress_rotation ? "yes" : "no");
-            cJSON_AddNumberToObject(logging, saved_rotations, mond.rotate);
-            cJSON_AddNumberToObject(logging, rotation_interval, mond.interval);
-            snprintf(aux, 50, "%ld %c", mond.interval_rotate, mond.interval_units);
-            cJSON_AddStringToObject(logging, rotation_interval, mond.interval ? aux : "no");
+            snprintf(aux, 50, "%d", mond.rotate);
+            cJSON_AddStringToObject(logging, saved_rotations, mond.rotate == -1 ? "unlimited" : aux);
+            snprintf(aux, 50, "%ld %c", mond.interval, mond.interval_units);
+            cJSON_AddStringToObject(logging, rotation_schedule, mond.interval ? aux : "no");
             snprintf(aux, 50, "%ld %c", mond.size_rotate, mond.size_units);
-            cJSON_AddStringToObject(logging, size_rotation, mond.size_rotate ? aux : "no");
+            cJSON_AddStringToObject(logging, maxsize, mond.size_rotate ? aux : "no");
             snprintf(aux, 50, "%ld %c", mond.min_size_rotate, mond.min_size_units);
-            cJSON_AddStringToObject(logging, min_size_rotation, mond.min_size_rotate ? aux : "no");
+            cJSON_AddStringToObject(logging, minsize, mond.min_size_rotate ? aux : "no");
             cJSON_AddNumberToObject(logging, maxage, mond.maxage);
             cJSON_AddNumberToObject(logging, day_wait, mond.day_wait);
         }

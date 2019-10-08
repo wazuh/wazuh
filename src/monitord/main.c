@@ -51,7 +51,6 @@ static void init_conf()
     mond.ossec_log_json = 0;
     mond.min_size_rotate = 0;
     mond.size_rotate = 0;
-    mond.interval_rotate = 0;
     mond.interval_units = 'h';
     mond.size_units = mond.min_size_units ='B';
     mond.maxage = 31;
