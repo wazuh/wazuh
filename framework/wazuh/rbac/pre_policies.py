@@ -13,37 +13,22 @@ class PreProcessor:
         self.need_clean = dict()
         self.odict = odict
 
-    def cleaner(self):
-        actions_to_pop = set()
-        if len(self.need_clean.keys()) > 0:
-            for action, resources in self.need_clean.items():
-                for resource in resources:
-                    self.odict[action].pop(resource)
-                if len(self.odict[action].keys()) == 0:
-                    actions_to_pop.add(action)
-            for action in actions_to_pop:
-                self.odict.pop(action)
-            self.need_clean = dict()
-
-    def mark_previous_elements(self, resource, action):
+    def remove_previous_elements(self, resource, action):
         resource_name = ':'.join(resource.split(':')[0:-1])
-        for key in self.odict[action].keys():
-            if key.startswith(resource_name) or key.startswith('agent:group'):
-                if action not in self.need_clean.keys():
-                    self.need_clean[action] = list()
-                self.need_clean[action].append(key)
-
-    def modify_odict(self, resources, effect, action):
-        for resource in resources:
-            if resource.split(':')[-1] == '*':
-                self.mark_previous_elements(resource, action)
-            self.odict[action][resource] = effect
+        if resource.split(':')[-1] == '*':
+            for key in list(self.odict[action].keys()):
+                if key.startswith(resource_name) or key.startswith('agent:group'):
+                    self.odict[action].pop(key)
+        else:
+            self.odict[action].pop(resource, None)
 
     def process_policy(self, policy):
         for action in policy['actions']:
             if action not in self.odict.keys():
                 self.odict[action] = dict()
-            self.modify_odict(policy['resources'], policy['effect'], action)
+            for resource in policy['resources']:
+                self.remove_previous_elements(resource, action)
+                self.odict[action][resource] = policy['effect']
 
     def get_optimize_dict(self):
         return self.odict
@@ -59,6 +44,5 @@ def optimize_resources():
     preprocessor = PreProcessor(odict=dict())
     for policy in policies:
         preprocessor.process_policy(policy)
-    preprocessor.cleaner()
 
     return preprocessor.get_optimize_dict()
