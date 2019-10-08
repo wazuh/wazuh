@@ -35,9 +35,11 @@ def _expand_resource(resource):
     name, attribute, value = resource.split(':')
     resource_type = ':'.join([name, attribute])
 
+    # This is the special case, expand_group can receive * or the name of the group. That's why it' s always called
     if resource_type == 'agent:group':
         return expand_group(value)
 
+    # We need to transform the wildcard * to the resource of the system
     if value == '*':
         if resource_type == 'agent:id':
             return get_agents_info()
@@ -56,6 +58,7 @@ def _expand_resource(resource):
             for user in users:
                 users_system.add(user['username'])
             return users_system
+    # We return the value casted to set
     else:
         return {value}
 
@@ -71,12 +74,17 @@ def use_expanded_resource(effect, final_permissions, expanded_resource, req_reso
     :param delete: (True/False) Flag that indicates if the actual permission is deny all (True -> Delete permissions) or
     is allow (False -> No delete permissions)
     """
+    # If the wildcard * not in required resource, we must do an intersection for obtain only the required permissions
+    # between all the user' resources
     if '*' not in req_resources_value:
         expanded_resource = expanded_resource.intersection(req_resources_value)
+    # If the effect is allow, we insert the expanded resource in the final user permissions
     if effect == 'allow':
         final_permissions.update(expanded_resource)
+    # If the policy is deny the resource, the final permissions must be cleared
     elif delete:
         final_permissions.clear()
+    # If the effect is deny, we are left with only the elements in final permissions and no in expanded resource
     else:
         final_permissions.difference_update(expanded_resource)
 
@@ -100,7 +108,7 @@ def black_mode_sanity(final_user_permissions, req_resources_value):
 def permissions_processing(req_resources, user_permissions_for_resource, final_user_permissions):
     """Permissions processing: Given some required resources and the user's permissions on that resource,
     we extract the user's final permissions on the resource.
-
+    
     :param req_resources: List of required resources
     :param user_permissions_for_resource: List of the users's permissions over the specified resource
     :param final_user_permissions: Dictionary where the final permissions will be inserted
@@ -110,6 +118,7 @@ def permissions_processing(req_resources, user_permissions_for_resource, final_u
         if ':'.join(element.split(':')[:-1]) not in req_resources_value.keys():
             req_resources_value[':'.join(element.split(':')[:-1])] = set()
         req_resources_value[':'.join(element.split(':')[:-1])].add(element.split(':')[-1])
+    # With this set we know if a resource is already "deny"
     black_negation = set()
     for user_resource, user_resource_effect in user_permissions_for_resource.items():
         name, attribute, value = user_resource.split(':')
@@ -118,6 +127,7 @@ def permissions_processing(req_resources, user_permissions_for_resource, final_u
             identifier = 'agent:id'
         if identifier not in final_user_permissions.keys():
             final_user_permissions[identifier] = set()
+        # We expand the resource for the black mode, in this way, we allow all permissions for the resource (black mode)
         if mode == 'black' and len(final_user_permissions[identifier]) == 0 and identifier not in black_negation:
             final_user_permissions[identifier] = _expand_resource(identifier + ':*')
             black_negation.add(identifier)
@@ -133,6 +143,8 @@ def permissions_processing(req_resources, user_permissions_for_resource, final_u
         except KeyError:  # Multiples resources in action and only one is required
             if len(final_user_permissions[identifier]) == 0:
                 final_user_permissions.pop(identifier)
+    # If the black mode is enabled we need to sanity the output due the initial expansion
+    # (allow all permissions over the resource)
     mode == 'black' and black_mode_sanity(final_user_permissions, req_resources_value)
 
 
@@ -185,15 +197,15 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     for req_action, req_resources in req_permissions.items():
         if req_action in rbac.keys():
             permissions_processing(req_resources, rbac[req_action], allow_match)
-        else:
-            if mode == 'black':
+        else:  # The actual required action isn't in the RBAC preprocessed policies
+            if mode == 'black':  # If the RBAC's mode is black, we have the permission over the required resource
                 for req_resource in req_resources:
                     expanded_resource = _expand_resource(req_resource)
                     if expanded_resource:
                         allow_match[':'.join(req_resource.split(':')[:-1])] = expanded_resource
                     else:
                         allow_match['*:*'] = {'*'}
-            else:
+            else:  # If the RBAC's mode is white, we don't have the permission over the required resource
                 break
     return allow_match
 
@@ -221,9 +233,10 @@ def expose_resources(actions: list = None, resources: list = None, target_params
             original_kwargs = copy.deepcopy(kwargs)
             for index, target in enumerate(target_params):
                 try:
+                    # We don't have any permissions over the required permissions
                     if len(allow[list(allow.keys())[index]]) == 0:
                         raise Exception
-                    if target != '*':  # Resourceless
+                    if target != '*':  # No resourceless
                         kwargs[target] = list(allow[list(allow.keys())[index]])
                 except Exception:
                     raise WazuhError(4000)
