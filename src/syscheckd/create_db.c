@@ -344,6 +344,7 @@ void fim_audit_inode_event(whodata_evt * w_evt) {
                 case FIM_DIRECTORY:
                     // Directory path
                     minfo("~~~~ Event path is a directory, discarding '%s'", w_evt->path);
+                    //fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
                     break;
                 // TODO: Case for symbolic links?
                 default:
@@ -426,7 +427,7 @@ int fim_configuration_directory(const char * path, const char entry[]) {
         snprintf(full_entry, OS_SIZE_4096 + 1, "%s%c", entries[it], PATH_SEP);
         match = w_compare_str(full_entry, full_path);
 
-        if (top < match && full_path[match - 1] == '/') {
+        if (top < match && full_path[match - 1] == PATH_SEP) {
             position = it;
             top = match;
         }
