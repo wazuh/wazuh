@@ -108,7 +108,7 @@ def black_mode_sanity(final_user_permissions, req_resources_value):
 def permissions_processing(req_resources, user_permissions_for_resource, final_user_permissions):
     """Permissions processing: Given some required resources and the user's permissions on that resource,
     we extract the user's final permissions on the resource.
-    
+
     :param req_resources: List of required resources
     :param user_permissions_for_resource: List of the users's permissions over the specified resource
     :param final_user_permissions: Dictionary where the final permissions will be inserted
@@ -187,7 +187,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
 
 
 def _match_permissions(req_permissions: dict = None, rbac: list = None):
-    """Try to match function required permissions against user permissions to allow or deny execution
+    """Match permissions: Try to match function required permissions against user permissions to allow or deny execution
 
     :param req_permissions: Required permissions to allow function execution
     :param rbac: User permissions
@@ -212,7 +212,8 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
 
 def expose_resources(actions: list = None, resources: list = None, target_params: list = None,
                      post_proc_func: callable = None, post_proc_kwargs: dict = None):
-    """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
+    """Expose resources: Decorator to apply user permissions on a Wazuh framework function
+    based on exposed action:resource pairs.
 
     :param actions: List of actions exposed by the framework function
     :param resources: List of resources exposed by the framework function

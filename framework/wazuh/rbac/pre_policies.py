@@ -14,6 +14,11 @@ class PreProcessor:
         self.odict = dict()
 
     def remove_previous_elements(self, resource, action):
+        """Remove previous elements: Remove previous incompatible resources
+
+        :param resource: Resource to be deleted
+        :param action: Action that covers the resource
+        """
         split_resource = resource.split(':')
         resource_name = ':'.join(resource.split(':')[0:-1]) if len(split_resource) > 1 else '*:*:*'
         if split_resource[-1] == '*':
@@ -24,6 +29,11 @@ class PreProcessor:
             self.odict[action].pop(resource, None)
 
     def process_policy(self, policy):
+        """Process policy: Receives an unprocessed policy and transforms it into a specific format for
+        treatment in the decorator.
+
+        :param policy: Policy of the user
+        """
         for action in policy['actions']:
             if action not in self.odict.keys():
                 self.odict[action] = dict()
@@ -33,10 +43,15 @@ class PreProcessor:
                 self.odict[action][resource] = policy['effect']
 
     def get_optimize_dict(self):
+        """Get optimize dictionary: This function preprocess the policies of the user for a more easy treatment
+        in the decorator of the RBAC
+        """
         return self.odict
 
 
 def optimize_resources():
+    """Optimize resources: This function preprocess the policies of the user for a more easy treatment in the decorator of the RBAC
+    """
     # For production
     rbac = RBAChecker(auth_context='{}')
     policies = rbac.run()
