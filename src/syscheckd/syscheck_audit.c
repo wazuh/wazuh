@@ -396,7 +396,7 @@ int init_regex(void) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path4_hex");
         return -1;
     }
-    static const char *pattern_dev = " dev=([0-9|a-f|A-F]*:[0-9|a-f|A-F]*)";
+    static const char *pattern_dev = " dev=([A-F0-9]*:[A-F0-9]*)";
     if (regcomp(&regexCompiled_dev, pattern_dev, REG_EXTENDED)) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dev");
         return -1;

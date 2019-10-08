@@ -197,4 +197,6 @@
 
 #define FIM_MONITORING_FILES_COUNT          "(6318): Number of indexed files %s scanning: %u."
 
+#define FIM_CONFIGURATION_NOTFOUND          "(6319): No configuration founded for (%s):'%s'"
+
 #endif /* DEBUG_MESSAGES_H */

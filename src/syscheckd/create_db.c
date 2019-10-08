@@ -398,40 +398,43 @@ int fim_registry_event (char * key, fim_entry_data * data, int pos) {
 
 // Returns the position of the path into directories array
 int fim_configuration_directory(const char * path, const char entry[]) {
+    char full_path[OS_SIZE_4096 + 1];
+    char full_entry[OS_SIZE_4096 + 1];
+    char **entries;
     int it = 0;
-    int max = 0;
-    int res = 0;
+    int top = 0;
+    int match = 0;
     int position = -1;
 
+    if (!path) {
+        return position;
+    }
+
     if (strcmp("file", entry) == 0) {
-        while(syscheck.dir[it]) {
-            res = w_compare_str(syscheck.dir[it], path);
-
-            if (max < res) {
-                position = it;
-                max = res;
-            }
-            it++;
-        }
-    }
+        entries = syscheck.dir;
 #ifdef WIN32
-    else if (strcmp("registry", entry) == 0) {
-        while(syscheck.registry[it].entry) {
-            char full_entry[2048 + 5];
-            snprintf(full_entry, 2048 + 5, "%s %s", syscheck.registry[it].arch == ARCH_64BIT ? "[x64]" : "", syscheck.registry[it].entry);
-            res = w_compare_str(full_entry, path);
-
-            if (max < res) {
-                position = it;
-                max = res;
-            }
-            it++;
-        }
-    }
+    } else if (strcmp("registry", entry) == 0) {
+        entries = syscheck.registry;
 #endif
+    } else {
+        return position;
+    }
+
+    snprintf(full_path, OS_SIZE_4096 + 1, "%s%c", path, PATH_SEP);
+
+    while(entries[it]) {
+        snprintf(full_entry, OS_SIZE_4096 + 1, "%s%c", entries[it], PATH_SEP);
+        match = w_compare_str(full_entry, full_path);
+
+        if (top < match && full_path[match - 1] == '/') {
+            position = it;
+            top = match;
+        }
+        it++;
+    }
 
     if (position == -1) {
-        minfo("~~ No configuration founded for (%s):'%s'", entry, path);
+        mdebug2(FIM_CONFIGURATION_NOTFOUND, entry, path);
     }
 
     return position;
