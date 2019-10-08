@@ -249,6 +249,8 @@ int w_update_sacl(const char *obj_path);
 #define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })
 #endif
 
+void * fim_run_integrity(void * args);
+
 void fim_sync_checksum();
 void fim_sync_checksum_split(const char * start, const char * top, long id);
 void fim_sync_send_list(const char * start, const char * top);

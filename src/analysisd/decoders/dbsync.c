@@ -181,6 +181,12 @@ end:
 }
 
 static void dispatch_clear(dbsync_context_t * ctx) {
+    if (ctx->data == NULL) {
+        merror("dbsync: Corrupt message: cannot get data member.");
+        return;
+    }
+
+    char * data_plain = cJSON_PrintUnformatted(ctx->data);
     char * query;
     char * response;
     char * arg;
@@ -188,7 +194,7 @@ static void dispatch_clear(dbsync_context_t * ctx) {
     os_malloc(OS_MAXSTR, query);
     os_malloc(OS_MAXSTR, response);
 
-    if (snprintf(query, OS_MAXSTR, "agent %s %s integrity_clear ", ctx->agent_id, ctx->component) >= OS_MAXSTR) {
+    if (snprintf(query, OS_MAXSTR, "agent %s %s integrity_clear %s", ctx->agent_id, ctx->component, data_plain) >= OS_MAXSTR) {
         merror("dbsync: Cannot build clear query: input is too long.");
         goto end;
     }
@@ -213,6 +219,7 @@ static void dispatch_clear(dbsync_context_t * ctx) {
     }
 
 end:
+    free(data_plain);
     free(query);
     free(response);
 }

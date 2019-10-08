@@ -84,7 +84,7 @@ void fim_sync_checksum() {
         fim_send_sync_msg(plain);
         free(plain);
     } else {
-        char * plain = dbsync_check_msg("syscheck", INTEGRITY_CLEAR, 0, NULL, NULL, NULL, NULL);
+        char * plain = dbsync_check_msg("syscheck", INTEGRITY_CLEAR, fim_sync_cur_id, NULL, NULL, NULL, NULL);
         fim_send_sync_msg(plain);
         free(plain);
     }
