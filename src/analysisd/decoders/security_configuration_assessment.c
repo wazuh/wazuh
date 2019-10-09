@@ -803,22 +803,6 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                         event
                 );
 
-                if (result) {
-                    if(strcmp(wdb_response,result->valuestring)) {
-                        FillCheckEventInfo(lf, scan_id, id, name, title, description, rationale, remediation,
-                                compliance, reference, file, directory, process, registry, result,
-                                status, reason, NULL, command
-                        );
-                    }
-                } else if (status && status->valuestring) {
-                    if(strcmp(wdb_response, status->valuestring)) {
-                        FillCheckEventInfo(lf, scan_id, id, name, title, description, rationale,
-                                remediation, compliance, reference, file, directory,
-                                process, registry, result, status, reason, NULL, command
-                        );
-                    }
-                }
-
                 if (result_event < 0)
                 {
                     merror("Error storing policy monitoring information for agent '%s'", lf->agent_id);
