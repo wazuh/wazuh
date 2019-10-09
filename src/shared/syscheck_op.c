@@ -582,6 +582,7 @@ char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__(
     if (result = w_getpwuid(uid, &pwd, buffer, len), result) {
         os_strdup(result->pw_name, u_name);
     } else {
+        mdebug2("Could not find a user by uid (%d): %s (%d)", uid, strerror(errno), errno);
         os_strdup("", u_name);
     }
     os_free(buffer);
@@ -601,7 +602,7 @@ char *get_group(int gid) {
     if (result = w_getgrgid(gid, &group, buffer, len), result) {
         os_strdup(result->gr_name, gr_name);
     } else {
-        merror("Could not get ossec gid.");
+        mdebug2("Could not find a group by gid (%d): %s (%d)", gid, strerror(errno), errno);
         os_strdup("", gr_name);
     }
     free(buffer);
