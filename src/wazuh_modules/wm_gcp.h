@@ -1,0 +1,30 @@
+/*
+ * Wazuh Module for Security Configuration Assessment
+ * Copyright (C) 2015-2019, Wazuh Inc.
+ * November 25, 2018.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#ifndef WM_GCP_H
+#define WM_GCP_H
+
+typedef struct wm_gcp {
+    int enabled:1;
+    int pull_on_start:1;
+    int logging:3;
+    int max_messages;
+    char *project_id;
+    char *subscription_name;
+    char *credentials_file;
+    unsigned int interval;
+} wm_gcp;
+
+extern const wm_context WM_GCP_CONTEXT;   // Context
+
+int wm_gcp_read(xml_node **nodes, wmodule *module);
+
+#endif
