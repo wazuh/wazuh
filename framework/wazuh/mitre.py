@@ -8,7 +8,9 @@
 
 """Framework module for getting information from Wazuh MITRE database."""
 
-from wazuh import common
+import json
+from typing import Dict
+
 from wazuh.utils import WazuhDBBackend, WazuhDBQuery
 
 mitre_fields = {'id': 'id',
@@ -34,10 +36,11 @@ count_query = f"SELECT {count_fields} FROM {from_fields}"
 class WazuhDBQueryMitre(WazuhDBQuery):
     """Create a WazuhDB query for getting data from Mitre database."""
 
-    def __init__(self, offset, limit, query, count=True, get_data=True,
-                 table='attack', default_query=default_query,
-                 default_sort_field='id', fields=mitre_fields,
-                 count_field='id'):
+    def __init__(self, offset: int = 0, limit: int = 0, query: str = '',
+                 count: bool = True, get_data: bool = True,
+                 table: str = 'attack', default_query: str = default_query,
+                 default_sort_field: str = 'id', fields: Dict = mitre_fields,
+                 count_field: str = 'id'):
         """Create an instance of WazuhDBQueryMitre query."""
         self.default_query = default_query
         self.count_field = count_field
@@ -67,10 +70,14 @@ class WazuhDBQueryMitre(WazuhDBQuery):
         self._data = self.backend.execute(final_query, self.request)
 
 
-def get_attack(attack=None, phase=None, platform=None, offset=0, limit=10,
-               sort=None, q=''):
+def get_attack(attack: str = '', phase: str = '', platform: str = '',
+               offset: int = 0, limit: int = 10, sort: bool = False,
+               q: str = ''):
     """Get information from Mitre database."""
-    query = q
+    # replace field names in q parameter
+    query = q.replace('attack', 'id').replace('phase', 'phase_name').replace(
+        'platform', 'platform_name')
+
     if attack:
         query = f'{query};id={attack}' if query else f'id={attack}'
     if phase:
@@ -83,4 +90,10 @@ def get_attack(attack=None, phase=None, platform=None, offset=0, limit=10,
     db_query = WazuhDBQueryMitre(offset=offset, limit=limit if limit < 10
                                  else 10, query=query)
 
-    return db_query.run()
+    result = db_query.run()
+
+    # parse JSON field (it returns as string from database)
+    for item in result['items']:
+        item['json'] = json.loads(item['json'])
+
+    return result

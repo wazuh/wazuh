@@ -742,10 +742,8 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     This class describes a wazuh db backend that executes database queries
     """
     def __init__(self, agent_id=None, mitre=False):
-        if mitre:
-            self.mitre = mitre
-        else:
-            self.agent_id = agent_id
+        self.agent_id = agent_id if agent_id else None
+        self.mitre = mitre if mitre else False
         super().__init__()
 
     def connect_to_db(self):

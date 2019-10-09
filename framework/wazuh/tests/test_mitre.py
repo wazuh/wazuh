@@ -89,7 +89,7 @@ def test_get_attack(mock_wdb, offset, limit):
 
     # check JSON keys for each item
     for item in result['items']:
-        item_keys = set(json.loads(item['json']).keys())
+        item_keys = set(item['json'].keys())
         assert item_keys != set()
         assert item_keys.issubset(json_keys)
 
@@ -110,7 +110,7 @@ def test_get_attack_filter_attack(mock_wdb, attack):
     assert len(result['items']) == 1
 
     # check JSON keys
-    result_keys = set(json.loads(result['items'][0]['json']).keys())
+    result_keys = set(result['items'][0]['json'].keys())
     assert result_keys != set()
     assert result_keys.issubset(json_keys)
 
@@ -152,7 +152,7 @@ def test_get_attack_filter_phase(mock_wdb, phase):
 
     # check JSON keys for each item
     for item in result['items']:
-        item_keys = set(json.loads(item['json']).keys())
+        item_keys = set(item['json'].keys())
         assert item_keys != set()
         assert item_keys.issubset(json_keys)
 
@@ -176,7 +176,7 @@ def test_get_attack_filter_platform(mock_wdb, platform):
 
     # check JSON keys for each item
     for item in result['items']:
-        item_keys = set(json.loads(item['json']).keys())
+        item_keys = set(item['json'].keys())
         assert item_keys != set()
         assert item_keys.issubset(json_keys)
 
@@ -217,7 +217,7 @@ def test_get_attack_filter_multiple(mock_wdb, phase, platform):
 
     # check JSON keys for each item
     for item in result['items']:
-        item_keys = set(json.loads(item['json']).keys())
+        item_keys = set(item['json'].keys())
         assert item_keys != set()
         assert item_keys.issubset(json_keys)
         # check phase and platform
