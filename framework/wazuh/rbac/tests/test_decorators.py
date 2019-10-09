@@ -4,168 +4,91 @@
 
 from unittest.mock import patch
 
+import json
+import os
 import pytest
 
 import wazuh.rbac.decorators
-from wazuh.exception import WazuhError, WazuhInternalError
-
-# MOCK DATA
-mock_jwt = "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ3YXp1aCIsImlhdCI6MTU1ODY5ODM2NiwiZXhwI" \
-           "joxNTU4Njk4OTY2LCJzdWIiOiJmb28iLCJyYmFjX3BvbGljaWVzIjpbeyJhY3Rpb25zIjpbImRlY29kZXI6Z2V0Il0sInJ" \
-           "lc291cmNlcyI6WyJkZWNvZGVyOm5hbWU6d2luZG93c19maWVsZHMiLCJkZWNvZGVyOm5hbWU6KiJdLCJlZmZlY3QiOiJhb" \
-           "GxvdyJ9XSwibW9kZSI6ZmFsc2V9.Pve6eh1AgqWVvST-ewBfST2IMb8c7_vVm6XD_RQ52v4"
-
-mock_rbac_policies = [
-    {
-        "actions": ["decoder:get"],
-        "resources": ["decoder:name:windows_fields", "decoder:name:*"],
-        "effect": "allow"
-    }
-]
-
-mock_payload = {
-    "rbac_policies": mock_rbac_policies,
-    "mode": False
-}
-
-mocked_user1 = [{
-    "actions": ["mock_action:get"],  # 1st policy
-    "resources": ["mock_resources:name:mock_name"],
-    "effect": "allow"
-}]
-
-mocked_user2 = [{
-    "actions": ["mock_action:get"],  # 1st policy
-    "resources": ["mock_resources:name:mock_name"],
-    "effect": "deny"
-}]
-
-mocked_user3 = [{
-    "actions": ["mock_action:get"],  # 1st policy
-    "resources": ["agent:id:mock_agent"],
-    "effect": "allow"
-}]
-
-mocked_user4 = [{
-    "actions": ["mock_action:get"],  # 1st policy
-    "resources": ["mock_resources:name:*"],
-    "effect": "allow"
-}]
+from wazuh.exception import WazuhError
 
 
-@pytest.mark.parametrize('mock_actions', [
-    ['mock_action:get',
-     'mock_action:delete']
-])
-@pytest.mark.parametrize('mock_resources', [
-    'mock_resources:name:{name}',  # dynamic resources
-    'mock_resources:name:mock_name'  # static resources
-])
-@pytest.mark.parametrize('mock_names', [
-    'mock_file1.xml',  # params is a str
-    ['mock_file1.xml', 'mock_file2.xml']  # params is a list
-])
-def test_get_required_permissions(mock_names, mock_resources, mock_actions):
-    permissions = wazuh.rbac.decorators._get_required_permissions(actions=mock_actions, resources=mock_resources, name=mock_names)
-    assert isinstance(permissions, dict)
-    for action in mock_actions:
-        assert action in permissions.keys()
+test_path = os.path.dirname(os.path.realpath(__file__))
+test_data_path = os.path.join(test_path, 'data/')
+permissions = list()
+results = list()
+with open(test_data_path + 'RBAC_decorators_permissions_white.json') as f:
+    configurations_white = [(config['decorator_params'],
+                             config['function_params'],
+                             config['rbac'],
+                             config['fake_system_resources'],
+                             config['allowed_resources'],
+                             'white') for config in json.load(f)]
+with open(test_data_path + 'RBAC_decorators_permissions_black.json') as f:
+    configurations_black = [(config['decorator_params'],
+                             config['function_params'],
+                             config['rbac'],
+                             config['fake_system_resources'],
+                             config['allowed_resources'],
+                             'black') for config in json.load(f)]
+
+with open(test_data_path + 'RBAC_decorators_resourceless_white.json') as f:
+    configurations_resourceless_white = [(config['decorator_params'],
+                                          config['rbac'],
+                                          config['allowed'],
+                                          'white') for config in json.load(f)]
+with open(test_data_path + 'RBAC_decorators_resourceless_black.json') as f:
+    configurations_resourceless_black = [(config['decorator_params'],
+                                          config['rbac'],
+                                          config['allowed'],
+                                          'black') for config in json.load(f)]
 
 
-def test_get_required_permissions_exception():
-    with pytest.raises(WazuhInternalError, match='.* 4014 .*'):
-        wazuh.rbac.decorators._get_required_permissions(actions=['mock_action:get'], resources='mock_resources:name:{name}',
-                                                  wrong='mock_file1.xml')
+@pytest.mark.parametrize('decorator_params, function_params, rbac, fake_system_resources, allowed_resources, mode',
+                         configurations_black + configurations_white)
+@patch('wazuh.rbac.orm.create_engine')
+@patch('wazuh.rbac.orm.declarative_base')
+@patch('wazuh.rbac.orm.sessionmaker')
+def test_expose_resources(mock_create_engine, mock_declarative_base, mock_session_maker,
+                          decorator_params, function_params, rbac, fake_system_resources, allowed_resources, mode):
+    wazuh.rbac.decorators.switch_mode(mode)
+    def mock_expand_resource(resource):
+        fake_values = fake_system_resources.get(resource, resource.split(':')[-1])
+        return {fake_values} if isinstance(fake_values, str) else set(fake_values)
+
+    with patch('wazuh.rbac.decorators._expand_resource', side_effect=mock_expand_resource):
+        @wazuh.rbac.decorators.expose_resources(**decorator_params)
+        def framework_dummy(*args, **kwargs):
+            for target_param, allowed_resource in zip(decorator_params['target_params'], allowed_resources):
+                assert (set(kwargs[target_param]) == set(allowed_resource))
+
+        try:
+            framework_dummy(rbac=rbac, **function_params)
+        except WazuhError as e:
+            for allowed_resource in allowed_resources:
+                print(allowed_resource)
+                assert (len(allowed_resource) == 0)
+            assert (e.code == 4000)
 
 
-@pytest.mark.parametrize('mock_req', [
-    {
-        'mock_action:get': {'mock_resources:name:mock_name'}
-    }
-])
-@pytest.mark.parametrize('mock_user', [
-    [{  # 1st user permissions
-        "actions": ["mock_action:get"],  # 1st policy
-        "resources": ["mock_resources:name:mock_name"],
-        "effect": "deny"
-    }],
-    [{  # 2nd user permissions
-        "actions": ["mock_action:update"],  # 1st policy
-        "resources": ["mock_resources:name:wrong"],
-        "effect": "deny"
-    }],
-    [{  # 3rd user permissions
-        "actions": ["mock_action:get"],  # 1st policy
-        "resources": ["mock_resources:name:mock_name"],
-        "effect": "allow"
-    },
-        {
-            "actions": ["mock_action:update"],  # 2nd policy
-            "resources": ["mock_resources:name:mock_name"],
-            "effect": "deny"
-        },
-    ]
-])
-@pytest.mark.parametrize('mock_modes', [
-    False,  # white_list mode
-    True  # black_list mode
-])
-def test_match_pairs(mock_modes, mock_user, mock_req):
-    allowed = wazuh.rbac.decorators._match_permissions(rbac=[mock_modes, mock_user], req_permissions=mock_req)
-    assert isinstance(allowed, bool)
+@pytest.mark.parametrize('decorator_params, rbac, allowed, mode',
+                         configurations_resourceless_white + configurations_resourceless_black)
+@patch('wazuh.rbac.orm.create_engine')
+@patch('wazuh.rbac.orm.declarative_base')
+@patch('wazuh.rbac.orm.sessionmaker')
+def test_expose_resourcesless(mock_create_engine, mock_declarative_base, mock_session_maker,
+                              decorator_params, rbac, allowed, mode):
+    wazuh.rbac.decorators.switch_mode(mode)
+    def mock_expand_resource(resource):
+        return set()
 
+    with patch('wazuh.rbac.decorators._expand_resource', side_effect=mock_expand_resource):
+        @wazuh.rbac.decorators.expose_resources(**decorator_params)
+        def framework_dummy(*args, **kwargs):
+            pass
 
-@pytest.mark.parametrize('mocked_rbac', [
-    [False, mocked_user1],
-    [False, mocked_user2],
-    [False, mocked_user3],
-    [False, mocked_user4]
-])
-def test_matches_privileges(mocked_rbac):
-    # First and second stages
-    @wazuh.rbac.decorators.expose_resources(actions=["mock_action:get"], resources="mock_resources:name:mock_name")
-    def framework_dummy():
-        return True
-    if mocked_rbac[1] == mocked_user2:
-        with pytest.raises(WazuhError, match='.* 4000 .*'):
-            framework_dummy(rbac=mocked_rbac)
-    elif mocked_rbac[1] == mocked_user1:
-        assert framework_dummy(rbac=mocked_rbac) is True
-
-    # Third stage
-    if mocked_rbac[1] == mocked_user3:
-        @wazuh.rbac.decorators.expose_resources(actions=["mock_action:get"], resources="agent:id:mock_agent")
-        def framework_dummy_2():
-            return True
-        with patch("wazuh.rbac.decorators._get_groups_resources", return_value=['agent:id:*', 'agent:group:*',
-                                                                                'agent:group:default', 'agent:group:group1']):
-            assert framework_dummy_2(rbac=mocked_rbac) is True
-
-    # Fourth stage
-    if mocked_rbac[1] == mocked_user4:
-        @wazuh.rbac.decorators.expose_resources(actions=["mock_action:get"], resources="mock_resources:name:*")
-        def framework_dummy_3():
-            return True
-        assert framework_dummy_3(rbac=mocked_rbac) is True
-
-
-@pytest.mark.parametrize('mocked_agent', [
-    '001',
-    '*'
-])
-@patch("wazuh.rbac.decorators.Connection.fetch_all", return_value=[['default'], ['group1']])
-@patch("wazuh.rbac.decorators.Connection.execute", return_value=None)
-@patch("wazuh.rbac.decorators.Connection.__init__", return_value=None)
-@patch("wazuh.rbac.decorators.glob")
-def test_get_groups_resources(mocked_glob, mocked_connection, mocked_execute, mocked_fetch_all, mocked_agent):
-    # Answer should be Error code 1600 is there is no db_global
-    mocked_glob.return_value = None
-    with pytest.raises(WazuhInternalError, match='.* 1600 .*'):
-        wazuh.rbac.decorators._get_groups_resources('001')
-
-    # Answer should extract groups from the agents for any id and *
-    mocked_glob.return_value = [""]
-    result = wazuh.rbac.decorators._get_groups_resources(mocked_agent)
-    assert isinstance(result, list)
-    for item in result:
-        assert item in ['agent:id:*', 'agent:group:*', 'agent:group:default', 'agent:group:group1']
+        try:
+            framework_dummy(rbac=rbac)
+            assert allowed
+        except WazuhError as e:
+            assert (not allowed)
+            assert (e.code == 4000)
