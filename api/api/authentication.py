@@ -9,11 +9,10 @@ from shutil import chown
 from time import time
 
 from jose import JWTError, jwt
-from sqlalchemy import create_engine, Column, String, Boolean
+from sqlalchemy import create_engine, Column, String
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from wazuh.rbac import auth_context
 from wazuh.rbac import pre_policies
 from werkzeug.exceptions import Unauthorized
 from werkzeug.security import check_password_hash, generate_password_hash
