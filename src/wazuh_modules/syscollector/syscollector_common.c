@@ -283,6 +283,9 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     if (sys->flags.portsinfo) cJSON_AddStringToObject(wm_sys,"ports","yes"); else cJSON_AddStringToObject(wm_sys,"ports","no");
     if (sys->flags.allports) cJSON_AddStringToObject(wm_sys,"ports_all","yes"); else cJSON_AddStringToObject(wm_sys,"ports_all","no");
     if (sys->flags.procinfo) cJSON_AddStringToObject(wm_sys,"processes","yes"); else cJSON_AddStringToObject(wm_sys,"processes","no");
+#ifdef WIN32
+    if (sys->flags.hotfixinfo) cJSON_AddStringToObject(wm_sys,"hotfixes","yes"); else cJSON_AddStringToObject(wm_sys,"hotfixes","no");
+#endif
 
     cJSON_AddItemToObject(root,"syscollector",wm_sys);
 
@@ -319,4 +322,3 @@ int wm_sys_get_random_id() {
 
     return ID;
 }
-

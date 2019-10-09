@@ -149,7 +149,7 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
                     return OS_INVALID;
                 }
 #else
-                mwarn("The '%s' option is only available on Windows systems. Ignoring.", XML_HOTFIXES);
+                mwarn("The '%s' option is only available on Windows systems. Ignoring it.", XML_HOTFIXES);
 #endif
         } else if (!strcmp(node[i]->element, XML_PROCS)) {
             if (!strcmp(node[i]->content, "yes"))
