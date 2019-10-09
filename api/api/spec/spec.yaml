@@ -2567,7 +2567,6 @@ components:
       in: query
       name: list_agents
       description: List of agents IDs (separated by comma)
-      required: true
       schema:
         type: array
         items:
@@ -3680,6 +3679,7 @@ paths:
       description: 'Runs an Active Response command on all agents'
       operationId: api.controllers.active_response_controller.run_command_all
       parameters:
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
@@ -3695,7 +3695,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Command sent to all agents."
+                message: "Command sent to shown agents."
         default:
           $ref: '#/components/responses/ResponseError'
 
