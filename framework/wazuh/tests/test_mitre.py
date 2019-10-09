@@ -95,10 +95,10 @@ def test_get_attack(mock_wdb, offset, limit):
 
 
 @pytest.mark.parametrize('attack', [
-    ('T1001'),
-    ('T1009'),
     ('T1015'),
-    ('T1021'),
+    ('T1176'),
+    ('T1087'),
+    ('T1015'),
 ])
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
         sql_schema_file='schema_mitre_test.sql', mitre=True))
@@ -185,26 +185,26 @@ def test_get_attack_filter_platform(mock_wdb, platform):
     ('persistence', 'macos'),
     ('defense evasion', 'linux'),
     ('Defense Evasion', 'windows'),
-    #('Privilege Escalation'),
-    #('privilege escalation'),
-    #('Discovery'),
-    #('discovery'),
-    #('Credential Access'),
-    #('credential access'),
-    #('Execution'),
-    #('execution'),
-    #('Lateral Movement'),
-    #('lateral movement'),
-    #('collection'),
-    #('Collection'),
-    #('Exfiltration'),
-    #('exFilTration'),
-    #('Command and Control'),
-    #('command and Control'),
-    #('Impact'),
-    #('impacT'),
-    #('Initial Access'),
-    #('initial ACCess'),
+    ('Privilege Escalation', 'macos'),
+    ##('privilege escalation'),
+    #('Discovery', 'windows'),
+    ##('discovery'),
+    #('Credential Access', 'linux'),
+    #('credential access', 'macOS'),
+    #('Execution', 'windows'),
+    ##('execution'),
+    #('Lateral Movement', 'linux'),
+    #('lateral movement', 'macos'),
+    #('collection', 'linux'),
+    ##('Collection'),
+    #('Exfiltration', 'windows'),
+    ##('exFilTration'),
+    #('Command and Control', 'linux'),
+    ##('command and Control'),
+    #('Impact', 'linux'),
+    ##('impacT'),
+    #('Initial Access', 'Windows'),
+    ##('initial ACCess'),
 ])
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
         sql_schema_file='schema_mitre_test.sql', mitre=True))
@@ -223,4 +223,3 @@ def test_get_attack_filter_multiple(mock_wdb, phase, platform):
         # check phase and platform
         assert phase.lower() in item['phases'].lower()
         assert platform.lower() in item['platforms'].lower()
-
