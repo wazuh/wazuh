@@ -316,7 +316,7 @@
 #define VU_SOFTWARE_REQUEST_ERROR   "(5428): Agent %s software could not be requested."
 #define VU_NO_AGENT_ERROR           "(5429): The agents information could not be processed."
 #define VU_CREATE_HASH_ERRO         "(5430): The '%s' hash table could not be created."
-#define VU_SYSC_SCAN_REQUEST_ERROR  "(5431): Last Syscollector scan from the agent %s could not be requested."
+#define VU_SYSC_SCAN_REQUEST_ERROR  "(5431): Last software scan from the agent %s could not be requested."
 #define VU_HTTP_HEADER_ERROR        "(5432): Invalid HTTP header."
 #define VU_PACKAGE_RECOG_ERROR      "(5433): The package could not be recognized in '%s'."
 #define VU_NO_SYSC_SCANS            "(5434): No package inventory found for agent %s, so their vulnerabilities will not be checked."

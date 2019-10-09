@@ -36,7 +36,7 @@
 #define VU_UPDATE_VU_INFO     "(5472): Inserting vulnerability info."
 #define VU_UPDATE_VU          "(5473): Inserting vulnerabilities."
 #define VU_AGENT_INFO_ERROR   "(5474): Agent %s operating system could not be obtained. Maybe it is never connected. It will be omitted."
-#define VU_NO_SOFTWARE        "(5475): No changes have been found with respect to the last package inventory for agent %s."
+#define VU_NO_SOFTWARE        "(5475): No changes have been found with respect to the last package inventory or no packages have been indexed for agent %s."
 #define VU_AG_NO_TARGET       "(5476): The analysis can not be launched because there are no target agents."
 #define VU_AG_DISC            "(5477): The vulnerabilities of the agent %s will not be checked because it is disconnected."
 #define VU_LOCAL_FETCH        "(5478): Fetching feed from '%s'."
@@ -86,6 +86,8 @@
 #define VU_DISCARD_MATCH_N    "(5572): The matching configuration node '%s' from %s will be discarted because is contemplated by '%s' (%s%s%s%s%s%s%s)."
 #define VU_AG_FULL_SCAN       "(5573): A full scan will be run on agent %s."
 #define VU_AG_PART_SCAN       "(5574): A partial scan will be run on agent %s."
+#define VU_NO_PACKAGE_SCAN    "(5576): The package inventory of the agent %s is not available, but an hotfix analysis will be launched."
+#define VU_NO_HOTFIX_AVAIL    "(5577): It is not possible to perform a hotfix scan on agent %s."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
