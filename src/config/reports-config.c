@@ -272,21 +272,17 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                         case 'G':
                                         case 'g':
                                             rotation_config->max_size *= 1073741824;
-                                            rotation_config->size_units = 'G';
                                             break;
                                         case 'M':
                                         case 'm':
                                             rotation_config->max_size *= 1048576;
-                                            rotation_config->size_units = 'M';
                                             break;
                                         case 'K':
                                         case 'k':
                                             rotation_config->max_size *= 1024;
-                                            rotation_config->size_units = 'K';
                                             break;
                                         case 'B':
                                         case 'b':
-                                            rotation_config->size_units = 'B';
                                             break;
                                         default:
                                             merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
@@ -301,6 +297,7 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
+                            rotation_config->size_units = c;
                             if (rotation_config->max_size < 1048576) {
                                 merror("The minimum allowed value for '%s' is 1 MB.", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);

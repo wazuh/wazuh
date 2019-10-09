@@ -307,7 +307,6 @@ cJSON *getMonitorLogging(void) {
     char *saved_rotations = "saved_rotations";
     char *maxsize = "maxsize";
     char *maxage = "maxage";
-    char *day_wait = "day_wait";
     char *minsize = "minsize";
     cJSON *root;
     cJSON *logging;
@@ -325,14 +324,20 @@ cJSON *getMonitorLogging(void) {
             cJSON_AddStringToObject(logging, compress_rotation, mond.compress_rotation ? "yes" : "no");
             snprintf(aux, 50, "%d", mond.rotate);
             cJSON_AddStringToObject(logging, saved_rotations, mond.rotate == -1 ? "unlimited" : aux);
-            snprintf(aux, 50, "%ld %c", mond.interval, mond.interval_units);
-            cJSON_AddStringToObject(logging, rotation_schedule, mond.interval ? aux : "no");
-            snprintf(aux, 50, "%ld %c", mond.size_rotate, mond.size_units);
+            if (mond.interval_units == 'w') {
+                char *buffer;
+                buffer = int_to_day(mond.interval);
+                cJSON_AddStringToObject(logging, rotation_schedule, buffer);
+                os_free(buffer);
+            } else {
+                snprintf(aux, 50, "%ld%c", mond.interval, mond.interval_units);
+                cJSON_AddStringToObject(logging, rotation_schedule, mond.interval ? aux : "no");
+            }
+            snprintf(aux, 50, "%ld%c", mond.size_rotate, mond.size_units);
             cJSON_AddStringToObject(logging, maxsize, mond.size_rotate ? aux : "no");
-            snprintf(aux, 50, "%ld %c", mond.min_size_rotate, mond.min_size_units);
+            snprintf(aux, 50, "%ld%c", mond.min_size_rotate, mond.min_size_units);
             cJSON_AddStringToObject(logging, minsize, mond.min_size_rotate ? aux : "no");
             cJSON_AddNumberToObject(logging, maxage, mond.maxage);
-            cJSON_AddNumberToObject(logging, day_wait, mond.day_wait);
         }
     }
 

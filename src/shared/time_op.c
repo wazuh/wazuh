@@ -76,21 +76,26 @@ long long int get_windows_file_time_epoch(FILETIME ft) {
 
 int day_to_int(const char *day)
 {
-    if (!strcmp(day, "monday")) {
-        return 1;
-    } else if (!strcmp(day, "tuesday")) {
-        return 2;
-    } else if (!strcmp(day, "wednesday")) {
-        return 3;
-    } else if (!strcmp(day, "thursday")) {
-        return 4;
-    } else if (!strcmp(day, "friday")) {
-        return 5;
-    } else if (!strcmp(day, "saturday")) {
-        return 6;
-    } else if (!strcmp(day, "sunday")) {
-        return 7;
-    } else {
+    struct tm timeinfo;
+    int wday;
+
+    if (!strptime(day, "%A", &timeinfo))
+    {
         return 0;
     }
+
+    wday = timeinfo.tm_wday;
+    return wday ? wday : 7;
+}
+
+char *int_to_day(int day)
+{
+    struct tm timeinfo;
+    char *buffer;
+    os_calloc(80, sizeof(char), buffer);
+
+    timeinfo.tm_wday = day % 7;
+    strftime(buffer, 80,"%A", &timeinfo);
+
+    return buffer;
 }

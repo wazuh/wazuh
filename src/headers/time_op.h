@@ -29,5 +29,6 @@ long long int get_windows_file_time_epoch(FILETIME ft);
 #endif
 
 int day_to_int(const char *day);
+char *int_to_day(int day);
 
 #endif // TIME_OP_H

@@ -490,7 +490,9 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                     /* Read the configuration inside rotation tag */
                     for (k = 0; rotation_children[k]; k++) {
                         if (strcmp(rotation_children[k]->element, xml_max_size) == 0) {
+                            char * end;
                             char c;
+                            Config->alerts_size_rotate = strtol(rotation_children[k]->content, &end, 10);
                             switch (sscanf(rotation_children[k]->content, "%ld%c", &Config->alerts_max_size, &c)) {
                                 case 1:
                                     break;
@@ -524,6 +526,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
+                            Config->alerts_size_units = c;
                             if (Config->alerts_max_size < 1048576) {
                                 merror("The minimum allowed value for '%s' is 1 MB.", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);
@@ -531,7 +534,9 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                 return (OS_INVALID);
                             }
                         } else if (strcmp(rotation_children[k]->element, xml_min_size) == 0) {
+                            char *end;
                             char c;
+                            Config->alerts_min_size_rotate = strtol(rotation_children[k]->content, &end, 10);
                             switch (sscanf(rotation_children[k]->content, "%ld%c", &Config->alerts_min_size, &c)) {
                                 case 1:
                                     break;
@@ -565,6 +570,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
+                            Config->alerts_min_size_units = c;
                             if (Config->alerts_min_size < 1048576) {
                                 merror("The minimum allowed value for '%s' is 1 MB.", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);
@@ -727,7 +733,9 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                     /* Read the configuration inside rotation tag */
                     for (k = 0; rotation_children[k]; k++) {
                         if (strcmp(rotation_children[k]->element, xml_max_size) == 0) {
+                            char *end;
                             char c;
+                            Config->archives_size_rotate = strtol(rotation_children[k]->content, &end, 10);
                             switch (sscanf(rotation_children[k]->content, "%ld%c", &Config->archives_max_size, &c)) {
                                 case 1:
                                     break;
@@ -761,6 +769,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
+                            Config->archives_size_units = c;
                             if (Config->archives_max_size < 1048576) {
                                 merror("The minimum allowed value for '%s' is 1 MB.", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);
@@ -768,7 +777,9 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                 return (OS_INVALID);
                             }
                         } else if (strcmp(rotation_children[k]->element, xml_min_size) == 0) {
+                            char *end;
                             char c;
+                            Config->archives_min_size_rotate = strtol(rotation_children[k]->content, &end, 10);
                             switch (sscanf(rotation_children[k]->content, "%ld%c", &Config->archives_min_size, &c)) {
                                 case 1:
                                     break;
@@ -802,6 +813,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
+                            Config->archives_min_size_units = c;
                             if (Config->archives_min_size < 1048576) {
                                 merror("The minimum allowed value for '%s' is 1 MB.", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);

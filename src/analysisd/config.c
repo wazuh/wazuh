@@ -340,11 +340,13 @@ cJSON *getAnalysisLoggingConfig(void) {
     char *json_format = "json_format";
     char *plain_format = "plain_format";
     char *compress_rotation = "compress_rotation";
-    char *rotation_size = "rotation_size";
-    char *rotation_interval = "rotation_interval";
+    char *maxsize = "maxsize";
+    char *minsize = "minsize";
+    char *rotation_schedule = "schedule";
     char *saved_rotations = "saved_rotations";
     char *maxage = "maxage";
     cJSON *root;
+    char aux[50];
 
     if (!Config.archives_enabled && !Config.alerts_enabled)  {
         root = getLoggingConfig();
@@ -362,9 +364,21 @@ cJSON *getAnalysisLoggingConfig(void) {
             cJSON_AddStringToObject(log_type, json_format, Config.log_archives_json ? "yes" : "no");
             if (Config.alerts_rotation_enabled) {
                 cJSON_AddStringToObject(log_type, compress_rotation, Config.archives_compress_rotation ? "yes" : "no");
-                cJSON_AddNumberToObject(log_type, rotation_size, Config.archives_max_size);
-                cJSON_AddNumberToObject(log_type, saved_rotations, Config.archives_rotate);
-                cJSON_AddNumberToObject(log_type, rotation_interval, Config.archives_interval);
+                snprintf(aux, 50, "%d", Config.archives_rotate);
+                cJSON_AddStringToObject(log_type, saved_rotations, Config.archives_rotate == -1 ? "unlimited" : aux);
+                if (Config.archives_interval_units =='w') {
+                    char *buffer;
+                    buffer = int_to_day(Config.archives_interval);
+                    cJSON_AddStringToObject(log_type, rotation_schedule, buffer);
+                    os_free(buffer);
+                } else {
+                    snprintf(aux, 50, "%ld%c", Config.archives_interval, Config.archives_interval_units);
+                    cJSON_AddStringToObject(log_type, rotation_schedule, Config.archives_interval ? aux : "no");
+                }
+                snprintf(aux, 50, "%ld%c", Config.archives_size_rotate, Config.archives_size_units);
+                cJSON_AddStringToObject(log_type, maxsize, Config.archives_size_rotate ? aux : "no");
+                snprintf(aux, 50, "%ld%c", Config.archives_min_size_rotate, Config.archives_min_size_units);
+                cJSON_AddStringToObject(log_type, minsize, Config.archives_min_size_rotate ? aux : "no");
                 cJSON_AddNumberToObject(log_type, maxage, Config.archives_maxage);
             }
             cJSON_AddItemToObject(logging, "archives", log_type);
@@ -376,9 +390,21 @@ cJSON *getAnalysisLoggingConfig(void) {
             cJSON_AddStringToObject(log_type, json_format, Config.alerts_log_json ? "yes" : "no");
             if (Config.alerts_rotation_enabled) {
                 cJSON_AddStringToObject(log_type, compress_rotation, Config.alerts_compress_rotation ? "yes" : "no");
-                cJSON_AddNumberToObject(log_type, rotation_size, Config.alerts_max_size);
-                cJSON_AddNumberToObject(log_type, saved_rotations, Config.alerts_rotate);
-                cJSON_AddNumberToObject(log_type, rotation_interval, Config.alerts_interval);
+                snprintf(aux, 50, "%d", Config.alerts_rotate);
+                cJSON_AddStringToObject(log_type, saved_rotations, Config.alerts_rotate == -1 ? "unlimited" : aux);
+                if (Config.alerts_interval_units == 'w') {
+                    char *buffer;
+                    buffer = int_to_day(Config.alerts_interval);
+                    cJSON_AddStringToObject(log_type, rotation_schedule, buffer);
+                    os_free(buffer);
+                } else {
+                    snprintf(aux, 50, "%ld%c", Config.alerts_interval, Config.alerts_interval_units);
+                    cJSON_AddStringToObject(log_type, rotation_schedule, Config.alerts_interval ? aux : "no");
+                }
+                snprintf(aux, 50, "%ld%c", Config.alerts_size_rotate, Config.alerts_size_units);
+                cJSON_AddStringToObject(log_type, maxsize, Config.alerts_size_rotate ? aux : "no");
+                snprintf(aux, 50, "%ld%c", Config.alerts_min_size_rotate, Config.alerts_min_size_units);
+                cJSON_AddStringToObject(log_type, minsize, Config.alerts_min_size_rotate ? aux : "no");
                 cJSON_AddNumberToObject(log_type, maxage, Config.alerts_maxage);
             }
             cJSON_AddItemToObject(logging, "alerts", log_type);
