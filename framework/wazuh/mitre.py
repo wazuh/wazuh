@@ -34,21 +34,19 @@ count_query = f"SELECT {count_fields} FROM {from_fields}"
 class WazuhDBQueryMitre(WazuhDBQuery):
     """Create a WazuhDB query for getting data from Mitre database."""
 
-    def __init__(self, offset, limit, sort, search, select, query,
-                 count, get_data, table='attack',
-                 default_query=default_query,
-                 default_sort_field='id', filters={},
-                 fields=mitre_fields,
+    def __init__(self, offset, limit, query, count=True, get_data=True,
+                 table='attack', default_query=default_query,
+                 default_sort_field='id', fields=mitre_fields,
                  count_field='id'):
         """Create an instance of WazuhDBQueryMitre query."""
         self.default_query = default_query
         self.count_field = count_field
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit,
-                              table=table, sort=sort, search=search,
-                              select=select, fields=fields,
+                              table=table, sort=None, search=None,
+                              select=None, fields=fields,
                               default_sort_field=default_sort_field,
-                              default_sort_order='ASC', filters=filters,
+                              default_sort_order='ASC', filters=None,
                               query=query, count=count, get_data=get_data,
                               backend=WazuhDBBackend(mitre=True))
 
@@ -69,9 +67,8 @@ class WazuhDBQueryMitre(WazuhDBQuery):
         self._data = self.backend.execute(final_query, self.request)
 
 
-def get_attack(attack=None, phase=None, platform=None, offset=0,
-               limit=common.database_limit, sort=None,
-               search=None, q='', filters={}):
+def get_attack(attack=None, phase=None, platform=None, offset=0, limit=10,
+               sort=None, q=''):
     """Get information from Mitre database."""
     query = q
     if attack:
@@ -84,8 +81,6 @@ def get_attack(attack=None, phase=None, platform=None, offset=0,
                 f'platform_name={platform}'
 
     db_query = WazuhDBQueryMitre(offset=offset, limit=limit if limit < 10
-                                 else 10, sort=sort, search=search,
-                                 select=None, query=query, count=True,
-                                 get_data=True, filters=filters)
+                                 else 10, query=query)
 
     return db_query.run()
