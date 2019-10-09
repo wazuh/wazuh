@@ -50,7 +50,7 @@ with open(test_data_path + 'RBAC_decorators_resourceless_black.json') as f:
 @patch('wazuh.rbac.orm.sessionmaker')
 def test_expose_resources(mock_create_engine, mock_declarative_base, mock_session_maker,
                           decorator_params, function_params, rbac, fake_system_resources, allowed_resources, mode):
-    wazuh.rbac.decorators.mode_changer(mode)
+    wazuh.rbac.decorators.switch_mode(mode)
     def mock_expand_resource(resource):
         fake_values = fake_system_resources.get(resource, resource.split(':')[-1])
         return {fake_values} if isinstance(fake_values, str) else set(fake_values)
@@ -77,7 +77,7 @@ def test_expose_resources(mock_create_engine, mock_declarative_base, mock_sessio
 @patch('wazuh.rbac.orm.sessionmaker')
 def test_expose_resourcesless(mock_create_engine, mock_declarative_base, mock_session_maker,
                               decorator_params, rbac, allowed, mode):
-    wazuh.rbac.decorators.mode_changer(mode)
+    wazuh.rbac.decorators.switch_mode(mode)
     def mock_expand_resource(resource):
         return set()
 
