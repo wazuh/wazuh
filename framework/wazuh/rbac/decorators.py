@@ -16,6 +16,16 @@ from wazuh.results import WazuhResult
 mode = configuration.read_api_config()['rbac']['mode']
 
 
+def switch_mode(m):
+    """This function is used to change the RBAC's mode
+    :param m: New RBAC's mode (white or black)
+    """
+    if m != 'white' and m != 'black':
+        raise TypeError
+    global mode
+    mode = m
+    
+
 def _expand_resource(resource):
     """This function expand a specified resource depending of it type.
 
@@ -139,7 +149,9 @@ def _permissions_processing(req_resources, user_permissions_for_resource, final_
                 final_user_permissions['*:*'] = {'*'}
             else:
                 expanded_resource = _expand_resource(req_resource)
-                final_user_permissions[':'.join(req_resource.split(':')[:-1])] = expanded_resource
+                if identifier not in final_user_permissions.keys():
+                    final_user_permissions[identifier] = set()
+                final_user_permissions[identifier].update(expanded_resource)
     # RBAC policies are not empty or the mode is not black
     else:
         # With this set we know if a resource is already "deny"
