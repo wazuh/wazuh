@@ -12,6 +12,10 @@
 #ifndef WM_GCP_H
 #define WM_GCP_H
 
+#define WM_GCP_LOGTAG ARGV0 ":gcp-pubsub"
+#define WM_GCP_DEFAULT_DIR WM_DEFAULT_DIR "/gcp-pubsub"
+#define WM_GCP_SCRIPT_PATH WM_GCP_DEFAULT_DIR "/gcp-pubsub.py"
+
 typedef struct wm_gcp {
     int enabled:1;
     int pull_on_start:1;
@@ -21,6 +25,8 @@ typedef struct wm_gcp {
     char *subscription_name;
     char *credentials_file;
     unsigned int interval;
+    int msg_delay;
+    int queue;
 } wm_gcp;
 
 extern const wm_context WM_GCP_CONTEXT;   // Context

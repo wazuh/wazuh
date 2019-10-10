@@ -29,6 +29,9 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
     unsigned int i;
     wm_gcp *gcp;
 
+    if (!nodes)
+        return 0;
+
     if (!module->data) {
         os_calloc(1, sizeof(wm_gcp), gcp);
         gcp->enabled = 1;
@@ -191,6 +194,21 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
         } else {
             mwarn("No such tag <%s>", nodes[i]->element);
         }
+    }
+
+    if (!gcp->project_id) {
+        merror("No value defined for tag '%s' in module '%s'.", XML_PROJECT_ID, WM_GCP_CONTEXT.name);
+        return OS_INVALID;
+    }
+
+    if (!gcp->subscription_name) {
+        merror("No value defined for tag '%s' in module '%s'.", XML_SUBSCRIPTION_NAME, WM_GCP_CONTEXT.name);
+        return OS_INVALID;
+    }
+
+    if (!gcp->credentials_file) {
+        merror("No value defined for tag '%s' in module '%s'.", XML_CREDENTIALS_FILE, WM_GCP_CONTEXT.name);
+        return OS_INVALID;
     }
 
     return 0;
