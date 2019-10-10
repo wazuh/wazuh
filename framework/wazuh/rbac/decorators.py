@@ -6,24 +6,14 @@ import copy
 import re
 from functools import wraps
 
+from api import configuration
 from api.authentication import AuthenticationManager
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
 from wazuh.exception import WazuhError, create_exception_dic
 from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import WazuhResult
 
-mode = 'white'
-
-
-def switch_mode(m):
-    """This function is used to change the RBAC's mode
-
-    :param m: New RBAC's mode (white or black)
-    """
-    if m != 'white' and m != 'black':
-        raise TypeError
-    global mode
-    mode = m
+mode = configuration.read_api_config()['rbac']['mode']
 
 
 def _expand_resource(resource):
