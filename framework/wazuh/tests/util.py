@@ -33,6 +33,8 @@ class InitWDBSocketMock:
         rows = self.__conn.execute(query).fetchall()
         if len(rows) > 0 and 'COUNT(*)' in rows[0]:
             return rows[0]['COUNT(*)']
+        elif len(rows) > 0 and 'COUNT(DISTINCT id)' in rows[0]:
+            return rows[0]['COUNT(DISTINCT id)']
         elif count:
             return next(iter(rows[0].values()))
         return rows

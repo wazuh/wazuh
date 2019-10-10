@@ -18,8 +18,7 @@ mitre_fields = {'id': 'id',
                 'phase_name': 'phase_name',
                 'platform_name': 'platform_name'}
 
-select_fields = "id, json, group_concat(DISTINCT platform_name) " \
-                "as platforms, group_concat(DISTINCT phase_name) as phases"
+select_fields = "id, json"
 
 from_fields = "attack LEFT JOIN has_phase ON attack.id = has_phase.attack_id" \
               " LEFT JOIN has_platform ON attack.id = has_platform.attack_id"
@@ -29,8 +28,6 @@ group_by_fields = "GROUP BY id"
 count_fields = "COUNT(DISTINCT id)"
 
 default_query = f"SELECT {select_fields} FROM {from_fields} {group_by_fields}"
-
-count_query = f"SELECT {count_fields} FROM {from_fields}"
 
 
 class WazuhDBQueryMitre(WazuhDBQuery):
@@ -90,10 +87,14 @@ def get_attack(attack: str = '', phase: str = '', platform: str = '',
     db_query = WazuhDBQueryMitre(offset=offset, limit=limit if limit < 10
                                  else 10, query=query)
 
+    # execute query
     result = db_query.run()
 
     # parse JSON field (it returns as string from database)
     for item in result['items']:
         item['json'] = json.loads(item['json'])
+        item['platforms'] = item['json']['x_mitre_platforms']
+        item['phases'] = [elem['phase_name'] for elem in
+                          item['json']['kill_chain_phases']]
 
     return result

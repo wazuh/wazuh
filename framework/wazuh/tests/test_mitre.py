@@ -12,8 +12,8 @@ import os
 import re
 from sqlite3 import connect
 from unittest.mock import patch
+
 import pytest
-import json
 
 from .util import InitWDBSocketMock
 
@@ -186,25 +186,25 @@ def test_get_attack_filter_platform(mock_wdb, platform):
     ('defense evasion', 'linux'),
     ('Defense Evasion', 'windows'),
     ('Privilege Escalation', 'macos'),
-    ##('privilege escalation'),
-    #('Discovery', 'windows'),
-    ##('discovery'),
-    #('Credential Access', 'linux'),
-    #('credential access', 'macOS'),
-    #('Execution', 'windows'),
-    ##('execution'),
-    #('Lateral Movement', 'linux'),
-    #('lateral movement', 'macos'),
-    #('collection', 'linux'),
-    ##('Collection'),
-    #('Exfiltration', 'windows'),
-    ##('exFilTration'),
-    #('Command and Control', 'linux'),
-    ##('command and Control'),
-    #('Impact', 'linux'),
-    ##('impacT'),
-    #('Initial Access', 'Windows'),
-    ##('initial ACCess'),
+    ('privilege escalation', 'linux'),
+    ('Discovery', 'windows'),
+    ('discovery', 'macos'),
+    ('Credential Access', 'linux'),
+    ('credential access', 'macOS'),
+    ('Execution', 'windows'),
+    ('execution', 'macos'),
+    ('Lateral Movement', 'linux'),
+    ('lateral movement', 'macos'),
+    ('collection', 'linux'),
+    ('Collection', 'windowS'),
+    ('Exfiltration', 'windows'),
+    ('exFilTration', 'linux'),
+    ('Command and Control', 'macos'),
+    ('command and Control', 'windows'),
+    ('Impact', 'linux'),
+    ('impacT', 'macos'),
+    ('Initial Access', 'Windows'),
+    ('initial ACCess', 'linux'),
 ])
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
         sql_schema_file='schema_mitre_test.sql', mitre=True))
@@ -221,5 +221,6 @@ def test_get_attack_filter_multiple(mock_wdb, phase, platform):
         assert item_keys != set()
         assert item_keys.issubset(json_keys)
         # check phase and platform
-        assert phase.lower() in item['phases'].lower()
-        assert platform.lower() in item['platforms'].lower()
+        assert phase.lower() in [phase.lower() for phase in item['phases']]
+        assert platform.lower() in [platform.lower() for platform in
+                                    item['platforms']]
