@@ -674,8 +674,14 @@
         "type": "text"
       },
       "mitre": {
-        "id": "keyword",
-        "tactics": "keyword"
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "tactics": {
+            "type": "keyword"
+          }
+        }
       },
       "offset": {
         "type": "keyword"
