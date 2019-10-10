@@ -95,7 +95,7 @@
 #define FIM_REALTIME_MONITORING             "(6225): The '%s' directory starts to be monitored in real-time mode"
 #define FIM_REALTIME_NEWPATH                "(6226): Scanning new file '%s' with options for directory '%s'."
 #define FIM_REALTIME_NEWDIRECTORY           "(6227): Directory added for real time monitoring: '%s'."
-#define FIM_REALTIME_DISCARD_EVENT          "(6228): Inotify event with same checksum for file: '%s'. Ignoring it."
+#define FIM_REALTIME_DISCARD_EVENT          "(6228): Real-time event with same checksum for file: '%s'. Ignoring it."
 
 #define FIM_WHODATA_HANDLE_UPDATE           "(6229): The handler ('%s') will be updated."
 #define FIM_WHODATA_NEWDIRECTORY            "(6230): Monitoring with Audit: '%s'."
