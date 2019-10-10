@@ -53,6 +53,7 @@ cJSON *getClientConfig(void);
 cJSON *getBufferConfig(void);
 cJSON *getLabelsConfig(void);
 cJSON *getAgentInternalOptions(void);
+cJSON *getAgentLoggingOptions(void);
 
 /* Agentd init function */
 void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group) __attribute__((noreturn));

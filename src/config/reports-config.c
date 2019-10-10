@@ -181,6 +181,67 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
     return (0);
 }
 
+int Read_Monitor(XML_NODE node, void *config, __attribute__((unused)) void *config2) {
+    unsigned int i = 0;
+
+    /* XML definitions */
+    const char *xml_check_agent_status = "check_agent_status";
+    const char *xml_delete_old_agents = "delete_old_agents";
+    const char *xml_log_level = "log_level";
+
+    monitor_config *mond_config = (monitor_config *)config;
+
+    /* Reading the XML */
+    while (node[i]) {
+        if (!node[i]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[i]->content) {
+            merror(XML_VALUENULL, node[i]->element);
+            return (OS_INVALID);
+        } else if (strcmp(node[i]->element, xml_check_agent_status) == 0) {
+            char *end;
+            mond_config->monitor_agents = strtol(node[i]->content, &end, 10);
+            if (*end != '\0') {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+            if (mond_config->monitor_agents < 0 || mond_config->monitor_agents > 1) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+        } else if (strcmp(node[i]->element, xml_delete_old_agents) == 0) {
+            char *end;
+            mond_config->delete_old_agents = strtol(node[i]->content, &end, 10);
+            if (*end != '\0') {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+            if (mond_config->delete_old_agents < 0 || mond_config->delete_old_agents > 9600) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+        } else if (strcmp(node[i]->element, xml_log_level) == 0) {
+            char *end;
+            mond_config->log_level = strtol(node[i]->content, &end, 10);
+            if (*end != '\0') {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+            if (mond_config->log_level < 0 || mond_config->log_level > 2) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+        } else {
+            merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        }
+        i++;
+    }
+
+    return (0);
+}
+
 int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attribute__((unused)) void *config2) {
 
     unsigned int i = 0;

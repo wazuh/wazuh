@@ -13,6 +13,8 @@
 #include "monitord.h"
 #include "os_net/os_net.h"
 
+int no_agents = 0;
+
 /* Prototypes */
 static void help_monitord(void) __attribute__((noreturn));
 
@@ -56,7 +58,7 @@ static void init_conf()
     mond.maxage = 31;
     mond.day_wait = mond.day_wait == -1 ? 10 : mond.day_wait;
     mond.log_level = 0;
-    mond.monitor_agents = 1;
+    mond.monitor_agents = no_agents ? 0 : 1;
     mond.delete_old_agents = 0;
 
     return;
@@ -82,7 +84,7 @@ static void read_internal()
     if ((aux = getDefine_Int("monitord", "debug", 0, 2)) != INT_OPT_NDEF)
         mond.log_level = aux;
     if ((aux = getDefine_Int("monitord", "monitor_agents", 0, 1)) != INT_OPT_NDEF)
-        mond.monitor_agents = aux;
+        mond.monitor_agents = no_agents ? 0 : aux;
     if ((aux = getDefine_Int("monitord", "delete_old_agents", 0, 9600)) != INT_OPT_NDEF)
         mond.delete_old_agents = aux;
 
@@ -92,7 +94,6 @@ static void read_internal()
 int main(int argc, char **argv)
 {
     int c, test_config = 0, run_foreground = 0;
-    int no_agents = 0;
     uid_t uid;
     gid_t gid;
     const char *dir  = DEFAULTDIR;
@@ -180,10 +181,6 @@ int main(int argc, char **argv)
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
         merror_exit(USER_ERROR, user, group);
     }
-
-    /* Get config options */
-    mond.delete_old_agents = (unsigned int)getDefine_Int("monitord", "delete_old_agents", 0, 9600);
-    mond.monitor_agents = no_agents ? 0 : (unsigned int) getDefine_Int("monitord", "monitor_agents", 0, 1);
 
     mond.agents = NULL;
     mond.smtpserver = NULL;

@@ -50,6 +50,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oslabels = "labels";                    /* Labels Config */
     const char *osauthd = "auth";                       /* Authd Config */
     const char *oslogging = "logging";                  /* Logging Config */
+    const char *osmonitor = "monitor";                  /* Monitor Config */
     const char *oscluster = "cluster";                  /* Cluster Config */
     const char *ossocket = "socket";                    /* Socket Config */
     const char *ossca = "sca";                          /* Security Configuration Assessment */
@@ -170,6 +171,15 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CROTANALYSD) && (Read_RotationAnalysisd(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
+        } else if (chld_node && strcmp(node[i]->element, osmonitor) == 0) {
+#ifndef CLIENT
+            if ((modules & CROTMONITORD) && (Read_Monitor(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+#else
+            merror(XML_INVELEM, node[i]->element);
+            goto fail;
+#endif
         } else if (chld_node && (strcmp(node[i]->element, oscluster) == 0)) {
             if ((modules & CCLUSTER) && (Read_Cluster(chld_node, d1, d2) < 0)) {
                 goto fail;

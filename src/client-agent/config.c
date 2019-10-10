@@ -148,7 +148,6 @@ cJSON *getLabelsConfig(void) {
 
 cJSON *getAgentInternalOptions(void) {
 
-    char aux[50];
     cJSON *root = cJSON_CreateObject();
     cJSON *internals = cJSON_CreateObject();
 
@@ -170,6 +169,27 @@ cJSON *getAgentInternalOptions(void) {
 #endif
 
     cJSON_AddItemToObject(internals, "agent", agent);
+
+    cJSON *remoted = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(remoted, "request_pool", request_pool);
+    cJSON_AddNumberToObject(remoted, "request_rto_sec", rto_sec);
+    cJSON_AddNumberToObject(remoted, "request_rto_msec", rto_msec);
+    cJSON_AddNumberToObject(remoted, "max_attempts", max_attempts);
+    cJSON_AddNumberToObject(remoted, "comp_average_printout", _s_comp_print);
+    cJSON_AddNumberToObject(remoted, "recv_counter_flush", _s_recv_flush);
+    cJSON_AddNumberToObject(remoted, "verify_msg_id", _s_verify_counter);
+
+    cJSON_AddItemToObject(internals, "remoted", remoted);
+
+    cJSON_AddItemToObject(root, "internal", internals);
+
+    return root;
+}
+
+cJSON *getAgentLoggingOptions(void) {
+    char aux[50];
+    cJSON *root = cJSON_CreateObject();
 
     cJSON *logging = cJSON_CreateObject();
 
@@ -197,25 +217,11 @@ cJSON *getAgentInternalOptions(void) {
         }
     }
 
-    cJSON_AddItemToObject(internals, "logging", logging);
-
-    cJSON *remoted = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(remoted, "request_pool", request_pool);
-    cJSON_AddNumberToObject(remoted, "request_rto_sec", rto_sec);
-    cJSON_AddNumberToObject(remoted, "request_rto_msec", rto_msec);
-    cJSON_AddNumberToObject(remoted, "max_attempts", max_attempts);
-    cJSON_AddNumberToObject(remoted, "comp_average_printout", _s_comp_print);
-    cJSON_AddNumberToObject(remoted, "recv_counter_flush", _s_recv_flush);
-    cJSON_AddNumberToObject(remoted, "verify_msg_id", _s_verify_counter);
-
-    cJSON_AddItemToObject(internals, "remoted", remoted);
-
-    cJSON_AddItemToObject(root, "internal", internals);
+    cJSON_AddItemToObject(root, "logging", logging);
 
     return root;
-}
 
+}
 
 void resolveHostname(char **hostname, int attempts) {
 

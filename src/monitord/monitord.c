@@ -252,13 +252,14 @@ void Monitord()
     }
 }
 
-cJSON *getMonitorInternalOptions(void) {
+cJSON *getMonitorOptions(void) {
 
     cJSON *root = cJSON_CreateObject();
     cJSON *monconf = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(monconf, "monitor_agents", mond.monitor_agents);
+    cJSON_AddNumberToObject(monconf, "check_agent_status", mond.monitor_agents);
     cJSON_AddNumberToObject(monconf, "delete_old_agents", mond.delete_old_agents);
+    cJSON_AddNumberToObject(monconf, "log_level", mond.log_level);
 
     cJSON_AddItemToObject(root, "monitord", monconf);
 

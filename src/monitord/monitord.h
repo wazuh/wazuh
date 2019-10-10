@@ -33,7 +33,7 @@ int delete_old_agent(const char *agent_id);
 time_t calc_next_rotation(time_t tm, struct tm *rot, const char units, int interval);
 
 /* Parse read config into JSON format */
-cJSON *getMonitorInternalOptions(void);
+cJSON *getMonitorOptions(void);
 cJSON *getReportsOptions(void);
 cJSON *getMonitorLogging(void);
 size_t moncom_dispatch(char * command, char ** output);
