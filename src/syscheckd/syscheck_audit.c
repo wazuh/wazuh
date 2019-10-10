@@ -228,6 +228,8 @@ int add_audit_rules_syscheck(void) {
                         w_mutex_lock(&audit_rules_mutex);
                         if(!W_Vector_insert_unique(audit_added_rules, syscheck.dir[i])) {
                             mdebug1(FIM_AUDIT_NEWRULE, syscheck.dir[i]);
+                        } else {
+                            mdebug1(FIM_AUDIT_RELOADED, syscheck.dir[i]);
                         }
                         w_mutex_unlock(&audit_rules_mutex);
                         rules_added++;
