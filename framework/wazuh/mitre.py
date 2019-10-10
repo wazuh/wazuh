@@ -50,7 +50,7 @@ class WazuhDBQueryMitre(WazuhDBQuery):
                               query=query, count=count, get_data=get_data,
                               backend=WazuhDBBackend(mitre=True))
 
-    def _default_query(self):
+    def _default_query(self) -> str:
         return self.default_query
 
     def _get_total_items(self):
