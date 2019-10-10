@@ -235,6 +235,6 @@ int Start_win32_Syscheck()
 
     start_daemon();
 
-    exit(0);
+    return 0;
 }
 #endif /* WIN32 */

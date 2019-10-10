@@ -252,7 +252,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
                             rtlocald->dir,
                             finalfile);
                 } else {
-                    snprintf(final_path, MAX_LINE, "%s/%s",
+                    snprintf(final_path, MAX_LINE, "%s\\%s",
                             rtlocald->dir,
                             finalfile);
                 }
@@ -262,7 +262,6 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
             /* Check the change */
             str_lowercase(final_path);
-            minfo("callback(%d)'%s'", FIM_REALTIME, final_path);
             fim_process_event(final_path, FIM_REALTIME, NULL);
         } while (pinfo->NextEntryOffset != 0);
     }

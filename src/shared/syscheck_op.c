@@ -765,7 +765,6 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
         mdebug1("The parameters of ACE number %d from '%s' could not be extracted. %d bytes remaining.", i, file_path, perm_size);
     }
 
-    mdebug2("The ACL extracted from '%s' is [%s].", file_path, permissions);
 end:
     free(s_desc);
     return retval;

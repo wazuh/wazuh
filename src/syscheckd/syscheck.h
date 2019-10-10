@@ -59,7 +59,7 @@ typedef enum fim_scan_event {
 void run_check(void);
 
 /* Run run_check periodically */
-void start_daemon(void) __attribute__((noreturn));
+void start_daemon(void);
 
 /* Read the XML config */
 int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
@@ -113,6 +113,9 @@ int fim_update (char * file, fim_entry_data * data);
 
 //
 int fim_delete (char * file_name);
+
+//
+void fim_print_info();
 
 //
 void check_deleted_files();
@@ -247,6 +250,8 @@ int w_update_sacl(const char *obj_path);
 #ifdef WIN32
 #define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })
 #endif
+
+void * fim_run_integrity(void * args);
 
 void fim_sync_checksum();
 void fim_sync_checksum_split(const char * start, const char * top, long id);

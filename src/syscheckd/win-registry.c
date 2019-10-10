@@ -76,7 +76,7 @@ char *os_winreg_sethkey(char *reg_entry)
 }
 
 /* Query the key and get all its values */
-void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)//int arch, const char * tag)
+void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
 {
     int rc;
     DWORD i, j;
@@ -148,6 +148,31 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)//i
                 /* Open subkey */
                 os_winreg_open_key(new_key, new_key_full, pos);
             }
+        }
+    }
+
+    /* Registry ignore list */
+    if (full_key_name && syscheck.registry_ignore) {
+        int ign_it = 0;
+        while (syscheck.registry_ignore[ign_it].entry != NULL) {
+            if (syscheck.registry_ignore[ign_it].arch == syscheck.registry[pos].arch && strcasecmp(syscheck.registry_ignore[ign_it].entry, full_key_name) == 0) {
+                mdebug2(FIM_IGNORE_ENTRY, "registry", full_key_name, syscheck.registry_ignore[ign_it].entry);
+                return;
+            }
+            ign_it++;
+        }
+    }
+
+    if (full_key_name && syscheck.registry_ignore_regex) {
+        int ign_it = 0;
+        while (syscheck.registry_ignore_regex[ign_it].regex != NULL) {
+            if (syscheck.registry_ignore_regex[ign_it].arch == syscheck.registry[pos].arch &&
+                OSMatch_Execute(full_key_name, strlen(full_key_name),
+                                syscheck.registry_ignore_regex[ign_it].regex)) {
+                mdebug2(FIM_IGNORE_SREGEX, "registry", full_key_name, syscheck.registry_ignore_regex[ign_it].regex->raw);
+                return;
+            }
+            ign_it++;
         }
     }
 
@@ -236,11 +261,8 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)//i
 
         OS_SHA1_Str(data->hash_sha256, sizeof(data->hash_sha256), data->checksum);
 
-        minfo("Event: '%s'(%ld):'%s'\ndata:'%s'", path, data->last_event, data->hash_sha256, buffer);
-
         if (fim_registry_event(path, data, pos) == 0) {
             free_entry_data(data);
-            minfo("Event no reported");
         }
     }
 }
@@ -248,32 +270,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)//i
 /* Open the registry key */
 void os_winreg_open_key(char *subkey, char *fullkey_name, int pos)
 {
-    int i = 0;
     HKEY oshkey;
-
-    /* Registry ignore list */
-    if (fullkey_name && syscheck.registry_ignore) {
-        while (syscheck.registry_ignore[i].entry != NULL) {
-            if (syscheck.registry_ignore[i].arch == syscheck.registry[pos].arch && strcasecmp(syscheck.registry_ignore[i].entry, fullkey_name) == 0) {
-                mdebug2(FIM_IGNORE_ENTRY, "registry", fullkey_name, syscheck.registry_ignore[i].entry);
-                return;
-            }
-            i++;
-        }
-    }
-
-    if (fullkey_name && syscheck.registry_ignore_regex) {
-        i = 0;
-        while (syscheck.registry_ignore_regex[i].regex != NULL) {
-            if (syscheck.registry_ignore_regex[i].arch == syscheck.registry[pos].arch &&
-                OSMatch_Execute(fullkey_name, strlen(fullkey_name),
-                                syscheck.registry_ignore_regex[i].regex)) {
-                mdebug2(FIM_IGNORE_SREGEX, "registry", fullkey_name, syscheck.registry_ignore_regex[i].regex->raw);
-                return;
-            }
-            i++;
-        }
-    }
 
     if (RegOpenKeyEx(sub_tree, subkey, 0, KEY_READ | (syscheck.registry[pos].arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY), &oshkey) != ERROR_SUCCESS) {
         mwarn(FIM_REG_OPEN, subkey, syscheck.registry[pos].arch == ARCH_32BIT ? "[x32]" : "[x64]");
@@ -319,6 +316,8 @@ void os_winreg_check()
         os_winreg_open_key(rk, syscheck.registry[i].entry, i);
         i++;
     }
+
+    mdebug1(FIM_WINREGISTRY_ENDED);
 
     return;
 }
