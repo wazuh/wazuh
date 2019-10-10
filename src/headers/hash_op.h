@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -10,8 +10,8 @@
 
 /* Common API for dealing with hash operations */
 
-#ifndef _OS_HASHOP
-#define _OS_HASHOP
+#ifndef OS_HASHOP
+#define OS_HASHOP
 #include <pthread.h>
 
 /* Node structure */
@@ -28,6 +28,7 @@ typedef struct _OSHash {
     unsigned int initial_seed;
     unsigned int constant;
     pthread_rwlock_t mutex;
+    unsigned int elements;
 
     void (*free_data_function)(void *data);
     OSHashNode **table;
@@ -69,6 +70,8 @@ void *OSHash_Numeric_Get_ex(const OSHash *self, int key) __attribute__((nonnull(
 void *OSHash_Get_ex(const OSHash *self, const char *key) __attribute__((nonnull));
 void *OSHash_Get_ins(const OSHash *self, const char *key) __attribute__((nonnull));
 
+unsigned int OSHash_Get_Elem_ex(OSHash *self) __attribute__((nonnull));
+
 int OSHash_setSize(OSHash *self, unsigned int new_size) __attribute__((nonnull));
 int OSHash_setSize_ex(OSHash *self, unsigned int new_size) __attribute__((nonnull));
 
@@ -86,4 +89,4 @@ void *OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 void OSHash_It(const OSHash *hash, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
 void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
 
-#endif
+#endif /* OS_HASHOP */

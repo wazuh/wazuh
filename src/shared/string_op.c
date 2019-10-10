@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -102,7 +102,7 @@ int os_substr(char *dest, const char *src, size_t position, ssize_t length)
 char *os_shell_escape(const char *src)
 {
     /* Maximum Length of the String is 2 times the current length */
-    char shell_escapes[] = { '\\', '"', '\'', '\t', ';', '`', '>', '<', '|', '#',
+    char shell_escapes[22] = { '\\', '"', '\'', '\t', ';', '`', '>', '<', '|', '#',
                              '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')'
                            };
 
@@ -159,9 +159,11 @@ char * w_strtrim(char * string) {
     char *c;
     char *d;
 
-    string = &string[strspn(string, " ")];
-    for (c = string + strcspn(string, " "); *(d = c + strspn(c, " ")); c = d + strcspn(d, " "));
-    *c = '\0';
+    if(string != NULL) {
+        string = &string[strspn(string, " ")];
+        for (c = string + strcspn(string, " "); *(d = c + strspn(c, " ")); c = d + strcspn(d, " "));
+        *c = '\0';
+    }
     return string;
 }
 
@@ -195,7 +197,8 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
            (string_end != NULL) &&
            (']' == *(string_end - 1)))
         {
-            cJSON_AddItemToObject(root, key, cJSON_Parse(value));
+            const char *jsonErrPtr;
+            cJSON_AddItemToObject(root, key, cJSON_ParseWithOpts(value, &jsonErrPtr, 0));
         } else {
             cJSON_AddStringToObject(root, key, value);
         }
@@ -205,7 +208,7 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 void csv_list_to_json_str_array(char * const csv_list, char **buffer)
 {
     cJSON *array = cJSON_CreateArray();
-    char *remaining_str;
+    char *remaining_str = NULL;
     char *element = strtok_r(csv_list, ",", &remaining_str);
 
     while (element) {
@@ -597,4 +600,46 @@ char *w_strtok_r_str_delim(const char *delim, char **remaining_str)
     }
 
     return token;
+}
+
+const char *find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
+{
+    if (!string_array || !str){
+        return NULL;
+    }
+
+    size_t i;
+    for (i = 0; i < array_len; ++i) {
+        if (strncmp(str, string_array[i], str_len) == 0) {
+            return string_array[i];
+        }
+    }
+
+    return NULL;
+}
+
+char* decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const size_t buffer_size)
+{
+    if (!encoded_buffer) {
+        return NULL;
+    }
+
+    /* each ASCII character has 2 digits in its HEX form, hence its length must be even */
+    if (buffer_size % 2 != 0) {
+        return NULL;
+    }
+
+    const size_t decoded_len = buffer_size / 2;
+    char *decoded_buffer;
+    os_calloc(decoded_len, sizeof(char), decoded_buffer);
+
+    size_t i;
+    for(i = 0; i < decoded_len; ++i) {
+        if (1 != sscanf(encoded_buffer + 2 * i, "%2hhx", decoded_buffer + i)) {
+            os_free(decoded_buffer);
+            return NULL;
+        }
+    }
+
+    return decoded_buffer;
 }

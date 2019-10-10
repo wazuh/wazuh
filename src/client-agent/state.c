@@ -4,7 +4,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -14,11 +14,12 @@
 #include <pthread.h>
 
 agent_state_t agent_state = { .status = GA_STATUS_PENDING };
-pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t state_mutex;
 
 static int write_state();
 
 void * state_main(__attribute__((unused)) void * args) {
+    w_mutex_init(&state_mutex, NULL);
 
     if (!agt->state_interval) {
         minfo("State file is disabled.");

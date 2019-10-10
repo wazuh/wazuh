@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * December, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -466,7 +466,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
             os_free(ciscat_script);
             pthread_exit(NULL);
     }
-    
+
     os_free(output);
     os_free(command);
     os_free(ciscat_script);
@@ -474,18 +474,31 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
     // Get assessment results
     if (!ciscat->flags.error) {
         scan_info = wm_ciscat_txt_parser();
-        if (eval->profile) {
-            os_strdup(eval->profile, scan_info->profile);
-        } else {
-            scan_info->profile = wm_ciscat_get_profile();
-        }
         if (!ciscat->flags.error) {
+            if (eval->profile) {
+                os_strdup(eval->profile, scan_info->profile);
+            } else {
+                scan_info->profile = wm_ciscat_get_profile();
+            }
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
                 wm_ciscat_xml_parser();
                 wm_ciscat_send_scan(scan_info, id);
             }
         }
+
+        if (ciscat->flags.error) {
+            mterror(WM_CISCAT_LOGTAG, "Failed reading scan results for policy '%s'", eval->path);
+        }
+    }
+
+    if (scan_info) {
+        os_free(scan_info->profile);
+        os_free(scan_info->benchmark);
+        os_free(scan_info->hostname);
+        os_free(scan_info->timestamp);
+        os_free(scan_info->score);
+        os_free(scan_info);
     }
 
     snprintf(msg, OS_MAXSTR, "Ending CIS-CAT scan. File: %s. ", eval->path);
@@ -636,18 +649,31 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
     // Get assessment results
     if (!ciscat->flags.error) {
         scan_info = wm_ciscat_txt_parser();
-        if (eval->profile) {
-            os_strdup(eval->profile, scan_info->profile);
-        } else {
-            scan_info->profile = wm_ciscat_get_profile();
-        }
         if (!ciscat->flags.error) {
+            if (eval->profile) {
+                os_strdup(eval->profile, scan_info->profile);
+            } else {
+                scan_info->profile = wm_ciscat_get_profile();
+            }
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
                 wm_ciscat_xml_parser();
                 wm_ciscat_send_scan(scan_info, id);
             }
         }
+
+        if (ciscat->flags.error) {
+            mterror(WM_CISCAT_LOGTAG, "Failed reading scan results for policy '%s'", eval->path);
+        }
+    }
+
+    if (scan_info) {
+        os_free(scan_info->profile);
+        os_free(scan_info->benchmark);
+        os_free(scan_info->hostname);
+        os_free(scan_info->timestamp);
+        os_free(scan_info->score);
+        os_free(scan_info);
     }
 
     snprintf(msg, OS_MAXSTR, "Ending CIS-CAT scan. File: %s. ", eval->path);
@@ -714,11 +740,6 @@ wm_scan_data* wm_ciscat_txt_parser(){
     wm_scan_data *info = NULL;
     wm_rule_data *rule = NULL;
 
-    os_calloc(1, sizeof(wm_scan_data), info);
-    os_calloc(1, sizeof(wm_rule_data), rule);
-
-    head = rule;
-
     // Define report location
 
 #ifdef WIN32
@@ -728,6 +749,11 @@ wm_scan_data* wm_ciscat_txt_parser(){
 #endif
 
     if ((fp = fopen(file, "r"))){
+
+        os_calloc(1, sizeof(wm_scan_data), info);
+        os_calloc(1, sizeof(wm_rule_data), rule);
+
+        head = rule;
 
         while (fgets(readbuff, OS_MAXSTR, fp) != NULL){
 
@@ -893,7 +919,7 @@ wm_scan_data* wm_ciscat_txt_parser(){
 
         fclose(fp);
     } else {
-        mterror(WM_CISCAT_LOGTAG, "Unable to read file %s: %s", file, strerror(errno));
+        mtdebug1(WM_CISCAT_LOGTAG, "Report result file '%s' missing: %s", file, strerror(errno));
         ciscat->flags.error = 1;
     }
 
@@ -1418,12 +1444,6 @@ void wm_ciscat_send_scan(wm_scan_data *info, int id){
     cJSON_Delete(object);
 
     free(msg);
-    free(info->benchmark);
-    free(info->profile);
-    free(info->hostname);
-    free(info->timestamp);
-    free(info->score);
-    free(info);
 
     // Send scan results
 
@@ -1528,7 +1548,7 @@ void wm_ciscat_info() {
 }
 
 
-// Get readed data
+// Get read data
 
 cJSON *wm_ciscat_dump(const wm_ciscat * ciscat) {
 

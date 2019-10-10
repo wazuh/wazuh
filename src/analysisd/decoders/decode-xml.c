@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -515,7 +515,7 @@ int ReadDecodeXML(const char *file)
                     } else if (!strcmp(word, "data")) {
                         pi->order[order_int] = Data_FP;
                     } else if (!strcmp(word, "extra_data")) {
-                        pi->order[order_int] = Data_FP;
+                        pi->order[order_int] = Extra_Data_FP;
                     } else if (!strcmp(word, "status")) {
                         pi->order[order_int] = Status_FP;
                     } else if (!strcmp(word, "system_name")) {

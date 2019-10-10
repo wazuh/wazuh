@@ -74,3 +74,7 @@ Dec  1 16:22:16 ip-10-0-0-220 gpasswd[3246]: user bart added by root to group su
     <regex offset="after_parent">user (\S+) added by (\S+) to group (\S+)</regex>
     <order>dstuser,srcuser,group</order>
 </decoder>
+
+<decoder name="systemd">
+    <program_name>systemd</program_name>
+</decoder>

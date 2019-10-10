@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -134,7 +134,7 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
     if (publisher == NULL) {
         LSTATUS err = GetLastError();
         char error_msg[OS_SIZE_1024];
-        error_msg[OS_SIZE_1024] = '\0';
+        error_msg[OS_SIZE_1024 - 1] = '\0';
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
                 | FORMAT_MESSAGE_MAX_WIDTH_MASK,
                 NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
@@ -262,6 +262,116 @@ EVT_HANDLE read_bookmark(os_channel *channel)
     return (bookmark);
 }
 
+/* Update the log position of a bookmark */
+int update_bookmark(EVT_HANDLE evt, os_channel *channel)
+{
+    DWORD size = 0;
+    DWORD count = 0;
+    wchar_t *buffer = NULL;
+    int result = 0;
+    int status = 0;
+    EVT_HANDLE bookmark = NULL;
+    FILE *fp = NULL;
+
+    if ((bookmark = EvtCreateBookmark(NULL)) == NULL) {
+        mferror(
+            "Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
+            channel->bookmark_filename,
+            channel->evt_log,
+            GetLastError());
+        goto cleanup;
+    }
+
+    if (!EvtUpdateBookmark(bookmark, evt)) {
+        mferror(
+            "Could not EvtUpdateBookmark() bookmark (%s) for (%s) which returned (%lu)",
+            channel->bookmark_filename,
+            channel->evt_log,
+            GetLastError());
+        goto cleanup;
+    }
+
+    /* Make initial call to determine buffer size */
+    result = EvtRender(NULL,
+                       bookmark,
+                       EvtRenderBookmark,
+                       0,
+                       NULL,
+                       &size,
+                       &count);
+    if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+        mferror(
+            "Could not EvtRender() to get buffer size to update bookmark (%s) for (%s) which returned (%lu)",
+            channel->bookmark_filename,
+            channel->evt_log,
+            GetLastError());
+        goto cleanup;
+    }
+
+    if ((buffer = calloc(size, sizeof(char))) == NULL) {
+        mferror(
+            "Could not calloc() memory to save bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+            channel->bookmark_filename,
+            channel->evt_log,
+            errno,
+            strerror(errno));
+        goto cleanup;
+    }
+
+    if (!EvtRender(NULL,
+                   bookmark,
+                   EvtRenderBookmark,
+                   size,
+                   buffer,
+                   &size,
+                   &count)) {
+        mferror(
+            "Could not EvtRender() bookmark (%s) for (%s) which returned (%lu)",
+            channel->bookmark_filename, channel->evt_log,
+            GetLastError());
+        goto cleanup;
+    }
+
+    if ((fp = fopen(channel->bookmark_filename, "w")) == NULL) {
+        mwarn(
+            "Could not fopen() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+            channel->bookmark_filename,
+            channel->evt_log,
+            errno,
+            strerror(errno));
+        goto cleanup;
+    }
+
+    if ((fwrite(buffer, 1, size, fp)) < size) {
+        mferror(
+            "Could not fwrite() to bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+            channel->bookmark_filename,
+            channel->evt_log,
+            errno,
+            strerror(errno));
+        goto cleanup;
+    }
+
+    fclose(fp);
+
+    /* Success */
+    status = 1;
+
+cleanup:
+    free(buffer);
+
+    if (bookmark != NULL) {
+        EvtClose(bookmark);
+    }
+
+    if (fp) {
+        fclose(fp);
+    }
+
+    return (status);
+}
+
+
 void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 {
     DWORD buffer_length = 0;
@@ -273,8 +383,6 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     char *provider_name = NULL;
     char *msg_from_prov = NULL;
     char *xml_event = NULL;
-    char *filtered_msg = NULL;
-    char *avoid_dup = NULL;
     char *beg_prov = NULL;
     char *end_prov = NULL;
     char *find_prov = NULL;
@@ -282,7 +390,6 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 
     cJSON *event_json = cJSON_CreateObject();
 
-    os_malloc(OS_MAXSTR, filtered_msg);
     os_malloc(OS_MAXSTR, provider_name);
 
     result = EvtRender(NULL,
@@ -323,7 +430,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
     xml_event = convert_windows_string((LPCWSTR) properties_values);
-    
+
     if (!xml_event) {
         goto cleanup;
     }
@@ -352,34 +459,17 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         }
     }
 
-    if (provider_name) {
+     if (provider_name) {
         wprovider_name = convert_unix_string(provider_name);
 
-        if (!wprovider_name) {
-            mferror("Could not convert provider name to Windows format (%s)", provider_name);
-        } else {
-            if ((msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
-                mferror(
-                    "Could not get message for (%s), provider (%s)",
-                    channel->evt_log, provider_name);
-            }
-            else {
-                avoid_dup = strchr(msg_from_prov, '\r');
-
-                if (avoid_dup){
-                    num = avoid_dup - msg_from_prov;
-                    memcpy(filtered_msg, msg_from_prov, num);
-                    filtered_msg[num] = '\0';
-                    cJSON_AddStringToObject(event_json, "Message", filtered_msg);
-                } else {
-                    win_format_event_string(msg_from_prov);
-                    cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
-                }
-                avoid_dup = '\0';
-            }
+        if (wprovider_name && (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
+            mferror(
+                "Could not get message for (%s)",
+                channel->evt_log);
         }
-    } else {
-        cJSON_AddStringToObject(event_json, "Message", "No message");
+        else {
+            cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
+        }
     }
 
     win_format_event_string(xml_event);
@@ -391,11 +481,14 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         merror(QUEUE_SEND);
     }
 
+    if (channel->bookmark_enabled) {
+        update_bookmark(evt, channel);
+    }
+
 cleanup:
     os_free(msg_from_prov);
     os_free(xml_event);
     os_free(msg_sent);
-    os_free(filtered_msg);
     os_free(properties_values);
     os_free(provider_name);
     os_free(wprovider_name);

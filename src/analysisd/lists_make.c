@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 3) as published by the FSF - Free Software
  * Foundation
@@ -19,18 +19,18 @@
 #include "lists_make.h"
 
 
-void Lists_OP_MakeAll(int force)
+void Lists_OP_MakeAll(int force, int show_message)
 {
     ListNode *lnode = OS_GetFirstList();
     while (lnode) {
         Lists_OP_MakeCDB(lnode->txt_filename,
                          lnode->cdb_filename,
-                         force);
+                         force, show_message);
         lnode = lnode->next;
     }
 }
 
-void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int force)
+void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, const int force, const int show_message)
 {
     struct cdb_make cdbm;
     FILE *tmp_fd;
@@ -47,7 +47,9 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int fo
 
     if (File_DateofChange(txt_filename) > File_DateofChange(cdb_filename) ||
             force) {
-        printf(" * File %s needs to be updated\n", cdb_filename);
+    	if (show_message){
+            printf(" * CDB list %s has been updated successfully\n", cdb_filename);
+        }
         if (tmp_fd = fopen(tmp_filename, "w+"), !tmp_fd) {
             merror(FOPEN_ERROR, tmp_filename, errno, strerror(errno));
             return;
@@ -149,7 +151,11 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int fo
             merror(RENAME_ERROR, tmp_filename, cdb_filename, errno, strerror(errno));
             return;
         }
-    } else {
-        printf(" * File %s does not need to be compiled\n", cdb_filename);
+        if( chmod(cdb_filename, 0660) == -1 ) {
+            merror("Could not chmod cdb list '%s' to 660 due to: [%d - %s]", cdb_filename, errno, strerror(errno));
+            return;
+        }
+    } else if(show_message){
+        printf(" * CDB list %s is up-to-date\n", cdb_filename);
     }
 }

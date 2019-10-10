@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -100,6 +100,7 @@ int OS_ReadXMLRules(const char *rulefile,
     const char *xml_notsame_agent = "not_same_agent";
     const char *xml_notsame_id = "not_same_id";
     const char *xml_notsame_field = "not_same_field";
+    const char *xml_global_frequency = "global_frequency";
 
     const char *xml_options = "options";
 
@@ -554,6 +555,9 @@ int OS_ReadXMLRules(const char *rulefile,
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_notsame_agent) == 0) {
                     config_ruleinfo->context_opts &= NOT_SAME_AGENT;
+                } else if (strcasecmp(rule_opt[k]->element,
+                                      xml_global_frequency) == 0) {
+                    config_ruleinfo->context_opts &= GLOBAL_FREQUENCY;
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_same_field) == 0) {
 
@@ -1039,7 +1043,7 @@ static RuleInfo *_OS_AllocateRule()
 
     ruleinfo_pt->event_search = NULL;
 
-    ruleinfo_pt->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+    w_mutex_init(&ruleinfo_pt->mutex, NULL);
 
     return (ruleinfo_pt);
 }

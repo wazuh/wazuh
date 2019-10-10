@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -133,9 +133,9 @@ void run_notify()
 #if defined (__linux__) || defined (__MACH__)
     char *agent_ip;
     int sock;
-    char label_ip[50];
+    char label_ip[60];
     int i;
-    os_calloc(16,sizeof(char),agent_ip);
+    os_calloc(IPSIZE + 1,sizeof(char),agent_ip);
 
     for (i = SOCK_ATTEMPTS; i > 0; --i) {
         if (sock = control_check_connection(), sock >= 0) {
@@ -143,11 +143,12 @@ void run_notify()
                 merror("Error sending msg to control socket (%d) %s", errno, strerror(errno));
             }
             else{
-                if(OS_RecvUnix(sock, IPSIZE - 1, agent_ip) == 0){
+                if(OS_RecvUnix(sock, IPSIZE, agent_ip) == 0){
                     merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
+                    *agent_ip = '\0';
                 }
                 else{
-                    snprintf(label_ip,50,"#\"_agent_ip\":%s", agent_ip);
+                    snprintf(label_ip,sizeof label_ip,"#\"_agent_ip\":%s", agent_ip);
                 }
             }
 
@@ -164,7 +165,7 @@ void run_notify()
     }
 
     /* Create message */
-    if(strcmp(agent_ip,"Err")){
+    if(*agent_ip && strcmp(agent_ip,"Err")){
         if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n%s",

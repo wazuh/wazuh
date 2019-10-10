@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 27, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -236,6 +236,7 @@ int wm_state_io(const char * tag, int op, void *state, size_t size) {
     if (!(file = fopen(path, op == WM_IO_WRITE ? "wb" : "rb"))) {
         return -1;
     }
+    w_file_cloexec(file);
 
     nmemb = (op == WM_IO_WRITE) ? fwrite(state, size, 1, file) : fread(state, size, 1, file);
     fclose(file);
@@ -283,7 +284,7 @@ void wm_module_free(wmodule * config){
 }
 
 
-// Get readed data
+// Get read data
 cJSON *getModulesConfig(void) {
 
     wmodule *cur_module;
@@ -292,8 +293,13 @@ cJSON *getModulesConfig(void) {
     cJSON *wm_mod = cJSON_CreateArray();
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        if (cur_module->context->dump(cur_module->data))
-            cJSON_AddItemToArray(wm_mod,cur_module->context->dump(cur_module->data));
+        if (cur_module->context->dump) {
+            cJSON * item = cur_module->context->dump(cur_module->data);
+
+            if (item) {
+                cJSON_AddItemToArray(wm_mod, item);
+            }
+        }
     }
 
     cJSON_AddItemToObject(root,"wmodules",wm_mod);
@@ -624,3 +630,13 @@ void wm_delay(unsigned int ms) {
     select(0, NULL, NULL, NULL, &timeout);
 #endif
 }
+
+#ifdef __MACH__
+void freegate(gateway *gate){
+    if(!gate){
+        return;
+    }
+    os_free(gate->addr);
+    os_free(gate);
+}
+#endif

@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -36,7 +36,7 @@ int connect_server(int initial_id)
             minfo("Closing connection to server (%s:%d/%s).",
                     agt->server[rc].rip,
                     agt->server[rc].port,
-                    agt->server[rc].protocol == UDP_PROTO ? "udp" : "tcp");
+                    agt->server[rc].protocol == IPPROTO_UDP ? "udp" : "tcp");
         }
     }
 
@@ -74,9 +74,9 @@ int connect_server(int initial_id)
         minfo("Trying to connect to server (%s:%d/%s).",
                 agt->server[rc].rip,
                 agt->server[rc].port,
-                agt->server[rc].protocol == UDP_PROTO ? "udp" : "tcp");
+                agt->server[rc].protocol == IPPROTO_UDP ? "udp" : "tcp");
 
-        if (agt->server[rc].protocol == UDP_PROTO) {
+        if (agt->server[rc].protocol == IPPROTO_UDP) {
             agt->sock = OS_ConnectUDP(agt->server[rc].port, tmp_str, strchr(tmp_str, ':') != NULL);
         } else {
             if (agt->sock >= 0) {
@@ -108,8 +108,8 @@ int connect_server(int initial_id)
                 rc = 0;
             }
         } else {
-            if (agt->server[rc].protocol == TCP_PROTO) {
-                if (OS_SetRecvTimeout(agt->sock, agt->recv_timeout, 0) < 0){
+            if (agt->server[rc].protocol == IPPROTO_TCP) {
+                if (OS_SetRecvTimeout(agt->sock, agt->recv_timeout, 0) < 0) {
                     switch (errno) {
                     case ENOPROTOOPT:
                         mdebug1("Cannot set network timeout: operation not supported by this OS.");
@@ -122,7 +122,7 @@ int connect_server(int initial_id)
             }
 
 #ifdef WIN32
-            if (agt->server[rc].protocol == UDP_PROTO) {
+            if (agt->server[rc].protocol == IPPROTO_UDP) {
                 int bmode = 1;
 
                 /* Set socket to non-blocking */
@@ -168,7 +168,7 @@ void start_agent(int is_startup)
 
         /* Read until our reply comes back */
         while (attempts <= 5) {
-            if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
+            if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
 
                 switch (wnet_select(agt->sock, agt->recv_timeout)) {
                 case -1:
@@ -208,7 +208,7 @@ void start_agent(int is_startup)
 
                 /* Send message again (after three attempts) */
                 if (attempts >= 3 || recv_b == OS_SOCKTERR) {
-                    if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
+                    if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
                         if (!connect_server(agt->rip_id)) {
                             continue;
                         }
@@ -217,7 +217,7 @@ void start_agent(int is_startup)
                     }
                 }
 
-                if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
+                if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
                     send_msg(msg, -1);
                 }
 
@@ -237,7 +237,7 @@ void start_agent(int is_startup)
                     available_server = time(0);
 
                     minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
-                            agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == UDP_PROTO ? "udp" : "tcp");
+                            agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
 
                     if (is_startup) {
                         /* Send log message about start up */

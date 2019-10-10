@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -189,13 +189,13 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         } else if (strcasecmp(node[i]->element, xml_remote_proto) == 0) {
             if (strcasecmp(node[i]->content, "tcp") == 0) {
 #if defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
-                logr->proto[pl] = TCP_PROTO;
+                logr->proto[pl] = IPPROTO_TCP;
 #else
                 merror(TCP_NOT_SUPPORT);
                 return (OS_INVALID);
 #endif
             } else if (strcasecmp(node[i]->content, "udp") == 0) {
-                logr->proto[pl] = UDP_PROTO;
+                logr->proto[pl] = IPPROTO_UDP;
             } else {
                 merror(XML_VALUEERR, node[i]->element,
                        node[i]->content);
@@ -455,7 +455,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
 
     /* Set default protocol */
     if (logr->proto[pl] == 0) {
-        logr->proto[pl] = UDP_PROTO;
+        logr->proto[pl] = IPPROTO_UDP;
     }
 
     /* Queue_size is only for secure connections */

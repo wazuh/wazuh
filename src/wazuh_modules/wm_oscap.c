@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 25, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -177,7 +177,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         wm_strcat(&command, "--profiles", ' ');
         wm_strcat(&command, arg_profiles, ' ');
     }
-    
+
     os_free(arg_profiles);
 
     if (eval->xccdf_id) {
@@ -240,7 +240,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         os_free(command);
         pthread_exit(NULL);
     }
-    
+
     os_free(command);
 
     char *line;
@@ -318,7 +318,7 @@ void* wm_oscap_main(__attribute__((unused)) wm_oscap *oscap) {
 #endif
 
 
-// Get readed data
+// Get read data
 
 cJSON *wm_oscap_dump(const wm_oscap *oscap) {
 

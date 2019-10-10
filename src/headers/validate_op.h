@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef __VALIDATE_H
-#define __VALIDATE_H
+#ifndef VALIDATE_H
+#define VALIDATE_H
 
 #define INT_OPT_NDEF -99999
 
@@ -104,4 +104,4 @@ int w_validate_interval(int interval, int force);
 /* Check if the IP is a single host, not a network with a netmask */
 #define isSingleHost(x) (x->netmask == 0xFFFFFFFF)
 
-#endif
+#endif /* VALIDATE_H */

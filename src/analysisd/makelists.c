@@ -2,7 +2,7 @@
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -173,7 +173,8 @@ int main(int argc, char **argv)
         Config.lists = NULL;
     }
 
-    Lists_OP_MakeAll(force);
-
+    printf(" Since Wazuh v3.11.0, this binary is deprecated\n");
+    printf(" CDB lists are now compiled at manager start-up time as well as each time ossec-logtest is ran\n");
+    Lists_OP_MakeAll(force, 1);
     exit(0);
 }

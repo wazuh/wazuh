@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _HCONFIG__H
-#define _HCONFIG__H
+#ifndef HCONFIG_H
+#define HCONFIG_H
 
 #define CGLOBAL       00000000001
 #define CRULES        00000000002
@@ -39,9 +39,6 @@
 #define CWDATABASE    00200000000
 #define CWDOWNLOAD    00400000000
 #define CSYSLOG_CONF  01000000000
-
-#define UDP_PROTO   6
-#define TCP_PROTO   17
 
 #define MAX_NEEDED_TAGS 4
 

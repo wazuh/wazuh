@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef __SEC_H
-#define __SEC_H
+#ifndef SEC_H
+#define SEC_H
 
 #include <time.h>
 #include <pthread.h>
@@ -152,7 +152,7 @@ int OS_AddSocket(keystore * keys, unsigned int i, int sock);
 // Delete socket number from keystore
 int OS_DeleteSocket(keystore * keys, int sock);
 
-/* Set the agent crypto method readed from the ossec.conf file */
+/* Set the agent crypto method read from the ossec.conf file */
 void os_set_agent_crypto_method(keystore * keys,const int method);
 
 /** Remote IDs directories and internal definitions */
@@ -169,4 +169,4 @@ extern unsigned int _s_comp_print;
 extern unsigned int _s_recv_flush;
 extern int _s_verify_counter;
 
-#endif /* __SEC_H */
+#endif /* SEC_H */

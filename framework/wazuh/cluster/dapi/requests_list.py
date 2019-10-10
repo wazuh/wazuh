@@ -1,6 +1,6 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 from wazuh import Wazuh
 from wazuh import common
 from wazuh.agent import Agent
@@ -99,6 +99,11 @@ functions = {
     'PUT/agents/restart': {
         'function': Agent.restart_agents,
         'type': 'distributed_master',
+        'is_async': False
+    },
+    'PUT/agents/groups/:group_id/restart': {
+        'function': Agent.restart_agents_by_group,
+        'type': 'local_master',
         'is_async': False
     },
     'PUT/agents/:agent_name': {
@@ -228,7 +233,7 @@ functions = {
 
     # Managers
     '/manager/info': {
-        'function': Wazuh().to_dict,
+        'function': manager.get_info,
         'type': 'local_any',
         'is_async': False
     },
@@ -341,7 +346,7 @@ functions = {
         'is_async': True
     },
     '/cluster/:node_id/info': {
-        'function': Wazuh().to_dict,
+        'function': manager.get_info,
         'type': 'distributed_master',
         'is_async': False
     },
@@ -661,6 +666,11 @@ functions = {
         'is_async': False
     },
 
+    # Summary
+    '/summary/agents': {
+        'function': Agent.get_full_summary,
+        'type': 'local_master',
+        'is_async': False
+    },
 
 }
-

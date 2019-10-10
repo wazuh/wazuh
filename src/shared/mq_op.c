@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -125,11 +125,11 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
         const char * strmode;
 
         switch (target->log_socket->mode) {
-        case UDP_PROTO:
+        case IPPROTO_UDP:
             sock_type = SOCK_DGRAM;
             strmode = "udp";
             break;
-        case TCP_PROTO:
+        case IPPROTO_TCP:
             sock_type = SOCK_STREAM;
             strmode = "tcp";
             break;

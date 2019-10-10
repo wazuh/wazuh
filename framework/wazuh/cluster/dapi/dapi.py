@@ -1,6 +1,6 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import functools
 import itertools
@@ -105,8 +105,11 @@ class DistributedAPI:
         """
         if self.input_json['function'] == '/manager/status' or self.input_json['function'] == '/cluster/:node_id/status':
             return
-        basic_services = ('wazuh-modulesd', 'ossec-remoted', 'ossec-analysisd', 'ossec-execd', 'wazuh-db') \
-            if basic_services is None else basic_services
+
+        if not basic_services:
+            basic_services = ('wazuh-modulesd', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
+            if common.install_type != "local":
+                basic_services += ('ossec-remoted', )
 
         status = manager.status()
 
