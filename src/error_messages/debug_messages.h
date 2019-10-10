@@ -185,8 +185,6 @@
 #define FIM_WHODATA_IGNORE_FILEEVENT        "(6309): Ignoring remove event for file '%s' because it has already been reported."
 #define FIM_CHECKSUM_MSG                    "(6310): Sending msg to the server: '%s'."
 #define FIM_PATH_EXEED_MAX                  "(6311): The path exeed maximum permited (%d): '%s'."
-#define FIM_PROCESS_PRIORITY                "(6201): Setting process priority to: '%d'"
-#define FIM_SEND                            "(6202): Sending event: %s"
 
 #define FIM_DBSYNC_NO_ARGUMENT              "(6312): Data synchronization command '%s' with no argument."
 #define FIM_DBSYNC_UNKNOWN_CMD              "(6313): Unknown data synchronization command: %s."
@@ -198,5 +196,9 @@
 #define FIM_MONITORING_FILES_COUNT          "(6318): Number of indexed files %s scanning: %u."
 
 #define FIM_CONFIGURATION_NOTFOUND          "(6319): No configuration founded for (%s):'%s'"
+
+#define FIM_PROCESS_PRIORITY                "(6320): Setting process priority to: '%d'"
+#define FIM_SEND                            "(6321): Sending event: %s"
+#define FIM_AUDIT_RELOADED                  "(6322): Reloaded audit rule for monitoring directory: '%s'."
 
 #endif /* DEBUG_MESSAGES_H */
