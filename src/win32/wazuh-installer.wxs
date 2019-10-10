@@ -86,8 +86,11 @@
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[ADDRESS]&quot;,&quot;[SERVER_PORT]&quot;,&quot;[PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[TIME_RECONNECT]&quot;,&quot;[WAZUH_MANAGER]&quot;,&quot;[WAZUH_MANAGER_PORT]&quot;,&quot;[WAZUH_PROTOCOL]&quot;,&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;,&quot;[WAZUH_TIME_RECONNECT]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
 
-        <CustomAction Id="InstallConfigurationFiles" BinaryKey="UnzipVersionFiles" VBScriptCall="ExtractConfigurationFiles" Return="check" Execute="deferred" Impersonate="no" />
-        <CustomAction Id="InstallSCAFiles" BinaryKey="UnzipVersionFiles" VBScriptCall="ExtractSCAFiles" Return="check" Execute="deferred" Impersonate="no" />
+        <!--CustomAction Id="InstallConfigurationFiles" BinaryKey="UnzipVersionFiles" VBScriptCall="ExtractConfigurationFiles" Return="check" Execute="deferred" Impersonate="no" />
+        <CustomAction Id="InstallSCAFiles" BinaryKey="UnzipVersionFiles" VBScriptCall="ExtractSCAFiles" Return="check" Execute="deferred" Impersonate="no" /-->
+
+        <CustomAction Id="InstallConfigurationFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs ExtractConfigurationFiles" />
+        <CustomAction Id="InstallSCAFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs ExtractSCAFiles" />
 
         <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT]" />
         <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;" />
@@ -184,8 +187,8 @@
         
             <Custom Action="SetCustomActionDataValue" After="InstallInitialize">NOT Installed</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
-            <Custom Action="InstallConfigurationFiles" Before="InstallFinalize">NOT Installed</Custom>
-            <Custom Action="InstallSCAFiles" Before="InstallFinalize"></Custom>
+            <Custom Action="InstallConfigurationFiles" After="InstallFinalize">NOT Installed</Custom>
+            <Custom Action="InstallSCAFiles" After="InstallFinalize">(NOT Installed) OR (REINSTALL)</Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
             <Custom Action="StopWinService" After="InstallInitialize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
@@ -282,7 +285,9 @@
                     <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A">
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
                     </Component>
-
+                    <Component Id="UNZIPVERSIONFILES.VBS" DiskId="1" Guid="32FAB5FA-9678-427B-9536-88AAA897A82A">
+                        <File Id="UNZIPVERSIONFILES.VBS" Name="UnzipVersionFiles.vbs" Source="UnzipVersionFiles.vbs" />
+                    </Component>
                     <!-- Mark this file as permanent, so it is not deleted on uninstall. -->
                     <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9" NeverOverwrite="yes" Permanent="yes">
                         <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" KeyPath="yes" />
@@ -596,6 +601,7 @@
             <ComponentRef Id="AGENT_AUTH.EXE" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
+			<ComponentRef Id="UNZIPVERSIONFILES.VBS" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
             <ComponentRef Id="OSSEC_PRE6.CONF" />
