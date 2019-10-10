@@ -42,6 +42,8 @@ char *convert_windows_string(LPCWSTR string);
 #define w_word_counter(x) ({ int w_count = 0; char *w_it = x; \
     while (*w_it) { if (*w_it != ' ') { w_count++; while (*w_it != ' ' && *w_it != '\0') w_it++; continue;} w_it++;} w_count;})
 
+// Check if a string is a number. It does not work with signs (+/-)
+#define w_str_is_number(str) ({char *x = str; for (; *x != '\0'; x++) if (!isdigit(*x)) { x = NULL; break;} x;})
 
 /* Trim the CR and/or LF from the last positions of a string */
 void os_trimcrlf(char *str);
