@@ -47,10 +47,12 @@ def _expand_resource(resource):
             return get_groups()
         elif resource_type == 'role:id':
             with RolesManager() as rm:
-                return rm.get_roles()
+                roles = rm.get_roles()
+            return [role_id.id for role_id in roles]
         elif resource_type == 'policy:id':
             with PoliciesManager() as pm:
-                return pm.get_policies()
+                policies = pm.get_policies()
+            return [policy_id.id for policy_id in policies]
         elif resource_type == 'user:id':
             users_system = set()
             with AuthenticationManager() as auth:
