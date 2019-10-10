@@ -24,14 +24,14 @@ logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def delete_agents(pretty=False, wait_for_complete=False, agent_list=None, purge=False, status='all', older_than="7d"):
+def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge=False, status='all', older_than="7d"):
     """Delete agents
 
     Deletes all agents or a list of them with optional criteria based on the status or time of the last connection.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_list: List of agent's IDs.
+    :param list_agents: List of agent's IDs.
     :param purge: Delete an agent from the key store
     :param status: Filters by agent status. Use commas to enter multiple statuses.
     :param older_than: Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
@@ -39,12 +39,12 @@ def delete_agents(pretty=False, wait_for_complete=False, agent_list=None, purge=
     :return: AgentAllItemsAffected
     """
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': agent_list,
+                'agent_list': list_agents,
                 'purge': purge,
                 'status': status,
                 'older_than': older_than
                 }
-    func = agent.delete_agents_all if agent_list is None else agent.delete_agents
+    func = agent.delete_agents_all if list_agents is None else agent.delete_agents
 
     dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -60,7 +60,7 @@ def delete_agents(pretty=False, wait_for_complete=False, agent_list=None, purge=
 
 
 @exception_handler
-def get_agents(pretty=False, wait_for_complete=False, agent_list=None, offset=None, limit=None, select=None, sort=None,
+def get_agents(pretty=False, wait_for_complete=False, list_agents=None, offset=None, limit=None, select=None, sort=None,
                search=None, status=None, q=None, older_than=None, manager=None, version=None, group=None,
                node_name=None, name=None, ip=None):
     """Get agents
@@ -69,7 +69,7 @@ def get_agents(pretty=False, wait_for_complete=False, agent_list=None, offset=No
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_list: List of agent's IDs.
+    :param list_agents: List of agent's IDs.
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param select: Select which fields to return (separated by comma)
@@ -89,7 +89,7 @@ def get_agents(pretty=False, wait_for_complete=False, agent_list=None, offset=No
     :return: AllAgents
     """
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': agent_list,
+                'agent_list': list_agents,
                 'offset': offset,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
@@ -112,7 +112,7 @@ def get_agents(pretty=False, wait_for_complete=False, agent_list=None, offset=No
     nested = ['os.version', 'os.name', 'os.platform']
     for field in nested:
         f_kwargs['filters'][field] = connexion.request.args.get(field, None)
-    func = agent.get_agents_all if agent_list is None else agent.get_agents
+    func = agent.get_agents_all if list_agents is None else agent.get_agents
 
     dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -129,17 +129,17 @@ def get_agents(pretty=False, wait_for_complete=False, agent_list=None, offset=No
 
 
 @exception_handler
-def restart_agents(pretty=False, wait_for_complete=False, agent_list=None):
+def restart_agents(pretty=False, wait_for_complete=False, list_agents=None):
     """ Restarts all agents
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_list: List of agent's IDs.
+    :param list_agents: List of agent's IDs.
     :return: CommonResponse
     """
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': agent_list}
-    func = agent.restart_agents_all if agent_list is None else agent.restart_agents
+                'agent_list': list_agents}
+    func = agent.restart_agents_all if list_agents is None else agent.restart_agents
 
     dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -221,9 +221,8 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -578,19 +577,19 @@ def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False
 
 
 @exception_handler
-def delete_multiple_agent_single_group(group_id, agent_list=None, pretty=False, wait_for_complete=False):
+def delete_multiple_agent_single_group(group_id, list_agents=None, pretty=False, wait_for_complete=False):
     """Removes agents assignment from a specified group.
 
     :param group_id: Group ID.
-    :param agent_list: Array of agent's IDs.
+    :param list_agents: Array of agent's IDs.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :return: AgentItemsAffected
     """
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': agent_list,
+                'agent_list': list_agents,
                 'group_id': group_id}
-    func = agent.remove_all_agents_from_group if agent_list is None else agent.remove_agents_from_group
+    func = agent.remove_all_agents_from_group if list_agents is None else agent.remove_agents_from_group
 
     dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -606,22 +605,22 @@ def delete_multiple_agent_single_group(group_id, agent_list=None, pretty=False, 
 
 
 @exception_handler
-def put_multiple_agent_single_group(group_id, agent_list=None, pretty=False, wait_for_complete=False,
+def put_multiple_agent_single_group(group_id, list_agents=None, pretty=False, wait_for_complete=False,
                                     force_single_group=False):
     """Add multiple agents to a group
 
     :param group_id: Group ID.
-    :param agent_list: List of agents ID.
+    :param list_agents: List of agents ID.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param force_single_group: Forces the agent to belong to a single group
     :return: AgentItemsAffected
     """
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': agent_list,
+                'agent_list': list_agents,
                 'group_id': group_id,
                 'replace': force_single_group}
-    func = agent.assign_all_agents_to_group if agent_list is None else agent.assign_agents_to_group
+    func = agent.assign_all_agents_to_group if list_agents is None else agent.assign_agents_to_group
 
     dapi = DistributedAPI(f=func,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

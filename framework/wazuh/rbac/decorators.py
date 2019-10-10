@@ -181,21 +181,22 @@ def expose_resources(actions: list = None, resources: list = None, target_params
 
 def merge_errors(failed_items):
     code_ids = dict()
+    error_count = 0
     for index, failed_item in enumerate(failed_items):
         if failed_item['error']['code'] not in code_ids.keys():
             code_ids[failed_item['error']['code']] = dict()
             code_ids[failed_item['error']['code']]['ids'] = list()
             code_ids[failed_item['error']['code']]['index'] = index
         code_ids[failed_item['error']['code']]['ids'].append(failed_item['id'])
+        error_count += 1
     final_errors_list = list()
-    error_count = 0
+    code_ids = dict(sorted(code_ids.items()))
     for key, error_code in code_ids.items():
         final_errors_list.append(failed_items[error_code['index']])
-        for item_id in error_code['ids']:
-            if not isinstance(final_errors_list[-1]['id'], list):
-                final_errors_list[-1]['id'] = list()
-            final_errors_list[-1]['id'].append(item_id)
-        error_count += len(error_code['ids'])
+        try:
+            final_errors_list[-1]['id'] = sorted(error_code['ids'], key=int)
+        except ValueError:
+            final_errors_list[-1]['id'] = sorted(error_code['ids'])
 
     return final_errors_list, error_count
 
@@ -241,9 +242,12 @@ def data_response_builder(result, original: dict = None, **post_proc_kwargs):
     :param original: Original input call parameter values
     :return: WazuhResult
     """
-    final_dict = {'data': {'affected_items': result['affected_items'],
-                           'total_affected_items': len(result['affected_items'])}
-                  }
+    try:
+        affected = sorted(result['affected_items'], key=int)
+    except ValueError:
+        affected = sorted(result['affected_items'])
+    final_dict = {'data': {'affected_items': affected, 'total_affected_items': len(result['affected_items'])}}
+
     if result['failed_items']:
         failed_result = merge_errors(result['failed_items'])
         final_dict['data']['failed_items'] = failed_result[0]

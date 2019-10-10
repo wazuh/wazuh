@@ -5,7 +5,7 @@
 from glob import glob
 
 from wazuh import common
-from wazuh.agent import WazuhDBQueryAgents, WazuhDBQueryMultigroups
+from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryMultigroups
 from wazuh.database import Connection
 from wazuh.exception import WazuhInternalError
 

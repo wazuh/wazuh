@@ -7,7 +7,7 @@ import pytest
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        from wazuh.agent import Agent
+        from wazuh.core.core_agent import Agent
         from wazuh.exception import WazuhException
 
 
@@ -26,10 +26,10 @@ class AgentMock:
     ('dmz,webserver,database', '005', 'dmz', 'webserver,database'),
     ('dmz,default', '005', 'default', 'dmz')
 ])
-@patch('wazuh.agent.Agent.get_agents_group_file')
-@patch('wazuh.agent.Agent.create_multi_group')
-@patch('wazuh.agent.Agent.unset_all_groups_agent')
-@patch('wazuh.agent.Agent')
+@patch('wazuh.core.core_agent.Agent.get_agents_group_file')
+@patch('wazuh.core.core_agent.Agent.create_multi_group')
+@patch('wazuh.core.core_agent.Agent.unset_all_groups_agent')
+@patch('wazuh.core.core_agent.Agent')
 def test_sucessfully_remove_single_group_agent(agent_patch, unset_groups_patch, create_multigroup_patch,
                                                get_groups_patch, agent_groups, agent_id, group_id, expected_new_group):
     """
@@ -41,7 +41,7 @@ def test_sucessfully_remove_single_group_agent(agent_patch, unset_groups_patch, 
     get_groups_patch.return_value = agent_groups
     agent_patch.return_value = AgentMock(agent_id, agent_groups)
 
-    with patch('wazuh.agent.Agent.multi_group_exists', return_value=False):
+    with patch('wazuh.core.core_agent.Agent.multi_group_exists', return_value=False):
         ret_msg = Agent.unset_single_group_agent(agent_id, group_id, force=False)
 
     assert ret_msg == (f"Agent {agent_id} set to group default." if expected_new_group == 'default' else
@@ -59,8 +59,8 @@ def test_sucessfully_remove_single_group_agent(agent_patch, unset_groups_patch, 
     ('default', '005', 'default', 1745),
     ('dmz', '005', 'webserver,database', 1734)
 ])
-@patch('wazuh.agent.Agent.get_agents_group_file')
-@patch('wazuh.agent.Agent')
+@patch('wazuh.core.core_agent.Agent.get_agents_group_file')
+@patch('wazuh.core.core_agent.Agent')
 def test_failed_remove_single_group_agent(agent_patch, get_groups_patch, agent_groups, agent_id, group_id,
                                           expected_exception):
     with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):

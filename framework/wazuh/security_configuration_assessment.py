@@ -9,7 +9,7 @@ from itertools import groupby
 from operator import itemgetter
 
 from wazuh import common
-from wazuh.agent import Agent
+from wazuh.core.core_agent import Agent
 from wazuh.exception import WazuhInternalError
 from wazuh.results import WazuhResult
 from wazuh.utils import WazuhDBQuery, WazuhDBBackend

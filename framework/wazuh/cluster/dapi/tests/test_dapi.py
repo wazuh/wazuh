@@ -2,7 +2,7 @@ import json
 import pytest
 
 from wazuh import Wazuh
-from wazuh.agent import Agent
+from wazuh.agent import get_agents_summary_status
 from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.manager import status
 from wazuh.results import WazuhResult, WazuhQueryResult
@@ -14,7 +14,7 @@ objects_to_encode = [
      'mycallable': Wazuh(ossec_path='/var/ossec').get_ossec_init},
     {'foo': 'bar',
      'foo2': 3,
-     'mycallable': Agent.get_agents_summary},
+     'mycallable': get_agents_summary_status},
     {'foo': 'bar',
      'foo2': 3,
      'mycallable': status},

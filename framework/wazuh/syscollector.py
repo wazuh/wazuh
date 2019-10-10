@@ -4,7 +4,7 @@
 
 from wazuh import common
 from wazuh.exception import WazuhException, WazuhError
-from wazuh.agent import Agent
+from wazuh.core.core_agent import Agent
 from wazuh.utils import plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, WazuhDBBackend
 from operator import itemgetter
 

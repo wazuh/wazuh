@@ -15,7 +15,7 @@ from wazuh.cluster import client, cluster, common as c_common
 from wazuh import cluster as metadata, exception
 from wazuh import common, utils
 from wazuh.exception import WazuhException, WazuhClusterError
-from wazuh.agent import Agent
+from wazuh.core.core_agent import Agent
 from wazuh.database import Connection
 from wazuh.cluster.dapi import dapi
 from wazuh.wdb import WazuhDBConnection

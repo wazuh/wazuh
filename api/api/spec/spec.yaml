@@ -2565,9 +2565,9 @@ components:
         format: int32
         default: 500
         minimum: 1
-    agent_list:
+    list_agents:
       in: query
-      name: agent_list
+      name: list_agents
       description: List of agents IDs (separated by comma)
       schema:
         type: array
@@ -3745,7 +3745,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_list'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/older_than'
@@ -3780,7 +3780,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_list'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/select'
@@ -4098,7 +4098,7 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Removes agent from all groups'
+      summary: 'Remove agent from all groups'
       description: 'Removes the agent from all groups. The agent will automatically revert to the "default" group.'
       operationId: api.controllers.agents_controller.delete_agent_all_groups
       parameters:
@@ -4394,7 +4394,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_list'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/group_id'
       responses:
         '200':
@@ -4426,7 +4426,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_list'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/group_id'
         - $ref: '#/components/parameters/force_single_group'
       responses:
@@ -5137,7 +5137,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_list'
+        - $ref: '#/components/parameters/list_agents'
       responses:
         '200':
           description: Agents restarted

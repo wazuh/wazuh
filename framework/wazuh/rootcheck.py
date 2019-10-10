@@ -6,7 +6,7 @@
 
 from wazuh.exception import WazuhException
 from wazuh.utils import WazuhDBQuery, WazuhDBQueryDistinct, SQLiteBackend
-from wazuh.agent import Agent
+from wazuh.core.core_agent import Agent
 from wazuh.database import Connection
 from wazuh.ossec_queue import OssecQueue
 from wazuh import common

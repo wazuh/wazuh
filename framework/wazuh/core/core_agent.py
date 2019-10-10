@@ -29,9 +29,8 @@ from wazuh.exception import WazuhException, WazuhError, WazuhInternalError, crea
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.results import WazuhResult
-from wazuh.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, \
-    get_fields_to_nest, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-    SQLiteBackend, WazuhDBBackend, safe_move
+from wazuh.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
+    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, SQLiteBackend, WazuhDBBackend, safe_move
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
@@ -745,66 +744,6 @@ class Agent:
 
         return data
 
-    # @staticmethod
-    # def get_agent_by_name(agent_name=None, select=None, **kwargs):
-    #     """Gets an existing agent called agent_name.
-    #
-    #     :param agent_name: Agent name.
-    #     :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-    #     :return: The agent.
-    #     """
-    #     # data = WazuhDBQueryAgents(filters={'name': agent_name}).run()
-    #     # agent_list = list(map(operator.itemgetter('id'), data['items']))
-    #
-    #     return Agent.get_agents_all(select=select, filters={'name': agent_name}, **kwargs)
-
-    @staticmethod
-    def get_agent(agent_id, select=None):
-        """Gets an existing agent.
-
-        :param agent_id: Agent ID.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :return: The agent.
-        """
-        data = Agent(agent_id).get_basic_information(select)
-
-        return data
-
-    @staticmethod
-    def get_group_by_name(group_name):
-        """
-        Gets an existing group called group_name.
-
-        :param group_name: Group name.
-        :return: The group id.
-        """
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhInternalError(1600)
-
-        conn = Connection(db_global[0])
-        conn.execute("SELECT id FROM `group` WHERE name = :name", {'name': group_name})
-        try:
-            group_id = conn.fetch()
-        except TypeError as e:
-            raise WazuhError(1701, extra_message=group_name)
-
-        return group_id
-
-    # @staticmethod
-    # def insert_agent(name, id, key, ip='any', force_time=-1):
-    #     """Create a new agent providing the id, name, ip and key to the Manager.
-    #
-    #     :param id: id of the new agent.
-    #     :param name: name of the new agent.
-    #     :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
-    #     :param key: name of the new agent.
-    #     :param force_time: Remove old agent with same IP if disconnected since <force_time> seconds.
-    #     :return: Agent ID.
-    #     """
-    #     new_agent = Agent(name=name, ip=ip, id=id, key=key, force=force_time)
-    #     return {'id': new_agent.id, 'key': new_agent.key}
-
     @staticmethod
     def add_group_to_agent(agent_id, group_id, force=False, replace=False):
         """Adds an existing group to an agent
@@ -847,20 +786,6 @@ class Agent:
         Agent.set_agent_group_file(agent_id, multigroup_name)
 
         return f"Agent {agent_id} assigned to {group_id}"
-
-    @staticmethod
-    def insert_agent(name, id, key, ip='any', force_time=-1):
-        """Create a new agent providing the id, name, ip and key to the Manager.
-
-        :param id: id of the new agent.
-        :param name: name of the new agent.
-        :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
-        :param key: name of the new agent.
-        :param force_time: Remove old agent with same IP if disconnected since <force_time> seconds.
-        :return: Agent ID.
-        """
-        new_agent = Agent(name=name, ip=ip, id=id, key=key, force=force_time)
-        return {'id': new_agent.id, 'key': new_agent.key}
 
     @staticmethod
     def check_if_delete_agent(id, seconds):
@@ -1059,7 +984,7 @@ class Agent:
         if isinstance(group_id, list):
             for id in group_id:
                 try:
-                    removed = Agent._remove_single_group(id)
+                    removed = Agent.delete_single_group(id)
                     ids.append(id)
                     affected_agents += removed['affected_items']
                     Agent.remove_multi_group(set(map(lambda x: x.lower(), group_id)))
@@ -1067,7 +992,7 @@ class Agent:
                     failed_ids.append(create_exception_dic(id, e))
         else:
             try:
-                removed = Agent._remove_single_group(group_id)
+                removed = Agent.delete_single_group(group_id)
                 ids.append(group_id)
                 affected_agents += removed['affected_items']
                 Agent.remove_multi_group({group_id.lower()})
@@ -1114,8 +1039,9 @@ class Agent:
         if path.exists(group_path):
             with open(group_path) as f:
                 group_name = f.read().strip()
-
-        return group_name if group_name else ''
+            return group_name
+        else:
+            return ''
 
     @staticmethod
     def set_agent_group_file(agent_id, group_id):
@@ -1630,8 +1556,6 @@ class Agent:
                 str(self.id).zfill(3), self.name, data.replace("err ", ""))).encode(),
                      path.join(common.ossec_path, 'queue', 'ossec', 'queue'))
             raise WazuhError(1716, extra_message=data.replace("err ", ""))
-
-
 
     def upgrade_result(self, debug=False, timeout=common.upgrade_result_retries):
         """Read upgrade result output from agent.

@@ -22,9 +22,18 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 1703
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1703
+              id:
+                - "000"
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
     # DELETE /agents/999/group/group1
   - name: Try to remove non existing agent from group1
@@ -34,9 +43,18 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 1701
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
     # DELETE /agents/wrong_id/group/group1
   - name: Try to remove wrong agent_id from group1
@@ -63,7 +81,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1734
+        code: 1710
 
     # DELETE /agents/001/group/group2
   - name: Try to remove agent 001 from a group where it is not assigned (group2)
@@ -73,9 +91,18 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 1734
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1734
+              id:
+                - "001"
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
     # DELETE /agents/004/group/default
   - name: Try to remove agent 004 (only assigned to default) from group default
@@ -85,9 +112,18 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 1745
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1745
+              id:
+                - "004"
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
     # DELETE /agents/001/group/group1
   - name: Remove agent 001 from group1
@@ -99,7 +135,11 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Agent '001' removed from 'group1'. "
+        data:
+          affected_items:
+            - "001"
+          total_affected_items: 1
+        message: !anystr
 
     # DELETE /agents/002/group/default
   - name: Remove agent 002 from default
@@ -111,7 +151,11 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Agent '002' removed from 'default'. "
+        data:
+          affected_items:
+            - "002"
+          total_affected_items: 1
+        message: !anystr
 
     # DELETE /agents/002/group/group2
   - name: Remove agent 002 from group2 when it is the only group assigned
@@ -123,7 +167,11 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Agent '002' removed from 'group2'. Agent reassigned to group default."
+        data:
+          affected_items:
+            - "002"
+          total_affected_items: 1
+        message: !anystr
 
 ---
 test_name: DELETE /agents/{agent_id}/group
@@ -138,9 +186,18 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 1703
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1703
+              id:
+                - "000"
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
     # DELETE /agents/999/group
   - name: Try to remove non existing agent from all groups
@@ -150,9 +207,18 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 1701
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
     # DELETE /agents/wrong_id/group
   - name: Try to remove wrong agent_id from all groups
@@ -176,24 +242,16 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Agent '005' removed from all groups. Agent group reverted to default."
+        data:
+          affected_items:
+            - "005"
+          total_affected_items: 1
+        message: !anystr
 
 ---
 test_name: DELETE /agents/group/{group_id}
 
 stages:
-
-    # DELETE /agents/group/group1
-  - name: Try to remove agents from group1 without specifying agents list
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group/group1"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
 
     # DELETE /agents/group/wrong_group?list_agents=001,002
   - name: Try to remove agents from non existing group
@@ -226,11 +284,15 @@ stages:
           failed_items:
             - error:
                 code: 1703
-              id: "000"
+              id:
+                - "000"
             - error:
                 code: 1734
-              id: "002"
-        message: "Some agents were not removed from group group1"
+              id:
+                - "002"
+          total_affected_items: 0
+          total_failed_items: 2
+        message: !anystr
 
     # DELETE /agents/group/group1?list_agents=998,999
   - name: Try to remove agents 998 and 999 from group1
@@ -242,6 +304,7 @@ stages:
       params:
         list_agents: '998,999'
     response:
+      strict: False
       status_code: 200
       body:
         data:
@@ -249,30 +312,47 @@ stages:
           failed_items:
             - error:
                 code: 1701
-              id: "998"
-            - error:
-                code: 1701
-              id: "999"
-        message: "Some agents were not removed from group group1"
+              id:
+                - "998"
+                - "999"
+          total_affected_items: 0
+          total_failed_items: 2
+        message: !anystr
 
-    # DELETE /agents/group/group2?list_agents=006,008,010
-  - name: Remove agents 002,006 and 010 from group2
+    # DELETE /agents/group/group2?list_agents=006,010
+  - name: Remove agents 006 and 010 from group2
     request:
       url: "{protocol:s}://{host:s}:{port:d}/agents/group/group2"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '006,008,010'
+        list_agents: '006,010'
     response:
       status_code: 200
       body:
         data:
           affected_items:
             - '006'
-            - '008'
             - '010'
-        message: "All selected agents were removed from group group2"
+          total_affected_items: 2
+        message: !anystr
+
+    # DELETE /agents/group/group2
+  - name: Remove all agents from group2 (008)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/group2"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - '008'
+          total_affected_items: 1
+        message: !anystr
 
 ---
 test_name: DELETE /agents/groups/{group_id}
@@ -290,13 +370,16 @@ stages:
       status_code: 200
       body:
         data:
+          affected_agents: []
           affected_items: []
           failed_items:
             - error:
                 code: 1710
-              id: 'wrong_group'
-          affected_agents: []
-        message: "Some groups were not deleted"
+              id:
+                - 'wrong_group'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
     # DELETE /agents/groups/default
   - name: Try to delete default group
@@ -308,7 +391,17 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Some groups were not deleted"
+        data:
+          affected_agents: []
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1712
+              id:
+                - 'default'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
     # DELETE /agents/groups/group3
   - name: Delete group3
@@ -328,17 +421,133 @@ stages:
             - '008'
           affected_items:
             - 'group3'
-        message: "All selected groups were deleted"
+          total_affected_items: 1
+        message: !anystr
 
 ---
 test_name: DELETE /agents/groups
 
 stages:
 
-  # DELETE /agents/groups
-  - name: Try to delete groups without a group list
-    request: &delete_groups
+    # DELETE /agents/groups?list_groups=wrong1,wrong2
+  - name: Try to delete non existing groups
+    request:
       url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_groups: 'wrong1,wrong2'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_agents: []
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1710
+              id:
+                - 'wrong1'
+                - 'wrong2'
+          total_affected_items: 0
+          total_failed_items: 2
+        message: !anystr
+
+    # DELETE /agents/groups?list_groups=group1,default
+  - name: Delete groups group1 and default
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_groups: 'group1,default'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_agents:
+            - '007'
+            - '008'
+            - '009'
+          affected_items:
+            - 'group1'
+          failed_items:
+            - error:
+                code: 1712
+              id:
+                - 'default'
+          total_affected_items: 1
+          total_failed_items: 1
+        message: !anystr
+
+    # DELETE /agents/groups
+  - name: Delete all groups (group2)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_agents: []
+          affected_items:
+            - 'group2'
+          total_affected_items: 1
+        message: !anystr
+
+---
+test_name: DELETE /agents/{agent_id}
+
+stages:
+
+    # DELETE /agents/000
+  - name: Try to delete agent 000 (manager)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response: &error_delete_agent
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1703
+              id:
+                - '000'
+        message: !anystr
+
+    # DELETE /agents/999
+  - name: Try to delete non existing agent
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *error_delete_agent
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - '999'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
+
+    # DELETE /agents/wrong
+  - name: Try to delete agent using wrong agent_id format
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -347,42 +556,38 @@ stages:
       body:
         <<: *error_spec
 
-    # DELETE /agents/groups?list_groups=wrong1,wrong2
-  - name: Try to delete non existing groups
+    # DELETE /agents/006
+  - name: Delete an agent
     request:
-        <<: *delete_groups
-        params:
-          list_groups: 'wrong1,wrong2'
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1710
-                message: "The group does not exist: wrong1"
-              id: 'wrong1'
-            - error:
-                code: 1710
-                message: "The group does not exist: wrong2"
-              id: 'wrong2'
-          affected_agents: []
-        message: "Some groups were not deleted"
-
-    # DELETE /agents/groups/list_groups=group1,group2
-  - name: Delete groups group1 and group2
-    request:
-        <<: *delete_groups
-        params:
-          list_groups: 'group1,group2'
+      url: "{protocol:s}://{host:s}:{port:d}/agents/006"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       body:
         data:
           affected_items:
-            - 'group1'
-            - 'group2'
+            - '006'
+          total_affected_items: 1
+        message: !anystr
+
+    # DELETE /agents/010?purge=True
+  - name: Delete an agent using purge
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/010"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        purge: True
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - '010'
+          total_affected_items: 1
         message: !anystr
 
 ---
@@ -390,22 +595,13 @@ test_name: DELETE /agents
 
 stages:
 
-    # DELETE /agents
-  - name: Try to delete nothing
+    # DELETE /agents?list_agents=wrong
+  - name: Try to delete agent with a wrong list_agents
     request: &delete_agents
       url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
-
-    # DELETE /agents?list_agents=wrong
-  - name: Try to delete agent with a wrong list_agents
-    request:
-      <<: *delete_agents
       params:
         list_agents: 'wrong'
     response:
@@ -428,11 +624,9 @@ stages:
             - error:
                 code: 1701
                 message: !anystr
-              id: '998'
-            - error:
-                code: 1701
-                message: !anystr
-              id: '999'
+              id:
+                - '998'
+                - '999'
           total_affected_items: 0
           total_failed_items: 2
         message: !anystr
@@ -453,7 +647,8 @@ stages:
                 code: 1703
                 message: !anystr
                 remediation: !anystr
-              id: '000'
+              id:
+                - '000'
           total_affected_items: 0
           total_failed_items: 1
         message: !anystr
@@ -485,9 +680,8 @@ stages:
           failed_items:
             - error:
                 code: 1731
-                message: !anystr
-                remediation: !anystr
-              id: '004'
+              id:
+                - '004'
           total_affected_items: 0
           total_failed_items: 1
         message: !anystr
@@ -504,7 +698,8 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items: ["004"]
+          affected_items:
+            - '004'
           older_than: 1s
           total_affected_items: 1
         message: !anystr
@@ -536,9 +731,8 @@ stages:
           failed_items:
             - error:
                 code: 1731
-                message: !anystr
-                remediation: !anystr
-              id: '007'
+              id:
+                - '007'
           older_than: '1h'
           total_affected_items: 0
           total_failed_items: 1
@@ -555,7 +749,8 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items: ["007"]
+          affected_items:
+            - '007'
           older_than: '1s'
           total_affected_items: 1
         message: !anystr
@@ -571,7 +766,9 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items: ["008","009"]
+          affected_items:
+            - "008"
+            - "009"
           older_than: '1s'
           total_affected_items: 2
         message: !anystr
@@ -588,88 +785,31 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items: ["011"]
+          affected_items:
+            - '011'
           older_than: '1s'
           total_affected_items: 1
         message: !anystr
 
----
-test_name: DELETE /agents/{agent_id}
-
-stages:
-
-    # DELETE /agents/000
-  - name: Try to delete agent 000 (manager)
+    # DELETE /agents
+  - name: Delete all agents (001,002,003,005,012)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response: &error_delete_agent
-      status_code: 200
-      body:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1703
-                message: !anystr
-                remediation: !anystr
-              id: '000'
-        message: !anystr
-
-    # DELETE /agents/999
-  - name: Try to delete non existing agent
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *error_delete_agent
-      body:
-        data:
-          failed_items:
-            - id: '999'
-
-    # DELETE /agents/wrong
-  - name: Try to delete agent using wrong agent_id format
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
-
-    # DELETE /agents/006
-  - name: Delete an agent
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/006"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items: ["006"]
-        message: !anystr
-
-    # DELETE /agents/010?purge=True
-  - name: Delete an agent using purge
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/010"
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        purge: True
+        older_than: '0s'
     response:
       status_code: 200
       body:
         data:
-          affected_items: ["010"]
+          affected_items:
+            - "001"
+            - "002"
+            - "003"
+            - "005"
+            - "012"
+          older_than: '0s'
+          total_affected_items: 5
         message: !anystr

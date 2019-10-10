@@ -295,7 +295,7 @@ class RBAChecker:
                 "effect": "allow"
             },
             {
-                "actions": ["agent:modify_group_assignments"],
+                "actions": ["agent:modify_group"],
                 "resources": ["agent:id:*"],
                 "effect": "allow"
             },

@@ -13,7 +13,7 @@ import operator
 import os
 from typing import Tuple, Dict, Callable
 import fcntl
-from wazuh.agent import Agent
+from wazuh.core.core_agent import Agent
 from wazuh.cluster import server, cluster, common as c_common
 from wazuh import cluster as metadata
 from wazuh import common, utils, exception

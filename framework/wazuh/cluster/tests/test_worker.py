@@ -80,7 +80,7 @@ def test_check_removed_agents(remove_agents_patch, old_ck, new_ck, agents_to_rem
 @patch('shutil.rmtree')
 @patch('os.remove')
 @patch('glob.iglob')
-@patch('wazuh.agent.Agent.get_agents_overview')
+@patch('wazuh.core.core_agent.Agent.get_agents_overview')
 @patch('wazuh.cluster.worker.Connection')
 @patch('os.path.isdir')
 def test_remove_bulk_agents(isdir_mock, connection_mock, agents_mock, glob_mock, remove_mock, rmtree_mock, wdb_mock, agents_to_remove):

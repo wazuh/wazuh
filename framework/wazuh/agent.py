@@ -14,8 +14,7 @@ from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryDistinctAgents
 from wazuh.database import Connection
 from wazuh.exception import WazuhError, WazuhInternalError, WazuhException, create_exception_dic
 from wazuh.rbac.decorators import expose_resources, list_handler_with_denied, list_handler_no_denied
-from wazuh.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, \
-    md5, process_array
+from wazuh.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
 from wazuh.core.core_agent import Agent
 
 
@@ -462,19 +461,19 @@ def delete_groups(group_list=None):
     """
     failed_groups = list()
     affected_groups = list()
-    affected_agents = list()
+    affected_agents = set()
     for group_id in group_list:
         try:
             removed = Agent.delete_single_group(group_id)
             affected_groups.append(group_id)
-            affected_agents += removed['affected_items']
+            affected_agents.update(removed['affected_items'])
             Agent.remove_multi_group(set(group_id.lower()))
         except WazuhException as e:
             failed_groups.append(create_exception_dic(group_id, e))
 
     result = {'affected_items': affected_groups,
               'failed_items': failed_groups,
-              'affected_agents': list(set(affected_agents)),
+              'affected_agents': sorted(affected_agents, key=int),
               'str_priority': ['All selected groups were deleted',
                                'Some groups were not deleted',
                                'No groups were deleted']}
@@ -510,7 +509,7 @@ def delete_groups_all(group_list=None):
     return result
 
 
-@expose_resources(actions=["agent:modify_group_assignments"], resources=["agent:id:{agent_list}"],
+@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
                   target_params=["agent_list"], post_proc_func=list_handler_with_denied)
 def assign_agents_to_group(group_id=None, agent_list=None, replace=False):
     """Assign a list of agents to a group
@@ -545,7 +544,7 @@ def assign_agents_to_group(group_id=None, agent_list=None, replace=False):
     return result
 
 
-@expose_resources(actions=["agent:modify_group_assignments"], resources=["agent:id:*"], target_params=["agent_list"],
+@expose_resources(actions=["agent:modify_group"], resources=["agent:id:*"], target_params=["agent_list"],
                   post_proc_func=list_handler_no_denied)
 def assign_all_agents_to_group(group_id=None, agent_list=None, replace=False):
     """Assign all agents to a group
@@ -578,7 +577,7 @@ def assign_all_agents_to_group(group_id=None, agent_list=None, replace=False):
     return result
 
 
-@expose_resources(actions=["agent:modify_group_assignments"], resources=["agent:id:{agent_list}"],
+@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
                   target_params=["agent_list"], post_proc_func=list_handler_with_denied)
 def remove_agents_from_group(group_id=None, agent_list=None):
     """Removes agents assignment from a specified group
@@ -610,7 +609,7 @@ def remove_agents_from_group(group_id=None, agent_list=None):
     return result
 
 
-@expose_resources(actions=["agent:modify_group_assignments"], resources=["agent:id:*"], target_params=["agent_list"],
+@expose_resources(actions=["agent:modify_group"], resources=["agent:id:*"], target_params=["agent_list"],
                   post_proc_func=list_handler_no_denied)
 def remove_all_agents_from_group(group_id=None, agent_list=None):
     """Removes all agents assignment from a specified group
@@ -624,7 +623,6 @@ def remove_all_agents_from_group(group_id=None, agent_list=None):
     # Check if the group exists
     if not Agent.group_exists(group_id):
         raise WazuhError(1710)
-
     for agent_id in agent_list:
         try:
             Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=False)
@@ -641,7 +639,7 @@ def remove_all_agents_from_group(group_id=None, agent_list=None):
     return result
 
 
-@expose_resources(actions=["agent:modify_group_assignments"], resources=["agent:id:{agent_list}"],
+@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
                   target_params=["agent_list"], post_proc_func=list_handler_with_denied)
 def remove_agents_from_all_groups(agent_list=None, force=False):
     """Removes a list of agents assigment from all groups
