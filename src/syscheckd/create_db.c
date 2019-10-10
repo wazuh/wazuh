@@ -394,7 +394,6 @@ int fim_registry_event (char * key, fim_entry_data * data, int pos) {
 int fim_configuration_directory(const char * path, const char entry[]) {
     char full_path[OS_SIZE_4096 + 1];
     char full_entry[OS_SIZE_4096 + 1];
-    char **entries;
     int it = 0;
     int top = 0;
     int match = 0;
@@ -403,29 +402,37 @@ int fim_configuration_directory(const char * path, const char entry[]) {
     if (!path) {
         return position;
     }
-
-    if (strcmp("file", entry) == 0) {
-        entries = syscheck.dir;
-#ifdef WIN32
-    } else if (strcmp("registry", entry) == 0) {
-        entries = syscheck.registry;
-#endif
-    } else {
-        return position;
-    }
-
     snprintf(full_path, OS_SIZE_4096 + 1, "%s%c", path, PATH_SEP);
 
-    while(entries[it]) {
-        snprintf(full_entry, OS_SIZE_4096 + 1, "%s%c", entries[it], PATH_SEP);
-        match = w_compare_str(full_entry, full_path);
+    if (strcmp("file", entry) == 0) {
+        while(syscheck.dir[it]) {
+            snprintf(full_entry, OS_SIZE_4096 + 1, "%s%c", syscheck.dir[it], PATH_SEP);
+            match = w_compare_str(full_entry, full_path);
 
-        if (top < match && full_path[match - 1] == PATH_SEP) {
-            position = it;
-            top = match;
+            if (top < match && full_path[match - 1] == PATH_SEP) {
+                position = it;
+                top = match;
+            }
+            it++;
         }
-        it++;
     }
+#ifdef WIN32
+    else if (strcmp("registry", entry) == 0) {
+        while(syscheck.registry[it].entry) {
+            snprintf(full_entry, OS_SIZE_4096 + 1, "%s %s%c",
+                    syscheck.registry[it].arch == ARCH_64BIT ? "[x64]" : "",
+                    syscheck.registry[it].entry,
+                    PATH_SEP);
+            match = w_compare_str(full_entry, full_path);
+
+            if (top < match && full_path[match - 1] == PATH_SEP) {
+                position = it;
+                top = match;
+            }
+            it++;
+        }
+    }
+#endif
 
     if (position == -1) {
         mdebug2(FIM_CONFIGURATION_NOTFOUND, entry, path);
