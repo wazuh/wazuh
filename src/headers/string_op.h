@@ -99,4 +99,13 @@ const char *find_string_in_array(char * const string_array[], size_t array_len, 
 
 char *decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const size_t buffer_size);
 
+/**
+ * @brief Length of the initial segment of s which consists entirely of non-escaped bytes different from reject
+ *
+ * @param s String.
+ * @param reject String delimiter.
+ * @return size_t Number of bytes in s that are not reject.
+ */
+size_t strcspn_escaped(const char * s, char reject);
+
 #endif
