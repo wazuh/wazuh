@@ -261,6 +261,15 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 
 #ifdef WIN32
     set_priority_windows_thread();
+
+    // Directories in Windows configured with real-time add recursive watches
+    int i = 0;
+    while (syscheck.dir[i]) {
+        if (syscheck.opts[i] & REALTIME_ACTIVE) {
+            realtime_adddir(syscheck.dir[i], 0);
+        }
+        i++;
+    }
 #endif
 
     while (1) {
@@ -339,7 +348,6 @@ int fim_whodata_initialize() {
 
     for (int i = 0; syscheck.dir[i]; i++) {
         if (syscheck.opts[i] & WHODATA_ACTIVE) {
-            //minfo("~~ Adding '%s' to WHODATA", syscheck.dir[i]);
             realtime_adddir(syscheck.dir[i], i + 1);
         }
     }
@@ -393,111 +401,3 @@ void log_realtime_status(int next) {
         }
     }
 }
-
-/*
-
-
-void symlink_checker_init() {
-#ifndef WIN32
-    w_create_thread(symlink_checker_thread, NULL);
-#endif
-}
-
-#ifndef WIN32
-static void *symlink_checker_thread(__attribute__((unused)) void * data) {
-    int checker_sleep = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
-    int i;
-    char *real_path;
-    char *conv_link;
-
-    syscheck.sym_checker_interval = checker_sleep;
-    mdebug1(FIM_LINKCHECK_START, checker_sleep);
-
-    while (1) {
-        sleep(checker_sleep);
-        mdebug1(FIM_LINKCHECK_START, checker_sleep);
-
-        for (i = 0; syscheck.dir[i]; i++) {
-            if (syscheck.converted_links[i]) {
-                if (real_path = realpath(syscheck.dir[i], NULL), !real_path) {
-                    continue;
-                }
-
-                conv_link = get_converted_link_path(i);
-
-                if (strcmp(real_path, conv_link)) {
-                    minfo(FIM_LINKCHECK_CHANGED, syscheck.dir[i], conv_link, real_path);
-                    update_link_monitoring(i, conv_link, real_path);
-                } else {
-                    mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.dir[i]);
-                }
-
-                free(conv_link);
-                free(real_path);
-            }
-        }
-
-        mdebug1(FIM_LINKCHECK_FINALIZE);
-    }
-
-    return NULL;
-}
-
-
-static void update_link_monitoring(int pos, char *old_path, char *new_path) {
-    w_rwlock_wrlock((pthread_rwlock_t *)&syscheck.fp->mutex);
-    free(syscheck.converted_links[pos]);
-    os_strdup(new_path, syscheck.converted_links[pos]);
-    w_rwlock_unlock((pthread_rwlock_t *)&syscheck.fp->mutex);
-
-    // Scan for new files
-    //read_dir(new_path, NULL, pos, NULL, syscheck.recursion_level[pos], 0, '+');
-
-    // Remove unlink files
-    OSHash_It_ex(syscheck.fp, 2, (void *) old_path, unlink_files);
-}
-
-
-static void unlink_files(OSHashNode **row, OSHashNode **node, void *data) {
-    char *dir = (char *) data;
-
-    if (!strncmp(dir, (*node)->key, strlen(dir))) {
-        syscheck_node *s_node = (syscheck_node *) (*node)->data;
-        OSHashNode *r_node = *node;
-
-        mdebug2(FIM_LINKCHECK_FILE, (*node)->key, dir);
-
-        send_silent_del((*node)->key);
-
-        if ((*node)->next) {
-            (*node)->next->prev = (*node)->prev;
-        }
-
-        if ((*node)->prev) {
-            (*node)->prev->next = (*node)->next;
-        }
-
-        *node = (*node)->next;
-
-        // If the node is the first and last node of the row
-        if (*row == r_node) {
-            *row = r_node->next;
-        }
-
-        free(r_node->key);
-        free(r_node);
-        free(s_node->checksum);
-        free(s_node);
-    }
-}
-
-static void send_silent_del(char *path) {
-    char del_msg[OS_SIZE_6144 + 1];
-
-    snprintf(del_msg, OS_SIZE_6144, "-1!:::::::::::::+ %s", path);
-    send_syscheck_msg(del_msg);
-}
-
-
-#endif
-*/
