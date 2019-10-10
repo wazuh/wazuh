@@ -25,16 +25,11 @@
 #define ARGV0 "ossec-agent"
 #endif
 
-time_t __win32_curr_time = 0;
-time_t __win32_shared_time = 0;
-const char *__win32_uname = NULL;
-char *__win32_shared = NULL;
 HANDLE hMutex;
 int win_debug_level;
 
 /** Prototypes **/
 int Start_win32_Syscheck();
-void send_win32_info(time_t curr_time);
 
 
 /* Help message */
@@ -347,9 +342,6 @@ int local_start()
         }
     }
 
-    /* Send agent information message */
-    send_win32_info(time(0));
-
     /* Start logcollector -- main process here */
     LogCollectorStart();
 
@@ -360,7 +352,6 @@ int local_start()
 /* SendMSG for Windows */
 int SendMSG(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc)
 {
-    time_t cu_time;
     const char *pl;
     char tmpstr[OS_MAXSTR + 2];
     DWORD dwWaitResult;
@@ -393,108 +384,6 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
             break;
         }
     }   /* end - while for mutex... */
-
-    cu_time = time(0);
-
-#ifndef ONEWAY_ENABLED
-    /* Check if the server has responded */
-    if ((cu_time - available_server) > agt->notify_time) {
-        mdebug1("Sending agent information to server.");
-        send_win32_info(cu_time);
-
-        /* Attempt to send message again */
-        if ((cu_time - available_server) > agt->notify_time) {
-            /* Try again */
-            sleep(1);
-            send_win32_info(cu_time);
-            sleep(1);
-
-            if ((cu_time - available_server) > agt->notify_time) {
-                send_win32_info(cu_time);
-            }
-        }
-
-        /* If we reached here, the server is unavailable for a while */
-        if ((cu_time - available_server) > agt->max_time_reconnect_try) {
-            int wi = 1;
-            mdebug1("More than %d seconds without server response...is server alive? and Is there connection?", agt->max_time_reconnect_try);
-
-            /* Last attempt before going into reconnect mode */
-            sleep(1);
-            send_win32_info(cu_time);
-            if ((cu_time - available_server) > agt->max_time_reconnect_try) {
-                sleep(1);
-                send_win32_info(cu_time);
-                sleep(1);
-            }
-
-            /* Check and generate log if unavailable */
-            cu_time = time(0);
-            if ((cu_time - available_server) > agt->max_time_reconnect_try) {
-                int global_sleep = 1;
-                int mod_sleep = 12;
-
-                /* If response is not available, set lock and wait for it */
-                mwarn(SERVER_UNAV);
-                update_status(GA_STATUS_NACTIVE);
-
-                /* Go into reconnect mode */
-                while ((cu_time - available_server) > agt->max_time_reconnect_try) {
-                    /* Send information to see if server replies */
-                    if (agt->sock != -1) {
-                        send_win32_info(cu_time);
-                    }
-
-                    sleep(wi);
-                    cu_time = time(0);
-
-                    if (wi < 20) {
-                        wi++;
-                    } else {
-                        global_sleep++;
-                    }
-
-                    /* If we have more than one server, try all */
-                    if (wi > 12 && agt->server[1].rip) {
-                        int curr_rip = agt->rip_id;
-                        minfo("Trying next server IP in line: '%s'.", agt->server[agt->rip_id + 1].rip != NULL ? agt->server[agt->rip_id + 1].rip : agt->server[0].rip);
-
-                        connect_server(agt->rip_id + 1);
-
-                        if (agt->rip_id != curr_rip) {
-                            wi = 1;
-                        }
-                    } else if (global_sleep == 2 || ((global_sleep % mod_sleep) == 0) ||
-                               (agt->sock == -1)) {
-                        connect_server(agt->rip_id + 1);
-                        if (agt->sock == -1) {
-                            sleep(wi + global_sleep);
-                        } else {
-                            sleep(global_sleep);
-                        }
-
-                        if (global_sleep > 30) {
-                            mod_sleep = 50;
-                        }
-                    }
-                }
-
-                minfo(AG_CONNECTED, agt->server[agt->rip_id].rip, agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
-                minfo(SERVER_UP);
-                update_status(GA_STATUS_ACTIVE);
-            }
-        }
-    }
-#else
-    if (0) {
-    }
-#endif
-
-    /* Send notification */
-    else if ((cu_time - __win32_curr_time) > agt->notify_time) {
-        mdebug1("Sending info to server (ctime2)...");
-        send_win32_info(cu_time);
-    }
 
     /* locmsg cannot have the C:, as we use it as delimiter */
     pl = strchr(locmsg, ':');
@@ -531,8 +420,8 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
     return (0);
 }
 
-char *get_win_agent_ip(){
-
+char *get_agent_ip()
+{
     typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 
     char *agent_ip = NULL;
@@ -684,102 +573,6 @@ end:
     }
 
     return agent_ip;
-}
-
-/* Send win32 info to server */
-void send_win32_info(time_t curr_time)
-{
-    char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 2];
-    char tmp_labels[OS_MAXSTR - OS_HEADER_SIZE] = { '\0' };
-    char *agent_ip;
-    char label_ip[60];
-
-    agent_ip = get_win_agent_ip();
-
-    tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
-
-    mdebug1("Sending keep alive message.");
-
-    /* Fix time */
-    __win32_curr_time = curr_time;
-
-    /* Get uname */
-    if (!__win32_uname) {
-        __win32_uname = getuname();
-        if (!__win32_uname) {
-            merror("Error generating system information.");
-            os_strdup("Microsoft Windows - Unknown (unable to get system info)", __win32_uname);
-        }
-    }
-
-    /* Format labeled data */
-
-    if (!tmp_labels[0] && labels_format(agt->labels, tmp_labels, OS_MAXSTR - OS_HEADER_SIZE) < 0) {
-        merror("Too large labeled data.");
-        tmp_labels[0] = '\0';
-    }
-
-    /* Get shared files list -- every notify_time seconds only */
-    if ((__win32_curr_time - __win32_shared_time) > agt->notify_time) {
-        if (__win32_shared) {
-            free(__win32_shared);
-            __win32_shared = NULL;
-        }
-
-        __win32_shared_time = __win32_curr_time;
-    }
-
-    /* Get shared files */
-    if (!__win32_shared) {
-        __win32_shared = getsharedfiles();
-        if (!__win32_shared) {
-            __win32_shared = strdup("\0");
-            if (!__win32_shared) {
-                merror(MEM_ERROR, errno, strerror(errno));
-                return;
-            }
-        }
-    }
-
-    /* Create message */
-    if(agent_ip){
-        snprintf(label_ip,sizeof label_ip,"#\"_agent_ip\":%s",agent_ip);
-        /* In case there is an agent IP the message has a new line at the end to emulate the random string generated in Linux agents
-           to avoid the delete of the agent IP */
-        if (File_DateofChange(AGENTCONFIGINT) > 0) {
-            os_md5 md5sum;
-            if (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) != 0) {
-                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n", __win32_uname, tmp_labels, __win32_shared, label_ip);
-            } else {
-                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n", __win32_uname, md5sum, tmp_labels, __win32_shared, label_ip);
-            }
-        } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n", __win32_uname, tmp_labels, __win32_shared, label_ip);
-        }
-
-        free(agent_ip);
-    }
-    else{
-        if (File_DateofChange(AGENTCONFIGINT) > 0) {
-            os_md5 md5sum;
-            if (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) != 0) {
-                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s", __win32_uname, tmp_labels, __win32_shared);
-            } else {
-                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s", __win32_uname, md5sum, tmp_labels, __win32_shared);
-            }
-        } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s", __win32_uname, tmp_labels, __win32_shared);
-        }
-    }
-
-    /* Create message */
-    mdebug2("Sending keep alive: %s", tmp_msg);
-    send_msg(tmp_msg, -1);
-
-
-    update_keepalive(curr_time);
-
-    return;
 }
 
 #endif
