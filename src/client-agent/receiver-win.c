@@ -61,6 +61,8 @@ void *receiver_thread(__attribute__((unused)) void *none)
             continue;
         }
 
+        run_notify();
+
         FD_ZERO(&fdset);
         FD_SET(agt->sock, &fdset);
 
