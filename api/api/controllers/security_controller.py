@@ -78,6 +78,8 @@ def create_user():
     """
     f_kwargs = {**connexion.request.get_json()}
     validate = check_body(f_kwargs)
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs['rbac'] = rbac
     if validate is not True:
         raise WazuhError(5005, extra_message='Invalid field found {}'.format(validate))
     dapi = DistributedAPI(f=security.create_user,
@@ -149,7 +151,7 @@ def get_roles(role_ids=None, pretty=False, wait_for_complete=False, offset=0, li
     :param search: Looks for elements with the specified string
     :return Roles information
     """
-    func = security.get_roles if role_ids is None else security.get_role
+    func = security.get_roles_all if role_ids is None else security.get_roles
     rbac = get_permissions(connexion.request.headers['Authorization'])
     f_kwargs = {'role_ids': role_ids, 'rbac': rbac, 'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
@@ -188,8 +190,8 @@ def add_role(pretty=False, wait_for_complete=False):
                                                  '(TO BE DEFINED) '
                                                  'to get more information about API call')
 
-    # f_kwargs = {'role_id': role_id, **{}, **role_added_model.to_dict()}
-    f_kwargs = role_added_model
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs = {'rbac': rbac, 'name': role_added_model['name'], 'rule': role_added_model['rule']}
 
     dapi = DistributedAPI(f=security.add_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -213,7 +215,7 @@ def remove_roles(role_ids=None, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     :return Two list with deleted roles and not deleted roles
     """
-    func = security.remove_roles if role_ids is None else security.remove_role
+    func = security.remove_roles_all if role_ids is None else security.remove_roles
     rbac = get_permissions(connexion.request.headers['Authorization'])
     f_kwargs = {'rbac': rbac, 'role_ids': role_ids}
 
@@ -278,7 +280,7 @@ def get_policies(policy_ids=None, pretty=False, wait_for_complete=False, offset=
     :param search: Looks for elements with the specified string
     :return Policies information
     """
-    func = security.get_policies if policy_ids is None else security.get_policy
+    func = security.get_policies_all if policy_ids is None else security.get_policies
     rbac = get_permissions(connexion.request.headers['Authorization'])
     f_kwargs = {'policy_ids': policy_ids, 'rbac': rbac, 'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
@@ -316,7 +318,8 @@ def add_policy(pretty=False, wait_for_complete=False):
                                                  '(TO BE DEFINED) '
                                                  'to get more information about API call')
 
-    f_kwargs = policy_added_model
+    rbac = get_permissions(connexion.request.headers['Authorization'])
+    f_kwargs = {'rbac': rbac, 'name': policy_added_model['name'], 'policy': policy_added_model['policy']}
 
     dapi = DistributedAPI(f=security.add_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -340,7 +343,7 @@ def remove_policies(policy_ids=None, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     :return Two list with deleted roles and not deleted roles
     """
-    func = security.remove_policies if policy_ids is None else security.remove_policy
+    func = security.remove_policies_all if policy_ids is None else security.remove_policies
     rbac = get_permissions(connexion.request.headers['Authorization'])
     f_kwargs = {'rbac': rbac, 'policy_ids': policy_ids}
 

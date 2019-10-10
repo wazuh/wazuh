@@ -74,6 +74,8 @@ def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by
                              'Some users could not be show', 'No user were shown']}
 
 
+@expose_resources(actions=['security:create_user'], resources=['*:*:*'], target_params=['*'],
+                  post_proc_func=list_handler_no_denied)
 def create_user(username: str = None, password: str = None):
     """Create a new user
 
@@ -92,7 +94,9 @@ def create_user(username: str = None, password: str = None):
     if result is None:
         raise WazuhError(5000, extra_message='The user \'{}\' could not be created'.format(username))
 
-    return result
+    return {'affected_items': [result],
+            'failed_items': list(),
+            'str_priority': ['User created correctly', '', '']}
 
 
 @expose_resources(actions=['security:read'], resources=['user:id:{username}'], target_params=['username'],
@@ -141,8 +145,8 @@ def delete_user(username: str):
 
 @expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'], target_params=['role_ids'],
                   post_proc_func=list_handler_with_denied)
-def get_role(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
-             sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
+              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Returns information from all system roles, does not return information from its associated policies
 
     :param role_ids: List of roles ids.
@@ -177,8 +181,8 @@ def get_role(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
 
 @expose_resources(actions=['security:read'], resources=['role:id:*'], target_params=['role_ids'],
                   post_proc_func=list_handler_no_denied)
-def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
-              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+def get_roles_all(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
+                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Returns information from all system roles, does not return information from its associated policies
 
     :param role_ids: List of roles ids. (All)
@@ -207,7 +211,7 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
 
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'], target_params=['role_ids'],
                   post_proc_func=list_handler_with_denied)
-def remove_role(role_ids):
+def remove_roles(role_ids):
     """Removes a certain role from the system
 
     :param role_ids: List of roles ids.
@@ -227,13 +231,13 @@ def remove_role(role_ids):
 
     return {'affected_items': affected_items,
             'failed_items': failed_items,
-            'str_priority': ['All available roles were deleted',
-                             'Some roles could not be deleted', 'No role were deleted']}
+            'str_priority': ['All specified roles were deleted',
+                             'Some roles could not be delete', 'No role were deleted']}
 
 
 @expose_resources(actions=['security:delete'], resources=['role:id:*'], target_params=['role_ids'],
                   post_proc_func=list_handler_no_denied)
-def remove_roles(role_ids=None):
+def remove_roles_all(role_ids=None):
     """Removes all roles from the system
 
     :param role_ids: List of roles ids. (All)
@@ -251,6 +255,8 @@ def remove_roles(role_ids=None):
             'str_priority': ['All available roles were deleted', '', '']}
 
 
+@expose_resources(actions=['security:create'], resources=['*:*:*'], target_params=['*'],
+                  post_proc_func=list_handler_no_denied)
 def add_role(name=None, rule=None):
     """Creates a role in the system
 
@@ -265,7 +271,9 @@ def add_role(name=None, rule=None):
         elif status == SecurityError.INVALID:
             raise WazuhError(4003)
 
-    return [rm.get_role(name=name).to_dict()], [], ['', '', '']
+    return {'affected_items': [rm.get_role(name=name).to_dict()],
+            'failed_items': list(),
+            'str_priority': ['Role created correctly', '', '']}
 
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}'], target_params=['role_id'],
@@ -292,13 +300,15 @@ def update_role(role_id=None, name=None, rule=None):
         elif status == SecurityError.ADMIN_RESOURCES:
             raise WazuhError(4008)
 
-    return [rm.get_role_id(role_id=role_id[0]).to_dict()], [], ['', '', '']
+    return {'affected_items': [rm.get_role_id(role_id=role_id[0]).to_dict()],
+            'failed_items': list(),
+            'str_priority': ['Role updated correctly', '', '']}
 
 
 @expose_resources(actions=['security:read'], resources=['policy:id:{policy_ids}'], target_params=['policy_ids'],
                   post_proc_func=list_handler_with_denied)
-def get_policy(policy_ids, offset=0, limit=common.database_limit, sort_by=None,
-               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None,
+                 sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Returns the information of a certain policy
 
     :param policy_ids: ID of the policy on which the information will be collected
@@ -325,13 +335,16 @@ def get_policy(policy_ids, offset=0, limit=common.database_limit, sort_by=None,
                 # Policy id does not exist
                 failed_items.append(create_exception_dic(p_id, WazuhError(4007)))
 
-    return affected_items, failed_items, ['', '', '']
+    return {'affected_items': affected_items,
+            'failed_items': failed_items,
+            'str_priority': ['All specified policies were shown',
+                             'Some policies could not be shown', 'No policy were shown']}
 
 
 @expose_resources(actions=['security:read'], resources=['policy:id:*'], target_params=['policy_ids'],
                   post_proc_func=list_handler_no_denied)
-def get_policies(policy_ids=None, offset=0, limit=common.database_limit, sort_by=None,
-                 sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+def get_policies_all(policy_ids=None, offset=0, limit=common.database_limit, sort_by=None,
+                     sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Here we will be able to obtain all policies
 
     :param policy_ids: Lists of IDs of the policies on which the information will be collected
@@ -353,12 +366,14 @@ def get_policies(policy_ids=None, offset=0, limit=common.database_limit, sort_by
                 dict_policy.pop('roles', None)
                 affected_items.append(dict_policy)
 
-    return affected_items, [], ['', '', '']
+    return {'affected_items': affected_items,
+            'failed_items': list(),
+            'str_priority': ['All available policies were shown', '', '']}
 
 
 @expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'], target_params=['policy_ids'],
                   post_proc_func=list_handler_with_denied)
-def remove_policy(policy_ids=None):
+def remove_policies(policy_ids=None):
     """Removes a certain policy from the system
 
     :param policy_ids: ID of the policy to be removed
@@ -376,12 +391,15 @@ def remove_policy(policy_ids=None):
             else:
                 affected_items.append(p_id)
 
-    return affected_items, failed_items, ['', '', '']
+    return {'affected_items': affected_items,
+            'failed_items': failed_items,
+            'str_priority': ['All specified policies were deleted',
+                             'Some policies could not be deleted', 'No policies were deleted']}
 
 
 @expose_resources(actions=['security:delete'], resources=['policy:id:*'], target_params=['policy_ids'],
                   post_proc_func=list_handler_no_denied)
-def remove_policies(policy_ids=None):
+def remove_policies_all(policy_ids=None):
     """Removes a list of policies from the system
 
     :param policy_ids: List of policies to be removed
@@ -394,9 +412,13 @@ def remove_policies(policy_ids=None):
             if result and result != SecurityError.ADMIN_RESOURCES:
                 affected_items.append(p_id)
 
-    return affected_items, [], ['', '', '']
+    return {'affected_items': affected_items,
+            'failed_items': list(),
+            'str_priority': ['All available policies were deleted', '', '']}
 
 
+@expose_resources(actions=['security:create'], resources=['*:*:*'], target_params=['*'],
+                  post_proc_func=list_handler_no_denied)
 def add_policy(name=None, policy=None):
     """Creates a policy in the system
 
@@ -411,7 +433,9 @@ def add_policy(name=None, policy=None):
         elif status == SecurityError.INVALID:
             raise WazuhError(4006)
 
-    return [pm.get_policy(name).to_dict()], [], ['', '', '']
+    return {'affected_items': [pm.get_policy(name=name).to_dict()],
+            'failed_items': list(),
+            'str_priority': ['Policy created correctly', '', '']}
 
 
 @expose_resources(actions=['security:update'], resources=['policy:id:{policy_id}'], target_params=['policy_id'],
@@ -438,7 +462,9 @@ def update_policy(policy_id=None, name=None, policy=None):
         elif status == SecurityError.ADMIN_RESOURCES:
             raise WazuhError(4008)
 
-    return [pm.get_policy_id(policy_id[0]).to_dict()], [], ['', '', '']
+    return {'affected_items': [pm.get_policy_id(policy_id[0]).to_dict()],
+            'failed_items': list(),
+            'str_priority': ['Policy updated correctly', '', '']}
 
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
@@ -485,7 +511,10 @@ def set_role_policy(role_id, policy_ids):
             else:
                 affected_items.append('{}: {}'.format(role_id[0], policy_id))
 
-    return affected_items, failed_items, ['', '', '']
+    return {'affected_items': affected_items,
+            'failed_items': failed_items,
+            'str_priority': ['All roles and policies were linked',
+                             'Some roles and policies could not be linked', 'No links created']}
 
 
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
@@ -532,4 +561,7 @@ def remove_role_policy(role_id, policy_ids):
             else:
                 affected_items.append('{}: {}'.format(role_id[0], policy_id))
 
-    return affected_items, failed_items, ['', '', '']
+    return {'affected_items': affected_items,
+            'failed_items': failed_items,
+            'str_priority': ['All links between roles and policies were deleted',
+                             'Some links between roles and policies could not be deleted', 'No links deleted']}

@@ -127,10 +127,47 @@ components:
     AllItemsAffected:
       type: object
       required:
-        - older_than
         - total_affected_items
       allOf:
         - $ref: '#/components/schemas/ItemAffected'
+      properties:
+        older_than:
+          type: string
+          format: timeframe
+          default: 7d
+          description: Returns older than parameter used. It can be the default value or the parameter send by the user.
+        total_affected_items:
+          type: integer
+          format: int32
+          description: Number of items that have successfully did the requested operation.
+        total_failed_items:
+          type: integer
+          format: int32
+          minimum: 1
+          description: Number of items that couldn't do the requested operation. Only returned when it's higher than 0.
+
+    ItemAffectedObject:
+      type: object
+      required:
+        - affected_items
+      properties:
+        affected_items:
+          type: array
+          description: Items that successfully applied the API call action.
+          items:
+            type: object
+        failed_items:
+          type: array
+          description: List of items that have failed when doing the requested operation. It's not returned when it's empty.
+          items:
+            type: object
+
+    AllItemsAffectedObject:
+      type: object
+      required:
+        - total_affected_items
+      allOf:
+        - $ref: '#/components/schemas/ItemAffectedObject'
       properties:
         older_than:
           type: string
@@ -543,9 +580,11 @@ components:
     # Security models
     Role_id:
       type: string
+      format: numbers
       description: Role ID.
     Policy_id:
       type: string
+      format: numbers
       description: Policy ID.
     Username:
       type: string
@@ -606,30 +645,6 @@ components:
               type: string
               description: "Effect of the policy"
 
-    PoliciesResponseSpec:
-      type: object
-      properties:
-        data:
-          type: object
-          properties:
-            items:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                    description: 'Id of policy'
-                  name:
-                    type: string
-                    description: 'Name of policy'
-                  policy:
-                    type: string
-                    description: 'Policy definition'
-                  roles:
-                    type: object
-                    description: 'List of roles'
-
     RolesResponse:
       type: object
       properties:
@@ -662,30 +677,6 @@ components:
               rule:
                 type: object
                 description: 'Role rule'
-
-    RolesResponseSpec:
-      type: object
-      properties:
-        data:
-          type: object
-          properties:
-            items:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                    description: 'Id of role'
-                  name:
-                    type: string
-                    description: 'Name of role'
-                  rule:
-                    type: string
-                    description: 'Rule of role'
-                  policies:
-                    type: object
-                    description: 'List of policies'
 
     # Cluster and manager models
     WazuhDaemonsStatus:
@@ -10285,7 +10276,7 @@ paths:
     get:
       tags:
         - security
-      summary: 'Gets a list of roles or all roles in the system'
+      summary: 'Gets a list of roles or all roles in the system without specifying anything'
       description: 'For a specific list, indicate the ids separated by commas. Example: ?role_ids=1,2,3'
       operationId: api.controllers.security_controller.get_roles
       parameters:
@@ -10308,22 +10299,34 @@ paths:
                     properties:
                       data:
                         allOf:
-                          - $ref: '#/components/schemas/ListMetadata'
+                          - $ref: '#/components/schemas/AllItemsAffectedObject'
                           - $ref: '#/components/schemas/RolesResponse'
               example:
                 data:
-                  items:
+                  affected_items:
                     - id: 1
                       name: 'administrator'
+                      policies:
+                        id: 1
+                        name: wazuhPolicy
+                        policy:
+                          actions:
+                            - "agent:read"
+                            - "agent:delete"
+                          effect: allow
+                          resources:
+                            - "agent:id:*"
                       rule:
-                        MATCH:
-                          administrator: 'total_access'
+                        FIND:
+                          r'^auth[a-zA-Z]+$':
+                            - "administrator"
                     - id: 2
                       name: 'normal_user'
                       rule:
                         MATCH:
-                          definition: 'limit_access'
-                  totalItems: 2
+                          privileges: 'limit_access'
+                  total_affected_items: 2
+                message: "All available roles were shown"
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10345,10 +10348,10 @@ paths:
                 - name
                 - rule
             example:
-              name: "normal_user"
+              name: "normal"
               rule:
                 MATCH:
-                  definition: "limit_access"
+                  definition: "normalRule"
       responses:
         '200':
           description: 'Return the information of the new role'
@@ -10360,12 +10363,15 @@ paths:
                   - $ref: '#/components/schemas/RolesResponse'
               example:
                 data:
-                  id: 2
-                  name: "normal_user"
-                  policies: []
-                  rule:
-                    MATCH:
-                      definition: "limit_access"
+                  affected_items:
+                    - id: 2
+                      name: normal_user
+                      policies: []
+                      rule:
+                        MATCH:
+                          definition: limit_access
+                  total_affected_items: 1
+                message: Role created correctly
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10386,23 +10392,14 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          removed_roles:
-                            type: array
-                            description: Roles affected
-                            items:
-                              type: integer
-                              description: 'Roles ids'
-                          incorrect_roles:
-                            type: array
-                            description: "Incorrect roles"
-                            items:
-                              type: integer
-                              description: "Role id"
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/RolesResponse'
+              example:
+                data:
+                  affected_items:
+                    - '6'
+                  total_affected_items: 1
+                message: All available roles were deleted
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10436,22 +10433,18 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/RolesResponseSpec'
+                  - $ref: '#/components/schemas/RolesResponse'
               example:
                 data:
-                  id: 1
-                  name: 'normal_role'
-                  rule:
-                    normal: 'normal'
-                  policies:
-                    - id: 2
-                      name: 'normal_policy'
-                      policy:
-                        actions:
-                          - "agent:delete"
-                        resources:
-                          - "agent:id:001"
-                        effect: "allow"
+                  affected_items:
+                    - id: 5
+                      name: normal8
+                      policies: []
+                      rule:
+                        MATCH:
+                          definition: normalRule8
+                  total_affected_items: 1
+                message: Role updated correctly
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10482,18 +10475,31 @@ paths:
                     properties:
                       data:
                         allOf:
-                          - $ref: '#/components/schemas/ListMetadata'
+                          - $ref: '#/components/schemas/AllItemsAffectedObject'
                           - $ref: '#/components/schemas/PoliciesResponse'
               example:
                 data:
-                  items:
+                  affected_items:
                     - id: 1
-                      name: 'normal_policy'
+                      name: wazuhPolicy
                       policy:
-                        actions: 'agent:delete'
-                        resources: '[agent:id:001]'
-                        effect: 'allow'
-                  totalItems: 1
+                        actions:
+                          - "*:*"
+                        effect: allow
+                        resources:
+                          - "*:*"
+                    - id: 2
+                      name: test_i
+                      policy:
+                        actions:
+                          - agent:delete
+                        effect: allow
+                        resources:
+                          - agent:id:004
+                          - agent:id:005
+                          - agent:id:006
+                  total_affected_items: 2
+                message: All available policies were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10564,23 +10570,14 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          removed_policies:
-                            type: array
-                            description: Policies affected
-                            items:
-                              type: integer
-                              description: 'Policies ids'
-                          incorrect_policies:
-                            type: array
-                            description: "Incorrect policies"
-                            items:
-                              type: integer
-                              description: "Policy id"
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/PoliciesResponse'
+              example:
+                data:
+                  affected_items:
+                    - '2'
+                  total_affected_items: 1
+                message: All specified policies were deleted
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10618,22 +10615,24 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/PoliciesResponseSpec'
+                  - $ref: '#/components/schemas/PoliciesResponse'
               example:
-                name: 'normal_policy'
-                policy:
-                  actions:
-                    - "agent:delete"
-                  resources:
-                    - "agent:id:001"
-                    - "agent:id:002"
-                    - "agent:id:003"
-                  effect: "allow"
-                  roles:
+                data:
+                  affected_items:
                     - id: 2
-                      name: 'normal_role'
-                      rule:
-                        normal: 'normal'
+                      name: wazuhPolicy
+                      policy:
+                        actions:
+                          - agent:delete
+                        effect: allow
+                        resources:
+                          - agent:id:001
+                          - agent:id:002
+                          - agent:id:003
+                      roles: []
+                  total_affected_items: 1
+                message: Policy updated correctly
+
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10657,7 +10656,7 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/RolesResponseSpec'
+                  - $ref: '#/components/schemas/RolesResponse'
               example:
                 data:
                   id: 1
@@ -10693,7 +10692,7 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/RolesResponseSpec'
+                  - $ref: '#/components/schemas/RolesResponse'
               example:
                 data:
                   id: 2
