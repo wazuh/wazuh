@@ -358,6 +358,8 @@
       "location",
       "manager.name",
       "message",
+      "mitre.id",
+      "mitre.tactics",
       "offset",
       "predecoder.hostname",
       "predecoder.program_name",
@@ -672,6 +674,16 @@
       },
       "message": {
         "type": "text"
+      },
+      "mitre": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "tactics": {
+            "type": "keyword"
+          }
+        }
       },
       "offset": {
         "type": "keyword"
