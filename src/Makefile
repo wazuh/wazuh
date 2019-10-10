@@ -619,8 +619,8 @@ winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscolle
 	cd win32/ && ./unix2dos.pl ../VERSION > VERSION
 	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
 	cd win32/ && makensis ossec-installer.nsi
-	cd ../etc/sca/windows/ && zip -r 10.zip 10/
-	cd ../etc/sca/windows/ && zip -r 2012R2.zip 2012R2/
+	cd ../etc/sca/windows/10 && zip -r 10.zip *
+	cd ../etc/sca/windows/2012R2 && zip -r 2012R2.zip *
 	cd ../etc/templates/config/windows/; \
 	for dir in $(subst ../etc/templates/config/windows/,,$(wildcard ../etc/templates/config/windows/*)) ; do \
 		zip -jr $(addsuffix .zip, $$dir) $$dir; \

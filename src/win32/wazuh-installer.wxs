@@ -86,9 +86,6 @@
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[ADDRESS]&quot;,&quot;[SERVER_PORT]&quot;,&quot;[PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[TIME_RECONNECT]&quot;,&quot;[WAZUH_MANAGER]&quot;,&quot;[WAZUH_MANAGER_PORT]&quot;,&quot;[WAZUH_PROTOCOL]&quot;,&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;,&quot;[WAZUH_TIME_RECONNECT]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
 
-        <!--CustomAction Id="InstallConfigurationFiles" BinaryKey="UnzipVersionFiles" VBScriptCall="ExtractConfigurationFiles" Return="check" Execute="deferred" Impersonate="no" />
-        <CustomAction Id="InstallSCAFiles" BinaryKey="UnzipVersionFiles" VBScriptCall="ExtractSCAFiles" Return="check" Execute="deferred" Impersonate="no" /-->
-
         <CustomAction Id="InstallConfigurationFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs ExtractConfigurationFiles" />
         <CustomAction Id="InstallSCAFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs ExtractSCAFiles" />
 
@@ -466,11 +463,11 @@
                           <File Id="SCA_WIN_AUDIT.YML" Name="sca_win_audit.yml" Source="..\..\etc\sca\windows\sca_win_audit.yml" />
                         </Component>
                         <Component Id="SCA_WIN10" DiskId="1" Guid="A6B0FCA6-522F-4129-95B7-0FF9EB2EA907">
-                            <File Id="SCA_WIN10.ZIP" Name="10.zip" Source="..\..\etc\sca\windows\10.zip" />
+                            <File Id="SCA_WIN10.ZIP" Name="10.zip" Source="..\..\etc\sca\windows\10\10.zip" />
                             <Condition>MAJORVERSION = "#10" AND MsiNTProductType = 1</Condition>
                         </Component>
                         <Component Id="SCA_WIN2012R2" DiskId="1" Guid="6C7B21C9-2B01-4A6B-BAC5-782382D10FBB">
-                            <File Id="SCA_WIN2012R2.ZIP" Name="2012R2.zip" Source="..\..\etc\sca\windows\2012R2.zip" />
+                            <File Id="SCA_WIN2012R2.ZIP" Name="2012R2.zip" Source="..\..\etc\sca\windows\2012R2\2012R2.zip" />
                             <Condition>VersionNT64 = 603 AND MsiNTProductType &gt; 1</Condition>
                         </Component>
                       </Directory>
