@@ -148,6 +148,7 @@ cJSON *getLabelsConfig(void) {
 
 cJSON *getAgentInternalOptions(void) {
 
+    char aux[50];
     cJSON *root = cJSON_CreateObject();
     cJSON *internals = cJSON_CreateObject();
 
@@ -170,15 +171,33 @@ cJSON *getAgentInternalOptions(void) {
 
     cJSON_AddItemToObject(internals, "agent", agent);
 
-    cJSON *monitord = cJSON_CreateObject();
+    cJSON *logging = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(monitord, "enabled", mond.enabled);
-    cJSON_AddNumberToObject(monitord, "compress", mond.compress);
-    cJSON_AddNumberToObject(monitord, "maxage", mond.maxage);
-    cJSON_AddNumberToObject(monitord, "day_wait", mond.day_wait);
-    cJSON_AddNumberToObject(monitord, "size_rotation", mond.max_size);
+    if (mond.enabled) {
+        cJSON_AddStringToObject(logging, "plain_format", mond.ossec_log_plain ? "yes" : "no");
+        cJSON_AddStringToObject(logging, "json_format", mond.ossec_log_json ? "yes" : "no");
+        if (mond.rotation_enabled) {
+            cJSON_AddStringToObject(logging, "compress_rotation", mond.compress_rotation ? "yes" : "no");
+            snprintf(aux, 50, "%d", mond.rotate);
+            cJSON_AddStringToObject(logging, "saved_rotations", mond.rotate == -1 ? "unlimited" : aux);
+            if (mond.interval_units == 'w') {
+                char *buffer;
+                buffer = int_to_day(mond.interval);
+                cJSON_AddStringToObject(logging, "schedule", buffer);
+                os_free(buffer);
+            } else {
+                snprintf(aux, 50, "%ld%c", mond.interval, mond.interval_units);
+                cJSON_AddStringToObject(logging, "schedule", mond.interval ? aux : "no");
+            }
+            snprintf(aux, 50, "%ld%c", mond.size_rotate, mond.size_units);
+            cJSON_AddStringToObject(logging, "maxsize", mond.size_rotate ? aux : "no");
+            snprintf(aux, 50, "%ld%c", mond.min_size_rotate, mond.min_size_units);
+            cJSON_AddStringToObject(logging, "minsize", mond.min_size_rotate ? aux : "no");
+            cJSON_AddNumberToObject(logging, "maxage", mond.maxage);
+        }
+    }
 
-    cJSON_AddItemToObject(internals, "monitord", monitord);
+    cJSON_AddItemToObject(internals, "logging", logging);
 
     cJSON *remoted = cJSON_CreateObject();
 

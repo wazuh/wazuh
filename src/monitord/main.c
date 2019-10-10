@@ -56,6 +56,8 @@ static void init_conf()
     mond.maxage = 31;
     mond.day_wait = mond.day_wait == -1 ? 10 : mond.day_wait;
     mond.log_level = 0;
+    mond.monitor_agents = 1;
+    mond.delete_old_agents = 0;
 
     return;
 }
@@ -79,6 +81,10 @@ static void read_internal()
         mond.maxage = aux;
     if ((aux = getDefine_Int("monitord", "debug", 0, 2)) != INT_OPT_NDEF)
         mond.log_level = aux;
+    if ((aux = getDefine_Int("monitord", "monitor_agents", 0, 1)) != INT_OPT_NDEF)
+        mond.monitor_agents = aux;
+    if ((aux = getDefine_Int("monitord", "delete_old_agents", 0, 9600)) != INT_OPT_NDEF)
+        mond.delete_old_agents = aux;
 
     return;
 }
