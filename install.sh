@@ -89,12 +89,12 @@ Install()
         AUDIT_FLAG="USE_AUDIT=no"
         MSGPACK_FLAG="USE_MSGPACK_OPT=no"
         if [ ${DIST_VER} -lt 5 ]; then
-            SYSC_FLAG="DISABLE_SYSC=true"
+            SYSC_FLAG="DISABLE_SYSC=yes"
         fi
     fi
 
     if [ "X${OS_VERSION_FOR_SYSC}" = "XAIX" ]; then
-        SYSC_FLAG="DISABLE_SYSC=true"
+        SYSC_FLAG="DISABLE_SYSC=yes"
     fi
 
     # Build SQLite library for CentOS 6
