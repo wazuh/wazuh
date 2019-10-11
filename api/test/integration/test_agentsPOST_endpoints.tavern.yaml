@@ -1,9 +1,9 @@
 ---
 test_name: POST /agents
 
-marks:
-  - usefixtures:
-    - base_tests
+#marks:
+#  - usefixtures:
+#    - base_tests
 
 includes:
   - !include common.yaml
@@ -79,20 +79,6 @@ stages:
         status: !anyint
         title: !anystr
         type: !anystr
-
-# BODY IS ACCEPTING EXTRA FIELDS WITH GARBAGE DATA, NEED TO DO FURTHER TESTING ON THIS #
-#    # POST /agents
-#  - name: Invalid field
-#    request:
-#      <<: *agent_request
-#      json:
-#        extrafield: "invalid"
-#        name: "testagentpost"
-#        ip: "any"
-#    response:
-#      status_code: 200
-#      body:
-#        <<: *agent_create_response
 
     # POST /agents
   - name: Create agent without assigning an specific IP
@@ -170,14 +156,14 @@ stages:
         <<: *agent_create_response
 
 ---
-test_name: POST /agents/groups/:group_id
+test_name: POST /agents/groups/{group_id}
 
 stages:
 
-    # POST /agents/groups/webserver
-  - name: Create a group called webserver
+    # POST /agents/groups/group4
+  - name: Create a group called group4
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/webserver"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/group4"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -206,7 +192,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400 #Error code in framework is 1722, but never arises is responses are validated at connexion level
+      status_code: 400
       body:
         <<: *error_spec
 
@@ -314,10 +300,8 @@ stages:
       body:
         <<: *agent_create_response
 
-    ##TEST IS FAILING BECAUSE AUTOMATIC IP ASSIGNED IS SAME AS PRIOR POST /agents TEST #
     # POST /agents/insert
-  - name: Create a new agent using an automatic IP
-    skip: True
+  - name: Create a new agent using an automatic IP (ip already used by NewAgentPost2)
     request:
       <<: *agent_insert_request
       json:
@@ -325,9 +309,9 @@ stages:
         id: "754"
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
-      status_code: 200
+      status_code: 400
       body:
-        <<: *agent_create_response
+        code: 1706
 
     # POST /agents/insert
   - name: Create a new agent using a manual IP
@@ -440,20 +424,3 @@ stages:
       status_code: 400
       body:
         code: 1705
-
----
-test_name: POST /agents/restart
-
-stages:
-
-    # POST /agents/restart
-  - name: Restart all agents
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
-      method: POST
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      body:
-        message: !anystr

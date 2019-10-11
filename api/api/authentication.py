@@ -188,7 +188,7 @@ def check_user(user, password, required_scopes=None):
 
 # Set JWT settings
 JWT_ISSUER = 'wazuh'
-JWT_LIFETIME_SECONDS = 1800
+JWT_LIFETIME_SECONDS = 36000
 JWT_ALGORITHM = 'HS256'
 
 
