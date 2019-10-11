@@ -107,7 +107,7 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2);
 =======
 int Read_Labels(XML_NODE node, void *d1, void *d2, char **output);
 int Read_Authd(XML_NODE node, void *d1, void *d2, char **output);
-int Read_Cluster(XML_NODE node, void *d1, void *d2, char **output);
+int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, void *d2, char **output);
 int Read_Socket(XML_NODE node, void *d1, void *d2, char **output);
 >>>>>>> Introduce variable output to ReadConfig
 

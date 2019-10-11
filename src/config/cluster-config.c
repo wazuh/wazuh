@@ -14,7 +14,7 @@
 #include "global-config.h"
 
 
-int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char **output) {
+int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2, char **output) {
 
     static const char *disabled = "disabled";
     static const char *cluster_name = "name";
@@ -35,6 +35,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char
     int i;
     int disable_cluster_info = 0;
     char message[OS_FLSIZE];
+    int found = 0;
 
     Config->hide_cluster_info = 0;
 
@@ -117,11 +118,20 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char
             }
             os_strdup(node[i]->content, Config->node_type);
         } else if (!strcmp(node[i]->element, key)) {
+            if (output) {
+                if (strlen(node[i]->content) == 0) {
+                    snprintf(message, OS_FLSIZE + 1, "Unspecified key");
+                    found = 1;
+                } else if (strlen(node[i]->content) !=	32) {
+                    snprintf(message, OS_FLSIZE + 1, "Key must be 32 characters long and only have alphanumeric characters");
+                    found = 1;
+                }
+            }
         } else if (!strcmp(node[i]->element, socket_timeout)) {
         } else if (!strcmp(node[i]->element, connection_timeout)) {
         } else if (!strcmp(node[i]->element, disabled)) {
             if (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no")) {
-                if (output == NULL) {
+                if (!output) {
                     merror("Detected a not allowed value for disabled tag '%s'. Valid values are 'yes' and 'no'.", node[i]->content);
                 } else {
                     snprintf(message, OS_FLSIZE + 1,
@@ -130,6 +140,12 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char
                     wm_strcat(output, message, '\n');
                 }
                 return OS_INVALID;
+            } if (strcmp(node[i]->content, "yes") && output) {
+                if (found) {
+                    wm_strcat(output, message, '\n');
+                    if (found == 1)
+                        return OS_INVALID;
+                }
             }
             if (strcmp(node[i]->content, "yes") == 0) {
                 disable_cluster_info = 1;
@@ -150,11 +166,46 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, interval)) {
-            if (output == NULL){
+            if (!output){
                 mwarn("Detected a deprecated configuration for cluster. Interval option is not longer available.");
+            } else {
+                wm_strcat(output, "WARNING: Detected a deprecated configuration for cluster. Interval option is not longer available.", '\n');
             }
         } else if (!strcmp(node[i]->element, nodes)) {
+            if (output) {
+                
+                /* Get children */
+                xml_node **children = NULL;
+                    if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+                }
+
+                int  j;
+                for (j = 0; children[j]; j++) {
+                    if (strcmp(children[j]->element, "node") == 0) {
+                        if (!strcmp(children[j]->content, "localhost") || !strcmp(children[j]->content, "NODE_IP") ||
+                                !strcmp(children[j]->content, "0.0.0.0") || !strcmp(children[j]->content, "127.0.1.1")) {
+                            snprintf(message, OS_FLSIZE + 1, "Invalid elements in node fields: %s.", children[j]->content);
+                            found = 1;
+                        }
+                        if ((j > 0) && (!found)) {
+                            snprintf(message, OS_FLSIZE + 1,
+                                "WARNING: Found more than one node in configuration. Only master node should be specified. Using as master %s",
+                                children[0]->content);
+                                found = 2;
+                        }
+                    }
+                }
+                OS_ClearNode(children);
+            }
         } else if (!strcmp(node[i]->element, port)) {
+            if (output) {
+                int port_var = atoi(node[i]->content);
+                if ((port_var < 1024) || (port_var > 65535)) {
+                    snprintf(message, OS_FLSIZE + 1, "Port must be higher than 1024 and lower than 65535.");
+                    found = 1;
+                }
+            }
         } else if (!strcmp(node[i]->element, bind_addr)) {
         } else if (output == NULL) {
             merror(XML_INVELEM, node[i]->element);
