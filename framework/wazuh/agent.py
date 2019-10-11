@@ -118,7 +118,7 @@ def restart_agents(agent_list=None):
         try:
             Agent(agent_id).restart()
             affected_agents.append(agent_id)
-        except WazuhError as e:
+        except WazuhException as e:
             failed_ids.append(create_exception_dic(agent_id, e))
 
     return {'affected_items': affected_agents,
@@ -141,7 +141,7 @@ def restart_agents_all(agent_list=None):
         try:
             Agent(agent_id).restart()
             affected_agents.append(agent_id)
-        except WazuhError:
+        except WazuhException:
             pass
 
     return {'affected_items': affected_agents,
@@ -186,7 +186,7 @@ def get_agents_keys(agent_list=None):
     for agent_id in agent_list:
         try:
             items.append({'id': agent_id, 'key': Agent(agent_id).get_key()})
-        except WazuhError:
+        except WazuhException:
             pass
 
     return {'items': items, 'totalItems': len(items)}
@@ -267,7 +267,7 @@ def delete_agents_all(agent_list=None, backup=False, purge=False, status="all", 
                 my_agent.load_info_from_db()
                 my_agent.remove(backup, purge)
                 affected_agents.append(agent_id)
-            except WazuhError:
+            except WazuhException:
                 pass
 
     result = {'affected_items': affected_agents,
@@ -497,7 +497,7 @@ def delete_groups_all(group_list=None):
             affected_groups.append(group_id)
             affected_agents += removed['affected_items']
             Agent.remove_multi_group(set(group_id.lower()))
-        except WazuhError:
+        except WazuhException:
             pass
 
     result = {'affected_items': affected_groups,
@@ -564,7 +564,7 @@ def assign_all_agents_to_group(group_id=None, agent_list=None, replace=False):
         try:
             Agent.add_group_to_agent(agent_id=agent_id, group_id=group_id, replace=replace)
             affected_agents.append(agent_id)
-        except WazuhError:
+        except WazuhException:
             pass
 
     result = {'affected_items': affected_agents,
@@ -627,7 +627,7 @@ def remove_all_agents_from_group(group_id=None, agent_list=None):
         try:
             Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=False)
             affected_agents.append(agent_id)
-        except WazuhError:
+        except WazuhException:
             pass
 
     result = {'affected_items': affected_agents,
