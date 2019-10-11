@@ -195,6 +195,8 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
     """
     # We expose required resources for the request
     res_list = list()
+    target_params = list()
+    add_denied = True
     for resource in resources:
         m = re.search(r'^([a-z*]+:[a-z*]+:)(\w+|\*|{(\w+)})$', resource)
         res_base = m.group(1)
@@ -203,6 +205,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
             try:
                 # Dynamic resources ids are found within the {}
                 params = kwargs[m.group(3)]
+                target_params.append(m.group(3))
                 if isinstance(params, list):
                     # We check if params is a list of resources or a single one in a string
                     if len(params) == 0:
@@ -210,12 +213,16 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                     for param in params:
                         res_list.append("{0}{1}".format(res_base, param))
                 else:
+                    if params is None or params == '*':
+                        add_denied = False
+                        params = '*'
                     res_list.append("{0}{1}".format(res_base, params))
             # KeyError occurs if required dynamic resources can't be found within request parameters
             except KeyError:
                 raise WazuhError(4014, extra_message={'param': m.group(3)})
         # If we don't find a regex match we obtain the static resource/s
         else:
+            target_params.append(m.group(2))
             res_list.append(resource)
 
     # Create dict of required policies with action: list(resources) pairs
@@ -223,7 +230,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
     for action in actions:
         req_permissions[action] = res_list
 
-    return req_permissions
+    return target_params, req_permissions, add_denied
 
 
 def _match_permissions(req_permissions: dict = None, rbac: list = None):
@@ -242,8 +249,8 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     return allow_match
 
 
-def expose_resources(actions: list = None, resources: list = None, target_params: list = None,
-                     post_proc_func: callable = None, post_proc_kwargs: dict = None):
+def expose_resources(actions: list = None, resources: list = None, post_proc_func: callable = None,
+                     post_proc_kwargs: dict = None):
     """Decorator to apply user permissions on a Wazuh framework function
     based on exposed action:resource pairs.
 
@@ -260,7 +267,8 @@ def expose_resources(actions: list = None, resources: list = None, target_params
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            req_permissions = _get_required_permissions(actions=actions, resources=resources, **kwargs)
+            target_params, req_permissions, add_denied = \
+                _get_required_permissions(actions=actions, resources=resources, **kwargs)
             allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
             del kwargs['rbac']
             original_kwargs = copy.deepcopy(kwargs)
@@ -278,63 +286,56 @@ def expose_resources(actions: list = None, resources: list = None, target_params
                 return result
             else:
                 return post_proc_func(result, original=original_kwargs, allowed=allow, target=target_params,
-                                      **post_proc_kwargs)
+                                      add_denied=add_denied, **post_proc_kwargs)
         return wrapper
     return decorator
 
 
 def _merge_errors(failed_items):
     code_ids = dict()
+    error_count = 0
     for index, failed_item in enumerate(failed_items):
         if failed_item['error']['code'] not in code_ids.keys():
             code_ids[failed_item['error']['code']] = dict()
             code_ids[failed_item['error']['code']]['ids'] = list()
             code_ids[failed_item['error']['code']]['index'] = index
         code_ids[failed_item['error']['code']]['ids'].append(failed_item['id'])
+        error_count += 1
     final_errors_list = list()
-    error_count = 0
+    code_ids = dict(sorted(code_ids.items()))
     for key, error_code in code_ids.items():
         final_errors_list.append(failed_items[error_code['index']])
-        for item_id in error_code['ids']:
-            if not isinstance(final_errors_list[-1]['id'], list):
-                final_errors_list[-1]['id'] = list()
-            final_errors_list[-1]['id'].append(item_id)
-        error_count += len(error_code['ids'])
+        try:
+            final_errors_list[-1]['id'] = sorted(error_code['ids'], key=int)
+        except ValueError:
+            final_errors_list[-1]['id'] = sorted(error_code['ids'])
 
     return final_errors_list, error_count
 
 
-def list_handler_with_denied(result, original: dict = None, allowed: dict = None, target: list = None,
-                             **post_proc_kwargs):
-    """ Post processor for framework list responses with affected items and failed items
+def list_handler(result, original: dict = None, allowed: dict = None, target: list = None, add_denied: bool = False,
+                 **post_proc_kwargs):
+    """ Post processor for framework list responses with affected items and optional denied items
 
     :param result: Dict with affected_items, failed_items and str_priority
     :param original: Original input call parameter values
     :param allowed: Allowed input call parameter values
     :param target: Name of the input parameters used to calculate resource access
+    :param add_denied: Flag to add denied permissions to answer
     :return: WazuhResult
     """
-    if len(target) == 1:
-        original_kwargs = original[target[0]] if isinstance(original[target[0]], list) else [original[target[0]]]
-        for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[0]])):
-            result['failed_items'].append(create_exception_dic(item, WazuhError(4000)))
-    else:
-        original_kwargs = original[target[1]] if isinstance(original[target[1]], list) else list(original[target[1]])
-        for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[1]])):
-            result['failed_items'].append(create_exception_dic('{}:{}'.format(original[target[0]], item),
-                                                               WazuhError(4000)))
+    if add_denied:
+        if len(target) == 1:
+            original_kwargs = original[target[0]] if isinstance(original[target[0]], list) else [original[target[0]]]
+            for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[0]])):
+                result['failed_items'].append(create_exception_dic(item, WazuhError(4000)))
+        else:
+            original_kwargs = original[target[1]] if isinstance(original[target[1]], list) else list(
+                original[target[1]])
+            for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[1]])):
+                result['failed_items'].append(create_exception_dic('{}:{}'.format(original[target[0]], item),
+                                                                   WazuhError(4000)))
 
-    return data_response_builder(result, original, **post_proc_kwargs)
-
-
-def list_handler_no_denied(result, original: dict = None, allowed: dict = None, target: list = None,
-                           **post_proc_kwargs):
-    """ Post processor for framework list responses with only affected items
-
-    :param result: List with affected_items, failed_items and str_priority
-    :param original: Original input call parameter values
-    :return: WazuhResult
-    """
     return data_response_builder(result, original, **post_proc_kwargs)
 
 
