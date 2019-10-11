@@ -25,8 +25,7 @@ typedef struct wm_gcp {
     char *subscription_name;
     char *credentials_file;
     unsigned int interval;
-    int msg_delay;
-    int queue;
+    time_t time_interval;
 } wm_gcp;
 
 extern const wm_context WM_GCP_CONTEXT;   // Context

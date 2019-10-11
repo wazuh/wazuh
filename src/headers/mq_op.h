@@ -22,8 +22,6 @@
 #define ROOTCHECK_MQ    '9'
 #define EVENT_MQ        '10'
 #define SCA_MQ          'p'
-#define GCP_MQ          'q'
-
 
 /* Queues for additional log types */
 #define MYSQL_MQ         'a'

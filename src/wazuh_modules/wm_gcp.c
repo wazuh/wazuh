@@ -17,7 +17,6 @@
 
 static void* wm_gcp_main(wm_gcp *gcp_config);                        // Module main function. It won't return
 void wm_gcp_run(wm_gcp *data);                                       // Running python script
-static int wm_gcp_send_event(wm_gcp * data, cJSON *json_event);      // Send event to analysisd
 static void wm_gcp_destroy(wm_gcp *gcp_config);                      // Destroy data
 cJSON *wm_gcp_dump(const wm_gcp *gcp_config);                        // Read config
 
@@ -32,29 +31,57 @@ const wm_context WM_GCP_CONTEXT = {
 
 // Module main function. It won't return
 void* wm_gcp_main(wm_gcp *data) {
-    int i;
+    time_t time_start;
+    time_t time_sleep = 0;
 
     // If module is disabled, exit
     if (data->enabled) {
         mtinfo(WM_GCP_LOGTAG, "Module started");
     } else {
-        minfo("Module disabled. Exiting.");
+        mtinfo(WM_GCP_LOGTAG, "Module disabled. Exiting.");
         pthread_exit(NULL);
     }
 
-    data->msg_delay = 1000000 / wm_max_eps;
+    if (!data->pull_on_start) {
+        time_start = time(NULL);
 
-#ifndef WIN32
-    for (i = 0; (data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++){
-        wm_delay(1000 * WM_MAX_WAIT);
+        // On first run, take into account the interval of time specified
+        if (data->time_interval == 0) {
+            data->time_interval = time_start + data->interval;
+        }
+
+        if (data->time_interval > time_start) {
+            mtinfo(WM_GCP_LOGTAG, "Waiting interval to start fetching.");
+            time_sleep = data->time_interval - time_start;
+            wm_delay(1000 * time_sleep);
+        }
     }
 
-    if (i == WM_MAX_ATTEMPTS) {
-        merror("Can't connect to queue.");
-    }
-#endif
+    while (1) {
+        mtdebug1(WM_GCP_LOGTAG, "Starting fetching of logs.");
 
-    wm_gcp_run(data);
+        // Get time and execute
+        time_start = time(NULL);
+
+        wm_gcp_run(data);
+
+        mtdebug1(WM_GCP_LOGTAG, "Fetching logs finished.");
+
+        if (data->interval) {
+            time_sleep = time(NULL) - time_start;
+
+            if ((time_t)data->interval >= time_sleep) {
+                time_sleep = data->interval - time_sleep;
+                data->time_interval = data->interval + time_start;
+            } else {
+                mtwarn(WM_GCP_LOGTAG, "Interval overtaken.");
+                time_sleep = data->time_interval = 0;
+            }
+        }
+
+        // If time_sleep=0, yield CPU
+        wm_delay(1000 * time_sleep);
+    }
 
     return NULL;
 }
@@ -64,13 +91,11 @@ void wm_gcp_run(wm_gcp *data) {
     char *output = NULL;
     char *command = NULL;
 
-    // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
-
     // Create arguments
     mtdebug2(WM_GCP_LOGTAG, "Create argument list");
 
-    wm_strcat(&command, WM_GCP_SCRIPT_PATH, '\0');
+    wm_strcat(&command, "python3 ", ' ');
+    wm_strcat(&command, WM_GCP_DEFAULT_DIR, '\0');
 
     if (data->project_id) {
         wm_strcat(&command, "--project", ' ');
@@ -111,44 +136,14 @@ void wm_gcp_run(wm_gcp *data) {
     os_free(command);
 
     if (wm_exec_ret_code != 0){
-        mterror(WM_AWS_LOGTAG, "Internal error. Exiting...");
+        mterror(WM_GCP_LOGTAG, "Internal error. Exiting...");
         if (wm_exec_ret_code > 0) {
             os_free(output);
         }
         pthread_exit(NULL);
     }
 
-    wm_gcp_send_event(data, output);
-
     os_free(output);
-}
-
-static int wm_gcp_send_event(wm_gcp * data, cJSON *json_event) {
-    int queue_fd = data->queue;
-
-    char *msg = cJSON_PrintUnformatted(json_event);
-    mdebug2("Sending event: %s",msg);
-
-    if (wm_sendmsg(data->msg_delay, queue_fd, msg, WM_GCP_CONTEXT.name, GCP_MQ) < 0) {
-        merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-
-        if(data->queue >= 0){
-            close(data->queue);
-        }
-
-        if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            mwarn("Can't connect to queue.");
-        } else {
-            if(wm_sendmsg(data->msg_delay, data->queue, msg, WM_GCP_CONTEXT.name, GCP_MQ) < 0) {
-                merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-                close(data->queue);
-            }
-        }
-    }
-
-    os_free(msg);
-
-    return (0);
 }
 
 void wm_gcp_destroy(wm_gcp * data) {

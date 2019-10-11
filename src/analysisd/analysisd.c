@@ -151,9 +151,6 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args);
 /* Decode winevt threads */
 void * w_decode_winevt_thread(__attribute__((unused)) void * args);
 
-/* Decode gcp threads */
-void * w_decode_gcp_thread(__attribute__((unused)) void * args);
-
 typedef struct _clean_msg {
     Eventinfo *lf;
     char *msg;
@@ -208,9 +205,6 @@ static w_queue_t * decode_queue_event_output;
 /* Decode windows event input queue */
 static w_queue_t * decode_queue_winevt_input;
 
-/* Decode windows event input queue */
-static w_queue_t * decode_queue_gcp_input;
-
 /* Hourly alerts mutex */
 static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -229,7 +223,6 @@ static int reported_sca = 0;
 static int reported_event = 0;
 static int reported_writer = 0;
 static int reported_winevt = 0;
-static int reported_gcp = 0;
 
 /* Mutexes */
 pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -861,7 +854,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     int num_decode_sca_threads = getDefine_Int("analysisd", "sca_threads", 0, 32);
     int num_decode_hostinfo_threads = getDefine_Int("analysisd", "hostinfo_threads", 0, 32);
     int num_decode_winevt_threads = getDefine_Int("analysisd", "winevt_threads", 0, 32);
-    int num_decode_gcp_threads = getDefine_Int("analysisd", "winevt_threads", 0, 32);
 
     if(num_decode_event_threads == 0){
         num_decode_event_threads = cpu_cores;
@@ -955,11 +947,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Create decode winevt threads */
     for(i = 0; i < num_decode_winevt_threads;i++){
         w_create_thread(w_decode_winevt_thread,NULL);
-    }
-
-    /* Create decode gcp threads */
-    for(i = 0; i < num_decode_gcp_threads;i++){
-        w_create_thread(w_decode_gcp_thread,NULL);
     }
 
     /* Create State thread */
@@ -1813,34 +1800,6 @@ void * ad_input_main(void * args) {
                 /* Increment number of events received */
                 hourly_events++;
             }
-            else if (msg[0] == GCP_MQ) {
-                os_strdup(buffer, copy);
-
-                if(queue_full(decode_queue_gcp_input)){
-                    if(!reported_gcp){
-                        reported_gcp = 1;
-                        mwarn("Google Cloud Pub/Sub decoder queue is full.");
-                    }
-                    w_inc_dropped_events();
-                    free(copy);
-                    continue;
-                }
-
-                result = queue_push_ex(decode_queue_gcp_input, copy);
-
-                if(result < 0){
-                    if(!reported_gcp){
-                        reported_gcp = 1;
-                        mwarn("Google Cloud Pub/Sub json decoder queue is full.");
-                    }
-                    w_inc_dropped_events();
-                    free(copy);
-                    continue;
-                }
-
-                /* Increment number of events received */
-                hourly_events++;
-            }
             else{
 
                 os_strdup(buffer, copy);
@@ -2280,49 +2239,6 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args){
             }
 
             w_inc_winevt_decoded_events();
-        }
-    }
-}
-
-void * w_decode_gcp_thread(__attribute__((unused)) void * args){
-    Eventinfo *lf = NULL;
-    char *msg = NULL;
-    int socket = -1;
-
-    while(1){
-
-        /* Receive message from queue */
-        if (msg = queue_pop_ex(decode_queue_gcp_input), msg) {
-
-            os_calloc(1, sizeof(Eventinfo), lf);
-            os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
-
-            /* Default values for the log info */
-            Zero_Eventinfo(lf);
-
-            if (OS_CleanMSG(msg, lf) < 0) {
-                merror(IMSG_ERROR, msg);
-                Free_Eventinfo(lf);
-                free(msg);
-                continue;
-            }
-
-            free(msg);
-
-            /* Msg cleaned */
-            DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
-
-            if (!DecodeSCA(lf,&socket)) {
-                /* We don't process rootcheck events further */
-                w_free_event_info(lf);
-            }
-            else{
-                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
-                    w_free_event_info(lf);
-                }
-            }
-
-            w_inc_gcp_decoded_events();
         }
     }
 }
