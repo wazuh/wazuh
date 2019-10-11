@@ -34,6 +34,10 @@ LIST(APPEND tests_names "test_create_db")
 LIST(APPEND tests_flags " ")
 
 
+# Config files
+CONFIGURE_FILE("test_syscheck.conf" "test_syscheck.conf" COPYONLY)
+
+
 # Generate syscheck library
 FILE(GLOB sysfiles ../syscheckd/*.o)
 LIST(REMOVE_ITEM sysfiles ../syscheckd/main.o)
@@ -60,6 +64,28 @@ SET_TARGET_PROPERTIES(
 TARGET_LINK_LIBRARIES(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 
+# Generate analysisd library
+FILE(GLOB analysisd_files ../analysisd/*.o)
+LIST(REMOVE_ITEM analysisd_files ../analysisd/main.o)
+
+ADD_LIBRARY(ANALYSISD_O STATIC ${analysisd_files})
+
+SET_SOURCE_FILES_PROPERTIES(
+  ${analysisd_files}
+  PROPERTIES
+  EXTERNAL_OBJECT true
+  GENERATED true
+  )
+
+SET_TARGET_PROPERTIES(
+  ANALYSISD_O
+  PROPERTIES
+  LINKER_LANGUAGE C
+  )
+
+TARGET_LINK_LIBRARIES(ANALYSISD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+
+
 # Declare all tests targets
 LIST(LENGTH tests_names count)
 MATH(EXPR count "${count} - 1")
@@ -74,6 +100,7 @@ FOREACH(i RANGE ${count})
         ${WAZUHLIB}
         ${WAZUHEXT}
         SYSCHECK_O
+        ANALYSISD_O
         -lcmocka
         -fprofile-arcs
         -ftest-coverage
