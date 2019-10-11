@@ -107,16 +107,18 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
             }
 
             char relative_path[PATH_MAX] = {0};
-            sprintf(relative_path, "%s", nodes[i]->content);
+
+            sprintf(relative_path, "%s/", DEFAULTDIR);
+            strcat(relative_path, nodes[i]->content);
 
             char realpath_buffer[PATH_MAX] = {0};
 
             if(nodes[i]->content[0] == '/') {
-                sprintf(realpath_buffer,"%s", nodes[i]->content);
+                sprintf(realpath_buffer, "%s", nodes[i]->content);
             } else {
                 const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
                 if (!realpath_buffer_ref) {
-                    mwarn("File '%s' from tag '%s' not found.", nodes[i]->content, XML_CREDENTIALS_FILE);
+                    mwarn("File '%s' from tag '%s' not found.", realpath_buffer, XML_CREDENTIALS_FILE);
                     return OS_INVALID;
                 }
             }
