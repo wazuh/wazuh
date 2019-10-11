@@ -40,8 +40,9 @@ def fill_dict(default: Dict, config: Dict) -> Dict:
     :return: Filled dictionary
     """
     # check there aren't extra configuration values in user's configuration:
-    if config.keys() - default.keys() != set():
-        raise APIException(2000, details=', '.join(config.keys() - default.keys()))
+    for k in config.keys():
+        if k not in default.keys():
+            raise APIException(2000, details=', '.join(config.keys() - default.keys()))
 
     for k, val in filter(lambda x: isinstance(x[1], dict), config.items()):
         config[k] = {**default[k], **config[k]}
@@ -59,6 +60,9 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
         "port": 55000,
         "basic_auth": True,
         "behind_proxy_server": False,
+        "rbac": {
+            "mode": "white"
+        },
         "https": {
             "enabled": False,
             "key": "api/configuration/ssl/server.key",
@@ -95,7 +99,7 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
         configuration = default_configuration
     else:
         dict_to_lowercase(configuration)
-        configuration = fill_dict(default_configuration, configuration['wazuh-api'])
+        configuration = fill_dict(default_configuration, configuration)
 
     # append ossec_path to all paths in configuration
     append_ossec_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])

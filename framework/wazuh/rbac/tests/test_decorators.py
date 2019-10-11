@@ -7,6 +7,7 @@ from unittest.mock import patch
 import json
 import os
 import pytest
+import re
 
 import wazuh.rbac.decorators
 from wazuh.exception import WazuhError
@@ -43,6 +44,14 @@ with open(test_data_path + 'RBAC_decorators_resourceless_black.json') as f:
                                           'black') for config in json.load(f)]
 
 
+def get_identifier(resources):
+    list_params = list()
+    for resource in resources:
+        list_params.append(re.search(r'^([a-z*]+:[a-z*]+:)(\w+|\*|{(\w+)})$', resource).group(3))
+
+    return list_params
+
+
 @pytest.mark.parametrize('decorator_params, function_params, rbac, fake_system_resources, allowed_resources, mode',
                          configurations_black + configurations_white)
 @patch('wazuh.rbac.orm.create_engine')
@@ -58,7 +67,7 @@ def test_expose_resources(mock_create_engine, mock_declarative_base, mock_sessio
     with patch('wazuh.rbac.decorators._expand_resource', side_effect=mock_expand_resource):
         @wazuh.rbac.decorators.expose_resources(**decorator_params)
         def framework_dummy(*args, **kwargs):
-            for target_param, allowed_resource in zip(decorator_params['target_params'], allowed_resources):
+            for target_param, allowed_resource in zip(get_identifier(decorator_params['resources']), allowed_resources):
                 assert (set(kwargs[target_param]) == set(allowed_resource))
 
         try:

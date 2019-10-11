@@ -11,12 +11,14 @@ import sys
 import os
 import subprocess
 
-from api.constants import UWSGI_CONFIG_PATH, API_CONFIG_PATH, TEMPLATE_API_CONFIG_PATH
+from api.constants import UWSGI_CONFIG_PATH, CONFIG_FILE_PATH, TEMPLATE_API_CONFIG_PATH
 from wazuh.common import ossec_path
 from wazuh import security
 
 _ip_host = re.compile(r'( *)(# )?http:(.*):')
 _proxy_value = re.compile(r'(.*)behind_proxy_server:(.*)')
+_rbac = re.compile(r'(.*)rbac:(.*)')
+_rbac_mode = re.compile(r'(.*)mode: (.*)')
 _basic_auth_value = re.compile(r'(.*)basic_auth:(.*)')
 _wsgi_socket = re.compile(r'( *)(# )?shared-socket:(.*):')
 _wsgi_certs = re.compile(r'https: =.*')
@@ -51,8 +53,11 @@ def _check_ip(ip):
 # Checks that the provided port is valid
 def _check_port(port):
     if port is not None:
-        if 1 <= int(port) <= 65535:
-            return True
+        try:
+            if 1 <= int(port) <= 65535:
+                return True
+        except:
+            pass
     print('[ERROR] The port provided is invalid, the port must be a number between 1 and 65535')
     return False
 
@@ -74,7 +79,7 @@ def _convert_boolean_to_string(value):
 
 def _open_file():
     try:
-        with open(API_CONFIG_PATH, 'r+') as f:
+        with open(CONFIG_FILE_PATH, 'r+') as f:
             lines = f.readlines()
     except FileNotFoundError:
         with open(TEMPLATE_API_CONFIG_PATH, 'r+') as f:
@@ -167,7 +172,7 @@ def change_basic_auth(value=None):
             value = input('[INFO] Enable user authentication? [Y/n/s]: ')
             if value.lower() == '' or value.lower() == 'y' or value.lower() == 'yes':
                 value = 'yes'
-                username = input('[INFO] New API user: ')
+                username = input('[INFO] New API user (Press enter to skip, default user is `wazuh`): ')
                 if username != '':
                     while True:
                         password = input('[INFO] New password: ')
@@ -190,7 +195,7 @@ def change_basic_auth(value=None):
         value = _convert_boolean_to_string(value)
         new_file = _match_value(_basic_auth_value, lines, value)
         if new_file != '':
-            with open(API_CONFIG_PATH, 'w') as f:
+            with open(CONFIG_FILE_PATH, 'w') as f:
                 f.write(new_file)
                 print('[INFO] Basic auth value set to \'{}\''.format(value))
                 return True
@@ -214,13 +219,46 @@ def change_proxy(value=None):
         lines = _open_file()
         new_file = _match_value(_proxy_value, lines, value)
         if new_file != '':
-            with open(API_CONFIG_PATH, 'w') as f:
+            with open(CONFIG_FILE_PATH, 'w') as f:
                 f.write(new_file)
             print('[INFO] PROXY value changed correctly to \'{}\''.format(value))
 
             return True
         if not interactive:
             return False
+    return False
+
+
+# white/black/White RBAC mode
+def change_rbac_mode(value=None):
+    while value is None or value.lower() != 'w' or value.lower() != 'b' or value.lower() != '':
+        if interactive:
+            value = input('[INFO] Choose the mode of RBAC [WHITE-W/black-b]: ')
+            if value.lower() == 'w' or value.lower() == 'white' or value.lower() == '':
+                value = ' white'
+            elif value.lower() == 'b' or value.lower() == 'black':
+                value = ' black'
+            else:
+                print('[ERROR] Invalid RBAC mode: \'{}\''.format(value))
+                continue
+        lines = _open_file()
+        new_file = ''
+        for line in lines:
+            match = re.search(_rbac, line)
+            match_mode = re.search(_rbac_mode, line)
+            if match:
+                line = line.replace('# ', '')
+            elif match_mode:
+                split = line.split(':')
+                split[0] = split[0].replace('# ', '')
+                split[1] = value + '\n'
+                line = ':'.join(split)
+            new_file += line
+        with open(CONFIG_FILE_PATH, 'w') as f:
+            f.write(new_file)
+        print('[INFO] RBAC mode correctly changed to \'{}\''.format(value))
+
+        return True
     return False
 
 
@@ -313,6 +351,7 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--ip', help="Change the host IP", type=str)
     parser.add_argument('-b', '--basic', help="Configure basic authentication (true/false)", type=str)
     parser.add_argument('-x', '--proxy', help="Yes to run API behind a proxy", type=str)
+    parser.add_argument('-r', '--rbac', help="Change the RBAC mode (white/black)", type=str)
     parser.add_argument('-t', '--http', help="Enable http protocol (true/false)", type=str)
     parser.add_argument('-s', '--https', help="Enable https protocol (true/false)", type=str)
     parser.add_argument('-sC', '--sCertificate', help="Set the ssl certificate (path)", type=str)
@@ -335,6 +374,8 @@ if __name__ == '__main__':
                 print('[ERROR] HTTPS option must be accompanied with \'-sC\' and \'-sK\' options')
             else:
                 change_https(args.https, args.sCertificate, args.sKey)
+        if args.rbac:
+            change_rbac_mode(args.rbac)
         if _check_boolean('http', args.http):
             if args.http.lower() == 'true' or args.http.lower() == 'yes':
                 args.http = 'yes'
@@ -351,6 +392,7 @@ if __name__ == '__main__':
         change_port()
         change_proxy()
         change_basic_auth()
+        change_rbac_mode()
         change_https()
         print('[INFO] Restarting Wazuh...')
         subprocess.call(ossec_path + '/bin/ossec-control restart', shell=True)
