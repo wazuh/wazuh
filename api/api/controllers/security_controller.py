@@ -251,7 +251,8 @@ def update_role(role_id, pretty=False, wait_for_complete=False):
                                                  'to get more information about API call')
 
     rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {'rbac': rbac, 'role_id': role_id, 'name': role_added_model['name'], 'rule': role_added_model['rule']}
+    f_kwargs = {'rbac': rbac, 'role_id': role_id, 'name': role_added_model.get('name', None),
+                'rule': role_added_model.get('rule', None)}
 
     dapi = DistributedAPI(f=security.update_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -379,8 +380,8 @@ def update_policy(policy_id, pretty=False, wait_for_complete=False):
 
     rbac = get_permissions(connexion.request.headers['Authorization'])
     f_kwargs = {'rbac': rbac, 'policy_id': policy_id,
-                'name': policy_added_model['name'],
-                'policy': policy_added_model['policy']}
+                'name': policy_added_model.get('name', None),
+                'policy': policy_added_model.get('policy', None)}
 
     dapi = DistributedAPI(f=security.update_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

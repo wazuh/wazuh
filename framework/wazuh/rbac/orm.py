@@ -575,11 +575,11 @@ class RolesPoliciesManager:
                     self.session.commit()
                     return True
                 else:
-                    return SecurityError.ADMIN_RESOURCES
+                    return SecurityError.ALREADY_EXIST
             return SecurityError.ADMIN_RESOURCES
         except IntegrityError:
             self.session.rollback()
-            return SecurityError.ADMIN_RESOURCES
+            return SecurityError.INVALID
 
     def add_role_to_policy(self, policy_id: int, role_id: int):
         """Clone of the previous function
@@ -672,11 +672,11 @@ class RolesPoliciesManager:
                     self.session.commit()
                     return True
                 else:
-                    return False
-            return False
+                    return SecurityError.INVALID
+            return SecurityError.ADMIN_RESOURCES
         except IntegrityError:
             self.session.rollback()
-            return False
+            return SecurityError.INVALID
 
     def remove_all_policies_in_role(self, role_id: int):
         """Removes all relations with policies. Does not eliminate roles and policies

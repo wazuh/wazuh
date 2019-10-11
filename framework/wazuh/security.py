@@ -11,6 +11,7 @@ from wazuh.exception import WazuhError, create_exception_dic
 from wazuh.rbac import orm
 from wazuh.rbac.decorators import expose_resources, list_handler_with_denied, list_handler_no_denied
 from wazuh.rbac.orm import SecurityError
+from wazuh.utils import process_array
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
@@ -39,6 +40,9 @@ def get_users_all(username_list=None, offset=0, limit=common.database_limit, sor
             if user:
                 affected_items.append(user)
 
+    affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                                   complementary_search=complementary_search, sort_by=sort_by,
+                                   sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
     return {'affected_items': affected_items,
             'failed_items': list(),
             'str_priority': ['All available users were shown', '', '']}
@@ -68,6 +72,9 @@ def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by
             affected_items.append(user) if user \
                 else failed_items.append(create_exception_dic(username, WazuhError(5001)))
 
+    affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                                   complementary_search=complementary_search, sort_by=sort_by,
+                                   sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
     return {'affected_items': affected_items,
             'failed_items': failed_items,
             'str_priority': ['All specified users were show',
@@ -173,6 +180,9 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
                 # Role id does not exist
                 failed_items.append(create_exception_dic(r_id, WazuhError(4002)))
 
+    affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                                   complementary_search=complementary_search, sort_by=sort_by,
+                                   sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
     return {'affected_items': affected_items,
             'failed_items': failed_items,
             'str_priority': ['All specified roles were show',
@@ -204,6 +214,9 @@ def get_roles_all(role_ids=None, offset=0, limit=common.database_limit, sort_by=
                 dict_role.pop('policies', None)
                 affected_items.append(dict_role)
 
+    affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                                   complementary_search=complementary_search, sort_by=sort_by,
+                                   sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
     return {'affected_items': affected_items,
             'failed_items': list(),
             'str_priority': ['All available roles were shown', '', '']}
@@ -335,6 +348,9 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
                 # Policy id does not exist
                 failed_items.append(create_exception_dic(p_id, WazuhError(4007)))
 
+    affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                                   complementary_search=complementary_search, sort_by=sort_by,
+                                   sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
     return {'affected_items': affected_items,
             'failed_items': failed_items,
             'str_priority': ['All specified policies were shown',
@@ -366,6 +382,9 @@ def get_policies_all(policy_ids=None, offset=0, limit=common.database_limit, sor
                 dict_policy.pop('roles', None)
                 affected_items.append(dict_policy)
 
+    affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                                   complementary_search=complementary_search, sort_by=sort_by,
+                                   sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
     return {'affected_items': affected_items,
             'failed_items': list(),
             'str_priority': ['All available policies were shown', '', '']}
@@ -480,36 +499,29 @@ def set_role_policy(role_id, policy_ids):
     failed_items = list()
     with orm.RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
-            role_policy = rpm.exist_role_policy(role_id[0], policy_id)
-            if role_policy is True:
+            role_policy = rpm.add_policy_to_role(role_id=role_id[0], policy_id=policy_id)
+            if role_policy == SecurityError.ALREADY_EXIST:
                 failed_items.append(
                     create_exception_dic(
-                        '{}: {}'.format(role_id[0], policy_id),
-                        WazuhError(4011,
-                                   extra_message='Role id ' + str(role_id[0]) + ' - ' + 'Policy id ' + str(policy_id))))
+                        'role {}: policy {}'.format(role_id[0], policy_id),
+                        WazuhError(4011)))
             elif role_policy == SecurityError.ROLE_NOT_EXIST:
                 failed_items.append(
                     create_exception_dic(
-                        '{}: {}'.format(role_id[0], policy_id),
-                        WazuhError(4002,
-                                   extra_message='Role id ' + str(role_id[0]))))
+                        'role {}: policy {}'.format(role_id[0], policy_id),
+                        WazuhError(4002)))
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
                 failed_items.append(
                     create_exception_dic(
-                        '{}: {}'.format(role_id[0], policy_id),
-                        WazuhError(4007,
-                                   extra_message='Policy id ' + str(policy_id))))
-
-    with orm.RolesPoliciesManager() as rpm:
-        for policy_id in policy_ids:
-            status = rpm.add_policy_to_role(role_id=role_id[0], policy_id=policy_id)
-            if status == SecurityError.ADMIN_RESOURCES:
+                        'role {}: policy {}'.format(role_id[0], policy_id),
+                        WazuhError(4007)))
+            elif role_policy == SecurityError.ADMIN_RESOURCES:
                 failed_items.append(
                     create_exception_dic(
-                        '{}: {}'.format(role_id[0], policy_id),
+                        'role {}: policy {}'.format(role_id[0], policy_id),
                         WazuhError(4008)))
             else:
-                affected_items.append('{}: {}'.format(role_id[0], policy_id))
+                affected_items.append('role {}: policy {}'.format(role_id[0], policy_id))
 
     return {'affected_items': affected_items,
             'failed_items': failed_items,
@@ -530,36 +542,29 @@ def remove_role_policy(role_id, policy_ids):
     failed_items = list()
     with orm.RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
-            role_policy = rpm.exist_role_policy(role_id[0], policy_id)
-            if not role_policy:
+            role_policy = rpm.remove_policy_in_role(role_id=role_id[0], policy_id=policy_id)
+            if role_policy == SecurityError.INVALID:
                 failed_items.append(
                     create_exception_dic(
-                        '{}: {}'.format(role_id[0], policy_id),
-                        WazuhError(4010,
-                                   extra_message='Role id ' + str(role_id[0]) + ' - ' + 'Policy id ' + str(policy_id))))
+                        'role {}: policy {}'.format(role_id[0], policy_id),
+                        WazuhError(4010)))
             elif role_policy == SecurityError.ROLE_NOT_EXIST:
                 failed_items.append(
                     create_exception_dic(
-                        '{}: {}'.format(role_id[0], policy_id),
-                        WazuhError(4002,
-                                   extra_message='Role id ' + str(role_id[0]))))
+                        'role {}: policy {}'.format(role_id[0], policy_id),
+                        WazuhError(4002)))
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
                 failed_items.append(
                     create_exception_dic(
-                        '{}: {}'.format(role_id[0], policy_id),
-                        WazuhError(4007,
-                                   extra_message='Policy id ' + str(policy_id))))
-
-    with orm.RolesPoliciesManager() as rpm:
-        for policy_id in policy_ids:
-            status = rpm.remove_policy_in_role(role_id=role_id[0], policy_id=policy_id)
-            if status == SecurityError.ADMIN_RESOURCES:
+                        'role {}: policy {}'.format(role_id[0], policy_id),
+                        WazuhError(4007)))
+            elif role_policy == SecurityError.ADMIN_RESOURCES:
                 failed_items.append(
                     create_exception_dic(
-                        '{}: {}'.format(role_id[0], policy_id),
+                        'role {}: policy {}'.format(role_id[0], policy_id),
                         WazuhError(4008)))
             else:
-                affected_items.append('{}: {}'.format(role_id[0], policy_id))
+                affected_items.append('role {}: policy {}'.format(role_id[0], policy_id))
 
     return {'affected_items': affected_items,
             'failed_items': failed_items,

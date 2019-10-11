@@ -4,9 +4,9 @@ test_name: DELETE /security/roles/{role_id}
 includes:
   - !include common.yaml
 
-marks:
-  - usefixtures:
-      - security_tests
+#marks:
+#  - usefixtures:
+#      - security_tests
 
 stages:
 
@@ -17,43 +17,56 @@ stages:
   # DELETE /security/roles/{role_id}
   - name: Try to delete a existent role
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/2"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        role_ids: 2
     response:
       status_code: 200
       body:
         data:
-          removed_roles: [2]
+          affected_items:
+            - '2'
+          total_affected_items: 1
 
   # DELETE /security/roles/1
   - name: Try to delete the admin role of the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        role_ids: 1
     response:
-      status_code: 400
-      body: &error_spec
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+      status_code: 200
+      body: &error
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: !anyint
+                message: !anystr
+                remediation: !anything
+              id: !anything
+          total_affected_items: 0
+          total_failed_items: !anyint
 
   # DELETE /security/roles/{non-existent role}
   - name: Try to delete a non-existent role
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        role_ids: 999
     response:
       status_code: 200
       body:
-        data:
-          incorrect_roles: [999]
+        <<: *error
 ---
 test_name: DELETE /security/policies/{policy_id}
 
@@ -69,40 +82,47 @@ stages:
   # DELETE /security/policies/{role_id}
   - name: Try to delete a existent policy
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies/2"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        policy_ids: 2
     response:
       status_code: 200
       body:
         data:
-          removed_policies: [2]
+          affected_items:
+            - '2'
+          total_affected_items: 1
 
   # DELETE /security/policies/1
   - name: Try to delete the admin policy of the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies/1"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        policy_ids: 1
     response:
-      status_code: 400
+      status_code: 200
       body:
-        <<: *error_spec
+        <<: *error
 
   # DELETE /security/roles/{non-existent role}
   - name: Try to delete an inexistent policy
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies/999"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        policy_ids: 999
     response:
       status_code: 200
       body:
-        data:
-          incorrect_policies: [999]
+        <<: *error
 ---
 test_name: DELETE /security/roles/{role_id}/policies/{policy_id}
 
@@ -111,57 +131,61 @@ stages:
   # DELETE /security/roles/{role_id}/policies/{policy_id}
   - name: Try to delete a existent role-policy
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/3/policies/3"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/3/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        policy_ids: 3
     response:
       status_code: 200
       body:
-        id: 3
-        name: !anystr
-        rule: !anything
+        data:
+          affected_items:
+            - 'role 3: policy 3'
+          total_affected_items: 1
 
   # DELETE /security/roles/{non-existent role_id}/policies/{non-existent policy_id}
   - name: Try to delete a non-existent role-policy
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies/999"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        policy_ids: 999
     response:
-      status_code: 400
-      body: &error_response_role
-        code: !anyint
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: "about:blank"
+      status_code: 200
+      body:
+        <<: *error
 
   # DELETE /security/roles/{non-existent role_id}/policies/{policy_id}
   - name: Try to delete a non-existent role-policy (role non-existent)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies/3"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        policy_ids: 3
     response:
-      status_code: 400
+      status_code: 200
       body:
-        <<: *error_response_role
+        <<: *error
 
   # DELETE /security/roles/{role_id}/policies/{policy_id}
   - name: Try to delete a non-existent role-policy (policy non-existent)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/3/policies/999"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/3/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        policy_ids: 999
     response:
-      status_code: 400
+      status_code: 200
       body:
-        <<: *error_response_role
+        <<: *error
 ---
 test_name: DELETE /security/roles
 
@@ -175,13 +199,15 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        list_roles: 3,4
+        role_ids: 3,4
     response:
       status_code: 200
       body:
         data:
-          incorrect_roles: []
-          removed_roles: [3, 4]
+          affected_items:
+            - '3'
+            - '4'
+          total_affected_items: 2
 
   # DELETE /security/roles
   - name: Try to delete all roles of the system
@@ -191,18 +217,19 @@ stages:
       status_code: 200
       body:
         data:
-          removed_roles: !anything
+          affected_items: []
+          total_affected_items: 0
 
   # DELETE /security/roles
   - name: Try to delete the administrator role
     request:
       <<: *delete_all_roles_request
       params:
-        list_roles: 1
+        role_ids: 1
     response:
-      status_code: 400
+      status_code: 200
       body:
-        <<: *error_spec
+        <<: *error
 ---
 test_name: DELETE /security/policies
 
@@ -216,13 +243,15 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        list_policies: 3,4
+        policy_ids: 3,4
     response:
       status_code: 200
       body:
         data:
-          incorrect_policies: []
-          removed_policies: [3, 4]
+          affected_items:
+            - '3'
+            - '4'
+          total_affected_items: 2
 
   # DELETE /security/policies
   - name: Try to delete all policies of the system
@@ -232,14 +261,15 @@ stages:
       status_code: 200
       body:
         data:
-          removed_policies: !anything
+          affected_items: []
+          total_affected_items: 0
 
   - name: Try to delete the administrator policy
     request:
       <<: *delete_all_policies_request
       params:
-        list_policies: 1
+        policy_ids: 1
     response:
-      status_code: 400
+      status_code: 200
       body:
-        <<: *error_spec
+        <<: *error

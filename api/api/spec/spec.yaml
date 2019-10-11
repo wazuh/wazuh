@@ -117,7 +117,9 @@ components:
           type: array
           description: Items that successfully applied the API call action.
           items:
-            type: string
+            oneOf:
+              - type: string
+              - type: object
         failed_items:
           type: array
           description: List of items that have failed when doing the requested operation. It's not returned when it's empty.
@@ -130,44 +132,6 @@ components:
         - total_affected_items
       allOf:
         - $ref: '#/components/schemas/ItemAffected'
-      properties:
-        older_than:
-          type: string
-          format: timeframe
-          default: 7d
-          description: Returns older than parameter used. It can be the default value or the parameter send by the user.
-        total_affected_items:
-          type: integer
-          format: int32
-          description: Number of items that have successfully did the requested operation.
-        total_failed_items:
-          type: integer
-          format: int32
-          minimum: 1
-          description: Number of items that couldn't do the requested operation. Only returned when it's higher than 0.
-
-    ItemAffectedObject:
-      type: object
-      required:
-        - affected_items
-      properties:
-        affected_items:
-          type: array
-          description: Items that successfully applied the API call action.
-          items:
-            type: object
-        failed_items:
-          type: array
-          description: List of items that have failed when doing the requested operation. It's not returned when it's empty.
-          items:
-            type: object
-
-    AllItemsAffectedObject:
-      type: object
-      required:
-        - total_affected_items
-      allOf:
-        - $ref: '#/components/schemas/ItemAffectedObject'
       properties:
         older_than:
           type: string
@@ -2691,6 +2655,7 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Policy_id'
+          minItems: 1
     policy_name:
       in: query
       name: policy_name
@@ -10299,7 +10264,7 @@ paths:
                     properties:
                       data:
                         allOf:
-                          - $ref: '#/components/schemas/AllItemsAffectedObject'
+                          - $ref: '#/components/schemas/AllItemsAffected'
                           - $ref: '#/components/schemas/RolesResponse'
               example:
                 data:
@@ -10475,7 +10440,7 @@ paths:
                     properties:
                       data:
                         allOf:
-                          - $ref: '#/components/schemas/AllItemsAffectedObject'
+                          - $ref: '#/components/schemas/AllItemsAffected'
                           - $ref: '#/components/schemas/PoliciesResponse'
               example:
                 data:

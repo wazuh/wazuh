@@ -4,9 +4,9 @@ test_name: POST /security/roles
 includes:
   - !include common.yaml
 
-marks:
-  - usefixtures:
-    - security_tests
+#marks:
+#  - usefixtures:
+#    - security_tests
 
 stages:
 
@@ -25,13 +25,19 @@ stages:
         name: "test_i"
         rule:
           MATCH:
-            definition: "integration"
+            definition: "normal_rule"
     response:
       status_code: 200
       body:
-        id: !anyint
-        name: !anystr
-        rule: !anything
+        data:
+          affected_items:
+            - id: !anyint
+              name: test_i
+              policies: []
+              rule:
+                MATCH:
+                  definition: normal_rule
+          total_affected_items: 1
 
   # POST /security/roles
   - name: Add a role to the system
@@ -43,13 +49,20 @@ stages:
       json:
         name: "test_i1"
         rule:
-          normal_user: "integration1"
+          FIND:
+            definition: "normal_rule1"
     response:
       status_code: 200
       body:
-        id: !anyint
-        name: !anystr
-        rule: !anything
+        data:
+          affected_items:
+            - id: !anyint
+              name: test_i1
+              policies: []
+              rule:
+                FIND:
+                  definition: normal_rule1
+          total_affected_items: 1
 
   # POST /security/roles
   - name: Add a role to the system
@@ -61,13 +74,20 @@ stages:
       json:
         name: "test_i2"
         rule:
-          normal_user: "integration2"
+          FIND$:
+            definition: "normal_rule2"
     response:
       status_code: 200
       body:
-        id: !anyint
-        name: !anystr
-        rule: !anything
+        data:
+          affected_items:
+            - id: !anyint
+              name: test_i2
+              policies: []
+              rule:
+                FIND$:
+                  definition: normal_rule2
+          total_affected_items: 1
 
   # POST /security/roles
   - name: Add an existent role (name) to the system
@@ -79,7 +99,7 @@ stages:
       json:
         name: "test_i"
         rule:
-          normal_user1: "integration1"
+          definition1: "normal_rule1"
     response:
       status_code: 400
       body: &error_response
@@ -98,7 +118,7 @@ stages:
       json:
         name: "test_i1"
         rule:
-          normal_user: "integration"
+          definition: "normal_rule"
     response:
       status_code: 400
       body:
@@ -128,9 +148,20 @@ stages:
     response:
       status_code: 200
       body:
-        id: !anyint
-        name: !anystr
-        policy: !anything
+        data:
+          affected_items:
+            - id: !anyint
+              name: test_i
+              policy:
+                actions:
+                  - agent:delete
+                effect: allow
+                resources:
+                  - agent:id:004
+                  - agent:id:005
+                  - agent:id:006
+              roles: []
+          total_affected_items: 1
 
   # POST /security/policies
   - name: Add a policy to the system
@@ -152,9 +183,20 @@ stages:
     response:
       status_code: 200
       body:
-        id: !anyint
-        name: !anystr
-        policy: !anything
+        data:
+          affected_items:
+            - id: !anyint
+              name: test_i1
+              policy:
+                actions:
+                  - agent:update
+                effect: allow
+                resources:
+                  - agent:id:004
+                  - agent:id:005
+                  - agent:id:006
+              roles: []
+          total_affected_items: 1
 
   # POST /security/policies
   - name: Add a policy to the system
@@ -172,13 +214,24 @@ stages:
             - "agent:id:004"
             - "agent:id:005"
             - "agent:id:006"
-          effect: "allow"
+          effect: "deny"
     response:
       status_code: 200
       body:
-        id: !anyint
-        name: !anystr
-        policy: !anything
+        data:
+          affected_items:
+            - id: !anyint
+              name: test_i2
+              policy:
+                actions:
+                  - agent:upgrade
+                effect: deny
+                resources:
+                  - agent:id:004
+                  - agent:id:005
+                  - agent:id:006
+              roles: []
+          total_affected_items: 1
 
   # POST /security/policies
   - name: Add an existent policy (name) to the system
