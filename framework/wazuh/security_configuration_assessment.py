@@ -39,7 +39,8 @@ fields_translation_sca_check = {'policy_id': 'policy_id',
                                 'references': '`references`',
                                 'result': 'result',
                                 'status': '`status`',
-                                'reason': 'reason'}
+                                'reason': 'reason',
+                                'condition': 'condition'}
 fields_translation_sca_check_compliance = {'compliance.key': 'key',
                                            'compliance.value': 'value'}
 fields_translation_sca_check_rule = {'rules.type': 'type', 'rules.rule': 'rule'}
