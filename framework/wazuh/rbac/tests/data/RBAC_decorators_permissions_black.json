@@ -425,5 +425,22 @@
     },
     "fake_system_resources": {"agent:id:*": []},
     "allowed_resources": [["998", "999"]]
+  },
+  {
+    "rbac": {
+    },
+    "decorator_params": {
+        "actions": ["role:update", "policy:update"],
+        "resources": ["role:id:{role_ids}", "policy:id:{policy_ids}"],
+        "target_params": ["role_ids", "policy_ids"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "role_ids": ["98"],
+      "policy_ids": ["99", "98"]
+    },
+    "fake_system_resources": {"role:id:*": [], "policy:id:*":  []},
+    "allowed_resources": [["98"], ["99", "98"]]
   }
 ]

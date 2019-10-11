@@ -203,11 +203,14 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
             try:
                 # Dynamic resources ids are found within the {}
                 params = kwargs[m.group(3)]
-                # We check if params is a list of resources or a single one in a string
-                if len(params) == 0:
-                    raise WazuhError(4015, extra_message={'param': m.group(3)})
-                for param in params:
-                    res_list.append("{0}{1}".format(res_base, param))
+                if isinstance(params, list):
+                    # We check if params is a list of resources or a single one in a string
+                    if len(params) == 0:
+                        raise WazuhError(4015, extra_message={'param': m.group(3)})
+                    for param in params:
+                        res_list.append("{0}{1}".format(res_base, param))
+                else:
+                    res_list.append("{0}{1}".format(res_base, params))
             # KeyError occurs if required dynamic resources can't be found within request parameters
             except KeyError:
                 raise WazuhError(4014, extra_message={'param': m.group(3)})
