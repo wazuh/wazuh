@@ -24,7 +24,7 @@ def switch_mode(m):
         raise TypeError
     global mode
     mode = m
-    
+
 
 def _expand_resource(resource):
     """This function expand a specified resource depending of it type.
@@ -202,10 +202,10 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
         res_base = m.group(1)
         # If we find a '{' in the regex we obtain the dynamic resource/s
         if '{' in m.group(2):
-            try:
+            target_params.append(m.group(3))
+            if m.group(3) in kwargs:
                 # Dynamic resources ids are found within the {}
                 params = kwargs[m.group(3)]
-                target_params.append(m.group(3))
                 if isinstance(params, list):
                     # We check if params is a list of resources or a single one in a string
                     if len(params) == 0:
@@ -214,12 +214,14 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                         res_list.append("{0}{1}".format(res_base, param))
                 else:
                     if params is None or params == '*':
-                        add_denied = False
+                        add_denied = True
                         params = '*'
                     res_list.append("{0}{1}".format(res_base, params))
             # KeyError occurs if required dynamic resources can't be found within request parameters
-            except KeyError:
-                raise WazuhError(4014, extra_message={'param': m.group(3)})
+            else:
+                add_denied = False
+                params = '*'
+                res_list.append("{0}{1}".format(res_base, params))
         # If we don't find a regex match we obtain the static resource/s
         else:
             target_params.append(m.group(2))

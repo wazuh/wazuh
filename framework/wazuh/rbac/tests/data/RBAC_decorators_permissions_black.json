@@ -8,9 +8,7 @@
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
-    "function_params": {
-      "agent_list": null
-    },
+    "function_params": {},
     "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
     "allowed_resources": [["000", "001", "002", "003", "004", "005"]]
   },
@@ -26,9 +24,7 @@
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
-    "function_params": {
-      "agent_list": null
-    },
+    "function_params": {},
     "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1":  ["001", "003", "005"]},
     "allowed_resources": [["000", "002", "004"]]
   },
@@ -44,9 +40,7 @@
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
-    "function_params": {
-      "agent_list": null
-    },
+    "function_params": {},
     "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
     "allowed_resources": [["000", "002", "003", "004", "005"]]
   },
