@@ -19,8 +19,45 @@
 
 /* redefinitons/wrapping */
 
+int __wrap_rbtree_insert() {
+    return mock();
+}
 
-/* tests */
+int __wrap_rbtree_replace() {
+    return mock();
+}
+
+int __wrap_rbtree_delete() {
+    return mock();
+}
+
+int __wrap_OSHash_Add() {
+    return mock();
+}
+
+int __wrap_merror_exit() {
+    return mock();
+}
+
+fim_entry_data *__wrap_rbtree_get() {
+    fim_entry_data *data = mock_type(fim_entry_data *);
+    return data;
+}
+
+fim_inode_data *__wrap_OSHash_Get() {
+    fim_inode_data *data = mock_type(fim_inode_data *);
+    return data;
+}
+
+void syscheck_set_internals()
+{
+    syscheck.tsleep = 1;
+    syscheck.sleep_after = 100;
+    syscheck.rt_delay = 1;
+    syscheck.max_depth = 256;
+    syscheck.file_max_size = 1024;
+}
+
 
 static int delete_json(void **state)
 {
@@ -28,6 +65,16 @@ static int delete_json(void **state)
     cJSON_Delete(data);
     return 0;
 }
+
+
+static int delete_entry_data(void **state)
+{
+    fim_entry_data *data = *state;
+    free_entry_data(data);
+    return 0;
+}
+
+/* tests */
 
 static fim_entry_data *fill_entry_struct(
     unsigned int size,
@@ -83,7 +130,7 @@ void test_fim_json_event(void **state)
 
     // Load syscheck default values
     read_internal(1);
-    Read_Syscheck_Config("/var/ossec/etc/ossec.conf");
+    Read_Syscheck_Config("test_syscheck.conf");
 
     fim_entry_data *old_data = fill_entry_struct(
         1500,
@@ -167,8 +214,8 @@ void test_fim_json_event_whodata(void **state)
     cJSON *ret;
 
     // Load syscheck default values
-    read_internal(1);
-    Read_Syscheck_Config("/var/ossec/etc/ossec.conf");
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
 
     whodata_evt *w_evt;
     w_evt = calloc(1, sizeof(whodata_evt));
@@ -263,8 +310,8 @@ void test_fim_json_event_no_changes(void **state)
     cJSON *ret;
 
     // Load syscheck default values
-    read_internal(1);
-    Read_Syscheck_Config("/var/ossec/etc/ossec.conf");
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
 
     fim_entry_data *data = fill_entry_struct(
         1500,
@@ -395,8 +442,8 @@ void test_fim_json_compare_attrs(void **state)
     cJSON *ret;
 
     // Load syscheck default values
-    read_internal(1);
-    Read_Syscheck_Config("/var/ossec/etc/ossec.conf");
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
 
     fim_entry_data *old_data = fill_entry_struct(
         1500,
@@ -496,8 +543,8 @@ void test_fim_check_ignore_strncasecmp(void **state)
     int ret;
 
     // Load syscheck default values
-    read_internal(1);
-    Read_Syscheck_Config("/var/ossec/etc/ossec.conf");
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
 
     ret = fim_check_ignore("/DEV/corE");
 
@@ -511,8 +558,8 @@ void test_fim_check_ignore_regex(void **state)
     int ret;
 
     // Load syscheck default values
-    read_internal(1);
-    Read_Syscheck_Config("/var/ossec/etc/ossec.conf");
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
 
     ret = fim_check_ignore("/test/files/test.swp");
 
@@ -526,8 +573,8 @@ void test_fim_check_ignore_failure(void **state)
     int ret;
 
     // Load syscheck default values
-    read_internal(1);
-    Read_Syscheck_Config("/var/ossec/etc/ossec.conf");
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
 
     ret = fim_check_ignore("/test/files/test.sp");
 
@@ -592,6 +639,415 @@ void test_fim_scan_info_json_end(void **state)
     assert_string_equal(type->valuestring, "scan_end");
 }
 
+
+void test_fim_get_checksum(void **state)
+{
+    (void) state;
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        "xxx",
+        12345678,
+        123456,
+        511,
+        ""
+    );
+
+    *state = data;
+    fim_get_checksum(data);
+    assert_string_equal(data->checksum, "2bbaf80d6c1af7d5b2c89c27e8a21eda17de6019");
+}
+
+
+void test_fim_check_depth_success(void **state)
+{
+    (void) state;
+    int ret;
+
+    // Load syscheck default values
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
+
+    char * path = "/usr/bin/folder1/folder2/folder3/file";
+    // Pos 1 = "/usr/bin"
+    ret = fim_check_depth(path, 1);
+
+    assert_int_equal(ret, 3);
+
+}
+
+
+void test_fim_check_depth_failure_position(void **state)
+{
+    (void) state;
+    int ret;
+
+    // Load syscheck default values
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
+
+    char * path = "folder/file.test";
+
+    ret = fim_check_depth(path, 100);
+
+    assert_int_equal(ret, -1);
+
+}
+
+
+void test_fim_check_depth_failure_strlen(void **state)
+{
+    (void) state;
+    int ret;
+
+    // Load syscheck default values
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
+
+    char * path = "fl/fd";
+    // Pos 1 = "/usr/bin"
+    ret = fim_check_depth(path, 1);
+
+    assert_int_equal(ret, -1);
+
+}
+
+
+void test_fim_insert_success_new(void **state)
+{
+    (void) state;
+    int ret;
+    int status;
+
+    char * file = "test-file.tst";
+    struct stat file_stat;
+    file_stat.st_dev = 2050;
+    file_stat.st_ino = 922287;
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        "xxx",
+        12345678,
+        123456,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+
+    // Not duplicated
+    will_return(__wrap_rbtree_insert, 1);
+    // Not in hash table
+    will_return(__wrap_OSHash_Get, NULL);
+    // Added
+    will_return(__wrap_OSHash_Add, 2);
+
+    ret = fim_insert (file, data, &file_stat);
+    free_entry_data(data);
+
+    assert_int_equal(ret, 0);
+
+}
+
+
+void test_fim_insert_success_add(void **state)
+{
+    (void) state;
+    int ret;
+    int status;
+
+    char * file = "test-file.tst";
+    struct stat file_stat;
+    file_stat.st_dev = 2050;
+    file_stat.st_ino = 922287;
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        "xxx",
+        12345678,
+        123456,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+
+    // Not duplicated
+    will_return(__wrap_rbtree_insert, 1);
+    // Already in hash table
+    fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));;
+    inode_data->items = 1;
+    inode_data->paths = os_AddStrArray(file, inode_data->paths);
+    will_return(__wrap_OSHash_Get, inode_data);
+
+    ret = fim_insert(file, data, &file_stat);
+    free_entry_data(data);
+
+    assert_int_equal(ret, 0);
+}
+
+
+void test_fim_insert_failure_new(void **state)
+{
+    (void) state;
+    int ret;
+    int status;
+
+    char * file = "test-file.tst";
+    struct stat file_stat;
+    file_stat.st_dev = 2050;
+    file_stat.st_ino = 922287;
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        "xxx",
+        12345678,
+        123456,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+
+    // Not duplicated
+    will_return(__wrap_rbtree_insert, 1);
+    // Not in hash table
+    will_return(__wrap_OSHash_Get, NULL);
+    // Errod adding
+    will_return(__wrap_OSHash_Add, 1);
+
+    ret = fim_insert(file, data, &file_stat);
+    free_entry_data(data);
+
+    assert_int_equal(ret, -1);
+}
+
+
+void test_fim_insert_failure_duplicated(void **state)
+{
+    (void) state;
+    int ret;
+    int status;
+
+    char * file = "test-file.tst";
+    struct stat file_stat;
+    file_stat.st_dev = 2050;
+    file_stat.st_ino = 922287;
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        "xxx",
+        12345678,
+        123456,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+
+    // Duplicated
+    will_return(__wrap_rbtree_insert, 0);
+
+    ret = fim_insert(file, data, &file_stat);
+    free_entry_data(data);
+
+    assert_int_equal(ret, -1);
+
+}
+
+
+void test_fim_update_success(void **state)
+{
+    (void) state;
+    int ret;
+
+    char * file = "test-file.tst";
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        "xxx",
+        12345678,
+        123456,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+
+    will_return(__wrap_rbtree_replace, 1);
+
+    ret = fim_update(file, data);
+    free_entry_data(data);
+
+    assert_int_equal(ret, 0);
+}
+
+
+void test_fim_update_failure_nofile(void **state)
+{
+    (void) state;
+    int ret;
+
+    char * file = "test-file.tst";
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        "xxx",
+        12345678,
+        123456,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+
+    will_return(__wrap_merror_exit, -99);
+
+    ret = fim_update(NULL, data);
+    free_entry_data(data);
+
+    assert_int_equal(ret, -99);
+}
+
+
+void test_fim_update_failure_rbtree(void **state)
+{
+    (void) state;
+    int ret;
+
+    char * file = "test-file.tst";
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        "xxx",
+        12345678,
+        123456,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+
+    will_return(__wrap_rbtree_replace, 0);
+
+    ret = fim_update(file, data);
+    free_entry_data(data);
+
+    assert_int_equal(ret, -1);
+}
+
+
+void test_fim_delete_no_data(void **state)
+{
+    (void) state;
+    int ret;
+
+    char * file_name = "test-file.tst";
+    will_return(__wrap_rbtree_get, NULL);
+
+    ret = fim_delete(file_name);
+
+    assert_int_equal(ret, 0);
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_fim_json_event, delete_json),
@@ -608,6 +1064,18 @@ int main(void) {
         cmocka_unit_test(test_fim_check_restrict_failure),
         cmocka_unit_test_teardown(test_fim_scan_info_json_start, delete_json),
         cmocka_unit_test_teardown(test_fim_scan_info_json_end, delete_json),
+        cmocka_unit_test_teardown(test_fim_get_checksum, delete_entry_data),
+        cmocka_unit_test(test_fim_check_depth_success),
+        cmocka_unit_test(test_fim_check_depth_failure_position),
+        cmocka_unit_test(test_fim_check_depth_failure_strlen),
+        cmocka_unit_test(test_fim_insert_success_new),
+        cmocka_unit_test(test_fim_insert_success_add),
+        cmocka_unit_test(test_fim_insert_failure_duplicated),
+        cmocka_unit_test(test_fim_insert_failure_new),
+        cmocka_unit_test(test_fim_update_success),
+        //cmocka_unit_test(test_fim_update_failure_nofile),
+        cmocka_unit_test(test_fim_update_failure_rbtree),
+        cmocka_unit_test(test_fim_delete_no_data),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

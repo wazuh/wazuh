@@ -31,7 +31,7 @@ LIST(APPEND tests_names "test_version_op")
 LIST(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
 LIST(APPEND tests_names "test_create_db")
-LIST(APPEND tests_flags " ")
+LIST(APPEND tests_flags "-Wl,--wrap,merror_exit -Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_delete -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_replace -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Add")
 
 
 # Config files
