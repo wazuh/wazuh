@@ -147,6 +147,7 @@ def restart_agents(pretty=False, wait_for_complete=False, list_agents=None):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
+                          broadcasting=list_agents is None,
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
@@ -491,8 +492,7 @@ def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=
 
 
 @exception_handler
-def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, file_path=None,
-                             installer=None):
+def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, file_path=None, installer=None):
     """Upgrade agent using a local WPK file.'.
 
     :param pretty: Show results in human-readable format
@@ -512,7 +512,7 @@ def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, fi
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
-                          wait_for_complete=wait_for_complete,
+                          wait_for_complete=True,  # Force wait_for_complete until timeout problems are resolved
                           pretty=pretty,
                           logger=logger
                           )
