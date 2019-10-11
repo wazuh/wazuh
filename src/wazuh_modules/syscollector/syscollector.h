@@ -146,7 +146,7 @@ typedef struct gateway {
 extern const wm_context WM_SYS_CONTEXT;     // Context
 
 // Parse XML configuration
-int wm_sys_read(XML_NODE node, wmodule *module);
+int wm_sys_read(XML_NODE node, wmodule *module, char **output);
 
 // Opened ports inventory for Linux
 void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all);

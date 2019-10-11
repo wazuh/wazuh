@@ -40,6 +40,6 @@ typedef struct wm_command_t {
 extern const wm_context WM_COMMAND_CONTEXT;   // Context
 
 // Parse XML
-int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg);
+int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **output);
 
 #endif // WM_COMMAND_H

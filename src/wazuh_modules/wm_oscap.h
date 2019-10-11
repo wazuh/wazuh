@@ -60,6 +60,6 @@ typedef struct wm_oscap {
 extern const wm_context WM_OSCAP_CONTEXT;   // Context
 
 // Parse XML
-int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
+int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **output);
 
 #endif // WM_OSCAP

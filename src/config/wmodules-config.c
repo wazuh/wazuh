@@ -108,21 +108,21 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
     }
 
     else if (!strcmp(node->values[0], WM_OSCAP_CONTEXT.name)) {
-        if (wm_oscap_read(xml, children, cur_wmodule) < 0) {
+        if (wm_oscap_read(xml, children, cur_wmodule, output) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
     }
 #ifdef ENABLE_SYSC
     else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)) {
-        if (wm_sys_read(children, cur_wmodule) < 0) {
+        if (wm_sys_read(children, cur_wmodule, output) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
     }
 #endif
     else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name)) {
-        if (wm_command_read(children, cur_wmodule, agent_cfg) < 0) {
+        if (wm_command_read(children, cur_wmodule, agent_cfg, output) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
