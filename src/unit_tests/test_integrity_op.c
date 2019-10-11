@@ -51,7 +51,7 @@ void test_dbsync_check_msg_clear(void **state)
 {
     (void) state; /* unused */
     char *ret;
-    char json[64] = "{\"component\":\"wazuh-testing\",\"type\":\"integrity_clear\"}";
+    char json[128] = "{\"component\":\"wazuh-testing\",\"type\":\"integrity_clear\",\"data\":{\"id\":1569926892}}";
 
     ret = dbsync_check_msg("wazuh-testing", INTEGRITY_CLEAR, 1569926892, "start", "top", "tail", "51ABB9636078DEFBF888D8457A7C76F85C8F114C");
     assert_string_equal(json, ret);
