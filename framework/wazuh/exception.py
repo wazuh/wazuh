@@ -439,7 +439,8 @@ class WazuhException(Exception):
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
         4000: {'message': "Permission denied",
-               'remediation': "Please, make sure you have permissions to execute current request, for more information on setting up permissions please visit XXXX"},
+               'remediation': "Please, make sure you have permissions to execute current request, "
+                              "for more information on setting up permissions please visit XXXX"},
         4001: {'message': 'The body of the request is empty, you must specify that you want to modify',
                'remediation': "The fields available for update are: name(str), rule(str), policies(list(dict))"},
         4002: {'message': 'The specified role does not exist',
@@ -480,8 +481,9 @@ class WazuhException(Exception):
         5004: {'message': 'The user could not be removed or updated',
                'remediation': 'Administrator users can not be removed or updated'},
         5005: {'message': 'Invalid body',
-               'remediation': 'Please check our official documentation to see more details '
-                              '[official documentation](https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'},
+               'remediation':
+                   'Please check our official documentation to see more details '
+                   '[official documentation](https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'},
         5006: {'message': 'Operation not allowed, the user does not have permissions to perform this action.',
                'remediation': 'No user, except administrator users, can change the data of a different user.'},
         5007: {'message': 'Insecure password provided.',
@@ -527,7 +529,8 @@ class WazuhException(Exception):
         else:
             self._message = extra_message
 
-        self._remediation = code_remediation if extra_remediation is None else f"{code_remediation}: {extra_remediation}"
+        self._remediation = code_remediation if extra_remediation is None \
+            else f"{code_remediation}: {extra_remediation}"
 
     def __str__(self):
         return "Error {0} - {1}".format(self._code, self._message)

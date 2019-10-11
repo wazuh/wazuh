@@ -8,7 +8,6 @@
     "decorator_params": {
         "actions": ["agent:create"],
         "resources": ["*:*:*"],
-        "target_params": ["*"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
@@ -23,7 +22,6 @@
     "decorator_params": {
         "actions": ["agent:create"],
         "resources": ["*:*:*"],
-        "target_params": ["*"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
@@ -35,7 +33,6 @@
     "decorator_params": {
         "actions": ["agent:create"],
         "resources": ["*:*:*"],
-        "target_params": ["*"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
@@ -51,7 +48,6 @@
     "decorator_params": {
         "actions": ["agent:create"],
         "resources": ["*:*:*"],
-        "target_params": ["*"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
@@ -67,7 +63,6 @@
     "decorator_params": {
         "actions": ["agent:create"],
         "resources": ["*:*:*"],
-        "target_params": ["*"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
