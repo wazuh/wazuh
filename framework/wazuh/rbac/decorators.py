@@ -214,7 +214,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                         res_list.append("{0}{1}".format(res_base, param))
                 else:
                     if params is None or params == '*':
-                        add_denied = True
+                        add_denied = False
                         params = '*'
                     res_list.append("{0}{1}".format(res_base, params))
             # KeyError occurs if required dynamic resources can't be found within request parameters
