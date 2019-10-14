@@ -427,8 +427,7 @@ def assign_agents_to_group(group_id=None, agent_list=None, replace=False):
     return result
 
 
-@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_id}'], post_proc_func=None,
-                  stack=True)
+@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_id}'], post_proc_func=None)
 @expose_resources(actions=["agent:modify_group"], resources=['agent:id:{agent_list}'],
                   post_proc_kwargs={'exclude_codes': [1734]})
 def remove_agents_from_group(group_id=None, agent_list=None):

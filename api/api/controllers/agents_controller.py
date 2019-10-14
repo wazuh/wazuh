@@ -87,8 +87,7 @@ def get_agents(pretty=False, wait_for_complete=False, list_agents=None, offset=N
     :param ip: Filters by agent IP
     :return: AllAgents
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': list_agents,
+    f_kwargs = {'agent_list': list_agents,
                 'offset': offset,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
@@ -118,7 +117,8 @@ def get_agents(pretty=False, wait_for_complete=False, list_agents=None, offset=N
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)

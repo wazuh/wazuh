@@ -28,7 +28,8 @@ class DistributedAPI:
     def __init__(self, f: Callable, logger: logging.getLogger, f_kwargs: Dict = None, node: c_common.Handler = None,
                  debug: bool = False, pretty: bool = False, request_type: str = "local_master",
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
-                 broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None):
+                 broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
+                 rbac_permissions: Dict = None):
         """
         Class constructor
 
@@ -54,6 +55,7 @@ class DistributedAPI:
         self.from_cluster = from_cluster
         self.is_async = is_async
         self.broadcasting = broadcasting
+        self.rbac_permissions = rbac_permissions if rbac_permissions is not None else dict()
         if not basic_services:
             self.basic_services = ('wazuh-modulesd', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
             if common.install_type != "local":
@@ -162,6 +164,7 @@ class DistributedAPI:
         """
         def run_local():
             self.logger.debug("Starting to execute request locally")
+            common.rbac.set(self.rbac_permissions)
             data = self.f(**self.f_kwargs)
             self.logger.debug("Finished executing request locally")
             return data
@@ -248,7 +251,8 @@ class DistributedAPI:
                 "from_cluster": self.from_cluster,
                 "is_async": self.is_async,
                 "local_client_arg": self.local_client_arg,
-                "basic_services": self.basic_services
+                "basic_services": self.basic_services,
+                "rbac_permissions": self.rbac_permissions
                 }
 
     def get_error_info(self, e) -> Dict:

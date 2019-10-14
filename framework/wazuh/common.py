@@ -6,8 +6,10 @@
 
 import json
 import os
+from contextvars import ContextVar
 from grp import getgrnam
 from pwd import getpwnam
+from typing import Dict, List
 
 
 try:
@@ -122,3 +124,7 @@ def ossec_gid():
 
 # Multigroup variables
 max_groups_per_multigroup = 256
+
+# Context variables
+rbac: ContextVar[Dict] = ContextVar('rbac', default=dict())
+system_agents: ContextVar[List] = ContextVar('system_agents', default=list())
