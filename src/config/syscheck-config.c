@@ -363,13 +363,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 #endif
 
-        /* Get the options
-        if (!g_attrs || !g_values) {
-            mwarn(FIM_NO_OPTIONS, dirs);
-            ret = 0;
-            goto out_free;
-        }*/
-
         attrs = g_attrs;
         values = g_values;
 
@@ -866,7 +859,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_scantime = "scan_time";
     const char *xml_ignore = "ignore";
     const char *xml_registry_ignore = "registry_ignore";
-    const char *xml_auto_ignore = "auto_ignore";
+    const char *xml_auto_ignore = "auto_ignore"; // TODO: Deprecated since 3.11.0
     const char *xml_alert_new_files = "alert_new_files"; // TODO: Deprecated since 3.11.0
     const char *xml_remove_old_diff = "remove_old_diff"; // Deprecated since 3.8.0
     const char *xml_disabled = "disabled";

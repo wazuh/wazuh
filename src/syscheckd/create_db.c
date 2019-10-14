@@ -715,6 +715,17 @@ int fim_update (char * file, fim_entry_data * data) {
         os_free(inode_key);
         return (-1);
     }
+
+#ifndef WIN32
+    fim_inode_data * inode_data;
+    if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), inode_data) {
+        if (!os_IsStrOnArray(file, inode_data->paths)) {
+            inode_data->paths = os_AddStrArray(file, inode_data->paths);
+            inode_data->items++;
+        }
+    }
+#endif
+
     os_free(inode_key);
     return 0;
 }

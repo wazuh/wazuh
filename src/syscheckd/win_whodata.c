@@ -779,10 +779,8 @@ add_whodata_evt:
                         mdebug1(FIM_WHODATA_SCAN_ABORTED, w_evt->path);
                     }
                     free_win_whodata_evt(w_evt);
-                } else {
-                    // The file was opened before Wazuh started Syscheck.
-                    minfo("~~~ The file was opened before Wazuh started Syscheck?");
-                }
+                } // In else section: The file was opened before Wazuh started Syscheck.
+
             break;
             default:
                 merror(FIM_ERROR_WHODATA_EVENTID);

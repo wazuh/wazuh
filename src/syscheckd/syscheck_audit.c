@@ -532,6 +532,9 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
                 free(full_path);
             } else if (path1[0] == '.' && path1[1] == '.' && path1[2] == '/') {
                 gen_path = audit_clean_path(cwd, path1);
+            } else if (strlen(cwd) == 1) {
+                os_malloc(strlen(cwd) + strlen(path1) + 2, gen_path);
+                snprintf(gen_path, strlen(cwd) + strlen(path1) + 2, "%s%s", cwd, path1);
             } else if (strncmp(path0, path1, strlen(path0)) == 0) {
                 os_malloc(strlen(cwd) + strlen(path1) + 2, gen_path);
                 snprintf(gen_path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, path1);
