@@ -146,9 +146,16 @@ class WazuhIntegration:
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-AWS:"
-        self.client = self.get_client(access_key=access_key, secret_key=secret_key,
-                                      profile=aws_profile, iam_role_arn=iam_role_arn, service_name=service_name,
-                                      bucket=bucket, region=region)
+        # GovCloud regions
+        self.gov_regions = {'us-gov-east-1', 'us-gov-west-1'}
+        self.client = self.get_client(access_key=access_key,
+                                      secret_key=secret_key,
+                                      profile=aws_profile,
+                                      iam_role_arn=iam_role_arn,
+                                      service_name=service_name,
+                                      bucket=bucket,
+                                      region=region
+                                      )
 
         # db_name is an instance variable of subclass
         self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
@@ -218,9 +225,13 @@ class WazuhIntegration:
         if profile is not None:
             conn_args['profile_name'] = profile
 
-        # only for Inspector
-        if region is not None:
+        # set region name
+        if region and service_name == 'inspector':
             conn_args['region_name'] = region
+        else:
+            # it is necessary to set region_name for GovCloud regions
+            conn_args['region_name'] = region if region in self.gov_regions \
+                else None
 
         boto_session = boto3.Session(**conn_args)
 
@@ -229,10 +240,13 @@ class WazuhIntegration:
             if iam_role_arn:
                 sts_client = boto_session.client('sts')
                 sts_role_assumption = sts_client.assume_role(RoleArn=iam_role_arn,
-                                                             RoleSessionName='WazuhLogParsing')
+                                                             RoleSessionName='WazuhLogParsing'
+                                                             )
                 sts_session = boto3.Session(aws_access_key_id=sts_role_assumption['Credentials']['AccessKeyId'],
                                             aws_secret_access_key=sts_role_assumption['Credentials']['SecretAccessKey'],
-                                            aws_session_token=sts_role_assumption['Credentials']['SessionToken'])
+                                            aws_session_token=sts_role_assumption['Credentials']['SessionToken'],
+                                            region_name=conn_args.get('region_name')
+                                            )
                 client = sts_session.client(service_name=service_name)
             else:
                 client = boto_session.client(service_name=service_name)
@@ -330,7 +344,7 @@ class AWSBucket(WazuhIntegration):
 
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
-                 prefix, delete_file, aws_organization_id):
+                 prefix, delete_file, aws_organization_id, region):
         """
         AWS Bucket constructor.
 
@@ -443,8 +457,14 @@ class AWSBucket(WazuhIntegration):
                                     aws_region='{aws_region}';"""
 
         self.db_name = 's3_cloudtrail'
-        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
-                                  aws_profile=profile, iam_role_arn=iam_role_arn, bucket=bucket, service_name='s3')
+        WazuhIntegration.__init__(self, access_key=access_key,
+                                  secret_key=secret_key,
+                                  aws_profile=profile,
+                                  iam_role_arn=iam_role_arn,
+                                  bucket=bucket,
+                                  service_name='s3',
+                                  region=region
+                                  )
         self.retain_db_records = 500
         self.reparse = reparse
         self.only_logs_after = datetime.strptime(only_logs_after, "%Y%m%d")
@@ -2237,12 +2257,18 @@ def main(argv):
             else:
                 raise Exception("Invalid type of bucket")
             bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,
-                                 secret_key=options.secret_key, profile=options.aws_profile,
-                                 iam_role_arn=options.iam_role_arn, bucket=options.logBucket,
-                                 only_logs_after=options.only_logs_after, skip_on_error=options.skip_on_error,
+                                 secret_key=options.secret_key,
+                                 profile=options.aws_profile,
+                                 iam_role_arn=options.iam_role_arn,
+                                 bucket=options.logBucket,
+                                 only_logs_after=options.only_logs_after,
+                                 skip_on_error=options.skip_on_error,
                                  account_alias=options.aws_account_alias,
-                                 prefix=options.trail_prefix, delete_file=options.deleteFile,
-                                 aws_organization_id=options.aws_organization_id)
+                                 prefix=options.trail_prefix,
+                                 delete_file=options.deleteFile,
+                                 aws_organization_id=options.aws_organization_id,
+                                 region=options.regions[0] if options.regions else None
+                                 )
             # check if bucket is empty
             bucket.check_empty_bucket()
             bucket.iter_bucket(options.aws_account_id, options.regions)
