@@ -36,14 +36,17 @@ All notable changes to this project will be documented in this file.
 - Active response Kaspersky script now logs the action request in _active-responses.log_ ([#2748](https://github.com/wazuh/wazuh/pull/2748))
 - Fix service's installation path for CentOS 8. ([#4060](https://github.com/wazuh/wazuh/pull/4060))
 - Add macOS Catalina to the list of detected versions. ([#4061](https://github.com/wazuh/wazuh/pull/4061))
+- Prevent FIM from producing false negatives due to wrong checksum comparison. ([#4066](https://github.com/wazuh/wazuh/pull/4066))
 
-## [v3.10.2]
+
+## [v3.10.2] - 2019-09-23
 
 ### Fixed
 
 - Fix error in Logcollector when reloading localfiles with timestamp wildcards. ([#3995](https://github.com/wazuh/wazuh/pull/3995))
 
-## [v3.10.1]
+
+## [v3.10.1] - 2019-09-19
 
 ### Fixed
 
@@ -51,7 +54,8 @@ All notable changes to this project will be documented in this file.
 - Fix error in Remoted when reloading agent keys (busy resource). ([#3988](https://github.com/wazuh/wazuh/issues/3988))
 - Fix invalid read in Remoted counters. ([#3989](https://github.com/wazuh/wazuh/issues/3989))
 
-## [v3.10.0]
+
+## [v3.10.0] - 2019-09-16
 
 ### Added
 
@@ -106,12 +110,14 @@ All notable changes to this project will be documented in this file.
 - Fix who-data alerts when audit logs contain hex fields. ([#3909](https://github.com/wazuh/wazuh/pull/3909))
 - Remove useless `select()` calls in Analysisd decoders. ([#3964](https://github.com/wazuh/wazuh/pull/3964))
 
+
 ## [v3.9.5] - 2019-08-08
 
 ### Fixed
 
 - Fixed a bug in the Framework that prevented Cluster and API from handling the file _client.keys_ if it's mounted as a volume on Docker.
 - Fixed a bug in Analysisd that printed the millisecond part of the alerts' timestamp without zero-padding. That prevented Elasticsearch 7 from indexing those alerts. ([#3814](https://github.com/wazuh/wazuh/issues/3814))
+
 
 ## [v3.9.4] - 2019-08-07
 
@@ -135,6 +141,7 @@ All notable changes to this project will be documented in this file.
 - The Docker listener module was storing and ignoring the output of the integration. ([#3768](https://github.com/wazuh/wazuh/issues/3768))
 - Fixed memory leaks in Syscollector for macOS agents. ([#3795](https://github.com/wazuh/wazuh/pull/3795))
 - Fix dangerous mutex initialization in Windows hosts. ([#3805](https://github.com/wazuh/wazuh/issues/3805))
+
 
 ## [v3.9.3] - 2019-07-08
 
