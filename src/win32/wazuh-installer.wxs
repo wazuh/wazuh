@@ -466,9 +466,13 @@
                             <File Id="SCA_WIN10.ZIP" Name="10.zip" Source="..\..\etc\sca\windows\10\10.zip" />
                             <Condition>MAJORVERSION = "#10" AND MsiNTProductType = 1</Condition>
                         </Component>
-                        <Component Id="SCA_WIN2012R2" DiskId="1" Guid="6C7B21C9-2B01-4A6B-BAC5-782382D10FBB">
-                            <File Id="SCA_WIN2012R2.ZIP" Name="2012R2.zip" Source="..\..\etc\sca\windows\2012R2\2012R2.zip" />
-                            <Condition>VersionNT64 = 603 AND MsiNTProductType &gt; 1</Condition>
+                        <Component Id="SCA_WIN2012R2_DOMAIN" DiskId="1" Guid="6C7B21C9-2B01-4A6B-BAC5-782382D10FBB">
+                            <File Id="SCA_WIN2012R2_DOMAIN.ZIP" Name="2012R2_domain.zip" Source="..\..\etc\sca\windows\2012R2\domain\2012R2_domain.zip" />
+                            <Condition>VersionNT64 = 603 AND MsiNTProductType = 2</Condition>
+                        </Component>
+                        <Component Id="SCA_WIN2012R2_MEMBER" DiskId="1" Guid="6C7B21C9-2B01-4A6B-BAC5-782382D10FBB">
+                            <File Id="SCA_WIN2012R2_MEMBER.ZIP" Name="2012R2_MEMBER.zip" Source="..\..\etc\sca\windows\2012R2\member\2012R2_member.zip" />
+                            <Condition>VersionNT64 = 603 AND MsiNTProductType = 3</Condition>
                         </Component>
                       </Directory>
                     </Directory>
@@ -631,7 +635,8 @@
             <ComponentRef Id="REMOVE_OLD_POLICIES" />
             <ComponentRef Id="SCA_WIN_AUDIT.YML" />
             <ComponentRef Id="SCA_WIN10" />
-            <ComponentRef Id="SCA_WIN2012R2" />
+            <ComponentRef Id="SCA_WIN2012R2_DOMAIN" />
+            <ComponentRef Id="SCA_WIN2012R2_MEMBER" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
             <ComponentRef Id="CMP_WODLES" />

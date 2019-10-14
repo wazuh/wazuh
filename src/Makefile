@@ -620,7 +620,8 @@ winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscolle
 	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
 	cd win32/ && makensis ossec-installer.nsi
 	cd ../etc/sca/windows/10 && zip -r 10.zip *
-	cd ../etc/sca/windows/2012R2 && zip -r 2012R2.zip *
+	cd ../etc/sca/windows/2012R2/domain && zip -r 2012R2_domain.zip *
+	cd ../etc/sca/windows/2012R2/member && zip -r 2012R2_member.zip *
 	cd ../etc/templates/config/windows/; \
 	for dir in $(subst ../etc/templates/config/windows/,,$(wildcard ../etc/templates/config/windows/*)) ; do \
 		zip -jr $(addsuffix .zip, $$dir) $$dir; \
@@ -1725,7 +1726,9 @@ clean-internals:
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
 	rm -f ../etc/templates/config/windows/*.zip
-	rm -f ../etc/sca/windows/*.zip
+	rm -f ../etc/sca/windows/10/*.zip
+	rm -f ../etc/sca/windows/2012R2/domain/*.zip
+	rm -f ../etc/sca/windows/2012R2/member/*.zip
 
 clean-framework:
 	${MAKE} -C ../framework clean
