@@ -358,6 +358,8 @@
       "location",
       "manager.name",
       "message",
+      "mitre.id",
+      "mitre.tactics",
       "offset",
       "predecoder.hostname",
       "predecoder.program_name",
@@ -372,6 +374,8 @@
       "rule.groups",
       "rule.id",
       "rule.info",
+      "rule.mitre.id",
+      "rule.mitre.tactics",
       "rule.pci_dss",
       "syscheck.audit.effective_user.id",
       "syscheck.audit.effective_user.name",
@@ -671,6 +675,16 @@
       "message": {
         "type": "text"
       },
+      "mitre": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "tactics": {
+            "type": "keyword"
+          }
+        }
+      },
       "offset": {
         "type": "keyword"
       },
@@ -720,6 +734,16 @@
           },
           "mail": {
             "type": "boolean"
+          },
+          "mitre": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "tactics": {
+                "type": "keyword"
+              }
+            }
           }
         }
       },
