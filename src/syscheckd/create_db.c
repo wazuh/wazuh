@@ -338,7 +338,7 @@ void fim_audit_inode_event(whodata_evt * w_evt) {
 
                 case FIM_DIRECTORY:
                     // Directory path
-                    //fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+                    fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
                     break;
                 // TODO: Case for symbolic links?
                 default:
