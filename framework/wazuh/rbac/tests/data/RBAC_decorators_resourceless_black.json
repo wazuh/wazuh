@@ -67,5 +67,21 @@
         "post_proc_kwargs": null
     },
     "allowed": true
+  },
+  {
+    "rbac": {
+      "agent:create": {
+        "agent:id:002": "allow",
+        "*:*:*": "deny",
+        "agent:id:001": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:create"],
+        "resources": ["*:*:*"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "allowed": false
   }
 ]
