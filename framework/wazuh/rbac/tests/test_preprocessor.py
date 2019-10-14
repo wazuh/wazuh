@@ -7,7 +7,7 @@ from unittest.mock import patch
 import json
 import os
 import pytest
-from wazuh.rbac.pre_policies import optimize_resources
+from wazuh.rbac.pre_processor import optimize_resources
 
 
 test_path = os.path.dirname(os.path.realpath(__file__))
