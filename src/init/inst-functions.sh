@@ -824,10 +824,8 @@ InstallCommon()
         find ${PREFIX}/usr/share/lib/zoneinfo/ -type f -exec chmod 0640 {} +
     fi
 
-    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${PREFIX}/etc/
-
-    if [ ! -f ${PREFIX}/etc/local_internal_options.conf ]; then
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/local_internal_options.conf ${PREFIX}/etc/local_internal_options.conf
+    if [ -f ${PREFIX}/etc/internal_options.conf ]; then
+        rm ${PREFIX}/etc/internal_options.conf
     fi
 
     if [ ! -f ${PREFIX}/etc/client.keys ]; then
