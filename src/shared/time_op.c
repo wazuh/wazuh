@@ -45,6 +45,7 @@ void time_sub(struct timespec * a, const struct timespec * b) {
 #endif // WIN32
 
 #ifdef WIN32
+#include <shared.h>
 #include <windows.h>
 #define EPOCH_DIFFERENCE 11644473600LL
 
@@ -73,3 +74,51 @@ long long int get_windows_file_time_epoch(FILETIME ft) {
 }
 
 #endif
+
+int day_to_int(const char *day)
+{
+#ifndef WIN32
+    struct tm timeinfo;
+    int wday;
+
+    if (!strptime(day, "%A", &timeinfo))
+    {
+        return 0;
+    }
+
+    wday = timeinfo.tm_wday;
+    return wday ? wday : 7;
+#else
+    int i = 0;
+    char *wday = strdup(day);
+    const char *(weekdays[]) = {"monday", "tuesday", "wednesday", "thursday",
+                      "friday", "saturday", "sunday"};
+
+    str_lowercase(wday);
+
+    while (i < 7)
+    {
+        if (!strcmp(wday, weekdays[i])) {
+            os_free(wday);
+            return i+1;
+        }
+        i++;
+    }
+
+    os_free(wday);
+    return 0;
+
+#endif
+}
+
+char *int_to_day(int day)
+{
+    struct tm timeinfo;
+    char *buffer = NULL;
+    os_calloc(80, sizeof(char), buffer);
+
+    timeinfo.tm_wday = day % 7;
+    strftime(buffer, 80,"%A", &timeinfo);
+
+    return buffer;
+}

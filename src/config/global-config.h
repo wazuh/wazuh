@@ -104,6 +104,48 @@ typedef struct __Config {
 
     int rotate_interval;
     ssize_t max_output_size;
+
+    // Rotation options for archives
+    unsigned int archives_enabled:1;
+    unsigned int archives_rotation_enabled:1;
+    unsigned int archives_compress_rotation:1;
+    unsigned int archives_log_json:1;
+    unsigned int archives_log_plain:1;
+    long int archives_max_size;
+    char archives_size_units;
+    long int archives_min_size;
+    char archives_min_size_units;
+    long int archives_interval;
+    char archives_interval_units;
+    int archives_rotate;
+    int archives_maxage;
+    // This is the value that we put in the configuration (not converted to bytes). We need it to show the configuration
+    unsigned long archives_min_size_rotate;
+    unsigned long archives_size_rotate;
+    rotation_list *log_archives_plain;
+    rotation_list *log_archives_json;
+
+    // Rotation options for alerts
+    unsigned int alerts_enabled:1;
+    unsigned int alerts_rotation_enabled:1;
+    unsigned int alerts_compress_rotation:1;
+    unsigned int alerts_log_json:1;
+    unsigned int alerts_log_plain:1;
+    OSList *alerts_rotation_files;
+    long int alerts_max_size;
+    char alerts_size_units;
+    long int alerts_min_size;
+    char alerts_min_size_units;
+    long int alerts_interval;
+    char alerts_interval_units;
+    int alerts_rotate;
+    int alerts_maxage;
+    // This is the value that we put in the configuration (not converted to bytes). We need it to show the configuration
+    unsigned long alerts_min_size_rotate;
+    unsigned long alerts_size_rotate;
+    rotation_list *log_alerts_plain;
+    rotation_list *log_alerts_json;
+
     long queue_size;
 
     /* Internal options */

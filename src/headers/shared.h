@@ -231,6 +231,7 @@ extern const char *__local_name;
 #include "json_op.h"
 #include "notify_op.h"
 #include "version_op.h"
+#include "rotation_op.h"
 #include "utf8_op.h"
 
 #include "os_xml/os_xml.h"

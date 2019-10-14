@@ -46,18 +46,18 @@ static void _log(int level, const char *tag, const char * file, int line, const 
     char * filename;
 
     const char *strlevel[5]={
-      "DEBUG",
-      "INFO",
-      "WARNING",
-      "ERROR",
-      "CRITICAL",
+        "DEBUG",
+        "INFO",
+        "WARNING",
+        "ERROR",
+        "CRITICAL",
     };
     const char *strleveljson[5]={
-      "debug",
-      "info",
-      "warning",
-      "error",
-      "critical"
+        "debug",
+        "info",
+        "warning",
+        "error",
+        "critical"
     };
 
     now = time(NULL);
@@ -67,7 +67,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
     va_copy(args3, args);
 
     if (!flags.read) {
-      os_logging_config();
+	    os_logging_config();
     }
 
     if (filename = strrchr(file, '/'), filename) {
@@ -142,7 +142,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
     }
 
     if (flags.log_plain) {
-      /* If under chroot, log directly to /logs/ossec.log */
+        /* If under chroot, log directly to /logs/ossec.log */
 
 #ifndef WIN32
         int oldmask;
@@ -224,25 +224,43 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 }
 
 void os_logging_config(){
-  OS_XML xml;
-  const char * xmlf[] = {"ossec_config", "logging", "log_format", NULL};
-  char * logformat;
-  char ** parts = NULL;
-  int i;
+    OS_XML xml;
+    const char * xmlf[] = {"ossec_config", "logging", "log_format", NULL};
+    const char * new_log_format[] = {"ossec_config", "logging", "log", "format", NULL};
+    const char * xml_enabled[] = {"ossec_config", "logging", "log", "enabled", NULL};
+    char * logformat;
+    char * logenabled;
+    char ** parts = NULL;
+    int i;
 
-  pid = (int)getpid();
-  flags.read = 1;
+    pid = (int)getpid();
+    flags.read = 1;
 
-  if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
-    flags.log_plain = 1;
-    flags.log_json = 0;
-    OS_ClearXML(&xml);
-    merror_exit(XML_ERROR, chroot_flag ? OSSECCONF : DEFAULTCPATH, xml.err, xml.err_line);
-  }
 
-  logformat = OS_GetOneContentforElement(&xml, xmlf);
+    if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
+        flags.log_plain = 1;
+        flags.log_json = 0;
+        OS_ClearXML(&xml);
+        merror_exit(XML_ERROR, chroot_flag ? OSSECCONF : DEFAULTCPATH, xml.err, xml.err_line);
+    }
 
-  if (!logformat || logformat[0] == '\0'){
+    if(logenabled = OS_GetOneContentforElement(&xml, xml_enabled), logenabled) {
+        if(!strncmp(logenabled, "no", strlen(logenabled))) {
+            flags.log_plain = 0;
+            flags.log_json = 0;
+            minfo("Logging has been disabled for both 'ossec.log' and 'ossec.json'.");
+            OS_ClearXML(&xml);
+            os_free(logenabled);
+            return;
+        }
+        os_free(logenabled);
+    }
+
+    if(logformat = OS_GetOneContentforElement(&xml, new_log_format), !logformat) {
+        logformat = OS_GetOneContentforElement(&xml, xmlf);
+    }
+
+    if (!logformat || logformat[0] == '\0'){
 
     flags.log_plain = 1;
     flags.log_json = 0;
@@ -251,32 +269,32 @@ void os_logging_config(){
     OS_ClearXML(&xml);
     mdebug1(XML_NO_ELEM, "log_format");
 
-  }else{
+    } else {
 
-    parts = OS_StrBreak(',', logformat, 2);
-    char * part;
-    if (parts){
-      for (i=0; parts[i]; i++){
-        part = w_strtrim(parts[i]);
-        if (!strcmp(part, "plain")){
-          flags.log_plain = 1;
-        }else if(!strcmp(part, "json")){
-          flags.log_json = 1;
-        }else{
-          flags.log_plain = 1;
-          flags.log_json = 0;
-          merror_exit(XML_VALUEERR, "log_format", part);
+        parts = OS_StrBreak(',', logformat, 2);
+        char * part;
+        if (parts) {
+            for (i=0; parts[i]; i++) {
+                part = w_strtrim(parts[i]);
+                if (!strcmp(part, "plain")) {
+                    flags.log_plain = 1;
+                } else if(!strcmp(part, "json")) {
+                    flags.log_json = 1;
+                } else {
+                    flags.log_plain = 1;
+                    flags.log_json = 0;
+                    merror_exit(XML_VALUEERR, "log_format", part);
+                }
+            }
+            for (i=0; parts[i]; i++) {
+                free(parts[i]);
+            }
+            free(parts);
         }
-      }
-      for (i=0; parts[i]; i++){
-        free(parts[i]);
-      }
-      free(parts);
-    }
 
-    free(logformat);
-    OS_ClearXML(&xml);
-  }
+        free(logformat);
+        OS_ClearXML(&xml);
+    }
 }
 
 cJSON *getLoggingConfig(void) {

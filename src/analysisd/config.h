@@ -42,5 +42,6 @@ cJSON *getRulesConfig(void);
 void _getRulesListJSON(RuleNode *list, cJSON *array);
 cJSON *getAnalysisOptions(void);
 cJSON *getManagerLabelsConfig(void);
+cJSON *getAnalysisLoggingConfig(void);
 
 #endif /* CONFIG_H */

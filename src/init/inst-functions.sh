@@ -23,7 +23,8 @@ RULES_TEMPLATE="./etc/templates/config/generic/rules.template"
 AR_COMMANDS_TEMPLATE="./etc/templates/config/generic/ar-commands.template"
 AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
 ALERTS_TEMPLATE="./etc/templates/config/generic/alerts.template"
-LOGGING_TEMPLATE="./etc/templates/config/generic/logging.template"
+LOGGING_TEMPLATE_MANAGER="./etc/templates/config/generic/logging.manager.template"
+LOGGING_TEMPLATE_AGENT="./etc/templates/config/generic/logging.agent.template"
 REMOTE_SEC_TEMPLATE="./etc/templates/config/generic/remote-secure.template"
 
 LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
@@ -472,7 +473,7 @@ WriteAgent()
     echo "" >> $NEWCONFIG
 
     # Logging format
-    cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
+    cat ${LOGGING_TEMPLATE_AGENT} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     echo "</ossec_config>" >> $NEWCONFIG
@@ -504,10 +505,6 @@ WriteManager()
 
     # Alerts level
     cat ${ALERTS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Logging format
-    cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Remote connection secure
@@ -605,6 +602,10 @@ WriteManager()
 
     # Writting cluster configuration
     cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    # Logging format
+    cat ${LOGGING_TEMPLATE_MANAGER} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     echo "</ossec_config>" >> $NEWCONFIG

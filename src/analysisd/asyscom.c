@@ -140,6 +140,18 @@ size_t asyscom_getconfig(const char * section, char ** output) {
         } else {
             goto error;
         }
+    }
+    else if (strcmp(section, "logging") == 0){
+        if (cfg = getAnalysisLoggingConfig(), cfg) {
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_Delete(cfg);
+            return strlen(*output);
+        } else {
+            goto error;
+        }
     } else {
         goto error;
     }

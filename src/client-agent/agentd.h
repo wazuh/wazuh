@@ -15,6 +15,7 @@
 #include "sec.h"
 #include "config/config.h"
 #include "config/client-config.h"
+#include "monitord/monitord.h"
 
 /* Buffer functions */
 #define full(i, j, n) ((i + 1) % (n) == j)
@@ -51,7 +52,7 @@ int ClientConf(const char *cfgfile);
 cJSON *getClientConfig(void);
 cJSON *getBufferConfig(void);
 cJSON *getLabelsConfig(void);
-cJSON *getAgentInternalOptions(void);
+cJSON *getAgentLoggingOptions(void);
 
 /* Agentd init function */
 void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group) __attribute__((noreturn));
@@ -132,11 +133,15 @@ size_t agcom_getconfig(const char * section, char ** output);
 /*** Global variables ***/
 extern int agent_debug_level;
 extern int rotate_log;
-extern int log_compress;
-extern int keep_log_days;
-extern int day_wait;
-extern int daily_rotations;
-extern int size_rotate_read;
+extern int request_pool;
+extern int rto_sec;
+extern int rto_msec;
+extern int max_attempts;
+extern int timeout;
+extern int interval;
+extern int remote_conf;
+extern int min_eps;
+extern monitor_config mond;
 
 /* Global variables. Only modified during startup. */
 

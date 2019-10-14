@@ -253,32 +253,41 @@ cJSON *getLabelsConfig(void) {
     return root;
 }
 
-
-cJSON *getAgentInternalOptions(void) {
-
+cJSON *getAgentLoggingOptions(void) {
+    char aux[50];
     cJSON *root = cJSON_CreateObject();
-    cJSON *internals = cJSON_CreateObject();
 
-    cJSON *agent = cJSON_CreateObject();
+    cJSON *logging = cJSON_CreateObject();
 
-    cJSON_AddItemToObject(internals,"agent",agent);
+    if (mond.enabled) {
+        cJSON_AddStringToObject(logging, "plain_format", mond.ossec_log_plain ? "yes" : "no");
+        cJSON_AddStringToObject(logging, "json_format", mond.ossec_log_json ? "yes" : "no");
+        if (mond.rotation_enabled) {
+            cJSON_AddStringToObject(logging, "compress_rotation", mond.compress_rotation ? "yes" : "no");
+            snprintf(aux, 50, "%d", mond.rotate);
+            cJSON_AddStringToObject(logging, "saved_rotations", mond.rotate == -1 ? "unlimited" : aux);
+            if (mond.interval_units == 'w') {
+                char *buffer;
+                buffer = int_to_day(mond.interval);
+                cJSON_AddStringToObject(logging, "schedule", buffer);
+                os_free(buffer);
+            } else {
+                snprintf(aux, 50, "%ld%c", mond.interval, mond.interval_units);
+                cJSON_AddStringToObject(logging, "schedule", mond.interval ? aux : "no");
+            }
+            snprintf(aux, 50, "%ld%c", mond.size_rotate, mond.size_units);
+            cJSON_AddStringToObject(logging, "maxsize", mond.size_rotate ? aux : "no");
+            snprintf(aux, 50, "%ld%c", mond.min_size_rotate, mond.min_size_units);
+            cJSON_AddStringToObject(logging, "minsize", mond.min_size_rotate ? aux : "no");
+            cJSON_AddNumberToObject(logging, "maxage", mond.maxage);
+        }
+    }
 
-    cJSON *monitord = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(monitord,"rotate_log",rotate_log);
-    cJSON_AddNumberToObject(monitord,"compress",log_compress);
-    cJSON_AddNumberToObject(monitord,"keep_log_days",keep_log_days);
-    cJSON_AddNumberToObject(monitord,"day_wait",day_wait);
-    cJSON_AddNumberToObject(monitord,"size_rotate",size_rotate_read);
-    cJSON_AddNumberToObject(monitord,"daily_rotations",daily_rotations);
-
-    cJSON_AddItemToObject(internals,"monitord",monitord);
-
-    cJSON_AddItemToObject(root,"internal",internals);
+    cJSON_AddItemToObject(root, "logging", logging);
 
     return root;
-}
 
+}
 
 void resolveHostname(char **hostname, int attempts) {
 
