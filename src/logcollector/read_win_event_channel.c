@@ -383,8 +383,6 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     char *provider_name = NULL;
     char *msg_from_prov = NULL;
     char *xml_event = NULL;
-    char *filtered_msg = NULL;
-    char *avoid_dup = NULL;
     char *beg_prov = NULL;
     char *end_prov = NULL;
     char *find_prov = NULL;
@@ -392,7 +390,6 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 
     cJSON *event_json = cJSON_CreateObject();
 
-    os_malloc(OS_MAXSTR, filtered_msg);
     os_malloc(OS_MAXSTR, provider_name);
 
     result = EvtRender(NULL,
@@ -462,34 +459,17 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         }
     }
 
-    if (provider_name) {
+     if (provider_name) {
         wprovider_name = convert_unix_string(provider_name);
 
-        if (!wprovider_name) {
-            mferror("Could not convert provider name to Windows format (%s)", provider_name);
-        } else {
-            if ((msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
-                mferror(
-                    "Could not get message for (%s), provider (%s)",
-                    channel->evt_log, provider_name);
-            }
-            else {
-                avoid_dup = strchr(msg_from_prov, '\r');
-
-                if (avoid_dup){
-                    num = avoid_dup - msg_from_prov;
-                    memcpy(filtered_msg, msg_from_prov, num);
-                    filtered_msg[num] = '\0';
-                    cJSON_AddStringToObject(event_json, "Message", filtered_msg);
-                } else {
-                    win_format_event_string(msg_from_prov);
-                    cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
-                }
-                avoid_dup = '\0';
-            }
+        if (wprovider_name && (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
+            mferror(
+                "Could not get message for (%s)",
+                channel->evt_log);
         }
-    } else {
-        cJSON_AddStringToObject(event_json, "Message", "No message");
+        else {
+            cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
+        }
     }
 
     win_format_event_string(xml_event);
@@ -509,7 +489,6 @@ cleanup:
     os_free(msg_from_prov);
     os_free(xml_event);
     os_free(msg_sent);
-    os_free(filtered_msg);
     os_free(properties_values);
     os_free(provider_name);
     os_free(wprovider_name);

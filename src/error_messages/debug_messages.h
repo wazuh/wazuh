@@ -95,14 +95,13 @@
 #define FIM_REALTIME_MONITORING             "(6225): The '%s' directory starts to be monitored in real-time mode"
 #define FIM_REALTIME_NEWPATH                "(6226): Scanning new file '%s' with options for directory '%s'."
 #define FIM_REALTIME_NEWDIRECTORY           "(6227): Directory added for real time monitoring: '%s'."
-#define FIM_REALTIME_DISCARD_EVENT          "(6228): Inotify event with same checksum for file: '%s'. Ignoring it."
+#define FIM_REALTIME_DISCARD_EVENT          "(6228): Real-time event with same checksum for file: '%s'. Ignoring it."
 
 #define FIM_WHODATA_HANDLE_UPDATE           "(6229): The handler ('%s') will be updated."
 #define FIM_WHODATA_NEWDIRECTORY            "(6230): Monitoring with Audit: '%s'."
 #define FIM_WHODATA_SCAN                    "(6231): The '%s' directory has been scanned after detecting event of new files."
 #define FIM_WHODATA_SCAN_ABORTED            "(6232): Scanning of the '%s' directory is aborted because something has gone wrong."
 #define FIM_WHODATA_CHECKTHREAD             "(6233): Checking thread set to '%d' seconds."
-#define FIM_WHODATA_DEL_ADD                 "(6234): '%s' has been deleted and added after the last scan."
 #define FIM_WHODATA_FULLQUEUE               "(6235): Real-time Whodata events queue for Windows is full. Removing the first '%d'..."
 #define FIM_WHODATA_EVENT_DELETED           "(6236): '%d' events have been deleted from the whodata list."
 #define FIM_WHODATA_EVENTQUEUE_VALUES       "(6237): Whodata event queue values for Windows -> max_size:'%d' | max_remove:'%d' | alert_threshold:'%d'.",
