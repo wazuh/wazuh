@@ -17,7 +17,7 @@ def list_handler(result, original: dict = None, allowed: dict = None, target: li
     :param add_denied: Flag to add denied permissions to answer
     :return: WazuhResult
     """
-    if add_denied:
+    if add_denied and '*' not in target:
         if len(target) == 1:
             original_kwargs = original[target[0]] if isinstance(original[target[0]], list) else [original[target[0]]]
             for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[0]])):
@@ -74,6 +74,8 @@ def data_response_builder(result, original: dict = None, add_denied: bool = Fals
         affected = sorted(result['affected_items'], key=int)
     except ValueError:
         affected = sorted(result['affected_items'])
+    except TypeError:
+        affected = result['affected_items']
     final_dict = {'data': {'affected_items': affected, 'total_affected_items': len(result['affected_items'])}}
 
     if result['failed_items']:
