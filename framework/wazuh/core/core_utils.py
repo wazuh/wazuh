@@ -11,6 +11,10 @@ from wazuh.exception import WazuhInternalError
 
 
 def get_agents_info():
+    """Get all agents IDs in the system
+
+    :return: List of agents ids
+    """
     agents = WazuhDBQueryAgents(select=['id']).run()['items']
     agents_list = set()
     for agent_info in agents:
@@ -20,6 +24,10 @@ def get_agents_info():
 
 
 def get_groups():
+    """Get all groups in the system
+
+    :return: List of group names
+    """
     db_global = glob(common.database_path_global)
     if not db_global:
         raise WazuhInternalError(1600)
@@ -32,7 +40,13 @@ def get_groups():
 
     return groups_list
 
+
 def expand_group(group_name):
+    """Expands a certain group or all (*) of them
+
+    :param group_name: Name of the group to be expanded
+    :return: List of agents ids
+    """
     if group_name == '*':
         data = WazuhDBQueryAgents(select=['group']).run()['items']
         groups = set()
