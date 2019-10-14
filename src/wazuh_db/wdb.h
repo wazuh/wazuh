@@ -551,6 +551,6 @@ size_t wdbcom_dispatch(char * command, char ** output);
 size_t wdbcom_getconfig(const char * section, char ** output);
 void * wdbcom_main(__attribute__((unused)) void * arg);
 
-cJSON *getWDBInternalOptions(void);
+cJSON *getWDBOptions(void);
 
 #endif

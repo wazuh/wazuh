@@ -432,7 +432,7 @@ int main_analysisd(int argc, char **argv)
     }
 
     /* Check the CPU INFO */
-    /* If we have the threads set to 0 on internal_options.conf, then */
+    /* If we have the threads set to 0 on ossec.conf, then */
     /* we assign them automatically based on the number of cores */
     cpu_cores = get_nproc();
 
@@ -621,7 +621,7 @@ int main_analysisd(int argc, char **argv)
     }
 
     if (Config.queue_size != 0) {
-        minfo("The option <queue_size> is deprecated and won't apply. Set up each queue size in the internal_options file.");
+        minfo("The option <queue_size> is deprecated and won't apply. Set up each queue size in the configuration file.");
     }
 
     /* Verbose message */

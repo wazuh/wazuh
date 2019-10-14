@@ -101,7 +101,7 @@ typedef struct _logreader_config {
     logreader_glob *globs;
     logreader *config;
     logsocket *socket_list;
-    /* Internal options */
+
     int loop_timeout;
     int open_attempts;
     int accept_remote;

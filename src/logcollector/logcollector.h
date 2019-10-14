@@ -32,7 +32,7 @@ int LogCollectorConfig(const char *cfgfile);
 /* Parse read config into JSON format */
 cJSON *getLocalfileConfig(void);
 cJSON *getSocketConfig(void);
-cJSON *getLogcollectorInternalOptions(void);
+cJSON *getLogcollectorOptions(void);
 
 /* Start log collector daemon */
 void LogCollectorStart(void) __attribute__((noreturn));

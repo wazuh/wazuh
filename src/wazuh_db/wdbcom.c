@@ -43,8 +43,8 @@ size_t wdbcom_getconfig(const char * section, char ** output) {
     cJSON *cfg;
     char *json_str;
 
-    if (strcmp(section, "internal") == 0){
-        if (cfg = getWDBInternalOptions(), cfg) {
+    if (strcmp(section, "wdb") == 0){
+        if (cfg = getWDBOptions(), cfg) {
             *output = strdup("ok");
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');

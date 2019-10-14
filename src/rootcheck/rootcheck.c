@@ -28,7 +28,7 @@ char total_ports_tcp[65535 + 1];
 #define ARGV0 "rootcheck"
 #endif
 
-/* Set rootcheck internal options to default */
+/* Set rootcheck options to default */
 static void init_conf()
 {
     rootcheck.tsleep = options.rootcheck.sleep.def;

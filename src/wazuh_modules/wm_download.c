@@ -188,7 +188,7 @@ void wm_download_destroy(wm_download_t * data) {
 }
 
 #ifndef CLIENT
-// Set Wazuh Download internal options to default
+// Set Wazuh Download options to default
 static void init_conf(wm_download_t * data)
 {
     data->enabled = options.wazuh_download.enabled.def;

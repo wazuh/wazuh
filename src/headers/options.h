@@ -236,7 +236,7 @@ typedef struct _global_option_t {
     option_t thread_stack_size;
 } global_option_t;
 
-/* Internal options structure */
+/* Options structure */
 typedef struct _option_set_t {
     syscheck_option_t syscheck;
     rootcheck_option_t rootcheck;

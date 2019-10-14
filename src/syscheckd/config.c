@@ -302,40 +302,21 @@ cJSON *getSyscheckConfig(void) {
         cJSON_AddStringToObject(syscfg,"prefilter_cmd",syscheck.prefilter_cmd);
     }
 
-    cJSON_AddItemToObject(root,"syscheck",syscfg);
-
-    return root;
-}
-
-
-cJSON *getSyscheckInternalOptions(void) {
-
-    cJSON *root = cJSON_CreateObject();
-    cJSON *internals = cJSON_CreateObject();
-
-    cJSON *syscheckd = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(syscheckd,"sleep",syscheck.tsleep);
-    cJSON_AddNumberToObject(syscheckd,"sleep_after",syscheck.sleep_after);
-    cJSON_AddNumberToObject(syscheckd,"rt_delay",syscheck.rt_delay);
-    cJSON_AddNumberToObject(syscheckd,"default_max_depth",syscheck.max_depth);
-    cJSON_AddNumberToObject(syscheckd,"symlink_scan_interval",syscheck.sym_checker_interval);
-    cJSON_AddNumberToObject(syscheckd,"file_max_size",syscheck.file_max_size);
+    cJSON_AddNumberToObject(syscfg, "sleep", syscheck.tsleep);
+    cJSON_AddNumberToObject(syscfg, "sleep_after", syscheck.sleep_after);
+    cJSON_AddNumberToObject(syscfg, "rt_delay", syscheck.rt_delay);
+    cJSON_AddNumberToObject(syscfg, "default_max_depth", syscheck.max_depth);
+    cJSON_AddNumberToObject(syscfg, "symlink_scan_interval", syscheck.sym_checker_interval);
+    cJSON_AddNumberToObject(syscfg, "file_max_size", syscheck.file_max_size);
 #ifdef WIN32
-    cJSON_AddNumberToObject(syscheckd,"max_fd_win_rt",syscheck.max_fd_win_rt);
+    cJSON_AddNumberToObject(syscfg, "max_fd_win_rt", syscheck.max_fd_win_rt);
 #else
-    cJSON_AddNumberToObject(syscheckd,"max_audit_entries",syscheck.max_audit_entries);
-    cJSON_AddNumberToObject(syscheckd,"log_level",syscheck.log_level);
+    cJSON_AddNumberToObject(syscfg, "max_audit_entries", syscheck.max_audit_entries);
+    cJSON_AddNumberToObject(syscfg, "log_level", syscheck.log_level);
 #endif
-    cJSON_AddNumberToObject(syscheckd,"thread_stack_size",syscheck.thread_stack_size);
+    cJSON_AddNumberToObject(syscfg, "thread_stack_size", syscheck.thread_stack_size);
 
-    cJSON_AddItemToObject(internals,"syscheck",syscheckd);
-
-    cJSON *rootcheckd = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(rootcheckd,"sleep",rootcheck.tsleep);
-    cJSON_AddItemToObject(internals,"rootcheck",rootcheckd);
-    cJSON_AddItemToObject(root,"internal",internals);
+    cJSON_AddItemToObject(root,"syscheck",syscfg);
 
     return root;
 }

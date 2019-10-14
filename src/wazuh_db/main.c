@@ -25,7 +25,7 @@ wnotify_t * notify_queue;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 static volatile int running = 1;
 
-/* Set Wazuh DB internal options to default */
+/* Set Wazuh DB options to default */
 static void init_conf()
 {
     config.worker_pool_size = options.wazuh_db.worker_pool_size.def;
@@ -501,21 +501,19 @@ void cleanup() {
     DeletePID(ARGV0);
 }
 
-cJSON *getWDBInternalOptions(void)
+cJSON *getWDBOptions(void)
 {
     cJSON *root = cJSON_CreateObject();
-    cJSON *internals = cJSON_CreateObject();
     cJSON *wdb = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(wdb,"worker_pool_size",config.worker_pool_size);
-    cJSON_AddNumberToObject(wdb,"commit_time",config.commit_time);
-    cJSON_AddNumberToObject(wdb,"open_db_limit",config.open_db_limit);
-    cJSON_AddNumberToObject(wdb,"rlimit_nofile",config.rlimit_nofile);
-    cJSON_AddNumberToObject(wdb,"log_level",config.log_level);
-    cJSON_AddNumberToObject(wdb,"thread_stack_size",config.thread_stack_size);
+    cJSON_AddNumberToObject(wdb, "worker_pool_size", config.worker_pool_size);
+    cJSON_AddNumberToObject(wdb, "commit_time", config.commit_time);
+    cJSON_AddNumberToObject(wdb, "open_db_limit", config.open_db_limit);
+    cJSON_AddNumberToObject(wdb, "rlimit_nofile", config.rlimit_nofile);
+    cJSON_AddNumberToObject(wdb, "log_level", config.log_level);
+    cJSON_AddNumberToObject(wdb, "thread_stack_size", config.thread_stack_size);
 
-    cJSON_AddItemToObject(internals,"wdb",wdb);
-    cJSON_AddItemToObject(root,"internal",internals);
+    cJSON_AddItemToObject(root, "wdb", wdb);
 
     return root;
 }

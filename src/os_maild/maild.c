@@ -29,7 +29,7 @@ static void help_maild(void) __attribute__((noreturn));
 /* Mail Structure */
 MailConfig mail;
 
-/* Set mail internal options to default */
+/* Set mail options to default */
 static void init_conf()
 {
     mail.strict_checking = options.mail.strict_checking.def;

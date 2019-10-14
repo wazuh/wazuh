@@ -188,22 +188,20 @@ cJSON *getMailAlertsConfig(void) {
     return root;
 }
 
-cJSON *getMailInternalOptions(void) {
+cJSON *getMailOptions(void) {
 
     cJSON *root = cJSON_CreateObject();
-    cJSON *internals = cJSON_CreateObject();
     cJSON *maild = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(maild,"strict_checking",mail.strict_checking);
-    cJSON_AddNumberToObject(maild,"grouping",mail.grouping);
-    cJSON_AddNumberToObject(maild,"full_subject",mail.subject_full);
+    cJSON_AddStringToObject(maild, "strict_checking", mail.strict_checking ? "enabled" : "disabled");
+    cJSON_AddStringToObject(maild, "grouping", mail.grouping ? "enabled" : "disabled");
+    cJSON_AddStringToObject(maild, "full_subject", mail.subject_full ? "enabled" : "disabled");
 #ifdef LIBGEOIP_ENABLED
-    cJSON_AddNumberToObject(maild,"geoip",mail.geoip);
+    cJSON_AddStringToObject(maild, "geoip", mail.geoip ? "enabled" : "disabled");
 #endif
-    cJSON_AddNumberToObject(maild,"thread_stack_size",mail.thread_stack_size);
+    cJSON_AddNumberToObject(maild, "thread_stack_size", mail.thread_stack_size);
 
-    cJSON_AddItemToObject(internals,"mail",maild);
-    cJSON_AddItemToObject(root,"internal",internals);
+    cJSON_AddItemToObject(root, "mail", maild);
 
     return root;
 }

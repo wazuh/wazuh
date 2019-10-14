@@ -100,7 +100,6 @@ extern wmodules_config wm_cfg;  // Wazuh modules configuration
 // Read XML configuration and internal options
 int wm_config();
 cJSON *getModulesConfig(void);
-cJSON *getModulesInternalOptions(void);
 
 // Add module to the global list
 void wm_add(wmodule *module);

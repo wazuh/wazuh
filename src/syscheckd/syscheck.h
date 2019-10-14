@@ -42,7 +42,6 @@ int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
 
 /* Parse read config into JSON format */
 cJSON *getSyscheckConfig(void);
-cJSON *getSyscheckInternalOptions(void);
 
 /* Create the database */
 int create_db(void);

@@ -67,8 +67,8 @@ size_t lccom_getconfig(const char * section, char ** output) {
         } else {
             goto error;
         }
-    } else if (strcmp(section, "internal") == 0){
-        if (cfg = getLogcollectorInternalOptions(), cfg) {
+    } else if (strcmp(section, "logcollector") == 0){
+        if (cfg = getLogcollectorOptions(), cfg) {
             *output = strdup("ok");
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');

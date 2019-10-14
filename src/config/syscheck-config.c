@@ -830,7 +830,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
     const char *xml_audit_hc = "startup_healthcheck";
-    /* Internal options */
+
     const char *xml_sleep = "sleep";
     const char *xml_sleep_after = "sleep_after";
     const char *xml_rt_delay = "rt_delay";

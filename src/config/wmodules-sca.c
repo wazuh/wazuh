@@ -71,14 +71,13 @@ static int is_policy_old (char * const file_list[], const size_t file_list_len, 
     return NULL != find_string_in_array(file_list, file_list_len, policy_filename, strlen(policy_filename));
 }
 
-/* Internal options */
 static const char *XML_REQUEST_DB_INTERVAL = "request_db_interval";
 /* Commands block */
 static const char *XML_COMMAND = "commands";
 static const char *XML_REMOTE = "remote";
 static const char *XML_TIMEOUT = "timeout";
 
-/* Set SCA internal options to default */
+/* Set SCA options to default */
 static void init_conf(wm_sca_t *sca)
 {
     sca->request_db_interval = options.sca.request_db_interval.def * 60;

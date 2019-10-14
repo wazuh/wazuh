@@ -70,24 +70,11 @@ cJSON *getAuthdConfig(void) {
     if (config.agent_ca) cJSON_AddStringToObject(auth,"ssl_agent_ca",config.agent_ca);
     if (config.manager_cert) cJSON_AddStringToObject(auth,"ssl_manager_cert",config.manager_cert);
     if (config.manager_key) cJSON_AddStringToObject(auth,"ssl_manager_key",config.manager_key);
+    cJSON_AddNumberToObject(auth, "timeout_seconds", config.timeout_sec);
+    cJSON_AddNumberToObject(auth, "timeout_microseconds", config.timeout_usec);
+    cJSON_AddNumberToObject(auth, "log_level", config.log_level);
 
     cJSON_AddItemToObject(root,"auth",auth);
-
-    return root;
-}
-
-cJSON *getAuthInternalConfig(void) {
-
-    cJSON *root = cJSON_CreateObject();
-    cJSON *internals = cJSON_CreateObject();
-    cJSON *remoted = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(remoted,"timeout_seconds",config.timeout_sec);
-    cJSON_AddNumberToObject(remoted,"timeout_microseconds",config.timeout_usec);
-    cJSON_AddNumberToObject(remoted,"log_level",config.log_level);
-
-    cJSON_AddItemToObject(internals,"auth",remoted);
-    cJSON_AddItemToObject(root,"internal",internals);
 
     return root;
 }

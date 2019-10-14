@@ -13,7 +13,7 @@
 #include "shared_download.h"
 #include <unistd.h>
 
-/* Set remote internal options to default */
+/* Set remote options to default */
 static void init_conf()
 {
     logr.recv_counter_flush = options.remote.recv_counter_flush.def;

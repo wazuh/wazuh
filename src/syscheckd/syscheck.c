@@ -47,7 +47,7 @@ void init_magic(magic_t *cookie_ptr)
 }
 #endif /* USE_MAGIC */
 
-/* Set syscheck internal options to default */
+/* Set syscheck options to default */
 static void init_conf()
 {
     syscheck.tsleep = options.syscheck.sleep.def;

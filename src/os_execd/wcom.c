@@ -580,8 +580,8 @@ size_t wcom_getconfig(const char * section, char ** output) {
         } else {
             goto error;
         }
-    } else if (strcmp(section, "internal") == 0){
-        if (cfg = getExecdInternalOptions(), cfg) {
+    } else if (strcmp(section, "exec") == 0){
+        if (cfg = getExecdOptions(), cfg) {
             os_strdup("ok ", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');

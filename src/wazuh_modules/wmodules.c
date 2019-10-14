@@ -290,6 +290,7 @@ cJSON *getModulesConfig(void) {
     wmodule *cur_module;
 
     cJSON *root = cJSON_CreateObject();
+    cJSON *wm_common = cJSON_CreateObject();
     cJSON *wm_mod = cJSON_CreateArray();
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
@@ -302,28 +303,17 @@ cJSON *getModulesConfig(void) {
         }
     }
 
+    cJSON_AddNumberToObject(wm_common, "task_nice", wm_cfg.task_nice);
+    cJSON_AddNumberToObject(wm_common, "max_eps", wm_cfg.max_eps);
+    cJSON_AddNumberToObject(wm_common, "kill_timeout", wm_cfg.kill_timeout);
+    cJSON_AddNumberToObject(wm_common, "log_level", wm_cfg.log_level);
+    cJSON_AddNumberToObject(wm_common, "thread_stack_size", wm_cfg.thread_stack_size);
+
+    cJSON_AddItemToObject(wm_mod, "wmodules", wm_common);
     cJSON_AddItemToObject(root,"wmodules",wm_mod);
 
     return root;
 }
-
-
-cJSON *getModulesInternalOptions(void) {
-
-    cJSON *root = cJSON_CreateObject();
-    cJSON *internals = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(internals,"task_nice",wm_cfg.task_nice);
-    cJSON_AddNumberToObject(internals,"max_eps",wm_cfg.max_eps);
-    cJSON_AddNumberToObject(internals,"kill_timeout",wm_cfg.kill_timeout);
-    cJSON_AddNumberToObject(internals,"log_level",wm_cfg.log_level);
-    cJSON_AddNumberToObject(internals,"thread_stack_size",wm_cfg.thread_stack_size);
-
-    cJSON_AddItemToObject(root,"internal_options",internals);
-
-    return root;
-}
-
 
 // Send message to a queue waiting for a specific delay
 int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {

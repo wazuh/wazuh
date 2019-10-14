@@ -71,7 +71,7 @@ pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_new_client = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
-/* Set auth internal options to default */
+/* Set auth options to default */
 static void init_conf()
 {
     config.timeout_sec = options.auth.timeout_sec.def;

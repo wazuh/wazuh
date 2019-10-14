@@ -376,54 +376,52 @@ cJSON *getAlertsConfig(void) {
 }
 
 
-cJSON *getAnalysisInternalOptions(void) {
+cJSON *getAnalysisOptions(void) {
 
     cJSON *root = cJSON_CreateObject();
-    cJSON *internals = cJSON_CreateObject();
     cJSON *analysisd = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(analysisd,"default_timeframe",Config.default_timeframe);
-    cJSON_AddNumberToObject(analysisd,"stats_maxdiff",Config.stats_maxdiff);
-    cJSON_AddNumberToObject(analysisd,"stats_mindiff",Config.stats_mindiff);
-    cJSON_AddNumberToObject(analysisd,"stats_percent_diff",Config.stats_percent_diff);
-    cJSON_AddNumberToObject(analysisd,"fts_list_size",Config.fts_list_size);
-    cJSON_AddNumberToObject(analysisd,"fts_min_size_for_str",Config.fts_min_size_for_str);
-    cJSON_AddNumberToObject(analysisd,"log_fw",Config.log_fw);
-    cJSON_AddNumberToObject(analysisd,"decoder_order_size",Config.decoder_order_size);
+    cJSON_AddNumberToObject(analysisd, "default_timeframe", Config.default_timeframe);
+    cJSON_AddNumberToObject(analysisd, "stats_maxdiff", Config.stats_maxdiff);
+    cJSON_AddNumberToObject(analysisd, "stats_mindiff", Config.stats_mindiff);
+    cJSON_AddNumberToObject(analysisd, "stats_percent_diff", Config.stats_percent_diff);
+    cJSON_AddNumberToObject(analysisd, "fts_list_size", Config.fts_list_size);
+    cJSON_AddNumberToObject(analysisd, "fts_min_size_for_str", Config.fts_min_size_for_str);
+    cJSON_AddStringToObject(analysisd, "log_fw", Config.log_fw ? "yes" : "no");
+    cJSON_AddNumberToObject(analysisd, "decoder_order_size", Config.decoder_order_size);
 #ifdef LIBGEOIP_ENABLED
-    cJSON_AddNumberToObject(analysisd,"geoip_jsonout",Config.geoip_jsonout);
+    cJSON_AddStringToObject(analysisd, "geoip_jsonout", Config.geoip_jsonout ? "yes" : "no");
 #endif
-    cJSON_AddNumberToObject(analysisd,"label_cache_maxage",Config.label_cache_maxage);
-    cJSON_AddNumberToObject(analysisd,"show_hidden_labels",Config.show_hidden_labels);
-    cJSON_AddNumberToObject(analysisd,"rlimit_nofile",Config.rlimit_nofile);
-    cJSON_AddNumberToObject(analysisd,"min_rotate_interval",Config.min_rotate_interval);
-    cJSON_AddNumberToObject(analysisd,"event_threads",Config.event_threads);
-    cJSON_AddNumberToObject(analysisd,"syscheck_threads",Config.syscheck_threads);
-    cJSON_AddNumberToObject(analysisd,"syscollector_threads",Config.syscollector_threads);
-    cJSON_AddNumberToObject(analysisd,"rootcheck_threads",Config.rootcheck_threads);
-    cJSON_AddNumberToObject(analysisd,"sca_threads",Config.sca_threads);
-    cJSON_AddNumberToObject(analysisd,"hostinfo_threads",Config.hostinfo_threads);
-    cJSON_AddNumberToObject(analysisd,"winevt_threads",Config.winevt_threads);
-    cJSON_AddNumberToObject(analysisd,"rule_matching_threads",Config.rule_matching_threads);
-    cJSON_AddNumberToObject(analysisd,"decode_event_queue_size",Config.decode_event_queue_size);
-    cJSON_AddNumberToObject(analysisd,"decode_syscheck_queue_size",Config.decode_syscheck_queue_size);
-    cJSON_AddNumberToObject(analysisd,"decode_syscollector_queue_size",Config.decode_syscollector_queue_size);
-    cJSON_AddNumberToObject(analysisd,"decode_rootcheck_queue_size",Config.decode_rootcheck_queue_size);
-    cJSON_AddNumberToObject(analysisd,"decode_sca_queue_size",Config.decode_sca_queue_size);
-    cJSON_AddNumberToObject(analysisd,"decode_hostinfo_queue_size",Config.decode_hostinfo_queue_size);
-    cJSON_AddNumberToObject(analysisd,"decode_winevt_queue_size",Config.decode_winevt_queue_size);
-    cJSON_AddNumberToObject(analysisd,"decode_output_queue_size",Config.decode_output_queue_size);
-    cJSON_AddNumberToObject(analysisd,"archives_queue_size",Config.archives_queue_size);
-    cJSON_AddNumberToObject(analysisd,"statistical_queue_size",Config.statistical_queue_size);
-    cJSON_AddNumberToObject(analysisd,"alerts_queue_size",Config.alerts_queue_size);
-    cJSON_AddNumberToObject(analysisd,"firewall_queue_size",Config.firewall_queue_size);
-    cJSON_AddNumberToObject(analysisd,"fts_queue_size",Config.fts_queue_size);
-    cJSON_AddNumberToObject(analysisd,"state_interval",Config.state_interval);
-    cJSON_AddNumberToObject(analysisd,"log_level",Config.log_level);
-    cJSON_AddNumberToObject(analysisd,"thread_stack_size",Config.thread_stack_size);
+    cJSON_AddNumberToObject(analysisd, "label_cache_maxage", Config.label_cache_maxage);
+    cJSON_AddStringToObject(analysisd, "show_hidden_labels", Config.show_hidden_labels ? "yes" : "no");
+    cJSON_AddNumberToObject(analysisd, "rlimit_nofile", Config.rlimit_nofile);
+    cJSON_AddNumberToObject(analysisd, "min_rotate_interval", Config.min_rotate_interval);
+    cJSON_AddNumberToObject(analysisd, "event_threads", Config.event_threads);
+    cJSON_AddNumberToObject(analysisd, "syscheck_threads", Config.syscheck_threads);
+    cJSON_AddNumberToObject(analysisd, "syscollector_threads", Config.syscollector_threads);
+    cJSON_AddNumberToObject(analysisd, "rootcheck_threads", Config.rootcheck_threads);
+    cJSON_AddNumberToObject(analysisd, "sca_threads", Config.sca_threads);
+    cJSON_AddNumberToObject(analysisd, "hostinfo_threads", Config.hostinfo_threads);
+    cJSON_AddNumberToObject(analysisd, "winevt_threads", Config.winevt_threads);
+    cJSON_AddNumberToObject(analysisd, "rule_matching_threads", Config.rule_matching_threads);
+    cJSON_AddNumberToObject(analysisd, "decode_event_queue_size", Config.decode_event_queue_size);
+    cJSON_AddNumberToObject(analysisd, "decode_syscheck_queue_size", Config.decode_syscheck_queue_size);
+    cJSON_AddNumberToObject(analysisd, "decode_syscollector_queue_size", Config.decode_syscollector_queue_size);
+    cJSON_AddNumberToObject(analysisd, "decode_rootcheck_queue_size", Config.decode_rootcheck_queue_size);
+    cJSON_AddNumberToObject(analysisd, "decode_sca_queue_size", Config.decode_sca_queue_size);
+    cJSON_AddNumberToObject(analysisd, "decode_hostinfo_queue_size", Config.decode_hostinfo_queue_size);
+    cJSON_AddNumberToObject(analysisd, "decode_winevt_queue_size", Config.decode_winevt_queue_size);
+    cJSON_AddNumberToObject(analysisd, "decode_output_queue_size", Config.decode_output_queue_size);
+    cJSON_AddNumberToObject(analysisd, "archives_queue_size", Config.archives_queue_size);
+    cJSON_AddNumberToObject(analysisd, "statistical_queue_size", Config.statistical_queue_size);
+    cJSON_AddNumberToObject(analysisd, "alerts_queue_size", Config.alerts_queue_size);
+    cJSON_AddNumberToObject(analysisd, "firewall_queue_size", Config.firewall_queue_size);
+    cJSON_AddNumberToObject(analysisd, "fts_queue_size", Config.fts_queue_size);
+    cJSON_AddNumberToObject(analysisd, "state_interval", Config.state_interval);
+    cJSON_AddNumberToObject(analysisd, "log_level", Config.log_level);
+    cJSON_AddNumberToObject(analysisd, "thread_stack_size", Config.thread_stack_size);
 
-    cJSON_AddItemToObject(internals,"analysisd",analysisd);
-    cJSON_AddItemToObject(root,"internal",internals);
+    cJSON_AddItemToObject(root, "analysis", analysisd);
 
     return root;
 }

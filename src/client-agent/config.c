@@ -169,7 +169,34 @@ cJSON *getClientConfig(void) {
         }
         cJSON_AddItemToObject(client,"server",servers);
     }
-    cJSON_AddItemToObject(root,"client",client);
+
+    cJSON *remoted = cJSON_CreateObject();
+
+    if (agt->state_interval) cJSON_AddNumberToObject(remoted, "state_interval", agt->state_interval);
+    else cJSON_AddStringToObject(remoted, "state_interval", "disabled");
+    cJSON_AddNumberToObject(remoted, "recv_timeout", agt->recv_timeout);
+#ifdef CLIENT
+    cJSON_AddStringToObject(remoted, "remote_conf", agt->flags.remote_conf ? "enabled" : "disabled");
+#endif
+    cJSON_AddNumberToObject(remoted, "max_attempts", agt->max_attempts);
+
+    cJSON *request = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(request, "pool", agt->request_pool);
+    cJSON_AddNumberToObject(request, "rto_sec", agt->rto_sec);
+    cJSON_AddNumberToObject(request, "rto_msec", agt->rto_msec);
+
+    cJSON_AddItemToObject(remoted, "request", request);
+
+    cJSON_AddNumberToObject(remoted, "comp_average_printout", agt->comp_average_printout);
+    cJSON_AddNumberToObject(remoted, "recv_counter_flush", agt->recv_counter_flush);
+    cJSON_AddNumberToObject(remoted, "verify_msg_id", agt->verify_msg_id);
+    cJSON_AddNumberToObject(remoted, "thread_stack_size", agt->thread_stack_size);
+    cJSON_AddNumberToObject(remoted, "log_level", agt->log_level);
+
+    cJSON_AddItemToObject(client, "remote", remoted);
+
+    cJSON_AddItemToObject(root, "client", client);
 
     return root;
 }
@@ -182,12 +209,20 @@ cJSON *getBufferConfig(void) {
 
     cJSON *root = cJSON_CreateObject();
     cJSON *buffer = cJSON_CreateObject();
+    cJSON *bucket = cJSON_CreateObject();
 
-    if (agt->buffer) cJSON_AddStringToObject(buffer,"disabled","no"); else cJSON_AddStringToObject(buffer,"disabled","yes");
-    cJSON_AddNumberToObject(buffer,"queue_size",agt->buflength);
-    cJSON_AddNumberToObject(buffer,"events_per_second",agt->events_persec);
+    if (agt->buffer) cJSON_AddStringToObject(buffer, "disabled", "no"); else cJSON_AddStringToObject(buffer, "disabled", "yes");
+    cJSON_AddNumberToObject(buffer, "queue_size", agt->buflength);
+    cJSON_AddNumberToObject(buffer, "events_per_second", agt->events_persec);
+    cJSON_AddNumberToObject(buffer, "tolerance", agt->tolerance);
 
-    cJSON_AddItemToObject(root,"buffer",buffer);
+    cJSON_AddNumberToObject(bucket, "warn_level", agt->warn_level);
+    cJSON_AddNumberToObject(bucket, "normal_level", agt->normal_level);
+    cJSON_AddItemToObject(buffer, "buffer", bucket);
+
+    cJSON_AddNumberToObject(buffer, "min_eps", agt->min_eps);
+
+    cJSON_AddItemToObject(root, "buffer", buffer);
 
     return root;
 }
@@ -226,18 +261,6 @@ cJSON *getAgentInternalOptions(void) {
 
     cJSON *agent = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(agent,"log_level",agt->log_level);
-    cJSON_AddNumberToObject(agent,"warn_level",agt->warn_level);
-    cJSON_AddNumberToObject(agent,"normal_level",agt->normal_level);
-    cJSON_AddNumberToObject(agent,"tolerance",agt->tolerance);
-    cJSON_AddNumberToObject(agent,"recv_timeout",agt->recv_timeout);
-    cJSON_AddNumberToObject(agent,"state_interval",agt->state_interval);
-    cJSON_AddNumberToObject(agent,"min_eps",agt->min_eps);
-    cJSON_AddNumberToObject(agent,"thread_stack_size",agt->thread_stack_size);
-#ifdef CLIENT
-    cJSON_AddNumberToObject(agent,"remote_conf",agt->flags.remote_conf);
-#endif
-
     cJSON_AddItemToObject(internals,"agent",agent);
 
     cJSON *monitord = cJSON_CreateObject();
@@ -250,18 +273,6 @@ cJSON *getAgentInternalOptions(void) {
     cJSON_AddNumberToObject(monitord,"daily_rotations",daily_rotations);
 
     cJSON_AddItemToObject(internals,"monitord",monitord);
-
-    cJSON *remoted = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(remoted,"request_pool",agt->request_pool);
-    cJSON_AddNumberToObject(remoted,"request_rto_sec",agt->rto_sec);
-    cJSON_AddNumberToObject(remoted,"request_rto_msec",agt->rto_msec);
-    cJSON_AddNumberToObject(remoted,"max_attempts",agt->max_attempts);
-    cJSON_AddNumberToObject(remoted,"comp_average_printout",agt->comp_average_printout);
-    cJSON_AddNumberToObject(remoted,"recv_counter_flush",agt->recv_counter_flush);
-    cJSON_AddNumberToObject(remoted,"verify_msg_id",agt->verify_msg_id);
-
-    cJSON_AddItemToObject(internals,"remoted",remoted);
 
     cJSON_AddItemToObject(root,"internal",internals);
 

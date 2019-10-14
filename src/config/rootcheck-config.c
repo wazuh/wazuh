@@ -60,7 +60,6 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
     const char *xml_check_winaudit = "check_winaudit";
     const char *xml_check_winmalware = "check_winmalware";
 
-    /* Internal options */
     const char *xml_sleep = "sleep";
 
     rootcheck = (rkconfig *)configp;

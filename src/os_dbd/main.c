@@ -21,7 +21,7 @@ static void cleanup();
 static void handler(int signum);
 static void help_dbd(void) __attribute__((noreturn));
 
-/* Set database_output internal options to default */
+/* Set database_output options to default */
 static void init_conf(DBConfig *db_config)
 {
     db_config->maxreconnect = options.database_output.reconnect_attempts.def;

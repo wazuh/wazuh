@@ -130,7 +130,7 @@ cJSON **last_summary_json = NULL;
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t dump_rwlock;
 
-/* Set SCA internal options */
+/* Read SCA internal options */
 static void read_internal(wm_sca_t * data)
 {
     int aux;
@@ -1161,10 +1161,10 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                 char *f_value = value;
 
                 if (!data->remote_commands && remote_policy) {
-                    mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
+                    mwarn("Ignoring check for policy '%s'. The option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
                     if (reason == NULL) {
                         os_malloc(OS_MAXSTR, reason);
-                        sprintf(reason,"Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled", f_value);
+                        sprintf(reason,"Ignoring check for running command '%s'. The option 'sca.remote_commands' is disabled", f_value);
                     }
                     found = RETURN_INVALID;
                 } else {

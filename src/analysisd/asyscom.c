@@ -105,8 +105,8 @@ size_t asyscom_getconfig(const char * section, char ** output) {
             goto error;
         }
     }
-    else if (strcmp(section, "internal") == 0){
-        if (cfg = getAnalysisInternalOptions(), cfg) {
+    else if (strcmp(section, "analysis") == 0){
+        if (cfg = getAnalysisOptions(), cfg) {
             *output = strdup("ok");
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');

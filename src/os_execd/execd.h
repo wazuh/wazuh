@@ -34,7 +34,7 @@ extern int repeated_offenders_timeout[];
 extern char ** wcom_ca_store;
 extern time_t pending_upg;
 extern int is_disabled;
-/* Internal options */
+
 ExecConfig exec_config;
 
 /** Function prototypes **/
@@ -43,8 +43,7 @@ void WinExecdRun(char *exec_msg);
 int ReadExecConfig(void);
 void CheckExecConfig();
 cJSON *getARConfig(void);
-cJSON *getARInternalOptions(void);
-cJSON *getExecdInternalOptions(void);
+cJSON *getExecdOptions(void);
 cJSON *getClusterConfig(void);
 char *GetCommandbyName(const char *name, int *timeout) __attribute__((nonnull));
 void ExecCmd(char *const *cmd) __attribute__((nonnull));

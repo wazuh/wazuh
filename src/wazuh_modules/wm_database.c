@@ -1235,7 +1235,7 @@ void* wm_database_destroy(wm_database *data) {
 }
 
 #ifndef CLIENT
-/* Set wazuh database internal options to default */
+/* Set wazuh database options to default */
 static void init_conf(wm_database *data)
 {
     data->sync_agents = options.wazuh_database.sync_agents.def;

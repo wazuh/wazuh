@@ -33,7 +33,6 @@ typedef struct _remoted {
     socklen_t peer_size;
     long queue_size;
 
-/* Internal options */
     int recv_counter_flush;
     int comp_average_printout;
     int verify_msg_id;

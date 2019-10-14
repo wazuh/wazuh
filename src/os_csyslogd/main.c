@@ -38,7 +38,7 @@ static void help_csyslogd()
     exit(1);
 }
 
-/* Set csyslog internal options to default */
+/* Set csyslog options to default */
 static void init_conf()
 {
     sys_opts.thread_stack_size = options.global.thread_stack_size.def;

@@ -11,7 +11,7 @@
 #include "shared.h"
 #include "logcollector.h"
 
-/* Set logcollector internal options to default */
+/* Set logcollector options to default */
 static void init_conf()
 {
     log_config.loop_timeout = options.logcollector.loop_timeout.def;
@@ -59,7 +59,7 @@ static void read_internal()
 #endif
 
     if (stat(local_internal_file, &st_buf) == 0) {
-        mwarn("The file '%s' is being deprecated, it won't be used in next versions. We strongly recommend to configure all options in 'ossec.conf'", OSSEC_LDEFINES);
+        mwarn("The file '%s' is being deprecated, it won't be used in next versions. It's recommended to configure all options in 'ossec.conf'", OSSEC_LDEFINES);
     }
 
     if (stat(internal_file, &st_buf) == 0) {
@@ -303,34 +303,45 @@ cJSON *getSocketConfig(void) {
     return root;
 }
 
-cJSON *getLogcollectorInternalOptions(void) {
+cJSON *getLogcollectorOptions(void) {
 
     cJSON *root = cJSON_CreateObject();
-    cJSON *internals = cJSON_CreateObject();
     cJSON *logcollector = cJSON_CreateObject();
+    cJSON *files = cJSON_CreateObject();
+    cJSON *reload = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(logcollector,"loop_timeout",log_config.loop_timeout);
-    cJSON_AddNumberToObject(logcollector,"open_attempts",log_config.open_attempts);
-    cJSON_AddNumberToObject(logcollector,"remote_commands",log_config.accept_remote);  
-    cJSON_AddNumberToObject(logcollector,"vcheck_files",log_config.vcheck_files);
-    cJSON_AddNumberToObject(logcollector,"max_lines",log_config.max_lines);
-    cJSON_AddNumberToObject(logcollector,"max_files",log_config.max_files);
-    cJSON_AddNumberToObject(logcollector,"sock_fail_time",sock_fail_time);
-    cJSON_AddNumberToObject(logcollector,"input_threads",log_config.input_threads);
-    cJSON_AddNumberToObject(logcollector,"queue_size",log_config.queue_size);
-    cJSON_AddNumberToObject(logcollector,"sample_log_length",log_config.sample_log_length);
+    cJSON_AddStringToObject(logcollector, "remote_commands", log_config.accept_remote ? "enabled" : "disabled");
+    cJSON_AddNumberToObject(logcollector, "sock_fail_time", sock_fail_time);
+    cJSON_AddNumberToObject(logcollector, "queue_size", log_config.queue_size);
+    cJSON_AddNumberToObject(logcollector, "sample_log_length", log_config.sample_log_length);
+
+    /* Files block */
+    cJSON_AddNumberToObject(files, "loop_timeout", log_config.loop_timeout);
+    cJSON_AddNumberToObject(files, "open_attempts", log_config.open_attempts);
+    cJSON_AddNumberToObject(files, "vcheck", log_config.vcheck_files);
+    cJSON_AddNumberToObject(files, "max_lines", log_config.max_lines);
+    cJSON_AddNumberToObject(files, "max_files", log_config.max_files);
+    cJSON_AddNumberToObject(files, "input_threads", log_config.input_threads);
 #ifndef WIN32
-    cJSON_AddNumberToObject(logcollector,"rlimit_nofile",log_config.rlimit_nofile);
-    cJSON_AddNumberToObject(logcollector,"log_level",log_config.log_level);
+    cJSON_AddNumberToObject(files, "rlimit_nofile", log_config.rlimit_nofile);
 #endif
-    cJSON_AddNumberToObject(logcollector,"force_reload",log_config.force_reload);
-    cJSON_AddNumberToObject(logcollector,"reload_interval",log_config.reload_interval);
-    cJSON_AddNumberToObject(logcollector,"reload_delay",log_config.reload_delay);
-    cJSON_AddNumberToObject(logcollector,"exclude_files_interval",log_config.exclude_files_interval);
-    cJSON_AddNumberToObject(logcollector,"thread_stack_size",log_config.thread_stack_size);
+    cJSON_AddNumberToObject(files, "exclude_interval", log_config.exclude_files_interval);
 
-    cJSON_AddItemToObject(internals,"logcollector",logcollector);
-    cJSON_AddItemToObject(root,"internal",internals);
+    cJSON_AddItemToObject(logcollector, "files", files);
+
+    /* Reload block */
+    cJSON_AddStringToObject(reload, "force", log_config.force_reload ? "enabled" : "disabled");
+    cJSON_AddNumberToObject(reload, "interval", log_config.reload_interval);
+    cJSON_AddNumberToObject(reload, "delay", log_config.reload_delay);
+
+    cJSON_AddItemToObject(logcollector, "reload", reload);
+
+    cJSON_AddNumberToObject(logcollector, "thread_stack_size", log_config.thread_stack_size);
+#ifndef WIN32
+    cJSON_AddNumberToObject(logcollector, "log_level", log_config.log_level);
+#endif
+
+    cJSON_AddItemToObject(root, "logcollector", logcollector);
 
     return root;
 }

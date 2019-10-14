@@ -39,7 +39,6 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_queue_size = "queue_size";
     const char *xml_thread_stack_size = "thread_stack_size";
 
-    /* Internal options */
     const char *xml_recv_counter_flush = "recv_counter_flush";
     const char *xml_comp_average_printout = "comp_avg_printout";
     const char *xml_verify_msg_id = "verify_msg_id";

@@ -19,7 +19,7 @@
 /* Read syslog config */
 void **OS_ReadIntegratorConf(char *cfgfile, IntegratorConfig ***integrator_config);
 
-/* Read integrator internal options */
+/* Read integrator options */
 int OS_ReadIntegratorOptions(char *cfgfile, IntegratorOptions *integrator_options);
 
 /* Database inserting main function */

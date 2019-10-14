@@ -156,7 +156,6 @@ void rem_inc_dequeued();
 // Read config
 size_t rem_getconfig(const char * section, char ** output);
 cJSON *getRemoteConfig(void);
-cJSON *getRemoteInternalConfig(void);
 
 /* Network buffer */
 

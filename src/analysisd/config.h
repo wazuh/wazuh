@@ -40,7 +40,7 @@ cJSON *getDecodersConfig(void);
 void _getDecodersListJSON(OSDecoderNode *list, cJSON *array);
 cJSON *getRulesConfig(void);
 void _getRulesListJSON(RuleNode *list, cJSON *array);
-cJSON *getAnalysisInternalOptions(void);
+cJSON *getAnalysisOptions(void);
 cJSON *getManagerLabelsConfig(void);
 
 #endif /* CONFIG_H */

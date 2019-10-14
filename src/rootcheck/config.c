@@ -100,6 +100,8 @@ cJSON *getRootcheckConfig(void) {
         if (ignsregex) cJSON_AddItemToObject(rtck, "ignore_sregex", ignsregex);
     }
 
+    cJSON_AddNumberToObject(rtck, "sleep", rootcheck.tsleep);
+
     cJSON_AddItemToObject(root, "rootcheck", rtck);
 
     return root;
