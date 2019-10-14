@@ -483,7 +483,7 @@ int fim_check_depth(char * path, int dir_position) {
 
     pos = path + parent_path_size;
     while (pos) {
-        if (pos = strchr(pos, '/'), pos) {
+        if (pos = strchr(pos, PATH_SEP), pos) {
             depth++;
         } else {
             break;
@@ -724,7 +724,6 @@ int fim_insert (char * file, fim_entry_data * data, __attribute__((unused))struc
 
 // Update an entry in the syscheck hash table structure (inodes and paths)
 int fim_update (char * file, fim_entry_data * data) {
-    fim_entry_data * old_data;
     char * inode_key = NULL;
 
     os_calloc(OS_SIZE_128, sizeof(char), inode_key);
@@ -735,6 +734,7 @@ int fim_update (char * file, fim_entry_data * data) {
     }
 
 #ifndef WIN32
+    fim_entry_data * old_data;
     char * old_inode_key = NULL;
     os_calloc(OS_SIZE_128, sizeof(char), old_inode_key);
 
@@ -1219,6 +1219,7 @@ void free_inode_data(fim_inode_data * data) {
     os_free(data->paths);
     os_free(data);
 }
+
 
 void fim_print_info() {
 #ifndef WIN32

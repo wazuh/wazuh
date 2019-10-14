@@ -409,8 +409,6 @@ int init_regex(void) {
 
 // Init Audit events reader thread
 int audit_init(void) {
-    //minfo("~~~~ audit_init");
-
     audit_health_check_creation = 0;
     audit_health_check_deletion = 0;
 
@@ -1178,11 +1176,7 @@ void * audit_main(int *audit_sock) {
             syscheck.opts[pos] &= ~ WHODATA_ACTIVE;
             syscheck.opts[pos] |= REALTIME_ACTIVE;
 
-            if (realtime_adddir(path, 0)) {
-                minfo("~~~~ Directory:'%s' changed to real-time monitoring.", path);
-            } else {
-                mwarn("~~~~ Unable to set monitoring in real-time to directory '%s'.", path);
-            }
+            realtime_adddir(path, 0);
             os_free(path);
         }
         W_Vector_free(audit_added_dirs);

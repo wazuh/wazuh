@@ -385,7 +385,6 @@ int realtime_adddir(const char *dir, int whodata)
     }
     else {
         os_calloc(1, sizeof(win32rtfim), rtlocald);
-        minfo("~~ add dirtb ->(%d) '%s'", whodata, wdchar);
 
         rtlocald->h = CreateFile(dir,
                                 FILE_LIST_DIRECTORY,
