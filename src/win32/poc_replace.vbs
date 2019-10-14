@@ -12,14 +12,14 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     strNewText = objFile.ReadAll
     objFile.Close
 
-    If objFSO.fileExists(home_dir & "test.template") Then
-      Set file = objFSO.OpenTextFile(home_dir & "test.template", ForReading)
+    If objFSO.fileExists(home_dir & "profile.template") Then
+      Set file = objFSO.OpenTextFile(home_dir & "profile.template", ForReading)
       newline = file.ReadAll
       file.Close
       Set re = new regexp
-      re.Pattern = "<test>((.*\n)*</test>"
+      re.Pattern = "(</client>)"
       re.Global = False
-      strNewText = re.Replace(strNewText, newline)
+      strNewText = re.Replace(strNewText, "$1" & vbCrLf & newline)
     End If
 
     If objFSO.fileExists(home_dir & "header-comments.template") Then
