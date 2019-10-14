@@ -236,8 +236,6 @@ class WazuhIntegration:
                 client = sts_session.client(service_name=service_name)
             else:
                 client = boto_session.client(service_name=service_name)
-                if bucket:
-                    client.head_bucket(Bucket=bucket)
         except botocore.exceptions.ClientError as e:
             print("ERROR: Access error: {}".format(e))
             sys.exit(3)
