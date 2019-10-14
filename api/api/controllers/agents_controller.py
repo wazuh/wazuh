@@ -44,9 +44,8 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge
                 'status': status,
                 'older_than': older_than
                 }
-    func = agent.delete_agents_all if list_agents is None else agent.delete_agents
 
-    dapi = DistributedAPI(f=func,
+    dapi = DistributedAPI(f=agent.delete_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -112,9 +111,8 @@ def get_agents(pretty=False, wait_for_complete=False, list_agents=None, offset=N
     nested = ['os.version', 'os.name', 'os.platform']
     for field in nested:
         f_kwargs['filters'][field] = connexion.request.args.get(field, None)
-    func = agent.get_agents_all if list_agents is None else agent.get_agents
 
-    dapi = DistributedAPI(f=func,
+    dapi = DistributedAPI(f=agent.get_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -139,9 +137,8 @@ def restart_agents(pretty=False, wait_for_complete=False, list_agents=None):
     """
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'agent_list': list_agents}
-    func = agent.restart_agents_all if list_agents is None else agent.restart_agents
 
-    dapi = DistributedAPI(f=func,
+    dapi = DistributedAPI(f=agent.restart_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -377,8 +374,7 @@ def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complet
 
 
 @exception_handler
-def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=False,
-                           wait_for_complete=False):
+def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=False, wait_for_complete=False):
     """Assign an agent to the specified group.
 
     :param pretty: Show results in human-readable format
@@ -589,9 +585,8 @@ def delete_multiple_agent_single_group(group_id, list_agents=None, pretty=False,
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'agent_list': list_agents,
                 'group_id': group_id}
-    func = agent.remove_all_agents_from_group if list_agents is None else agent.remove_agents_from_group
 
-    dapi = DistributedAPI(f=func,
+    dapi = DistributedAPI(f=agent.remove_agents_from_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -620,9 +615,8 @@ def put_multiple_agent_single_group(group_id, list_agents=None, pretty=False, wa
                 'agent_list': list_agents,
                 'group_id': group_id,
                 'replace': force_single_group}
-    func = agent.assign_all_agents_to_group if list_agents is None else agent.assign_agents_to_group
 
-    dapi = DistributedAPI(f=func,
+    dapi = DistributedAPI(f=agent.assign_agents_to_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -637,7 +631,7 @@ def put_multiple_agent_single_group(group_id, list_agents=None, pretty=False, wa
 
 @exception_handler
 def delete_groups(list_groups=None, pretty=False, wait_for_complete=False):
-    """Delete all of groups or a list of them.
+    """Delete all groups or a list of them.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -647,8 +641,7 @@ def delete_groups(list_groups=None, pretty=False, wait_for_complete=False):
     f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
                 'group_list': list_groups}
 
-    func = agent.delete_groups_all if list_groups is None else agent.delete_groups
-    dapi = DistributedAPI(f=func,
+    dapi = DistributedAPI(f=agent.delete_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -688,7 +681,7 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                 'search_in_fields': ['name'],
                 'hash_algorithm': hash_}
 
-    dapi = DistributedAPI(f=agent.get_all_groups,
+    dapi = DistributedAPI(f=agent.get_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -761,7 +754,7 @@ def get_agents_in_group(group_id, pretty=False, wait_for_complete=False, offset=
                 },
                 'q': 'group=' + group_id + (';' + q if q else '')}
 
-    dapi = DistributedAPI(f=agent.get_agents_all,
+    dapi = DistributedAPI(f=agent.get_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1024,7 +1017,7 @@ def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=
                 'filters': {'name': agent_name},
                 'select': select}
 
-    dapi = DistributedAPI(f=agent.get_agents_all,
+    dapi = DistributedAPI(f=agent.get_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1062,7 +1055,7 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=da
                 'search': parse_api_param(search, 'search'),
                 'q': 'group=null' + (';' + q if q else '')}
 
-    dapi = DistributedAPI(f=agent.get_agents_all,
+    dapi = DistributedAPI(f=agent.get_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

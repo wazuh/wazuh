@@ -13,37 +13,12 @@ from wazuh.InputValidator import InputValidator
 from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryDistinctAgents, WazuhDBQueryGroupByAgents
 from wazuh.database import Connection
 from wazuh.exception import WazuhError, WazuhInternalError, WazuhException, create_exception_dic
-from wazuh.rbac.decorators import expose_resources, list_handler_with_denied, list_handler_no_denied
+from wazuh.rbac.decorators import expose_resources
 from wazuh.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
 from wazuh.core.core_agent import Agent
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
-def get_agents_all(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, 
-                   filters=None, q=''):
-    """Gets a list of available agents with basic attributes.
-
-    :param agent_list: List of agents ID's.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-    :param filters: Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
-    :param q: Defines query to filter in DB.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-    """
-    if filters is None:
-        filters = dict()
-    filters['id'] = agent_list
-    db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, 
-                                  query=q)
-    data = db_query.run()
-
-    return data
-
-
-@expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
+@expose_resources(actions=["agent:read"], resources=["agent:id:*"], post_proc_func=None)
 def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, 
                         fields=None, q=''):
     """ Gets all the different combinations that agents have for the selected fields. It also indicates the total
@@ -67,7 +42,7 @@ def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, 
     return data
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
+@expose_resources(actions=["agent:read"], resources=["agent:id:*"], post_proc_func=None)
 def get_agents_summary_status(agent_list=None):
     """Counts the number of agents by status.
 
@@ -85,7 +60,7 @@ def get_agents_summary_status(agent_list=None):
     return result
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
+@expose_resources(actions=["agent:read"], resources=["agent:id:*"], post_proc_func=None)
 def get_agents_summary_os(agent_list=None, offset=None, limit=None, search=None, q=None):
     """Gets a list of available OS.
 
@@ -104,8 +79,7 @@ def get_agents_summary_os(agent_list=None, offset=None, limit=None, search=None,
     return data
 
 
-@expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"], target_params=["agent_list"],
-                  post_proc_func=list_handler_with_denied)
+@expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"])
 def restart_agents(agent_list=None):
     """Restarts a list of agents
 
@@ -128,31 +102,9 @@ def restart_agents(agent_list=None):
                              'Could not send command to any agent']}
 
 
-@expose_resources(actions=["agent:restart"], resources=["agent:id:*"], target_params=["agent_list"],
-                  post_proc_func=list_handler_no_denied)
-def restart_agents_all(agent_list=None):
-    """Restarts a list of agents
-
-    :param agent_list: List of agents ID's.
-    :return: Message.
-    """
-    affected_agents = list()
-    for agent_id in agent_list:
-        try:
-            Agent(agent_id).restart()
-            affected_agents.append(agent_id)
-        except WazuhException:
-            pass
-
-    return {'affected_items': affected_agents,
-            'failed_items': list(),
-            'str_priority': ['Restart command sent to all agents',
-                             'Could not send command to some agents',
-                             'Could not send command to any agent']}
-
-
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
-def get_agents(agent_list=None, offset=None, limit=None, sort=None, search=None, select=None, filters=None, q=None):
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
+def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, 
+               filters=None, q=''):
     """Gets a list of available agents with basic attributes.
 
     :param agent_list: List of agents ID's.
@@ -175,7 +127,7 @@ def get_agents(agent_list=None, offset=None, limit=None, sort=None, search=None,
     return data
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_agents_keys(agent_list=None):
     """Get the key of existing agents
 
@@ -192,8 +144,8 @@ def get_agents_keys(agent_list=None):
     return {'items': items, 'totalItems': len(items)}
 
 
-@expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"], target_params=["agent_list"],
-                  post_proc_func=list_handler_with_denied, post_proc_kwargs={'extra_fields': ['older_than']})
+@expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'extra_fields': ['older_than'], 'exclude_codes': [1703]})
 def delete_agents(agent_list=None, backup=False, purge=False, status="all", older_than="7d"):
     """Deletes a list of agents.
 
@@ -239,47 +191,7 @@ def delete_agents(agent_list=None, backup=False, purge=False, status="all", olde
     return result
 
 
-@expose_resources(actions=["agent:delete"], resources=["agent:id:*"], target_params=["agent_list"],
-                  post_proc_func=list_handler_no_denied, post_proc_kwargs={'extra_fields': ['older_than']})
-def delete_agents_all(agent_list=None, backup=False, purge=False, status="all", older_than="7d"):
-    """Deletes all existing agents.
-
-    :param agent_list: List of agents ID's.
-    :param backup: Create backup before removing the agent.
-    :param purge: Delete definitely from key store.
-    :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" |
-    "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never_connected agents, uses the register date.
-    :param status: Filters by agent status: active, disconnected or never_connected. Multiples statuses separated by
-    commas.
-    :return: Dictionary with affected_agents (deleted agents), timeframe applied, failed_ids if it necessary (agents
-    that could not be deleted), and a message.
-    """
-    db_query = WazuhDBQueryAgents(limit=None, select=["id"], filters={'older_than': older_than, 'status': status,
-                                                                      'id': agent_list})
-    data = db_query.run()
-    id_purgeable_agents = list(map(operator.itemgetter('id'), data['items']))
-
-    affected_agents = list()
-    for agent_id in id_purgeable_agents:
-        if agent_id != "000":
-            try:
-                my_agent = Agent(agent_id)
-                my_agent.load_info_from_db()
-                my_agent.remove(backup, purge)
-                affected_agents.append(agent_id)
-            except WazuhException:
-                pass
-
-    result = {'affected_items': affected_agents,
-              'failed_items': list(),
-              'str_priority': ['Shown agents were deleted',
-                               '',
-                               'No agents were deleted']}
-
-    return result
-
-
-@expose_resources(actions=["agent:create"], resources=["*:*:*"], target_params=["*"])
+@expose_resources(actions=["agent:create"], resources=["*:*:*"], post_proc_func=None)
 def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1):
     """Adds a new Wazuh agent.
 
@@ -299,8 +211,8 @@ def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1):
     return {'id': new_agent.id, 'key': new_agent.key}
 
 
-@expose_resources(actions=["group:read"], resources=["group:id:*"], target_params=["group_list"])
-def get_all_groups(group_list=None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
+@expose_resources(actions=["group:read"], resources=["group:id:*"], post_proc_func=None)
+def get_groups(group_list=None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
                    search_text=None, complementary_search=False, search_in_fields=None, hash_algorithm='md5'):
     """Gets the existing groups.
 
@@ -365,7 +277,7 @@ def get_all_groups(group_list=None, offset=0, limit=common.database_limit, sort_
                          offset=offset, limit=limit)
 
 
-@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], target_params=["group_list"])
+@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_group_files(group_list=None, offset=0, limit=common.database_limit, search_text=None, search_in_fields=None,
                     complementary_search=False, sort_by=None, sort_ascending=True, hash_algorithm='md5'):
     """Gets the group files.
@@ -420,7 +332,7 @@ def get_group_files(group_list=None, offset=0, limit=common.database_limit, sear
         raise WazuhInternalError(1727, extra_message=str(e))
 
 
-@expose_resources(actions=["group:create"], resources=["*:*:*"], target_params=["*"])
+@expose_resources(actions=["group:create"], resources=["*:*:*"], post_proc_func=None)
 def create_group(group_id):
     """Creates a group.
 
@@ -451,8 +363,8 @@ def create_group(group_id):
     return msg
 
 
-@expose_resources(actions=["group:delete"], resources=["group:id:{group_list}"], target_params=["group_list"],
-                  post_proc_func=list_handler_with_denied, post_proc_kwargs={'extra_affected': 'affected_agents'})
+@expose_resources(actions=["group:delete"], resources=["group:id:{group_list}"],
+                  post_proc_kwargs={'extra_affected': 'affected_agents'})
 def delete_groups(group_list=None):
     """Delete a list of groups and remove it from every agent assignments.
 
@@ -481,36 +393,7 @@ def delete_groups(group_list=None):
     return result
 
 
-@expose_resources(actions=["group:delete"], resources=["group:id:*"], target_params=["group_list"],
-                  post_proc_func=list_handler_no_denied, post_proc_kwargs={'extra_affected': 'affected_agents'})
-def delete_groups_all(group_list=None):
-    """Delete a list of groups and remove it from every agent assignments.
-
-    :param group_list: List of Group names.
-    :return: Confirmation message.
-    """
-    affected_groups = list()
-    affected_agents = list()
-    for group_id in group_list:
-        try:
-            removed = Agent.delete_single_group(group_id)
-            affected_groups.append(group_id)
-            affected_agents += removed['affected_items']
-            Agent.remove_multi_group(set(group_id.lower()))
-        except WazuhException:
-            pass
-
-    result = {'affected_items': affected_groups,
-              'failed_items': list(),
-              'affected_agents': list(set(affected_agents)),
-              'str_priority': ['All shown groups were deleted',
-                               '',
-                               'No groups were deleted']}
-    return result
-
-
-@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
-                  target_params=["agent_list"], post_proc_func=list_handler_with_denied)
+@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"])
 def assign_agents_to_group(group_id=None, agent_list=None, replace=False):
     """Assign a list of agents to a group
 
@@ -544,41 +427,10 @@ def assign_agents_to_group(group_id=None, agent_list=None, replace=False):
     return result
 
 
-@expose_resources(actions=["agent:modify_group"], resources=["agent:id:*"], target_params=["agent_list"],
-                  post_proc_func=list_handler_no_denied)
-def assign_all_agents_to_group(group_id=None, agent_list=None, replace=False):
-    """Assign all agents to a group
-
-    :param group_id: Group ID.
-    :param agent_list: List of Agent IDs.
-    :param replace: Whether to append new group to current agent's group or replace it.
-    :return: Confirmation message.
-    """
-    affected_agents = list()
-
-    # Check if the group exists
-    if not Agent.group_exists(group_id):
-        raise WazuhError(1710)
-
-    for agent_id in agent_list:
-        try:
-            Agent.add_group_to_agent(agent_id=agent_id, group_id=group_id, replace=replace)
-            affected_agents.append(agent_id)
-        except WazuhException:
-            pass
-
-    result = {'affected_items': affected_agents,
-              'failed_items': list(),
-              'str_priority': ['All shown agents were assigned to {0}{1}'.format
-                               (group_id, ' and removed from the other groups' if replace else ''),
-                               '',
-                               'No agents assigned to {0}'.format(group_id)]}
-
-    return result
-
-
-@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
-                  target_params=["agent_list"], post_proc_func=list_handler_with_denied)
+@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_id}'], post_proc_func=None,
+                  stack=True)
+@expose_resources(actions=["agent:modify_group"], resources=['agent:id:{agent_list}'],
+                  post_proc_kwargs={'exclude_codes': [1734]})
 def remove_agents_from_group(group_id=None, agent_list=None):
     """Removes agents assignment from a specified group
 
@@ -590,57 +442,34 @@ def remove_agents_from_group(group_id=None, agent_list=None):
     affected_agents = list()
 
     # Check if the group exists
-    if not Agent.group_exists(group_id):
+    if not Agent.group_exists(group_id[0]):
         raise WazuhError(1710)
+
+    db_query = WazuhDBQueryAgents(limit=None, filters={'id': agent_list}, query=f'group={group_id[0]}')
+    agents_in_group = set(map(operator.itemgetter('id'), db_query.run()['items']))
 
     for agent_id in agent_list:
         try:
-            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=False)
+            if agent_id in set(agent_list) - agents_in_group:
+                if agent_id == "000":
+                    raise WazuhError(1703)
+                else:
+                    raise WazuhError(1734)
+            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id[0], force=False)
             affected_agents.append(agent_id)
         except WazuhException as e:
             failed_ids.append(create_exception_dic(agent_id, e))
 
     result = {'affected_items': affected_agents,
               'failed_items': failed_ids,
-              'str_priority': ['All selected agents were removed from {}'.format(group_id),
-                               'Some agents were not removed from {}'.format(group_id),
-                               'No agents removed from {}'.format(group_id)]}
+              'str_priority': ['All selected agents were removed from {}'.format(group_id[0]),
+                               'Some agents were not removed from {}'.format(group_id[0]),
+                               'No agents removed from {}'.format(group_id[0])]}
 
     return result
 
 
-@expose_resources(actions=["agent:modify_group"], resources=["agent:id:*"], target_params=["agent_list"],
-                  post_proc_func=list_handler_no_denied)
-def remove_all_agents_from_group(group_id=None, agent_list=None):
-    """Removes all agents assignment from a specified group
-
-    :param agent_list: List of Agent IDs.
-    :param group_id: Group ID.
-    :return: Confirmation message.
-    """
-    affected_agents = list()
-
-    # Check if the group exists
-    if not Agent.group_exists(group_id):
-        raise WazuhError(1710)
-    for agent_id in agent_list:
-        try:
-            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=False)
-            affected_agents.append(agent_id)
-        except WazuhException:
-            pass
-
-    result = {'affected_items': affected_agents,
-              'failed_items': list(),
-              'str_priority': ['All shown agents were removed from {0}'.format(group_id),
-                               '',
-                               'No agents removed from {0}'.format(group_id)]}
-
-    return result
-
-
-@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
-                  target_params=["agent_list"], post_proc_func=list_handler_with_denied)
+@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"])
 def remove_agents_from_all_groups(agent_list=None, force=False):
     """Removes a list of agents assigment from all groups
 
@@ -672,7 +501,7 @@ def remove_agents_from_all_groups(agent_list=None, force=False):
     return result
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:*"], target_params=["agent_list"])
+@expose_resources(actions=["agent:read"], resources=["agent:id:*"], post_proc_func=None)
 def get_outdated_agents(agent_list=None, offset=None, limit=None, sort=None, search=None, select=None, q=None):
     """Gets the outdated agents.
 
@@ -699,7 +528,7 @@ def get_outdated_agents(agent_list=None, offset=None, limit=None, sort=None, sea
     return data
 
 
-@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
+@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, chunk_size=None, use_http=False):
     """Read upgrade result output from agent.
 
@@ -719,7 +548,7 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, ch
                                    chunk_size=chunk_size, use_http=use_http)
 
 
-@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
+@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_upgrade_result(agent_list=None, timeout=3):
     """Read upgrade result output from agent.
 
@@ -734,7 +563,7 @@ def get_upgrade_result(agent_list=None, timeout=3):
     return Agent(agent_id).upgrade_result(timeout=int(timeout))
 
 
-@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
+@expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def upgrade_agents_custom(agent_list=None, file_path=None, installer=None):
     """Read upgrade result output from agent.
 
@@ -753,7 +582,7 @@ def upgrade_agents_custom(agent_list=None, file_path=None, installer=None):
     return Agent(agent_id).upgrade_custom(file_path=file_path, installer=installer)
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_agents_config(agent_list=None, component=None, config=None):
     """Read selected configuration from agent.
 
@@ -774,7 +603,7 @@ def get_agents_config(agent_list=None, component=None, config=None):
     return my_agent.getconfig(component=component, config=config)
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], target_params=["agent_list"])
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_agents_sync_group(agent_list=None):
     """Get agents configuration sync status.
 
@@ -807,7 +636,7 @@ def get_agents_sync_group(agent_list=None):
             raise WazuhInternalError(1739, extra_message=str(e))
 
 
-@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], target_params=["group_list"])
+@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_file_conf(group_list=None, type_conf=None, return_format=None, filename=None):
     """ Reads configuration file for specified group
 
@@ -824,7 +653,7 @@ def get_file_conf(group_list=None, type_conf=None, return_format=None, filename=
     return configuration.get_file_conf(filename, group_id=group_id, type_conf=type_conf, return_format=return_format)
 
 
-@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], target_params=["group_list"])
+@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_agent_conf(group_list=None, offset=0, limit=common.database_limit, filename='agent.conf'):
     """ Reads agent conf for specified group
 
@@ -841,7 +670,7 @@ def get_agent_conf(group_list=None, offset=0, limit=common.database_limit, filen
     return configuration.get_agent_conf(group_id=group_id, offset=offset, limit=limit, filename=filename)
 
 
-@expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], target_params=["group_list"])
+@expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], post_proc_func=None)
 def upload_group_file(group_list=None, file_data=None, file_name='agent.conf'):
     """Updates a group file
 

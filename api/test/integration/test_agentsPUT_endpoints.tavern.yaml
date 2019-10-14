@@ -637,7 +637,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         use_http: true
-        version: 3.10.2
     response:
       status_code: 200
       body:

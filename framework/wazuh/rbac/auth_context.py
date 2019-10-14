@@ -333,6 +333,11 @@ class RBAChecker:
                 "actions": ["group:create"],
                 "resources": ["*"],
                 "effect": "allow"
+            },
+            {
+                "actions": ["group:modify_assignments"],
+                "resources": ["group:id:*"],
+                "effect": "allow"
             }
         ]
 
