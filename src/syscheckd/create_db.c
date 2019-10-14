@@ -509,15 +509,15 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
     if (options & CHECK_PERM) {
 #ifdef WIN32
         int error;
-        char perm_unescaped[OS_SIZE_6144 + 1];
+        char perm[OS_SIZE_6144 + 1];
 
-        if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
+        if (error = w_get_file_permissions(file_name, perm, OS_SIZE_6144), error) {
             mwarn(FIM_WARN_EXTRACT_PERM, file_name, error);
             free_entry_data(data);
             return NULL;
         } else {
             int size;
-            os_strdup(escape_perm_sum(perm_unescaped), data->win_perm_mask);
+            os_strdup(perm, data->win_perm_mask);
             os_calloc(OS_SIZE_20480, sizeof(char), data->perm);
 
             if (size = decode_win_permissions(data->perm, OS_SIZE_20480, data->win_perm_mask, 0, NULL), size > 1) {

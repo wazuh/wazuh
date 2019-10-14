@@ -572,20 +572,6 @@ void ag_send_syscheck(char * message) {
 
 #else /* #ifndef WIN32 */
 
-char *escape_perm_sum(char *sum) {
-    char *esc_it;
-
-    if (*sum != '\0' ) {
-        esc_it = wstr_replace(sum, "!", "\\!");
-        sum = wstr_replace(esc_it, ":", "\\:");
-        free(esc_it);
-        esc_it = wstr_replace(sum, " ", "\\ ");
-        free(sum);
-        return esc_it;
-    }
-    return NULL;
-}
-
 char *get_user(const char *path, __attribute__((unused)) int uid, char **sid) {
     DWORD dwRtnCode = 0;
     PSID pSidOwner = NULL;
