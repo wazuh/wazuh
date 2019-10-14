@@ -829,7 +829,6 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     int i;
     int exists;
     whodata_dir_status *d_status;
-    SYSTEMTIME utc;
     int interval;
 
     if (!syscheck.wdata.interval_scan) {
@@ -875,32 +874,18 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                     }
                     d_status->status |= WD_STATUS_EXISTS;
                 } else {
-                    if (get_creation_date(syscheck.dir[i], &utc)) {
-                        merror(FIM_ERROR_WHODATA_CREATION_DATE, syscheck.dir[i]);
+                    // Check if the SACL is invalid
+                    if (check_object_sacl(syscheck.dir[i], (d_status->object_type == WD_STATUS_FILE_TYPE) ? 1 : 0)) {
+                        minfo(FIM_WHODATA_SACL_CHANGED, syscheck.dir[i]);
+                        // Mark the directory to prevent its children from sending partial whodata alerts
+                        syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
+                        syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
+                        // Removes CHECK_WHODATA from directory properties to prevent from being found in the whodata callback for Windows (find_dir_pos)
+                        syscheck.opts[i] = syscheck.opts[i] & ~WHODATA_ACTIVE;
+                        // Mark it to prevent the restoration of its SACL
+                        syscheck.wdata.dirs_status[i].status &= ~WD_IGNORE_REST;
+                        notify_SACL_change(syscheck.dir[i]);
                         continue;
-                    }
-
-                    if (compare_timestamp(&d_status->last_check, &utc)) {
-                        mdebug1(FIM_WHODATA_DEL_ADD, syscheck.dir[i]);
-                        if (set_winsacl(syscheck.dir[i], i)) {
-                            merror(FIM_ERROR_WHODATA_ADD_DIRECTORY, syscheck.dir[i]);
-                            continue;
-                        }
-                    } else {
-                        if (check_object_sacl(syscheck.dir[i], (d_status->object_type == WD_STATUS_FILE_TYPE) ? 1 : 0)) {
-                            minfo(FIM_WHODATA_SACL_CHANGED, syscheck.dir[i]);
-                            // Mark the directory to prevent its children from sending partial whodata alerts
-                            syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
-                            syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
-                            // Removes WHODATA_ACTIVE from directory properties to prevent from being found in the whodata callback for Windows (find_dir_pos)
-                            syscheck.opts[i] = syscheck.opts[i] & ~WHODATA_ACTIVE;
-                            // Mark it to prevent the restoration of its SACL
-                            syscheck.wdata.dirs_status[i].status &= ~WD_IGNORE_REST;
-                            notify_SACL_change(syscheck.dir[i]);
-                            continue;
-                        } else {
-                            // The SACL is valid
-                        }
                     }
                 }
             } else {

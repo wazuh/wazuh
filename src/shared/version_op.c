@@ -285,8 +285,9 @@ char *OSX_ReleaseName(const int version) {
     /* 15 */ "El Capitan",
     /* 16 */ "Sierra",
     /* 17 */ "High Sierra",
-    /* 18 */ "Mojave"};
-    if (version >= 10 && version <= 18)
+    /* 18 */ "Mojave",
+    /* 19 */ "Catalina"};
+    if (version >= 10 && version <= 19)
         return r_names[version%10];
     else
         return "Unknown";
