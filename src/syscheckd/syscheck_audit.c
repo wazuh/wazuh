@@ -399,7 +399,7 @@ int init_regex(void) {
         return -1;
     }
     static const char *pattern_dev = " dev=([A-F0-9]*:[A-F0-9]*)";
-    if (regcomp(&regexCompiled_dev, pattern_dev, REG_EXTENDED)) {
+    if (regcomp(&regexCompiled_dev, pattern_dev, REG_EXTENDED | REG_ICASE)) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dev");
         return -1;
     }

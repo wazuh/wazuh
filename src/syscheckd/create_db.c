@@ -38,6 +38,7 @@ int print_hash_table();
 
 int fim_scan() {
     int position = 0;
+    struct stat file_stat;
     struct timespec start;
     struct timespec end;
     clock_t timeCPU_start = clock();
@@ -47,7 +48,28 @@ int fim_scan() {
     fim_send_scan_info(FIM_SCAN_START);
 
     while (syscheck.dir[position] != NULL) {
-        fim_directory(syscheck.dir[position], position, FIM_SCHEDULED, NULL);
+
+        if (w_stat(syscheck.dir[position], &file_stat) >= 0) {
+            switch(file_stat.st_mode & S_IFMT) {
+                case FIM_REGULAR:
+                    // Regular file
+                    if (fim_check_file(syscheck.dir[position], position, FIM_SCHEDULED, NULL) < 0) {
+                        mwarn("Skip event: '%s'", syscheck.dir[position]);
+                    }
+                    break;
+
+                case FIM_DIRECTORY:
+                    // Directory path
+                    fim_directory(syscheck.dir[position], position, FIM_SCHEDULED, NULL);
+                    break;
+#ifndef WIN32
+                case FIM_LINK:
+                    // Symbolic links add link and follow if it is configured
+                    // TODO: implement symbolic links
+                    break;
+#endif
+            }
+        }
         position++;
     }
 
