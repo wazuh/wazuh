@@ -251,7 +251,33 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     return allow_match
 
 
-def expose_resources(actions: list = None, resources: list = None, post_proc_func: callable = None,
+def list_handler(result, original: dict = None, allowed: dict = None, target: list = None, add_denied: bool = False,
+                 **post_proc_kwargs):
+    """ Post processor for framework list responses with affected items and optional denied items
+
+    :param result: Dict with affected_items, failed_items and str_priority
+    :param original: Original input call parameter values
+    :param allowed: Allowed input call parameter values
+    :param target: Name of the input parameters used to calculate resource access
+    :param add_denied: Flag to add denied permissions to answer
+    :return: WazuhResult
+    """
+    if add_denied:
+        if len(target) == 1:
+            original_kwargs = original[target[0]] if isinstance(original[target[0]], list) else [original[target[0]]]
+            for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[0]])):
+                result['failed_items'].append(create_exception_dic(item, WazuhError(4000)))
+        else:
+            original_kwargs = original[target[1]] if isinstance(original[target[1]], list) else list(
+                original[target[1]])
+            for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[1]])):
+                result['failed_items'].append(create_exception_dic('{}:{}'.format(original[target[0]], item),
+                                                                   WazuhError(4000)))
+
+    return data_response_builder(result, original, **post_proc_kwargs)
+
+
+def expose_resources(actions: list = None, resources: list = None, post_proc_func: callable = list_handler,
                      post_proc_kwargs: dict = None):
     """Decorator to apply user permissions on a Wazuh framework function
     based on exposed action:resource pairs.
@@ -318,32 +344,6 @@ def _merge_errors(failed_items):
             final_errors_list[-1]['id'] = sorted(error_code['ids'])
 
     return final_errors_list, error_count
-
-
-def list_handler(result, original: dict = None, allowed: dict = None, target: list = None, add_denied: bool = False,
-                 **post_proc_kwargs):
-    """ Post processor for framework list responses with affected items and optional denied items
-
-    :param result: Dict with affected_items, failed_items and str_priority
-    :param original: Original input call parameter values
-    :param allowed: Allowed input call parameter values
-    :param target: Name of the input parameters used to calculate resource access
-    :param add_denied: Flag to add denied permissions to answer
-    :return: WazuhResult
-    """
-    if add_denied:
-        if len(target) == 1:
-            original_kwargs = original[target[0]] if isinstance(original[target[0]], list) else [original[target[0]]]
-            for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[0]])):
-                result['failed_items'].append(create_exception_dic(item, WazuhError(4000)))
-        else:
-            original_kwargs = original[target[1]] if isinstance(original[target[1]], list) else list(
-                original[target[1]])
-            for item in set(original_kwargs) - set(list(allowed[list(allowed.keys())[1]])):
-                result['failed_items'].append(create_exception_dic('{}:{}'.format(original[target[0]], item),
-                                                                   WazuhError(4000)))
-
-    return data_response_builder(result, original, **post_proc_kwargs)
 
 
 def data_response_builder(result, original: dict = None, **post_proc_kwargs):
