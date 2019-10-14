@@ -294,6 +294,11 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
 
 
 def _merge_errors(failed_items):
+    """ Merges common errors into one, where a list of identifiers of the affected resource appears
+
+    :param failed_items: Dictionary with the errors occurred
+    :return: Final error list
+    """
     code_ids = dict()
     error_count = 0
     for index, failed_item in enumerate(failed_items):
