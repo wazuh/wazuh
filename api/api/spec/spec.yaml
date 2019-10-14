@@ -2644,7 +2644,6 @@ components:
       in: path
       name: policy_id
       description: 'Specified a policy id'
-      required: True
       schema:
         $ref: '#/components/schemas/Policy_id'
     policy_ids_rbac:
@@ -2655,7 +2654,6 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Policy_id'
-          minItems: 1
     policy_name:
       in: query
       name: policy_name
@@ -2714,7 +2712,6 @@ components:
       in: path
       name: role_id
       description: 'Specified a role id'
-      required: True
       schema:
         $ref: '#/components/schemas/Role_id'
     role_ids:
