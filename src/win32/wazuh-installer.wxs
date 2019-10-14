@@ -74,7 +74,7 @@
         </Property>
         <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="no" />
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
-        <Binary Id="UnzipVersionFiles" SourceFile="UnzipVersionFiles.vbs" />
+        <Binary Id="ReplaceConf" SourceFile="ReplaceConf.vbs" />
 
         <!-- This script will remove all of the files and folders from the root folder on uninstall, *except* some files indicated in RemoveAllScript.vbs. -->
         <!-- Especially, "ossec.conf" and "client.keys" will be kept, and a couple of other files too. -->
@@ -88,6 +88,8 @@
 
         <CustomAction Id="InstallConfigurationFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs ExtractConfigurationFiles" />
         <CustomAction Id="InstallSCAFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs ExtractSCAFiles" />
+
+        <CustomAction Id="ReplaceConfiguration" BinaryKey="ReplaceConf" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
 
         <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT]" />
         <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;" />
@@ -186,6 +188,7 @@
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
             <Custom Action="InstallConfigurationFiles" After="InstallFinalize">NOT Installed</Custom>
             <Custom Action="InstallSCAFiles" After="InstallFinalize">(NOT Installed) OR (REINSTALL)</Custom>
+            <Custom Action="ReplaceConfiguration" After="InstallConfigurationFiles">NOT Installed</Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
             <Custom Action="StopWinService" After="InstallInitialize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
