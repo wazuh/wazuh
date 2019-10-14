@@ -34,6 +34,7 @@ static const char *fim_entry_type[] = {
     "registry"
 };
 
+int print_hash_table();
 
 int fim_scan() {
     int position = 0;
@@ -701,7 +702,8 @@ int fim_insert (char * file, fim_entry_data * data, __attribute__((unused))struc
 
 // Update an entry in the syscheck hash table structure (inodes and paths)
 int fim_update (char * file, fim_entry_data * data) {
-    char * inode_key;
+    fim_entry_data * old_data;
+    char * inode_key = NULL;
 
     os_calloc(OS_SIZE_128, sizeof(char), inode_key);
     snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)data->dev, (unsigned long)data->inode);
@@ -710,21 +712,45 @@ int fim_update (char * file, fim_entry_data * data) {
         merror_exit("Can't update entry invalid file or inode");
     }
 
-    if (rbtree_replace(syscheck.fim_entry, file, data) == NULL) {
-        merror("Unable to update file to db, key not found: '%s'", file);
-        os_free(inode_key);
-        return (-1);
+#ifndef WIN32
+    char * old_inode_key = NULL;
+    os_calloc(OS_SIZE_128, sizeof(char), old_inode_key);
+
+    // If we detect a inode change, remove old entry from inode hash table
+    if (old_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file), old_data) {
+        snprintf(old_inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)old_data->dev, (unsigned long)old_data->inode);
+
+        if(strcmp(inode_key, old_inode_key) != 0) {
+            delete_inode_item(old_inode_key, file);
+        }
     }
 
-#ifndef WIN32
     fim_inode_data * inode_data;
-    if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), inode_data) {
+
+    if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), !inode_data) {
+        os_calloc(1, sizeof(fim_inode_data), inode_data);
+
+        inode_data->paths = os_AddStrArray(file, inode_data->paths);
+        inode_data->items = 1;
+
+        if (OSHash_Add(syscheck.fim_inode, inode_key, inode_data) != 2) {
+            merror("Unable to add inode to db: '%s' => '%s'", inode_key, file);
+            os_free(inode_key);
+            return (-1);
+        }
+    } else {
         if (!os_IsStrOnArray(file, inode_data->paths)) {
             inode_data->paths = os_AddStrArray(file, inode_data->paths);
             inode_data->items++;
         }
     }
 #endif
+
+    if (rbtree_replace(syscheck.fim_entry, file, data) == NULL) {
+        merror("Unable to update file to db, key not found: '%s'", file);
+        os_free(inode_key);
+        return (-1);
+    }
 
     os_free(inode_key);
     return 0;
