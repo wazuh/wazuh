@@ -741,9 +741,9 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     """
     This class describes a wazuh db backend that executes database queries
     """
-    def __init__(self, agent_id=None, mitre=False):
-        self.agent_id = agent_id if agent_id else None
-        self.mitre = mitre if mitre else False
+    def __init__(self, agent_id=None, query_format='agent'):
+        self.agent_id = agent_id
+        self.query_format = query_format
         super().__init__()
 
     def connect_to_db(self):
@@ -758,12 +758,18 @@ class WazuhDBBackend(AbstractDatabaseBackend):
             query = query.replace(f':{k}', f"{v}" if isinstance(v, int) else f"'{v}'")
         return query
 
-    def execute(self, query, request, count=False):
-        query = self._substitute_params(query, request)
-        if self.mitre:
-            return self.conn.execute(query=f'mitre sql {query}', count=count)
+    def _render_query(self, query):
+        """Render query attending the format."""
+        if self.query_format == 'mitre':
+            return f'mitre sql {query}'
         else:
-            return self.conn.execute(query=f'agent {self.agent_id} sql {query}', count=count)
+            return f'agent {self.agent_id} sql {query}'
+
+    def execute(self, query, request, count=False):
+        """Execute SQL query through WazuhDB socket."""
+        query = self._substitute_params(query, request)
+
+        return self.conn.execute(query=self._render_query(query), count=count)
 
 
 class WazuhDBQuery(object):

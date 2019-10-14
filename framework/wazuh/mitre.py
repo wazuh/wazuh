@@ -48,7 +48,7 @@ class WazuhDBQueryMitre(WazuhDBQuery):
                               default_sort_field=default_sort_field,
                               default_sort_order='ASC', filters=None,
                               query=query, count=count, get_data=get_data,
-                              backend=WazuhDBBackend(mitre=True))
+                              backend=WazuhDBBackend(query_format='mitre'))
 
     def _default_query(self) -> str:
         return self.default_query

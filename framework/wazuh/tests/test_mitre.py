@@ -66,7 +66,7 @@ def get_fake_mitre_data(sql_file):
     (893, 13),
 ])
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
-        sql_schema_file='schema_mitre_test.sql', mitre=True))
+        sql_schema_file='schema_mitre_test.sql'))
 def test_get_attack(mock_wdb, offset, limit):
     """Test if data are retrieved properly from Mitre database."""
     # check error when limit = 0
@@ -98,7 +98,7 @@ def test_get_attack(mock_wdb, offset, limit):
     ('T1015'),
 ])
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
-        sql_schema_file='schema_mitre_test.sql', mitre=True))
+        sql_schema_file='schema_mitre_test.sql',))
 def test_get_attack_filter_attack(mock_wdb, attack):
     """Test if data are retrieved properly from Mitre database."""
     result = get_attack(attack=attack)
@@ -139,7 +139,7 @@ def test_get_attack_filter_attack(mock_wdb, attack):
     ('initial ACCess'),
 ])
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
-        sql_schema_file='schema_mitre_test.sql', mitre=True))
+        sql_schema_file='schema_mitre_test.sql'))
 def test_get_attack_filter_phase(mock_wdb, phase):
     """Test if data are retrieved properly from Mitre database."""
     result = get_attack(phase=phase)
@@ -163,7 +163,7 @@ def test_get_attack_filter_phase(mock_wdb, phase):
     ('winDows')
 ])
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
-        sql_schema_file='schema_mitre_test.sql', mitre=True))
+        sql_schema_file='schema_mitre_test.sql'))
 def test_get_attack_filter_platform(mock_wdb, platform):
     """Test if data are retrieved properly from Mitre database."""
     result = get_attack(platform=platform)
@@ -187,7 +187,7 @@ def test_get_attack_filter_platform(mock_wdb, platform):
     ('platform=windows')
 ])
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
-        sql_schema_file='schema_mitre_test.sql', mitre=True))
+        sql_schema_file='schema_mitre_test.sql'))
 def test_get_attack_filter_q(mock_wdb, q):
     """Test if data are retrieved properly from Mitre database."""
     result = get_attack(q=q)
@@ -228,7 +228,7 @@ def test_get_attack_filter_q(mock_wdb, q):
     ('initial ACCess', 'linux'),
 ])
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
-        sql_schema_file='schema_mitre_test.sql', mitre=True))
+        sql_schema_file='schema_mitre_test.sql'))
 def test_get_attack_filter_multiple(mock_wdb, phase, platform):
     """Test if data are retrieved properly from Mitre database."""
     result = get_attack(phase=phase, platform=platform)
@@ -248,7 +248,7 @@ def test_get_attack_filter_multiple(mock_wdb, phase, platform):
 
 
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
-        sql_schema_file='schema_mitre_test.sql', mitre=True))
+        sql_schema_file='schema_mitre_test.sql'))
 def test_check_total_items(mock_wdb):
     """Test the number of returned items."""
     # load test database and make the query
@@ -268,7 +268,7 @@ def test_check_total_items(mock_wdb):
     ('windows')
 ])
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
-        sql_schema_file='schema_mitre_test.sql', mitre=True))
+        sql_schema_file='schema_mitre_test.sql'))
 def test_check_total_items_platform(mock_wdb, platform):
     """Test the number of returned items when filtering by platform."""
     # load test database and make the query
@@ -298,7 +298,7 @@ def test_check_total_items_platform(mock_wdb, platform):
     ('Initial Access'),
 ])
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
-        sql_schema_file='schema_mitre_test.sql', mitre=True))
+        sql_schema_file='schema_mitre_test.sql'))
 def test_check_total_items_phase(mock_wdb, phase):
     """Test the number of returned items when filtering by phase."""
     # load test database and make the query
@@ -328,7 +328,7 @@ def test_check_total_items_phase(mock_wdb, phase):
     ('macos', 'Initial Access'),
 ])
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
-        sql_schema_file='schema_mitre_test.sql', mitre=True))
+        sql_schema_file='schema_mitre_test.sql'))
 def test_check_total_items_multiple_filters(mock_wdb, platform, phase):
     """Test the number of returned items when filtering by phase and platform."""  # noqa: E501
     # load test database and make the query

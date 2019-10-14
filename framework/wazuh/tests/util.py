@@ -10,10 +10,9 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 
 
 class InitWDBSocketMock:
-    def __init__(self, sql_schema_file, mitre=False):
+    def __init__(self, sql_schema_file):
         self.sql_schema_file = sql_schema_file
         self.__conn = self.init_db()
-        self.mitre = mitre if mitre else None
 
     def init_db(self):
         sys_db = sqlite3.connect(':memory:')
@@ -25,10 +24,7 @@ class InitWDBSocketMock:
         return sys_db
 
     def execute(self, query, count=False):
-        if self.mitre:
-            query = re.search(r'^mitre sql (.+)$', query).group(1)
-        else:
-            query = re.search(r'^agent \d{3} sql (.+)$', query).group(1)
+        query = re.search(r'^(?:mitre|agent \d{3}) sql (.+)$', query).group(1)
         self.__conn.execute(query)
         rows = self.__conn.execute(query).fetchall()
         if len(rows) > 0 and 'COUNT(*)' in rows[0]:
