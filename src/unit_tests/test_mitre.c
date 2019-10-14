@@ -98,6 +98,20 @@ void test_queryid_empty_array(void **state)
     assert_int_equal(-1, ret);
 }
 
+void test_queryid_error_parse_ids(void **state)
+{
+    (void) state;
+    int ret;
+    
+    char *response_ids = "ok [{\"ids\":\"T1001\"},{\"ids\":\"T1002\"}]";
+    will_return(__wrap_wdb_send_query, 0);    
+    will_return(__wrap_wdb_send_query, response_ids);
+    will_return(__wrap_wdb_send_query, 0);
+
+    ret = mitre_load();
+    assert_int_equal(-1, ret);
+}
+
 void test_querytactics_error_socket(void **state)
 {
     (void) state;
@@ -196,6 +210,26 @@ void test_querytactics_empty_array(void **state)
     assert_int_equal(-1, ret);
 }
 
+void test_querytactics_error_parse_tactics(void **state)
+{
+    (void) state;
+    int ret;
+    
+    char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
+    /* Mitre's techniques IDs query */
+    will_return(__wrap_wdb_send_query, 0);    
+    will_return(__wrap_wdb_send_query, response_ids);
+    will_return(__wrap_wdb_send_query, 0);
+    
+    /* Mitre's tactics query */
+    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdb_send_query, "ok [{\"phase\":\"Discovery\"}]");
+    will_return(__wrap_wdb_send_query, 0);
+
+    ret = mitre_load();
+    assert_int_equal(-1, ret);
+}
+
 void test_querytactics_repeated_id(void **state)
 {
     (void) state;
@@ -252,11 +286,13 @@ int main(void) {
         cmocka_unit_test(test_queryid_bad_response),
         cmocka_unit_test(test_queryid_error_parse),
         cmocka_unit_test(test_queryid_empty_array),
+        cmocka_unit_test(test_queryid_error_parse_ids),
         cmocka_unit_test(test_querytactics_error_socket),
         cmocka_unit_test(test_querytactics_no_response),
         cmocka_unit_test(test_querytactics_bad_response),
         cmocka_unit_test(test_querytactics_error_parse),
         cmocka_unit_test(test_querytactics_empty_array),
+        cmocka_unit_test(test_querytactics_error_parse_tactics),
         cmocka_unit_test(test_querytactics_repeated_id),
         cmocka_unit_test(test_querytactics_success),
     };
