@@ -74,10 +74,10 @@ class WazuhGCloudSubscriber:
             s.close()
         except socket.error as e:
             if e.errno == 111:
-                logging.critical('ERROR: Wazuh must be running')
+                logger.critical('Wazuh must be running')
                 raise e
             else:
-                logging.critical('ERROR: Error sending event to Wazuh')
+                logger.critical('Error sending event to Wazuh')
                 raise e
 
     def format_msg(self, msg: bytes) -> str:
@@ -119,9 +119,9 @@ class WazuhGCloudSubscriber:
                                             max_messages=max_messages,
                                             return_immediately=True)
         except google_exceptions.DeadlineExceeded:
-            logging.warning('Deadline exceeded when pulling messages. '
-                            'No more messages will be retrieved on this '
-                            'execution')
+            logger.warning('Deadline exceeded when pulling messages. '
+                           'No more messages will be retrieved on this '
+                           'execution')
             response = pubsub.types.PullResponse()
 
         return response
@@ -137,7 +137,7 @@ class WazuhGCloudSubscriber:
         while len(response.received_messages) > 0:
             for message in response.received_messages:
                 message_data = message.message.data
-                logging.debug(f'Processing event:\n{message_data}')
+                logger.debug(f'Processing event:\n{message_data}')
                 self.process_message(message.ack_id, message_data)
                 processed_messages += 1  # increment processed_messages counter
             # get more messages

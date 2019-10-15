@@ -13,9 +13,18 @@ import logging
 import os
 import re
 import sys
+from logging.handlers import TimedRotatingFileHandler
 
 logger_name = 'gcloud_wodle'
 logger = logging.getLogger(logger_name)
+log_levels = {0: logging.NOTSET,
+              1: logging.DEBUG,
+              2: logging.INFO,
+              3: logging.WARNING,
+              4: logging.ERROR,
+              5: logging.CRITICAL,
+              }
+logging_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
 
 
 def get_script_arguments():
@@ -43,30 +52,45 @@ def get_script_arguments():
     return parser.parse_args()
 
 
-def get_logger(name: str, level: int = 3) -> logging.Logger:
-    """Configure logger.
+def get_stdout_logger(name: str, level: int = 3) -> logging.Logger:
+    """Create a logger which returns the messages by stdout.
 
     :param name: Logger name
     :param level: Log level to be set
+    :return: Logger configured with input parameters. Returns the messages by
+        stdout
     """
-    levels = {0: logging.NOTSET,
-              1: logging.DEBUG,
-              2: logging.INFO,
-              3: logging.WARNING,
-              4: logging.ERROR,
-              5: logging.CRITICAL,
-              }
-
-    logger = logging.getLogger(name)
+    logger_stdout = logging.getLogger(name)
     # set log level
-    logger.setLevel(levels.get(level, logging.WARNING))
+    logger.setLevel(log_levels.get(level, logging.WARNING))
     # set handler for stdout
     stdout_handler = logging.StreamHandler(sys.stdout)
-    stdout_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-    stdout_handler.setFormatter(stdout_format)
-    logger.addHandler(stdout_handler)
+    stdout_handler.setFormatter(logging_format)
+    logger_stdout.addHandler(stdout_handler)
 
-    return logger
+    return logger_stdout
+
+
+def get_file_logger(output_file: str, level: int = 3) -> logging.Logger:
+    """Create a logger which returns the messages in a file. Useful for debugging.
+
+    :return: Logger configured with input parameters. Returns the messages in
+        a output file
+    """
+    logger_file = logging.getLogger(f'{logger_name}_debug')
+    # set log level
+    logger_file.setLevel(log_levels.get(level, logging.WARNING))
+    # set handler for stdout
+    log_rotation_handler = TimedRotatingFileHandler(output_file,
+                                                    when='midnight',
+                                                    interval=1,
+                                                    backupCount=1,
+                                                    utc=True
+                                                    )
+    log_rotation_handler.setFormatter(logging_format)
+    logger_file.addHandler(log_rotation_handler)
+
+    return logger_file
 
 
 def get_wazuh_paths() -> tuple:
@@ -89,12 +113,12 @@ def get_wazuh_paths() -> tuple:
                 if version:
                     wazuh_version = version.group(2)
     except FileNotFoundError as e:
-        logger.critical('ERROR: Wazuh installation not found')
+        logger.critical('Wazuh installation not found')
         raise e
 
     if not (wazuh_path and wazuh_version):
-        error_message = "ERROR: Error reading '/etc/ossec-init.conf' " \
-            "file. Wodle cannot start"
+        error_message = "Error reading '/etc/ossec-init.conf' file. " \
+            "Wodle cannot start"
         raise Exception(error_message)
 
     wazuh_queue = os.path.join(wazuh_path, 'queue', 'ossec', 'queue')

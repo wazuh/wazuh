@@ -21,7 +21,7 @@ try:
     log_level = arguments.log_level
 
     # get logger
-    logger = tools.get_logger(tools.logger_name, log_level)
+    logger = tools.get_stdout_logger(tools.logger_name, log_level)
 
     # get Google Cloud client
     client = WazuhGCloudSubscriber(credentials_file, project, subscription_id)
@@ -34,8 +34,12 @@ try:
 
 except Exception as e:
     # only show the trace in the logger if a parameter is set for doing that
-    logger.critical('An exception happened while running the wodle:\n',
-                    exc_info=e)
+    logger_file = tools.get_file_logger('gcloud_debug.log')
+    exception_message = 'An exception happened while running the wodle'
+    logger_file.critical(f'{exception_message}:\n',
+                         exc_info=e)
+    logger.critical(exception_message)
+
     raise e
 
 else:
