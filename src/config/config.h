@@ -80,6 +80,7 @@ int Read_Socket(XML_NODE node, void *d1, void *d2);
 int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_Monitor(XML_NODE node, void *d1, void *d2);
+int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2);
 
 /* Verifies that the configuration for Syscheck is correct. Return 0 on success or -1 on error.  */
 int Test_Syscheck(const char * path);
