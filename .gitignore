@@ -94,6 +94,7 @@ etc/preloaded-vars.conf
 src/unit_tests/*
 !src/unit_tests/CMakeLists.txt
 !src/unit_tests/*.c
+!src/unit_tests/test_*.conf
 
 # Old firewall-drop.sh (moved to default-firewall-drop.sh)
 active-response/firewall-drop.sh
