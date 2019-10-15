@@ -60,7 +60,11 @@ components:
               remediation:
                 type: string
         id:
-          type: string
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
 
     ApiError:
       type: object
@@ -120,33 +124,68 @@ components:
             oneOf:
               - type: string
               - type: object
+
+    AllItemsResponse:
+      type: object
+      required:
+        - total_affected_items
+      properties:
+        total_affected_items:
+          type: integer
+          format: int32
+          description: Number of items that have successfully did the requested operation.
         failed_items:
           type: array
           description: List of items that have failed when doing the requested operation. It's not returned when it's empty.
           items:
             $ref: '#/components/schemas/SimpleApiError'
-
-    AllItemsAffected:
-      type: object
-      required:
-        - total_affected_items
-      allOf:
-        - $ref: '#/components/schemas/ItemAffected'
-      properties:
-        older_than:
-          type: string
-          format: timeframe
-          default: 7d
-          description: Returns older than parameter used. It can be the default value or the parameter send by the user.
-        total_affected_items:
-          type: integer
-          format: int32
-          description: Number of items that have successfully did the requested operation.
         total_failed_items:
           type: integer
           format: int32
-          minimum: 1
-          description: Number of items that couldn't do the requested operation. Only returned when it's higher than 0.
+          description: Number of items that have failed during the requested operation.
+
+    AllItemsResponseRoles:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/RolesResponse'
+                  - type: integer
+
+    AllItemsResponsePolicies:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/PoliciesResponse'
+                  - type: integer
+
+    AllItemsResponseUsers:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/UsersResponse'
 
     BasicInfo:
       type: object
@@ -581,7 +620,6 @@ components:
             - actions
             - resources
             - effect
-
     PoliciesResponse:
       type: object
       properties:
@@ -608,39 +646,33 @@ components:
             effect:
               type: string
               description: "Effect of the policy"
-
     RolesResponse:
       type: object
       properties:
-        items:
-          type: array
-          items:
-            type: object
-            properties:
-              id:
-                type: integer
-                description: 'Role id'
-              name:
-                type: string
-                description: 'Role name'
-              rule:
-                type: object
-                description: 'Role rule'
-
+        id:
+          type: integer
+          description: 'Role id'
+        name:
+          type: string
+          description: 'Role name'
+        rule:
+          type: object
+          description: 'Role rule'
     RolesRequest:
       type: object
       properties:
-        items:
-          type: array
-          items:
-            type: object
-            properties:
-              name:
-                type: string
-                description: 'Role name'
-              rule:
-                type: object
-                description: 'Role rule'
+        name:
+          type: string
+          description: 'Role name'
+        rule:
+          type: object
+          description: 'Role rule'
+    UsersResponse:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Policy name.
 
     # Cluster and manager models
     WazuhDaemonsStatus:
@@ -2644,12 +2676,22 @@ components:
       in: path
       name: policy_id
       description: 'Specified a policy id'
+      required: true
       schema:
         $ref: '#/components/schemas/Policy_id'
     policy_ids_rbac:
       in: query
       name: 'policy_ids'
       description: 'List of policy ids'
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Policy_id'
+    policy_ids_rbac_required:
+      in: query
+      name: 'policy_ids'
+      description: 'List of policy ids'
+      required: true
       schema:
         type: array
         items:
@@ -2712,6 +2754,7 @@ components:
       in: path
       name: role_id
       description: 'Specified a role id'
+      required: true
       schema:
         $ref: '#/components/schemas/Role_id'
     role_ids:
@@ -3733,7 +3776,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AllItemsAffected'
+                      $ref: '#/components/schemas/AllItemsResponse'
               example:
                 message: All selected agents were deleted
                 data:
@@ -10260,9 +10303,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        allOf:
-                          - $ref: '#/components/schemas/AllItemsAffected'
-                          - $ref: '#/components/schemas/RolesResponse'
+                        $ref: '#/components/schemas/AllItemsResponseRoles'
               example:
                 data:
                   affected_items:
@@ -10322,7 +10363,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/RolesResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseRoles'
               example:
                 data:
                   affected_items:
@@ -10355,7 +10399,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/RolesResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseRoles'
               example:
                 data:
                   affected_items:
@@ -10395,7 +10442,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/RolesResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseRoles'
               example:
                 data:
                   affected_items:
@@ -10436,9 +10486,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        allOf:
-                          - $ref: '#/components/schemas/AllItemsAffected'
-                          - $ref: '#/components/schemas/PoliciesResponse'
+                        $ref: '#/components/schemas/AllItemsResponsePolicies'
               example:
                 data:
                   affected_items:
@@ -10500,7 +10548,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/PoliciesResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponsePolicies'
               example:
                 data:
                   id: 2
@@ -10533,7 +10584,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/PoliciesResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponsePolicies'
               example:
                 data:
                   affected_items:
@@ -10577,7 +10631,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/PoliciesResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponsePolicies'
               example:
                 data:
                   affected_items:
@@ -10607,7 +10664,7 @@ paths:
       operationId: api.controllers.security_controller.set_role_policy
       parameters:
         - $ref: '#/components/parameters/role_id'
-        - $ref: '#/components/parameters/policy_ids_rbac'
+        - $ref: '#/components/parameters/policy_ids_rbac_required'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -10618,7 +10675,6 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/RolesResponse'
               example:
                 data:
                   id: 1
@@ -10643,7 +10699,7 @@ paths:
       operationId: api.controllers.security_controller.remove_role_policy
       parameters:
         - $ref: '#/components/parameters/role_id'
-        - $ref: '#/components/parameters/policy_ids_rbac'
+        - $ref: '#/components/parameters/policy_ids_rbac_required'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -10654,7 +10710,6 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/RolesResponse'
               example:
                 data:
                   id: 2
@@ -10682,7 +10737,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseUsers'
                 example:
                   data:
                     message: 'User created correctly'
@@ -10724,6 +10782,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseUsers'
                 example:
                   message: 'User created correctly'
 
@@ -10743,6 +10805,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseUsers'
                 example:
                   data:
                     message: 'User deleted correctly'
@@ -10777,6 +10843,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseUsers'
                 example:
                   data:
                     message: 'User updated correctly'

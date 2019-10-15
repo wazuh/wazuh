@@ -118,41 +118,47 @@ class AuthenticationManager:
         user = self.session.query(_User).filter_by(username=username).first()
         return check_password_hash(user.password, password) if user else False
 
-    def get_users(self, username: str = None):
-        """
-        get user/users
+    def get_user(self, username: str = None):
+        """Get an specified user in the system
+
         :param username: string Unique user name
-        :return: Get all users or a specified one
+        :return: An specified user
         """
-        users_name = list()
+        users = None
         try:
             if username is not None:
                 users = self.session.query(_User).filter_by(username=username).first()
-            else:
-                users = self.session.query(_User).all()
         except IntegrityError:
             self.session.rollback()
-            return None
-
-        try:
-            if isinstance(users, list):
-                for user in users:
-                    if user is not None:
-                        user_dict = {
-                            'username': user.username
-                        }
-                        users_name.append(user_dict)
-            else:
-                if users is not None:
-                    user_dict = {
-                        'username': users.username
-                    }
-                    users_name.append(user_dict)
-        except UnmappedInstanceError:
-            # User no exist
             return False
 
-        return users_name
+        if users is not None:
+            user_dict = {
+                'username': users.username
+            }
+            return user_dict
+
+        return False
+
+    def get_users(self):
+        """Get all users in the system
+
+        :return: All users
+        """
+        try:
+            users = self.session.query(_User).all()
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+        usernames = list()
+        for user in users:
+            if user is not None:
+                user_dict = {
+                    'username': user.username
+                }
+                usernames.append(user_dict)
+        return usernames
 
     def __enter__(self):
         self.session = _Session()

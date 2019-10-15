@@ -36,7 +36,7 @@ def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by
     failed_items = list()
     with AuthenticationManager() as auth:
         for username in username_list:
-            user = auth.get_users(username)
+            user = auth.get_user(username)
             affected_items.append(user) if user \
                 else failed_items.append(create_exception_dic(username, WazuhError(5001)))
 
@@ -45,8 +45,8 @@ def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by
                                    sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
     return {'affected_items': affected_items,
             'failed_items': failed_items,
-            'str_priority': ['All specified users were show',
-                             'Some users could not be show', 'No user were shown']}
+            'str_priority': ['All specified users were shown',
+                             'Some users could not be shown', 'No user were shown']}
 
 
 @expose_resources(actions=['security:create_user'], resources=['*:*:*'])
@@ -63,7 +63,7 @@ def create_user(username: str = None, password: str = None):
     result = None
     with AuthenticationManager() as auth:
         if auth.add_user(username, password):
-            result = auth.get_users(username)
+            result = auth.get_user(username)
 
     if result is None:
         raise WazuhError(5000, extra_message='The user \'{}\' could not be created'.format(username))
@@ -91,28 +91,34 @@ def update_user(username=None, password=None):
         elif query == 'admin':
             raise WazuhError(5004, extra_message='The users wazuh and wazuh-app can not be updated')
 
-    return {'affected_items': auth.get_users(username[0]),
+    return {'affected_items': [auth.get_user(username[0])],
             'failed_items': list(),
             'str_priority': ['User modified correctly', '', '']}
 
 
 @expose_resources(actions=['security:read'], resources=['user:id:{username_list}'])
-def delete_user(username: str):
+def delete_user(username_list):
     """Delete a specified user
 
-    :param username: Name of the user
+    :param username_list: List of usernames
     :return: Status message
     """
+    affected_items = list()
+    failed_items = list()
     with AuthenticationManager() as auth:
-        query = auth.delete_user(username)
-        if query is False:
-            raise WazuhError(5001, extra_message='The user \'{}\' not exist'.format(username))
-        elif query == 'admin':
-            raise WazuhError(5004, extra_message='The users wazuh and wazuh-app can not be removed')
+        for username in username_list:
+            user = auth.get_user(username)
+            query = auth.delete_user(username)
+            if query is False:
+                failed_items.append(create_exception_dic(username, WazuhError(5001)))
+            elif query == 'admin':
+                failed_items.append(create_exception_dic(username, WazuhError(5004)))
+            elif user:
+                affected_items.append(user)
 
-    return {'affected_items': username,
-            'failed_items': list(),
-            'str_priority': ['User deleted correctly', '', '']}
+    return {'affected_items': affected_items,
+            'failed_items': failed_items,
+            'str_priority': ['Users deleted correctly', 'Some users could not be deleted', 'No users deleted']}
 
 
 @expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'])
@@ -149,8 +155,8 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
                                    sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
     return {'affected_items': affected_items,
             'failed_items': failed_items,
-            'str_priority': ['All specified roles were show',
-                             'Some roles could not be show', 'No role were shown']}
+            'str_priority': ['All specified roles were shown',
+                             'Some roles could not be shown', 'No role were shown']}
 
 
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'])
