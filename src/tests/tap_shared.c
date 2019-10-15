@@ -50,6 +50,17 @@ int test_utf8_random(bool replacement) {
     return r;
 }
 
+int test_strnspn_escaped() {
+    w_assert_uint_eq(strcspn_escaped("ABC\\D ", ' '), 5);
+    w_assert_uint_eq(strcspn_escaped("ABC\\ D", ' '), 6);
+    w_assert_uint_eq(strcspn_escaped("ABCD\\", ' '), 5);
+    w_assert_uint_eq(strcspn_escaped("ABCDE \\ ", ' '), 5);
+    w_assert_uint_eq(strcspn_escaped("ABCDE\\\\ F", ' '), 7);
+    w_assert_uint_eq(strcspn_escaped("ABCDE\\\\", ' '), 7);
+    w_assert_uint_eq(strcspn_escaped("ABC\\ D E", ' '), 6);
+    w_assert_uint_eq(strcspn_escaped("ABCDE", ' '), 5);
+}
+
 int main(void) {
     printf("\n\n   STARTING TEST - OS_SHARED   \n\n");
 
@@ -61,6 +72,9 @@ int main(void) {
 
     /* Test UTF-8 string operations */
     TAP_TEST_MSG(test_utf8_random(false), "Filter a random string into UTF-8 without character replacement.");
+
+    /* Test strnspn_escaped function */
+    TAP_TEST_MSG(test_strnspn_escaped(), "Check return values for stnspn_escaped.");
 
     TAP_PLAN;
     TAP_SUMMARY;
