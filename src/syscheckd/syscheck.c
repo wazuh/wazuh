@@ -454,13 +454,24 @@ int main(int argc, char **argv)
         r = 0;
         while (syscheck.dir[r] != NULL) {
             if (syscheck.opts[r] & REALTIME_ACTIVE) {
-  #ifdef INOTIFY_ENABLED
-                minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
-  #elif defined(WIN32)
-                minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
-  #else
+#if defined (INOTIFY_ENABLED) || defined (WIN32)
+                struct stat file_stat;
+                if (w_stat(syscheck.dir[r], &file_stat) >= 0) {
+                    switch(file_stat.st_mode & S_IFMT) {
+                    case FIM_REGULAR:
+                        mwarn(FIM_WARN_FILE_REALTIME, syscheck.dir[r]);
+                        break;
+
+                    case FIM_DIRECTORY:
+                        minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
+                        break;
+                    }
+                } else {
+                    mdebug2(FIM_STAT_FAILED, syscheck.dir[r], errno, strerror(errno));
+                }
+#else
                 mwarn(FIM_WARN_REALTIME_DISABLED, syscheck.dir[r]);
-  #endif
+#endif
             }
             r++;
         }

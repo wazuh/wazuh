@@ -40,7 +40,8 @@
 #define FIM_INV_REG                             "(6919): Invalid syscheck registry entry: '%s' arch: '%s'."
 #define FIM_REG_OPEN                            "(6920): Unable to open registry key: '%s' arch: '%s'."
 
-#define FIM_WARN_EXTRACT_PERM                   "(6921): It was not possible to extract the permissions of '%s'. Error: '%d'."
+#define FIM_WARN_FILE_REALTIME                  "(6921): Unable to configure real-time option for file: '%s'"
 #define FIM_PATH_NOT_OPEN                       "(6922): Cannot open '%s': %s"
+#define FIM_WARN_SKIP_EVENT                     "(6923): Unable to process file '%s'"
 
 #endif /* WARN_MESSAGES_H */
