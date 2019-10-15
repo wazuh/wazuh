@@ -86,7 +86,7 @@ int fim_scan() {
     minfo(FIM_FREQUENCY_ENDED);
     fim_send_scan_info(FIM_SCAN_END);
 
-    mdebug1(FIM_RUNNING SCAN, time_diff(&start, &end),
+    mdebug1(FIM_RUNNING_SCAN, time_diff(&start, &end),
             (double)(clock() - timeCPU_start) / CLOCKS_PER_SEC);
 
     if (isDebug()) {
@@ -169,6 +169,12 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
     char * json_formated;
     int options;
     int deleted_flag = 0;
+    int position;
+
+    // If the directory have another configuration will come back
+    if (position = fim_configuration_directory(file_name, "file"), dir_position != position) {
+        return(0);
+    }
 
     options = syscheck.opts[dir_position];
 

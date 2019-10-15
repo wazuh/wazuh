@@ -351,7 +351,7 @@
 #define FIM_ERROR_REALTIME_READ_BUFFER              "(6612): Unable to read from real time buffer."
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK         "(6613): Real time Windows callback process: '%s' (%lx)."
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY   "(6614): Real time call back called, but hash is empty."
-#define FIM_ERROR_UPDATE_ENTRY                      "(6615): Can't update entry invalid file or inode"
+#define FIM_ERROR_UPDATE_ENTRY                      "(6615): Can't update entry invalid file '%s'."
 #define FIM_ERROR_REALTIME_MAXNUM_WATCHES           "(6616): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
 #define FIM_ERROR_REALTIME_ADD                      "(6617): Unable to add directory to real time monitoring: '%s'."
 #define FIM_ERROR_REALTIME_INITIALIZE               "(6618): Unable to initialize real time file monitoring."
