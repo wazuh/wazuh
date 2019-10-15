@@ -6,7 +6,7 @@ from wazuh.cluster.utils import get_cluster_status, manager_restart, read_cluste
 from wazuh.utils import md5, mkdir_with_mode
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
-from wazuh.configuration import get_ossec_conf
+from wazuh.configuration import get_ossec_conf, get_internal_options_value
 from wazuh.InputValidator import InputValidator
 from wazuh.database import Connection
 from wazuh import common

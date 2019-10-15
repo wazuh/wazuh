@@ -713,7 +713,7 @@ def get_active_configuration(agent_id, component, configuration):
         raise WazuhException(1307)
 
     components = {"agent", "agentless", "analysis", "auth", "com", "csyslog", "integrator", "logcollector", "mail",
-                  "monitor", "request", "syscheck", "wmodules"}
+                  "monitor", "request", "syscheck", "wmodules", "wazuhdb"}
 
     # checks if the component is correct
     if component not in components:

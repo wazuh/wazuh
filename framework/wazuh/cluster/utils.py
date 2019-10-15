@@ -11,7 +11,7 @@ from glob import glob
 from os.path import join, exists
 
 import wazuh.common as common
-from wazuh.configuration import get_ossec_conf
+from wazuh.configuration import get_ossec_conf, get_internal_options_value
 from wazuh.exception import WazuhException
 
 
@@ -34,7 +34,8 @@ def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
         'port': 1516,
         'bind_addr': '0.0.0.0',
         'nodes': ['NODE_IP'],
-        'hidden': 'no'
+        'hidden': 'no',
+        'log_level': 0
     }
 
     try:
@@ -57,6 +58,22 @@ def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
         raise WazuhException(3004, "Cluster port must be an integer.")
 
     config_cluster['port'] = int(config_cluster['port'])
+
+    # get log_level from internal options if this value exists
+    try:
+        config_cluster['log_level'] = get_internal_options_value('wazuh_clusterd', 'debug', 2, 0)
+    except Exception:
+        pass
+
+    # check log_level value
+    try:
+        config_cluster['log_level'] = int(config_cluster['log_level'])
+        allowed_log_levels = {0, 1, 2}
+        if config_cluster['log_level'] not in allowed_log_levels:
+            raise ValueError
+    except ValueError:
+        raise WazuhException(3004, "Cluster log level only accepts one of these values: 0, 1 or 2")
+
     if config_cluster['disabled'] == 'no':
         config_cluster['disabled'] = False
     elif config_cluster['disabled'] == 'yes':

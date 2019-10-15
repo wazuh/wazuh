@@ -138,7 +138,7 @@ if __name__ == '__main__':
     try:
         debug_mode = configuration.get_internal_options_value('wazuh_clusterd', 'debug', 2, 0) or args.debug_level
     except Exception:
-        debug_mode = 0
+        debug_mode = cluster.read_config().get('log_level')
 
     # set correct permissions on cluster.log file
     if os.path.exists('{0}/logs/cluster.log'.format(common.ossec_path)):
