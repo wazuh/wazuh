@@ -8,8 +8,6 @@
 
 """This module processes events from a Google Cloud subscription."""
 
-import logging
-
 import tools
 from integration import WazuhGCloudSubscriber
 
@@ -22,9 +20,8 @@ try:
     max_messages = arguments.max_messages
     log_level = arguments.log_level
 
-    # set logger
-    logger = logging.getLogger()
-    tools.set_logger(log_level)
+    # get logger
+    logger = tools.get_logger(tools.logger_name, log_level)
 
     # get Google Cloud client
     client = WazuhGCloudSubscriber(credentials_file, project, subscription_id)
@@ -36,6 +33,7 @@ try:
     num_processed_messages = client.process_messages(max_messages)
 
 except Exception as e:
+    # only show the trace in the logger if a parameter is set for doing that
     logger.critical('An exception happened while running the wodle:\n',
                     exc_info=e)
     raise e

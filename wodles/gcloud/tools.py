@@ -9,10 +9,13 @@
 """This module contains generic functions for this wodle."""
 
 import argparse
-import datetime
 import logging
 import os
 import re
+import sys
+
+logger_name = 'gcloud_wodle'
+logger = logging.getLogger(logger_name)
 
 
 def get_script_arguments():
@@ -35,14 +38,15 @@ def get_script_arguments():
                         required=False, default=100)
 
     parser.add_argument('-l', '--log_level', dest='log_level', type=int,
-                        help='Log level', required=False, default=1)
+                        help='Log level', required=False, default=3)
 
     return parser.parse_args()
 
 
-def set_logger(level: int = 1):
-    """Set log level.
+def get_logger(name: str, level: int = 3) -> logging.Logger:
+    """Configure logger.
 
+    :param name: Logger name
     :param level: Log level to be set
     """
     levels = {0: logging.NOTSET,
@@ -52,10 +56,17 @@ def set_logger(level: int = 1):
               4: logging.ERROR,
               5: logging.CRITICAL,
               }
-    log_filename = f"gcloud-{datetime.date.today().strftime('%Y-%m-%d')}.log"
-    logger_format = 'Google Cloud Wodle - %(levelno)s - %(funcName)s: %(message)s'  # noqa: E501
-    logging.basicConfig(filename=log_filename, format=logger_format,
-                        level=levels.get(level, logging.DEBUG))
+
+    logger = logging.getLogger(name)
+    # set log level
+    logger.setLevel(levels.get(level, logging.WARNING))
+    # set handler for stdout
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    stdout_handler.setFormatter(stdout_format)
+    logger.addHandler(stdout_handler)
+
+    return logger
 
 
 def get_wazuh_paths() -> tuple:
@@ -78,7 +89,7 @@ def get_wazuh_paths() -> tuple:
                 if version:
                     wazuh_version = version.group(2)
     except FileNotFoundError as e:
-        logging.critical('ERROR: Wazuh installation not found')
+        logger.critical('ERROR: Wazuh installation not found')
         raise e
 
     if not (wazuh_path and wazuh_version):

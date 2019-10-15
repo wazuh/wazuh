@@ -17,6 +17,8 @@ from google.cloud import pubsub_v1 as pubsub
 
 import tools
 
+logger = logging.getLogger(tools.logger_name)
+
 
 class WazuhGCloudSubscriber:
     """Class for sending events from Google Cloud to Wazuh."""
