@@ -126,7 +126,7 @@ def get_agents(pretty=False, wait_for_complete=False, list_agents=None, offset=N
 
 
 @exception_handler
-def restart_agents(pretty=False, wait_for_complete=False, list_agents=None):
+def restart_agents(pretty=False, wait_for_complete=False, list_agents='*'):
     """ Restarts all agents
 
     :param pretty: Show results in human-readable format
@@ -142,9 +142,9 @@ def restart_agents(pretty=False, wait_for_complete=False, list_agents=None):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          broadcasting=list_agents is None,
-                          logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          broadcasting=list_agents == '*',
+                          logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 

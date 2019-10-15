@@ -165,6 +165,7 @@ class DistributedAPI:
         def run_local():
             self.logger.debug("Starting to execute request locally")
             common.rbac.set(self.rbac_permissions)
+            common.broadcast.set(self.broadcasting)
             data = self.f(**self.f_kwargs)
             self.logger.debug("Finished executing request locally")
             return data
@@ -252,7 +253,8 @@ class DistributedAPI:
                 "is_async": self.is_async,
                 "local_client_arg": self.local_client_arg,
                 "basic_services": self.basic_services,
-                "rbac_permissions": self.rbac_permissions
+                "rbac_permissions": self.rbac_permissions,
+                "broadcasting": self.broadcasting
                 }
 
     def get_error_info(self, e) -> Dict:
@@ -373,19 +375,22 @@ class DistributedAPI:
         if 'agent_id' in self.f_kwargs or 'agent_list' in self.f_kwargs:
             # Group requested agents by node_name
             requested_agents = self.f_kwargs.get('agent_list', None) or [self.f_kwargs['agent_id']]
-            system_agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
-                                                            filters={'id': requested_agents},
+            filters = {'id': requested_agents} if requested_agents != '*' else None
+            system_agents = agent.Agent.get_agents_overview(select=select_node,
+                                                            limit=None,
+                                                            filters=filters,
                                                             sort={'fields': ['node_name'], 'order': 'desc'})['items']
             node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
                          itertools.groupby(system_agents, key=operator.itemgetter('node_name'))}
 
-            # Add non existing ids in the master's dictionary entry
-            non_existent_ids = list(set(requested_agents) - set(map(operator.itemgetter('id'), system_agents)))
-            if non_existent_ids:
-                if self.node_info['node'] in node_name:
-                    node_name[self.node_info['node']].extend(non_existent_ids)
-                else:
-                    node_name[self.node_info['node']] = non_existent_ids
+            if requested_agents != '*':  # When all agents are requested cannot be non existent ids
+                # Add non existing ids in the master's dictionary entry
+                non_existent_ids = list(set(requested_agents) - set(map(operator.itemgetter('id'), system_agents)))
+                if non_existent_ids:
+                    if self.node_info['node'] in node_name:
+                        node_name[self.node_info['node']].extend(non_existent_ids)
+                    else:
+                        node_name[self.node_info['node']] = non_existent_ids
 
             return node_name
 
