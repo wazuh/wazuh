@@ -65,6 +65,8 @@ def _expand_resource(resource):
         return set()
     # We return the value casted to set
     else:
+        if resource_type == 'agent:id':
+            system_agents.set(get_agents_info())
         return {value}
 
 
