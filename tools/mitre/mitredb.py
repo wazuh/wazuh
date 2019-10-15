@@ -38,19 +38,68 @@ def create_connection(db_file):
     return conn
  
  
-def create_table(conn, table_sql):
+def table_stmt(conn, sql_stmt):
     """ 
-    Create o delete a table from the table_sql statement.
+    Create or delete a table from the sql statement.
 
     :param conn: Connection object
-    :param table_sql: a CREATE TABLE or DELETE TABLE statement
+    :param sql_stmt: a CREATE TABLE or DELETE TABLE statement
     :return:
     """
     try:
         c = conn.cursor()
-        c.execute(table_sql)
+        c.execute(sql_stmt)
     except Error as e:
         print(e)
+
+def create_delete_tables(conn):
+    """ 
+    First it deletes attack, has_phase and has_platform tables and then it creates them.
+
+    :return:
+    """
+    sql_delete_attack = """DROP TABLE IF EXISTS attack;"""
+ 
+    sql_delete_has_phase = """DROP TABLE IF EXISTS has_phase;"""
+
+    sql_delete_has_platform = """DROP TABLE IF EXISTS has_platform;"""
+ 
+    sql_create_attack = """CREATE TABLE IF NOT EXISTS attack (
+                                    id TEXT PRIMARY KEY, 
+                                    json TEXT
+                                );"""
+ 
+    sql_create_has_phase = """CREATE TABLE IF NOT EXISTS has_phase (
+                                    attack_id TEXT, 
+                                    phase_name TEXT,
+                                    FOREIGN KEY(attack_id) REFERENCES attack(id),
+                                    PRIMARY KEY (attack_id, phase_name)
+                                );"""
+
+    sql_create_has_platform = """CREATE TABLE IF NOT EXISTS has_platform (
+                                    attack_id TEXT, 
+                                    platform_name TEXT,
+                                    FOREIGN KEY(attack_id) REFERENCES attack(id),
+                                    PRIMARY KEY (attack_id, platform_name)
+                                );"""                            
+ 
+    # Delete attack table if exists
+    table_stmt(conn, sql_delete_attack)
+
+    # Delete has_phase table if exists
+    table_stmt(conn, sql_delete_has_phase)
+
+    # Delete has_platform table if exists
+    table_stmt(conn, sql_delete_has_platform)
+
+    # Create attack table
+    table_stmt(conn, sql_create_attack)
+
+    # Create has_phase table
+    table_stmt(conn, sql_create_has_phase)
+
+    # Create has_platform table
+    table_stmt(conn, sql_create_has_platform)
 
 def insert_attack_table(conn, id, json_object):
     """ 
@@ -109,76 +158,13 @@ def insert_platform_table(conn, attack_id, platform_name):
     except Error as e:
         print(e)
 
-def find(name, path):
-    for root, dirs, files in os.walk(path):
-        if name in files:
-            return os.path.join(root, name)
- 
-def main(database=None):
-    """
-    This function create the mitre database in a chosen directory. It deletes, creates and fills the mitre tables.
+def parse_json(pathfile, conn):
+    """ 
+    Parse enterprise-attack.json and fill mitre.db's tables.
 
-    :param database: Directory where mitre.db is. Default: /var/ossec/var/db/mitre.db
+    :param pathfile: Path directory where enterprise-attack.json file is
     :return:
     """
-    if database is None:
-        database = "/var/ossec/var/db/mitre.db"
-    else:
-        if not os.path.isdir('/'.join((str(database).split('/')[0:-1]))):
-            raise Exception('Error: Directory not found.')
-    
-    pathfile = find('enterprise-attack.json', '../..')
-
-    sql_delete_attack = """DROP TABLE IF EXISTS attack;"""
- 
-    sql_delete_has_phase = """DROP TABLE IF EXISTS has_phase;"""
-
-    sql_delete_has_platform = """DROP TABLE IF EXISTS has_platform;"""
- 
-    sql_create_attack = """CREATE TABLE IF NOT EXISTS attack (id TEXT PRIMARY KEY, json TEXT);"""
- 
-    sql_create_has_phase = """CREATE TABLE IF NOT EXISTS has_phase (
-                                    attack_id TEXT, 
-                                    phase_name TEXT,
-                                    FOREIGN KEY(attack_id) REFERENCES attack(id),
-                                    PRIMARY KEY (attack_id, phase_name)
-                                );"""
-
-    sql_create_has_platform = """CREATE TABLE IF NOT EXISTS has_platform (
-                                    attack_id TEXT, 
-                                    platform_name TEXT,
-                                    FOREIGN KEY(attack_id) REFERENCES attack(id),
-                                    PRIMARY KEY (attack_id, platform_name)
-                                );"""                            
- 
-    # Create a database connection
-    conn = create_connection(database)
-
-    # Delete tables
-    if conn is not None:
-        # Delete attack table if exists
-        create_table(conn, sql_delete_attack)
-
-        # Delete has_phase table if exists
-        create_table(conn, sql_delete_has_phase)
-
-        # Delete has_platform table if exists
-        create_table(conn, sql_delete_has_platform)
-
-    # Create tables
-    if conn is not None:
-        # Create attack table
-        create_table(conn, sql_create_attack)
- 
-        # Create has_phase table
-        create_table(conn, sql_create_has_phase)
-
-        # Create has_platform table
-        create_table(conn, sql_create_has_platform)
-    else:
-        print("Error! Cannot create the database connection.")
-    
-    # Parse enterprise-attack.json file:
     try: 
         with open(pathfile) as json_file:
             datajson = json.load(json_file)
@@ -219,7 +205,40 @@ def main(database=None):
         print("Mitre JSON File not found")
     except KeyError as err:
         print("JSON Item not found: ")
-              
+
+def find(name, path):
+    for root, dirs, files in os.walk(path):
+        if name in files:
+            return os.path.join(root, name)
+ 
+def main(database=None):
+    """
+    Main function that creates the mitre database in a chosen directory. It deletes, creates and fills the mitre tables.
+
+    :param database: Directory where mitre.db is. Default: /var/ossec/var/db/mitre.db
+    :return:
+    """
+    if database is None:
+        database = "/var/ossec/var/db/mitre.db"
+    else:
+        if not os.path.isdir('/'.join((str(database).split('/')[0:-1]))):
+            raise Exception('Error: Directory not found.')
+    
+    pathfile = find('enterprise-attack.json', '../..')                            
+ 
+    # Create a database connection
+    conn = create_connection(database)
+
+    # Delete and create tables
+    if conn is not None:
+        create_delete_tables(conn)
+    else:
+        print("Error! Cannot create the database connection.")
+    
+    # Parse enterprise-attack.json file:
+    parse_json(pathfile, conn)
+
+    # User and group permissions        
     os.chmod(database, 0o660)
     uid = pwd.getpwnam("root").pw_uid
     gid = grp.getgrnam("ossec").gr_gid
