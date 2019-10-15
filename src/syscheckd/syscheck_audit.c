@@ -174,10 +174,8 @@ int set_auditd_config(void) {
             if (symlink(AUDIT_CONF_FILE, audit_path) == 0) {
                 break;
             }
-
-            break;
-
-        default: // Fallthrough
+        // Fallthrough
+        default:
             merror(LINK_ERROR, audit_path, AUDIT_CONF_FILE, errno, strerror(errno));
             return -1;
         }
