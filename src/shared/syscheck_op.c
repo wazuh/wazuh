@@ -887,7 +887,7 @@ void decode_win_attributes(char *str, unsigned int attrs) {
 }
 
 int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array) {
-    int writted = 0;
+    int written = 0;
     int size = 0;
     char *perm_it = NULL;
     char *base_it = NULL;
@@ -985,11 +985,11 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
 
             cJSON_AddItemToObject(a_found, perm_type_str, perm_type);
             perm_type = NULL;
-            writted = 1;
+            written = 1;
         } else if (seq) {
-            writted = snprintf(str, 50, "Permissions changed.\n");
+            written = snprintf(str, 50, "Permissions changed.\n");
         } else {
-            size = snprintf(str, str_size, "%s (%s): %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+            snprintf(str, str_size, "%s (%s): %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
                             account_name,
                             a_type == '0' ? "ALLOWED" : "DENIED",
                             mask & GENERIC_READ ? " GENERIC_READ," : "",
@@ -1010,11 +1010,16 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
                             mask & FILE_READ_ATTRIBUTES ? " FILE_READ_ATTRIBUTES," : "",
                             mask & FILE_WRITE_ATTRIBUTES ? " FILE_WRITE_ATTRIBUTES," : ""
                         );
+
+            size = strlen(str);
+
             if (size > 1) {
                 str[size - 1] = '\n';
             }
-            writted += size;
+
+            written += size;
             str += size;
+            str_size -= size;
         }
 
 next_it:
@@ -1024,11 +1029,11 @@ next_it:
         }
     }
 
-    if (str && !seq) {
+    if (str && !seq && size > 1) {
         *(str-2) = '\0';
     }
 
-    return writted;
+    return written;
 error:
     if (perm_type) {
         cJSON_Delete(perm_type);
