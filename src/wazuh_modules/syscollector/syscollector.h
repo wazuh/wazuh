@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * March 9, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -52,7 +52,6 @@
 #define V_LENGTH    256
 #define COMMAND_LENGTH  512
 #define PATH_LENGTH     512
-#define TIME_LENGTH     64
 #define ADDR6_LENGTH    256
 #define IFNAME_LENGTH   256
 #define SERIAL_LENGTH   512
@@ -111,6 +110,7 @@ typedef struct wm_sys_flags_t {
     unsigned int netinfo:1;                 // Network inventory
     unsigned int osinfo:1;                  // OS inventory
     unsigned int programinfo:1;             // Installed packages inventory
+    unsigned int hotfixinfo:1;              // Windows hotfixes installed
     unsigned int portsinfo:1;               // Opened ports inventory
     unsigned int allports:1;                // Scan only listening ports or all
     unsigned int procinfo:1;                // Running processes inventory
@@ -154,6 +154,11 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all);
 // Opened ports inventory for Windows
 void sys_ports_windows(const char* LOCATION, int check_all);
 
+// Opened ports inventory for MAC OS X
+#ifdef __MACH__
+    void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all);
+#endif
+
 // Installed packages inventory for Linux
 void sys_packages_linux(int queue_fd, const char* WM_SYS_LOCATION);
 char * sys_deb_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id);
@@ -163,14 +168,23 @@ char * sys_rpm_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id
 // Installed programs inventory for Windows
 void sys_programs_windows(const char* LOCATION);
 
+// Installed hotfixes inventory for Windows
+void sys_hotfixes(const char* LOCATION);
+
 // Network inventory for Windows XP
 char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO AdapterInfo, int ID, char * timestamp);
 
 // Get values about a single program from the registry
 void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
 
+// Get values about a single hotfix from the registry
+void send_hotfix(const char *hotfix, int usec, const char *timestamp, int ID, const char *LOCATION);
+
 // List installed programs from the registry
 void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
+
+// List installed hotfixes from the registry
+void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const char *LOCATION);
 
 // List Windows users from the registry
 void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION);
@@ -214,6 +228,9 @@ void sys_network_windows(const char* LOCATION);
 // Running processes inventory
 void sys_proc_linux(int queue_fd, const char* LOCATION);
 void sys_proc_windows(const char* LOCATION);
+#ifdef __MACH__
+void sys_proc_mac(int queue_fd, const char* LOCATION);
+#endif
 
 // Read string from a byte array until find a NULL byte
 char* read_string(u_int8_t* bytes);
@@ -231,6 +248,11 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
 void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddrs_ptr, __attribute__((unused)) gateway *gate);
 // Create the interface list
 int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr);
+
+// Generate a random ID
+int wm_sys_get_random_id();
+// Initialize hw_info struct values
+void init_hw_info(hw_info *info);
 
 #endif
 #endif

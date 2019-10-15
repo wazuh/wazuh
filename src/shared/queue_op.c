@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * October 2, 2017
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -18,17 +18,17 @@ w_queue_t * queue_init(size_t size) {
     queue->size = size;
     queue->elements = 0;
     w_mutex_init(&queue->mutex, NULL);
-    pthread_cond_init(&queue->available, NULL);
-    pthread_cond_init(&queue->available_not_empty, NULL);
+    w_cond_init(&queue->available, NULL);
+    w_cond_init(&queue->available_not_empty, NULL);
     return queue;
 }
 
 void queue_free(w_queue_t * queue) {
     if (queue) {
         free(queue->data);
-        pthread_mutex_destroy(&queue->mutex);
-        pthread_cond_destroy(&queue->available);
-        pthread_cond_destroy(&queue->available_not_empty);
+        w_mutex_destroy(&queue->mutex);
+        w_cond_destroy(&queue->available);
+        w_cond_destroy(&queue->available_not_empty);
         free(queue);
     }
 }

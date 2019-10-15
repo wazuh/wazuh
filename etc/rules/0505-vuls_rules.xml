@@ -21,6 +21,7 @@
     <decoded_as>json</decoded_as>
     <field name="vuls.integration">vuls</field>
     <description>Vuls integration event.</description>
+    <options>no_full_log</options>
   </rule>
 
   <rule id="22402" level="7">
@@ -29,6 +30,7 @@
       <match>has a update date lower</match>
       <description>$(vuls.scanned_cve) has a update date lower than $(vuls.days) days.</description>
       <group>gdpr_IV_35.7.d,</group>
+    <options>no_full_log</options>
   </rule>
 
   <rule id="22403" level="5">
@@ -36,6 +38,7 @@
       <field name="vuls.affected_packages">\.+</field>
       <description>Low vulnerability $(vuls.scanned_cve) detected in scanning launched on c with $(vuls.assurance) reliability ($(vuls.detection_method)). Score: $(vuls.core) ($(vuls.source)). Affected packages: $(vuls.affected_packages)</description>
       <group>gdpr_IV_35.7.d,</group>
+    <options>no_full_log</options>
   </rule>
 
   <rule id="22404" level="7">
@@ -43,6 +46,7 @@
       <field name="vuls.score">^4|^5|^6</field>
       <description>Medium vulnerability $(vuls.scanned_cve) detected in scanning launched on $(vuls.scan_date) with $(vuls.assurance) reliability ($(vuls.detection_method)). $(vuls.tittle). Score: $(vuls.score) ($(vuls.source)). Affected packages: $(vuls.affected_packages)</description>
       <group>gdpr_IV_35.7.d,</group>
+    <options>no_full_log</options>
   </rule>
 
   <rule id="22405" level="10">
@@ -50,6 +54,7 @@
       <field name="vuls.score">^7|^8</field>
       <description>High vulnerability $(vuls.scanned_cve) detected in scanning launched on $(vuls.scan_date) with $(vuls.assurance) reliability ($(vuls.detection_method)). $(vuls.tittle). Score: $(vuls.score) ($(vuls.source)). Affected packages: $(vuls.affected_packages)</description>
       <group>gdpr_IV_35.7.d,</group>
+    <options>no_full_log</options>
   </rule>
 
   <rule id="22406" level="13">
@@ -57,6 +62,7 @@
       <field name="vuls.score">^9|^10</field>
       <description>Critical vulnerability $(vuls.scanned_cve) detected in scanning launched on $(vuls.scan_date) with $(vuls.assurance) reliability ($(vuls.detection_method)). $(vuls.tittle). Score: $(vuls.score) ($(vuls.source)). Affected packages: $(vuls.affected_packages)</description>
       <group>gdpr_IV_35.7.d,</group>
+    <options>no_full_log</options>
   </rule>
 
   <rule id="22407" level="7">
@@ -64,6 +70,7 @@
       <field name="vuls.affected_packages">kernel</field>
       <description>Vulnerability $(vuls.scanned_cve) affects critical parts of the system.</description>
       <group>gdpr_IV_35.7.d,</group>
+    <options>no_full_log</options>
   </rule>
 
 </group>

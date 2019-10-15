@@ -1,5 +1,5 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import json
 import logging
@@ -119,6 +119,8 @@ class LocalClient(client.AbstractClientManager):
                                              path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
         except ConnectionRefusedError:
             raise exception.WazuhException(3012)
+        except MemoryError:
+            raise exception.WazuhException(1119)
         except Exception as e:
             raise exception.WazuhException(3009, str(e))
 

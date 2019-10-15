@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * June 06, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -226,7 +226,7 @@ int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output
 // Update checks control: return 0 on success
 int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check) {
     int result;
-    long value;
+    long value = 0;
     long last = atol(last_check);
 
     if(result = wdb_scan_info_get(wdb, "fim", "fim_second_check", &value), result < 0) {

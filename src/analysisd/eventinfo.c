@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -74,6 +74,16 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
             goto end;
+        }
+
+        if (!(rule->context_opts & GLOBAL_FREQUENCY)) {
+            if ((!lf->agent_id) || (!my_lf->agent_id)) {
+                continue;
+            }
+
+            if (strcmp(lf->agent_id, my_lf->agent_id) != 0) {
+                continue;
+            }
         }
 
         /* Check for same ID */
@@ -296,6 +306,16 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
             goto end;
         }
 
+        if (!(rule->context_opts & GLOBAL_FREQUENCY)) {
+            if ((!lf->agent_id) || (!my_lf->agent_id)) {
+                continue;
+            }
+
+            if (strcmp(lf->agent_id, my_lf->agent_id) != 0) {
+                continue;
+            }
+        }
+
         /* Check for same ID */
         if (rule->context_opts & SAME_ID) {
             if ((!lf->id) || (!my_lf->id)) {
@@ -505,8 +525,18 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             goto end;
         }
 
+        if (!(rule->context_opts & GLOBAL_FREQUENCY)) {
+            if ((!lf->agent_id) || (!my_lf->agent_id)) {
+                continue;
+            }
+
+            if (strcmp(lf->agent_id, my_lf->agent_id) != 0) {
+                continue;
+            }
+        }
+
         /* The category must be the same */
-        else if (lf->decoder_info->type != my_lf->decoder_info->type) {
+        if (lf->decoder_info->type != my_lf->decoder_info->type) {
             goto next_it;
         }
 
@@ -688,6 +718,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->command = NULL;
     lf->url = NULL;
     lf->data = NULL;
+    lf->extra_data = NULL;
     lf->systemname = NULL;
 
     if (lf->fields) {
@@ -905,6 +936,10 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->data);
     }
 
+    if (lf->extra_data) {
+        free(lf->extra_data);
+    }
+
     if (lf->systemname) {
         free(lf->systemname);
     }
@@ -1107,10 +1142,12 @@ char* ParseRuleComment(Eventinfo *lf) {
             field = lf->id;
         } else if (strcmp(var, "url") == 0) {
             field = lf->url;
-        } else if (strcmp(var, "data") == 0 || strcmp(var, "extra_data") == 0) {
+        } else if (strcmp(var, "data") == 0) {
             field = lf->data;
         } else if (strcmp(var, "status") == 0) {
             field = lf->status;
+        } else if (strcmp(var, "extra_data") == 0) {
+            field = lf->extra_data;
         } else if (strcmp(var, "system_name") == 0) {
             field = lf->systemname;
         }
@@ -1232,6 +1269,10 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     if(lf->data){
         os_strdup(lf->data,lf_cpy->data);
+    }
+
+    if(lf->extra_data){
+        os_strdup(lf->extra_data, lf_cpy->extra_data);
     }
 
     if(lf->systemname){

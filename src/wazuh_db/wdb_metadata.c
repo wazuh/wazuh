@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * June 06, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -27,7 +27,7 @@ static const char *SQL_METADATA_STMT[] = {
 int wdb_metadata_initialize (wdb_t *wdb) {
     int result = 0;
 
-    if (wdb_metadata_insert_entry(wdb, "db_version", "2") < 0) {
+    if (wdb_metadata_insert_entry(wdb, "db_version", "3") < 0) {
         merror("Couldn't fill metadata into database '%s'", wdb->agent_id);
         result = -1;
     }

@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _DBDCONFIG__H
-#define _DBDCONFIG__H
+#ifndef DBDCONFIG_H
+#define DBDCONFIG_H
 
 /* Database config structure */
 typedef struct _DBConfig {
@@ -35,5 +35,4 @@ typedef struct _DBConfig {
 #define MYSQLDB 0x002
 #define POSTGDB 0x004
 
-#endif /* _DBDCONFIG__H */
-
+#endif /* DBDCONFIG_H */

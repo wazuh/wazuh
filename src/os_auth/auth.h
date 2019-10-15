@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef _AUTHD_H
-#define _AUTHD_H
+#ifndef AUTHD_H
+#define AUTHD_H
 
 #ifndef ARGV0
 #define ARGV0 "ossec-authd"
@@ -98,4 +98,4 @@ extern pthread_mutex_t mutex_keys;
 extern pthread_cond_t cond_pending;
 extern authd_config_t config;
 
-#endif /* _AUTHD_H */
+#endif /* AUTHD_H */

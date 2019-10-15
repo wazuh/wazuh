@@ -1,0 +1,170 @@
+# Security Configuration Assessment
+# Checks for web-related vulnerabilities on Linux systems
+# Copyright (C) 2015-2019, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+
+policy:
+  id: "web_vulnerabilities"
+  file: "web_vulnerabilities.yml"
+  name: "System audit for web-related vulnerabilities"
+  description: "Guidance for establishing a secure configuration for web-related vulnerabilities."
+
+requirements:
+  title: Check if web-server files are present
+  description: "Requirements for running the SCA scan against the web-vulnerability policy."
+  condition: any
+  rules:
+    - 'f:$php.ini'
+    - 'd:$web_dirs'
+
+# In case your configuration files are not located on these paths, set the variables to match your php.ini file and your web directory
+# Other possible default locations for php.ini: /var/www/conf/php.ini,/etc/php5/apache2/php.ini
+# Other possible default locations for web directory: /var/htdocs,/home/httpd,/usr/local/apache,/usr/local/apache2,/usr/local/www
+variables:
+  $php.ini: /etc/php.ini
+  $web_dirs: /var/www
+
+# PHP checks
+checks:
+  - id: 10500
+    title: "PHP - Ensure 'Register globals' are not enabled"
+    condition: all
+    rules:
+      - 'f:$php.ini -> r:^register_globals\s*\t*=\s*\t*Off|register_globals\s*\t*=\s*\t*off'
+
+  - id: 10501
+    title: "PHP - Ensure 'Expose PHP' is not enabled"
+    condition: all
+    rules:
+      - 'f:$php.ini -> r:^expose_php\s*\t*=\s*\t*Off|^expose_php\s*\t*=\s*\t*off'
+
+  - id: 10502
+    title: "PHP - Ensure 'Allow URL fopen' is not enabled"
+    condition: all
+    rules:
+      - 'f:$php.ini -> r:^allow_url_fopen\s*\t*=\s*\t*Off|^allow_url_fopen\s*\t*=\s*\t*off'
+
+  - id: 10503
+    title: "PHP - Ensure 'Displaying of errors' is not enabled"
+    condition: all
+    rules:
+      - 'f:$php.ini -> r:^display_errors\s*\t*=\s*\t*Off|^display_errors\s*\t*=\s*\t*off'
+
+# WEB checks
+  - id: 10504
+    title: "Web exploits: '.yop' is an uncommon file name inside htdocs - Possible compromise"
+    compliance:
+      - pci_dss: ["6.5", "6.6", "11.4"]
+      - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+    condition: none
+    rules:
+      - 'd:$web_dirs -> ^.yop$'
+
+  - id: 10505
+    title: "Web exploits: 'id' is an uncommon file name inside htdocs - Possible compromise"
+    compliance:
+      - pci_dss: ["6.5", "6.6", "11.4"]
+      - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+    condition: none
+    rules:
+      - 'd:$web_dirs -> ^id$'
+
+  - id: 10506
+    title: "Web exploits: '.ssh' is an uncommon file name inside htdocs"
+    compliance:
+      - pci_dss: ["6.5", "6.6", "11.4"]
+      - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+    condition: none
+    rules:
+      - 'd:$web_dirs -> ^.ssh$'
+
+  - id: 10507
+    title: "Web exploits: '...' is an uncommon file name inside htdocs - Possible compromise"
+    compliance:
+      - pci_dss: ["6.5", "6.6", "11.4"]
+      - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+    condition: none
+    rules:
+      - 'd:$web_dirs -> ^...$'
+
+  - id: 10508
+    title: "Web exploits: '.shell' is an uncommon file name inside htdocs - Possible compromise"
+    compliance:
+      - pci_dss: ["6.5", "6.6", "11.4"]
+      - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+    condition: none
+    rules:
+      - 'd:$web_dirs -> ^.shell$'
+
+# Outdated Web applications
+  - id: 10509
+    title: "Web vulnerability - Outdated WordPress installation"
+    compliance:
+      - pci_dss: ["6.5", "6.6", "11.4"]
+      - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+    condition: none
+    rules:
+      - 'd:$web_dirs -> ^version.php$ -> r:^\.wp_version && r:4.4.2'
+
+  - id: 10510
+    title: "Web vulnerability - Outdated Joomla installation"
+    compliance:
+      - pci_dss: ["6.5", "6.6", "11.4"]
+      - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+    condition: none
+    rules:
+      - 'd:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:3.4.8'
+
+  - id: 10511
+    title: "Web vulnerability - Outdated osCommerce (v2.2) installation"
+    compliance:
+      - pci_dss: ["6.5", "6.6", "11.4"]
+      - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+    condition: none
+    rules:
+      - 'd:$web_dirs -> ^application_top.php$ -> r:osCommerce && r:2.2-'
+
+# Known backdoors
+  - id: 10512
+    title: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode)"
+    compliance:
+      - pci_dss: ["6.5", "6.6", "11.4"]
+      - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+    condition: none
+    rules:
+      - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\(\paWYo'
+
+  - id: 10513
+    title: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode(POST))"
+    compliance:
+      - pci_dss: ["6.5", "6.6", "11.4"]
+      - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+    condition: none
+    rules:
+      - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\(\S_POST'
+
+  - id: 10514
+    title: "Web vulnerability - .htaccess file compromised"
+    compliance:
+      - pci_dss: ["6.5", "6.6", "11.4"]
+      - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+    references:
+      - https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
+    condition: none
+    rules:
+      - 'd:$web_dirs -> ^.htaccess$ -> r:RewriteCond\s+\S+HTTP_REFERERS\s+\S+google'
+
+  - id: 10515
+    title: "Web vulnerability - .htaccess file compromised - auto append"
+    compliance:
+      - pci_dss: ["6.5", "6.6", "11.4"]
+      - nist_800_53: ["SA.11", "SC.5", "SI.3", "SI.4"]
+    references:
+      - https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
+    condition: none
+    rules:
+      - 'd:$web_dirs -> ^.htaccess$ -> r:^php_value\s*auto_append_file'

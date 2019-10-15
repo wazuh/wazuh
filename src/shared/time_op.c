@@ -3,15 +3,15 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * October 4, 2017
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
-#ifndef WIN32
 #include "shared.h"
 
+#ifndef WIN32
 #ifdef __MACH__
 #include <mach/clock.h>
 #include <mach/mach.h>
@@ -44,13 +44,28 @@ void time_sub(struct timespec * a, const struct timespec * b) {
 
 #endif // WIN32
 
+char *w_get_timestamp(time_t time) {
+    struct tm localtm;
+    char *timestamp;
+
+    localtime_r(&time, &localtm);
+
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
+
+    snprintf(timestamp, TIME_LENGTH, "%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+
+    return timestamp;
+}
+
 #ifdef WIN32
 #include <windows.h>
 #define EPOCH_DIFFERENCE 11644473600LL
 
 long long int get_windows_time_epoch() {
     FILETIME ft = {0};
-    LARGE_INTEGER li = {0};  
+    LARGE_INTEGER li = {0};
 
     GetSystemTimeAsFileTime(&ft);
     li.LowPart = ft.dwLowDateTime;
@@ -62,7 +77,7 @@ long long int get_windows_time_epoch() {
 }
 
 long long int get_windows_file_time_epoch(FILETIME ft) {
-    LARGE_INTEGER li = {0};  
+    LARGE_INTEGER li = {0};
 
     li.LowPart = ft.dwLowDateTime;
     li.HighPart = ft.dwHighDateTime;

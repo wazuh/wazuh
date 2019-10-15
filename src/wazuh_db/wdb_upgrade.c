@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * December 12, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -40,6 +40,13 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
         }
         /* Fallthrough */
     case 2:
+        mdebug2("Updating database for agent %s to version 3", wdb->agent_id);
+        if(result = wdb_sql_exec(wdb, schema_upgrade_v3_sql), result == -1) {
+            new_wdb = wdb_backup(wdb, version);
+            wdb = new_wdb ? new_wdb : wdb;
+        }
+        /* Fallthrough */
+    case 3:
         //Updated to last version
         break;
     default:
@@ -59,7 +66,7 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
     os_strdup(wdb->agent_id, sagent_id),
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, sagent_id);
 
-    if (wdb_close(wdb) != -1) {
+    if (wdb_close(wdb, TRUE) != -1) {
         if (wdb_create_backup(sagent_id, version) != -1) {
             mwarn("Creating DB backup and create clear DB for agent: '%s'", sagent_id);
             unlink(path);

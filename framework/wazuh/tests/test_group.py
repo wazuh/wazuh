@@ -1,12 +1,14 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest.mock import patch
 import pytest
 
-from wazuh.agent import Agent
-from wazuh.exception import WazuhException
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh.agent import Agent
+        from wazuh.exception import WazuhException
 
 
 class AgentMock:

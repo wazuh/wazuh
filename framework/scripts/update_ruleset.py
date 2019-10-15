@@ -581,7 +581,6 @@ def usage():
 
 
 if __name__ == "__main__":
-    mywazuh = Wazuh(get_init=True)
     cluster_config = read_config()
 
     if cluster_config['node_type'] != 'master' and not cluster_config['disabled']:

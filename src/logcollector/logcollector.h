@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef __LOGREADER_H
-#define __LOGREADER_H
+#ifndef LOGREADER_H
+#define LOGREADER_H
 
 #ifndef ARGV0
 #define ARGV0 "ossec-logcollector"
@@ -29,7 +29,7 @@
 /* Read logcollector config */
 int LogCollectorConfig(const char *cfgfile);
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getLocalfileConfig(void);
 cJSON *getSocketConfig(void);
 cJSON *getLogcollectorInternalOptions(void);
@@ -201,4 +201,4 @@ extern int OUTPUT_QUEUE_SIZE;
 extern rlim_t nofile;
 #endif
 
-#endif /* __LOGREADER_H */
+#endif /* LOGREADER_H */

@@ -189,7 +189,7 @@ disable()
     elif [ "X$2" = "Xintegrator" ]; then
         echo "$INTEGRATOR_MSG";
     elif [ "X$2" = "Xdebug" ]; then
-        echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
+        echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid disable option."
@@ -489,11 +489,6 @@ stopa()
     fi
 }
 
-buildCDB()
-{
-    ${DIR}/bin/ossec-makelists > /dev/null 2>&1
-}
-
 ### MAIN HERE ###
 
 if [ "$1" = "-j" ]; then
@@ -526,7 +521,6 @@ restart)
     else
         stopa
     fi
-    buildCDB
     start
     rm -f ${DIR}/var/run/.restart
     unlock

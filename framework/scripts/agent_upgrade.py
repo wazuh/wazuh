@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from sys import exit, path, argv, stdout
 from os.path import dirname
@@ -48,9 +48,6 @@ def list_outdated():
 def main():
     # Capture Ctrl + C
     signal(SIGINT, signal_handler)
-
-    # Initialize framework
-    myWazuh = Wazuh(get_init=True)
 
     # Check arguments
     if args.list_outdated:

@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef __CAGENTD_H
-#define __CAGENTD_H
+#ifndef CAGENTD_H
+#define CAGENTD_H
 
 typedef struct agent_flags_t {
     unsigned int auto_restart:1;
@@ -45,4 +45,11 @@ typedef struct _agent {
 /* Frees the Client struct  */
 void Free_Client(agent * config);
 
-#endif /* __CAGENTD_H */
+/**
+ * @brief Check if address has default values
+ * @param servers Server(s) configuration block in agent ossec.conf
+ * @return Returns true if successful and false if not success
+ */
+bool Validate_Address(agent_server *servers);
+
+#endif /* CAGENTD_H */

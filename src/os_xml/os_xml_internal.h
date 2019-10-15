@@ -2,14 +2,14 @@
  * Copyright (C) 2014 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef OS_XML_INTERNAL_H_
-#define OS_XML_INTERNAL_H_
+#ifndef OS_XML_INTERNAL_H
+#define OS_XML_INTERNAL_H
 
 #define _R_CONFS    '<'
 #define _R_CONFE    '>'
@@ -27,4 +27,4 @@
 //#define XML_ATTR                102
 //#define XML_VARIABLE_BEGIN      '$'
 
-#endif /* OS_XML_INTERNAL_H_ */
+#endif /* OS_XML_INTERNAL_H */

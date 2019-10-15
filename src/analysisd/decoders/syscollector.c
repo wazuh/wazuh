@@ -2,7 +2,7 @@
 * Copyright (C) 2015-2019, Wazuh Inc.
 * August 30, 2017.
 *
-* This program is a free software; you can redistribute it
+* This program is free software; you can redistribute it
 * and/or modify it under the terms of the GNU General Public
 * License (version 2) as published by the FSF - Free Software
 * Foundation.
@@ -32,6 +32,7 @@ static int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket);
 static int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket);
 static int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket);
 static int decode_package( Eventinfo *lf, cJSON * logJSON,int *socket);
+static int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket);
 static int decode_process( Eventinfo *lf, cJSON * logJSON,int *socket);
 
@@ -75,9 +76,12 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     }
 
     // Parsing event.
-    logJSON = cJSON_Parse(lf->log);
+
+    const char *jsonErrPtr;
+    logJSON = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0);
     if (!logJSON) {
-        mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
+        mdebug1("Error parsing JSON event.");
+        mdebug2("Input JSON: '%s", lf->log);
         return (0);
     }
 
@@ -100,6 +104,13 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     else if (strcmp(msg_type, "program") == 0 || strcmp(msg_type, "program_end") == 0) {
         if (decode_package(lf, logJSON,socket) < 0) {
             mdebug1("Unable to send packages information to Wazuh DB.");
+            cJSON_Delete (logJSON);
+            return (0);
+        }
+    }
+    else if (strcmp(msg_type, "hotfix") == 0 || strcmp(msg_type, "hotfix_end") == 0) {
+        if (decode_hotfix(lf, logJSON, socket) < 0) {
+            mdebug1("Unable to send hotfixes information to Wazuh DB.");
             cJSON_Delete (logJSON);
             return (0);
         }
@@ -640,6 +651,7 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         cJSON * sysname = cJSON_GetObjectItem(inventory, "sysname");
         cJSON * release = cJSON_GetObjectItem(inventory, "release");
         cJSON * version = cJSON_GetObjectItem(inventory, "version");
+        cJSON * os_release = cJSON_GetObjectItem(inventory, "os_release");
 
         char * msg = NULL;
         os_calloc(OS_SIZE_6144, sizeof(char), msg);
@@ -741,6 +753,13 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (version) {
             wm_strcat(&msg, version->valuestring, '|');
             fillData(lf,"os.release_version",version->valuestring);
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (os_release) {
+            wm_strcat(&msg, os_release->valuestring, '|');
+            fillData(lf,"os.os_release",os_release->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
@@ -1216,6 +1235,53 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
     return 0;
 }
 
+int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
+    char * msg = NULL;
+    cJSON * hotfix;
+    cJSON * scan_id;
+    cJSON * scan_time;
+
+    if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
+        return -1;
+    }
+
+    os_calloc(OS_SIZE_1024, sizeof(char), msg);
+
+    if (hotfix = cJSON_GetObjectItem(logJSON, "hotfix"), hotfix) {
+        scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
+
+        snprintf(msg, OS_SIZE_1024, "agent %s hotfix save %d|%s|%s|",
+                lf->agent_id,
+                scan_id->valueint,
+                scan_time->valuestring,
+                hotfix->valuestring);
+
+        if (sc_send_db(msg, socket) < 0) {
+            return -1;
+        }
+    } else {
+        // Looking for 'end' message.
+        char * msg_type = NULL;
+
+        msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
+
+        if (!msg_type) {
+            merror("Invalid message. Type not found.");
+            free(msg);
+            return -1;
+        } else if (strcmp(msg_type, "hotfix_end") == 0) {
+            snprintf(msg, OS_SIZE_1024 - 1, "agent %s hotfix del %d", lf->agent_id, scan_id->valueint);
+            if (sc_send_db(msg,socket) < 0) {
+                return -1;
+            }
+        } else {
+            free(msg);
+        }
+    }
+
+    return 0;
+}
+
 int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
 
     int i;
@@ -1561,11 +1627,7 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
 }
 
 int sc_send_db(char *msg, int *sock) {
-    char response[OS_SIZE_128 + 1];
-    ssize_t length;
-    fd_set fdset;
-    struct timeval timeout = {0, 1000};
-    int size = strlen(msg);
+
     int retval = -1;
     int attempts;
 
@@ -1587,6 +1649,8 @@ int sc_send_db(char *msg, int *sock) {
             goto end;
         }
     }
+
+    int size = strlen(msg);
 
     // Send msg to Wazuh DB
     if (OS_SendSecureTCP(*sock, size + 1, msg) != 0) {
@@ -1618,14 +1682,8 @@ int sc_send_db(char *msg, int *sock) {
         }
     }
 
-    // Wait for socket
-    FD_ZERO(&fdset);
-    FD_SET(*sock, &fdset);
-
-    if (select(*sock + 1, &fdset, NULL, NULL, &timeout) < 0) {
-        merror("at sc_send_db(): at select(): %s (%d)", strerror(errno), errno);
-        goto end;
-    }
+    char response[OS_SIZE_128 + 1];
+    ssize_t length;
 
     // Receive response from socket
     length = OS_RecvSecureTCP(*sock, response, OS_SIZE_128);
@@ -1639,7 +1697,7 @@ int sc_send_db(char *msg, int *sock) {
             goto end;
 
         default:
-            response[length] = '\0';
+            response[length >= 0 ? length : 0] = '\0';
 
             if (strcmp(response, "ok")) {
                 merror("at sc_send_db(): received: '%s'", response);

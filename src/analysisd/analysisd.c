@@ -2,7 +2,7 @@
  * Copyright (C) 2010-2012 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -16,8 +16,11 @@
 #define ARGV0 "ossec-analysisd"
 #endif
 
-#include <time.h>
 #include "shared.h"
+#include <time.h>
+#if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#include <sys/sysctl.h>
+#endif
 #include "alerts/alerts.h"
 #include "alerts/getloglocation.h"
 #include "os_execd/execd.h"
@@ -37,6 +40,7 @@
 #include "labels.h"
 #include "state.h"
 #include "syscheck_op.h"
+#include "lists_make.h"
 
 #ifdef PRELUDE_OUTPUT_ENABLED
 #include "output/prelude.h"
@@ -547,6 +551,7 @@ int main_analysisd(int argc, char **argv)
                 free(Config.lists);
                 Config.lists = NULL;
             }
+            Lists_OP_MakeAll(0, 0);
         }
 
         {
@@ -990,7 +995,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                   rule->comment);
 #endif
 
-
     /* Check if any decoder pre-matched here for syscheck event */
     if(lf->decoder_syscheck_id != 0 && (rule->decoded_as &&
             rule->decoded_as != lf->decoder_syscheck_id)){
@@ -1024,6 +1028,27 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
         if (!OSMatch_Execute(lf->id,
                              strlen(lf->id),
                              rule->id)) {
+            return (NULL);
+        }
+    }
+
+    /* Check for the system name */
+    if (rule->system_name) {
+        if (!lf->systemname) {
+            return (NULL);
+        }
+
+        if (!OSMatch_Execute(lf->systemname, strlen(lf->systemname), rule->system_name)) {
+            return (NULL);
+        }
+    }
+
+    /* Check for the protocol */
+    if (rule->protocol) {
+        if (!lf->protocol) {
+            return (NULL);
+        }
+        if (!OSMatch_Execute(lf->protocol, strlen(lf->protocol), rule->protocol)) {
             return (NULL);
         }
     }
@@ -1208,14 +1233,24 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             }
         }
 
-        /* Get extra data */
-        if (rule->extra_data) {
+        /* Check for the data */
+        if (rule->data) {
             if (!lf->data) {
                 return (NULL);
             }
+            if (!OSMatch_Execute(lf->data, strlen(lf->data), rule->data)) {
+                return (NULL);
+            }
+        }
 
-            if (!OSMatch_Execute(lf->data,
-                                 strlen(lf->data),
+        /* Check for the extra_data */
+        if (rule->extra_data) {
+            if(!lf->extra_data){
+                return(NULL);
+            }
+
+            if (!OSMatch_Execute(lf->extra_data,
+                                 strlen(lf->extra_data),
                                  rule->extra_data)) {
                 return (NULL);
             }
@@ -1378,6 +1413,38 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                         return (NULL);
                     }
                     if (!OS_DBSearch(list_holder, lf->action)) {
+                        return (NULL);
+                    }
+                    break;
+                case RULE_SYSTEMNAME:
+                    if (!lf->systemname) {
+                        return (NULL);
+                    }
+                    if (!OS_DBSearch(list_holder, lf->systemname)){
+                        return (NULL);
+                    }
+                    break;
+                case RULE_PROTOCOL:
+                    if (!lf->protocol) {
+                        return (NULL);
+                    }
+                    if (!OS_DBSearch(list_holder, lf->protocol)){
+                        return (NULL);
+                    }
+                    break;
+                case RULE_DATA:
+                    if (!lf->data) {
+                        return (NULL);
+                    }
+                    if (!OS_DBSearch(list_holder, lf->data)){
+                        return (NULL);
+                    }
+                    break;
+                case RULE_EXTRA_DATA:
+                    if (!lf->extra_data) {
+                        return (NULL);
+                    }
+                    if (!OS_DBSearch(list_holder, lf->extra_data)) {
                         return (NULL);
                     }
                     break;
@@ -2265,7 +2332,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 lf->full_log = __stats_comment;
 
                 /* Alert for statistical analysis */
-                if (stats_rule->alert_opts & DO_LOGALERT) {
+                if (stats_rule && (stats_rule->alert_opts & DO_LOGALERT)) {
                     os_calloc(1, sizeof(Eventinfo), lf_cpy);
                     w_copy_event_for_log(lf,lf_cpy);
 

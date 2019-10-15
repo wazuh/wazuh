@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Shell script functions for the OSSEC HIDS
+# Shell script functions for Wazuh
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
@@ -19,4 +19,3 @@ isFile()
     echo "${FALSE}"
     return 1;
 }
-
