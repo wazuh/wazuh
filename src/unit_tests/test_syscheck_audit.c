@@ -19,67 +19,88 @@
 
 /* redefinitons/wrapping */
 
-int __wrap_OS_ConnectUnixDomain() {
+int __wrap_OS_ConnectUnixDomain()
+{
     return mock();
 }
 
-int __wrap_IsDir(const char * file) {
+int __wrap_IsDir(const char * file)
+{
     check_expected(file);
     return mock();
 }
 
-int __wrap_IsLink(const char * file) {
+int __wrap_IsLink(const char * file)
+{
     check_expected(file);
     return mock();
 }
 
-int __wrap_IsFile(const char * file) {
+int __wrap_IsFile(const char * file)
+{
     check_expected(file);
     return mock();
 }
 
-int __wrap_IsSocket(const char * sock) {
+int __wrap_IsSocket(const char * sock)
+{
     check_expected(sock);
     return mock();
 }
 
-int __wrap_audit_restart() {
+int __wrap_audit_restart()
+{
     return mock();
 }
 
-int __wrap__minfo() {
+int __wrap__minfo()
+{
     return 0;
 }
 
-int __wrap__merror() {
+int __wrap__merror()
+{
     return 0;
 }
 
-int __wrap_fopen(const char *filename, const char *mode) {
+int __wrap_fopen(const char *filename, const char *mode)
+{
     check_expected(filename);
     return mock();
 }
 
-int __wrap_fwrite() {
+int __wrap_fwrite()
+{
     return 1;
 }
 
-int __wrap_fprintf() {
+int __wrap_fprintf()
+{
     return 1;
 }
 
-int __wrap_fclose() {
+int __wrap_fclose()
+{
     return 0;
 }
 
-int __wrap_unlink() {
+int __wrap_unlink()
+{
     return 1;
 }
 
-int __wrap_symlink(const char *path1, const char *path2) {
+int __wrap_symlink(const char *path1, const char *path2)
+{
     check_expected(path1);
     check_expected(path2);
     return mock();
+}
+
+static int free_string(void **state)
+{
+    char * string = *state;
+    free(string);
+    return 0;
 }
 
 /* tests */
@@ -91,7 +112,7 @@ void test_check_auditd_enabled(void **state)
     int ret;
 
     ret = check_auditd_enabled();
-    assert_int_equal(-1, ret);
+    assert_return_code(ret, 0);
 }
 
 
@@ -102,7 +123,7 @@ void test_init_auditd_socket_success(void **state)
 
     will_return(__wrap_OS_ConnectUnixDomain, 124);
     ret = init_auditd_socket();
-    assert_int_equal(124, ret);
+    assert_int_equal(ret, 124);
 }
 
 
@@ -113,7 +134,7 @@ void test_init_auditd_socket_failure(void **state)
 
     will_return(__wrap_OS_ConnectUnixDomain, -5);
     ret = init_auditd_socket();
-    assert_int_equal(-1, ret);
+    assert_int_equal(ret, -1);
 }
 
 
@@ -310,6 +331,20 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void
 }
 
 
+void test_audit_get_id(void **state)
+{
+    (void) state;
+
+    const char* event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 res=1";
+
+    char *ret;
+    ret = audit_get_id(event);
+    *state = ret;
+
+    assert_string_equal(ret, "1571145421.379:659");
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_check_auditd_enabled),
@@ -321,6 +356,7 @@ int main(void) {
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_symlink),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error),
+        cmocka_unit_test_teardown(test_audit_get_id, free_string),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

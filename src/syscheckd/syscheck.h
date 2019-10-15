@@ -199,6 +199,7 @@ char *get_converted_link_path(int position);
 #define READING_MODE 0
 #define HEALTHCHECK_MODE 1
 int audit_init(void);
+char * audit_get_id(const char * event);
 void audit_read_events(int *audit_sock, int reading_mode);
 void audit_set_db_consistency(void);
 int check_auditd_enabled(void);
