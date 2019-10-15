@@ -22,7 +22,7 @@
  * 
  * @return int, it returns 0 on success and -1 on failure.
  */
-int mitre_load();
+int mitre_load(char *mode);
 
 /**
  * @brief This function gets a Mitre technique ID's tactics from Hash Table 'mitre table'.

@@ -11,7 +11,7 @@
 
 static OSHash *mitre_table;
 
-int mitre_load(){
+int mitre_load(char * mode){
     int result = 0;
     int hashcheck;
     int i;
@@ -38,7 +38,7 @@ int mitre_load(){
     /* Get Mitre IDs from Mitre's database */
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
     snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT id from attack;");
-    if(result = wdb_send_query(wazuhdb_query, &response), result == -2) {
+    if (result = wdb_send_query(wazuhdb_query, &response), result == -2) {
         mdebug1("Mitre info loading failed. Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
         merror("Mitre matrix information could not be loaded.");
         goto end;
@@ -52,7 +52,7 @@ int mitre_load(){
     }
 
     /* Parse IDs string */
-    if(root = cJSON_Parse(response+3), !root) {
+    if (root = cJSON_Parse(response+3), !root) {
         mdebug1("Mitre info loading failed. Query response cannot be parsered: %s", response);
         merror("Mitre matrix information could not be loaded.");
         os_free(response);
@@ -65,7 +65,7 @@ int mitre_load(){
     os_free(response);
 
     /* Getting array size */
-    if(size_ids = cJSON_GetArraySize(root), size_ids == 0) {
+    if (size_ids = cJSON_GetArraySize(root), size_ids == 0) {
         mdebug1("Mitre info loading failed. Query's response has 0 elements.");
         merror("Mitre matrix information could not be loaded.");
         cJSON_Delete(root);
@@ -120,6 +120,7 @@ int mitre_load(){
             merror("Mitre matrix information could not be loaded.");
             cJSON_Delete(tactics_json);
             cJSON_Delete(root);
+            cJSON_Delete(tactics_array);
             os_free(response);
             result = -1;
             goto end;
@@ -131,6 +132,7 @@ int mitre_load(){
                 merror("Mitre matrix information could not be loaded.");
                 cJSON_Delete(tactics_json);
                 cJSON_Delete(root);
+                cJSON_Delete(tactics_array);
                 os_free(response);
                 result = -1;
                 goto end;
@@ -144,9 +146,13 @@ int mitre_load(){
             merror("Mitre matrix information could not be loaded.");
             cJSON_Delete(tactics_json);
             cJSON_Delete(root);
+            cJSON_Delete(tactics_array);
             os_free(response);
             result = -1;
             goto end;
+        }
+        if (mode != NULL && !strcmp(mode,"test")) {
+            cJSON_Delete(tactics_array);
         }
         cJSON_Delete(tactics_json);
         os_free(response);
@@ -154,10 +160,13 @@ int mitre_load(){
     cJSON_Delete(root);
 
 end:
+    if (mode != NULL && !strcmp(mode,"test")) {
+        OSHash_Free(mitre_table);
+    }
     os_free(wazuhdb_query);
     return result;
 }
 
-cJSON * mitre_get_attack(const char * mitre_id){
+cJSON * mitre_get_attack(const char * mitre_id) {
     return OSHash_Get(mitre_table, mitre_id);
 }
