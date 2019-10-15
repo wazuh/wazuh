@@ -14,27 +14,6 @@
 #include "agentd.h"
 
 static time_t g_saved_time = 0;
-static char *rand_keepalive_str2(char *dst, int size);
-
-static char *rand_keepalive_str2(char *dst, int size)
-{
-    static const char text[] = "abcdefghijklmnopqrstuvwxyz"
-                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                               "0123456789"
-                               "!@#$%^&*()_+-=;'[],./?";
-    int i;
-    int len;
-
-    srandom_init();
-    len = os_random() % (size - 1);
-    len = len >= 0 ? len : -len;
-
-    for ( i = 0; i < len; ++i ) {
-        dst[i] = text[(unsigned)os_random() % (sizeof text - 1)];
-    }
-    dst[i] = '\0';
-    return dst;
-}
 
 /* Return the names of the files in a directory */
 char *getsharedfiles()
@@ -100,7 +79,6 @@ char *get_agent_ip()
 /* Periodically send notification to server */
 void run_notify()
 {
-    char keep_alive_random[KEEPALIVE_SIZE];
     char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE];
     static char tmp_labels[OS_MAXSTR - OS_HEADER_SIZE] = { '\0' };
     char *shared_files;
@@ -111,7 +89,6 @@ void run_notify()
     agent_ip = get_agent_ip();
 
     tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
-    keep_alive_random[0] = '\0';
     curr_time = time(0);
 
 #ifndef ONEWAY_ENABLED
@@ -165,29 +142,27 @@ void run_notify()
         }
     }
 
-    rand_keepalive_str2(keep_alive_random, KEEPALIVE_SIZE);
-
     /* Create message */
-    if(agent_ip && strcmp(agent_ip, "Err")){
+    if(agent_ip && strcmp(agent_ip, "Err")) {
         char label_ip[60];
-        snprintf(label_ip,sizeof label_ip,"#\"_agent_ip\":%s",agent_ip);
+        snprintf(label_ip, sizeof label_ip, "#\"_agent_ip\":%s", agent_ip);
         if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n%s",
-                    getuname(), md5sum, tmp_labels, shared_files, label_ip, keep_alive_random);
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n",
+                    getuname(), md5sum, tmp_labels, shared_files, label_ip);
         } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n%s",
-                    getuname(), tmp_labels, shared_files, label_ip, keep_alive_random);
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n",
+                    getuname(), tmp_labels, shared_files, label_ip);
         }
     }
     else {
         if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n%s",
-                    getuname(), md5sum, tmp_labels, shared_files, keep_alive_random);
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n",
+                    getuname(), md5sum, tmp_labels, shared_files);
         } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n%s",
-                    getuname(), tmp_labels, shared_files, keep_alive_random);
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n",
+                    getuname(), tmp_labels, shared_files);
         }
     }
     free(agent_ip);
