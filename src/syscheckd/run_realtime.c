@@ -310,7 +310,7 @@ int realtime_win32read(win32rtfim *rtlocald)
                                &rtlocald->overlap,
                                RTCallBack);
     if (rc == 0) {
-        merror(FIM_ERROR_REALTIME_DIRECTORYCHANGES, rtlocald->dir);
+        mdebug1(FIM_REALTIME_DIRECTORYCHANGES, rtlocald->dir);
         sleep(2);
     }
 
@@ -385,7 +385,6 @@ int realtime_adddir(const char *dir, int whodata)
     }
     else {
         os_calloc(1, sizeof(win32rtfim), rtlocald);
-        minfo("~~ add dirtb ->(%d) '%s'", whodata, wdchar);
 
         rtlocald->h = CreateFile(dir,
                                 FILE_LIST_DIRECTORY,

@@ -215,7 +215,6 @@ char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
 unsigned int w_get_file_attrs(const char *file_path);
 int w_get_file_permissions(const char *file_path, char *permissions, int perm_size);
 const char *get_group(__attribute__((unused)) int gid);
-char *escape_perm_sum(char *sum);
 int copy_ace_info(void *ace, char *perm, int perm_size);
 int w_get_account_info(SID *sid, char **account_name, char **account_domain);
 

@@ -14,18 +14,17 @@
 #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 
 #include <sys/types.h>
-#include <sys/sysctl.h>
 #include <sys/vmmeter.h>
 #include <sys/sysctl.h>
 #include <sys/socket.h>
 #include <net/if.h>
 #include <net/if_dl.h>
+#include <net/if_types.h>
+#include <net/route.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <net/if_types.h>
 #include <ifaddrs.h>
 #include <string.h>
-#include <net/route.h>
 
 
 #ifdef __MACH__
@@ -36,6 +35,8 @@
 #include <grp.h>
 #include <sys/resource.h>
 #include <sys/proc.h>
+#include <sys/proc_info.h>
+#include <netdb.h>
 
 #if !HAVE_SOCKADDR_SA_LEN
 #define SA_LEN(sa)      af_to_len(sa->sa_family)
@@ -51,11 +52,9 @@
 
 hw_info *get_system_bsd();    // Get system information
 
-#ifdef __MACH__
-    OSHash *gateways;
-#endif
 
 #if defined(__MACH__)
+OSHash *gateways;
 
 char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_id);
 
@@ -1361,31 +1360,72 @@ int getGatewayList(OSHash *gateway_list){
     return 0;
 }
 
-#ifdef __MACH__
+char *get_port_state(int state) {
+    char *port_state;
+    os_calloc(STATE_LENGTH, sizeof(char), port_state);
 
-void sys_proc_mac(int queue_fd, const char* LOCATION){
-    char *timestamp;
+    switch(state){
+        case TSI_S_ESTABLISHED:
+            snprintf(port_state, STATE_LENGTH, "%s", "established");
+            break;
+        case TSI_S_SYN_SENT:
+            snprintf(port_state, STATE_LENGTH, "%s", "syn_sent");
+            break;
+        case TSI_S_SYN_RECEIVED:
+            snprintf(port_state, STATE_LENGTH, "%s", "syn_recv");
+            break;
+        case TSI_S_FIN_WAIT_1:
+            snprintf(port_state, STATE_LENGTH, "%s", "fin_wait1");
+            break;
+        case TSI_S_FIN_WAIT_2:
+            snprintf(port_state, STATE_LENGTH, "%s", "fin_wait2");
+            break;
+        case TSI_S_TIME_WAIT:
+            snprintf(port_state, STATE_LENGTH, "%s", "time_wait");
+            break;
+        case TSI_S_CLOSED:
+            snprintf(port_state, STATE_LENGTH, "%s", "close");
+            break;
+        case TSI_S__CLOSE_WAIT:
+            snprintf(port_state, STATE_LENGTH, "%s", "close_wait");
+            break;
+        case TSI_S_LAST_ACK:
+            snprintf(port_state, STATE_LENGTH, "%s", "last_ack");
+            break;
+        case TSI_S_LISTEN:
+            snprintf(port_state, STATE_LENGTH, "%s", "listening");
+            break;
+        case TSI_S_CLOSING:
+            snprintf(port_state, STATE_LENGTH, "%s", "closing");
+            break;
+        default:
+            snprintf(port_state, STATE_LENGTH, "%s", "unknown");
+            break;
+    }
+    return port_state;
+}
+
+void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
+
+    time_t now = time(NULL);
     struct tm localtm;
-    int random_id = os_random();
+    localtime_r(&now, &localtm);
 
-    if(random_id < 0) {
+    char *timestamp;
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
+    snprintf(timestamp, TIME_LENGTH - 1, "%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+
+    int random_id = os_random();
+    if (random_id < 0) {
         random_id = -random_id;
     }
 
     // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
+    const int usec = 1000000 / wm_max_eps;
 
-    time_t now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp, TIME_LENGTH-1, "%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
-
-    mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
-
+    mtdebug1(WM_SYS_LOGTAG, "Starting ports inventory.");
 
     pid_t * pids = NULL;
     int32_t maxproc;
@@ -1395,11 +1435,181 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     os_calloc(maxproc, 1, pids);
     int count = proc_listallpids(pids, maxproc);
 
+    int index;
+    for(index = 0; index < count; ++index) {
+        pid_t pid = pids[index];
+        // Figure out the size of the buffer needed to hold the list of open FDs
+        int bufferSize = proc_pidinfo(pid, PROC_PIDLISTFDS, 0, 0, 0);
+        if (bufferSize == -1) {
+            mterror(WM_SYS_LOGTAG, "Unable to get open file handles for %d", pid);
+            continue;
+        }
+
+        // Get the list of open FDs
+        struct proc_fdinfo *procFDInfo;
+        os_malloc(bufferSize, procFDInfo);
+        proc_pidinfo(pid, PROC_PIDLISTFDS, 0, procFDInfo, bufferSize);
+        int numberOfProcFDs = bufferSize / PROC_PIDLISTFD_SIZE;
+
+        cJSON* procPorts = cJSON_CreateArray();
+        int i;
+        for(i = 0; i < numberOfProcFDs; i++) {
+            if(procFDInfo[i].proc_fdtype != PROX_FDTYPE_SOCKET) {
+                continue;
+            }
+
+            struct  proc_bsdinfo pbsd;
+            proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &pbsd, PROC_PIDTBSDINFO_SIZE);
+            struct socket_fdinfo socketInfo;
+            int bytesUsed = proc_pidfdinfo(pid, procFDInfo[i].proc_fd, PROC_PIDFDSOCKETINFO, &socketInfo, PROC_PIDFDSOCKETINFO_SIZE);
+
+            if (bytesUsed != PROC_PIDFDSOCKETINFO_SIZE) {
+                continue;
+            }
+
+            if (socketInfo.psi.soi_kind != SOCKINFO_TCP && socketInfo.psi.soi_kind != SOCKINFO_IN) {
+                continue;
+            }
+
+            char laddr[NI_MAXHOST];
+            char faddr[NI_MAXHOST];
+
+            switch(socketInfo.psi.soi_family) {
+                case AF_INET6: {
+                    struct sockaddr_in6 lsin6 = {0};
+                    lsin6.sin6_family = AF_INET6;
+                    lsin6.sin6_addr  = (struct in6_addr)socketInfo.psi.soi_proto.pri_in.insi_laddr.ina_6;
+                    getnameinfo((struct sockaddr *)&lsin6, sizeof(lsin6), laddr, sizeof(laddr), NULL, 0, NI_NUMERICHOST);
+                    lsin6.sin6_addr  = (struct in6_addr)socketInfo.psi.soi_proto.pri_in.insi_faddr.ina_6;
+                    getnameinfo((struct sockaddr *)&lsin6, sizeof(lsin6), faddr, sizeof(faddr), NULL, 0, NI_NUMERICHOST);
+                    break;
+                }
+                case AF_INET: {
+                    struct sockaddr_in lsin = {0};
+                    lsin.sin_family = AF_INET;
+                    lsin.sin_addr = (struct in_addr)socketInfo.psi.soi_proto.pri_in.insi_laddr.ina_46.i46a_addr4;
+                    getnameinfo((struct sockaddr *)&lsin, sizeof(lsin), laddr, sizeof(laddr), NULL, 0, NI_NUMERICHOST);
+                    lsin.sin_addr = (struct in_addr)socketInfo.psi.soi_proto.pri_in.insi_faddr.ina_46.i46a_addr4;
+                    getnameinfo((struct sockaddr *)&lsin, sizeof(lsin), faddr, sizeof(faddr), NULL, 0, NI_NUMERICHOST);
+                    break;
+                }
+                default:
+                    continue;
+            }
+
+            char protocol[5];
+            snprintf(protocol, 5, "%s%c",
+                socketInfo.psi.soi_kind == SOCKINFO_TCP ? "tcp" : "udp",
+                socketInfo.psi.soi_family == AF_INET6 ? '6' : '\0');
+
+
+            int localPort = (int)ntohs(socketInfo.psi.soi_proto.pri_in.insi_lport);
+            int remotePort = (int)ntohs(socketInfo.psi.soi_proto.pri_in.insi_fport);
+
+            cJSON *object = cJSON_CreateObject();
+            cJSON_AddStringToObject(object, "type", "port");
+            cJSON_AddNumberToObject(object, "ID", random_id);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
+
+            cJSON *port = cJSON_CreateObject();
+            cJSON_AddItemToObject(object, "port", port);
+            cJSON_AddStringToObject(port, "protocol", protocol);
+            cJSON_AddStringToObject(port, "local_ip", laddr);
+            cJSON_AddNumberToObject(port, "local_port", localPort);
+            cJSON_AddStringToObject(port, "remote_ip", faddr);
+            cJSON_AddNumberToObject(port, "remote_port", remotePort);
+            cJSON_AddNumberToObject(port, "PID", pid);
+            cJSON_AddStringToObject(port, "process", pbsd.pbi_name);
+
+            if (!strncmp(protocol, "tcp", 3)) {
+                char *port_state = get_port_state((int)socketInfo.psi.soi_proto.pri_tcp.tcpsi_state);
+                cJSON_AddStringToObject(port, "state", port_state);
+                if (strcmp(port_state, "listening") && !check_all) {
+                    os_free(port_state);
+                    cJSON_Delete(object);
+                    continue;
+                }
+                os_free(port_state);
+            }
+
+            cJSON *prev_port = NULL;
+            int found = 0;
+            cJSON_ArrayForEach(prev_port, procPorts) {
+                if(cJSON_Compare(port, prev_port, 1)) {
+                    found = 1;
+                    break;
+                }
+            }
+
+            if (found) {
+                cJSON_Delete(object);
+                continue;
+            }
+
+            cJSON_AddItemToArray(procPorts, cJSON_Duplicate(port, 1));
+
+            char *string = cJSON_PrintUnformatted(object);
+            mtdebug2(WM_SYS_LOGTAG, "sys_ports_mac() sending '%s'", string);
+            wm_sendmsg(usec, queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+            os_free(string);
+            cJSON_Delete(object);
+        }
+
+        cJSON_Delete(procPorts);
+        os_free(procFDInfo);
+    }
+
+    os_free(pids);
+    cJSON *object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "port_end");
+    cJSON_AddNumberToObject(object, "ID", random_id);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
+    os_free(timestamp);
+
+    char *string = cJSON_PrintUnformatted(object);
+    cJSON_Delete(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_ports_mac() sending '%s'", string);
+    SendMSG(queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+    os_free(string);
+}
+
+void sys_proc_mac(int queue_fd, const char* LOCATION){
+
+    int random_id = os_random();
+    if(random_id < 0) {
+        random_id = -random_id;
+    }
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
+    time_t now = time(NULL);
+    struct tm localtm;
+    localtime_r(&now, &localtm);
+
+    char *timestamp;
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
+
+    snprintf(timestamp, TIME_LENGTH-1, "%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+
+    mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
+
+
+    int32_t maxproc;
+    size_t len = sizeof(maxproc);
+    sysctlbyname("kern.maxproc", &maxproc, &len, NULL, 0);
+
+    pid_t *pids = NULL;
+    os_calloc(maxproc, 1, pids);
+    int count = proc_listallpids(pids, maxproc);
+
     mtdebug2(WM_SYS_LOGTAG, "Number of processes retrieved: %d", count);
 
-    int index;
     cJSON *proc_array = cJSON_CreateArray();
 
+    int index;
     for(index=0; index < count; ++index) {
 
         struct proc_taskallinfo task_info;
@@ -1500,8 +1710,6 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     cJSON_Delete(object);
     os_free(end_msg);
 }
-
-#endif
 
 #endif
 

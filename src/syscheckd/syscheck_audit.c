@@ -175,8 +175,6 @@ int set_auditd_config(void) {
                 break;
             }
 
-            break;
-
         default: // Fallthrough
             merror(LINK_ERROR, audit_path, AUDIT_CONF_FILE, errno, strerror(errno));
             return -1;
@@ -352,54 +350,54 @@ int init_regex(void) {
     }
 
     static const char *pattern_pname_hex = " exe=([A-F0-9]*)";
-    if (regcomp(&regexCompiled_pname_hex, pattern_pname_hex, REG_EXTENDED)) {
+    if (regcomp(&regexCompiled_pname_hex, pattern_pname_hex, REG_EXTENDED | REG_ICASE)) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "pname_hex");
         return -1;
     }
 
     static const char *pattern_cwd_hex = " cwd=([A-F0-9]*)";
-    if (regcomp(&regexCompiled_cwd_hex, pattern_cwd_hex, REG_EXTENDED)) {
+    if (regcomp(&regexCompiled_cwd_hex, pattern_cwd_hex, REG_EXTENDED | REG_ICASE)) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "cwd_hex");
         return -1;
     }
 
     static const char *pattern_dir_hex = " dir=([A-F0-9]*)";
-    if (regcomp(&regexCompiled_dir_hex, pattern_dir_hex, REG_EXTENDED)) {
+    if (regcomp(&regexCompiled_dir_hex, pattern_dir_hex, REG_EXTENDED | REG_ICASE)) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dir_hex");
         return -1;
     }
 
     static const char *pattern_path0_hex = " item=0 name=([A-F0-9]*)";
-    if (regcomp(&regexCompiled_path0_hex, pattern_path0_hex, REG_EXTENDED)) {
+    if (regcomp(&regexCompiled_path0_hex, pattern_path0_hex, REG_EXTENDED | REG_ICASE)) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path0_hex");
         return -1;
     }
 
     static const char *pattern_path1_hex = " item=1 name=([A-F0-9]*)";
-    if (regcomp(&regexCompiled_path1_hex, pattern_path1_hex, REG_EXTENDED)) {
+    if (regcomp(&regexCompiled_path1_hex, pattern_path1_hex, REG_EXTENDED | REG_ICASE)) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path1_hex");
         return -1;
     }
 
     static const char *pattern_path2_hex = " item=2 name=([A-F0-9]*)";
-    if (regcomp(&regexCompiled_path2_hex, pattern_path2_hex, REG_EXTENDED)) {
+    if (regcomp(&regexCompiled_path2_hex, pattern_path2_hex, REG_EXTENDED | REG_ICASE)) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path2_hex");
         return -1;
     }
 
     static const char *pattern_path3_hex = " item=3 name=([A-F0-9]*)";
-    if (regcomp(&regexCompiled_path3_hex, pattern_path3_hex, REG_EXTENDED)) {
+    if (regcomp(&regexCompiled_path3_hex, pattern_path3_hex, REG_EXTENDED | REG_ICASE)) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path3_hex");
         return -1;
     }
 
     static const char *pattern_path4_hex = " item=4 name=([A-F0-9]*)";
-    if (regcomp(&regexCompiled_path4_hex, pattern_path4_hex, REG_EXTENDED)) {
+    if (regcomp(&regexCompiled_path4_hex, pattern_path4_hex, REG_EXTENDED | REG_ICASE)) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path4_hex");
         return -1;
     }
     static const char *pattern_dev = " dev=([A-F0-9]*:[A-F0-9]*)";
-    if (regcomp(&regexCompiled_dev, pattern_dev, REG_EXTENDED)) {
+    if (regcomp(&regexCompiled_dev, pattern_dev, REG_EXTENDED | REG_ICASE)) {
         merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dev");
         return -1;
     }
@@ -409,8 +407,6 @@ int init_regex(void) {
 
 // Init Audit events reader thread
 int audit_init(void) {
-    //minfo("~~~~ audit_init");
-
     audit_health_check_creation = 0;
     audit_health_check_deletion = 0;
 
@@ -532,6 +528,9 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
                 free(full_path);
             } else if (path1[0] == '.' && path1[1] == '.' && path1[2] == '/') {
                 gen_path = audit_clean_path(cwd, path1);
+            } else if (strlen(cwd) == 1) {
+                os_malloc(strlen(cwd) + strlen(path1) + 2, gen_path);
+                snprintf(gen_path, strlen(cwd) + strlen(path1) + 2, "%s%s", cwd, path1);
             } else if (strncmp(path0, path1, strlen(path0)) == 0) {
                 os_malloc(strlen(cwd) + strlen(path1) + 2, gen_path);
                 snprintf(gen_path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, path1);
@@ -1175,11 +1174,7 @@ void * audit_main(int *audit_sock) {
             syscheck.opts[pos] &= ~ WHODATA_ACTIVE;
             syscheck.opts[pos] |= REALTIME_ACTIVE;
 
-            if (realtime_adddir(path, 0)) {
-                minfo("~~~~ Directory:'%s' changed to real-time monitoring.", path);
-            } else {
-                mwarn("~~~~ Unable to set monitoring in real-time to directory '%s'.", path);
-            }
+            realtime_adddir(path, 0);
             os_free(path);
         }
         W_Vector_free(audit_added_dirs);

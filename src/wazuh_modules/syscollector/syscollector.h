@@ -154,6 +154,11 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all);
 // Opened ports inventory for Windows
 void sys_ports_windows(const char* LOCATION, int check_all);
 
+// Opened ports inventory for MAC OS X
+#ifdef __MACH__
+    void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all);
+#endif
+
 // Installed packages inventory for Linux
 void sys_packages_linux(int queue_fd, const char* WM_SYS_LOCATION);
 char * sys_deb_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id);

@@ -34,9 +34,11 @@ static const char *fim_entry_type[] = {
     "registry"
 };
 
+int print_hash_table();
 
 int fim_scan() {
     int position = 0;
+    struct stat file_stat;
     struct timespec start;
     struct timespec end;
     clock_t timeCPU_start = clock();
@@ -46,7 +48,26 @@ int fim_scan() {
     fim_send_scan_info(FIM_SCAN_START);
 
     while (syscheck.dir[position] != NULL) {
-        fim_directory(syscheck.dir[position], position, FIM_SCHEDULED, NULL);
+
+        if (w_stat(syscheck.dir[position], &file_stat) >= 0) {
+            switch(file_stat.st_mode & S_IFMT) {
+                case FIM_REGULAR:
+                    if (fim_check_file(syscheck.dir[position], position, FIM_SCHEDULED, NULL) < 0) {
+                        mwarn(FIM_WARN_SKIP_EVENT, syscheck.dir[position]);
+                    }
+                    break;
+
+                case FIM_DIRECTORY:
+                    fim_directory(syscheck.dir[position], position, FIM_SCHEDULED, NULL);
+                    break;
+#ifndef WIN32
+                case FIM_LINK:
+                    // Symbolic links add link and follow if it is configured
+                    // TODO: implement symbolic links
+                    break;
+#endif
+            }
+        }
         position++;
     }
 
@@ -65,8 +86,7 @@ int fim_scan() {
     minfo(FIM_FREQUENCY_ENDED);
     fim_send_scan_info(FIM_SCAN_END);
 
-    mdebug1("The scan has been running during: %.3f sec (%.3f clock sec)",
-            time_diff(&start, &end),
+    mdebug1(FIM_RUNNING_SCAN, time_diff(&start, &end),
             (double)(clock() - timeCPU_start) / CLOCKS_PER_SEC);
 
     if (isDebug()) {
@@ -149,6 +169,12 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
     char * json_formated;
     int options;
     int deleted_flag = 0;
+    int position;
+
+    // If the directory have another configuration will come back
+    if (position = fim_configuration_directory(file_name, "file"), dir_position != position) {
+        return(0);
+    }
 
     options = syscheck.opts[dir_position];
 
@@ -245,7 +271,7 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
     if (mode == FIM_SCHEDULED || mode == FIM_MODE(syscheck.opts[dir_position])) {
         depth = fim_check_depth(file, dir_position);
         if(depth > syscheck.recursion_level[dir_position]) {
-            mdebug1("Maximum depth reached: depth:%d recursion_level:%d '%s'", depth, syscheck.recursion_level[dir_position], file);
+            mdebug1(FIM_MAX_RECURSION_LEVEL, depth, syscheck.recursion_level[dir_position], file);
             return 0;
         }
 
@@ -253,7 +279,7 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
         if (w_stat(file, &file_stat) < 0) {
             // Regular file
             if (fim_check_file(file, dir_position, mode, w_evt) < 0) {
-                mwarn("Skiping file: '%s'", file);
+                mwarn(FIM_WARN_SKIP_EVENT, file);
             }
         } else {
             // Should we check for NFS/dev/sys/proc?
@@ -266,7 +292,7 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
                 case FIM_REGULAR:
                     // Regular file
                     if (fim_check_file(file, dir_position, mode, w_evt) < 0) {
-                        mwarn("Skip event: '%s'", file);
+                        mwarn(FIM_WARN_SKIP_EVENT, file);
                     }
                     break;
 
@@ -327,7 +353,7 @@ void fim_audit_inode_event(whodata_evt * w_evt) {
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (w_stat(w_evt->path, &file_stat) < 0) {
-            mdebug2(FIM_STAT_FAILED, w_evt->path);
+            mdebug2(FIM_STAT_FAILED, w_evt->path, errno, strerror(errno));
         } else {
             switch(file_stat.st_mode & S_IFMT) {
                 case FIM_REGULAR:
@@ -337,7 +363,7 @@ void fim_audit_inode_event(whodata_evt * w_evt) {
 
                 case FIM_DIRECTORY:
                     // Directory path
-                    //fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+                    fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
                     break;
                 // TODO: Case for symbolic links?
                 default:
@@ -360,7 +386,10 @@ int fim_registry_event (char * key, fim_entry_data * data, int pos) {
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
     if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, key), !saved_data) {
-        fim_insert (key, data, NULL);
+        if (fim_insert (key, data, NULL) < 0) {
+            w_mutex_unlock(&syscheck.fim_entry_mutex);
+            return OS_INVALID;
+        }
 
         if(_base_line) {
             json_event = fim_json_event(key, NULL, data, pos, FIM_ADD, 0, NULL);
@@ -369,7 +398,10 @@ int fim_registry_event (char * key, fim_entry_data * data, int pos) {
     } else {
         if (strcmp(saved_data->hash_sha256, data->hash_sha256) != 0) {
             json_event = fim_json_event(key, saved_data, data, pos, FIM_MODIFICATION, 0, NULL);
-            fim_update(key, data);
+            if (fim_update(key, data) < 0) {
+                w_mutex_unlock(&syscheck.fim_entry_mutex);
+                return OS_INVALID;
+            }
             result = 2;
         } else {
             saved_data->scanned = 1;
@@ -460,7 +492,7 @@ int fim_check_depth(char * path, int dir_position) {
 
     pos = path + parent_path_size;
     while (pos) {
-        if (pos = strchr(pos, '/'), pos) {
+        if (pos = strchr(pos, PATH_SEP), pos) {
             depth++;
         } else {
             break;
@@ -486,15 +518,15 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
     if (options & CHECK_PERM) {
 #ifdef WIN32
         int error;
-        char perm_unescaped[OS_SIZE_6144 + 1];
+        char perm[OS_SIZE_6144 + 1];
 
-        if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
-            mwarn(FIM_WARN_EXTRACT_PERM, file_name, error);
+        if (error = w_get_file_permissions(file_name, perm, OS_SIZE_6144), error) {
+            mdebug1(FIM_EXTRACT_PERM_FAIL, file_name, error);
             free_entry_data(data);
             return NULL;
         } else {
             int size;
-            os_strdup(escape_perm_sum(perm_unescaped), data->win_perm_mask);
+            os_strdup(perm, data->win_perm_mask);
             os_calloc(OS_SIZE_20480, sizeof(char), data->perm);
 
             if (size = decode_win_permissions(data->perm, OS_SIZE_20480, data->win_perm_mask, 0, NULL), size > 1) {
@@ -560,7 +592,7 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
                                         data->hash_sha256,
                                         OS_BINARY,
                                         syscheck.file_max_size) < 0) {
-                mdebug1("Couldn't generate hashes for '%s'", file_name);
+                mdebug1(FIM_HASHES_FAIL, file_name);
                 free_entry_data(data);
                 return NULL;
         }
@@ -664,7 +696,7 @@ int fim_insert (char * file, fim_entry_data * data, __attribute__((unused))struc
     char * inode_key = NULL;
 
     if (rbtree_insert(syscheck.fim_entry, file, data) == NULL) {
-        minfo("Duplicate path: '%s'", file);
+        mdebug1(FIM_RBTREE_DUPLICATE_INSERT, file);
         return (-1);
     }
 
@@ -682,7 +714,7 @@ int fim_insert (char * file, fim_entry_data * data, __attribute__((unused))struc
         inode_data->items = 1;
 
         if (OSHash_Add(syscheck.fim_inode, inode_key, inode_data) != 2) {
-            merror("Unable to add inode to db: '%s' => '%s'", inode_key, file);
+            mdebug1(FIM_HASH_INSERT_INODE_HASH, inode_key, file);
             os_free(inode_key);
             return (-1);
         }
@@ -701,20 +733,57 @@ int fim_insert (char * file, fim_entry_data * data, __attribute__((unused))struc
 
 // Update an entry in the syscheck hash table structure (inodes and paths)
 int fim_update (char * file, fim_entry_data * data) {
-    char * inode_key;
+    char * inode_key = NULL;
 
     os_calloc(OS_SIZE_128, sizeof(char), inode_key);
     snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)data->dev, (unsigned long)data->inode);
 
-    if (!file || strcmp(file, "") == 0 || !inode_key || strcmp(inode_key, "") == 0) {
-        merror_exit("Can't update entry invalid file or inode");
+    if (!file || strcmp(file, "") == 0) {
+        merror(FIM_ERROR_UPDATE_ENTRY, file);
+        return -1;
     }
 
+#ifndef WIN32
+    fim_entry_data * old_data;
+    char * old_inode_key = NULL;
+    os_calloc(OS_SIZE_128, sizeof(char), old_inode_key);
+
+    // If we detect a inode change, remove old entry from inode hash table
+    if (old_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file), old_data) {
+        snprintf(old_inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)old_data->dev, (unsigned long)old_data->inode);
+
+        if(strcmp(inode_key, old_inode_key) != 0) {
+            delete_inode_item(old_inode_key, file);
+        }
+    }
+
+    fim_inode_data * inode_data;
+
+    if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), !inode_data) {
+        os_calloc(1, sizeof(fim_inode_data), inode_data);
+
+        inode_data->paths = os_AddStrArray(file, inode_data->paths);
+        inode_data->items = 1;
+
+        if (OSHash_Add(syscheck.fim_inode, inode_key, inode_data) != 2) {
+            mdebug1(FIM_HASH_INSERT_INODE_HASH, inode_key, file);
+            os_free(inode_key);
+            return (-1);
+        }
+    } else {
+        if (!os_IsStrOnArray(file, inode_data->paths)) {
+            inode_data->paths = os_AddStrArray(file, inode_data->paths);
+            inode_data->items++;
+        }
+    }
+#endif
+
     if (rbtree_replace(syscheck.fim_entry, file, data) == NULL) {
-        merror("Unable to update file to db, key not found: '%s'", file);
+        mdebug1(FIM_RBTREE_REPLACE, file);
         os_free(inode_key);
         return (-1);
     }
+
     os_free(inode_key);
     return 0;
 }
@@ -765,7 +834,7 @@ void check_deleted_files() {
         // File doesn't exist so we have to delete it from the
         // hash tables and send a deletion event.
         if (!data->scanned) {
-            mdebug1("File '%s' has been deleted.", keys[i]);
+            mdebug2(FIM_FILE_MSG_DELETE, keys[i]);
 
             if (pos = fim_configuration_directory(keys[i], data->entry_type), pos < 0) {
                 w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -1160,6 +1229,7 @@ void free_inode_data(fim_inode_data * data) {
     os_free(data->paths);
     os_free(data);
 }
+
 
 void fim_print_info() {
 #ifndef WIN32

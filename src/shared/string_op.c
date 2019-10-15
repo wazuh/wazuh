@@ -704,3 +704,24 @@ char* decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const 
 
     return decoded_buffer;
 }
+
+// Length of the initial segment of s which consists entirely of non-escaped bytes different from reject
+
+size_t strcspn_escaped(const char * s, char reject) {
+    char charset[3] = { '\\', reject };
+
+    size_t len = strlen(s);
+    size_t spn_len = 0;
+
+    do {
+        spn_len += strcspn(s + spn_len, charset);
+
+        if (s[spn_len] == '\\') {
+            spn_len += 2;
+        } else {
+            return spn_len;
+        }
+    } while (spn_len < len);
+
+    return len;
+}
