@@ -814,7 +814,7 @@ void sys_programs_windows(const char* LOCATION){
 // Get installed hotfixes inventory
 
 void sys_hotfixes(const char* LOCATION){
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
     char *timestamp = w_get_timestamp(time(NULL));
     int ID = wm_sys_get_random_id();
     HKEY main_key;
