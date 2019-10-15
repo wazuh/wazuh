@@ -16,7 +16,7 @@ class InputValidator:
 
     def check_name(self, name, regex_str=r"\w+"):
         """
-        Abstract function to check a name matches a regex (\w+ by default)
+        Abstract function to check a name matches a regex (\\w+ by default)
         :param name: Name to check
         :param regex_str: Regular expression to do the matching
         :return: True if it matched, False otherwise.

@@ -10,8 +10,8 @@
 
 /* Common API for dealing with hash operations */
 
-#ifndef _OS_HASHOP
-#define _OS_HASHOP
+#ifndef OS_HASHOP
+#define OS_HASHOP
 #include <pthread.h>
 
 /* Node structure */
@@ -89,4 +89,4 @@ void *OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 void OSHash_It(const OSHash *hash, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
 void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
 
-#endif
+#endif /* OS_HASHOP */

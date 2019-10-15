@@ -493,16 +493,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 id = -id;
             }
 #else
-            unsigned int id1 = os_random();
-            unsigned int id2 = os_random();
-
-            char random_id[OS_MAXSTR];
-            snprintf(random_id, OS_MAXSTR - 1, "%u%u", id1, id2);
-
-            int id = atoi(random_id);
-            if (id < 0) {
-                id = -id;
-            }
+            int id = wm_sys_get_random_id();
 #endif
             int requirements_satisfied = 0;
 
@@ -2495,6 +2486,7 @@ static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const 
     cJSON *description = cJSON_GetObjectItem(check, "description");
     cJSON *rationale = cJSON_GetObjectItem(check, "rationale");
     cJSON *remediation = cJSON_GetObjectItem(check, "remediation");
+    cJSON *condition = cJSON_GetObjectItem(check, "condition");
     cJSON *rules = cJSON_GetObjectItem(check, "rules");
 
     if(!pm_id) {
@@ -2580,6 +2572,18 @@ static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const 
     }
 
     cJSON_AddItemToObject(check_information, "rules", cJSON_Duplicate(rules, 1));
+
+    if(!condition) {
+        mdebug1("No 'condition' field found on check.");
+        goto error;
+    }
+
+    if(!condition->valuestring) {
+        mdebug1("Field 'condition' must be a string.");
+        goto error;
+    }
+
+    cJSON_AddStringToObject(check_information, "condition", condition->valuestring);
 
     cJSON *references = cJSON_GetObjectItem(check, "references");
 

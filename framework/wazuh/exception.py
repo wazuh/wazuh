@@ -21,7 +21,7 @@ class WazuhException(Exception):
         1003: 'Command output not in json',
         1004: 'Malformed command output ',
         1005: 'Error reading file',
-        1006: 'File/directory does not exist',
+        1006: 'File/directory does not exist or there is a problem with the permissions',
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
         1012: 'Invalid message to queue',
@@ -117,7 +117,7 @@ class WazuhException(Exception):
         1714: 'Error downloading WPK file',
         1715: 'Error sending WPK file',
         1716: 'Error upgrading agent',
-        1717: 'Upgrading an agent to a version higher than the manager requires the force flag. Use -F to force the upgrade',
+        1717: 'Upgrading an agent to a version higher than the manager requires the force flag. Use force=1 to force the upgrade',
         1718: 'Version not available',
         1719: 'Remote upgrade is not available for this agent version',
         1720: 'Agent disconnected',
@@ -149,7 +149,7 @@ class WazuhException(Exception):
         1746: "Could not parse current client.keys file",
         1747: "Could not remove agent group assigment from database",
         1748: "Could not remove agent files",
-        1749: "Downgrading an agent requires the force flag. Use -F to force the downgrade",
+        1749: "Downgrading an agent requires the force flag. Use force=1 parameter the downgrade",
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',

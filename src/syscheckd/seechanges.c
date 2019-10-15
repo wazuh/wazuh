@@ -126,8 +126,7 @@ int is_nodiff(const char *filename){
     if (syscheck.nodiff){
         int i;
         for (i = 0; syscheck.nodiff[i] != NULL; i++){
-            if (strncasecmp(syscheck.nodiff[i], filename,
-                            strlen(syscheck.nodiff[i])) == 0) {
+            if ((strcmp(syscheck.nodiff[i], filename)) == 0) {
                 return (TRUE);
             }
         }

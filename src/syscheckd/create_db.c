@@ -589,7 +589,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                     merror(FIM_ERROR_WHODATA_SUM_MAX, linked_file && *linked_file ? linked_file : file_name);
                 }
                 // Update database
-                snprintf(alert_msg, OS_MAXSTR, "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
+                snprintf(alert_msg, OS_MAXSTR, "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn_escaped(c_sum, ' '), c_sum);
                 s_node->checksum = strdup(alert_msg);
 
                 /* Send the new checksum to the analysis server */
