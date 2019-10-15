@@ -19,12 +19,13 @@
 typedef struct wm_gcp {
     int enabled:1;
     int pull_on_start:1;
-    int logging:3;
+    int logging;
     int max_messages;
     char *project_id;
     char *subscription_name;
     char *credentials_file;
     unsigned int interval;
+    int queue;
     time_t time_interval;
 } wm_gcp;
 

@@ -19,6 +19,7 @@ static void* wm_gcp_main(wm_gcp *gcp_config);                        // Module m
 void wm_gcp_run(wm_gcp *data);                                       // Running python script
 static void wm_gcp_destroy(wm_gcp *gcp_config);                      // Destroy data
 cJSON *wm_gcp_dump(const wm_gcp *gcp_config);                        // Read config
+void wm_gcp_setup(wm_gcp *data);                                     // Set queue
 
 /* Context definition */
 
@@ -41,6 +42,8 @@ void* wm_gcp_main(wm_gcp *data) {
         mtinfo(WM_GCP_LOGTAG, "Module disabled. Exiting.");
         pthread_exit(NULL);
     }
+
+    wm_gcp_setup(data);
 
     if (!data->pull_on_start) {
         time_start = time(NULL);
@@ -86,10 +89,25 @@ void* wm_gcp_main(wm_gcp *data) {
     return NULL;
 }
 
+void wm_gcp_setup(wm_gcp *data) {
+    int i;
+
+    // Connect to socket
+    for (i = 0; (data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
+        wm_delay(1000 * WM_MAX_WAIT);
+
+    if (i == WM_MAX_ATTEMPTS) {
+        mterror(WM_GCP_LOGTAG, "Can't connect to queue.");
+        pthread_exit(NULL);
+    }
+}
+
 void wm_gcp_run(wm_gcp *data) {
     int status;
     char *output = NULL;
     char *command = NULL;
+
+    int usec = 1000000 / wm_max_eps;
 
     // Create arguments
     mtdebug2(WM_GCP_LOGTAG, "Create argument list");
@@ -143,6 +161,101 @@ void wm_gcp_run(wm_gcp *data) {
         pthread_exit(NULL);
     }
 
+    if (status > 0) {
+        mtwarn(WM_GCP_LOGTAG, "Command returned exit code %d", status);
+        if(status == 1) {
+            char * unknown_error_msg = strstr(output,"Unknown error");
+            if (unknown_error_msg == NULL)
+                mtwarn(WM_GCP_LOGTAG, "Unknown error.");
+            else
+                mtwarn(WM_GCP_LOGTAG, "%s", unknown_error_msg);
+        } else if(status == 2) {
+            char * ptr;
+            if (ptr = strstr(output, "integration.py: error:"), ptr) {
+                ptr += 14;
+                mtwarn(WM_GCP_LOGTAG, "Error parsing arguments: %s", ptr);
+            } else {
+                mtwarn(WM_GCP_LOGTAG, "Error parsing arguments.");
+            }
+        } else {
+            char * ptr;
+            if (ptr = strstr(output, "ERROR: "), ptr) {
+                ptr += 7;
+                mtwarn(WM_GCP_LOGTAG, "%s", ptr);
+            } else {
+                mtwarn(WM_GCP_LOGTAG, "%s", output);
+            }
+        }
+        mtdebug1(WM_GCP_LOGTAG, "OUTPUT: %s", output);
+    } else {
+        mtdebug2(WM_GCP_LOGTAG, "OUTPUT: %s", output);
+    }
+
+    char *line;
+    char *save_ptr;
+
+    for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
+        char *msg_name;
+
+        switch (data->logging) {
+            case 0:
+                mtinfo(WM_GCP_LOGTAG, "Logging disabled.");
+                break;
+            case 1:
+                msg_name = strstr(line, "- DEBUG -");
+
+                if (msg_name) {
+                    mtdebug1(WM_GCP_LOGTAG, "%s", line);
+                } else if (!strstr(line, "- WARNING -") && !strstr(line, "- INFO -")
+                && !strstr(line, "- ERROR -") && !strstr(line, "- CRITICAL -")) {
+                    mtdebug1(WM_GCP_LOGTAG, "%s", line);
+                }
+                break;
+            case 2:
+                if (line = strstr(line, "- INFO -"), line) {
+                    mtinfo(WM_GCP_LOGTAG, "%s", line);
+                }
+                break;
+            case 3:
+                if (line = strstr(line, "- WARNING -"), line) {
+                    mtwarn(WM_GCP_LOGTAG, "%s", line);
+                }
+                break;
+            case 4:
+                if (line = strstr(line, "- ERROR -"), line) {
+                    mterror(WM_GCP_LOGTAG, "%s", line);
+                }
+                break;
+            case 5:
+                if (line = strstr(line, "- CRITICAL -"), line) {
+                    mterror(WM_GCP_LOGTAG, "%s", line);
+                }
+                break;
+            default:
+                if (line = strstr(line, "- INFO -"), line) {
+                    mtinfo(WM_GCP_LOGTAG, "%s", line);
+                }
+                break;
+        }
+
+        if (wm_sendmsg(usec, data->queue, line, WM_GCP_CONTEXT.name, LOCALFILE_MQ) < 0) {
+            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+
+            if(data->queue >= 0){
+                close(data->queue);
+            }
+
+            if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+                mwarn("Can't connect to queue.");
+            } else {
+                if(wm_sendmsg(usec, data->queue, line, WM_GCP_CONTEXT.name, LOCALFILE_MQ) < 0) {
+                    merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                    close(data->queue);
+                }
+            }
+        }
+    }
+
     os_free(output);
 }
 
@@ -169,10 +282,16 @@ cJSON *wm_gcp_dump(const wm_gcp *data) {
         case 1:
             cJSON_AddStringToObject(wm_wd, "logging", "debug");
             break;
-        case 2:
-            cJSON_AddStringToObject(wm_wd, "logging", "trace");
-            break;
         case 3:
+            cJSON_AddStringToObject(wm_wd, "logging", "warning");
+            break;
+        case 4:
+            cJSON_AddStringToObject(wm_wd, "logging", "error");
+            break;
+        case 5:
+            cJSON_AddStringToObject(wm_wd, "logging", "critical");
+            break;
+        case 2:
         default:
             cJSON_AddStringToObject(wm_wd, "logging", "info");
             break;

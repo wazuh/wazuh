@@ -40,7 +40,7 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
         gcp->subscription_name = NULL;
         gcp->credentials_file = NULL;
         gcp->pull_on_start = 1;
-        gcp->logging = 3;
+        gcp->logging = 2;
         gcp->interval = WM_DEF_INTERVAL / 2;
         module->context = &WM_GCP_CONTEXT;
         module->tag = strdup(module->context->name);
@@ -185,10 +185,14 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
                 gcp->logging = 0;
             } else if (!strcmp(nodes[i]->content, "debug")) {
                 gcp->logging = 1;
-            } else if (!strcmp(nodes[i]->content, "trace")) {
-                gcp->logging = 2;
             } else if (!strcmp(nodes[i]->content, "info")) {
+                gcp->logging = 2;
+            } else if (!strcmp(nodes[i]->content, "warning")) {
                 gcp->logging = 3;
+            } else if (!strcmp(nodes[i]->content, "error")) {
+                gcp->logging = 4;
+            } else if (!strcmp(nodes[i]->content, "critical")) {
+                gcp->logging = 5;
             } else {
                 merror("Invalid content for tag '%s'", XML_LOGGING);
                 return OS_INVALID;

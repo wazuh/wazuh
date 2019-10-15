@@ -149,7 +149,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-<<<<<<< HEAD
         } else if (strcmp(node[i]->element, osvulndet) == 0) {
 #if !defined(WIN32) && !defined(CLIENT)
             if ((modules & CWMODULE) && (Read_Vuln(xml, chld_node, d1, 1) < 0)) {
@@ -158,12 +157,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #else
             mwarn("%s configuration is only set in the manager.", node[i]->element);
 #endif
-=======
         } else if (strcmp(node[i]->element, osgcp) == 0) {
             if ((modules & CWMODULE) && (Read_GCP(xml, node[i], d1) < 0)) {
                 goto fail;
             }
->>>>>>> 48645edaa... Add configuration for Google Cloud Pub/Sub module
         }
 #ifndef WIN32
         else if (strcmp(node[i]->element, osfluent_forward) == 0) {
