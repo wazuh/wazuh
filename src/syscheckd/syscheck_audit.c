@@ -175,8 +175,6 @@ int set_auditd_config(void) {
                 break;
             }
 
-            break;
-
         default: // Fallthrough
             merror(LINK_ERROR, audit_path, AUDIT_CONF_FILE, errno, strerror(errno));
             return -1;
