@@ -119,35 +119,67 @@ components:
           type: array
           description: Items that successfully applied the API call action.
           items:
-            type: string
+            oneOf:
+              - type: string
+              - type: object
+
+    AllItemsAffected:
+      type: object
+      required:
+        - total_affected_items
+      allOf:
+        - $ref: '#/components/schemas/ItemAffected'
+      properties:
+        total_affected_items:
+          type: integer
+          format: int32
+          description: Number of items that have successfully done the requested operation.
         failed_items:
           type: array
           description: List of items that have failed when doing the requested operation. It's not returned when it's empty.
           items:
             $ref: '#/components/schemas/SimpleApiError'
-
-    AllItemsAffected:
-      type: object
-      required:
-        - older_than
-        - total_affected_items
-      allOf:
-        - $ref: '#/components/schemas/ItemAffected'
-      properties:
-        older_than:
-          type: string
-          format: timeframe
-          default: 7d
-          description: Returns older than parameter used. It can be the default value or the parameter send by the user.
-        total_affected_items:
-          type: integer
-          format: int32
-          description: Number of items that have successfully did the requested operation.
         total_failed_items:
           type: integer
           format: int32
-          minimum: 1
-          description: Number of items that couldn't do the requested operation. Only returned when it's higher than 0.
+          description: Number of items that have failed during the requested operation.
+
+    AllItemsResponse:
+      type: object
+      required:
+        - total_affected_items
+      properties:
+        total_affected_items:
+          type: integer
+          format: int32
+          description: Number of items that have successfully done the requested operation.
+        failed_items:
+          type: array
+          description: List of items that have failed when doing the requested operation. It's not returned when it's empty.
+          items:
+            $ref: '#/components/schemas/SimpleApiError'
+        total_failed_items:
+          type: integer
+          format: int32
+          description: Number of items that have failed during the requested operation.
+
+    AllItemsResponseAgents:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/Agent'
+#            older_than:
+#              type: string
+#              format: timeframe
+#              default: 7d
+#              description: Returns older than parameter used. It can be the default value or the parameter send by the user.
 
     BasicInfo:
       type: object
@@ -3810,14 +3842,8 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/Agent'
+                      $ref: '#/components/schemas/AllItemsResponseAgents'
+
               example:
                 data:
                   totalItems: 7
@@ -4135,16 +4161,35 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
                       data:
-                        properties:
-                          syncef:
-                            type: boolean
+                        allOf:
+                          - $ref: '#/components/schemas/AllItemsResponse'
+                          - type: object
+                            required:
+                              - affected_items
+                            properties:
+                              affected_items:
+                                type: array
+                                description: Items that successfully applied the API call action.
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      description: 'Agent ID'
+                                    synced:
+                                      type: boolean
+                                      description: 'Sync info'
+                  - $ref: '#/components/schemas/ApiResponse'
               example:
                 data:
-                    synced: false
+                  affected_items:
+                    - id: '004'
+                      synced: true
+                  total_affected_items: 1
+                message: Sync info shown for all selected agents.
         default:
           $ref: '#/components/responses/ResponseError'
 

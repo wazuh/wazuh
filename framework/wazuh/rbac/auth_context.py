@@ -338,6 +338,11 @@ class RBAChecker:
                 "actions": ["group:modify_assignments"],
                 "resources": ["group:id:*"],
                 "effect": "allow"
+            },
+            {
+                "actions": ["group:update_config"],
+                "resources": ["group:id:*"],
+                "effect": "allow"
             }
         ]
 

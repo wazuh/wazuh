@@ -38,8 +38,7 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge
     ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, uses the register date.
     :return: AgentAllItemsAffected
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': list_agents,
+    f_kwargs = {'agent_list': list_agents,
                 'purge': purge,
                 'status': status,
                 'older_than': older_than
@@ -51,7 +50,8 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -121,9 +121,8 @@ def get_agents(pretty=False, wait_for_complete=False, list_agents=None, offset=N
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -135,8 +134,7 @@ def restart_agents(pretty=False, wait_for_complete=False, list_agents=None):
     :param list_agents: List of agent's IDs.
     :return: CommonResponse
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': list_agents}
+    f_kwargs = {'agent_list': list_agents}
 
     dapi = DistributedAPI(f=agent.restart_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -145,7 +143,8 @@ def restart_agents(pretty=False, wait_for_complete=False, list_agents=None):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           broadcasting=list_agents is None,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -167,7 +166,6 @@ def add_agent(pretty=False, wait_for_complete=False):
         raise WazuhError(1750)
 
     f_kwargs = agent_added_model.to_dict()
-    f_kwargs['rbac'] = get_permissions(connexion.request.headers['Authorization'])
 
     # Get IP if not given
     if not f_kwargs['ip']:
@@ -185,7 +183,8 @@ def add_agent(pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
 
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
@@ -204,8 +203,7 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):
     :param purge: Delete an agent from the key store
     :return: Data
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': [agent_id],
+    f_kwargs = {'agent_list': [agent_id],
                 'purge': purge,
                 'older_than': "0s"
                 }
@@ -216,7 +214,8 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -233,8 +232,7 @@ def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):
     :param select: Select which fields to return (separated by comma)
     :return: Agent
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': [agent_id],
+    f_kwargs = {'agent_list': [agent_id],
                 'select': select
                 }
 
@@ -244,12 +242,12 @@ def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -266,8 +264,7 @@ def get_agent_config(pretty=False, wait_for_complete=False, agent_id=None, compo
     :param component: Selected agent's component.
     :return: AgentConfigurationData
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': [agent_id],
+    f_kwargs = {'agent_list': [agent_id],
                 'component': component,
                 'config': kwargs.get('configuration', None)
                 }
@@ -278,7 +275,8 @@ def get_agent_config(pretty=False, wait_for_complete=False, agent_id=None, compo
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -297,8 +295,7 @@ def delete_agent_all_groups(agent_id, pretty=False, wait_for_complete=False):
     :param agent_id: Agent ID. All posible values since 000 onwards.
     :return: CommonResponse
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': [agent_id]}
+    f_kwargs = {'agent_list': [agent_id]}
 
     dapi = DistributedAPI(f=agent.remove_agents_from_all_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -306,7 +303,8 @@ def delete_agent_all_groups(agent_id, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
 
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
@@ -326,8 +324,7 @@ def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout responseç
     :return: AgentSync
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': [agent_id]}
+    f_kwargs = {'agent_list': [agent_id]}
 
     dapi = DistributedAPI(f=agent.get_agents_sync_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -335,12 +332,12 @@ def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -356,8 +353,7 @@ def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complet
     :param group_id: Group ID.
     :return: CommonResponse
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': [agent_id],
+    f_kwargs = {'agent_list': [agent_id],
                 'group_id': group_id}
 
     dapi = DistributedAPI(f=agent.remove_agents_from_group,
@@ -366,7 +362,8 @@ def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complet
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -384,8 +381,7 @@ def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=
     :param force_single_group: Forces the agent to belong to a single group
     :return: CommonResponse
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': [agent_id],
+    f_kwargs = {'agent_list': [agent_id],
                 'group_id': group_id,
                 'replace': force_single_group}
 
@@ -395,7 +391,8 @@ def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -411,8 +408,7 @@ def get_agent_key(agent_id, pretty=False, wait_for_complete=False):
     :param agent_id: Agent ID. All posible values since 000 onwards.
     :return: AgentKey
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': [agent_id]}
+    f_kwargs = {'agent_list': [agent_id]}
 
     dapi = DistributedAPI(f=agent.get_agents_keys,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -420,12 +416,12 @@ def get_agent_key(agent_id, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -437,8 +433,7 @@ def restart_agent(agent_id, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     :return: CommonResponse
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': [agent_id]}
+    f_kwargs = {'agent_list': [agent_id]}
 
     dapi = DistributedAPI(f=agent.restart_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -446,7 +441,8 @@ def restart_agent(agent_id, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -467,8 +463,7 @@ def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=
     :param force: Force upgrade.
     :return: CommonResponse
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': [agent_id],
+    f_kwargs = {'agent_list': [agent_id],
                 'wpk_repo': wpk_repo,
                 'version': version,
                 'use_http': use_http,
@@ -480,7 +475,8 @@ def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=
                           is_async=False,
                           wait_for_complete=True,  # Force wait_for_complete until timeout problems are resolved
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -499,8 +495,7 @@ def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, fi
     :type installer: str
     :return: CommonResponse
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': [agent_id],
+    f_kwargs = {'agent_list': [agent_id],
                 'file_path': file_path,
                 'installer': installer}
 
@@ -510,7 +505,8 @@ def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, fi
                           is_async=False,
                           wait_for_complete=True,  # Force wait_for_complete until timeout problems are resolved
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -528,8 +524,7 @@ def post_new_agent(agent_name, pretty=False, wait_for_complete=False):
     :param agent_name: Agent name used when the agent was registered.
     :return: AgentIdKeyData
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'name': agent_name}
+    f_kwargs = {'name': agent_name}
 
     dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -537,7 +532,8 @@ def post_new_agent(agent_name, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -555,8 +551,7 @@ def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False
     :param timeout: Seconds to wait for the agent to respond.
     :return: CommonResponse
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': [agent_id],
+    f_kwargs = {'agent_list': [agent_id],
                 'timeout': timeout}
 
     dapi = DistributedAPI(f=agent.get_upgrade_result,
@@ -565,7 +560,8 @@ def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -582,8 +578,7 @@ def delete_multiple_agent_single_group(group_id, list_agents=None, pretty=False,
     :param wait_for_complete: Disable timeout response
     :return: AgentItemsAffected
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': list_agents,
+    f_kwargs = {'agent_list': list_agents,
                 'group_id': group_id}
 
     dapi = DistributedAPI(f=agent.remove_agents_from_group,
@@ -592,7 +587,8 @@ def delete_multiple_agent_single_group(group_id, list_agents=None, pretty=False,
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -611,8 +607,7 @@ def put_multiple_agent_single_group(group_id, list_agents=None, pretty=False, wa
     :param force_single_group: Forces the agent to belong to a single group
     :return: AgentItemsAffected
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'agent_list': list_agents,
+    f_kwargs = {'agent_list': list_agents,
                 'group_id': group_id,
                 'replace': force_single_group}
 
@@ -622,7 +617,8 @@ def put_multiple_agent_single_group(group_id, list_agents=None, pretty=False, wa
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -638,8 +634,7 @@ def delete_groups(list_groups=None, pretty=False, wait_for_complete=False):
     :param list_groups: Array of group's IDs.
     :return: AgentGroupDeleted
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'group_list': list_groups}
+    f_kwargs = {'group_list': list_groups}
 
     dapi = DistributedAPI(f=agent.delete_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -647,7 +642,8 @@ def delete_groups(list_groups=None, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -671,8 +667,7 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     :return: Data
     """
     hash_ = connexion.request.args.get('hash', 'md5')  # Select algorithm to generate the returned checksums.
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'offset': offset,
+    f_kwargs = {'offset': offset,
                 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['name'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
@@ -687,7 +682,8 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -706,8 +702,7 @@ def delete_single_group(group_id, pretty=False, wait_for_complete=False):
     :param group_id: Group ID.
     :return: AgentGroupDeleted
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'group_list': [group_id]}
+    f_kwargs = {'group_list': [group_id]}
 
     dapi = DistributedAPI(f=agent.delete_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -715,7 +710,8 @@ def delete_single_group(group_id, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -743,8 +739,7 @@ def get_agents_in_group(group_id, pretty=False, wait_for_complete=False, offset=
 
     :return: Data
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'offset': offset,
+    f_kwargs = {'offset': offset,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
@@ -760,13 +755,13 @@ def get_agents_in_group(group_id, pretty=False, wait_for_complete=False, offset=
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
 
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -778,8 +773,7 @@ def post_group(group_id, pretty=False, wait_for_complete=False):
     :param group_id: Group ID.
     :return: message
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'group_id': group_id}
+    f_kwargs = {'group_id': group_id}
 
     dapi = DistributedAPI(f=agent.create_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -787,7 +781,8 @@ def post_group(group_id, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -805,8 +800,7 @@ def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, 
     :param limit: Maximum number of elements to return
     :return: Data
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'group_list': [group_id],
+    f_kwargs = {'group_list': [group_id],
                 'offset': offset,
                 'limit': limit}
 
@@ -816,7 +810,8 @@ def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, 
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -845,8 +840,7 @@ def put_group_config(body, group_id, pretty=False, wait_for_complete=False):
     except AttributeError:
         return 'Body is empty', 400
 
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'group_list': [group_id],
+    f_kwargs = {'group_list': [group_id],
                 'file_data': body}
 
     dapi = DistributedAPI(f=agent.upload_group_file,
@@ -855,7 +849,8 @@ def put_group_config(body, group_id, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -878,8 +873,7 @@ def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, l
     :return: Data
     """
     hash_ = connexion.request.args.get('hash', 'md5')  # Select algorithm to generate the returned checksums.
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'group_list': [group_id],
+    f_kwargs = {'group_list': [group_id],
                 'offset': offset,
                 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ["filename"],
@@ -894,7 +888,8 @@ def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, l
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -912,8 +907,7 @@ def get_group_file_json(group_id, file_name, pretty=False, wait_for_complete=Fal
     :param file_name: Filename
     :return: Data
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'group_list': [group_id],
+    f_kwargs = {'group_list': [group_id],
                 'filename': file_name,
                 'type_conf': connexion.request.args.get('type', None),
                 'return_format': 'json'}
@@ -924,7 +918,8 @@ def get_group_file_json(group_id, file_name, pretty=False, wait_for_complete=Fal
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -942,8 +937,7 @@ def get_group_file_xml(group_id, file_name, pretty=False, wait_for_complete=Fals
     :param file_name: Filename
     :return: Data
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'group_list': [group_id],
+    f_kwargs = {'group_list': [group_id],
                 'filename': file_name,
                 'type_conf': connexion.request.args.get('type', None),
                 'return_format': 'xml'}
@@ -954,7 +948,8 @@ def get_group_file_xml(group_id, file_name, pretty=False, wait_for_complete=Fals
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = connexion.lifecycle.ConnexionResponse(body=data["message"], mimetype='application/xml')
@@ -977,7 +972,6 @@ def insert_agent(pretty=False, wait_for_complete=False):
         raise WazuhError(1750)
 
     f_kwargs = agent_inserted_model.to_dict()
-    f_kwargs['rbac'] = get_permissions(connexion.request.headers['Authorization'])
 
     # Get IP if not given
     if not f_kwargs['ip']:
@@ -995,7 +989,8 @@ def insert_agent(pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -1013,8 +1008,7 @@ def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=
     :param select: Select which fields to return (separated by comma)
     :return: Data
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'filters': {'name': agent_name},
+    f_kwargs = {'filters': {'name': agent_name},
                 'select': select}
 
     dapi = DistributedAPI(f=agent.get_agents,
@@ -1023,12 +1017,12 @@ def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -1047,8 +1041,7 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=da
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: Data
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'offset': offset,
+    f_kwargs = {'offset': offset,
                 'limit': limit,
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
@@ -1061,12 +1054,12 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=da
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -1083,8 +1076,7 @@ def get_agent_outdated(pretty=False, wait_for_complete=False, offset=None, limit
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: Data
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'offset': offset,
+    f_kwargs = {'offset': offset,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
@@ -1096,7 +1088,8 @@ def get_agent_outdated(pretty=False, wait_for_complete=False, offset=None, limit
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -1124,8 +1117,7 @@ def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=data
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: Data
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'offset': offset,
+    f_kwargs = {'offset': offset,
                 'limit': limit,
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
@@ -1139,7 +1131,8 @@ def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=data
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -1155,7 +1148,7 @@ def get_agent_summary_status(pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     :return: Data
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization'])}
+    f_kwargs = {}
 
     dapi = DistributedAPI(f=agent.get_agents_summary_status,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1163,7 +1156,8 @@ def get_agent_summary_status(pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -1183,8 +1177,7 @@ def get_agent_summary_os(pretty=False, wait_for_complete=False, offset=None, lim
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: Data
     """
-    f_kwargs = {'rbac': get_permissions(connexion.request.headers['Authorization']),
-                'offset': offset,
+    f_kwargs = {'offset': offset,
                 'limit': limit,
                 'search': parse_api_param(search, 'search'),
                 'q': q}
@@ -1195,7 +1188,8 @@ def get_agent_summary_os(pretty=False, wait_for_complete=False, offset=None, lim
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)

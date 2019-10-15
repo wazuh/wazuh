@@ -348,7 +348,11 @@ def data_response_builder(result, original: dict = None, add_denied: bool = Fals
         affected = sorted(result['affected_items'], key=int)
     except ValueError:
         affected = sorted(result['affected_items'])
-    final_dict = {'data': {'affected_items': affected, 'total_affected_items': len(result['affected_items'])}}
+    except TypeError:
+        affected = result['affected_items']
+    final_dict = {'data': {'affected_items': affected,
+                           'total_affected_items': result['total_affected_items'] if 'total_affected_items' in result
+                           else len(result['affected_items'])}}
 
     if result['failed_items']:
         failed_result = _merge_errors(result['failed_items'], add_denied, **post_proc_kwargs)

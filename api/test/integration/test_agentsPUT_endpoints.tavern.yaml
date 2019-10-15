@@ -1,9 +1,9 @@
 ---
 test_name: PUT /agents/group/{group_id}
 
-marks:
-  - usefixtures:
-    - base_tests
+#marks:
+#  - usefixtures:
+#    - base_tests
 
 includes:
  - !include common.yaml
@@ -173,7 +173,7 @@ stages:
         message: !anystr
 
     # PUT /agents/group/group2?force_single_group=true
-  - name: Assign all agents to group3 with force_single_group
+  - name: Assign all agents to group2 with force_single_group
     request:
       url: "{protocol:s}://{host:s}:{port:d}/agents/group/group2"
       method: PUT
