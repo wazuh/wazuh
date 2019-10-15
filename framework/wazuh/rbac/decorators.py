@@ -8,6 +8,7 @@ from functools import wraps
 
 from api import configuration
 from api.authentication import AuthenticationManager
+from wazuh.common import rbac, system_agents
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
 from wazuh.exception import WazuhError
 from wazuh.rbac.orm import RolesManager, PoliciesManager
@@ -42,7 +43,8 @@ def _expand_resource(resource):
     # We need to transform the wildcard * to the resource of the system
     if value == '*':
         if resource_type == 'agent:id':
-            return get_agents_info()
+            system_agents.set(get_agents_info())
+            return system_agents.get()
         elif resource_type == 'group:id':
             return get_groups()
         elif resource_type == 'role:id':
@@ -235,7 +237,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
     return target_params, req_permissions, add_denied
 
 
-def _match_permissions(req_permissions: dict = None, rbac: list = None):
+def _match_permissions(req_permissions: dict = None):
     """Try to match function required permissions against user permissions to allow or deny execution
 
     :param req_permissions: Required permissions to allow function execution
@@ -245,14 +247,14 @@ def _match_permissions(req_permissions: dict = None, rbac: list = None):
     allow_match = dict()
     for req_action, req_resources in req_permissions.items():
         try:
-            _permissions_processing(req_resources, rbac[req_action], allow_match)
+            _permissions_processing(req_resources, rbac.get()[req_action], allow_match)
         except KeyError:
             _permissions_processing(req_resources, dict(), allow_match)
     return allow_match
 
 
 def expose_resources(actions: list = None, resources: list = None, post_proc_func: callable = list_handler,
-                     post_proc_kwargs: dict = None, stack: bool = False):
+                     post_proc_kwargs: dict = None):
     """Decorator to apply user permissions on a Wazuh framework function
     based on exposed action:resource pairs.
 
@@ -272,9 +274,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
         def wrapper(*args, **kwargs):
             target_params, req_permissions, add_denied = \
                 _get_required_permissions(actions=actions, resources=resources, **kwargs)
-            allow = _match_permissions(req_permissions=req_permissions, rbac=copy.deepcopy(kwargs['rbac']))
-            if not stack:
-                del kwargs['rbac']
+            allow = _match_permissions(req_permissions=req_permissions)
             original_kwargs = copy.deepcopy(kwargs)
             for index, target in enumerate(target_params):
                 try:
