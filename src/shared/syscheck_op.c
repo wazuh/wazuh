@@ -955,25 +955,25 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
                 goto error;
             }
 
-            if (mask & GENERIC_READ) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_READ"));
-            if (mask & GENERIC_WRITE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_WRITE"));
-            if (mask & GENERIC_EXECUTE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_EXECUTE"));
-            if (mask & GENERIC_ALL) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_ALL"));
+            if (mask & GENERIC_READ) cJSON_AddItemToArray(perm_type, cJSON_CreateString("generic_read"));
+            if (mask & GENERIC_WRITE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("generic_write"));
+            if (mask & GENERIC_EXECUTE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("generic_execute"));
+            if (mask & GENERIC_ALL) cJSON_AddItemToArray(perm_type, cJSON_CreateString("generic_all"));
 
-            if (mask & DELETE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("DELETE"));
-            if (mask & READ_CONTROL) cJSON_AddItemToArray(perm_type, cJSON_CreateString("READ_CONTROL"));
-            if (mask & WRITE_DAC) cJSON_AddItemToArray(perm_type, cJSON_CreateString("WRITE_DAC"));
-            if (mask & WRITE_OWNER) cJSON_AddItemToArray(perm_type, cJSON_CreateString("WRITE_OWNER"));
-            if (mask & SYNCHRONIZE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("SYNCHRONIZE"));
+            if (mask & DELETE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("delete"));
+            if (mask & READ_CONTROL) cJSON_AddItemToArray(perm_type, cJSON_CreateString("read_control"));
+            if (mask & WRITE_DAC) cJSON_AddItemToArray(perm_type, cJSON_CreateString("write_dac"));
+            if (mask & WRITE_OWNER) cJSON_AddItemToArray(perm_type, cJSON_CreateString("write_owner"));
+            if (mask & SYNCHRONIZE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("synchronize"));
 
-            if (mask & FILE_READ_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_READ_DATA"));
-            if (mask & FILE_WRITE_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_WRITE_DATA"));
-            if (mask & FILE_APPEND_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_APPEND_DATA"));
-            if (mask & FILE_READ_EA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_READ_EA"));
-            if (mask & FILE_WRITE_EA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_WRITE_EA"));
-            if (mask & FILE_EXECUTE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_EXECUTE"));
-            if (mask & FILE_READ_ATTRIBUTES) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_READ_ATTRIBUTES"));
-            if (mask & FILE_WRITE_ATTRIBUTES) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_WRITE_ATTRIBUTES"));
+            if (mask & FILE_READ_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("read_data"));
+            if (mask & FILE_WRITE_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("write_data"));
+            if (mask & FILE_APPEND_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("append_data"));
+            if (mask & FILE_READ_EA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("read_ea"));
+            if (mask & FILE_WRITE_EA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("write_ea"));
+            if (mask & FILE_EXECUTE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("execute"));
+            if (mask & FILE_READ_ATTRIBUTES) cJSON_AddItemToArray(perm_type, cJSON_CreateString("read_attributes"));
+            if (mask & FILE_WRITE_ATTRIBUTES) cJSON_AddItemToArray(perm_type, cJSON_CreateString("write_attributes"));
 
             if (!a_found) {
                 if (a_found = cJSON_CreateObject(), !a_found) {
@@ -991,30 +991,30 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
         } else {
             snprintf(str, str_size, "%s (%s): %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
                             account_name,
-                            a_type == '0' ? "ALLOWED" : "DENIED",
-                            mask & GENERIC_READ ? " GENERIC_READ," : "",
-                            mask & GENERIC_WRITE ? " GENERIC_WRITE," : "",
-                            mask & GENERIC_EXECUTE ? " GENERIC_EXECUTE," : "",
-                            mask & GENERIC_ALL ? " GENERIC_ALL," : "",
-                            mask & DELETE ? " DELETE," : "",
-                            mask & READ_CONTROL ? " READ_CONTROL," : "",
-                            mask & WRITE_DAC ? " WRITE_DAC," : "",
-                            mask & WRITE_OWNER ? " WRITE_OWNER," : "",
-                            mask & SYNCHRONIZE ? " SYNCHRONIZE," : "",
-                            mask & FILE_READ_DATA ? " FILE_READ_DATA," : "",
-                            mask & FILE_WRITE_DATA ? " FILE_WRITE_DATA," : "",
-                            mask & FILE_APPEND_DATA ? " FILE_APPEND_DATA," : "",
-                            mask & FILE_READ_EA ? " FILE_READ_EA," : "",
-                            mask & FILE_WRITE_EA ? " FILE_WRITE_EA," : "",
-                            mask & FILE_EXECUTE ? " FILE_EXECUTE," : "",
-                            mask & FILE_READ_ATTRIBUTES ? " FILE_READ_ATTRIBUTES," : "",
-                            mask & FILE_WRITE_ATTRIBUTES ? " FILE_WRITE_ATTRIBUTES," : ""
+                            a_type == '0' ? "allowed" : "denied",
+                            mask & GENERIC_READ ? "generic_read|" : "",
+                            mask & GENERIC_WRITE ? "generic_write|" : "",
+                            mask & GENERIC_EXECUTE ? "generic_execute|" : "",
+                            mask & GENERIC_ALL ? "generic_all|" : "",
+                            mask & DELETE ? "delete|" : "",
+                            mask & READ_CONTROL ? "read_control|" : "",
+                            mask & WRITE_DAC ? "write_dac|" : "",
+                            mask & WRITE_OWNER ? "write_owner|" : "",
+                            mask & SYNCHRONIZE ? "synchronize|" : "",
+                            mask & FILE_READ_DATA ? "read_data|" : "",
+                            mask & FILE_WRITE_DATA ? "write_data|" : "",
+                            mask & FILE_APPEND_DATA ? "append_data|" : "",
+                            mask & FILE_READ_EA ? "read_ea|" : "",
+                            mask & FILE_WRITE_EA ? "write_ea|" : "",
+                            mask & FILE_EXECUTE ? "execute|" : "",
+                            mask & FILE_READ_ATTRIBUTES ? "read_attributes|" : "",
+                            mask & FILE_WRITE_ATTRIBUTES ? "write_attributes|" : ""
                         );
 
             size = strlen(str);
 
-            if (size > 1) {
-                str[size - 1] = '\n';
+            if (size + 1 < str_size) {
+                strncpy(str + (size++) - 1, ", ", 3);
             }
 
             written += size;
