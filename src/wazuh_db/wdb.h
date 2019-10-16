@@ -154,6 +154,7 @@ extern char *schema_agents_sql;
 extern char *schema_upgrade_v1_sql;
 extern char *schema_upgrade_v2_sql;
 extern char *schema_upgrade_v3_sql;
+extern char *schema_upgrade_v4_sql;
 
 extern wdb_config config;
 extern pthread_mutex_t pool_mutex;
