@@ -18,7 +18,6 @@ from wazuh import exception, agent, common
 from wazuh import manager
 from wazuh.cluster import local_client, cluster, common as c_common
 from wazuh.exception import WazuhException
-from wazuh.wlogging import WazuhLogger
 
 
 class DistributedAPI:
@@ -28,7 +27,8 @@ class DistributedAPI:
     def __init__(self, f: Callable, logger: logging.getLogger, f_kwargs: Dict = None, node: c_common.Handler = None,
                  debug: bool = False, pretty: bool = False, request_type: str = "local_master",
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
-                 broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None):
+                 broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
+                 rbac_permissions: Dict = None):
         """
         Class constructor
 
@@ -54,6 +54,7 @@ class DistributedAPI:
         self.from_cluster = from_cluster
         self.is_async = is_async
         self.broadcasting = broadcasting
+        self.rbac_permissions = rbac_permissions if rbac_permissions is not None else dict()
         if not basic_services:
             self.basic_services = ('wazuh-modulesd', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
             if common.install_type != "local":
@@ -162,6 +163,8 @@ class DistributedAPI:
         """
         def run_local():
             self.logger.debug("Starting to execute request locally")
+            common.rbac.set(self.rbac_permissions)
+            common.broadcast.set(self.broadcasting)
             data = self.f(**self.f_kwargs)
             self.logger.debug("Finished executing request locally")
             return data
@@ -248,7 +251,9 @@ class DistributedAPI:
                 "from_cluster": self.from_cluster,
                 "is_async": self.is_async,
                 "local_client_arg": self.local_client_arg,
-                "basic_services": self.basic_services
+                "basic_services": self.basic_services,
+                "rbac_permissions": self.rbac_permissions,
+                "broadcasting": self.broadcasting
                 }
 
     def get_error_info(self, e) -> Dict:
@@ -311,7 +316,7 @@ class DistributedAPI:
 
         :return: a JSON response.
         """
-        async def forward(node_name: Tuple) -> Dict:
+        async def forward(node_name: Tuple) -> [wresults.WazuhResult, exception.WazuhException]:
             """
             Forwards a request to a node.
             :param node_name: Node to forward a request to.
@@ -343,7 +348,6 @@ class DistributedAPI:
         self.from_cluster = True
         if len(nodes) > 1:
             results = await asyncio.shield(asyncio.gather(*[forward(node) for node in nodes.items()]))
-
             response = reduce(or_, results)
             if isinstance(response, wresults.WazuhResult):
                 response = response.limit(limit=self.f_kwargs.get('limit', common.database_limit),
@@ -365,18 +369,20 @@ class DistributedAPI:
         :return: node name and whether the result is list or not
         """
         select_node = ['node_name']
-        if 'agent_id' in self.f_kwargs:
-            # the request is for multiple agents
-            if isinstance(self.f_kwargs['agent_id'], list):
-                agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
-                                                         filters={'id': self.f_kwargs['agent_id']},
-                                                         sort={'fields': ['node_name'], 'order': 'desc'})['items']
-                node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
-                             itertools.groupby(agents, key=operator.itemgetter('node_name'))}
+        if 'agent_id' in self.f_kwargs or 'agent_list' in self.f_kwargs:
+            # Group requested agents by node_name
+            requested_agents = self.f_kwargs.get('agent_list', None) or [self.f_kwargs['agent_id']]
+            filters = {'id': requested_agents} if requested_agents != '*' else None
+            system_agents = agent.Agent.get_agents_overview(select=select_node,
+                                                            limit=None,
+                                                            filters=filters,
+                                                            sort={'fields': ['node_name'], 'order': 'desc'})['items']
+            node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
+                         itertools.groupby(system_agents, key=operator.itemgetter('node_name'))}
 
-                # add non existing ids in the master's dictionary entry
-                non_existent_ids = list(set(self.f_kwargs['agent_id']) -
-                                        set(map(operator.itemgetter('id'), agents)))
+            if requested_agents != '*':  # When all agents are requested cannot be non existent ids
+                # Add non existing ids in the master's dictionary entry
+                non_existent_ids = list(set(requested_agents) - set(map(operator.itemgetter('id'), system_agents)))
                 if non_existent_ids:
                     if self.node_info['node'] in node_name:
                         node_name[self.node_info['node']].extend(non_existent_ids)
