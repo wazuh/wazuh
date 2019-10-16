@@ -18,7 +18,6 @@ from wazuh import exception, agent, common
 from wazuh import manager
 from wazuh.cluster import local_client, cluster, common as c_common
 from wazuh.exception import WazuhException
-from wazuh.wlogging import WazuhLogger
 
 
 class DistributedAPI:
@@ -317,7 +316,7 @@ class DistributedAPI:
 
         :return: a JSON response.
         """
-        async def forward(node_name: Tuple) -> Dict:
+        async def forward(node_name: Tuple) -> [wresults.WazuhResult, exception.WazuhException]:
             """
             Forwards a request to a node.
             :param node_name: Node to forward a request to.
@@ -349,7 +348,6 @@ class DistributedAPI:
         self.from_cluster = True
         if len(nodes) > 1:
             results = await asyncio.shield(asyncio.gather(*[forward(node) for node in nodes.items()]))
-
             response = reduce(or_, results)
             if isinstance(response, wresults.WazuhResult):
                 response = response.limit(limit=self.f_kwargs.get('limit', common.database_limit),
