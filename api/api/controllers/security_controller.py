@@ -39,13 +39,13 @@ def get_users(username: list = None):
 
     :return: All users data
     """
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {'username_list': username, 'rbac': rbac}
+    f_kwargs = {'username_list': username}
     dapi = DistributedAPI(f=security.get_users,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -77,15 +77,14 @@ def create_user():
     """
     f_kwargs = {**connexion.request.get_json()}
     validate = check_body(f_kwargs)
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs['rbac'] = rbac
     if validate is not True:
         raise WazuhError(5005, extra_message='Invalid field found {}'.format(validate))
     dapi = DistributedAPI(f=security.create_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -103,13 +102,12 @@ def update_user(username):
     validate = check_body(f_kwargs)
     if validate is not True:
         raise WazuhError(5005, extra_message='Invalid field found {}'.format(validate))
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs['rbac'] = rbac
     dapi = DistributedAPI(f=security.update_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -123,13 +121,13 @@ def delete_users(username=None):
     :param username: Name of the user to be removed
     :return: Result of the operation
     """
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {'username': username, 'rbac': rbac}
+    f_kwargs = {'username': username}
     dapi = DistributedAPI(f=security.delete_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -150,8 +148,7 @@ def get_roles(role_ids=None, pretty=False, wait_for_complete=False, offset=0, li
     :param search: Looks for elements with the specified string
     :return Roles information
     """
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {'role_ids': role_ids, 'rbac': rbac, 'offset': offset, 'limit': limit,
+    f_kwargs = {'role_ids': role_ids, 'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
@@ -164,7 +161,8 @@ def get_roles(role_ids=None, pretty=False, wait_for_complete=False, offset=0, li
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -188,8 +186,7 @@ def add_role(pretty=False, wait_for_complete=False):
                                                  '(TO BE DEFINED) '
                                                  'to get more information about API call')
 
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {'rbac': rbac, 'name': role_added_model['name'], 'rule': role_added_model['rule']}
+    f_kwargs = {'name': role_added_model['name'], 'rule': role_added_model['rule']}
 
     dapi = DistributedAPI(f=security.add_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -197,7 +194,8 @@ def add_role(pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -213,8 +211,7 @@ def remove_roles(role_ids=None, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     :return Two list with deleted roles and not deleted roles
     """
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {'rbac': rbac, 'role_ids': role_ids}
+    f_kwargs = {'role_ids': role_ids}
 
     dapi = DistributedAPI(f=security.remove_roles,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -222,7 +219,8 @@ def remove_roles(role_ids=None, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -247,8 +245,7 @@ def update_role(role_id, pretty=False, wait_for_complete=False):
                                                  '(TO BE DEFINED) '
                                                  'to get more information about API call')
 
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {'rbac': rbac, 'role_id': role_id, 'name': role_added_model.get('name', None),
+    f_kwargs = {'role_id': role_id, 'name': role_added_model.get('name', None),
                 'rule': role_added_model.get('rule', None)}
 
     dapi = DistributedAPI(f=security.update_role,
@@ -257,7 +254,8 @@ def update_role(role_id, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -278,8 +276,7 @@ def get_policies(policy_ids=None, pretty=False, wait_for_complete=False, offset=
     :param search: Looks for elements with the specified string
     :return Policies information
     """
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {'policy_ids': policy_ids, 'rbac': rbac, 'offset': offset, 'limit': limit,
+    f_kwargs = {'policy_ids': policy_ids, 'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
@@ -292,7 +289,8 @@ def get_policies(policy_ids=None, pretty=False, wait_for_complete=False, offset=
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -315,8 +313,7 @@ def add_policy(pretty=False, wait_for_complete=False):
                                                  '(TO BE DEFINED) '
                                                  'to get more information about API call')
 
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {'rbac': rbac, 'name': policy_added_model['name'], 'policy': policy_added_model['policy']}
+    f_kwargs = {'name': policy_added_model['name'], 'policy': policy_added_model['policy']}
 
     dapi = DistributedAPI(f=security.add_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -324,7 +321,8 @@ def add_policy(pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -340,8 +338,7 @@ def remove_policies(policy_ids=None, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     :return Two list with deleted roles and not deleted roles
     """
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {'rbac': rbac, 'policy_ids': policy_ids}
+    f_kwargs = {'policy_ids': policy_ids}
 
     dapi = DistributedAPI(f=security.remove_policies,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -349,7 +346,8 @@ def remove_policies(policy_ids=None, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -373,8 +371,7 @@ def update_policy(policy_id, pretty=False, wait_for_complete=False):
                                                  '(TO BE DEFINED) '
                                                  'to get more information about API call')
 
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {'rbac': rbac, 'policy_id': policy_id,
+    f_kwargs = {'policy_id': policy_id,
                 'name': policy_added_model.get('name', None),
                 'policy': policy_added_model.get('policy', None)}
 
@@ -384,7 +381,8 @@ def update_policy(policy_id, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -401,8 +399,7 @@ def set_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     :return Role information
     """
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {'rbac': rbac, 'role_id': role_id, 'policy_ids': policy_ids}
+    f_kwargs = {'role_id': role_id, 'policy_ids': policy_ids}
 
     dapi = DistributedAPI(f=security.set_role_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -410,7 +407,8 @@ def set_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -427,8 +425,7 @@ def remove_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=Fals
     :param wait_for_complete: Disable timeout response
     :return Role information
     """
-    rbac = get_permissions(connexion.request.headers['Authorization'])
-    f_kwargs = {'rbac': rbac, 'role_id': role_id, 'policy_ids': policy_ids}
+    f_kwargs = {'role_id': role_id, 'policy_ids': policy_ids}
 
     dapi = DistributedAPI(f=security.remove_role_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -436,7 +433,8 @@ def remove_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=Fals
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 

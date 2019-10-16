@@ -28,7 +28,10 @@ stages:
       body:
         data:
           affected_items:
-            - '2'
+            - id: 2
+              name: !anystr
+              policies: !anything
+              rule: !anything
           total_affected_items: 1
 
   # DELETE /security/roles/1
@@ -93,7 +96,10 @@ stages:
       body:
         data:
           affected_items:
-            - '2'
+            - id: 2
+              name: !anystr
+              policy: !anything
+              roles: !anything
           total_affected_items: 1
 
   # DELETE /security/policies/1
@@ -205,8 +211,14 @@ stages:
       body:
         data:
           affected_items:
-            - '3'
-            - '4'
+            - id: 3
+              name: !anystr
+              policies: !anything
+              rule: !anything
+            - id: 4
+              name: !anystr
+              policies: !anything
+              rule: !anything
           total_affected_items: 2
 
   # DELETE /security/roles
@@ -249,8 +261,14 @@ stages:
       body:
         data:
           affected_items:
-            - '3'
-            - '4'
+            - id: 3
+              name: !anystr
+              policy: !anything
+              roles: !anything
+            - id: 4
+              name: !anystr
+              policy: !anything
+              roles: !anything
           total_affected_items: 2
 
   # DELETE /security/policies

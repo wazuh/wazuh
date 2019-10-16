@@ -73,7 +73,7 @@ def create_user(username: str = None, password: str = None):
             'str_priority': ['User created correctly', '', '']}
 
 
-@expose_resources(actions=['security:read'], resources=['user:id:{username}'])
+@expose_resources(actions=['security:update'], resources=['user:id:{username}'])
 def update_user(username=None, password=None):
     """Update a specified user
 
@@ -96,7 +96,7 @@ def update_user(username=None, password=None):
             'str_priority': ['User modified correctly', '', '']}
 
 
-@expose_resources(actions=['security:read'], resources=['user:id:{username_list}'])
+@expose_resources(actions=['security:delete'], resources=['user:id:{username_list}'])
 def delete_user(username_list):
     """Delete a specified user
 
@@ -142,10 +142,7 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
         for r_id in role_ids:
             role = rm.get_role_id(int(r_id))
             if role != SecurityError.ROLE_NOT_EXIST:
-                dict_role = role.to_dict()
-                for index, policy in enumerate(dict_role['policies']):
-                    dict_role['policies'][index]['policy'] = json.loads(dict_role['policies'][index]['policy'])
-                affected_items.append(dict_role)
+                affected_items.append(role.to_dict())
             else:
                 # Role id does not exist
                 failed_items.append(create_exception_dic(r_id, WazuhError(4002)))
@@ -170,13 +167,14 @@ def remove_roles(role_ids):
     failed_items = list()
     with orm.RolesManager() as rm:
         for r_id in role_ids:
+            role = rm.get_role_id(int(r_id))
             result = rm.delete_role(int(r_id))
             if result == SecurityError.ADMIN_RESOURCES:
                 failed_items.append(create_exception_dic(r_id, WazuhError(4008)))
             elif result is False:
                 failed_items.append(create_exception_dic(r_id, WazuhError(4002)))
-            else:
-                affected_items.append(r_id)
+            elif role:
+                affected_items.append(role.to_dict())
 
     return {'affected_items': affected_items,
             'failed_items': failed_items,
@@ -253,10 +251,7 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
         for p_id in policy_ids:
             policy = pm.get_policy_id(int(p_id))
             if policy != SecurityError.POLICY_NOT_EXIST:
-                dict_policy = policy.to_dict()
-                for index, policy in enumerate(dict_policy['roles']):
-                    dict_policy['roles'][index]['rule'] = json.loads(dict_policy['roles'][index]['rule'])
-                affected_items.append(dict_policy)
+                affected_items.append(policy.to_dict())
             else:
                 # Policy id does not exist
                 failed_items.append(create_exception_dic(p_id, WazuhError(4007)))
@@ -281,13 +276,14 @@ def remove_policies(policy_ids=None):
     failed_items = list()
     with orm.PoliciesManager() as pm:
         for p_id in policy_ids:
+            policy = pm.get_policy_id(int(p_id))
             result = pm.delete_policy(int(p_id))
             if result == SecurityError.ADMIN_RESOURCES:
                 failed_items.append(create_exception_dic(p_id, WazuhError(4008)))
             elif result is False:
                 failed_items.append(create_exception_dic(p_id, WazuhError(4007)))
-            else:
-                affected_items.append(p_id)
+            elif policy:
+                affected_items.append(policy.to_dict())
 
     return {'affected_items': affected_items,
             'failed_items': failed_items,
