@@ -79,14 +79,12 @@ char *get_agent_ip()
 /* Periodically send notification to server */
 void run_notify()
 {
-    char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE];
+    char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 2];
     static char tmp_labels[OS_MAXSTR - OS_HEADER_SIZE] = { '\0' };
     char *shared_files;
     os_md5 md5sum;
     time_t curr_time;
     char *agent_ip;
-
-    agent_ip = get_agent_ip();
 
     tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
     curr_time = time(0);
@@ -141,6 +139,8 @@ void run_notify()
             return;
         }
     }
+
+    agent_ip = get_agent_ip();
 
     /* Create message */
     if(agent_ip && strcmp(agent_ip, "Err")) {
