@@ -685,6 +685,9 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             }
         }
 
+        p_options.multi_path = NULL;
+        p_options.multi_url = NULL;
+
         if (os_index == CVE_NVD && !flags->patch_scan) {
             wm_vuldet_release_update_node(updates, CVE_MSU);
         }
@@ -712,8 +715,8 @@ end:
         OS_ClearNode(chld_node);
     }
 
+    wm_vuldet_clear_provider_options(p_options);
     if (retval) {
-        wm_vuldet_clear_provider_options(p_options);
         wm_vuldet_remove_os_feed_list(os_list);
     }
 
