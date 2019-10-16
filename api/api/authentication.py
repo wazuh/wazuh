@@ -13,7 +13,7 @@ from sqlalchemy import create_engine, Column, String
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from wazuh.rbac import pre_policies
+from wazuh.rbac import preprocessor
 from werkzeug.exceptions import Unauthorized
 from werkzeug.security import check_password_hash, generate_password_hash
 from sqlalchemy.orm.exc import UnmappedInstanceError
@@ -219,7 +219,7 @@ def generate_token(user_id):
     :return: string jwt formatted string
     """
     # Add dummy rbac_policies for developing here
-    rbac_policies = pre_policies.optimize_resources()
+    rbac_policies = preprocessor.optimize_resources()
 
     timestamp = int(time())
     payload = {
