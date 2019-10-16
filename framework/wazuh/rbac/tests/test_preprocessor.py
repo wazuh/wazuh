@@ -25,6 +25,6 @@ outputs = [test_case['processed_policies'] for test_case in file]
 @pytest.mark.parametrize('input, output', zip(inputs, outputs))
 def test_expose_resources(input, output):
 
-    with patch('wazuh.rbac.pre_policies.RBAChecker.run', return_value=input):
+    with patch('wazuh.rbac.pre_processor.RBAChecker.run', return_value=input):
         preprocessed_policies = optimize_resources()
         assert (preprocessed_policies == output)
