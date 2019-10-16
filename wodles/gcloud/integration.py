@@ -136,8 +136,8 @@ class WazuhGCloudSubscriber:
         response = self.pull_request(max_messages)
         while len(response.received_messages) > 0:
             for message in response.received_messages:
-                message_data = message.message.data
-                logger.debug(f'Processing event:\n{message_data}')
+                message_data: bytes = message.message.data
+                logger.debug(f'Processing event:\n{message_data.decode()}')
                 self.process_message(message.ack_id, message_data)
                 processed_messages += 1  # increment processed_messages counter
             # get more messages
