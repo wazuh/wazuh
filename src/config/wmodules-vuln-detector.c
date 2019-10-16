@@ -52,6 +52,7 @@ static int wm_vuldet_read_provider_content(xml_node **node, char *name, char mul
 static char wm_vuldet_provider_type(char *pr_name);
 static void wm_vuldet_remove_os_feed(vu_os_feed *feed, char full_r);
 static void wm_vuldet_remove_os_feed_list(vu_os_feed *feeds);
+static void wm_vuldet_init_provider_options(provider_options *options);
 static void wm_vuldet_clear_provider_options(provider_options options);
 
 // Options
@@ -596,6 +597,8 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
     provider_options p_options;
     int retval = OS_INVALID;
 
+    wm_vuldet_init_provider_options(&p_options);
+
     if (pr_name = wm_vuldet_provider_name(node), !pr_name) {
         mwarn("Empty %s name.", XML_PROVIDER);
         return 0;
@@ -1058,6 +1061,18 @@ void wm_vuldet_remove_os_feed_list(vu_os_feed *feeds) {
         wm_vuldet_remove_os_feed(feeds, 1);
         feeds = next;
     }
+}
+
+void wm_vuldet_init_provider_options(provider_options *options) {
+    options->multi_path = NULL;
+    options->multi_url = NULL;
+    options->multi_url_start = 0;
+    options->multi_url_end = 0;
+    options->multi_allowed_os_name = NULL;
+    options->multi_allowed_os_ver = NULL;
+    options->port = 0;
+    options->update_interval = 0;
+    options->update_since = 0;
 }
 
 void wm_vuldet_clear_provider_options(provider_options options) {
