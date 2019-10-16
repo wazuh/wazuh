@@ -9,8 +9,7 @@ from wazuh.rbac.decorators import expose_resources, list_handler_no_denied, list
 from wazuh.exception import WazuhException, create_exception_dic
 
 
-@expose_resources(actions=['active_response:command'], resources=['agent:id:{agent_list}'], target_params=['agent_list'],
-                  post_proc_func=list_handler_with_denied)
+@expose_resources(actions=['active_response:command'], resources=['agent:id:{agent_list}'])
 def run_command(agent_list=None, command=None, arguments=None, custom=False):
     """Run AR command in a specific agent
 
@@ -40,8 +39,7 @@ def run_command(agent_list=None, command=None, arguments=None, custom=False):
                              'Could not send command to any agent']}
 
 
-@expose_resources(actions=['active_response:command'], resources=['agent:id:*'], target_params=['agent_list'],
-                  post_proc_func=list_handler_no_denied)
+@expose_resources(actions=['active_response:command'], resources=['agent:id:*'])
 def run_command_all(agent_list=None, command=None, arguments=None, custom=False):
     """Run AR command in a specific agent
 
