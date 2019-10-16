@@ -33,6 +33,7 @@ static int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket);
 static int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket);
 static int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket);
 static int decode_package( Eventinfo *lf, cJSON * logJSON,int *socket);
+static int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket);
 static int decode_process( Eventinfo *lf, cJSON * logJSON,int *socket);
 
@@ -104,6 +105,13 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     else if (strcmp(msg_type, "program") == 0 || strcmp(msg_type, "program_end") == 0) {
         if (decode_package(lf, logJSON,socket) < 0) {
             mdebug1("Unable to send packages information to Wazuh DB.");
+            cJSON_Delete (logJSON);
+            return (0);
+        }
+    }
+    else if (strcmp(msg_type, "hotfix") == 0 || strcmp(msg_type, "hotfix_end") == 0) {
+        if (decode_hotfix(lf, logJSON, socket) < 0) {
+            mdebug1("Unable to send hotfixes information to Wazuh DB.");
             cJSON_Delete (logJSON);
             return (0);
         }
@@ -694,6 +702,7 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         cJSON * sysname = cJSON_GetObjectItem(inventory, "sysname");
         cJSON * release = cJSON_GetObjectItem(inventory, "release");
         cJSON * version = cJSON_GetObjectItem(inventory, "version");
+        cJSON * os_release = cJSON_GetObjectItem(inventory, "os_release");
 
         os_calloc(OS_SIZE_6144, sizeof(char), msg);
 
@@ -793,6 +802,13 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (version) {
             wm_strcat(&msg, version->valuestring, '|');
             fillData(lf,"os.release_version",version->valuestring);
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (os_release) {
+            wm_strcat(&msg, os_release->valuestring, '|');
+            fillData(lf,"os.os_release",os_release->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
@@ -1318,6 +1334,57 @@ end:
     free(response);
     free(msg);
     return retval;
+}
+
+int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
+    char * msg = NULL;
+    cJSON * hotfix;
+    cJSON * scan_id;
+    cJSON * scan_time;
+    char response[4096];
+
+    if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
+        return -1;
+    }
+
+    os_calloc(OS_SIZE_1024, sizeof(char), msg);
+
+    if (hotfix = cJSON_GetObjectItem(logJSON, "hotfix"), hotfix) {
+        scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
+
+        snprintf(msg, OS_SIZE_1024, "agent %s hotfix save %d|%s|%s|",
+                lf->agent_id,
+                scan_id->valueint,
+                scan_time->valuestring,
+                hotfix->valuestring);
+
+        if (wdbc_query_ex(socket, msg, response, sizeof(response)) != 0 || wdbc_parse_result(response, NULL) != WDBC_OK) {
+            free(msg);
+            return -1;
+        }
+    } else {
+        // Looking for 'end' message.
+        char * msg_type = NULL;
+
+        msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
+
+        if (!msg_type) {
+            merror("Invalid message. Type not found.");
+            free(msg);
+            return -1;
+        } else if (strcmp(msg_type, "hotfix_end") == 0) {
+            snprintf(msg, OS_SIZE_1024 - 1, "agent %s hotfix del %d", lf->agent_id, scan_id->valueint);
+
+            if (wdbc_query_ex(socket, msg, response, sizeof(response)) != 0 || wdbc_parse_result(response, NULL) != WDBC_OK) {
+                free(msg);
+                return -1;
+            }
+        }
+    }
+
+    free(msg);
+
+    return 0;
 }
 
 int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
