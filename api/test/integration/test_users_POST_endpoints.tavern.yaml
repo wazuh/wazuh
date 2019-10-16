@@ -39,13 +39,14 @@ stages:
       <<: *post_users_request
       json:
         username: "new_user"
-        password: "new_user1A"
+        password: "new_user1A!"
     response:
       status_code: 200
       body:
         data:
-          items: !anything
-          totalItems: 1
+          affected_items:
+            - username: new_user
+          total_affected_items: 1
 
   - name: Create a new user (user already exists)
     request:
@@ -147,10 +148,11 @@ stages:
       <<: *post_users_request
       json:
         username: "new_user1"
-        password: "new_user11A"
+        password: "new_user11A?"
     response:
       status_code: 200
       body:
         data:
-          items: !anything
-          totalItems: 1
+          affected_items:
+            - username: new_user1
+          total_affected_items: 1

@@ -3627,7 +3627,7 @@ components:
         $ref: '#/components/schemas/Username'
     usernames:
       in: query
-      name: username
+      name: usernames
       description: ID of an user.
       schema:
         type: array
@@ -10729,6 +10729,12 @@ paths:
       operationId: api.controllers.security_controller.get_users
       parameters:
         - $ref: '#/components/parameters/usernames'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
           description: 'Information about user'

@@ -11,51 +11,106 @@ stages:
 
   - name: Delete a non-existent user
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/nonexistent"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        usernames: nonexistent
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 5001
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 5001
+                message: !anystr
+                remediation: !anystr
+              id:
+                - nonexistent
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   - name: Delete an admin user (wazuh)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/wazuh"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        usernames: wazuh
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 5004
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 5004
+                message: !anystr
+                remediation: !anystr
+              id:
+                - wazuh
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   - name: Delete an admin user (wazuh-app)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/wazuh-app"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        usernames: wazuh-app
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 5004
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 5004
+                message: !anystr
+                remediation: !anystr
+              id:
+                - wazuh-app
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   - name: Delete an existent user (with body)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/new_user"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        usernames: new_user
     response:
       status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: new_user
+          total_affected_items: 1
+        message: Users deleted correctly
 
   - name: Delete an existent user
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/new_user1"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
+      params:
+        usernames: new_user1
     response:
       status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: new_user1
+          total_affected_items: 1
+        message: Users deleted correctly

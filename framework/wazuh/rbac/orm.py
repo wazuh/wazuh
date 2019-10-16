@@ -33,7 +33,7 @@ _Base = declarative_base()
 _Session = sessionmaker(bind=_engine)
 
 # IDs reserved for administrator roles and policies, these can not be modified or deleted
-admins_id = [1]
+admins_id = [1, 2]
 admin_policy = [1]
 
 
@@ -777,6 +777,11 @@ with RolesManager() as rm:
     rm.add_role('wazuh', {
         "FIND": {
             "r'^auth[a-zA-Z]+$'": ["administrator"]
+        }
+    })
+    rm.add_role('wazuh-app', {
+        "FIND": {
+            "r'^auth[a-zA-Z]+$'": ["administrator-app"]
         }
     })
 

@@ -34,12 +34,24 @@ def login_user(user):
 
 
 @exception_handler
-def get_users(username: list = None):
-    """Get username of a specified user
+def get_users(usernames: list = None, pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
+    """Returns information from all system roles
 
-    :return: All users data
+    :param usernames: List of users to be obtained
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
+    :param search: Looks for elements with the specified string
+    :return Roles information
     """
-    f_kwargs = {'username_list': username}
+    f_kwargs = {'username_list': usernames, 'offset': offset, 'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['username'],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None}
     dapi = DistributedAPI(f=security.get_users,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -115,13 +127,13 @@ def update_user(username):
 
 
 @exception_handler
-def delete_users(username=None):
+def delete_users(usernames=None):
     """Delete an existent user
 
-    :param username: Name of the user to be removed
+    :param usernames: Name of the user to be removed
     :return: Result of the operation
     """
-    f_kwargs = {'username': username}
+    f_kwargs = {'username_list': usernames}
     dapi = DistributedAPI(f=security.delete_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',

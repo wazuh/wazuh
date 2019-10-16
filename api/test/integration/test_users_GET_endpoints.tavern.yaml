@@ -10,7 +10,7 @@ stages:
     id: login_get_token
 
   - name: Get all users in the system
-    request: &get_users_request
+    request:
       url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -19,8 +19,13 @@ stages:
       status_code: 200
       body:
         data:
-          items: !anything
-          totalItems: !anyint
+          affected_items:
+            - username: new_user
+            - username: new_user1
+            - username: wazuh
+            - username: wazuh-app
+          total_affected_items: 4
+        message: !anystr
 ---
 test_name: GET /security/users/{username}
 
@@ -28,50 +33,123 @@ stages:
 
   - name: Get a specified user by its username
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/wazuh"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
+      params:
+        usernames: wazuh
     response:
       status_code: 200
       body:
         data:
-          items: !anything
-          totalItems: 1
+          affected_items: &user
+            - username: !anystr
+          total_affected_items: 1
 
   - name: Get a specified user by its username
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/wazuh-app"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
+      params:
+        usernames: wazuh,wazuh-app
     response:
       status_code: 200
       body:
         data:
-          items: !anything
-          totalItems: 1
+          affected_items:
+            - <<: *user
+            - <<: *user
+          total_affected_items: 2
 
   - name: Get an non-existent user by its username
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/NotFound"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
+      params:
+        usernames: NotFound
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 5001
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 5001
+                message: !anystr
+                remediation: !anystr
+              id:
+                - NotFound
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
+
+  - name: Get two non-existent users by their usernames
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        usernames: NotFound,NotFound1
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 5001
+                message: !anystr
+                remediation: !anystr
+              id:
+                - NotFound
+                - NotFound1
+          total_affected_items: 0
+          total_failed_items: 2
+        message: !anystr
+
+  - name: Get two non-existent users and an existing one by their usernames
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        usernames: NotFound,NotFound1,wazuh
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: wazuh
+          failed_items:
+            - error:
+                code: 5001
+                message: !anystr
+                remediation: !anystr
+              id:
+                - NotFound
+                - NotFound1
+          total_affected_items: 1
+          total_failed_items: 2
+        message: !anystr
 
   - name: Get an user by its username (invalid username)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/!!!"
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
+      params:
+        usernames: "!!!"
     response:
       status_code: 400
-      body: &error_spec
+      body:
         detail: !anystr
         status: !anyint
         title: !anystr
