@@ -10,12 +10,11 @@ from shutil import copyfile
 
 from wazuh import common, configuration
 from wazuh.InputValidator import InputValidator
-from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryDistinctAgents, WazuhDBQueryGroupByAgents
+from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryDistinctAgents, WazuhDBQueryGroupByAgents, Agent
 from wazuh.database import Connection
 from wazuh.exception import WazuhError, WazuhInternalError, WazuhException, create_exception_dic
 from wazuh.rbac.decorators import expose_resources
 from wazuh.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
-from wazuh.core.core_agent import Agent
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:*"], post_proc_func=None)
@@ -79,7 +78,8 @@ def get_agents_summary_os(agent_list=None, offset=None, limit=None, search=None,
     return data
 
 
-@expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"])
+@expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703]})
 def restart_agents(agent_list=None):
     """Restarts a list of agents
 
@@ -87,24 +87,27 @@ def restart_agents(agent_list=None):
     :return: Message.
     """
     affected_agents = list()
-    failed_ids = list()
+    failed_agents = list()
     for agent_id in agent_list:
         try:
+            if agent_id == "000":
+                raise WazuhError(1703)
             Agent(agent_id).restart()
             affected_agents.append(agent_id)
         except WazuhException as e:
-            failed_ids.append(create_exception_dic(agent_id, e))
+            failed_agents.append(create_exception_dic(agent_id, e))
 
     return {'affected_items': affected_agents,
-            'failed_items': failed_ids,
-            'str_priority': ['Restart command sent to all agents',
+            'failed_items': failed_agents,
+            'str_priority': ['Restart command sent to shown agents',
                              'Could not send command to some agents',
                              'Could not send command to any agent']}
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"])
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701]})
 def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, 
-               filters=None, q=''):
+               filters=None, q=None):
     """Gets a list of available agents with basic attributes.
 
     :param agent_list: List of agents ID's.
@@ -117,21 +120,26 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
     :param q: Defines query to filter in DB.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    if filters is None:
-        filters = dict()
-    filters['id'] = agent_list
-
+    affected_agents = list()
     failed_ids = list()
-    for agent_id in agent_list:
-        if agent_id not in common.system_agents.get():
-            failed_ids.append(create_exception_dic(agent_id, WazuhError(1701)))
+    total_affected_agents = 0
+    if len(agent_list) != 0:
+        if filters is None:
+            filters = dict()
+        filters['id'] = agent_list
 
-    db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, 
-                                  query=q)
-    data = db_query.run()
+        for agent_id in agent_list:
+            if agent_id not in common.system_agents.get():
+                failed_ids.append(create_exception_dic(agent_id, WazuhError(1701)))
 
-    result = {'affected_items': data['items'],
-              'total_affected_items': data['totalItems'],
+        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
+                                      filters=filters, query=q)
+        data = db_query.run()
+        affected_agents.extend(data['items'])
+        total_affected_agents = data['totalItems']
+
+    result = {'affected_items': affected_agents,
+              'total_affected_items': total_affected_agents,
               'failed_items': failed_ids,
               'str_priority': ['All selected agents information is shown',
                                'Some agents information is not shown',
@@ -139,22 +147,27 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
     return result
 
 
-# @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"])
-# def get_agents_keys(agent_list=None):
-#     """Get the key of existing agents
-#
-#     :param agent_list: List of agents ID's.
-#     :return: Agent key.
-#     """
-#     affected_agents = list()
-#     failed_ids = list()
-#     for agent_id in agent_list:
-#         try:
-#             items.append({'id': agent_id, 'key': Agent(agent_id).get_key()})
-#         except WazuhException:
-#             pass
-#
-#     return {'items': items, 'totalItems': len(items)}
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"])
+def get_agents_keys(agent_list=None):
+    """Get the key of existing agents
+
+    :param agent_list: List of agents ID's.
+    :return: Agent key.
+    """
+    affected_agents = list()
+    failed_ids = list()
+    for agent_id in agent_list:
+        try:
+            affected_agents.append({'id': agent_id, 'key': Agent(agent_id).get_key()})
+        except WazuhException as e:
+            failed_ids.append(create_exception_dic(agent_id, e))
+
+    result = {'affected_items': affected_agents,
+              'failed_items': failed_ids,
+              'str_priority': ['Shown keys for all selected agents',
+                               'Some agent keys are not shown',
+                               'No agent keys are shown']}
+    return result
 
 
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
@@ -172,28 +185,31 @@ def delete_agents(agent_list=None, backup=False, purge=False, status="all", olde
     :return: Dictionary with affected_agents (deleted agents), timeframe applied, failed_ids if it necessary
     (agents that could not be deleted), and a message.
     """
-    db_query = WazuhDBQueryAgents(limit=None, select=["id"], filters={'older_than': older_than, 'status': status,
-                                                                      'id': agent_list})
-    data = db_query.run()
-    id_purgeable_agents = list(map(operator.itemgetter('id'), data['items']))
-
     failed_ids = list()
     affected_agents = list()
-    for agent_id in agent_list:
-        try:
-            if agent_id == "000":
-                raise WazuhError(1703)
-            else:
-                my_agent = Agent(agent_id)
-                my_agent.load_info_from_db()
-                if agent_id not in id_purgeable_agents:
-                    raise WazuhError(1731, extra_message="The agent has a status different to '{0}' or the specified "
-                                                         "time frame 'older_than {1}' does not apply."
-                                                         .format(status, older_than))
-                my_agent.remove(backup, purge)
-                affected_agents.append(agent_id)
-        except WazuhException as e:
-            failed_ids.append(create_exception_dic(agent_id, e))
+    if len(agent_list) != 0:
+        db_query = WazuhDBQueryAgents(limit=None, select=["id"], filters={'older_than': older_than, 'status': status,
+                                                                          'id': agent_list})
+        data = db_query.run()
+        can_purge_agents = list(map(operator.itemgetter('id'), data['items']))
+
+        for agent_id in agent_list:
+            try:
+                if agent_id == "000":
+                    raise WazuhError(1703)
+                else:
+                    my_agent = Agent(agent_id)
+                    my_agent.load_info_from_db()
+                    if agent_id not in can_purge_agents:
+                        raise WazuhError(
+                            1731,
+                            extra_message="The agent has a status different to '{0}' or the specified time "
+                                          "frame 'older_than {1}' does not apply".format(status, older_than)
+                        )
+                    my_agent.remove(backup, purge)
+                    affected_agents.append(agent_id)
+            except WazuhException as e:
+                failed_ids.append(create_exception_dic(agent_id, e))
 
     result = {'affected_items': affected_agents,
               'failed_items': failed_ids,
@@ -287,7 +303,6 @@ def get_groups(group_list=None, offset=0, limit=common.database_limit, sort_by=N
             affected_groups.append(item)
         except WazuhException as e:
             failed_groups.append()
-
 
     data = process_array(affected_groups, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
@@ -452,67 +467,106 @@ def assign_agents_to_group(group_id=None, agent_list=None, replace=False):
     return result
 
 
-@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_id}'], post_proc_func=None)
-@expose_resources(actions=["agent:modify_group"], resources=['agent:id:{agent_list}'],
-                  post_proc_kwargs={'exclude_codes': [1703, 1734]})
-def remove_agents_from_group(group_id=None, agent_list=None):
-    """Removes agents assignment from a specified group
+@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_list}'], post_proc_func=None)
+@expose_resources(actions=["agent:modify_group"], resources=['agent:id:{agent_list}'], post_proc_func=None)
+def remove_agent_from_group(group_list=None, agent_list=None):
+    """Removes an agent assignment from a specified group
 
-    :param group_id: Group ID.
+    :param group_list: List of Group names.
     :param agent_list: List of Agent IDs.
     :return: Confirmation message.
     """
-    failed_ids = list()
-    affected_agents = list()
+    group_id = group_list[0]
+    agent_id = agent_list[0]
 
-    # Check if the group exists
-    if not Agent.group_exists(group_id[0]):
+    # Check if agent and group exist
+    if agent_id not in common.system_agents.get():
+        raise WazuhError(1701)
+    if group_id not in common.system_groups.get():
         raise WazuhError(1710)
 
-    for agent_id in agent_list:
-        try:
-            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id[0], force=False)
-            affected_agents.append(agent_id)
-        except WazuhException as e:
-            failed_ids.append(create_exception_dic(agent_id, e))
+    return Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id)
 
-    result = {'affected_items': affected_agents,
-              'failed_items': failed_ids,
-              'str_priority': ['All selected agents were removed from {}'.format(group_id[0]),
-                               'Some agents were not removed from {}'.format(group_id[0]),
-                               'No agents removed from {}'.format(group_id[0])]}
+
+@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"], post_proc_func=None)
+@expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"],
+                  post_proc_kwargs={'exclude_codes': [1734, 1745]})
+def remove_agent_from_groups(agent_list=None, group_list=None):
+    """Removes an agent assigment from a list of groups
+
+    :param agent_list: List of agents ID's.
+    :param group_list: List of Group names.
+    :return: Confirmation message.
+    """
+    affected_groups = list()
+    failed_groups = list()
+    agent_id = agent_list[0]
+
+    # Check if agent exists and it is not 000
+    if agent_id == '000':
+        raise WazuhError(1703)
+    if agent_id not in common.system_agents.get():
+        raise WazuhError(1701)
+
+    # We move default group to last position in case it is contained in group_list. When an agent is removed from all
+    # groups it is reverted to 'default'. We try default last to avoid removing it and then adding again.
+    try:
+        group_list.append(group_list.pop(group_list.index('default')))
+    except ValueError:
+        pass
+
+    for group_id in group_list:
+        try:
+            if group_id not in common.system_groups.get():
+                raise WazuhError(1710)
+            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id)
+            affected_groups.append(group_id)
+        except WazuhException as e:
+            failed_groups.append(create_exception_dic(group_id, e))
+
+    result = {'affected_items': affected_groups,
+              'failed_items': failed_groups,
+              'str_priority': ['Specified agent removed from shown groups',
+                               'Specified agent could not be removed from some groups',
+                               'Specified agent could not be removed from any group']}
 
     return result
 
 
-@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"])
-def remove_agents_from_all_groups(agent_list=None, force=False):
-    """Removes a list of agents assigment from all groups
+@expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"], post_proc_func=None)
+@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1734]})
+def remove_agents_from_group(agent_list=None, group_list=None):
+    """Remove a list of agents assignment from a specified group
 
     :param agent_list: List of agents ID's.
-    :param force: Do not check if agent exists
+    :param group_list: List of Group names.
     :return: Confirmation message.
     """
     affected_agents = list()
-    failed_ids = list()
+    failed_agents = list()
+    group_id = group_list[0]
+
+    # Check if group exists
+    if group_id not in common.system_groups.get():
+        raise WazuhError(1710)
+
     for agent_id in agent_list:
         try:
             if agent_id == '000':
                 raise WazuhError(1703)
-            else:
-                if not force:
-                    Agent(agent_id).get_basic_information()  # Check if agent exists
-                Agent.set_agent_group_file(agent_id, 'default')  # Reset agent assignment to 'default' group
-                affected_agents.append(agent_id)
+            if agent_id not in common.system_agents.get():
+                raise WazuhError(1701)
+            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id)
+            affected_agents.append(agent_id)
         except WazuhException as e:
-            failed_ids.append(create_exception_dic(agent_id, e))
+            failed_agents.append(create_exception_dic(agent_id, e))
 
     result = {'affected_items': affected_agents,
-              'failed_items': failed_ids,
-              'str_priority': ['All selected agents were removed from all groups. Group reverted to default.',
-                               'Some agents were not removed from from all groups. Affected agents group reverted to '
-                               'default',
-                               'No agents removed from from all groups']}
+              'failed_items': failed_agents,
+              'str_priority': ['All shown agents removed from specified group',
+                               'Some agents could not be removed from specified group',
+                               'No agent could be removed from specified group']}
 
     return result
 

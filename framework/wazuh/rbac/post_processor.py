@@ -78,10 +78,10 @@ def data_response_builder(result, original: dict = None, add_denied: bool = Fals
         affected = result['affected_items']
     final_dict = {'data': {'affected_items': affected, 'total_affected_items': len(result['affected_items'])}}
 
-    if result['failed_items']:
-        failed_result = _merge_errors(result['failed_items'], add_denied, **post_proc_kwargs)
-        final_dict['data']['failed_items'] = failed_result[0]
-        final_dict['data']['total_failed_items'] = failed_result[1]
+    failed_result, error_count = _merge_errors(result['failed_items'], add_denied, **post_proc_kwargs)
+    if error_count > 0:
+        final_dict['data']['failed_items'] = failed_result
+        final_dict['data']['total_failed_items'] = error_count
         final_dict['message'] = result['str_priority'][2] if not result['affected_items'] else result['str_priority'][1]
     else:
         final_dict['message'] = result['str_priority'][2] if not result['affected_items'] else result['str_priority'][0]
