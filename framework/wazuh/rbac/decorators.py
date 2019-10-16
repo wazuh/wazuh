@@ -38,12 +38,16 @@ def _expand_resource(resource):
 
     # This is the special case, expand_group can receive * or the name of the group. That's why it' s always called
     if resource_type == 'agent:group':
-        return expand_group(value)
+        system_agents.set(expand_group(value))
+        return system_agents.get()
+
+    # Set agents context variable
+    if resource_type == 'agent:id':
+        system_agents.set(get_agents_info())
 
     # We need to transform the wildcard * to the resource of the system
     if value == '*':
         if resource_type == 'agent:id':
-            system_agents.set(get_agents_info())
             return system_agents.get()
         elif resource_type == 'group:id':
             return get_groups()
@@ -65,8 +69,6 @@ def _expand_resource(resource):
         return set()
     # We return the value casted to set
     else:
-        if resource_type == 'agent:id':
-            system_agents.set(get_agents_info())
         return {value}
 
 
