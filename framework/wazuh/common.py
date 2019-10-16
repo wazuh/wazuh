@@ -1,13 +1,13 @@
-
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
 import os
+from contextvars import ContextVar
 from grp import getgrnam
 from pwd import getpwnam
+from typing import Dict, List
 
 
 try:
@@ -122,3 +122,8 @@ def ossec_gid():
 
 # Multigroup variables
 max_groups_per_multigroup = 256
+
+# Context variables
+rbac: ContextVar[Dict] = ContextVar('rbac', default=dict())
+system_agents: ContextVar[List] = ContextVar('system_agents', default=list())
+broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
