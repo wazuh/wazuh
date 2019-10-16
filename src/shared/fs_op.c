@@ -85,7 +85,7 @@ short IsNFS(const char *dir_name)
         return(-1);
     }
 #else
-    mdebug1("Attempted to check NFS status for '%s', but we don't know how on this OS.", dir_name);
+    mdebug2("Attempted to check NFS status for '%s', but we don't know how on this OS.", dir_name);
 #endif
     return(0);
 }
@@ -116,7 +116,7 @@ short skipFS(const char *dir_name)
         return(-1);
     }
 #else
-    mdebug1("Attempted to check FS status for '%s', but we don't know how on this OS.", dir_name);
+    mdebug2("Attempted to check FS status for '%s', but we don't know how on this OS.", dir_name);
 #endif
     return(0);
 }

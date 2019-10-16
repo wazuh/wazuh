@@ -271,7 +271,7 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
     if (mode == FIM_SCHEDULED || mode == FIM_MODE(syscheck.opts[dir_position])) {
         depth = fim_check_depth(file, dir_position);
         if(depth > syscheck.recursion_level[dir_position]) {
-            mdebug1(FIM_MAX_RECURSION_LEVEL, depth, syscheck.recursion_level[dir_position], file);
+            mdebug2(FIM_MAX_RECURSION_LEVEL, depth, syscheck.recursion_level[dir_position], file);
             return 0;
         }
 
