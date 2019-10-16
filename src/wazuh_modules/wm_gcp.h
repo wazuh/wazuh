@@ -14,7 +14,7 @@
 
 #define WM_GCP_LOGTAG ARGV0 ":gcp-pubsub"
 #define WM_GCP_DEFAULT_DIR WM_DEFAULT_DIR "/gcp-pubsub"
-#define WM_GCP_SCRIPT_PATH WM_GCP_DEFAULT_DIR "/gcp-pubsub.py"
+#define WM_GCP_SCRIPT_PATH WM_GCP_DEFAULT_DIR "/__main__.py"
 
 typedef struct wm_gcp {
     int enabled:1;
@@ -25,7 +25,6 @@ typedef struct wm_gcp {
     char *subscription_name;
     char *credentials_file;
     unsigned int interval;
-    int queue;
     time_t time_interval;
 } wm_gcp;
 

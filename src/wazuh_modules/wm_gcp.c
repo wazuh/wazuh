@@ -19,7 +19,6 @@ static void* wm_gcp_main(wm_gcp *gcp_config);                        // Module m
 void wm_gcp_run(wm_gcp *data);                                       // Running python script
 static void wm_gcp_destroy(wm_gcp *gcp_config);                      // Destroy data
 cJSON *wm_gcp_dump(const wm_gcp *gcp_config);                        // Read config
-void wm_gcp_setup(wm_gcp *data);                                     // Set queue
 
 /* Context definition */
 
@@ -42,8 +41,6 @@ void* wm_gcp_main(wm_gcp *data) {
         mtinfo(WM_GCP_LOGTAG, "Module disabled. Exiting.");
         pthread_exit(NULL);
     }
-
-    wm_gcp_setup(data);
 
     if (!data->pull_on_start) {
         time_start = time(NULL);
@@ -89,31 +86,15 @@ void* wm_gcp_main(wm_gcp *data) {
     return NULL;
 }
 
-void wm_gcp_setup(wm_gcp *data) {
-    int i;
-
-    // Connect to socket
-    for (i = 0; (data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        wm_delay(1000 * WM_MAX_WAIT);
-
-    if (i == WM_MAX_ATTEMPTS) {
-        mterror(WM_GCP_LOGTAG, "Can't connect to queue.");
-        pthread_exit(NULL);
-    }
-}
-
 void wm_gcp_run(wm_gcp *data) {
     int status;
     char *output = NULL;
     char *command = NULL;
 
-    int usec = 1000000 / wm_max_eps;
-
     // Create arguments
     mtdebug2(WM_GCP_LOGTAG, "Create argument list");
 
-    wm_strcat(&command, "python3 ", ' ');
-    wm_strcat(&command, WM_GCP_DEFAULT_DIR, '\0');
+    wm_strcat(&command, WM_GCP_SCRIPT_PATH, '\0');
 
     if (data->project_id) {
         wm_strcat(&command, "--project", ' ');
@@ -147,7 +128,7 @@ void wm_gcp_run(wm_gcp *data) {
 
     // Execute
 
-    mtinfo(WM_GCP_LOGTAG, "Launching command: %s", command);
+    mtdebug1(WM_GCP_LOGTAG, "Launching command: %s", command);
 
     const int wm_exec_ret_code = wm_exec(command, &output, &status, 0, NULL);
 
@@ -236,23 +217,6 @@ void wm_gcp_run(wm_gcp *data) {
                     mtinfo(WM_GCP_LOGTAG, "%s", line);
                 }
                 break;
-        }
-
-        if (wm_sendmsg(usec, data->queue, line, WM_GCP_CONTEXT.name, LOCALFILE_MQ) < 0) {
-            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-
-            if(data->queue >= 0){
-                close(data->queue);
-            }
-
-            if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                mwarn("Can't connect to queue.");
-            } else {
-                if(wm_sendmsg(usec, data->queue, line, WM_GCP_CONTEXT.name, LOCALFILE_MQ) < 0) {
-                    merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-                    close(data->queue);
-                }
-            }
         }
     }
 
