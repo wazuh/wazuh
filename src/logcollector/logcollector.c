@@ -1099,6 +1099,8 @@ void set_read(logreader *current, int i, int j) {
         current->read = read_multiline;
     } else if (strcmp("audit", current->logformat) == 0) {
         current->read = read_audit;
+    } else if (strcmp("multi-line_indented", current->logformat) == 0) {
+        current->read = read_multiline_indented;
     } else {
 #ifdef WIN32
         if (current->filter_binary) {

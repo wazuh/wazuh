@@ -245,6 +245,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             } else if (strcmp(logf[pl].logformat, "command") == 0) {
             } else if (strcmp(logf[pl].logformat, "full_command") == 0) {
             } else if (strcmp(logf[pl].logformat, "audit") == 0) {
+            } else if (strcmp(logf[pl].logformat, "multi-line_indented") == 0) {
             } else if (strncmp(logf[pl].logformat, "multi-line", 10) == 0) {
 
                 char *p_lf = logf[pl].logformat;
