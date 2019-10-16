@@ -67,6 +67,10 @@ If Not objFSO.fileExists(home_dir & "client.keys") Then
     objFSO.CreateTextFile(home_dir & "client.keys")
 End If
 
+If objFSO.fileExists(home_dir & "internal_options.conf") Then
+    objFSO.DeleteFile(home_dir & "internal_options.conf")
+End If
+
 If objFSO.fileExists(home_dir & "ossec.conf") Then
     ' Reading ossec.conf file
     Const ForReading = 1
@@ -176,35 +180,6 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
     objFile.WriteLine strNewText
     objFile.Close
-
-	If Not objFSO.fileExists(home_dir & "local_internal_options.conf") Then
-
-		If objFSO.fileExists(home_dir & "default-local_internal_options.conf") Then
-			' Reading default-local_internal_options.conf file
-			Set objFile = objFSO.OpenTextFile(home_dir & "default-local_internal_options.conf", ForReading)
-			strText = objFile.ReadAll
-			objFile.Close
-
-			' Writing the local_internal_options.conf file
-			Set objFile = objFSO.CreateTextFile(home_dir & "local_internal_options.conf", ForWriting)
-			objFile.WriteLine strText
-			objFile.Close
-		Else
-			Set objFile = objFSO.CreateTextFile(home_dir & "local_internal_options.conf", ForWriting)
-			objFile.WriteLine("# local_internal_options.conf")
-			objFile.WriteLine("#")
-			objFile.WriteLine("# This file should be handled with care. It contains")
-			objFile.WriteLine("# run time modifications that can affect the use")
-			objFile.WriteLine("# of OSSEC. Only change it if you know what you")
-			objFile.WriteLine("# are doing. Look first at ossec.conf")
-			objFile.WriteLine("# for most of the things you want to change.")
-			objFile.WriteLine("#")
-			objFile.WriteLine("# This file will not be overwritten during upgrades")
-			objFile.WriteLine("# but will be removed when the agent is un-installed.")
-			objFile.Close
-		End If
-
-	End If
 
 End If
 

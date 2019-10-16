@@ -187,7 +187,6 @@ Section "Wazuh Agent (required)" MainSec
     File manage_agents.exe
     File /oname=win32ui.exe os_win32ui.exe
     File ossec-rootcheck.exe
-    File internal_options.conf
     File setup-windows.exe
     File setup-syscheck.exe
     File setup-iis.exe
@@ -313,6 +312,9 @@ Section "Wazuh Agent (required)" MainSec
     CreateShortCut "$SMPROGRAMS\OSSEC\Documentation.lnk" "$INSTDIR\doc.html" "" "$INSTDIR\doc.html" 0
     CreateShortCut "$SMPROGRAMS\OSSEC\Edit Config.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
     CreateShortCut "$SMPROGRAMS\OSSEC\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
+
+    ; remove old internal options file
+    Delete "$INSTDIR\internal_options.conf"
 
     ; install OSSEC service
     ServiceInstall:
