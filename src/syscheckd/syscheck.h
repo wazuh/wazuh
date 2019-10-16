@@ -200,6 +200,8 @@ char *get_converted_link_path(int position);
 #define HEALTHCHECK_MODE 1
 int audit_init(void);
 char * audit_get_id(const char * event);
+int init_regex(void);
+int add_audit_rules_syscheck(void);
 void audit_read_events(int *audit_sock, int reading_mode);
 void audit_set_db_consistency(void);
 int check_auditd_enabled(void);
@@ -210,6 +212,7 @@ int audit_delete_rule(const char *path, const char *key);
 void *audit_main(int *audit_sock);
 void *audit_reload_thread();
 void *audit_healthcheck_thread(int *audit_sock);
+char *gen_audit_path(char *cwd, char *path0, char *path1);
 void audit_reload_rules(void);
 int audit_health_check(int audit_socket);
 void clean_rules(void);

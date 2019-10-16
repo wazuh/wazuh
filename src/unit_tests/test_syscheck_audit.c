@@ -15,7 +15,6 @@
 
 
 #include "../syscheckd/syscheck.h"
-#include "../config/syscheck-config.h"
 
 /* redefinitons/wrapping */
 
@@ -63,6 +62,11 @@ int __wrap__merror()
     return 0;
 }
 
+int __wrap__mdebug1()
+{
+    return 0;
+}
+
 int __wrap_fopen(const char *filename, const char *mode)
 {
     check_expected(filename);
@@ -93,6 +97,41 @@ int __wrap_symlink(const char *path1, const char *path2)
 {
     check_expected(path1);
     check_expected(path2);
+    return mock();
+}
+
+int __wrap_audit_open()
+{
+    return 1;
+}
+
+int __wrap_audit_close()
+{
+    return 1;
+}
+
+int __wrap_audit_get_rule_list()
+{
+    return mock();
+}
+
+int __wrap_W_Vector_length()
+{
+    return mock();
+}
+
+int __wrap_search_audit_rule()
+{
+    return mock();
+}
+
+int __wrap_audit_add_rule()
+{
+    return mock();
+}
+
+int __wrap_W_Vector_insert_unique()
+{
     return mock();
 }
 
@@ -345,6 +384,228 @@ void test_audit_get_id(void **state)
 }
 
 
+void test_init_regex(void **state)
+{
+    (void) state;
+    int ret;
+
+    ret = init_regex();
+
+    assert_int_equal(ret, 0);
+}
+
+
+void test_add_audit_rules_syscheck_not_added(void **state)
+{
+    (void) state;
+
+    char *entry = "/var/test";
+    os_calloc(2, sizeof(char *), syscheck.dir);
+    os_calloc(strlen(entry) + 2, sizeof(char), syscheck.dir[0]);
+    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
+    os_calloc(2, sizeof(int *), syscheck.opts);
+    syscheck.opts[0] |= WHODATA_ACTIVE;
+    syscheck.max_audit_entries = 100;
+
+    // Read loaded rules in Audit
+    will_return(__wrap_audit_get_rule_list, 5);
+
+    // Audit added rules
+    will_return(__wrap_W_Vector_length, 3);
+
+    // Rule already not added
+    will_return(__wrap_search_audit_rule, 0);
+
+    // Add rule
+    will_return(__wrap_audit_add_rule, 1);
+    will_return(__wrap_W_Vector_insert_unique, 1);
+
+    int ret;
+    ret = add_audit_rules_syscheck();
+
+    assert_int_equal(ret, 1);
+}
+
+
+void test_add_audit_rules_syscheck_added(void **state)
+{
+    (void) state;
+
+    char *entry = "/var/test";
+    os_calloc(2, sizeof(char *), syscheck.dir);
+    os_calloc(strlen(entry) + 2, sizeof(char), syscheck.dir[0]);
+    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
+    os_calloc(2, sizeof(int *), syscheck.opts);
+    syscheck.opts[0] |= WHODATA_ACTIVE;
+    syscheck.max_audit_entries = 100;
+
+    // Read loaded rules in Audit
+    will_return(__wrap_audit_get_rule_list, 5);
+
+    // Audit added rules
+    will_return(__wrap_W_Vector_length, 3);
+
+    // Rule already added
+    will_return(__wrap_search_audit_rule, 1);
+
+    // Add rule
+    will_return(__wrap_W_Vector_insert_unique, 1);
+
+    int ret;
+    ret = add_audit_rules_syscheck();
+
+    free(syscheck.dir[0]);
+    free(syscheck.dir);
+    free(syscheck.opts);
+
+    assert_int_equal(ret, 1);
+}
+
+
+void test_filterkey_audit_events_custom(void **state)
+{
+    (void) state;
+
+    char *key = "test_key";
+    os_calloc(2, sizeof(char *), syscheck.audit_key);
+    os_calloc(strlen(key) + 2, sizeof(char), syscheck.audit_key[0]);
+    snprintf(syscheck.audit_key[0], strlen(key) + 1, "%s", key);
+
+    int ret;
+    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=test_key";
+    ret = filterkey_audit_events(event);
+
+    free(syscheck.audit_key[0]);
+    free(syscheck.audit_key);
+
+    assert_int_equal(ret, 2);
+}
+
+
+void test_filterkey_audit_events_discard(void **state)
+{
+    (void) state;
+
+    char *key = "test_key";
+    os_calloc(2, sizeof(char *), syscheck.audit_key);
+    os_calloc(strlen(key) + 2, sizeof(char), syscheck.audit_key[0]);
+    snprintf(syscheck.audit_key[0], strlen(key) + 1, "%s", key);
+
+    int ret;
+    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=\"test_invalid_key\"";
+    ret = filterkey_audit_events(event);
+
+    free(syscheck.audit_key[0]);
+    free(syscheck.audit_key);
+
+    assert_int_equal(ret, 0);
+}
+
+
+void test_filterkey_audit_events_hc(void **state)
+{
+    (void) state;
+
+    int ret;
+    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=\"wazuh_hc\"";
+    ret = filterkey_audit_events(event);
+
+    assert_int_equal(ret, 3);
+}
+
+
+void test_filterkey_audit_events_fim(void **state)
+{
+    (void) state;
+
+    int ret;
+    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=\"wazuh_fim\"";
+    ret = filterkey_audit_events(event);
+
+    assert_int_equal(ret, 1);
+}
+
+
+void test_gen_audit_path(void **state)
+{
+    (void) state;
+
+    char * cwd = "/root";
+    char * path0 = "/root/test/";
+    char * path1 = "/root/test/file";
+
+    char * ret;
+    ret = gen_audit_path(cwd, path0, path1);
+    *state = ret;
+
+    assert_string_equal(ret, "/root/test/file");
+}
+
+
+void test_gen_audit_path2(void **state)
+{
+    (void) state;
+
+    char * cwd = "/root/test";
+    char * path0 = "/root/test/";
+    char * path1 = "/root/test/file";
+
+    char * ret;
+    ret = gen_audit_path(cwd, path0, path1);
+    *state = ret;
+
+    assert_string_equal(ret, "/root/test/file");
+}
+
+
+void test_gen_audit_path3(void **state)
+{
+    (void) state;
+
+    char * cwd = "/";
+    char * path0 = "/root/test/";
+    char * path1 = "/root/test/file";
+
+    char * ret;
+    ret = gen_audit_path(cwd, path0, path1);
+    *state = ret;
+
+    assert_string_equal(ret, "/root/test/file");
+}
+
+
+void test_gen_audit_path4(void **state)
+{
+    (void) state;
+
+    char * cwd = "/";
+    char * path0 = "/";
+    char * path1 = "/file";
+
+    char * ret;
+    ret = gen_audit_path(cwd, path0, path1);
+    *state = ret;
+
+    assert_string_equal(ret, "/file");
+}
+
+
+void test_gen_audit_path5(void **state)
+{
+    (void) state;
+
+    char * cwd = "/root";
+    char * path0 = "/";
+    char * path1 = "/file";
+
+    char * ret;
+    ret = gen_audit_path(cwd, path0, path1);
+    *state = ret;
+
+    assert_string_equal(ret, "/file");
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_check_auditd_enabled),
@@ -357,6 +618,18 @@ int main(void) {
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_symlink),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error),
         cmocka_unit_test_teardown(test_audit_get_id, free_string),
+        cmocka_unit_test(test_init_regex),
+        cmocka_unit_test(test_add_audit_rules_syscheck_added),
+        cmocka_unit_test(test_add_audit_rules_syscheck_not_added),
+        cmocka_unit_test(test_filterkey_audit_events_custom),
+        cmocka_unit_test(test_filterkey_audit_events_discard),
+        cmocka_unit_test(test_filterkey_audit_events_fim),
+        cmocka_unit_test(test_filterkey_audit_events_hc),
+        cmocka_unit_test_teardown(test_gen_audit_path, free_string),
+        cmocka_unit_test_teardown(test_gen_audit_path2, free_string),
+        cmocka_unit_test_teardown(test_gen_audit_path3, free_string),
+        cmocka_unit_test_teardown(test_gen_audit_path4, free_string),
+        cmocka_unit_test_teardown(test_gen_audit_path5, free_string),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
