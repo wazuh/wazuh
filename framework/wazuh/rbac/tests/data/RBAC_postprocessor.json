@@ -1,0 +1,301 @@
+[
+  {
+    "result": {
+      "affected_items": [{
+        "id": 1,
+        "name": "wazuh",
+        "rule": {
+          "FIND": {
+            "r'^auth[a-zA-Z]+$'": ["administrator"]
+          }
+        },
+        "policies": [{
+          "id": 1,
+          "name": "wazuhPolicy",
+          "policy": {
+            "actions": ["*:*"],
+            "resources": ["*:*"],
+            "effect": "allow"
+          }
+        }]
+      }, {
+        "id": 2,
+        "name": "normal",
+        "rule": {
+          "MATCH": {
+            "definition": "normalRule"
+          }
+        },
+        "policies": []
+      }, {
+        "id": 3,
+        "name": "normal1",
+        "rule": {
+          "MATCH": {
+            "definition": "normalRule1"
+          }
+        },
+        "policies": []
+      }],
+      "failed_items": [],
+      "str_priority": ["All specified roles were shown", "Some roles could not be shown", "No role were shown"]
+    },
+    "original": {
+      "offset": 0,
+      "limit": 500,
+      "sort_by": ["id"],
+      "sort_ascending": true
+    },
+    "allowed": {
+      "role:id": [1, 2, 3]
+    },
+    "target": ["role_ids"],
+    "add_denied": false,
+    "post_proc_kwargs": {},
+    "output": {
+      "data": {
+        "affected_items": [{
+          "id": 1,
+          "name": "wazuh",
+          "rule": {
+            "FIND": {
+              "r'^auth[a-zA-Z]+$'": ["administrator"]
+            }
+          },
+          "policies": [{
+            "id": 1,
+            "name": "wazuhPolicy",
+            "policy": {
+              "actions": ["*:*"],
+              "resources": ["*:*"],
+              "effect": "allow"
+            }
+          }]
+        }, {
+          "id": 2,
+          "name": "normal",
+          "rule": {
+            "MATCH": {
+              "definition": "normalRule"
+            }
+          },
+          "policies": []
+        }, {
+          "id": 3,
+          "name": "normal1",
+          "rule": {
+            "MATCH": {
+              "definition": "normalRule1"
+            }
+          },
+          "policies": []
+        }],
+        "total_affected_items": 3
+      },
+      "message": "All specified roles were shown"
+    }
+  },
+  {
+    "result": {
+      "affected_items": [{
+        "id": 1,
+        "name": "wazuhPolicy",
+        "policy": {
+          "actions": ["*:*"],
+          "resources": ["*:*"],
+          "effect": "allow"
+        },
+        "roles": [{
+          "id": 1,
+          "name": "wazuh",
+          "rule": {
+            "FIND": {
+              "r'^auth[a-zA-Z]+$'": ["administrator"]
+            }
+          }
+        }]
+      }],
+      "failed_items": [],
+      "str_priority": ["All specified policies were shown", "Some policies could not be shown", "No policy were shown"]
+    },
+    "original": {
+      "offset": 0,
+      "limit": 500,
+      "sort_by": ["id"],
+      "sort_ascending": true
+    },
+    "allowed": {
+      "role:id": [1]
+    },
+    "target": ["policy_ids"],
+    "add_denied": false,
+    "post_proc_kwargs": {},
+    "output": {
+      "data": {
+        "affected_items": [{
+          "id": 1,
+          "name": "wazuhPolicy",
+          "policy": {
+            "actions": ["*:*"],
+            "resources": ["*:*"],
+            "effect": "allow"
+          },
+          "roles": [{
+            "id": 1,
+            "name": "wazuh",
+            "rule": {
+              "FIND": {
+                "r'^auth[a-zA-Z]+$'": ["administrator"]
+              }
+            }
+          }]
+        }],
+        "total_affected_items": 1
+      },
+      "message": "All specified policies were shown"
+    }
+  },
+  {
+    "result": {
+      "affected_items": [{
+        "id": 1,
+        "name": "wazuh",
+        "rule": {
+          "FIND": {
+            "r'^auth[a-zA-Z]+$'": ["administrator"]
+          }
+        },
+        "policies": [{
+          "id": 1,
+          "name": "wazuhPolicy",
+          "policy": {
+            "actions": ["*:*"],
+            "resources": ["*:*"],
+            "effect": "allow"
+          }
+        }]
+      }, {
+        "id": 2,
+        "name": "normal",
+        "rule": {
+          "MATCH": {
+            "definition": "normalRule"
+          }
+        },
+        "policies": []
+      }, {
+        "id": 3,
+        "name": "normal1",
+        "rule": {
+          "MATCH": {
+            "definition": "normalRule1"
+          }
+        },
+        "policies": []
+      }],
+      "failed_items": [{
+        "id": "5",
+        "error": {
+          "message": "The specified role does not exist",
+          "code": 4002,
+          "remediation": "Please, create the specified role with the endpoint POST /security/roles"
+        }
+      }, {
+        "id": "4",
+        "error": {
+          "message": "The specified role does not exist",
+          "code": 4002,
+          "remediation": "Please, create the specified role with the endpoint POST /security/roles"
+        }
+      }],
+      "str_priority": ["All specified roles were shown", "Some roles could not be shown", "No role were shown"]
+    },
+    "original": {
+      "role_ids": [1, 2, 3, 4, 5],
+      "test_field": ["GET call"],
+      "offset": 0,
+      "limit": 500,
+      "sort_by": ["id"],
+      "sort_ascending": true
+    },
+    "allowed": {
+      "role:id": [1, 2, 3, 4, 5]
+    },
+    "target": ["role_ids"],
+    "add_denied": true,
+    "post_proc_kwargs": {
+      "extra_fields": ["test_field"]
+    },
+    "output": {
+      "data": {
+        "affected_items": [
+          {
+            "id": 1,
+            "name": "wazuh",
+            "policies": [
+              {
+                "id": 1,
+                "name": "wazuhPolicy",
+                "policy": {
+                  "actions": [
+                    "*:*"
+                  ],
+                  "effect": "allow",
+                  "resources": [
+                    "*:*"
+                  ]
+                }
+              }
+            ],
+            "rule": {
+              "FIND": {
+                "r'^auth[a-zA-Z]+$'": [
+                  "administrator"
+                ]
+              }
+            }
+          },
+          {
+            "id": 2,
+            "name": "normal",
+            "policies": [],
+            "rule": {
+              "MATCH": {
+                "definition": "normalRule"
+              }
+            }
+          },
+          {
+            "id": 3,
+            "name": "normal1",
+            "policies": [],
+            "rule": {
+              "MATCH": {
+                "definition": "normalRule1"
+              }
+            }
+          }
+        ],
+        "failed_items": [
+          {
+            "error": {
+              "code": 4002,
+              "message": "The specified role does not exist",
+              "remediation": "Please, create the specified role with the endpoint POST /security/roles"
+            },
+            "id": [
+              "4",
+              "5"
+            ]
+          }
+        ],
+        "test_field": [
+          "GET call"
+        ],
+        "total_affected_items": 3,
+        "total_failed_items": 2
+      },
+      "message": "Some roles could not be shown"
+    }
+  }
+]

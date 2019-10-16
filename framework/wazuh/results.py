@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import collections
 from copy import deepcopy
 from numbers import Number
 
@@ -10,7 +11,7 @@ from wazuh.common import database_limit
 from wazuh.exception import WazuhException, WazuhInternalError
 
 
-class WazuhResult(dict):
+class WazuhResult(collections.MutableMapping):
     """
     Models a result returned by any framework function. This should be the class of object that every
     framework function returns.
@@ -25,8 +26,40 @@ class WazuhResult(dict):
          are solved taking the first value found in str_priority. I.e.: {'foo': 'KO'} and {'foo': 'OK'} results in
          {'foo': 'KO'} if str_priority is set to ['KO', 'OK'] because 'KO' takes a higher priority level than 'OK'
         """
-        super().__init__(dct)
+        if isinstance(dct, dict):
+            self.dikt = dct
+        elif isinstance(dct, WazuhResult):
+            self.dikt = dct.dikt
         self._str_priority = str_priority
+
+    def __getitem__(self, item):
+        return self.dikt[item]
+
+    def __setitem__(self, key, value):
+        self.dikt[key] = value
+
+    def __repr__(self):
+        return self.__class__.__name__ + "(" + repr(self.dikt) + ")"
+
+    def __iter__(self):
+        return self.dikt.__iter__()
+
+    def __len__(self):
+        return len(self.dikt)
+
+    def __delitem__(self, key):
+        del self.dikt[key]
+
+    def __deepcopy__(self, memodict=None):
+        return WazuhResult(deepcopy(dict(self.dikt)), str_priority=deepcopy(self._str_priority))
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not self == other
 
     def __or__(self, other):
         """
@@ -37,7 +70,7 @@ class WazuhResult(dict):
         """
         if isinstance(other, WazuhException):
             return other
-        elif not isinstance(other, dict):
+        elif not isinstance(other, (dict, WazuhResult)):
             raise WazuhInternalError(1000, extra_message=f"WazuhResult cannot be merged with {type(other)} object")
 
         result = deepcopy(self)
@@ -68,7 +101,7 @@ class WazuhResult(dict):
         """
         return {
             'str_priority': self._str_priority,
-            'result': deepcopy(self)
+            'result': deepcopy(self.dikt)
         }
 
     def limit(self, limit=database_limit, offset=0):
