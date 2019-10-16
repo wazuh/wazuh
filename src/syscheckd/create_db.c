@@ -271,7 +271,7 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
     if (mode == FIM_SCHEDULED || mode == FIM_MODE(syscheck.opts[dir_position])) {
         depth = fim_check_depth(file, dir_position);
         if(depth > syscheck.recursion_level[dir_position]) {
-            mdebug1(FIM_MAX_RECURSION_LEVEL, depth, syscheck.recursion_level[dir_position], file);
+            mdebug2(FIM_MAX_RECURSION_LEVEL, depth, syscheck.recursion_level[dir_position], file);
             return 0;
         }
 
@@ -526,10 +526,9 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
             return NULL;
         } else {
             int size;
-            os_strdup(perm, data->win_perm_mask);
             os_calloc(OS_SIZE_20480, sizeof(char), data->perm);
 
-            if (size = decode_win_permissions(data->perm, OS_SIZE_20480, data->win_perm_mask, 0, NULL), size > 1) {
+            if (size = decode_win_permissions(data->perm, OS_SIZE_20480, perm, 0, NULL), size > 1) {
                 os_realloc(data->perm, size + 1, data->perm);
             }
         }
@@ -968,11 +967,7 @@ cJSON * fim_attributes_json(const fim_entry_data * data) {
     }
 
     if (data->options & CHECK_PERM) {
-#ifdef WIN32
-        cJSON_AddStringToObject(attributes, "perm", data->win_perm_mask);
-#else
         cJSON_AddStringToObject(attributes, "perm", data->perm);
-#endif
     }
 
     if (data->options & CHECK_OWNER) {
@@ -1209,9 +1204,7 @@ void free_entry_data(fim_entry_data * data) {
     if (data->group_name) {
         os_free(data->group_name);
     }
-    if (data->win_perm_mask) {
-        os_free(data->win_perm_mask);
-    }
+
     os_free(data);
 }
 

@@ -214,6 +214,9 @@ ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
         DEFINES+=-DENABLE_AUDIT
 endif
 
+ifeq (${COVERITY}, YES)
+	DEFINES+=-D__coverity__
+endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
@@ -947,8 +950,8 @@ config/%.o: config/%.c
 
 wmodules_c := $(wildcard wazuh_modules/wm*.c)
 
-ifeq (${TARGET},agent)
-	wmodules_c := $(filter-out wazuh_modules/wm_vuln_detector.c,$(wmodules_c))
+ifneq (${TARGET},agent)
+	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/vulnerability_detector/*.c)
 endif
 
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))

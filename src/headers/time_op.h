@@ -26,6 +26,9 @@
  *
  * @param ts Pointer to a timespec structure
  */
+
+#define TIME_LENGTH     OS_SIZE_128
+
 void gettime(struct timespec *ts);
 
 /**
@@ -44,6 +47,8 @@ void time_sub(struct timespec * a, const struct timespec * b);
  * @return Time elapsed between a and b (in seconds)
  */
 double time_diff(const struct timespec * a, const struct timespec * b);
+
+char *w_get_timestamp(time_t time);
 
 #ifdef WIN32
 

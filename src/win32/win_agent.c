@@ -362,8 +362,6 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
     tmpstr[OS_MAXSTR + 1] = '\0';
 
-    mdebug2("Attempting to send message to server.");
-
     os_wait();
 
     /* Using a mutex to synchronize the writes */
@@ -394,7 +392,6 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 #ifndef ONEWAY_ENABLED
     /* Check if the server has responded */
     if ((cu_time - available_server) > agt->notify_time) {
-        mdebug1("Sending agent information to server.");
         send_win32_info(cu_time);
 
         /* Attempt to send message again */
@@ -487,7 +484,6 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
     /* Send notification */
     else if ((cu_time - __win32_curr_time) > agt->notify_time) {
-        mdebug1("Sending info to server (ctime2)...");
         send_win32_info(cu_time);
     }
 
@@ -692,8 +688,6 @@ void send_win32_info(time_t curr_time)
     agent_ip = get_win_agent_ip();
 
     tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
-
-    mdebug1("Sending keep alive message.");
 
     /* Fix time */
     __win32_curr_time = curr_time;

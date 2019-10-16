@@ -27,6 +27,7 @@ typedef struct os_info {
     char *release;      ///< Operating system release (UNIX).
     char *version;      ///< Operating system version (UNIX).
     char *machine;      ///< Hardware identifier (UNIX).
+    char *os_release;   ///< OS release.
 } os_info;
 
 

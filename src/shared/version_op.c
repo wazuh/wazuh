@@ -18,6 +18,8 @@
 
 #ifdef WIN32
 
+char *get_release_from_build(char *os_build);
+
 os_info *get_win_version()
 {
     os_info *info;
@@ -31,6 +33,7 @@ os_info *get_win_version()
     DWORD dwCount = vsize;
     char version[64] = "";
     const DWORD size = 30;
+    unsigned long type = REG_DWORD;
 
     size_t ver_length = 60;
     size_t v_length = 20;
@@ -84,6 +87,7 @@ os_info *get_win_version()
                 strncat(temp, value, 1022);
                 info->os_name = strdup(temp);
             }
+
             RegCloseKey(RegistryKey);
         }
 
@@ -95,7 +99,6 @@ os_info *get_win_version()
         DWORD winMajor = 0;
         DWORD winMinor = 0;
         dwCount = size;
-        unsigned long type=REG_DWORD;
 
         if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
             merror(SK_REG_OPEN, subkey);
@@ -124,6 +127,17 @@ os_info *get_win_version()
                     info->os_build = strdup(vn_temp);
                 }
             }
+
+            dwCount = vsize;
+            dwRet = RegQueryValueEx(RegistryKey, TEXT("ReleaseId"), NULL, NULL, (LPBYTE)value, &dwCount);
+            if (dwRet != ERROR_SUCCESS) {
+                mdebug1("Could not read the 'ReleaseId' key from Windows registry. (Error %u)",(unsigned int)dwRet);
+                info->os_release = get_release_from_build(info->os_build);
+            }
+            else {
+                info->os_release = strdup(value);
+            }
+
             RegCloseKey(RegistryKey);
         }
         // Windows 6.2 or 6.3
@@ -219,6 +233,48 @@ os_info *get_win_version()
 
     }
 
+    // Read Service Pack
+    if(!info->os_release) {
+        DWORD service_pack = 0;
+        dwCount = sizeof(DWORD);
+        snprintf(subkey, vsize - 1, "%s", "SYSTEM\\CurrentControlSet\\Control\\Windows");
+
+        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
+            merror(SK_REG_OPEN, subkey);
+        }
+        else {
+            dwRet = RegQueryValueEx(RegistryKey, TEXT("CSDVersion"), NULL, &type, (LPBYTE)&service_pack, &dwCount);
+            if (dwRet != ERROR_SUCCESS) {
+                merror("Error reading 'CSDVersion' from Windows registry. (Error %u)",(unsigned int)dwRet);
+            }
+            else {
+                switch(service_pack) {
+                case 256:
+                    info->os_release = strdup("sp1");
+                    break;
+                case 512:
+                    info->os_release = strdup("sp2");
+                    break;
+                case 768:
+                    info->os_release = strdup("sp3");
+                    break;
+                case 1024:
+                    info->os_release = strdup("sp4");
+                    break;
+                case 1280:
+                    info->os_release = strdup("sp5");
+                    break;
+                case 1536:
+                    info->os_release = strdup("sp6");
+                    break;
+                default:
+                    mdebug2("The value of CSDVersion is not a recognizable service pack.: %lu.", service_pack);
+                }
+            }
+            RegCloseKey(RegistryKey);
+        }
+    }
+
     // Read Architecture
 
     snprintf(subkey, vsize - 1, "%s", "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
@@ -271,6 +327,32 @@ os_info *get_win_version()
     free(subkey);
 
     return info;
+}
+
+char *get_release_from_build(char *os_build) {
+    char *retval = NULL;
+
+    if (os_build) {
+        if (!strcmp(os_build, "10240")) {
+            os_strdup("1507", retval);
+        } else if (!strcmp(os_build, "10586")) {
+            os_strdup("1511", retval);
+        } else if (!strcmp(os_build, "14393")) {
+            os_strdup("1607", retval);
+        } else if (!strcmp(os_build, "15063")) {
+            os_strdup("1709", retval);
+        } else if (!strcmp(os_build, "17134")) {
+            os_strdup("1803", retval);
+        } else if (!strcmp(os_build, "17763")) {
+            os_strdup("1809", retval);
+        } else if (!strcmp(os_build, "18362")) {
+            os_strdup("1903", retval);
+        } else {
+            mdebug1("The release associated with the %s build is not recognized.", os_build);
+        }
+    }
+
+    return retval;
 }
 
 #else

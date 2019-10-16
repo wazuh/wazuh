@@ -1176,38 +1176,12 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
             break;
 
         case cJSON_Object:
-
-            if (strcmp(object->string, "audit") == 0) {
+            if (strcmp(object->string, "attributes") == 0) {
+                attributes = object;
+            } else if (strcmp(object->string, "old_attributes") == 0) {
+                old_attributes = object;
+            } else if (strcmp(object->string, "audit") == 0) {
                 audit = object;
-            } else {
-                cJSON *element = NULL;
-                char *permissions_list = NULL;
-                char *mask = NULL;
-                int size;
-
-                os_calloc(OS_SIZE_20480 + 1, sizeof(char), permissions_list);
-                element = cJSON_GetObjectItemCaseSensitive(object, "perm");
-
-                if(element && element->type == cJSON_String && element->valuestring[0] == '|') {
-                    os_strdup(element->valuestring, mask);
-                    if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, mask, 0, NULL), size > 1) {
-                        os_realloc(permissions_list, size + 1, permissions_list);
-                    }
-                    cJSON_DeleteItemFromObjectCaseSensitive(object, "perm");
-                    cJSON_AddStringToObject(object, "perm", permissions_list);
-                }
-
-                if (strcmp(object->string, "attributes") == 0) {
-                    attributes = object;
-                    lf->win_perm_after = mask;
-                } else if (strcmp(object->string, "old_attributes") == 0) {
-                    old_attributes = object;
-                    lf->win_perm_before = mask;
-                } else {
-                    os_free(mask);
-                }
-
-                os_free(permissions_list);
             }
 
             break;
