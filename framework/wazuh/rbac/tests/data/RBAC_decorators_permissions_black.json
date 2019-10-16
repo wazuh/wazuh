@@ -4,14 +4,11 @@
     },
     "decorator_params": {
         "actions": ["agent:read"],
-        "resources": ["agent:id:*"],
-        "target_params": ["agent_list"],
+        "resources": ["agent:id:{agent_list}"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
-    "function_params": {
-      "agent_list": []
-    },
+    "function_params": {},
     "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
     "allowed_resources": [["000", "001", "002", "003", "004", "005"]]
   },
@@ -23,14 +20,11 @@
     },
     "decorator_params": {
         "actions": ["agent:read"],
-        "resources": ["agent:id:*"],
-        "target_params": ["agent_list"],
+        "resources": ["agent:id:{agent_list}"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
-    "function_params": {
-      "agent_list": []
-    },
+    "function_params": {},
     "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1":  ["001", "003", "005"]},
     "allowed_resources": [["000", "002", "004"]]
   },
@@ -42,14 +36,11 @@
     },
     "decorator_params": {
         "actions": ["agent:read"],
-        "resources": ["agent:id:*"],
-        "target_params": ["agent_list"],
+        "resources": ["agent:id:{agent_list}"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
-    "function_params": {
-      "agent_list": []
-    },
+    "function_params": {},
     "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
     "allowed_resources": [["000", "002", "003", "004", "005"]]
   },
@@ -63,7 +54,6 @@
     "decorator_params": {
         "actions": ["security:read"],
         "resources": ["role:id:{role_ids}"],
-        "target_params": ["role_ids"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
@@ -71,7 +61,8 @@
       "role_ids": ["1"]
     },
     "fake_system_resources": {"role:id:*": ["1", "2", "3", "4", "5"], "policy:id:*": ["1", "2", "3", "4", "5"]},
-    "allowed_resources": [[]]
+    "allowed_resources": [[]],
+    "exception": "4000"
   },
   {
     "rbac": {
@@ -85,7 +76,6 @@
     "decorator_params": {
         "actions": ["security:read"],
         "resources": ["role:id:{role_ids}", "policy:id:{policy_ids}"],
-        "target_params": ["role_ids", "policy_ids"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
@@ -106,13 +96,12 @@
     },
     "decorator_params": {
         "actions": ["security:read"],
-        "resources": ["policy:id:*"],
-        "target_params": ["policy_ids"],
+        "resources": ["policy:id:{policy_ids}"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
     "function_params": {
-      "policy_ids": []
+      "policy_ids": null
     },
     "fake_system_resources": {"policy:id:*": ["1", "2", "3" , "4" , "5" ,"8"]},
     "allowed_resources": [["1", "2", "4", "5", "8"]]
@@ -128,7 +117,6 @@
     "decorator_params": {
         "actions": ["agent:delete"],
         "resources": ["agent:id:{agent_list}"],
-        "target_params": ["agent_list"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
@@ -149,7 +137,6 @@
     "decorator_params": {
         "actions": ["agent:delete"],
         "resources": ["agent:id:{agent_list}"],
-        "target_params": ["agent_list"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
@@ -170,7 +157,6 @@
     "decorator_params": {
         "actions": ["agent:delete"],
         "resources": ["agent:id:{agent_list}"],
-        "target_params": ["agent_list"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
@@ -193,7 +179,6 @@
     "decorator_params": {
         "actions": ["security:update"],
         "resources": ["role:id:{role_ids}", "policy:id:{policy_ids}"],
-        "target_params": ["role_ids", "policy_ids"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
@@ -217,7 +202,6 @@
     "decorator_params": {
         "actions": ["security:update"],
         "resources": ["role:id:{role_ids}", "policy:id:{policy_ids}"],
-        "target_params": ["role_ids", "policy_ids"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
@@ -238,7 +222,6 @@
     "decorator_params": {
         "actions": ["security:update"],
         "resources": ["role:id:{role_ids}", "policy:id:{policy_ids}"],
-        "target_params": ["role_ids", "policy_ids"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
@@ -259,7 +242,6 @@
     "decorator_params": {
         "actions": ["security:read"],
         "resources": ["user:id:{user_id}"],
-        "target_params": ["user_id"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
@@ -267,7 +249,8 @@
       "user_id": ["wazuh", "wazuh-app"]
     },
     "fake_system_resources": {"user:id:*": ["wazuh"]},
-    "allowed_resources": [[]]
+    "allowed_resources": [[]],
+    "exception": "4000"
   },
   {
     "rbac": {
@@ -279,7 +262,6 @@
     "decorator_params": {
         "actions": ["security:delete"],
         "resources": ["user:id:{user_id}"],
-        "target_params": ["user_id"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
@@ -303,7 +285,6 @@
     "decorator_params": {
         "actions": ["security:update"],
         "resources": ["role:id:{role_id}", "policy:id:{policy_ids}"],
-        "target_params": ["role_id", "policy_ids"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
@@ -342,14 +323,13 @@
     },
     "decorator_params": {
         "actions": ["security:update"],
-        "resources": ["role:id:*", "policy:id:*"],
-        "target_params": ["role_id", "policy_ids"],
+        "resources": ["role:id:{role_ids}", "policy:id:{policy_ids}"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
     "function_params": {
-      "role_id": [],
-      "policy_ids": []
+      "role_ids": null,
+      "policy_ids": null
     },
     "fake_system_resources": {"role:id:*": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13",
       "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32",
@@ -383,31 +363,105 @@
     },
     "decorator_params": {
         "actions": ["agent:read"],
-        "resources": ["agent:id:*"],
-        "target_params": ["agent_list"],
+        "resources": ["agent:id:{agent_list}"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
     "function_params": {
-      "agent_list": []
+      "agent_list": null
     },
     "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1": []},
-    "allowed_resources": [[]]
+    "allowed_resources": [[]],
+    "exception": "4000"
   },
   {
     "rbac": {
     },
     "decorator_params": {
         "actions": ["agent:read"],
-        "resources": ["agent:id:*"],
-        "target_params": ["agent_list"],
+        "resources": ["agent:id:{agent_list}"],
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
     "function_params": {
-      "agent_list": []
+      "agent_list": null
     },
     "fake_system_resources": {"agent:id:*": []},
-    "allowed_resources": [[]]
+    "allowed_resources": [[]],
+    "exception": "4000"
+  },
+  {
+    "rbac": {
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": ["998", "999"]
+    },
+    "fake_system_resources": {"agent:id:*": []},
+    "allowed_resources": [["998", "999"]]
+  },
+  {
+    "rbac": {
+    },
+    "decorator_params": {
+        "actions": ["role:update", "policy:update"],
+        "resources": ["role:id:{role_ids}", "policy:id:{policy_ids}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "role_ids": ["98"],
+      "policy_ids": ["99", "98"]
+    },
+    "fake_system_resources": {"role:id:*": [], "policy:id:*":  []},
+    "allowed_resources": [["98"], ["99", "98"]]
+  },
+  {
+    "rbac": {
+    },
+    "decorator_params": {
+        "actions": ["role:update", "policy:update"],
+        "resources": ["role:id:{role_ids}", "policy:id:{policy_ids}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "role_ids": "98",
+      "policy_ids": ["99", "98"]
+    },
+    "fake_system_resources": {"role:id:*": [], "policy:id:*":  []},
+    "allowed_resources": [["98"], ["99", "98"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:group:*": "allow",
+        "agent:group:group1": "deny",
+        "agent:id:000": "allow"
+      },
+      "agent:update": {
+        "agent:group:*": "deny",
+        "agent:group:group1": "allow",
+        "agent:id:000": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read", "agent:update"],
+        "resources": ["agent:id:{agent_list}", "agent:group:{group_id}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": ["99", "98", "5", "3", "2"],
+      "group_id": ["group1", "group2"]
+    },
+    "fake_system_resources": {"agent:id:*": ["1", "2", "3", "4", "5", "6", "7", "8"], "agent:group:group1":  ["1", "2"],
+      "agent:group:group2":  ["5", "4", "3", "2"]},
+    "allowed_resources": [[], []]
   }
 ]
