@@ -283,8 +283,9 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
             original_kwargs = copy.deepcopy(kwargs)
             for index, target in enumerate(target_params):
                 try:
-                    # We don't have any permissions over the required permissions
-                    if len(allow[list(allow.keys())[index]]) == 0:
+                    # We don't have any permissions over the required permissions,
+                    # post_proc_func is None -> special output, when we don't want to post process the output
+                    if len(allow[list(allow.keys())[index]]) == 0 and post_proc_func is None:
                         raise Exception
                     if target != '*':  # No resourceless
                         kwargs[target] = list(allow[list(allow.keys())[index]])
