@@ -231,6 +231,7 @@ int set_winsacl(const char *dir, int position);
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
 #endif
 
+int is_nodiff(const char *filename);
 int fim_initialize();
 
 /* Check for restricts and ignored files */

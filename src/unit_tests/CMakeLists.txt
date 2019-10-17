@@ -39,6 +39,8 @@ LIST(APPEND tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,IsSocket -Wl
                          -Wl,--wrap,audit_open -Wl,--wrap,audit_get_rule_list -Wl,--wrap,audit_close -Wl,--wrap,mdebug1 -Wl,--wrap,W_Vector_length -Wl,--wrap,search_audit_rule \
                          -Wl,--wrap,audit_add_rule -Wl,--wrap,W_Vector_insert_unique")
 
+LIST(APPEND tests_names "test_seechanges")
+LIST(APPEND tests_flags " ")
 
 # Config files
 CONFIGURE_FILE("test_syscheck.conf" "test_syscheck.conf" COPYONLY)

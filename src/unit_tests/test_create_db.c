@@ -92,7 +92,6 @@ static fim_entry_data *fill_entry_struct(
     fim_event_mode mode,
     time_t last_event,
     const char * entry_type,
-    const char * win_perm_mask,
     unsigned long int dev,
     unsigned int scanned,
     int options,
@@ -114,7 +113,6 @@ static fim_entry_data *fill_entry_struct(
     data->mode = mode;
     data->last_event = last_event;
     data->entry_type = entry_type;
-    data->win_perm_mask = strdup(win_perm_mask);
     data->dev = dev;
     data->scanned = scanned;
     data->options = options;
@@ -148,7 +146,6 @@ void test_fim_json_event(void **state)
         FIM_REALTIME,
         1570184220,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
@@ -171,7 +168,6 @@ void test_fim_json_event(void **state)
         FIM_REALTIME,
         1570184221,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
@@ -250,7 +246,6 @@ void test_fim_json_event_whodata(void **state)
         FIM_REALTIME,
         1570184220,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
@@ -273,7 +268,6 @@ void test_fim_json_event_whodata(void **state)
         FIM_REALTIME,
         1570184221,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
@@ -329,7 +323,6 @@ void test_fim_json_event_no_changes(void **state)
         FIM_REALTIME,
         1570184220,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
@@ -375,7 +368,6 @@ void test_fim_attributes_json(void **state)
         FIM_REALTIME,
         1570184220,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
@@ -414,7 +406,6 @@ void test_fim_entry_json(void **state)
         FIM_REALTIME,
         1570184220,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
@@ -461,7 +452,6 @@ void test_fim_json_compare_attrs(void **state)
         FIM_REALTIME,
         1570184220,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
@@ -484,7 +474,6 @@ void test_fim_json_compare_attrs(void **state)
         FIM_REALTIME,
         1570184221,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
@@ -659,7 +648,6 @@ void test_fim_get_checksum(void **state)
         FIM_REALTIME,
         1570184220,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
@@ -753,7 +741,6 @@ void test_fim_insert_success_new(void **state)
         FIM_REALTIME,
         1570184220,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
@@ -802,7 +789,6 @@ void test_fim_insert_success_add(void **state)
         FIM_REALTIME,
         1570184220,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
@@ -851,7 +837,6 @@ void test_fim_insert_failure_new(void **state)
         FIM_REALTIME,
         1570184220,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
@@ -899,7 +884,6 @@ void test_fim_insert_failure_duplicated(void **state)
         FIM_REALTIME,
         1570184220,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
@@ -940,13 +924,13 @@ void test_fim_update_success(void **state)
         FIM_REALTIME,
         1570184220,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
         "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
     );
 
+    will_return(__wrap_rbtree_get, NULL);
     will_return(__wrap_rbtree_replace, 1);
 
     ret = fim_update(file, data);
@@ -979,7 +963,6 @@ void test_fim_update_failure_nofile(void **state)
         FIM_REALTIME,
         1570184220,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
@@ -1018,7 +1001,6 @@ void test_fim_update_failure_rbtree(void **state)
         FIM_REALTIME,
         1570184220,
         "file",
-        "xxx",
         12345678,
         123456,
         511,
