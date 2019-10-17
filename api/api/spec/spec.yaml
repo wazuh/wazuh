@@ -4871,7 +4871,7 @@ paths:
       tags:
         - agents
       summary: 'Update group configuration'
-      description: Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration tags/syntax.
+      description: "Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration tags/syntax."
       operationId: api.controllers.agents_controller.put_group_config
       parameters:
         - $ref: '#/components/parameters/pretty'

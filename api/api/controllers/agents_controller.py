@@ -819,7 +819,7 @@ def put_group_config(body, group_id, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param group_id: Group ID.
-    :return: CommonResponse
+    :return: ApiResponse
     """
     # Parse body to utf-8
     try:

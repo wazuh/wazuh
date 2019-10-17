@@ -758,7 +758,7 @@ def get_agent_conf(group_list=None, filename='agent.conf'):
     # a list of groups
     group_id = group_list[0]
 
-    return configuration.get_agent_conf(group_id=group_id, filename=filename)['items']
+    return configuration.get_agent_conf(group_id=group_id, filename=filename)['items'][0]
 
 
 @expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], post_proc_func=None)
