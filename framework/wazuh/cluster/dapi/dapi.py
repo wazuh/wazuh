@@ -111,7 +111,7 @@ class DistributedAPI:
             except json.decoder.JSONDecodeError:
                 response = {'message': response}
 
-            return response if isinstance(response, (wresults.WazuhResult, exception.WazuhException)) else wresults.WazuhResult(response)
+            return response if isinstance(response, (wresults.AbstractWazuhResult, exception.WazuhException)) else wresults.WazuhResult(response)
 
         except exception.WazuhError as e:
             e.dapi_errors = self.get_error_info(e)
@@ -308,7 +308,7 @@ class DistributedAPI:
         return json.loads(node_response,
                           object_hook=c_common.as_wazuh_object)
 
-    async def forward_request(self) -> [wresults.WazuhResult, exception.WazuhException]:
+    async def forward_request(self) -> [wresults.AbstractWazuhResult, exception.WazuhException]:
         """
         Forwards a request to the node who has all available information to answer it. This function is called when a
         distributed_master function is used. Only the master node calls this function. An API request will only be
@@ -316,7 +316,7 @@ class DistributedAPI:
 
         :return: a JSON response.
         """
-        async def forward(node_name: Tuple) -> [wresults.WazuhResult, exception.WazuhException]:
+        async def forward(node_name: Tuple) -> [wresults.AbstractWazuhResult, exception.WazuhException]:
             """
             Forwards a request to a node.
             :param node_name: Node to forward a request to.
@@ -341,7 +341,7 @@ class DistributedAPI:
                                                                         ).encode(),
                                                          self.wait_for_complete),
                                     object_hook=c_common.as_wazuh_object)
-            return result if isinstance(result, (wresults.WazuhResult, exception.WazuhException)) else wresults.WazuhResult(result)
+            return result if isinstance(result, (wresults.AbstractWazuhResult, exception.WazuhException)) else wresults.WazuhResult(result)
 
         # get the node(s) who has all available information to answer the request.
         nodes = await self.get_solver_node()
@@ -349,7 +349,7 @@ class DistributedAPI:
         if len(nodes) > 1:
             results = await asyncio.shield(asyncio.gather(*[forward(node) for node in nodes.items()]))
             response = reduce(or_, results)
-            if isinstance(response, wresults.WazuhResult):
+            if isinstance(response, wresults.AbstractWazuhResult):
                 response = response.limit(limit=self.f_kwargs.get('limit', common.database_limit),
                                           offset=self.f_kwargs.get('offset', 0))\
                                    .sort(fields=self.f_kwargs.get('fields', []),
