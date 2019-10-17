@@ -74,7 +74,6 @@
         </Property>
         <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="no" />
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
-        <Binary Id="ReplaceConf" SourceFile="ReplaceConf.vbs" />
 
         <!-- This script will remove all of the files and folders from the root folder on uninstall, *except* some files indicated in RemoveAllScript.vbs. -->
         <!-- Especially, "ossec.conf" and "client.keys" will be kept, and a couple of other files too. -->
@@ -89,7 +88,7 @@
         <CustomAction Id="InstallConfigurationFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs ExtractConfigurationFiles" />
         <CustomAction Id="InstallSCAFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs ExtractSCAFiles" />
 
-        <CustomAction Id="ReplaceConfiguration" BinaryKey="ReplaceConf" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
+        <CustomAction Id="ReplaceConfiguration" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript ReplaceConf.vbs &quot;[APPLICATIONFOLDER]&quot;" />
 
         <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT]" />
         <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;" />
@@ -186,14 +185,15 @@
         
             <Custom Action="SetCustomActionDataValue" After="InstallInitialize">NOT Installed</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
-            <Custom Action="InstallConfigurationFiles" After="InstallFinalize">NOT Installed</Custom>
-            <Custom Action="InstallSCAFiles" After="InstallFinalize">(NOT Installed) OR (REINSTALL)</Custom>
-            <Custom Action="ReplaceConfiguration" After="InstallConfigurationFiles">NOT Installed</Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
             <Custom Action="StopWinService" After="InstallInitialize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
+
+            <Custom Action="InstallConfigurationFiles" After="InstallFinalize">NOT Installed</Custom>
+            <Custom Action="InstallSCAFiles" After="InstallFinalize">(NOT Installed) OR (REINSTALL)</Custom>
+            <Custom Action="ReplaceConfiguration" After="InstallFinalize">NOT Installed</Custom>
 
             <Custom Action="CustomAction_NoGroup_NoName_RunAuthd" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
             <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
@@ -287,6 +287,9 @@
                     </Component>
                     <Component Id="UNZIPVERSIONFILES.VBS" DiskId="1" Guid="32FAB5FA-9678-427B-9536-88AAA897A82A">
                         <File Id="UNZIPVERSIONFILES.VBS" Name="UnzipVersionFiles.vbs" Source="UnzipVersionFiles.vbs" />
+                    </Component>
+                    <Component Id="REPLACECONF.VBS" DiskId="1" Guid="D2CA93FD-4B3C-4147-B7D8-503487E23D16">
+                        <File Id="REPLACECONF.VBS" Name="ReplaceConf.vbs" Source="ReplaceConf.vbs" />
                     </Component>
                     <!-- Mark this file as permanent, so it is not deleted on uninstall. -->
                     <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9" NeverOverwrite="yes" Permanent="yes">
@@ -473,7 +476,7 @@
                             <File Id="SCA_WIN2012R2_DOMAIN.ZIP" Name="2012R2_domain.zip" Source="..\..\etc\sca\windows\2012R2\domain\2012R2_domain.zip" />
                             <Condition>VersionNT64 = 603 AND MsiNTProductType = 2</Condition>
                         </Component>
-                        <Component Id="SCA_WIN2012R2_MEMBER" DiskId="1" Guid="6C7B21C9-2B01-4A6B-BAC5-782382D10FBB">
+                        <Component Id="SCA_WIN2012R2_MEMBER" DiskId="1" Guid="4EA82D11-D36B-4153-A6A7-8B5374296601">
                             <File Id="SCA_WIN2012R2_MEMBER.ZIP" Name="2012R2_MEMBER.zip" Source="..\..\etc\sca\windows\2012R2\member\2012R2_member.zip" />
                             <Condition>VersionNT64 = 603 AND MsiNTProductType = 3</Condition>
                         </Component>
@@ -606,6 +609,7 @@
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
 			<ComponentRef Id="UNZIPVERSIONFILES.VBS" />
+            <ComponentRef Id="REPLACECONF.VBS" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
             <ComponentRef Id="OSSEC_PRE6.CONF" />

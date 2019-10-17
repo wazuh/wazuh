@@ -76,6 +76,7 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     objFile.Close
 
     ' Enable syscheck in a fresh installation
+    strNewText = Replace(strText, "<teststring>", "<teststring>")
     If InStr(strText,"<address>0.0.0.0</address>") > 0 Then
         Set re = new regexp
         re.Pattern = "<disabled>yes</disabled>"
