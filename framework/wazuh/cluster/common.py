@@ -606,9 +606,9 @@ class WazuhJSONEncoder(json.JSONEncoder):
             result = {'__wazuh_exception__': {'__class__': obj.__class__.__name__,
                                               '__object__': obj.to_dict()}}
             return result
-        elif isinstance(obj, wresults.WazuhResult):
+        elif isinstance(obj, wresults.AbstractWazuhResult):
             result = {'__wazuh_result__': {'__class__': obj.__class__.__name__,
-                                           '__object__': obj.to_dict()}
+                                           '__object__': obj.encode_json()}
                       }
             return result
         elif isinstance(obj, datetime.datetime):
@@ -642,7 +642,7 @@ def as_wazuh_object(dct: Dict):
             return getattr(exception, wazuh_exception['__class__']).from_dict(wazuh_exception['__object__'])
         elif '__wazuh_result__' in dct:
             wazuh_result = dct['__wazuh_result__']
-            return getattr(wresults, wazuh_result['__class__']).from_dict(wazuh_result['__object__'])
+            return getattr(wresults, wazuh_result['__class__']).decode_json(wazuh_result['__object__'])
         elif '__wazuh_datetime__' in dct:
             return datetime.datetime.fromisoformat(dct['__wazuh_datetime__'])
         return dct

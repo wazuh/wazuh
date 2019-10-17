@@ -2,7 +2,8 @@ from connexion.apps.flask_app import FlaskJSONEncoder
 import six
 
 from api.models.base_model_ import Model
-from wazuh.results import WazuhResult
+from wazuh.results import AbstractWazuhResult
+
 
 class JSONEncoder(FlaskJSONEncoder):
     include_nulls = False
@@ -17,6 +18,6 @@ class JSONEncoder(FlaskJSONEncoder):
                 attr = o.attribute_map[attr]
                 dikt[attr] = value
             return dikt
-        elif isinstance(o, WazuhResult):
-            return o.dikt
+        elif isinstance(o, AbstractWazuhResult):
+            return o.render()
         return FlaskJSONEncoder.default(self, o)

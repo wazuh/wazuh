@@ -3,34 +3,36 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import collections
+import sys
 from copy import deepcopy
 from numbers import Number
 
+import wazuh.exception as wexception
 from wazuh import utils
 from wazuh.common import database_limit
-from wazuh.exception import WazuhException, WazuhInternalError
+
+current_module = sys.modules[__name__]
 
 
-class WazuhResult(collections.MutableMapping):
+class AbstractWazuhResult(collections.MutableMapping):
     """
     Models a result returned by any framework function. This should be the class of object that every
     framework function returns.
     """
-
-    def __init__(self, dct, str_priority=None):
+    def __init__(self, dct):
         """
         Initializes an instance
 
         :param dct: map to take key-values from
-        :param str_priority: list of strings. If not None, conflicts when merging str values in the result
-         are solved taking the first value found in str_priority. I.e.: {'foo': 'KO'} and {'foo': 'OK'} results in
-         {'foo': 'KO'} if str_priority is set to ['KO', 'OK'] because 'KO' takes a higher priority level than 'OK'
         """
         if isinstance(dct, dict):
             self.dikt = dct
-        elif isinstance(dct, WazuhResult):
+        elif isinstance(dct, AbstractWazuhResult):
             self.dikt = dct.dikt
-        self._str_priority = str_priority
+        else:
+            raise wexception.WazuhInternalError(1000, extra_message=f"dct param must be a dict or "
+                                                                    f"an AbstractWazuhResult subclass, "
+                                                                    f"not a {type(dct)}")
 
     def __getitem__(self, item):
         return self.dikt[item]
@@ -39,7 +41,7 @@ class WazuhResult(collections.MutableMapping):
         self.dikt[key] = value
 
     def __repr__(self):
-        return self.__class__.__name__ + "(" + repr(self.dikt) + ")"
+        return self.__class__.__name__ + "(" + repr(self.__dict__) + ")"
 
     def __iter__(self):
         return self.dikt.__iter__()
@@ -51,7 +53,9 @@ class WazuhResult(collections.MutableMapping):
         del self.dikt[key]
 
     def __deepcopy__(self, memodict=None):
-        return WazuhResult(deepcopy(dict(self.dikt)), str_priority=deepcopy(self._str_priority))
+        obj = self.__class__({})
+        obj.__dict__ = deepcopy(dict(self.__dict__))
+        return obj
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -63,15 +67,15 @@ class WazuhResult(collections.MutableMapping):
 
     def __or__(self, other):
         """
-        | operator used to merge two WazuhResult objects. When merged with a WazuhException, the result is always a
-        WazuhException
-        :param other: WazuhResult or WazuhException
-        :return: a new WazuhResult or WazuhException
+        | operator used to merge two AbstractWazuhResult objects. When merged with a WazuhException,
+         the result is always a WazuhException
+        :param other: AbstractWazuhResult or WazuhException
+        :return: a new AbstractWazuhResult or WazuhException
         """
-        if isinstance(other, WazuhException):
+        if isinstance(other, wexception.WazuhException):
             return other
-        elif not isinstance(other, (dict, WazuhResult)):
-            raise WazuhInternalError(1000, extra_message=f"WazuhResult cannot be merged with {type(other)} object")
+        elif not isinstance(other, (dict, AbstractWazuhResult)):
+            raise wexception.WazuhInternalError(1000, extra_message=f"Cannot be merged with {type(other)} object")
 
         result = deepcopy(self)
 
@@ -79,30 +83,72 @@ class WazuhResult(collections.MutableMapping):
             if key not in result:
                 result[key] = field
             elif isinstance(field, dict):
-                result[key] = WazuhResult(result[key]) | WazuhResult(field)
+                result[key] = self._merge_dict(result[key], field, key=key)
             elif isinstance(field, list):
                 self_field = result[key]
-                result[key] = [*self_field, *[elem for elem in field if elem not in self_field]]
+                result[key] = self._merge_list(self_field, field, key=key)
             elif isinstance(field, Number):
-                result[key] = result[key] + field
+                result[key] = self._merge_number(result[key], field, key=key)
             elif isinstance(field, str):  # str
-                if self._str_priority is not None:
-                    priorities = str(self._str_priority) + str(result[key]) + str(field)
-                    result[key] = result[key] if priorities.index(result[key]) < priorities.index(field) else field
-                else:
-                    result[key] = "|".join([result[key], field]) if result[key] != field else field
+                result[key] = self._merge_str(result[key], field, key=key)
 
         return result
+
+    def _merge_dict(self, self_field, other_field, key=None):
+        """Merges two dict objects when merging two results recursively converting
+        each of them to the specific AbstractWazuhResult subclass
+        This method may be redefined in subclasses.
+
+        :param self_field: dict in the left item of the merge
+        :param other_field: dict in the right item of the merge
+        :param key: name of the key being merged
+        :return: dict
+        """
+        raise self.__class__(self_field) | self.__class__(other_field)
+
+    def _merge_list(self, self_field, other_field, key=None):
+        """Merges two list objects when merging two results by
+        concatenating them.
+        This method may be redefined in subclasses.
+
+        :param self_field: list in the left item of the merge
+        :param other_field: list in the right item of the merge
+        :param key: name of the key being merged
+        :return: list
+        """
+        return [*self_field, *[elem for elem in other_field if elem not in self_field]]
+
+    def _merge_number(self, self_field, other_field, key=None):
+        """Merges two numeric objects when merging two results by
+        adding them.
+        This method may be redefined in subclasses.
+
+        :param self_field: number in the left item of the merge
+        :param other_field: number in the right item of the merge
+        :param key: name of the key being merged
+        :return: number
+        """
+        return self_field + other_field
+
+    def _merge_str(self, self_field, other_field, key=None):
+        """Merges two string objects when merging two results by
+        concatenating them using a character '|' as separator.
+        This method may be redefined in subclasses.
+
+        :param self_field: string in the left item of the merge
+        :param other_field: string in the right item of the merge
+        :param key: name of the key being merged
+        :return: string
+        """
+        return "|".join([self_field, other_field]) if self_field != other_field else other_field
 
     def to_dict(self):
         """
         Translates the result into a dict
+
         :return: dict
         """
-        return {
-            'str_priority': self._str_priority,
-            'result': deepcopy(self.dikt)
-        }
+        raise NotImplemented
 
     def limit(self, limit=database_limit, offset=0):
         """
@@ -112,9 +158,12 @@ class WazuhResult(collections.MutableMapping):
 
         :param limit: integer. Default the value specified in wazuh.common.database_limit
         :param offset: integer. Default 0.
-        :return: filtered WazuhResult
+        :return: filtered AbstractWazuhResult
         """
-        return deepcopy(self)
+        result = deepcopy(self)
+        if 'data' in result and 'items' in result['data'] and isinstance(result['data']['items'], list):
+            result['data']['items'] = result['data']['items'][offset:offset + limit]
+        return result
 
     def sort(self, fields=None, order='asc'):
         """
@@ -124,38 +173,334 @@ class WazuhResult(collections.MutableMapping):
 
         :param fields: criteria for sorting the results
         :param order: string. Must be 'asc' or 'desc'
-        :return: sorted WazuhResult
+        :return: sorted AbstractWazuhResult
         """
-        return deepcopy(self)
-
-    @classmethod
-    def from_dict(cls, dct):
-        """
-        Builds an instance from a dict
-        :param dct: dict
-        :return: instance of cls
-        """
-        result = cls(dct['result'], str_priority=dct['str_priority'])
-        result.update(dct['result'])
-        return result
-
-
-class WazuhQueryResult(WazuhResult):
-    """
-    Result that implements limit and sort methods.
-
-    Should be used for results with a data.items structure
-    """
-
-    def limit(self, limit=database_limit, offset=0):
-        result = deepcopy(self)
-        if 'data' in result and 'items' in result['data'] and isinstance(result['data']['items'], list):
-            result['data']['items'] = result['data']['items'][offset:offset+limit]
-        return result
-
-    def sort(self, fields=None, order='asc'):
         fields = [] if fields is None else fields
         result = deepcopy(self)
         if 'data' in result and 'items' in result['data'] and isinstance(result['data']['items'], list):
             result['data']['items'] = utils.sort_array(result['data']['items'], fields, order)
         return result
+
+    def encode_json(self):
+        """Translates the result to a serializable dictionary
+
+        :return dict
+        """
+        return self.to_dict()
+
+    @classmethod
+    def decode_json(cls, obj):
+        """Converts an encoded dictionary to the original object
+
+        :param obj: dict to be decoded
+        :return: a result preserving the original class
+        """
+        raise NotImplemented
+
+    def render(self):
+        """Translates the result to a readable format
+
+        :return: dict
+        """
+        return self.to_dict()
+
+
+class WazuhResult(AbstractWazuhResult):
+    """
+    This class represent a basic framework response. I.e.:
+    {"data": "items": [{"item1": "data1"},
+                       {"item2": "data2"}
+                       ],
+     "message": "Everything ok"
+     }
+    """
+
+    def __init__(self, dct, str_priority=None):
+        """
+        Initializes an instance
+
+        :param dct: map to take key-values from
+        :param str_priority: list of strings. If not None, conflicts when merging str values in the result
+         are solved taking the first value found in str_priority. I.e.: {'foo': 'KO'} and {'foo': 'OK'} results in
+         {'foo': 'KO'} if str_priority is set to ['KO', 'OK'] because 'KO' takes a higher priority level than 'OK'
+        """
+        self._str_priority = str_priority
+        super().__init__(dct)
+
+    def _merge_str(self, self_field, other_field, key=None):
+        if self._str_priority is not None:
+            priorities = self._str_priority + [self_field] + [other_field]
+            return self_field if priorities.index(self_field) < priorities.index(other_field) else other_field
+        else:
+            return super()._merge_str(self_field, other_field)
+
+    def to_dict(self):
+        """
+        Translates the result into a dict
+
+        :return: dict
+        """
+        return {
+            'str_priority': self._str_priority,
+            'result': deepcopy(self.dikt)
+        }
+
+    @classmethod
+    def decode_json(cls, obj):
+        """
+        Builds an instance from a dict
+
+        :param obj: dict
+        :return: instance of cls
+        """
+        result = cls(obj['result'], str_priority=obj['str_priority'])
+        result.update(obj['result'])
+        return result
+
+    def render(self):
+        return self.dikt
+
+
+class AffectedItemsWazuhResult(AbstractWazuhResult):
+    """Models a result in the form:
+    {"affected_items": [item1, item2],
+     "failed_items": [error1, error2, error3],
+     "total_affected_items": 2,
+     "total_failed_items": 5,
+     ...
+     }
+    """
+    def __init__(self, dikt=None, affected_items=None,
+                 total_affected_items=None,
+                 sortable_fields=None,
+                 all_msg="", some_msg="", none_msg=""):
+        """
+        Initialize method
+        :param dikt: dict with result data except affected and failed items
+        :param affected_items: list of affected items
+        :param total_affected_items: int total number of affected items.
+        It may not be the same as length of affected_items
+        :param sortable_fields: set with fields to be used as sort criteria of affected items
+        :param all_msg: str message when all items were successful
+        :param some_msg: str message when some items were not successful
+        :param none_msg: str message when no items where successful
+        """
+        dct = {} if dikt is None else dikt
+        super().__init__(dct)
+        self._affected_items = affected_items if affected_items is not None else []
+        self._failed_items = {}
+        if total_affected_items is not None:
+            self._total_affected_items = total_affected_items
+        else:
+            self._total_affected_items = len(self._affected_items)
+        self._total_failed_items = 0
+        if isinstance(sortable_fields, list):
+            sortable_fields = set(sortable_fields)
+        elif sortable_fields is None:
+            sortable_fields = set()
+        self._sortable_fields = sortable_fields
+        self._all_msg = all_msg
+        self._some_msg = some_msg
+        self._none_msg = none_msg
+
+    def _recalculate_failed_items(self):
+        """Updates the failed items count in total_failed_items
+
+        :return: None
+        """
+        self._total_failed_items = 0
+        for ids in self._failed_items.values():
+            self._total_failed_items += len(ids)
+
+    def add_failed_item(self, id_=None, error: wexception.WazuhException = None):
+        """Adds a new failed item. If the error is the same the id is added properly.
+
+        :param id_: string identifier of the failed item
+        :param error: WazuhException instance containing the error description
+        :return: None
+        """
+        # Check if error is already added
+        try:
+            self._failed_items[error] |= {id_}
+        except KeyError:
+            self._failed_items[error] = {id_}
+        self._recalculate_failed_items()
+
+    def add_failed_items_from(self, other):
+        """Adds all failed items from other into the caller object
+
+        :param other: AffectedItemsWazuhResult instance
+        :return:
+        """
+        if not isinstance(other, AffectedItemsWazuhResult):
+            raise wexception.WazuhInternalError(1000, extra_message=f"Failed items cannot be taken from {type(other)} object")
+
+        for error, ids in other._failed_items.items():
+            for id_ in ids:
+                self.add_failed_item(id_=id_, error=error)
+
+    def remove_failed_items(self, code=None):
+        """Removes all reference matching the code
+
+        :param code: int WazuhException code
+        :return: None
+        """
+        code = code if code is not None else set()
+        self._failed_items = {e: ids for e, ids in self._failed_items.items() if e.code not in code}
+        self._recalculate_failed_items()
+
+    def __or__(self, other):
+        result = super().__or__(other)
+        if isinstance(result, wexception.WazuhException):
+            return result
+        elif not isinstance(other, AffectedItemsWazuhResult):
+            raise wexception.WazuhInternalError(1000, extra_message=f"Cannot be merged with {type(other)} object")
+
+        result.add_failed_items_from(other)
+        result.affected_items = result.affected_items + other.affected_items
+        result.sortable_fields = result.sortable_fields | other.sortable_fields
+        result.total_affected_items = other.total_affected_items
+
+        return result
+
+    def to_dict(self):
+        return {
+            'affected_items': self.affected_items,
+            'failed_items': self.failed_items,
+            'sortable_fields': self.sortable_fields,
+            'total_affected_items': self.total_affected_items,
+            'total_failed_items': self.total_failed_items,
+            'dikt': self.dikt,
+            'all_msg': self.all_msg,
+            'some_msg': self.some_msg,
+            'none_msg': self.none_msg
+        }
+
+    @property
+    def affected_items(self):
+        return self._affected_items
+
+    @affected_items.setter
+    def affected_items(self, value):
+        self._affected_items = value
+
+    @property
+    def sortable_fields(self):
+        return self._sortable_fields
+
+    @sortable_fields.setter
+    def sortable_fields(self, value):
+        self._sortable_fields = value
+
+    @property
+    def total_affected_items(self):
+        return self._total_affected_items
+
+    @total_affected_items.setter
+    def total_affected_items(self, value):
+        self._total_affected_items = value
+
+    @property
+    def total_failed_items(self):
+        return self._total_failed_items
+
+    @property
+    def failed_items(self):
+        return self._failed_items
+
+    @property
+    def all_msg(self):
+        return self._all_msg
+
+    @all_msg.setter
+    def all_msg(self, value):
+        self._all_msg = value
+
+    @property
+    def some_msg(self):
+        return self._some_msg
+
+    @some_msg.setter
+    def some_msg(self, value):
+        self._some_msg = value
+
+    @property
+    def none_msg(self):
+        return self._none_msg
+
+    @none_msg.setter
+    def none_msg(self, value):
+        self._none_msg = value
+
+    @property
+    def message(self):
+        if self.total_affected_items == 0:
+            return self.none_msg
+        else:
+            if self.total_failed_items == 0:
+                return self.all_msg
+            else:
+                return self.some_msg
+
+    def _merge_str(self, self_field, other_field, key=None):
+        if key == 'older_than':
+            return self_field
+        else:
+            return super()._merge_str(self_field, other_field, key=key)
+
+    @classmethod
+    def decode_json(cls, obj):
+        result = cls()
+        result.affected_items = obj['affected_items']
+        result.sortable_fields = set(obj['sortable_fields'])
+        result.total_affected_items = obj['total_affected_items']
+        result.dikt = obj['dikt']
+        result.all_msg = obj['all_msg']
+        result.some_msg = obj['some_msg']
+        result.none_msg = obj['none_msg']
+
+        for exc, set_ in zip(obj['failed_items_keys'], obj['failed_items_values']):
+            error = getattr(wexception, exc['__class__']).from_dict(exc['__object__'])
+            for id_ in set_:
+                result.add_failed_item(id_=id_,
+                                       error=error)
+        return result
+
+    def encode_json(self):
+        result = dict()
+        result['affected_items'] = self.affected_items
+        result['sortable_fields'] = list(self.sortable_fields)
+        result['total_affected_items'] = self.total_affected_items
+        result['total_failed_items'] = self.total_failed_items
+        result['dikt'] = self.dikt
+        result['all_msg'] = self.all_msg
+        result['some_msg'] = self.some_msg
+        result['none_msg'] = self.none_msg
+        result['failed_items_keys'] = []
+        result['failed_items_values'] = []
+        for exc, set_ in self.failed_items.items():
+            result['failed_items_keys'].append({'__object__': exc.to_dict(),
+                                                '__class__': exc.__class__.__name__
+                                                })
+            result['failed_items_values'].append(list(set_))
+
+        return result
+
+    def render(self):
+        ordered_failed_items = sorted(self.failed_items.items(), key=lambda x: x[0].code)
+        result = {
+            'affected_items': self.affected_items,
+            'total_affected_items': self.total_affected_items,
+            'total_failed_items': self.total_failed_items,
+            'failed_items': [{'error': {'code': exc.code,
+                                        'message': exc.message,
+                                        'remediation': exc.remediation
+                                        },
+                              'id': sorted(list(ids), key=int)
+                              }
+                             for exc, ids in ordered_failed_items],
+            **self.dikt
+        }
+        return {'data': result,
+                'message': self.message
+                }

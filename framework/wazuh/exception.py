@@ -541,13 +541,27 @@ class WazuhException(Exception):
     def __eq__(self, other):
         if not isinstance(other, WazuhException):
             return NotImplemented
-        return self.to_dict() == other.to_dict()
+        return (self._code,
+                self._extra_message,
+                self._extra_remediation,
+                self._cmd_error) == (other._code,
+                                     other._extra_message,
+                                     other._extra_remediation,
+                                     other._cmd_error)
+
+    def __hash__(self):
+        return hash((self._code, self._extra_message, self._extra_remediation, self._cmd_error))
 
     def __or__(self, other):
         result = self.__class__(**self.to_dict())
         if isinstance(other, WazuhException):
             result.dapi_errors = {**self._dapi_errors, **other.dapi_errors}
         return result
+
+    def __deepcopy__(self, memodict=None):
+        obj = self.__class__(self.code)
+        obj.__dict__ = deepcopy(dict(self.__dict__))
+        return obj
 
     def to_dict(self):
         return {'code': self._code,
