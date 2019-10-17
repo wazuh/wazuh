@@ -1936,14 +1936,15 @@ class AWSWAFBucket(AWSCustomBucket):
         content = []
         with self.decompress_file(log_key=log_key) as f:
             for line in f.readlines():
-                event = json.loads(line.rstrip())
+                try:
+                    event = json.loads(line.rstrip())
+                except json.JSONDecodeError:
+                    print("ERROR: Events from {} file could not be loaded.".format(log_key.split('/')[-1]))
+                    sys.exit(9)
                 event['source'] = 'waf'
                 content.append(event)
 
         return json.loads(json.dumps(content))
-
-    def reformat_msg(self, event):
-        return event
 
 
 class AWSService(WazuhIntegration):
