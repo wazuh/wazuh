@@ -863,7 +863,7 @@ class AWSLogsBucket(AWSBucket):
                                                 Delimiter='/')['CommonPrefixes']
                     ]
         except KeyError as err:
-            bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'custom'}
+            bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'waf', 'custom'}
             print("ERROR: Invalid type of bucket. The bucket was set up as '{}' type and this bucket does not contain log files from this type. Try with other type: {}".format(get_script_arguments().type.lower(), bucket_types - {get_script_arguments().type.lower()}))
             sys.exit(12)
 
@@ -1925,6 +1925,27 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             yield event
 
 
+class AWSWAFBucket(AWSCustomBucket):
+
+    def __init__(self, **kwargs):
+        db_table_name = 'waf'
+        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+
+    def load_information_from_file(self, log_key):
+        with self.decompress_file(log_key=log_key) as f:
+            content = json.load(f)
+        # add source field to event
+        content['source'] = 'waf'
+        # up a level the values of key 'detail'
+        content.update(content['detail'])
+        del content['detail']
+
+        return [content]
+
+    def reformat_msg(self, event):
+        return event
+
+
 class AWSService(WazuhIntegration):
     """
     Class for getting AWS Services logs from API calls
@@ -2236,6 +2257,8 @@ def main(argv):
                 bucket_type = AWSCustomBucket
             elif options.type.lower() == 'guardduty':
                 bucket_type = AWSGuardDutyBucket
+            elif options.type.lower() == 'waf':
+                bucket_type = AWSWAFBucket
             else:
                 raise Exception("Invalid type of bucket")
             bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,
