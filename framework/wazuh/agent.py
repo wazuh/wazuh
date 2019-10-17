@@ -339,39 +339,30 @@ def get_group_files(group_list=None, offset=0, limit=common.database_limit, sear
     # We access unique group_id from list, this may change if and when we decide to add option to get files for
     # a list of groups
     group_id = group_list[0]
-    group_path = common.shared_path
-    if group_id:
-        if not Agent.group_exists(group_id):
-            raise WazuhError(1710, extra_message=group_id)
-        group_path = path.join(common.shared_path, group_id)
+
+    if group_id not in common.system_groups.get():
+        raise WazuhError(1710)
+    group_path = path.join(common.shared_path, group_id)
 
     if not path.exists(group_path):
-        raise WazuhError(1006, extra_message=group_path)
+        raise WazuhInternalError(1006, extra_message=group_path)
 
     try:
-        data = []
+        data = list()
         for entry in listdir(group_path):
             item = dict()
-            try:
-                item['filename'] = entry
-                item['hash'] = get_hash(path.join(group_path, entry), hash_algorithm)
-                data.append(item)
-            except (OSError, IOError):
-                pass
+            item['filename'] = entry
+            item['hash'] = get_hash(path.join(group_path, entry), hash_algorithm)
+            data.append(item)
 
-        try:
-            # ar.conf
-            ar_path = path.join(common.shared_path, 'ar.conf')
-            data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
-        except (OSError, IOError):
-            pass
+        # ar.conf
+        ar_path = path.join(common.shared_path, 'ar.conf')
+        data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
 
         return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
                              complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                              offset=offset, limit=limit)
-    except WazuhError as e:
-        raise e
-    except Exception as e:
+    except (OSError, IOError) as e:
         raise WazuhInternalError(1727, extra_message=str(e))
 
 
@@ -588,8 +579,9 @@ def remove_agents_from_group(agent_list=None, group_list=None):
     return result
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:*"], post_proc_func=None)
-def get_outdated_agents(agent_list=None, offset=None, limit=None, sort=None, search=None, select=None, q=None):
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
+def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+                        q=None):
     """Gets the outdated agents.
 
     :param agent_list: List of agents ID's.
@@ -601,18 +593,27 @@ def get_outdated_agents(agent_list=None, offset=None, limit=None, sort=None, sea
     :param q: Defines query to filter in DB.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    filters = dict()
-    filters['id'] = agent_list
+    affected_agents = list()
 
     # Get manager version
     manager = Agent(id='000')
     manager.load_info_from_db()
 
+    select = ['version', 'id', 'name'] if select is None else select
     db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                  query=f"version!={manager.version}" + (';' + q if q else ''), filters=filters)
-    data = db_query.run()
+                                  query=f"version!={manager.version}" + (';' + q if q else ''))
 
-    return data
+    data = db_query.run()
+    affected_agents.extend(data['items'])
+    total_affected_agents = data['totalItems']
+
+    result = {'affected_items': affected_agents,
+              'total_affected_items': total_affected_agents,
+              'failed_items': list(),
+              'str_priority': ['All selected agents information is shown',
+                               'Some agents information is not shown',
+                               'No agent information is shown']}
+    return result
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)

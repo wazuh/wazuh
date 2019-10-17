@@ -196,6 +196,21 @@ components:
                 $ref: '#/components/schemas/GroupID'
         - $ref: '#/components/schemas/AllItemsResponse'
 
+    AllItemsResponseAgentsSimple:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/AgentSimple'
+                  - type: array
+
     BasicInfo:
       type: object
       properties:
@@ -360,13 +375,6 @@ components:
           type: string
           description: Agent name used at registration process.
 
-    AgentSimpleResponse:
-      type: object
-      required:
-      - id
-      - name
-      $ref: '#/components/schemas/AgentSimple'
-
     AgentStatus:
       type: string
       enum:
@@ -406,6 +414,18 @@ components:
       minLength: 1
       description: Group name.
       format: group_names
+
+    GroupFile:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            properties:
+              filename:
+                type: string
+              hash:
+                type: string
 
     AgentConfiguration:
       type: object
@@ -4929,16 +4949,8 @@ paths:
                     data:
                       allOf:
                         - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                properties:
-                                  filename:
-                                    type: string
-                                  hash:
-                                    type: string
+                        - $ref: '#/components/schemas/GroupFile'
+
               example:
                 data:
                   totalItems: 24
@@ -5107,7 +5119,7 @@ paths:
                 key: 1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64
       responses:
         '200':
-          description: 'Get group file'
+          description: 'Inser new agent'
           content:
             application/json:
               schema:
@@ -5138,7 +5150,7 @@ paths:
         - $ref: '#/components/parameters/select'
       responses:
         '200':
-          description: 'Get agent'
+          description: 'Get agent by name'
           content:
             application/json:
               schema:
@@ -5147,16 +5159,37 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/Agent'
+                      $ref: '#/components/schemas/AllItemsResponseAgents'
               example:
                 data:
-                  ip: 10.0.0.9
-                  status: never_connected
-                  dateAdd: "2019-02-19T10:31:12Z"
-                  name: NewHost
-                  registerIP: 10.0.0.9
-                  node_name: unknown
-                  id: "007"
+                  affected_items:
+                    - configSum: 29e0926e5a77442212e824868a2a61df
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group1
+                      id: '001'
+                      ip: 172.18.0.6
+                      lastKeepAlive: '2019-10-16T09:13:34Z'
+                      manager: wazuh-worker2
+                      mergedSum: a13d9b2edc5bdd5ef7331c0d5b9ecf34
+                      name: wazuh-agent1
+                      node_name: worker2
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent1 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                  total_affected_items: 1
+                message: All selected agents information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5187,39 +5220,87 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/Agent'
+                      $ref: '#/components/schemas/AllItemsResponseAgents'
               example:
                 data:
-                  totalItems: 3
-                  items:
-                    - ip: 10.0.0.20
-                      status: never_connected
-                      dateAdd: "2019-02-19T10:31:00Z"
-                      name: server002
-                      registerIP: 10.0.0.20
-                      node_name: unknown
-                      id: "006"
-                    - ip: 10.0.0.9
-                      status: never_connected
-                      dateAdd: "2019-02-19T10:31:12Z"
-                      name: NewHost
-                      registerIP: 10.0.0.9
-                      node_name: unknown
-                      id: "007"
-                    - ip: 10.0.10.10
-                      status: never_connected
-                      dateAdd: "2019-02-19T10:31:13Z"
-                      name: NewHost_2
-                      registerIP: 10.0.10.10
-                      node_name: unknown
-                      id: "123"
+                  affected_items:
+                    - configSum: 29e0926e5a77442212e824868a2a61df
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group1
+                      id: '001'
+                      ip: 172.18.0.6
+                      lastKeepAlive: '2019-10-16T09:13:34Z'
+                      manager: wazuh-worker2
+                      mergedSum: a13d9b2edc5bdd5ef7331c0d5b9ecf34
+                      name: wazuh-agent1
+                      node_name: worker2
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent1 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                    - configSum: e2f47d482da37c099fa1d6e4c43b523c
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group2
+                      id: '002'
+                      ip: 172.18.0.7
+                      lastKeepAlive: '2019-10-16T09:13:28Z'
+                      manager: wazuh-worker2
+                      mergedSum: d6fde33dc232d8f91359b2e98994c933
+                      name: wazuh-agent2
+                      node_name: worker2
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent2 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                    - configSum: dadc074e9a4f036c5d905c280c3b5bcc
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group3
+                      id: '003'
+                      ip: 172.18.0.8
+                      lastKeepAlive: '2019-10-16T09:13:29Z'
+                      manager: wazuh-master
+                      mergedSum: e40515ffa928c72ee167ed41d88245c4
+                      name: wazuh-agent3
+                      node_name: master-node
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent3 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                  total_affected_items: 3
+                message: All selected agents information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5245,18 +5326,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/AgentSimpleResponse'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseAgentsSimple'
               example:
                 data:
                   totalItems: 2

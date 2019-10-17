@@ -859,7 +859,7 @@ def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, l
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
-    :return: Data
+    :return: GroupFile
     """
     hash_ = connexion.request.args.get('hash', 'md5')  # Select algorithm to generate the returned checksums.
     f_kwargs = {'group_list': [group_id],
@@ -894,7 +894,7 @@ def get_group_file_json(group_id, file_name, pretty=False, wait_for_complete=Fal
     :param wait_for_complete: Disable timeout response
     :param group_id: Group ID.
     :param file_name: Filename
-    :return: Data
+    :return: File data in JSON
     """
     f_kwargs = {'group_list': [group_id],
                 'filename': file_name,
@@ -924,7 +924,7 @@ def get_group_file_xml(group_id, file_name, pretty=False, wait_for_complete=Fals
     :param wait_for_complete: Disable timeout response
     :param group_id: Group ID.
     :param file_name: Filename
-    :return: Data
+    :return: File data in XML
     """
     f_kwargs = {'group_list': [group_id],
                 'filename': file_name,
@@ -952,7 +952,7 @@ def insert_agent(pretty=False, wait_for_complete=False):
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :return: Data
+    :return: AgentIdKey
     """
     # Get body parameters
     if connexion.request.is_json:
@@ -995,7 +995,7 @@ def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=
     :param wait_for_complete: Disable timeout response
     :param agent_name: Agent name used when the agent was registered.
     :param select: Select which fields to return (separated by comma)
-    :return: Data
+    :return: AllItemsResponseAgents
     """
     f_kwargs = {'filters': {'name': agent_name},
                 'select': select}
@@ -1028,7 +1028,7 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=da
     ascending or descending order.
     :param search: Looks for elements with the specified string
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-    :return: Data
+    :return: AllItemsResponseAgents
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
