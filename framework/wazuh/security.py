@@ -12,6 +12,7 @@ from wazuh.rbac import orm
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import SecurityError
 from wazuh.utils import process_array
+from wazuh.results import AffectedItemsWazuhResult
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
@@ -32,21 +33,21 @@ def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by
     :param search_in_fields: Fields to search in
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
+    result = AffectedItemsWazuhResult(none_msg='No user were shown',
+                                      some_msg='Some users could not be shown',
+                                      all_msg='All specified users were shown')
     affected_items = list()
-    failed_items = list()
     with AuthenticationManager() as auth:
         for username in username_list:
             user = auth.get_user(username)
-            affected_items.append(user) if user \
-                else failed_items.append(create_exception_dic(username, WazuhError(5001)))
+            affected_items.append(user) if user else result.add_failed_item(id_=username, error=WazuhError(5001))
 
     affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
                                    complementary_search=complementary_search, sort_by=sort_by,
                                    sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    return {'affected_items': affected_items,
-            'failed_items': failed_items,
-            'str_priority': ['All specified users were shown',
-                             'Some users could not be shown', 'No user were shown']}
+    result.affected_items = affected_items
+
+    return result
 
 
 @expose_resources(actions=['security:create_user'], resources=['*:*:*'])
@@ -60,17 +61,20 @@ def create_user(username: str = None, password: str = None):
     if not _user_password.match(password):
         raise WazuhError(5007)
 
-    result = None
+    result = AffectedItemsWazuhResult(none_msg='User could not be created',
+                                      all_msg='User created correctly')
     with AuthenticationManager() as auth:
         if auth.add_user(username, password):
-            result = auth.get_user(username)
+            operation = auth.get_user(username)
+            if operation:
+                result.affected_items.append(operation)
+                result.total_affected_items = 1
+            else:
+                result.add_failed_item(id_=username, error=WazuhError(5000))
+        else:
+            result.add_failed_item(id_=username, error=WazuhError(5000))
 
-    if result is None:
-        raise WazuhError(5000, extra_message='The user \'{}\' could not be created'.format(username))
-
-    return {'affected_items': [result],
-            'failed_items': list(),
-            'str_priority': ['User created correctly', '', '']}
+    return result
 
 
 @expose_resources(actions=['security:update'], resources=['user:id:{username}'])
@@ -84,16 +88,18 @@ def update_user(username=None, password=None):
     if not _user_password.match(password):
         raise WazuhError(5007)
 
+    result = AffectedItemsWazuhResult(all_msg='User modified correctly')
     with AuthenticationManager() as auth:
         query = auth.update_user(username[0], password)
         if query is False:
-            raise WazuhError(5001, extra_message='The user \'{}\' not exist'.format(username[0]))
+            result.add_failed_item(id_=username[0], error=WazuhError(5001))
         elif query == 'admin':
-            raise WazuhError(5004, extra_message='The users wazuh and wazuh-app can not be updated')
+            result.add_failed_item(id_=username[0], error=WazuhError(5004))
+        else:
+            result.affected_items.append(auth.get_user(username[0]))
+            result.total_affected_items += 1
 
-    return {'affected_items': [auth.get_user(username[0])],
-            'failed_items': list(),
-            'str_priority': ['User modified correctly', '', '']}
+    return result
 
 
 @expose_resources(actions=['security:delete'], resources=['user:id:{username_list}'])
@@ -103,22 +109,22 @@ def delete_user(username_list):
     :param username_list: List of usernames
     :return: Status message
     """
-    affected_items = list()
-    failed_items = list()
+    result = AffectedItemsWazuhResult(none_msg='No users deleted',
+                                      some_msg='Some users could not be deleted',
+                                      all_msg='Users deleted correctly')
     with AuthenticationManager() as auth:
         for username in username_list:
             user = auth.get_user(username)
             query = auth.delete_user(username)
             if query is False:
-                failed_items.append(create_exception_dic(username, WazuhError(5001)))
+                result.add_failed_item(id_=username, error=WazuhError(5001))
             elif query == 'admin':
-                failed_items.append(create_exception_dic(username, WazuhError(5004)))
+                result.add_failed_item(id_=username, error=WazuhError(5004))
             elif user:
-                affected_items.append(user)
+                result.affected_items.append(user)
+                result.total_affected_items += 1
 
-    return {'affected_items': affected_items,
-            'failed_items': failed_items,
-            'str_priority': ['Users deleted correctly', 'Some users could not be deleted', 'No users deleted']}
+    return result
 
 
 @expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'])

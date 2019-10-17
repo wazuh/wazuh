@@ -46,18 +46,32 @@ stages:
         data:
           affected_items:
             - username: new_user
+          failed_items: []
           total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Create a new user (user already exists)
     request:
       <<: *post_users_request
       json:
         username: "new_user"
-        password: "new_user1B"
+        password: "new_user1B!"
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 5000
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 5000
+                message: !anystr
+                remediation: !anystr
+              id:
+                - new_user
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   - name: Create a new user (invalid parameters)
     request:
@@ -155,4 +169,7 @@ stages:
         data:
           affected_items:
             - username: new_user1
+          failed_items: []
           total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
