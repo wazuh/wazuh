@@ -83,7 +83,13 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
 int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt);
 
 //
-void fim_audit_inode_event(whodata_evt * w_evt);
+void fim_realtime_event(char *file);
+
+//
+void fim_whodata_event(whodata_evt * w_evt);
+
+//
+void fim_audit_inode_event(char *file, char inode_key[], fim_event_mode mode, whodata_evt * w_evt);
 
 //
 int fim_registry_event (char * key, fim_entry_data * data, int pos);
@@ -111,7 +117,7 @@ int fim_update (char * file, fim_entry_data * data, fim_entry_data * old_data);
 
 #ifndef WIN32
 //
-int fim_update_inode(char * file, char *inode_key);
+int fim_update_inode(char * file, char inode_key[]);
 #endif
 
 //

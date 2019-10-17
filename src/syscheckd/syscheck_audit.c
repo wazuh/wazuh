@@ -232,7 +232,7 @@ int add_audit_rules_syscheck(void) {
                         w_mutex_unlock(&audit_rules_mutex);
                         rules_added++;
                     } else {
-                        merror(FIM_ERROR_WHODATA_ADD_RULE,retval, syscheck.dir[i]);
+                        merror(FIM_ERROR_WHODATA_ADD_RULE, retval, syscheck.dir[i]);
                     }
                 } else if (found == 1) {
                     w_mutex_lock(&audit_rules_mutex);
@@ -662,8 +662,7 @@ void audit_parse(char *buffer) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, w_evt->user_id);
                 snprintf (w_evt->user_id, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-                const char *user = get_user("", atoi(w_evt->user_id), NULL);
-                w_evt->user_name = strdup(user);
+                w_evt->user_name = get_user("", atoi(w_evt->user_id), NULL);
             }
             // audit_name & audit_uid
             if(regexec(&regexCompiled_auid, buffer, 2, match, 0) == 0) {
@@ -679,8 +678,7 @@ void audit_parse(char *buffer) {
                     w_evt->audit_name = NULL;
                     w_evt->audit_uid = NULL;
                 } else {
-                    char *user = get_user("",atoi(auid), NULL);
-                    w_evt->audit_name = strdup(user);
+                    w_evt->audit_name = get_user("",atoi(auid), NULL);
                     w_evt->audit_uid = strdup(auid);
                 }
                 os_free(auid);
@@ -690,8 +688,7 @@ void audit_parse(char *buffer) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, w_evt->effective_uid);
                 snprintf (w_evt->effective_uid, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-                const char *user = get_user("",atoi(w_evt->effective_uid), NULL);
-                w_evt->effective_name = strdup(user);
+                w_evt->effective_name = get_user("",atoi(w_evt->effective_uid), NULL);
             }
             // group_name & group_id
             if(regexec(&regexCompiled_gid, buffer, 2, match, 0) == 0) {
@@ -838,7 +835,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                fim_audit_inode_event(w_evt);
+                                fim_whodata_event(w_evt);
                             }
                         }
                     }
@@ -869,7 +866,7 @@ void audit_parse(char *buffer) {
                             w_evt->path = real_path;
 
                             if (w_evt->inode) {
-                                fim_audit_inode_event(w_evt);
+                                fim_whodata_event(w_evt);
                             }
                         }
                     }
@@ -908,7 +905,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                fim_audit_inode_event(w_evt);
+                                fim_whodata_event(w_evt);
                             }
                         }
                     }
@@ -968,7 +965,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                fim_audit_inode_event(w_evt);
+                                fim_whodata_event(w_evt);
                             }
                             free(file_path1);
                             w_evt->path = NULL;
@@ -990,7 +987,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                fim_audit_inode_event(w_evt);
+                                fim_whodata_event(w_evt);
                             }
                         }
                     }
@@ -1032,7 +1029,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                fim_audit_inode_event(w_evt);
+                                fim_whodata_event(w_evt);
                             }
                         }
                     }
