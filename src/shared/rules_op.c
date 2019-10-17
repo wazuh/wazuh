@@ -557,7 +557,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     config_ruleinfo->context_opts &= NOT_SAME_AGENT;
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_global_frequency) == 0) {
-                    config_ruleinfo->context_opts &= GLOBAL_FREQUENCY;
+                    config_ruleinfo->context_opts |= GLOBAL_FREQUENCY;
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_same_field) == 0) {
 
