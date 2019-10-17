@@ -688,11 +688,6 @@ class Agent:
         if group_id.lower() == "default":
             raise WazuhError(1712)
 
-        if not Agent.group_exists(group_id):
-            raise WazuhError(1710, extra_message=group_id)
-
-        ids = list(map(operator.itemgetter('id'), Agent.get_agent_group(group_id=group_id, limit=None)['items']))
-
         # Delete group directory (move it to a backup)
         group_path = path.join(common.shared_path, group_id)
         group_backup = path.join(common.backup_path, 'groups', "{0}_{1}".format(group_id, int(time())))
@@ -701,7 +696,7 @@ class Agent:
 
         msg = "Group '{0}' deleted.".format(group_id)
 
-        return {'message': msg, 'affected_items': ids}
+        return {'message': msg}
 
     def get_agent_attr(self, attr):
         """Returns a string with an agent's os name
@@ -740,33 +735,46 @@ class Agent:
         return data
 
     @staticmethod
-    def add_group_to_agent(agent_id, group_id, force=False, replace=False):
+    def add_group_to_agent(group_id, agent_id, force=False, replace=False, replace_list=None):
         """Adds an existing group to an agent
 
         :param group_id: name of the group.
         :param agent_id: ID of the agent.
         :param force: Do not check if agent exists
         :param replace: Whether to append new group to current agent's group or replace it.
+        :param replace_list: List of Group names that can be replaced
         :return: Agent ID.
         """
-        # Check if agent exists
         if not force:
+            # Check if agent exists, it is not 000 and the group exists
             Agent(agent_id).get_basic_information()
 
-        if agent_id == "000":
-            raise WazuhError(1703)
+            if agent_id == "000":
+                raise WazuhError(1703)
+
+            if not Agent.group_exists(group_id):
+                raise WazuhError(1710)
+
+        # Get agent's group
+        group_path = path.join(common.groups_path, agent_id)
+        try:
+            with open(group_path) as f:
+                multigroup_name = f.read().replace('\n', '')
+        except Exception as e:
+            # Check if agent is never_connected.
+            failed = Agent(agent_id)
+            failed.load_info_from_db()
+            if failed.status == 'never_connected':
+                raise WazuhError(1753)
+            raise WazuhInternalError(1005, extra_message=str(e))
+        agent_groups = set(multigroup_name.split(','))
 
         if replace:
-            multigroup_name = group_id
+            if agent_groups.issubset(set(replace_list)):
+                multigroup_name = group_id
+            else:
+                raise WazuhError(1752)
         else:
-            # Get agent's group
-            group_path = path.join(common.groups_path, agent_id)
-            try:
-                with open(group_path) as f:
-                    multigroup_name = f.read().replace('\n', '')
-            except Exception as e:
-                raise WazuhError(1005)
-
             # Check if the group already belongs to the agent
             if group_id in multigroup_name.split(','):
                 raise WazuhError(1751)
@@ -774,7 +782,7 @@ class Agent:
             multigroup_name = (multigroup_name + ',' if multigroup_name else '') + group_id
 
         # Check multigroup limit
-        if Agent().check_multigroup_limit(agent_id):
+        if Agent.check_multigroup_limit(agent_id):
             raise WazuhError(1737)
 
         # Update group file
@@ -941,79 +949,6 @@ class Agent:
         return msg
 
     @staticmethod
-    def remove_multi_group(groups_id):
-        """Removes groups by IDs.
-
-        :param groups_id: list with Groups ID.
-        """
-        groups_to_remove = []
-        for agent_id in listdir("{0}".format(common.groups_path)):
-            agent_group = Agent.get_agents_group_file(agent_id)
-
-            new_group = ''
-            group_list = agent_group.split(',')
-            for group_to_remove in groups_id & set(group_list):
-                # remove the group
-                groups_to_remove.append(','.join(group_list))
-                group_list.remove(group_to_remove)
-                if len(group_list) > 1:
-                    # create new multigroup
-                    new_group = ','.join(group_list)
-                else:
-                    new_group = 'default' if not group_list else group_list[0]
-
-            if new_group:
-                # Add multigroup
-                Agent.set_agent_group_file(agent_id, new_group)
-
-    @staticmethod
-    def remove_group(group_id):
-        """Remove the group in every agent.
-
-        :param group_id: Group ID.
-        :return: Confirmation message.
-        """
-        failed_ids = []
-        ids = []
-        affected_agents = []
-        if isinstance(group_id, list):
-            for id in group_id:
-                try:
-                    removed = Agent.delete_single_group(id)
-                    ids.append(id)
-                    affected_agents += removed['affected_items']
-                    Agent.remove_multi_group(set(map(lambda x: x.lower(), group_id)))
-                except WazuhException as e:
-                    failed_ids.append(create_exception_dic(id, e))
-        else:
-            try:
-                removed = Agent.delete_single_group(group_id)
-                ids.append(group_id)
-                affected_agents += removed['affected_items']
-                Agent.remove_multi_group({group_id.lower()})
-            except WazuhException as e:
-                failed_ids.append(create_exception_dic(group_id, e))
-
-        if not failed_ids:
-            message = 'All selected groups were deleted'
-            final_dict = {'message': message,
-                          'data': {'affected_items': ids,
-                                   'affected_agents': affected_agents}
-                          }
-        else:
-            message = 'Some groups were not deleted'
-            final_dict = {'message': message,
-                          'data': {'failed_items': failed_ids,
-                                   'affected_items': ids,
-                                   'affected_agents': affected_agents}
-                          }
-
-        result = WazuhResult(final_dict, str_priority=['All selected groups were deleted',
-                                                       'Some groups were not deleted'])
-
-        return result
-
-    @staticmethod
     def set_group(agent_id, group_id, force=False, replace=False):
         """Set a group to an agent.
 
@@ -1126,7 +1061,7 @@ class Agent:
             return False
 
     @staticmethod
-    def unset_single_group_agent(agent_id, group_id, force=True):
+    def unset_single_group_agent(agent_id, group_id, force=False):
         """Unset the agent group. If agent has multigroups, it will preserve all previous groups except the last one.
 
         :param agent_id: Agent ID.

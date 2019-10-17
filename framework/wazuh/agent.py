@@ -10,7 +10,8 @@ from shutil import copyfile
 
 from wazuh import common, configuration
 from wazuh.InputValidator import InputValidator
-from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryDistinctAgents, WazuhDBQueryGroupByAgents, Agent
+from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryDistinctAgents, WazuhDBQueryGroupByAgents, \
+    WazuhDBQueryMultigroups, Agent
 from wazuh.database import Connection
 from wazuh.exception import WazuhError, WazuhInternalError, WazuhException, create_exception_dic
 from wazuh.rbac.decorators import expose_resources
@@ -104,8 +105,7 @@ def restart_agents(agent_list=None):
                              'Could not send command to any agent']}
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701]})
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"])
 def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, 
                filters=None, q=None):
     """Gets a list of available agents with basic attributes.
@@ -158,15 +158,17 @@ def get_agents_keys(agent_list=None):
     failed_ids = list()
     for agent_id in agent_list:
         try:
+            if agent_id not in common.system_agents.get():
+                raise WazuhError(1701)
             affected_agents.append({'id': agent_id, 'key': Agent(agent_id).get_key()})
         except WazuhException as e:
             failed_ids.append(create_exception_dic(agent_id, e))
 
     result = {'affected_items': affected_agents,
               'failed_items': failed_ids,
-              'str_priority': ['Shown keys for all selected agents',
-                               'Some agent keys are not shown',
-                               'No agent keys are shown']}
+              'str_priority': ['Obtained keys for all selected agents',
+                               'Some agent keys were not obtained',
+                               'No agent keys were obtained']}
     return result
 
 
@@ -404,7 +406,7 @@ def create_group(group_id):
 
 
 @expose_resources(actions=["group:delete"], resources=["group:id:{group_list}"],
-                  post_proc_kwargs={'extra_affected': 'affected_agents'})
+                  post_proc_kwargs={'extra_affected': 'affected_agents', 'exclude_codes': [1712]})
 def delete_groups(group_list=None):
     """Delete a list of groups and remove it from every agent assignments.
 
@@ -416,10 +418,15 @@ def delete_groups(group_list=None):
     affected_agents = set()
     for group_id in group_list:
         try:
-            removed = Agent.delete_single_group(group_id)
-            affected_groups.append(group_id)
-            affected_agents.update(removed['affected_items'])
-            Agent.remove_multi_group(set(group_id.lower()))
+            agent_list = list(map(operator.itemgetter('id'),
+                                  WazuhDBQueryMultigroups(group_id=group_id, limit=None).run()['items']))
+            affected_agents_result = remove_agents_from_group(agent_list=agent_list, group_list=[group_id])
+            if affected_agents_result['total_failed_items'] == 0:
+                Agent.delete_single_group(group_id)
+                affected_groups.append(group_id)
+                affected_agents.update(affected_agents_result['affected_items'])
+            else:
+                raise WazuhError(4000)
         except WazuhException as e:
             failed_groups.append(create_exception_dic(group_id, e))
 
@@ -428,22 +435,27 @@ def delete_groups(group_list=None):
               'affected_agents': sorted(affected_agents, key=int),
               'str_priority': ['All selected groups were deleted',
                                'Some groups were not deleted',
-                               'No groups were deleted']}
+                               'No group was deleted']}
 
     return result
 
 
-@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"])
-def assign_agents_to_group(group_id=None, agent_list=None, replace=False):
+@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{replace_list}'], post_proc_func=None)
+@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_list}'], post_proc_func=None)
+@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1703, 1751, 1752, 1753]})
+def assign_agents_to_group(group_list=None, agent_list=None, replace=False, replace_list=None):
     """Assign a list of agents to a group
 
-    :param group_id: Group ID.
+    :param group_list: List of Group names.
     :param agent_list: List of Agent IDs.
     :param replace: Whether to append new group to current agent's group or replace it.
+    :param replace_list: List of Group names that can be replaced
     :return: Confirmation message.
     """
     failed_ids = list()
     affected_agents = list()
+    group_id = group_list[0]
 
     # Check if the group exists
     if not Agent.group_exists(group_id):
@@ -451,7 +463,11 @@ def assign_agents_to_group(group_id=None, agent_list=None, replace=False):
 
     for agent_id in agent_list:
         try:
-            Agent.add_group_to_agent(agent_id=agent_id, group_id=group_id, replace=replace)
+            if agent_id not in common.system_agents.get():
+                raise WazuhError(1701)
+            if agent_id == "000":
+                raise WazuhError(1703)
+            Agent.add_group_to_agent(group_id, agent_id, force=True, replace=replace, replace_list=replace_list)
             affected_agents.append(agent_id)
         except WazuhException as e:
             failed_ids.append(create_exception_dic(agent_id, e))
@@ -462,7 +478,7 @@ def assign_agents_to_group(group_id=None, agent_list=None, replace=False):
                                (group_id, ' and removed from the other groups' if replace else ''),
                                'Some agents were not assigned to {0}{1}'.format
                                (group_id, ' and removed from the other groups' if replace else ''),
-                               'No agents assigned to {0}'.format(group_id)]}
+                               'No agents were assigned to {0}'.format(group_id)]}
 
     return result
 
@@ -485,7 +501,7 @@ def remove_agent_from_group(group_list=None, agent_list=None):
     if group_id not in common.system_groups.get():
         raise WazuhError(1710)
 
-    return Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id)
+    return Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
 
 
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -519,7 +535,7 @@ def remove_agent_from_groups(agent_list=None, group_list=None):
         try:
             if group_id not in common.system_groups.get():
                 raise WazuhError(1710)
-            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id)
+            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
             affected_groups.append(group_id)
         except WazuhException as e:
             failed_groups.append(create_exception_dic(group_id, e))
@@ -535,7 +551,7 @@ def remove_agent_from_groups(agent_list=None, group_list=None):
 
 @expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"], post_proc_func=None)
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1734]})
+                  post_proc_kwargs={'exclude_codes': [1703, 1734]})
 def remove_agents_from_group(agent_list=None, group_list=None):
     """Remove a list of agents assignment from a specified group
 
@@ -557,16 +573,16 @@ def remove_agents_from_group(agent_list=None, group_list=None):
                 raise WazuhError(1703)
             if agent_id not in common.system_agents.get():
                 raise WazuhError(1701)
-            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id)
+            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
             affected_agents.append(agent_id)
         except WazuhException as e:
             failed_agents.append(create_exception_dic(agent_id, e))
 
     result = {'affected_items': affected_agents,
               'failed_items': failed_agents,
-              'str_priority': ['All shown agents removed from specified group',
-                               'Some agents could not be removed from specified group',
-                               'No agent could be removed from specified group']}
+              'str_priority': [f'All selected agents were removed from group {group_id}',
+                               f'Some agents were not removed from group {group_id}',
+                               f'No agent was removed from group {group_id}']}
 
     return result
 
@@ -653,7 +669,7 @@ def upgrade_agents_custom(agent_list=None, file_path=None, installer=None):
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_agents_config(agent_list=None, component=None, config=None):
+def get_agent_config(agent_list=None, component=None, config=None):
     """Read selected configuration from agent.
 
     :param agent_list: List of agents ID's.

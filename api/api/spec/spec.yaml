@@ -316,8 +316,6 @@ components:
       type: object
       required:
       - affected_agents
-      allOf:
-        - $ref: '#/components/schemas/ItemAffected'
       properties:
         affected_agents:
           type: array
@@ -3812,7 +3810,7 @@ paths:
                     - '003'
                   older_than: 1s
                   total_affected_items: 3
-                message: All selected agents were deleted
+                message: All shown agents were deleted
         default:
           $ref: '#/components/responses/ResponseError'
     get:
@@ -4490,7 +4488,7 @@ paths:
         - $ref: '#/components/parameters/group_id'
       responses:
         '200':
-          description: 'Remove multiple agents from a single group.'
+          description: 'Remove multiple agents assignment from a single group.'
           content:
             application/json:
               schema:
@@ -4499,13 +4497,17 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/ItemAffected'
+                      allOf:
+                        - $ref: '#/components/schemas/AllItemsResponseAgentIDs'
               example:
-                message: All selected agents were removed from group dmz
                 data:
-                  affected_agents:
-                  - '001'
-                  - '002'
+                  affected_items:
+                    - '002'
+                    - '006'
+                    - '008'
+                    - '010'
+                  total_affected_items: 4
+                message: All selected agents were removed from group testserver
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -4532,13 +4534,29 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/ItemAffected'
+                      allOf:
+                        - $ref: '#/components/schemas/AllItemsResponseAgentIDs'
               example:
-                message: All selected agents assigned to group dmz
                 data:
-                  affected_agents:
-                  - '001'
-                  - '002'
+                  affected_items:
+                    - '001'
+                    - '002'
+                  failed_items:
+                    - error:
+                        code: 1701
+                        message: Agent does not exist
+                        remediation: Please, use `GET /agents?select=id,name` to find all available agents
+                      id:
+                        - '999'
+                    - error:
+                        code: 1753
+                        message: Could not assign group. Agent status is never_connected
+                        remediation: Please select another agent or connect your agent before assigning groups
+                      id:
+                        - '011'
+                  total_affected_items: 2
+                  total_failed_items: 2
+                message: Some agents were not assigned to group2 and removed from the other groups
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -4564,17 +4582,21 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentGroupDeleted'
+                      allOf:
+                      - $ref: '#/components/schemas/AllItemsResponseGroupIDs'
+                      - $ref: '#/components/schemas/AgentGroupDeleted'
               example:
-                message: All selected groups were deleted
                 data:
-                  affected_groups:
-                  - 'webserver'
-                  - 'dataserver'
                   affected_agents:
-                  - '002'
-                  - '005'
-                  - '003'
+                    - '002'
+                    - '005'
+                    - '003'
+                  affected_items:
+                    - 'webserver'
+                    - 'dataserver'
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  message: All selected groups were deleted
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -4651,15 +4673,20 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentGroupDeleted'
+                      allOf:
+                      - $ref: '#/components/schemas/AllItemsResponseGroupIDs'
+                      - $ref: '#/components/schemas/AgentGroupDeleted'
               example:
-                message: All selected groups were deleted
                 data:
-                  affected_groups:
-                  - 'dmz'
                   affected_agents:
-                  - '001'
-                  - '002'
+                    - '002'
+                    - '005'
+                    - '003'
+                  affected_items:
+                    - 'webserver'
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  message: All selected groups were deleted
         default:
           $ref: '#/components/responses/ResponseError'
 

@@ -323,7 +323,9 @@ class WazuhException(Exception):
                'remediation': "You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`"},
         1751: {'message': 'Could not assign agent to group',
                'remediation': 'Agent already belongs to specified group, please select another agent'},
-
+        1752: {'message': 'Could not force single group for the agent'},
+        1753: {'message': 'Could not assign group. Agent status is never_connected',
+               'remediation': 'Please select another agent or connect your agent before assigning groups'},
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
         1801: {'message': 'Wrong \'path\' parameter',

@@ -123,7 +123,7 @@ def get_agents(pretty=False, wait_for_complete=False, list_agents=None, offset=0
 
 @exception_handler
 def add_agent(pretty=False, wait_for_complete=False):
-    """Add a new agent into the cluster.
+    """Add a new Wazuh agent.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -265,7 +265,7 @@ def get_agent_config(pretty=False, wait_for_complete=False, agent_id=None, compo
                 'config': kwargs.get('configuration', None)
                 }
 
-    dapi = DistributedAPI(f=agent.get_agents_config,
+    dapi = DistributedAPI(f=agent.get_agent_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -574,7 +574,7 @@ def delete_multiple_agent_single_group(group_id, list_agents=None, pretty=False,
     :param list_agents: Array of agent's IDs.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :return: AgentItemsAffected
+    :return: AllItemsResponseAgentIDs
     """
     f_kwargs = {'agent_list': list_agents,
                 'group_list': [group_id]}
@@ -603,10 +603,10 @@ def put_multiple_agent_single_group(group_id, list_agents=None, pretty=False, wa
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param force_single_group: Forces the agent to belong to a single group
-    :return: AgentItemsAffected
+    :return: AllItemsResponseAgentIDs
     """
     f_kwargs = {'agent_list': list_agents,
-                'group_id': group_id,
+                'group_list': [group_id],
                 'replace': force_single_group}
 
     dapi = DistributedAPI(f=agent.assign_agents_to_group,
@@ -630,7 +630,7 @@ def delete_groups(list_groups=None, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param list_groups: Array of group's IDs.
-    :return: AgentGroupDeleted
+    :return: AllItemsResponseGroupIDs + AgentGroupDeleted
     """
     f_kwargs = {'group_list': list_groups}
 
@@ -691,9 +691,7 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
 
 @exception_handler
 def delete_single_group(group_id, pretty=False, wait_for_complete=False):
-    """Delete group.
-
-    Deletes a group. Agents that were assigned only to the deleted group will automatically revert to the default group.
+    """Deletes a group. Agents that were assigned only to the deleted group will automatically revert to the default group.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
