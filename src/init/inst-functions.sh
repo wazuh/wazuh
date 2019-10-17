@@ -25,6 +25,7 @@ AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
 ALERTS_TEMPLATE="./etc/templates/config/generic/alerts.template"
 LOGGING_TEMPLATE="./etc/templates/config/generic/logging.template"
 REMOTE_SEC_TEMPLATE="./etc/templates/config/generic/remote-secure.template"
+REMOTE_SYS_TEMPLATE="./etc/templates/config/generic/remote-syslog.template"
 
 LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
 
@@ -509,6 +510,12 @@ WriteManager()
     # Logging format
     cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
+
+    # Remote connection syslog
+        if [ "X$RLOG" = "Xyes" ]; then
+      cat ${REMOTE_SYS_TEMPLATE} >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+    fi
 
     # Remote connection secure
     if [ "X$SLOG" = "Xyes" ]; then

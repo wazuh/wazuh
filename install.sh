@@ -557,7 +557,7 @@ ConfigureServer()
     if [ "X$INSTYPE" = "Xserver" ]; then
       # Configuring remote syslog
       echo ""
-      $ECHO "  3.6- ${syslog} ($yes/$no) [$yes]: "
+      $ECHO "  3.6- ${syslog} ($yes/$no) [$no]: "
 
       if [ "X${USER_ENABLE_SYSLOG}" = "X" ]; then
         read ANSWER
@@ -567,12 +567,12 @@ ConfigureServer()
 
       echo ""
       case $ANSWER in
-        $nomatch)
-            echo "   --- ${nosyslog}."
+        $yesmatch)
+            echo "   --- ${yessyslog}."
+            RLOG="yes"
             ;;
         *)
-            echo "   - ${yessyslog}."
-            RLOG="yes"
+            echo "   --- ${nosyslog}."
             ;;
       esac
 
