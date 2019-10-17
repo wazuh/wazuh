@@ -31,7 +31,7 @@ time_t current_time = 0;
 Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unused)) regex_matching *rule_match)
 {
     Eventinfo *lf = NULL;
-    Eventinfo *first_lf;
+    Eventinfo *first_matched = NULL;
     OSListNode *lf_node;
     int frequency_count = 0;
     int i;
@@ -61,8 +61,6 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         lf = NULL;
         goto end;
     }
-
-    first_lf = (Eventinfo *)lf_node->data;
 
     do {
         lf = (Eventinfo *)lf_node->data;
@@ -233,13 +231,17 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
 
         if (frequency_count < rule->frequency) {
             frequency_count++;
+            if (!first_matched) {
+               first_matched = lf;
+            }
             continue;
         }
         frequency_count++;
         /* If reached here, we matched */
         my_lf->matched = rule->level;
-        lf->matched = rule->level;
-        first_lf->matched = rule->level;
+        if (first_matched) { // To protect from a possible frequency 0
+            first_matched->matched = rule->level;
+        }
         goto end;
     } while ((lf_node = lf_node->prev) != NULL);
 
@@ -258,7 +260,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 {
     Eventinfo *lf = NULL;
     OSListNode *lf_node;
-    Eventinfo *first_lf;
+    Eventinfo *first_matched = NULL;
     int frequency_count = 0;
     int i;
     int found;
@@ -291,8 +293,6 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         lf = NULL;
         goto end;
     }
-
-    first_lf = (Eventinfo *)lf_node->data;
 
     do {
         lf = (Eventinfo *)lf_node->data;
@@ -464,13 +464,17 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
             }
 
             frequency_count++;
+            if (!first_matched) {
+               first_matched = lf;
+            }
             continue;
         }
 
         /* If reached here, we matched */
         my_lf->matched = rule->level;
-        lf->matched = rule->level;
-        first_lf->matched = rule->level;
+        if (first_matched) { // To protect from a possible frequency 0
+            first_matched->matched = rule->level;
+        }
         goto end;
     } while ((lf_node = lf_node->prev) != NULL);
 
@@ -491,6 +495,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
 {
     EventNode *eventnode_pt = NULL;
     EventNode *first_pt;
+    Eventinfo *first_matched = NULL;
     Eventinfo *lf = NULL;
     int frequency_count = 0;
     int i;
@@ -661,13 +666,17 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
 
             frequency_count++;
+            if (!first_matched) {
+               first_matched = lf;
+            }
             goto next_it;
         }
 
         /* If reached here, we matched */
         my_lf->matched = rule->level;
-        lf->matched = rule->level;
-
+        if (first_matched) { // To protect from a possible frequency 0
+            first_matched->matched = rule->level;
+        }
         goto end;
 next_it:
         w_mutex_lock(&eventnode_pt->mutex);
