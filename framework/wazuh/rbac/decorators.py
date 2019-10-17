@@ -278,7 +278,10 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
     """
     if add_denied:
         for res_id, target_param in target.items():
-            denied = set(original[target_param]) - allowed[res_id]
+            try:
+                denied = set(original[target_param]) - allowed[res_id]
+            except KeyError:
+                denied = set()
             for denied_item in denied:
                 result.add_failed_item(id_=denied_item, error=WazuhError(4000,
                                                                          extra_message=f'Resource type: {res_id}'))
