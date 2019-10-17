@@ -11,6 +11,7 @@ from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
 from wazuh.exception import WazuhError
 from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.rbac.post_processor import list_handler
+from wazuh.results import WazuhResult, AffectedItemsWazuhResult
 
 #mode = configuration.read_api_config()['rbac']['mode']
 mode = 'white'
@@ -195,14 +196,14 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
     """
     # We expose required resources for the request
     res_list = list()
-    target_params = list()
+    target_params = dict()
     add_denied = True
     for resource in resources:
-        m = re.search(r'^([a-z*]+:[a-z*]+:)(\w+|\*|{(\w+)})$', resource)
+        m = re.search(r'^([a-z*]+:[a-z*]+):(\w+|\*|{(\w+)})$', resource)
         res_base = m.group(1)
         # If we find a '{' in the regex we obtain the dynamic resource/s
         if '{' in m.group(2):
-            target_params.append(m.group(3))
+            target_params[m.group(1)] = m.group(3)
             if m.group(3) in kwargs:
                 # Dynamic resources ids are found within the {}
                 params = kwargs[m.group(3)]
@@ -224,10 +225,10 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
             else:
                 add_denied = False
                 params = '*'
-                res_list.append("{0}{1}".format(res_base, params))
+                res_list.append("{0}:{1}".format(res_base, params))
         # If we don't find a regex match we obtain the static resource/s
         else:
-            target_params.append(m.group(2))
+            target_params[m.group(1)] = m.group(2)
             res_list.append(resource)
     # Create dict of required policies with action: list(resources) pairs
     req_permissions = dict()
@@ -258,8 +259,6 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
     :param resources: List of resources exposed by the framework function
     :param post_proc_func: Name of the function to use in response post processing
     :param post_proc_kwargs: Extra parameters used in post processing
-    :param stack: Flag that indicates if we should eliminate the key RBAC or not depending on whether the function is
-    decorated by more than one decorator
     :return: Allow or deny framework function execution
     """
     if post_proc_kwargs is None:
@@ -272,14 +271,18 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                 _get_required_permissions(actions=actions, resources=resources, **kwargs)
             allow = _match_permissions(req_permissions=req_permissions)
             original_kwargs = copy.deepcopy(kwargs)
-            for index, target in enumerate(target_params):
+
+            for res_id, target_param in target_params.items():
                 try:
-                    # We don't have any permissions over the required permissions,
-                    # post_proc_func is None -> special output, when we don't want to post process the output
-                    if len(allow[list(allow.keys())[index]]) == 0 and post_proc_func is None:
+                    # We don't have any permissions over the required resources
+                    if len(allow[res_id]) == 0 and \
+                            original_kwargs.get(target_param, None) is not None and \
+                            len(original_kwargs[target_param]) != 0:
                         raise Exception
-                    if target != '*':  # No resourceless
-                        kwargs[target] = list(allow[list(allow.keys())[index]])
+                    if target_param != '*':  # No resourceless
+                        kwargs[target_param] = list(allow[res_id])
+                    elif len(allow[res_id]) == 0:
+                        raise Exception
                 except Exception:
                     raise WazuhError(4000)
             result = func(*args, **kwargs)
