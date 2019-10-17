@@ -679,7 +679,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     if(!changes) {
         os_free(lf->data);
         return(-1);
-    } else {
+    } else if (lf->fields[FIM_CHFIELDS].value != NULL) {
         wm_strcat(&lf->fields[FIM_CHFIELDS].value, ",", '\0');
     }
 
