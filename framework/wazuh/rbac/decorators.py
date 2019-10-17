@@ -6,11 +6,11 @@ import re
 from functools import wraps
 
 from api.authentication import AuthenticationManager
-from wazuh.common import rbac, system_agents, system_groups
+from wazuh.common import rbac, system_agents, system_groups, broadcast
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
 from wazuh.exception import WazuhError, create_exception_dic
 from wazuh.rbac.orm import RolesManager, PoliciesManager
-from wazuh.results import WazuhResult, AffectedItemsWazuhResult
+from wazuh.results import AffectedItemsWazuhResult
 
 #mode = configuration.read_api_config()['rbac']['mode']
 mode = 'white'
@@ -213,10 +213,13 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                         raise WazuhError(4015, extra_message={'param': m.group(3)})
                     for param in params:
                         res_list.append("{0}:{1}".format(res_base, param))
+                    add_denied = not broadcast.get()
                 else:
                     if params is None or params == '*':
                         add_denied = True
                         params = '*'
+                    else:
+                        add_denied = not broadcast.get()
                     res_list.append("{0}:{1}".format(res_base, params))
             # KeyError occurs if required dynamic resources can't be found within request parameters
             else:
