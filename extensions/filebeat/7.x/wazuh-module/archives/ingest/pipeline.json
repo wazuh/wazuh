@@ -61,8 +61,5 @@
     { "remove": { "field": "event", "ignore_missing": true, "ignore_failure": true } },
     { "remove": { "field": "fileset", "ignore_missing": true, "ignore_failure": true } },
     { "remove": { "field": "service", "ignore_missing": true, "ignore_failure": true } }
-  ],
-  "on_failure" : [{
-    "drop" : { }
-  }]
+  ]
 }
