@@ -629,9 +629,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                    goto out_free;
                }
             } else {
-                merror(FIM_INVALID_ATTRIBUTE, *attrs);
-                ret = 0;
-                goto out_free;
+                mwarn(FIM_UNKNOWN_ATTRIBUTE, *attrs);
             }
             attrs++;
             values++;
@@ -1178,7 +1176,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         return (0);
                     }
                 } else {
-                    merror(FIM_INVALID_OPTION, node[i]->attributes[0] ? node[i]->attributes[0] : "", xml_nodiff);
+                    merror(FIM_INVALID_OPTION, node[i]->attributes[0] ? node[i]->attributes[0] : "", node[i]->element);
                     return (OS_INVALID);
                 }
             }
@@ -1302,7 +1300,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     mdebug1("Found nodiff regex node %s OK?", node[i]->content);
                     mdebug1("Found nodiff regex size %d", nodiff_size);
                 } else {
-                    merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0]);
+                    merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0], node[i]->element);
                     return (OS_INVALID);
                 }
             }

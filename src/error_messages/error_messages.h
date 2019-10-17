@@ -455,7 +455,7 @@
 
 #define FIM_NO_OPTIONS                              "(6677): No option provided for directories: '%s', ignoring it."
 #define FIM_DIRECTORY_NOPROVIDED                    "(6678): No directory provided for syscheck to monitor."
-#define FIM_INVALID_ATTRIBUTE                       "(6679): Invalid attribute '%s' for directory option."
+#define FIM_INVALID_ATTRIBUTE                       "(6679): Invalid attribute '%s' for '%s' option."
 #define FIM_INVALID_OPTION                          "(6680): Invalid option '%s' for attribute '%s'"
 #define FIM_WHODATA_PARAMETER                       "(6681): Invalid parameter type (%ld) for '%s'."
 #define FIM_ERROR_WHODATA_WIN_ARCH                  "(6682): Error reading 'Architecture' from Windows registry. (Error %u)"
@@ -479,7 +479,7 @@
 #define FIM_CRITICAL_ERROR_SELECT                   "(6699): At '%s': select(): %s. Exiting."
 
 #define FIM_ERROR_INOTIFY_ADD_MAX_REACHED           "(6700): Unable to add inotify watch to real time monitoring: '%s'. '%d' '%d': The maximum limit of inotify watches has been reached."
-
+#define FIM_UNKNOWN_ATTRIBUTE                       "(6701): Unknown attribute '%s' for directory option."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
