@@ -220,7 +220,9 @@ FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char
 
     if (rotate == 2) {
         snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d.%s", logdir, year, month, tag, day, ext);
-        rename(prev_path, path);
+        if (rename_ex(prev_path, path)) {
+            merror_exit(RENAME_ERROR, prev_path, path, errno, strerror(errno));
+        }
 
         /* Update the rotation node */
         os_free(list->last->string_value);
@@ -273,7 +275,7 @@ static FILE * rotate_logs(rotation_list *list, char *log_file, int day, int coun
     char compress_file[OS_FLSIZE + 1];
     char *previous_log = NULL;
 
-    if (list->last) {
+    if (list && list->last) {
         os_strdup(list->last->string_value, previous_log);
     } else {
         os_strdup(log_file, previous_log);

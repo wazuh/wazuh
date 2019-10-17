@@ -201,25 +201,29 @@ int Read_Monitor(XML_NODE node, void *config, __attribute__((unused)) void *conf
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_check_agent_status) == 0) {
             char *end;
-            mond_config->monitor_agents = strtol(node[i]->content, &end, 10);
+            int opt = strtol(node[i]->content, &end, 10);
             if (*end != '\0') {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
-            if (mond_config->monitor_agents < 0 || mond_config->monitor_agents > 1) {
+            if (opt < 0 || opt > 1) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
+            } else {
+                mond_config->monitor_agents = opt;
             }
         } else if (strcmp(node[i]->element, xml_delete_old_agents) == 0) {
             char *end;
-            mond_config->delete_old_agents = strtol(node[i]->content, &end, 10);
+            int opt = strtol(node[i]->content, &end, 10);
             if (*end != '\0') {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
-            if (mond_config->delete_old_agents < 0 || mond_config->delete_old_agents > 9600) {
+            if (opt < 0 || opt > 9600) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
+            } else {
+                mond_config->delete_old_agents = opt;
             }
         } else if (strcmp(node[i]->element, xml_log_level) == 0) {
             char *end;
