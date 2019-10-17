@@ -1932,15 +1932,15 @@ class AWSWAFBucket(AWSCustomBucket):
         AWSCustomBucket.__init__(self, db_table_name, **kwargs)
 
     def load_information_from_file(self, log_key):
+        """Load data from a WAF log file."""
+        content = []
         with self.decompress_file(log_key=log_key) as f:
-            content = json.load(f)
-        # add source field to event
-        content['source'] = 'waf'
-        # up a level the values of key 'detail'
-        content.update(content['detail'])
-        del content['detail']
+            for line in f.readlines():
+                event = json.loads(line.rstrip())
+                event['source'] = 'waf'
+                content.append(event)
 
-        return [content]
+        return json.loads(json.dumps(content))
 
     def reformat_msg(self, event):
         return event
