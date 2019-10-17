@@ -13,13 +13,22 @@
 #include "config.h"
 
 int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg,
-        const char *restrictfile, int recursion_limit, const char *tag, int overwrite)
+        const char *restrictfile, int recursion_limit, const char *tag)
 {
-    unsigned int pl;
+    unsigned int pl = 0;
+    int overwrite = -1;
+    int j;
+
+    for (j = 0; syscheck->dir && syscheck->dir[j]; j++) {
+        /* Duplicate entry */
+        if (strcmp(syscheck->dir[j], entry) == 0) {
+            mdebug2("Overwriting the file entry %s", entry);
+            overwrite = j;
+        }
+    }
+
     /* If overwrite < 0, syscheck entry is added at the end */
-    if(overwrite < 0) {
-        pl = 0;
-    } else {
+    if(overwrite != -1) {
         pl = overwrite;
     }
 
@@ -256,7 +265,7 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
             /* Duplicated entry */
             if (syscheck->registry[i].arch == arch && strcmp(syscheck->registry[i].entry, tmp_entry) == 0) {
                 mdebug2("Overwriting the registration entry: %s", syscheck->registry[i].entry);
-                dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag, i);
+                dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag);
                 free_strarray(entry);
                 return (1);
             }
@@ -271,7 +280,7 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
         }
 
         /* Add new entry */
-        dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag, -1);
+        dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag);
 
         if (clean_tag)
             free(clean_tag);
@@ -325,7 +334,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     }
 
     while (*dir) {
-        int j = 0;
         int opts = 0;
         char *tmp_dir;
 
@@ -664,9 +672,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
         }
 
-        int overwrite = 0;
         char real_path[PATH_MAX + 1];
-
 #ifdef WIN32
         char expandedpath[PATH_MAX + 1];
 
@@ -692,18 +698,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 #else
         strncpy(real_path, tmp_dir, PATH_MAX + 1);
 #endif
-
-        /* Add directory - look for the last available */
-        for (j = 0; syscheck->dir && syscheck->dir[j]; j++) {
-            /* Duplicate entry */
-            if (strcmp(syscheck->dir[j], real_path) == 0) {
-                mdebug2("Overwriting the file entry %s", real_path);
-                dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, j);
-                ret = 1;
-                overwrite = 1;
-            }
-        }
-
         /* Check for glob */
         /* The mingw32 builder used by travis.ci can't find glob.h
          * Yet glob must work on actual win32.
@@ -728,23 +722,17 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
 
             while (g.gl_pathv[gindex]) {
-                if(overwrite == 0) {
-                    dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit, clean_tag, -1);
-                }
+                dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit, clean_tag);
                 gindex++;
             }
 
             globfree(&g);
         }
         else {
-            if(overwrite == 0) {
-                dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
-            }
+            dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag);
         }
 #else
-        if(overwrite == 0) {
-            dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
-        }
+        dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag);
 #endif
 
         if (restrictfile) {
