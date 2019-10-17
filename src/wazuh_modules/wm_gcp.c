@@ -261,7 +261,7 @@ cJSON *wm_gcp_dump(const wm_gcp *data) {
             break;
     }
 
-    cJSON_AddItemToObject(root, "gcp", wm_wd);
+    cJSON_AddItemToObject(root, "gcp-pubsub", wm_wd);
 
     return root;
 }
