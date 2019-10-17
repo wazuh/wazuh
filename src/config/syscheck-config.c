@@ -342,15 +342,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 
         /* Remove spaces at the end */
-        tmp_str = strchr(tmp_dir, ' ');
-        if (tmp_str) {
-            tmp_str++;
-
-            /* Check if it is really at the end */
-            if ((*tmp_str == '\0') || (*tmp_str == ' ')) {
-                tmp_str--;
-                *tmp_str = '\0';
-            }
+        tmp_str = tmp_dir + strlen(tmp_dir) - 1;
+        while(*tmp_str == ' ') {
+            *tmp_str = '\0';
+            tmp_str--;
         }
 #ifdef WIN32
         /* Change forward slashes to backslashes on entry */
@@ -670,12 +665,12 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 
         int overwrite = 0;
-
-        char expandedpath[OS_MAXSTR];
-        char *ptfile;
+        char real_path[PATH_MAX + 1];
 
 #ifdef WIN32
-        if(!ExpandEnvironmentStrings(tmp_dir, expandedpath, sizeof(expandedpath) - 1)){
+        char expandedpath[PATH_MAX + 1];
+
+        if(!ExpandEnvironmentStrings(tmp_dir, expandedpath, PATH_MAX + 1)){
             merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
             os_free(restrictfile);
             os_free(tag);
@@ -684,33 +679,26 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
         str_lowercase(expandedpath);
 
-        /* Change forward slashes to backslashes on entry */
-        ptfile = strchr(expandedpath, '/');
+        // Get absolute path
+        int retval = GetFullPathName(expandedpath, PATH_MAX, real_path, NULL);
 
-        while (ptfile) {
-            *ptfile = '\\';
-
-            ptfile++;
-            ptfile = strchr(ptfile, '/');
+        if (retval == 0) {
+            int error = GetLastError();
+            mwarn("Couldn't get full path name '%s' (%d):'%s'\n", expandedpath, error, win_strerror(error));
+            os_free(restrictfile);
+            os_free(tag);
+            continue;
         }
 #else
-        strncpy(expandedpath, tmp_dir, sizeof(expandedpath) - 1);
+        strncpy(real_path, tmp_dir, PATH_MAX + 1);
 #endif
-        ptfile = expandedpath;
-        int size_expanded = strlen(expandedpath);
-        ptfile += size_expanded - 1;
-
-        if (*ptfile == PATH_SEP && size_expanded > 1) {
-            *ptfile = '\0';
-        }
 
         /* Add directory - look for the last available */
-
         for (j = 0; syscheck->dir && syscheck->dir[j]; j++) {
             /* Duplicate entry */
-            if (strcmp(syscheck->dir[j], expandedpath) == 0) {
-                mdebug2("Overwriting the file entry %s", expandedpath);
-                dump_syscheck_entry(syscheck, expandedpath, opts, 0, restrictfile, recursion_limit, clean_tag, j);
+            if (strcmp(syscheck->dir[j], real_path) == 0) {
+                mdebug2("Overwriting the file entry %s", real_path);
+                dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, j);
                 ret = 1;
                 overwrite = 1;
             }
@@ -721,20 +709,20 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
          * Yet glob must work on actual win32.
          */
 #ifndef __MINGW32__
-        if (strchr(expandedpath, '*') ||
-                strchr(expandedpath, '?') ||
-                strchr(expandedpath, '[')) {
+        if (strchr(real_path, '*') ||
+                strchr(real_path, '?') ||
+                strchr(real_path, '[')) {
             int gindex = 0;
             glob_t g;
 
             if (glob(tmp_dir, 0, NULL, &g) != 0) {
-                merror(GLOB_ERROR, expandedpath);
+                merror(GLOB_ERROR, real_path);
                 ret = 1;
                 goto out_free;
             }
 
             if (g.gl_pathv[0] == NULL) {
-                merror(GLOB_NFOUND, expandedpath);
+                merror(GLOB_NFOUND, real_path);
                 ret = 1;
                 goto out_free;
             }
@@ -750,12 +738,12 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
         else {
             if(overwrite == 0) {
-                dump_syscheck_entry(syscheck, expandedpath, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+                dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
             }
         }
 #else
         if(overwrite == 0) {
-            dump_syscheck_entry(syscheck, expandedpath, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+            dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
         }
 #endif
 
