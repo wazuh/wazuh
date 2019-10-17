@@ -126,4 +126,5 @@ max_groups_per_multigroup = 256
 # Context variables
 rbac: ContextVar[Dict] = ContextVar('rbac', default=dict())
 system_agents: ContextVar[List] = ContextVar('system_agents', default=list())
+system_groups: ContextVar[List] = ContextVar('system_groups', default=list())
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
