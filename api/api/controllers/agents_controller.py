@@ -649,24 +649,26 @@ def delete_groups(list_groups=None, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
-    """Get all groups.
+def get_list_group(pretty=False, wait_for_complete=False, list_groups=None, offset=0, limit=None, sort=None, search=None):
+    """Get groups.
 
     Returns a list containing basic information about each agent group such as number of agents belonging to the group
     and the checksums of the configuration and shared files.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param list_groups: Array of group's IDs.
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
-    :return: Data
+    :return: AllItemsResponseGroups
     """
     hash_ = connexion.request.args.get('hash', 'md5')  # Select algorithm to generate the returned checksums.
     f_kwargs = {'offset': offset,
                 'limit': limit,
+                'group_list': list_groups,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['name'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
@@ -684,9 +686,8 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -717,9 +718,7 @@ def delete_single_group(group_id, pretty=False, wait_for_complete=False):
 @exception_handler
 def get_agents_in_group(group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit, select=None,
                         sort=None, search=None, status=None, q=None):
-    """Get agents in a group.
-
-    Returns the list of agents that belongs to the specified group.
+    """Get the list of agents that belongs to the specified group.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -732,8 +731,7 @@ def get_agents_in_group(group_id, pretty=False, wait_for_complete=False, offset=
     :param search: Looks for elements with the specified string
     :param status: Filters by agent status. Use commas to enter multiple statuses.
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-
-    :return: Data
+    :return: AllItemsResponseAgents
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
@@ -767,7 +765,7 @@ def post_group(group_id, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param group_id: Group ID.
-    :return: message
+    :return: ApiResponse
     """
     f_kwargs = {'group_id': group_id}
 
@@ -786,20 +784,15 @@ def post_group(group_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit):
+def get_group_config(group_id, pretty=False, wait_for_complete=False):
     """Get group configuration defined in the `agent.conf` file.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param group_id: Group ID.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :return: Data
+    :return: GroupConfiguration
     """
-    f_kwargs = {'group_list': [group_id],
-                'offset': offset,
-                'limit': limit}
-
+    f_kwargs = {'group_list': [group_id]}
     dapi = DistributedAPI(f=agent.get_agent_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',

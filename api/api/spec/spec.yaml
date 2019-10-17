@@ -157,6 +157,19 @@ components:
                   - $ref: '#/components/schemas/Agent'
                   - type: array
 
+    AllItemsResponseGroups:
+      allOf:
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/AgentGroup'
+        - $ref: '#/components/schemas/AllItemsResponse'
+
     AllItemsResponseAgentIDs:
       allOf:
         - type: object
@@ -4603,12 +4616,13 @@ paths:
     get:
       tags:
         - agents
-      summary: 'Get all groups'
-      description: 'Returns a list containing basic information about each group such as number of agents belonging to the group and the checksums of the configuration and shared files.'
+      summary: 'Get groups'
+      description: 'Get information about all groups or a list of them. Returns a list containing basic information about each group such as number of agents belonging to the group and the checksums of the configuration and shared files.'
       operationId: api.controllers.agents_controller.get_list_group
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_groups'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -4625,29 +4639,24 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/AgentGroup'
+                      $ref: '#/components/schemas/AllItemsResponseGroups'
               example:
                 data:
-                  item:
-                  - count: 2
-                    name: default
-                    mergedSum: f8d49771911ed9d5c45b03a40babd065
-                    configSum: ab73af41699f13fdd81903b5f23d8d00
-                  - count: 3
-                    name: dmz
-                    mergedSum: 220d6c5fc253f251827ee7487341c0fc
-                    configSum: cfbae9ecc10eb15f1b4fc736de6758cc
-                  - count: 0
-                    name: pciserver
-                    mergedSum: 220d6c5fc253f251827ee7487341c0fc
-                    configSum: ab73af41699f13fdd81903b5f23d8d00
+                  affected_items:
+                    - count: 2
+                      name: default
+                      mergedSum: f8d49771911ed9d5c45b03a40babd065
+                      configSum: ab73af41699f13fdd81903b5f23d8d00
+                    - count: 3
+                      name: dmz
+                      mergedSum: 220d6c5fc253f251827ee7487341c0fc
+                      configSum: cfbae9ecc10eb15f1b4fc736de6758cc
+                    - count: 0
+                      name: pciserver
+                      mergedSum: 220d6c5fc253f251827ee7487341c0fc
+                      configSum: ab73af41699f13fdd81903b5f23d8d00
+                  total_affected_items: 3
+                message: Obtained information about all selected groups
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -4718,61 +4727,87 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/Agent'
+                      $ref: '#/components/schemas/AllItemsResponseAgents'
               example:
                 data:
-                  totalItems: 3
-                  items:
-                  - os:
-                      arch: x86_64
-                      codename: Bionic Beaver
-                      major: '18'
-                      minor: '04'
-                      name: Ubuntu
-                      platform: ubuntu
-                      uname: Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64
-                      version: 18.04.1 LTS
-                    group:
-                      - default
-                      - dmz
-                    lastKeepAlive: '2019-02-19T10:31:09Z'
-                    ip: 172.17.0.201
-                    manager: manager
-                    status: active
-                    version: Wazuh v3.8.2
-                    dateAdd: '2019-02-19T10:25:42Z'
-                    name: agent-1
-                    configSum: ab73af41699f13fdd81903b5f23d8d00
-                    registerIP: 172.17.0.201
-                    node_name: node01
-                    id: '001'
-                    mergedSum: f8d49771911ed9d5c45b03a40babd065
-                  - group:
-                    - default
-                    - dmz
-                    status: never_connected
-                    dateAdd: '2019-02-19T10:30:59Z'
-                    name: server001
-                    registerIP: 10.0.0.62
-                    ip: 10.0.0.62
-                    node_name: unknown
-                    id: '002'
-                  - group:
-                    - dmz
-                    ip: 10.0.0.15
-                    status: never_connected
-                    dateAdd: '2019-02-19T10:31:00Z'
-                    name: main_database
-                    registerIP: 10.0.0.15
-                    node_name: unknown
-                    id: '004'
+                  affected_items:
+                    - configSum: 29e0926e5a77442212e824868a2a61df
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group1
+                      id: '001'
+                      ip: 172.18.0.6
+                      lastKeepAlive: '2019-10-16T09:13:34Z'
+                      manager: wazuh-worker2
+                      mergedSum: a13d9b2edc5bdd5ef7331c0d5b9ecf34
+                      name: wazuh-agent1
+                      node_name: worker2
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent1 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                    - configSum: e2f47d482da37c099fa1d6e4c43b523c
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group2
+                      id: '002'
+                      ip: 172.18.0.7
+                      lastKeepAlive: '2019-10-16T09:13:28Z'
+                      manager: wazuh-worker2
+                      mergedSum: d6fde33dc232d8f91359b2e98994c933
+                      name: wazuh-agent2
+                      node_name: worker2
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent2 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                    - configSum: dadc074e9a4f036c5d905c280c3b5bcc
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group3
+                      id: '003'
+                      ip: 172.18.0.8
+                      lastKeepAlive: '2019-10-16T09:13:29Z'
+                      manager: wazuh-master
+                      mergedSum: e40515ffa928c72ee167ed41d88245c4
+                      name: wazuh-agent3
+                      node_name: master-node
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent3 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                  total_affected_items: 3
+                message: All selected agents information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -4809,8 +4844,6 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
       responses:
         '200':
           description: 'Get group configuration'
@@ -4822,18 +4855,9 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/GroupConfiguration'
+                      $ref: '#/components/schemas/GroupConfiguration'
               example:
                 data:
-                  totalItems: 1
-                  items:
                   - filters:
                       os: Linux
                   - config:

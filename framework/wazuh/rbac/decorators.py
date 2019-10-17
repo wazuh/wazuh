@@ -6,11 +6,10 @@ import re
 from functools import wraps
 
 from api.authentication import AuthenticationManager
-from wazuh.common import rbac, system_agents, broadcast, system_groups
+from wazuh.common import rbac, system_agents, system_groups
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
-from wazuh.exception import WazuhError
+from wazuh.exception import WazuhError, create_exception_dic
 from wazuh.rbac.orm import RolesManager, PoliciesManager
-from wazuh.rbac.post_processor import list_handler
 from wazuh.results import WazuhResult, AffectedItemsWazuhResult
 
 #mode = configuration.read_api_config()['rbac']['mode']
@@ -34,14 +33,15 @@ def _expand_resource(resource):
     """
     name, attribute, value = resource.split(':')
     resource_type = ':'.join([name, attribute])
-    # This is the special case, expand_group can receive * or the name of the group. That's why it' s always called
-    if resource_type == 'agent:group':
-        system_agents.set(expand_group(value))
-        return system_agents.get()
 
     # Set agents context variable
     if resource_type == 'agent:id':
         system_agents.set(get_agents_info())
+
+    # This is the special case, expand_group can receive * or the name of the group. That's why it' s always called
+    if resource_type == 'agent:group':
+        system_agents.set(get_agents_info())
+        return expand_group(value)
 
     # Set groups context variable
     if resource_type == 'group:id':
@@ -212,15 +212,12 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                     if len(params) == 0:
                         raise WazuhError(4015, extra_message={'param': m.group(3)})
                     for param in params:
-                        res_list.append("{0}{1}".format(res_base, param))
-                    add_denied = not broadcast.get()
+                        res_list.append("{0}:{1}".format(res_base, param))
                 else:
                     if params is None or params == '*':
                         add_denied = True
                         params = '*'
-                    else:
-                        add_denied = not broadcast.get()
-                    res_list.append("{0}{1}".format(res_base, params))
+                    res_list.append("{0}:{1}".format(res_base, params))
             # KeyError occurs if required dynamic resources can't be found within request parameters
             else:
                 add_denied = False
@@ -249,6 +246,32 @@ def _match_permissions(req_permissions: dict = None):
         except KeyError:
             _permissions_processing(req_resources, dict(), allow_match)
     return allow_match
+
+
+def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowed: dict = None, target: dict = None,
+                 add_denied: bool = False,
+                 **post_proc_kwargs):
+    """ Post processor for framework list responses with affected items and optional denied items
+
+    :param result: Dict with affected_items, failed_items and str_priority
+    :param original: Original input call parameter values
+    :param allowed: Allowed input call parameter values
+    :param target: Name of the input parameters used to calculate resource access
+    :param add_denied: Flag to add denied permissions to answer
+    :return: WazuhResult
+    """
+    if add_denied:
+        for res_id, target_param in target.items():
+            denied = set(original[target_param]) - allowed[res_id]
+            for denied_item in denied:
+                result.add_failed_item(id_=denied_item, error=WazuhError(4000,
+                                                                         extra_message=f'Resource type: {res_id}'))
+    else:
+        if 'exclude_codes' in post_proc_kwargs:
+            for ex_code in post_proc_kwargs['exclude_codes']:
+                result.remove_failed_items(ex_code)
+
+    return result
 
 
 def expose_resources(actions: list = None, resources: list = None, post_proc_func: callable = list_handler,

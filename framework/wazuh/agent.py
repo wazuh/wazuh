@@ -242,7 +242,7 @@ def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1):
     return {'id': new_agent.id, 'key': new_agent.key}
 
 
-@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
+@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"])
 def get_groups(group_list=None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
                search_text=None, complementary_search=False, search_in_fields=None, hash_algorithm='md5'):
     """Gets the existing groups.
@@ -269,16 +269,16 @@ def get_groups(group_list=None, offset=0, limit=common.database_limit, sort_by=N
     # Group names
     affected_groups = list()
     failed_groups = list()
-    for group in group_list:
+    for group_id in group_list:
         try:
             # Check if the group exists
-            if not Agent.group_exists(group):
+            if group_id not in group_list:
                 raise WazuhError(1710)
-            full_entry = path.join(common.shared_path, group)
+            full_entry = path.join(common.shared_path, group_id)
 
             # Get the id of the group
             query = "SELECT id FROM `group` WHERE name = :group_id"
-            request = {'group_id': group}
+            request = {'group_id': group_id}
             conn.execute(query, request)
             id_group = conn.fetch()
 
@@ -294,7 +294,7 @@ def get_groups(group_list=None, offset=0, limit=common.database_limit, sort_by=N
             merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
             conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
 
-            item = {'count': conn.fetch(), 'name': group}
+            item = {'count': conn.fetch(), 'name': group_id}
 
             if merged_sum:
                 item['mergedSum'] = merged_sum
@@ -304,17 +304,18 @@ def get_groups(group_list=None, offset=0, limit=common.database_limit, sort_by=N
 
             affected_groups.append(item)
         except WazuhException as e:
-            failed_groups.append()
+            failed_groups.append(create_exception_dic(group_id, e))
 
     data = process_array(affected_groups, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                          offset=offset, limit=limit)
 
-    result = {'affected_items': affected_groups,
+    result = {'affected_items': data,
+              'total_affected_items': len(affected_groups),
               'failed_items': failed_groups,
-              'str_priority': ['All selected agents were deleted',
-                               'Some agents were not deleted',
-                               'No agents were deleted']}
+              'str_priority': ['Obtained information about all selected groups',
+                               'Some groups information was not obtained',
+                               'No group information was obtained']}
 
     return result
 
@@ -746,12 +747,10 @@ def get_file_conf(group_list=None, type_conf=None, return_format=None, filename=
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_agent_conf(group_list=None, offset=0, limit=common.database_limit, filename='agent.conf'):
+def get_agent_conf(group_list=None, filename='agent.conf'):
     """ Reads agent conf for specified group
 
     :param group_list: List of Group names.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
     :param filename: Filename to read config from.
     :return: agent.conf as dictionary.
     """
@@ -759,7 +758,7 @@ def get_agent_conf(group_list=None, offset=0, limit=common.database_limit, filen
     # a list of groups
     group_id = group_list[0]
 
-    return configuration.get_agent_conf(group_id=group_id, offset=offset, limit=limit, filename=filename)
+    return configuration.get_agent_conf(group_id=group_id, filename=filename)['items']
 
 
 @expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], post_proc_func=None)
