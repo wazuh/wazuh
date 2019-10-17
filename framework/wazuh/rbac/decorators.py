@@ -40,6 +40,7 @@ def _expand_resource(resource):
     if resource_type == 'agent:id':
         system_agents.set(get_agents_info())
 
+    # This is the special case, expand_group can receive * or the name of the group. That's why it' s always called
     if resource_type == 'agent:group':
         system_agents.set(get_agents_info())
         return expand_group(value)
@@ -47,10 +48,6 @@ def _expand_resource(resource):
     # Set groups context variable
     if resource_type == 'group:id':
         system_groups.set(get_groups())
-
-    # This is the special case, expand_group can receive * or the name of the group. That's why it' s always called
-    if resource_type == 'agent:group':
-        return expand_group(value)
 
     # We need to transform the wildcard * to the resource of the system
     if value == '*':
@@ -281,14 +278,16 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
     """
     if add_denied:
         for res_id, target_param in target.items():
-            denied = set(original[target_param]) - allowed[res_id]
+            try:
+                denied = set(original[target_param]) - allowed[res_id]
+            except KeyError:
+                denied = set()
             for denied_item in denied:
                 result.add_failed_item(id_=denied_item, error=WazuhError(4000,
                                                                          extra_message=f'Resource type: {res_id}'))
     else:
         if 'exclude_codes' in post_proc_kwargs:
-            for ex_code in post_proc_kwargs['exclude_codes']:
-                result.remove_failed_items(ex_code)
+            result.remove_failed_items(post_proc_kwargs['exclude_codes'])
 
     return result
 

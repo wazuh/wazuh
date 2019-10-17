@@ -487,6 +487,11 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         return result
 
     def render(self):
+        def sort_ids(ids):
+            try:
+                return sorted(list(ids), key=int)
+            except ValueError:
+                return sorted(list(ids))
         ordered_failed_items = sorted(self.failed_items.items(), key=lambda x: x[0].code)
         result = {
             'affected_items': self.affected_items,
@@ -496,7 +501,7 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
                                         'message': exc.message,
                                         'remediation': exc.remediation
                                         },
-                              'id': sorted(list(ids), key=int)
+                              'id': sort_ids(ids)
                               }
                              for exc, ids in ordered_failed_items],
             **self.dikt
