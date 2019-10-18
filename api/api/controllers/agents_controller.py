@@ -170,7 +170,7 @@ def restart_agents(pretty=False, wait_for_complete=False, list_agents='*'):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param list_agents: List of agent's IDs.
-    :return: CommonResponse
+    :return: AllItemsResponseAgentIDs
     """
     f_kwargs = {'agent_list': list_agents}
 
@@ -197,7 +197,7 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):
     :param wait_for_complete: Disable timeout response
     :param agent_id: Agent ID. All posible values since 000 onwards.
     :param purge: Delete an agent from the key store
-    :return: Data
+    :return: AllItemsResponseAgentIDs
     """
     f_kwargs = {'agent_list': [agent_id],
                 'purge': purge,
@@ -226,7 +226,7 @@ def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):
     :param wait_for_complete: Disable timeout response
     :param agent_id: Agent ID. All posible values since 000 onwards.r
     :param select: Select which fields to return (separated by comma)
-    :return: Agent
+    :return: AllItemsResponseAgents
     """
     f_kwargs = {'agent_list': [agent_id],
                 'select': select
@@ -258,7 +258,7 @@ def get_agent_config(pretty=False, wait_for_complete=False, agent_id=None, compo
     :param wait_for_complete: Disable timeout response
     :param agent_id: Agent ID. All posible values since 000 onwards.
     :param component: Selected agent's component.
-    :return: AgentConfigurationData
+    :return: AgentConfiguration
     """
     f_kwargs = {'agent_list': [agent_id],
                 'component': component,
@@ -290,7 +290,7 @@ def delete_single_agent_multiple_groups(agent_id, list_groups=None, pretty=False
     :param wait_for_complete: Disable timeout response
     :param agent_id: Agent ID. All posible values since 000 onwards.
     :param list_groups: Array of group's IDs.
-    :return: CommonResponse
+    :return: AllItemsResponseGroupIDs
     """
     f_kwargs = {'agent_list': [agent_id],
                 'group_list': list_groups}
@@ -349,7 +349,7 @@ def delete_single_agent_single_group(agent_id, group_id, pretty=False, wait_for_
     :param wait_for_complete: Disable timeout response
     :param agent_id: Agent ID. All posible values since 000 onwards.
     :param group_id: Group ID.
-    :return: CommonResponse
+    :return: ApiResponse
     """
     f_kwargs = {'agent_list': [agent_id],
                 'group_list': [group_id]}
@@ -377,7 +377,7 @@ def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=
     :param agent_id: Agent ID. All posible values since 000 onwards.
     :param group_id: Group ID.
     :param force_single_group: Forces the agent to belong to a single group
-    :return: CommonResponse
+    :return: ApiResponse
     """
     f_kwargs = {'agent_list': [agent_id],
                 'group_id': group_id,
@@ -404,7 +404,7 @@ def get_agent_key(agent_id, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param agent_id: Agent ID. All posible values since 000 onwards.
-    :return: AgentKey
+    :return: AllItemsResponseAgentsKeys
     """
     f_kwargs = {'agent_list': [agent_id]}
 
@@ -429,7 +429,7 @@ def restart_agent(agent_id, pretty=False, wait_for_complete=False):
     :param agent_id: Agent ID. All posible values since 000 onwards.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :return: CommonResponse
+    :return: AllItemsResponseAgentIDs
     """
     f_kwargs = {'agent_list': [agent_id]}
 
@@ -459,7 +459,7 @@ def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=
     :param version: Wazuh version to upgrade to.
     :param use_http: Use protocol http. If it's false use https. By default the value is set to false.
     :param force: Force upgrade.
-    :return: CommonResponse
+    :return: ApiResponse
     """
     f_kwargs = {'agent_list': [agent_id],
                 'wpk_repo': wpk_repo,
@@ -491,7 +491,7 @@ def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, fi
     :param file_path: Path to the WPK file. The file must be on a folder on the Wazuh's installation directory
     (by default, <code>/var/ossec</code>).
     :type installer: str
-    :return: CommonResponse
+    :return: ApiResponse
     """
     f_kwargs = {'agent_list': [agent_id],
                 'file_path': file_path,
@@ -547,7 +547,7 @@ def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False
     :param wait_for_complete: Disable timeout response
     :param agent_id: Agent ID. All posible values since 000 onwards.
     :param timeout: Seconds to wait for the agent to respond.
-    :return: CommonResponse
+    :return: ApiResponse
     """
     f_kwargs = {'agent_list': [agent_id],
                 'timeout': timeout}
@@ -847,7 +847,7 @@ def put_group_config(body, group_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit, sort=None,
+def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                     search=None):
     """Get the files placed under the group directory
 
@@ -1052,7 +1052,7 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=da
 
 
 @exception_handler
-def get_agent_outdated(pretty=False, wait_for_complete=False, offset=None, limit=None, sort=None, search=None, q=None):
+def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=database_limit, sort=None, search=None, q=None):
     """Get outdated agents.
 
     :param pretty: Show results in human-readable format
@@ -1063,7 +1063,7 @@ def get_agent_outdated(pretty=False, wait_for_complete=False, offset=None, limit
     ascending or descending order.
     :param search: Looks for elements with the specified string
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-    :return: Data
+    :return: AllItemsResponseAgentsSimple
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
@@ -1087,8 +1087,8 @@ def get_agent_outdated(pretty=False, wait_for_complete=False, offset=None, limit
 
 
 @exception_handler
-def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=database_limit, select=None, sort=None,
-                     search=None, fields=None, q=None):
+def get_agent_fields(pretty=False, wait_for_complete=False, fields=None, offset=0, limit=database_limit, select=None,
+                     sort=None, search=None, q=None):
     """Get distinct fields in agents.
 
     Returns all the different combinations that agents have for the selected fields. It also indicates the total number
@@ -1096,15 +1096,15 @@ def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=data
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param fields: List of fields affecting the operation.
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param select: Select which fields to return (separated by comma)
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
-    :param fields: List of fields affecting the operation.
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-    :return: Data
+    :return: ListMetadata
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
@@ -1135,7 +1135,7 @@ def get_agent_summary_status(pretty=False, wait_for_complete=False):
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :return: Data
+    :return: AgentsSummaryStatus
     """
     f_kwargs = {}
 
@@ -1155,7 +1155,7 @@ def get_agent_summary_status(pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_agent_summary_os(pretty=False, wait_for_complete=False, offset=None, limit=None, search=None, q=None):
+def get_agent_summary_os(pretty=False, wait_for_complete=False, offset=0, limit=database_limit, search=None, q=None):
     """Get agents OS summary.
 
     :param pretty: Show results in human-readable format
@@ -1164,7 +1164,7 @@ def get_agent_summary_os(pretty=False, wait_for_complete=False, offset=None, lim
     :param limit: Maximum number of elements to return
     :param search: Looks for elements with the specified string
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-    :return: Data
+    :return: ListMetadata
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,

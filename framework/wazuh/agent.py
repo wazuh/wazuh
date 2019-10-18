@@ -16,13 +16,14 @@ from wazuh.database import Connection
 from wazuh.exception import WazuhError, WazuhInternalError, WazuhException, create_exception_dic
 from wazuh.rbac.decorators import expose_resources
 from wazuh.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
+from wazuh.results import WazuhResult, AffectedItemsWazuhResult
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:*"], post_proc_func=None)
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, 
-                        fields=None, q=''):
-    """ Gets all the different combinations that agents have for the selected fields. It also indicates the total
-    number of agents that have each combination.
+                        fields=None, q=None):
+    """ Gets all the different combinations that all system agents have for the selected fields. It also indicates the
+    total number of agents that have each combination.
 
     :param agent_list: List of agents ID's.
     :param offset: First item to return.
@@ -32,22 +33,21 @@ def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, 
     :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
     :param q: Defines query to filter in DB.
     :param fields: Fields to group by
-    :return: Dict: {data:{'items': List of items, 'totalItems': Number of items (without applying the limit)}}
+    :return: WazuhResult
     """
     db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, offset=offset, limit=limit, sort=sort, search=search, 
                                          select=select, query=q, filters={'id': agent_list}, min_select_fields=set(), 
                                          count=True, get_data=True)
-    data = db_query.run()
-    
-    return data
+
+    return WazuhResult(db_query.run())
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:*"], post_proc_func=None)
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_agents_summary_status(agent_list=None):
     """Counts the number of agents by status.
 
     :param agent_list: List of agents ID's.
-    :return: Dictionary with keys: total, active, disconnected, never_connected, pending and values: count
+    :return: WazuhResult
     """
     db_query = WazuhDBQueryAgents(limit=None, select=['status'], filters={'id': agent_list})
     data = db_query.run()
@@ -57,11 +57,11 @@ def get_agents_summary_status(agent_list=None):
         result[agent['status']] += 1
         result['total'] += 1
 
-    return result
+    return WazuhResult(result)
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:*"], post_proc_func=None)
-def get_agents_summary_os(agent_list=None, offset=None, limit=None, search=None, q=None):
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
+def get_agents_summary_os(agent_list=None, offset=0, limit=common.database_limit, search=None, q=None):
     """Gets a list of available OS.
 
     :param agent_list: List of agents ID's.
@@ -69,14 +69,13 @@ def get_agents_summary_os(agent_list=None, offset=None, limit=None, search=None,
     :param limit: Maximum number of items to return.
     :param search: Looks for items with the specified string.
     :param q: Query to filter results.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    :return: WazuhResult
     """
     db_query = WazuhDBQueryDistinctAgents(offset=offset, limit=limit, search=search, select=['os.platform'],
                                           filters={'id': agent_list}, default_sort_field='os_platform', query=q,
                                           min_select_fields=set())
-    data = db_query.run()
 
-    return data
+    return WazuhResult(db_query.run())
 
 
 @expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
@@ -243,7 +242,7 @@ def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1):
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"])
-def get_groups(group_list=None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
+def get_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_ascending=True,
                search_text=None, complementary_search=False, search_in_fields=None, hash_algorithm='md5'):
     """Gets the existing groups.
 
@@ -321,7 +320,7 @@ def get_groups(group_list=None, offset=0, limit=common.database_limit, sort_by=N
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_group_files(group_list=None, offset=0, limit=common.database_limit, search_text=None, search_in_fields=None,
+def get_group_files(group_list=None, offset=0, limit=None, search_text=None, search_in_fields=None,
                     complementary_search=False, sort_by=None, sort_ascending=True, hash_algorithm='md5'):
     """Gets the group files.
 
@@ -579,7 +578,7 @@ def remove_agents_from_group(agent_list=None, group_list=None):
     return result
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"])
 def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
                         q=None):
     """Gets the outdated agents.
@@ -594,18 +593,19 @@ def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, 
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     affected_agents = list()
+    total_affected_agents = 0
+    if len(agent_list) != 0:
+        # Get manager version
+        manager = Agent(id='000')
+        manager.load_info_from_db()
 
-    # Get manager version
-    manager = Agent(id='000')
-    manager.load_info_from_db()
-
-    select = ['version', 'id', 'name'] if select is None else select
-    db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                  query=f"version!={manager.version}" + (';' + q if q else ''))
-
-    data = db_query.run()
-    affected_agents.extend(data['items'])
-    total_affected_agents = data['totalItems']
+        select = ['version', 'id', 'name'] if select is None else select
+        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
+                                      query=f"version!={manager.version}" + (';' + q if q else ''),
+                                      filters={'id': agent_list})
+        data = db_query.run()
+        affected_agents.extend(data['items'])
+        total_affected_agents = data['totalItems']
 
     result = {'affected_items': affected_agents,
               'total_affected_items': total_affected_agents,
@@ -677,7 +677,7 @@ def get_agent_config(agent_list=None, component=None, config=None):
     :param agent_list: List of agents ID's.
     :param component: Selected component
     :param config: Configuration to get, written on disk
-    :return: Loaded configuration in JSON.
+    :return: WazuhResult(Loaded configuration in JSON)
     """
     # We access unique agent_id from list, this may change if and when we decide a final way to handle get responses
     # with failed ids and a list of agents
@@ -688,7 +688,7 @@ def get_agent_config(agent_list=None, component=None, config=None):
     if my_agent.status != "active":
         raise WazuhError(1740)
 
-    return my_agent.getconfig(component=component, config=config)
+    return WazuhResult(my_agent.getconfig(component=component, config=config))
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"])
@@ -698,8 +698,10 @@ def get_agents_sync_group(agent_list=None):
     :param agent_list: List of agents ID's.
     :return Sync status
     """
-    failed_ids = list()
-    affected_agents = list()
+    result = AffectedItemsWazuhResult(none_msg='No sync info shown.',
+                                      all_msg='Sync info shown for all selected agents.',
+                                      some_msg='Could not show sync info for some selected agents.')
+
     for agent_id in agent_list:
         try:
             if agent_id == "000":
@@ -714,18 +716,15 @@ def get_agents_sync_group(agent_list=None):
                     group_merged_path = path.join(common.multi_groups_path, multi_group, "merged.mg")
                 else:
                     group_merged_path = path.join(common.shared_path, agent_info['group'][0], "merged.mg")
-                affected_agents.append({'id': agent_id, 'synced': md5(group_merged_path) == agent_info['mergedSum']})
+                result.affected_items.append({'id': agent_id,
+                                              'synced': md5(group_merged_path) == agent_info['mergedSum']})
         except (IOError, KeyError):
             # The file couldn't be opened and therefore the group has not been synced
-            affected_agents.append({'id': agent_id, 'synced': False})
+            result.affected_items.append({'id': agent_id, 'synced': False})
         except WazuhException as e:
-            failed_ids.append(create_exception_dic(agent_id, e))
+            result.add_failed_item(id_=agent_id, error=e)
 
-    result = {'affected_items': affected_agents,
-              'failed_items': failed_ids,
-              'str_priority': ['Sync info shown for all selected agents.',
-                               'Could not show sync info for some selected agents.',
-                               'No sync info shown']}
+    result.total_affected_items = len(result.affected_items)
 
     return result
 

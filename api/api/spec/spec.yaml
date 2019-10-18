@@ -127,6 +127,8 @@ components:
       type: object
       required:
         - total_affected_items
+        - failed_items
+        - total_failed_items
       properties:
         total_affected_items:
           type: integer
@@ -167,7 +169,9 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                $ref: '#/components/schemas/AgentGroup'
+                oneOf:
+                  - $ref: '#/components/schemas/AgentGroup'
+                  - type: array
         - $ref: '#/components/schemas/AllItemsResponse'
 
     AllItemsResponseAgentIDs:
@@ -180,7 +184,9 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                $ref: '#/components/schemas/AgentID'
+                oneOf:
+                  - $ref: '#/components/schemas/AgentID'
+                  - type: array
         - $ref: '#/components/schemas/AllItemsResponse'
 
     AllItemsResponseGroupIDs:
@@ -193,7 +199,9 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                $ref: '#/components/schemas/GroupID'
+                oneOf:
+                  - $ref: '#/components/schemas/GroupID'
+                  - type: array
         - $ref: '#/components/schemas/AllItemsResponse'
 
     AllItemsResponseAgentsSimple:
@@ -209,6 +217,36 @@ components:
               items:
                 oneOf:
                   - $ref: '#/components/schemas/AgentSimple'
+                  - type: array
+
+    AllItemsResponseAgentsSynced:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/AgentSynced'
+                  - type: array
+
+    AllItemsResponseAgentsKeys:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/AgentIdKey'
                   - type: array
 
     BasicInfo:
@@ -402,6 +440,27 @@ components:
         pending:
           type: integer
           format: int32
+
+    AgentDistinct:
+      allOf:
+        - $ref: '#/components/schemas/AgentSimple'
+        - $ref: '#/components/schemas/ExtraAgentFields'
+        - type: object
+          properties:
+            count:
+              type: integer
+              format: int32
+              description: Returns the number of agents with the specific unique fields
+
+    AgentSynced:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 'Agent ID'
+        synced:
+          type: boolean
+          description: 'Sync info'
 
     AgentID:
       type: string
@@ -4236,34 +4295,19 @@ paths:
             application/json:
               schema:
                 allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
                       data:
-                        allOf:
-                          - $ref: '#/components/schemas/AllItemsResponse'
-                          - type: object
-                            required:
-                              - affected_items
-                            properties:
-                              affected_items:
-                                type: array
-                                description: Items that successfully applied the API call action.
-                                items:
-                                  type: object
-                                  properties:
-                                    id:
-                                      type: string
-                                      description: 'Agent ID'
-                                    synced:
-                                      type: boolean
-                                      description: 'Sync info'
-                  - $ref: '#/components/schemas/ApiResponse'
+                        $ref: '#/components/schemas/AllItemsResponseAgentsSynced'
               example:
                 data:
                   affected_items:
-                    - id: '004'
+                    - id: '002'
                       synced: true
+                  failed_items: []
                   total_affected_items: 1
+                  total_failed_items: 0
                 message: Sync info shown for all selected agents.
         default:
           $ref: '#/components/responses/ResponseError'
@@ -4334,27 +4378,11 @@ paths:
             application/json:
               schema:
                 allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
                       data:
-                        allOf:
-                          - $ref: '#/components/schemas/AllItemsResponse'
-                          - type: object
-                            required:
-                              - affected_items
-                            properties:
-                              affected_items:
-                                type: array
-                                description: Items that successfully applied the API call action.
-                                items:
-                                  type: object
-                                  properties:
-                                    id:
-                                      type: string
-                                      description: 'Agent ID'
-                                    key:
-                                      type: string
-                                      description: 'Agent key'
+                        $ref: '#/components/schemas/AllItemsResponseAgentsKeys'
               example:
                 data:
                   affected_items:
@@ -5333,14 +5361,14 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseAgentsSimple'
               example:
                 data:
-                  totalItems: 2
-                  items:
+                  affected_items:
                     - version: Wazuh v3.0.0
                       id: "003"
                       name: main_database
                     - version: Wazuh v3.0.0
                       id: "004"
                       name: dmz002
+                  total_affected_items: 2
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5368,11 +5396,12 @@ paths:
                     data:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
-                  message: All selected agents were restarted
+                  message: Restart command sent to all selected agents
                   data:
-                    affected_agents:
-                    - '002'
-                    - '004'
+                    affected_items:
+                      - '002'
+                      - '004'
+                    total_affected_items: 2
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5386,11 +5415,11 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/fields'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/fields'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/query'
       responses:
@@ -5405,34 +5434,20 @@ paths:
                   properties:
                     data:
                       allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
+                      - $ref: '#/components/schemas/ListMetadata'
+                      - type: object
+                        properties:
+                          items:
+                            type: array
                             items:
-                              type: array
-                              items:
-                                properties:
-                                  os:
-                                    properties:
-                                      platform:
-                                        type: string
-                                        nullable: true
-                                      version:
-                                        type: string
-                                        nullable: true
-                                      name:
-                                        type: string
-                                        nullable: true
-                                  count:
-                                    type: integer
+                              $ref: '#/components/schemas/AgentDistinct'
               example:
-                data:
-                  totalItems: 7
-                  items:
-                    - os:
-                        platform: ubuntu
-                      count: 2
-                    - count: 5
+                items:
+                  - count: 11
+                    os:
+                      arch: x86_64
+                  - count: 2
+                totalItems: 13
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5472,9 +5487,9 @@ paths:
                                 type: string
               example:
                 data:
-                  totalItems: 1
                   items:
                     - ubuntu
+                  totalItems: 1
         default:
           $ref: '#/components/responses/ResponseError'
 
