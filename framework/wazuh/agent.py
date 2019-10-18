@@ -576,8 +576,10 @@ def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, 
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
 
-    affected_agents = list()
-    total_affected_agents = 0
+    result = AffectedItemsWazuhResult(all_msg='All selected agents information is shown',
+                                      some_msg='Some agents information is not shown',
+                                      none_msg='No agent information is shown'
+                                      )
     if len(agent_list) != 0:
         # Get manager version
         manager = Agent(id='000')
@@ -588,10 +590,10 @@ def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, 
                                       query=f"version!={manager.version}" + (';' + q if q else ''),
                                       filters={'id': agent_list})
         data = db_query.run()
-        affected_agents.extend(data['items'])
-        total_affected_agents = data['totalItems']
+        result.affected_items = data['items']
+        result.total_affected_items = data['totalItems']
 
-    return WazuhResult(data)
+    return result
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"], post_proc_func=None)

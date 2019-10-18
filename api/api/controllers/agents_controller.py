@@ -1052,7 +1052,8 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=da
 
 
 @exception_handler
-def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=database_limit, sort=None, search=None, q=None):
+def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=database_limit, sort=None, search=None,
+                       q=None):
     """Get outdated agents.
 
     :param pretty: Show results in human-readable format
@@ -1081,9 +1082,8 @@ def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=da
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
