@@ -198,18 +198,17 @@ stages:
           total_failed_items: 2
         message: !anystr
 ---
-test_name: GET /security/users/?sort,search
+test_name: GET /security/users/?search
 
 marks:
   - parametrize:
       key: field
       vals:
-        - wazuh
         - wazuh-app
-        - wazuh-app,new_user
+        - new_user1
 
 stages:
-  - name: Get two non-existent users and two existent by their usernames
+  - name: Testing search
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
@@ -222,18 +221,72 @@ stages:
       body:
         data:
           affected_items:
+            - username: "{field}"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Testing complementary search
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        search: "-wazuh"
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: new_user
+            - username: new_user1
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: !anystr
+
+---
+test_name: GET /security/users/?sort
+
+stages:
+  - name: Testing inverse sort
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        sort: "-username"
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: wazuh-app
+            - username: wazuh
+            - username: new_user1
+            - username: new_user
+          total_affected_items: 4
+        message: !anystr
+
+  - name: Testing sort
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        sort: "username"
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
             - username: new_user
             - username: new_user1
             - username: wazuh
             - username: wazuh-app
-          failed_items:
-            - error:
-                code: 5001
-                message: !anystr
-                remediation: !anystr
-              id:
-                - NotFound
-                - NotFound1
           total_affected_items: 4
-          total_failed_items: 2
         message: !anystr

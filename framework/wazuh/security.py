@@ -46,6 +46,7 @@ def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by
                                    complementary_search=complementary_search, sort_by=sort_by,
                                    sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
     result.affected_items = affected_items
+    result.total_affected_items = len(affected_items)
 
     return result
 
@@ -87,8 +88,8 @@ def update_user(username=None, password=None):
     """
     if not _user_password.match(password):
         raise WazuhError(5007)
-
-    result = AffectedItemsWazuhResult(all_msg='User modified correctly')
+    result = AffectedItemsWazuhResult(all_msg='User modified correctly',
+                                      none_msg='User could not be updated')
     with AuthenticationManager() as auth:
         query = auth.update_user(username[0], password)
         if query is False:
