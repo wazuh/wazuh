@@ -33,7 +33,7 @@ def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by
     :param search_in_fields: Fields to search in
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    result = AffectedItemsWazuhResult(none_msg='No user were shown',
+    result = AffectedItemsWazuhResult(none_msg='No user was shown',
                                       some_msg='Some users could not be shown',
                                       all_msg='All specified users were shown')
     affected_items = list()
@@ -42,11 +42,11 @@ def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by
             user = auth.get_user(username)
             affected_items.append(user) if user else result.add_failed_item(id_=username, error=WazuhError(5001))
 
-    affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
-                                   complementary_search=complementary_search, sort_by=sort_by,
-                                   sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    result.affected_items = affected_items
-    result.total_affected_items = len(affected_items)
+    processed_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                                    complementary_search=complementary_search, sort_by=sort_by,
+                                    sort_ascending=sort_ascending, offset=offset, limit=limit)
+    result.affected_items = processed_items['items']
+    result.total_affected_items = processed_items['totalItems']
 
     return result
 
@@ -103,14 +103,15 @@ def update_user(username=None, password=None):
     return result
 
 
-@expose_resources(actions=['security:delete'], resources=['user:id:{username_list}'])
+@expose_resources(actions=['security:delete'], resources=['user:id:{username_list}'],
+                  post_proc_kwargs={'exclude_codes': [5004]})
 def delete_user(username_list):
     """Delete a specified user
 
     :param username_list: List of usernames
     :return: Status message
     """
-    result = AffectedItemsWazuhResult(none_msg='No users deleted',
+    result = AffectedItemsWazuhResult(none_msg='No user was deleted',
                                       some_msg='Some users could not be deleted',
                                       all_msg='Users deleted correctly')
     with AuthenticationManager() as auth:
@@ -144,7 +145,9 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     affected_items = list()
-    failed_items = list()
+    result = AffectedItemsWazuhResult(none_msg='No role were shown',
+                                      some_msg='Some roles could not be shown',
+                                      all_msg='All specified roles were shown')
     with orm.RolesManager() as rm:
         for r_id in role_ids:
             role = rm.get_role_id(int(r_id))
@@ -152,41 +155,41 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
                 affected_items.append(role.to_dict())
             else:
                 # Role id does not exist
-                failed_items.append(create_exception_dic(r_id, WazuhError(4002)))
+                result.add_failed_item(id_=r_id, error=WazuhError(4002))
 
     affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
                                    complementary_search=complementary_search, sort_by=sort_by,
                                    sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    return {'affected_items': affected_items,
-            'failed_items': failed_items,
-            'str_priority': ['All specified roles were shown',
-                             'Some roles could not be shown', 'No role were shown']}
+    result.affected_items = affected_items
+    result.total_affected_items = len(affected_items)
+
+    return result
 
 
-@expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'])
+@expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'],
+                  post_proc_kwargs={'exclude_codes': [4008]})
 def remove_roles(role_ids):
     """Removes a certain role from the system
 
     :param role_ids: List of roles ids (None for all roles)
     :return Result of operation
     """
-    affected_items = list()
-    failed_items = list()
+    result = AffectedItemsWazuhResult(none_msg='No role were deleted',
+                                      some_msg='Some roles could not be delete',
+                                      all_msg='All specified roles were deleted')
     with orm.RolesManager() as rm:
         for r_id in role_ids:
             role = rm.get_role_id(int(r_id))
-            result = rm.delete_role(int(r_id))
-            if result == SecurityError.ADMIN_RESOURCES:
-                failed_items.append(create_exception_dic(r_id, WazuhError(4008)))
-            elif result is False:
-                failed_items.append(create_exception_dic(r_id, WazuhError(4002)))
+            role_delete = rm.delete_role(int(r_id))
+            if role_delete == SecurityError.ADMIN_RESOURCES:
+                result.add_failed_item(id_=r_id, error=WazuhError(4008))
+            elif role_delete is False:
+                result.add_failed_item(id_=r_id, error=WazuhError(4002))
             elif role:
-                affected_items.append(role.to_dict())
+                result.affected_items.append(role.to_dict())
+                result.total_affected_items += 1
 
-    return {'affected_items': affected_items,
-            'failed_items': failed_items,
-            'str_priority': ['All specified roles were deleted',
-                             'Some roles could not be delete', 'No role were deleted']}
+    return result
 
 
 @expose_resources(actions=['security:create'], resources=['*:*:*'])
@@ -197,16 +200,19 @@ def add_role(name=None, rule=None):
     :param rule: The new rule
     :return Role information
     """
+    result = AffectedItemsWazuhResult(none_msg='Role could not be created',
+                                      all_msg='Role created correctly')
     with orm.RolesManager() as rm:
         status = rm.add_role(name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
-            raise WazuhError(4005)
+            result.add_failed_item(id_=name, error=WazuhError(4005))
         elif status == SecurityError.INVALID:
-            raise WazuhError(4003)
+            result.add_failed_item(id_=name, error=WazuhError(4003))
+        else:
+            result.affected_items.append(rm.get_role(name=name).to_dict())
+            result.total_affected_items += 1
 
-    return {'affected_items': [rm.get_role(name=name).to_dict()],
-            'failed_items': list(),
-            'str_priority': ['Role created correctly', '', '']}
+    return result
 
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}'])
@@ -220,21 +226,23 @@ def update_role(role_id=None, name=None, rule=None):
     """
     if name is None and rule is None:
         raise WazuhError(4001)
-
+    result = AffectedItemsWazuhResult(none_msg='Role could not be updated',
+                                      all_msg='Role updated correctly')
     with orm.RolesManager() as rm:
         status = rm.update_role(role_id=int(role_id[0]), name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
-            raise WazuhError(4005)
+            result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4005))
         elif status == SecurityError.INVALID:
-            raise WazuhError(4003)
+            result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4003))
         elif status == SecurityError.ROLE_NOT_EXIST:
-            raise WazuhError(4002)
+            result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4002))
         elif status == SecurityError.ADMIN_RESOURCES:
-            raise WazuhError(4008)
+            result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4008))
+        else:
+            result.affected_items.append(rm.get_role_id(role_id=role_id[0]).to_dict())
+            result.total_affected_items += 1
 
-    return {'affected_items': [rm.get_role_id(role_id=role_id[0]).to_dict()],
-            'failed_items': list(),
-            'str_priority': ['Role updated correctly', '', '']}
+    return result
 
 
 @expose_resources(actions=['security:read'], resources=['policy:id:{policy_ids}'])
@@ -252,8 +260,10 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
     :param search_in_fields: Fields to search in
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
+    result = AffectedItemsWazuhResult(none_msg='No policy were shown',
+                                      some_msg='Some policies could not be shown',
+                                      all_msg='All specified policies were shown')
     affected_items = list()
-    failed_items = list()
     with orm.PoliciesManager() as pm:
         for p_id in policy_ids:
             policy = pm.get_policy_id(int(p_id))
@@ -261,41 +271,41 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
                 affected_items.append(policy.to_dict())
             else:
                 # Policy id does not exist
-                failed_items.append(create_exception_dic(p_id, WazuhError(4007)))
+                result.add_failed_item(id_=p_id, error=WazuhError(4007))
 
     affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
                                    complementary_search=complementary_search, sort_by=sort_by,
                                    sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    return {'affected_items': affected_items,
-            'failed_items': failed_items,
-            'str_priority': ['All specified policies were shown',
-                             'Some policies could not be shown', 'No policy were shown']}
+    result.affected_items = affected_items
+    result.total_affected_items = len(affected_items)
+
+    return result
 
 
-@expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'])
+@expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'],
+                  post_proc_kwargs={'exclude_codes': [4008]})
 def remove_policies(policy_ids=None):
     """Removes a certain policy from the system
 
     :param policy_ids: ID of the policy to be removed (All for all policies)
     :return Result of operation
     """
-    affected_items = list()
-    failed_items = list()
+    result = AffectedItemsWazuhResult(none_msg='No policies were deleted',
+                                      some_msg='Some policies could not be deleted',
+                                      all_msg='All specified policies were deleted')
     with orm.PoliciesManager() as pm:
         for p_id in policy_ids:
             policy = pm.get_policy_id(int(p_id))
-            result = pm.delete_policy(int(p_id))
-            if result == SecurityError.ADMIN_RESOURCES:
-                failed_items.append(create_exception_dic(p_id, WazuhError(4008)))
-            elif result is False:
-                failed_items.append(create_exception_dic(p_id, WazuhError(4007)))
+            policy_delete = pm.delete_policy(int(p_id))
+            if policy_delete == SecurityError.ADMIN_RESOURCES:
+                result.add_failed_item(id_=p_id, error=WazuhError(4008))
+            elif policy_delete is False:
+                result.add_failed_item(id_=p_id, error=WazuhError(4007))
             elif policy:
-                affected_items.append(policy.to_dict())
+                result.affected_items.append(policy.to_dict())
+                result.total_affected_items += 1
 
-    return {'affected_items': affected_items,
-            'failed_items': failed_items,
-            'str_priority': ['All specified policies were deleted',
-                             'Some policies could not be deleted', 'No policies were deleted']}
+    return result
 
 
 @expose_resources(actions=['security:create'], resources=['*:*:*'])
@@ -306,16 +316,19 @@ def add_policy(name=None, policy=None):
     :param policy: The new policy
     :return Policy information
     """
+    result = AffectedItemsWazuhResult(none_msg='Policy could not be created',
+                                      all_msg='Policy created correctly')
     with orm.PoliciesManager() as pm:
         status = pm.add_policy(name=name, policy=policy)
         if status == SecurityError.ALREADY_EXIST:
-            raise WazuhError(4009)
+            result.add_failed_item(id_=name, error=WazuhError(4009))
         elif status == SecurityError.INVALID:
-            raise WazuhError(4006)
+            result.add_failed_item(id_=name, error=WazuhError(4006))
+        else:
+            result.affected_items.append(pm.get_policy(name=name).to_dict())
+            result.total_affected_items += 1
 
-    return {'affected_items': [pm.get_policy(name=name).to_dict()],
-            'failed_items': list(),
-            'str_priority': ['Policy created correctly', '', '']}
+    return result
 
 
 @expose_resources(actions=['security:update'], resources=['policy:id:{policy_id}'])
@@ -329,21 +342,23 @@ def update_policy(policy_id=None, name=None, policy=None):
     """
     if name is None and policy is None:
         raise WazuhError(4001)
-
+    result = AffectedItemsWazuhResult(none_msg='Policy could not be updated',
+                                      all_msg='Policy updated correctly')
     with orm.PoliciesManager() as pm:
         status = pm.update_policy(policy_id=int(policy_id[0]), name=name, policy=policy)
         if status == SecurityError.ALREADY_EXIST:
-            raise WazuhError(4013)
+            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4013))
         elif status == SecurityError.INVALID:
-            raise WazuhError(4006)
+            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4006))
         elif status == SecurityError.POLICY_NOT_EXIST:
-            raise WazuhError(4007)
+            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4007))
         elif status == SecurityError.ADMIN_RESOURCES:
-            raise WazuhError(4008)
+            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4008))
+        else:
+            result.affected_items.append(pm.get_policy_id(policy_id[0]).to_dict())
+            result.total_affected_items += 1
 
-    return {'affected_items': [pm.get_policy_id(policy_id[0]).to_dict()],
-            'failed_items': list(),
-            'str_priority': ['Policy updated correctly', '', '']}
+    return result
 
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'])
@@ -354,38 +369,25 @@ def set_role_policy(role_id, policy_ids):
     :param policy_ids: List of policies ids
     :return Role-Policies information
     """
-    affected_items = list()
-    failed_items = list()
+    result = AffectedItemsWazuhResult(none_msg='No links created',
+                                      some_msg='Some roles and policies could not be linked',
+                                      all_msg='All roles and policies were linked')
     with orm.RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
             role_policy = rpm.add_policy_to_role(role_id=role_id[0], policy_id=policy_id)
             if role_policy == SecurityError.ALREADY_EXIST:
-                failed_items.append(
-                    create_exception_dic(
-                        'role {}: policy {}'.format(role_id[0], policy_id),
-                        WazuhError(4011)))
+                result.add_failed_item(id_=f'role {role_id[0]}: policy {policy_id}', error=WazuhError(4011))
             elif role_policy == SecurityError.ROLE_NOT_EXIST:
-                failed_items.append(
-                    create_exception_dic(
-                        'role {}: policy {}'.format(role_id[0], policy_id),
-                        WazuhError(4002)))
+                result.add_failed_item(id_=f'role {role_id[0]}: policy {policy_id}', error=WazuhError(4002))
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
-                failed_items.append(
-                    create_exception_dic(
-                        'role {}: policy {}'.format(role_id[0], policy_id),
-                        WazuhError(4007)))
+                result.add_failed_item(id_=f'role {role_id[0]}: policy {policy_id}', error=WazuhError(4007))
             elif role_policy == SecurityError.ADMIN_RESOURCES:
-                failed_items.append(
-                    create_exception_dic(
-                        'role {}: policy {}'.format(role_id[0], policy_id),
-                        WazuhError(4008)))
+                result.add_failed_item(id_=f'role {role_id[0]}: policy {policy_id}', error=WazuhError(4008))
             else:
-                affected_items.append('role {}: policy {}'.format(role_id[0], policy_id))
+                result.affected_items.append(f'role {role_id[0]}: policy {policy_id}')
+                result.total_affected_items += 1
 
-    return {'affected_items': affected_items,
-            'failed_items': failed_items,
-            'str_priority': ['All roles and policies were linked',
-                             'Some roles and policies could not be linked', 'No links created']}
+    return result
 
 
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'])
@@ -396,35 +398,22 @@ def remove_role_policy(role_id, policy_ids):
     :param policy_ids: List of policies ids
     :return Result of operation
     """
-    affected_items = list()
-    failed_items = list()
+    result = AffectedItemsWazuhResult(none_msg='No links deleted',
+                                      some_msg='Some links between roles and policies could not be deleted',
+                                      all_msg='All links between roles and policies were deleted')
     with orm.RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
             role_policy = rpm.remove_policy_in_role(role_id=role_id[0], policy_id=policy_id)
             if role_policy == SecurityError.INVALID:
-                failed_items.append(
-                    create_exception_dic(
-                        'role {}: policy {}'.format(role_id[0], policy_id),
-                        WazuhError(4010)))
+                result.add_failed_item(id_=f'role {role_id[0]}: policy {policy_id}', error=WazuhError(4010))
             elif role_policy == SecurityError.ROLE_NOT_EXIST:
-                failed_items.append(
-                    create_exception_dic(
-                        'role {}: policy {}'.format(role_id[0], policy_id),
-                        WazuhError(4002)))
+                result.add_failed_item(id_=f'role {role_id[0]}: policy {policy_id}', error=WazuhError(4002))
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
-                failed_items.append(
-                    create_exception_dic(
-                        'role {}: policy {}'.format(role_id[0], policy_id),
-                        WazuhError(4007)))
+                result.add_failed_item(id_=f'role {role_id[0]}: policy {policy_id}', error=WazuhError(4007))
             elif role_policy == SecurityError.ADMIN_RESOURCES:
-                failed_items.append(
-                    create_exception_dic(
-                        'role {}: policy {}'.format(role_id[0], policy_id),
-                        WazuhError(4008)))
+                result.add_failed_item(id_=f'role {role_id[0]}: policy {policy_id}', error=WazuhError(4008))
             else:
-                affected_items.append('role {}: policy {}'.format(role_id[0], policy_id))
+                result.affected_items.append(f'role {role_id[0]}: policy {policy_id}')
+                result.total_affected_items += 1
 
-    return {'affected_items': affected_items,
-            'failed_items': failed_items,
-            'str_priority': ['All links between roles and policies were deleted',
-                             'Some links between roles and policies could not be deleted', 'No links deleted']}
+    return result

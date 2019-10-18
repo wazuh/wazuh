@@ -290,3 +290,41 @@ stages:
             - username: wazuh-app
           total_affected_items: 4
         message: !anystr
+
+---
+test_name: GET /security/users/?limit,offset
+
+stages:
+  - name: Testing offset
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        offset: 3
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: wazuh-app
+          total_affected_items: 4
+        message: !anystr
+
+  - name: Testing limit
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: new_user
+          total_affected_items: 4
+        message: !anystr

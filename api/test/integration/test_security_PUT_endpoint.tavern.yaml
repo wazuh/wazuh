@@ -17,7 +17,7 @@ stages:
   # PUT /security/roles/{role_id}
   - name: Modify a role in the system
     request: &modify_role_request
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/2"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/3"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -31,9 +31,9 @@ stages:
       body:
         data:
           affected_items:
-            - id: 2
+            - id: 3
               name: testModified
-              policies: []
+              policies: !anything
               rule:
                 MATCH:
                   normal_user: "get_permissionsM"
@@ -42,7 +42,7 @@ stages:
   # PUT /security/roles/{role_id}
   - name: Modify a role in the system (without change rule)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/2"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/4"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -53,18 +53,31 @@ stages:
       body:
         data:
           affected_items:
-            - id: 2
+            - id: 4
               name: testModified2
-              policies: []
+              policies:
+                - id: 2
+                  name: test_i
+                  policy:
+                    actions:
+                      - agent:delete
+                    effect: allow
+                    resources:
+                      - agent:id:004
+                      - agent:id:005
+                      - agent:id:006
               rule:
-                MATCH:
-                  normal_user: "get_permissionsM"
+                FIND:
+                  definition: normal_rule1
+          failed_items: []
           total_affected_items: 1
+          total_failed_items: 0
+        message: Role updated correctly
 
   # PUT /security/roles/{role_id}
   - name: Modify a role in the system (without change name)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/2"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/3"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -77,9 +90,9 @@ stages:
       body:
         data:
           affected_items:
-            - id: 2
-              name: testModified2
-              policies: []
+            - id: 3
+              name: testModified
+              policies: !anything
               rule:
                 MATCH:
                   normal_user: "get_permissionsM2"
@@ -97,14 +110,20 @@ stages:
         rule:
           user: "no"
     response:
-      status_code: 400
-      body: &error_response_role
-        code: !anyint
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: "about:blank"
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4002
+                message: !anystr
+                remediation: !anystr
+              id:
+                - 999
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 ---
 test_name: PUT /security/policies
 
@@ -142,7 +161,7 @@ stages:
                   - agent:id:001
                   - agent:id:002
                   - agent:id:003
-              roles: []
+              roles: !anything
           total_affected_items: 1
 
   # PUT /security/policies/{policy_id}
@@ -169,7 +188,7 @@ stages:
                   - agent:id:001
                   - agent:id:002
                   - agent:id:003
-              roles: []
+              roles: !anything
           total_affected_items: 1
 
   # PUT /security/policies/{policy_id}
@@ -203,7 +222,7 @@ stages:
                   - agent:id:001
                   - agent:id:002
                   - agent:id:003
-              roles: []
+              roles: !anything
           total_affected_items: 1
 
   # PUT /security/policies/{non-existent policy_id}
@@ -224,14 +243,20 @@ stages:
             - "agent:id:003"
           effect: "allow"
     response:
-      status_code: 400
-      body: &error_response_policy
-        code: !anyint
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: "about:blank"
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4007
+                message: !anystr
+                remediation: !anystr
+              id:
+                - 999
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   # PUT /security/policies/{non-existent policy_id}
   - name: Modify a policy in the system, bad policy definition
@@ -251,111 +276,3 @@ stages:
             - "agent:id:003"
     response:
       status_code: 400
-
----
-test_name: PUT /security/roles/{role_id}/policies/{policy_id}
-
-stages:
-
-  # PUT /security/roles/{role_id}/policies/{list_policies}
-  - name: Create link role-policy
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/2/policies"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-      params:
-        policy_ids: 2,3
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items:
-            - 'role 2: policy 2'
-            - 'role 2: policy 3'
-          total_affected_items: 2
-
-  # PUT /security/roles/{role_id}/policies/{policy}
-  - name: Create link role-policy
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/4/policies"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-      params:
-        policy_ids: 2
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items:
-            - 'role 4: policy 2'
-          total_affected_items: 1
-
-  # PUT /security/roles/{role_id}/policies/{policy}
-  - name: Create link role-policy
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/3/policies"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-      params:
-        policy_ids: 3
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items:
-            - 'role 3: policy 3'
-          total_affected_items: 1
-
-  # PUT /security/roles/{non-existent role_id}/policies/{policy}
-  - name: Create link role-policy (non-existent role)
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-      params:
-        policy_ids: 2,3
-    response:
-      status_code: 200
-      body: &error
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: !anyint
-                message: !anystr
-                remediation: !anystr
-              id: !anything
-          total_affected_items: 0
-          total_failed_items: 2
-
-  # PUT /security/roles/{role_id}/policies/{non-existent policy}
-  - name: Create link role-policy (non-existent policy)
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/2/policies"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-      params:
-        policy_ids: 999,56
-    response:
-      status_code: 200
-      body:
-        <<: *error
-
-  # PUT /security/roles/{non-existent role_id}/policies/{non-existent policy}
-  - name: Create link role-policy (Both non-existent)
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-      params:
-        policy_ids: 999,2
-    response:
-      status_code: 200
-      body:
-        <<: *error

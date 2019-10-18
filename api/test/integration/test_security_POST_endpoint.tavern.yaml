@@ -101,12 +101,20 @@ stages:
         rule:
           definition1: "normal_rule1"
     response:
-      status_code: 400
-      body: &error_response
-        detail: !anystr
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4005
+                message: !anystr
+                remediation: !anything
+              id:
+                - test_i
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   # POST /security/roles
   - name: Add an existent role (rule) to the system
@@ -120,9 +128,20 @@ stages:
         rule:
           definition: "normal_rule"
     response:
-      status_code: 400
+      status_code: 200
       body:
-        <<: *error_response
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4005
+                message: !anystr
+                remediation: !anything
+              id:
+                - test_i1
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 ---
 test_name: POST /security/policies
 
@@ -161,7 +180,9 @@ stages:
                   - agent:id:005
                   - agent:id:006
               roles: []
+          failed_items: []
           total_affected_items: 1
+          total_failed_items: 0
 
   # POST /security/policies
   - name: Add a policy to the system
@@ -242,18 +263,34 @@ stages:
       method: POST
       json:
         name: "test_i"
+        policy:
+          actions:
+            - "agent:delete"
+          resources:
+            - "agent:id:004"
+            - "agent:id:005"
+            - "agent:id:006"
+          effect: "allow"
     response:
-      status_code: 400
-      body: &error_response_policy
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: "about:blank"
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4009
+                message: !anystr
+                remediation: !anything
+              id:
+                - test_i
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   # POST /security/policies
   - name: Add an existent policy (policy) to the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -268,14 +305,25 @@ stages:
             - "agent:id:006"
           effect: "allow"
     response:
-      status_code: 400
+      status_code: 200
       body:
-        <<: *error_response_policy
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4009
+                message: !anystr
+                remediation: !anything
+              id:
+                - test_i1
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   # POST /security/policies
   - name: Add an invalid policy to the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -290,14 +338,25 @@ stages:
             - "agent:id:006"
           effect: "allow"
     response:
-      status_code: 400
+      status_code: 200
       body:
-        <<: *error_response_policy
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4006
+                message: !anystr
+                remediation: !anystr
+              id:
+                - test_i1
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   # POST /security/policies
   - name: Add an invalid policy to the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -316,3 +375,92 @@ stages:
         status: 400
         title: "Bad Request"
         type: "about:blank"
+---
+test_name: POST /security/roles/{role_id}/policies/{policy_id}
+
+stages:
+
+  # POST /security/roles/{role_id}/policies/{policy}
+  - name: Create link role-policy
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/4/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        policy_ids: 2
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - 'role 4: policy 2'
+          total_affected_items: 1
+
+  # POST /security/roles/{role_id}/policies/{policy}
+  - name: Create link role-policy
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/3/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        policy_ids: 3
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - 'role 3: policy 3'
+          total_affected_items: 1
+
+  # POST /security/roles/{non-existent role_id}/policies/{policy}
+  - name: Create link role-policy (non-existent role)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        policy_ids: 2,3
+    response:
+      status_code: 200
+      body: &error
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: !anyint
+                message: !anystr
+                remediation: !anything
+              id: !anything
+          total_affected_items: 0
+          total_failed_items: 2
+
+  # POST /security/roles/{role_id}/policies/{non-existent policy}
+  - name: Create link role-policy (non-existent policy)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/2/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        policy_ids: 999,56
+    response:
+      status_code: 200
+      body:
+        <<: *error
+
+  # POST /security/roles/{non-existent role_id}/policies/{non-existent policy}
+  - name: Create link role-policy (Both non-existent)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        policy_ids: 999,2
+    response:
+      status_code: 200
+      body:
+        <<: *error

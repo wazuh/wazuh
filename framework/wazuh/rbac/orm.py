@@ -116,7 +116,7 @@ class Policies(_Base):
 
         :return: Dict with the information of the policy
         """
-        return {'id': self.id, 'name': self.name, 'policy': self.policy}
+        return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy)}
 
     def to_dict(self):
         """Return the information of one policy and the roles that have assigned
@@ -163,7 +163,7 @@ class Roles(_Base):
 
         :return: Dict with the information of the role
         """
-        return {'id': self.id, 'name': self.name, 'rule': self.rule}
+        return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule)}
 
     def to_dict(self):
         """Return the information of one role and the policies that have assigned

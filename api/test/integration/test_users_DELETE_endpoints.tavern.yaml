@@ -114,3 +114,19 @@ stages:
             - username: new_user1
           total_affected_items: 1
         message: Users deleted correctly
+
+  - name: Delete all users in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          "total_failed_items": 0
+        message: No user was deleted

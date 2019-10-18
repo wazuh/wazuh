@@ -10656,7 +10656,7 @@ paths:
           $ref: '#/components/responses/ResponseError'
 
   /security/roles/{role_id}/policies:
-    put:
+    post:
       tags:
         - security
       summary: 'Create a specified relation role-policy'
