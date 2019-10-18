@@ -191,6 +191,8 @@ def delete_agents(agent_list=None, backup=False, purge=False, status="all", olde
             try:
                 if agent_id == "000":
                     raise WazuhError(1703)
+                elif agent_id not in common.system_agents.get():
+                    raise WazuhError(1701)
                 else:
                     my_agent = Agent(agent_id)
                     my_agent.load_info_from_db()
@@ -205,6 +207,7 @@ def delete_agents(agent_list=None, backup=False, purge=False, status="all", olde
             except WazuhException as e:
                 result.add_failed_item(id_=agent_id, error=e)
         result.total_affected_items = len(result.affected_items)
+        result.affected_items.sort(key=int)
 
     return result
 
@@ -406,19 +409,25 @@ def delete_groups(group_list=None):
     affected_agents = set()
     for group_id in group_list:
         try:
+            # Check if group exists
+            if group_id not in common.system_groups.get():
+                raise WazuhError(1710)
+            if group_id == 'default':
+                raise WazuhError(1712)
             agent_list = list(map(operator.itemgetter('id'),
                                   WazuhDBQueryMultigroups(group_id=group_id, limit=None).run()['items']))
             affected_agents_result = remove_agents_from_group(agent_list=agent_list, group_list=[group_id])
-            if affected_agents_result['total_failed_items'] == 0:
+            if affected_agents_result.total_failed_items == 0:
                 Agent.delete_single_group(group_id)
                 result.affected_items.append(group_id)
-                affected_agents.update(affected_agents_result['affected_items'])
+                affected_agents.update(affected_agents_result.affected_items)
             else:
                 raise WazuhError(4000)
         except WazuhException as e:
             result.add_failed_item(id_=group_id, error=e)
 
     result['affected_agents'] = sorted(affected_agents, key=int)
+    result.affected_items.sort()
     result.total_affected_items = len(result.affected_items)
 
     return result
@@ -476,9 +485,11 @@ def remove_agent_from_group(group_list=None, agent_list=None):
     group_id = group_list[0]
     agent_id = agent_list[0]
 
-    # Check if agent and group exist
+    # Check if agent and group exist and it is not 000
     if agent_id not in common.system_agents.get():
         raise WazuhError(1701)
+    if agent_id == '000':
+        raise WazuhError(1703)
     if group_id not in common.system_groups.get():
         raise WazuhError(1710)
 
@@ -523,7 +534,7 @@ def remove_agent_from_groups(agent_list=None, group_list=None):
         except WazuhException as e:
             result.add_failed_item(id_=group_id, error=e)
     result.total_affected_items = len(result.affected_items)
-
+    result.affected_items.sort()
     return result
 
 
@@ -557,6 +568,7 @@ def remove_agents_from_group(agent_list=None, group_list=None):
         except WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)
     result.total_affected_items = len(result.affected_items)
+    result.affected_items.sort()
 
     return result
 

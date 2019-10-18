@@ -681,9 +681,6 @@ class Agent:
         :param group_id: Group ID.
         :return: Confirmation message.
         """
-        if group_id.lower() == "default":
-            raise WazuhError(1712)
-
         # Delete group directory (move it to a backup)
         group_path = path.join(common.shared_path, group_id)
         group_backup = path.join(common.backup_path, 'groups', "{0}_{1}".format(group_id, int(time())))
@@ -908,8 +905,8 @@ class Agent:
         # Update group file
         Agent.set_agent_group_file(agent_id, multigroup_name)
 
-        return f"Agent '{agent_id}' removed from '{group_id}'. " + ("Agent reassigned to group default."
-                                                                    if set_default else "")
+        return f"Agent '{agent_id}' removed from '{group_id}'." + (" Agent reassigned to group default."
+                                                                   if set_default else "")
 
     @staticmethod
     def _get_protocol(wpk_repo, use_http=False):

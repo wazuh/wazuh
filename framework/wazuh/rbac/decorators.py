@@ -11,6 +11,7 @@ from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
 from wazuh.exception import WazuhError
 from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import AffectedItemsWazuhResult
+from collections import defaultdict
 
 #mode = configuration.read_api_config()['rbac']['mode']
 mode = 'white'
@@ -133,7 +134,7 @@ def _black_mode_sanitize(final_user_permissions, req_resources_value):
                 req_resources_value[user_key])
 
 
-def _permissions_processing(req_resources, user_permissions_for_resource, final_user_permissions):
+def _permissions_processing(req_resources, user_permissions_for_resource, final_user_permissions: defaultdict):
     """Given some required resources and the user's permissions on that resource,
     we extract the user's final permissions on the resource.
     :param req_resources: List of required resources
@@ -154,8 +155,6 @@ def _permissions_processing(req_resources, user_permissions_for_resource, final_
                 final_user_permissions['*:*'] = {'*'}
             else:
                 expanded_resource = _expand_resource(req_resource)
-                if identifier not in final_user_permissions.keys():
-                    final_user_permissions[identifier] = set()
                 final_user_permissions[identifier].update(expanded_resource)
     # RBAC policies are not empty or the mode is not black
     else:
@@ -166,8 +165,6 @@ def _permissions_processing(req_resources, user_permissions_for_resource, final_
             identifier = name + ':' + attribute
             if identifier == 'agent:group':
                 identifier = 'agent:id'
-            if identifier not in final_user_permissions.keys():
-                final_user_permissions[identifier] = set()
             # We expand the resource for the black mode, in this way,
             # we allow all permissions for the resource (black mode)
             mode == 'black' and _black_mode_expansion(final_user_permissions, identifier, black_negation)
@@ -176,12 +173,14 @@ def _permissions_processing(req_resources, user_permissions_for_resource, final_
                 if identifier == '*:*' or (user_resource_effect == 'allow' and
                                            '*' not in req_resources_value[identifier] and value == '*'):
                     final_user_permissions[identifier].update(req_resources_value[identifier] - expanded_resource)
+
                 _use_expanded_resource(user_resource_effect, final_user_permissions[identifier],
                                        expanded_resource, req_resources_value[identifier],
                                        value == '*' and user_resource_effect == 'deny')
             except KeyError:  # Multiples resources in action and only one is required
-                if len(final_user_permissions[identifier]) == 0:
-                    final_user_permissions.pop(identifier)
+                pass
+                # if len(final_user_permissions[identifier]) == 0:
+                #     final_user_permissions.pop(identifier)
         # If the black mode is enabled we need to sanity the output due the initial expansion
         # (allow all permissions over the resource)
         mode == 'black' and _black_mode_sanitize(final_user_permissions, req_resources_value)
@@ -208,9 +207,6 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                 # Dynamic resources ids are found within the {}
                 params = kwargs[m.group(3)]
                 if isinstance(params, list):
-                    # We check if params is a list of resources or a single one in a string
-                    if len(params) == 0:
-                        raise WazuhError(4015, extra_message={'param': m.group(3)})
                     for param in params:
                         res_list.append("{0}:{1}".format(res_base, param))
                     add_denied = not broadcast.get()
@@ -242,7 +238,7 @@ def _match_permissions(req_permissions: dict = None):
     :param req_permissions: Required permissions to allow function execution
     :return: Dictionary with final permissions
     """
-    allow_match = dict()
+    allow_match = defaultdict(set)
     for req_action, req_resources in req_permissions.items():
         try:
             _permissions_processing(req_resources, rbac.get()[req_action], allow_match)
@@ -299,6 +295,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
         def wrapper(*args, **kwargs):
             target_params, req_permissions, add_denied = \
                 _get_required_permissions(actions=actions, resources=resources, **kwargs)
+
             allow = _match_permissions(req_permissions=req_permissions)
             original_kwargs = copy.deepcopy(kwargs)
 
