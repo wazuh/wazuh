@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.12.0]
 
+### Added
+- Add support for monitoring AWS S3 buckets in GovCloud regions. ([#3953](https://github.com/wazuh/wazuh/issues/3953))
 
 ## [v3.11.0]
 
