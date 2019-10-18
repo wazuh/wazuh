@@ -85,7 +85,13 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
 int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt);
 
 //
-void fim_audit_inode_event(whodata_evt * w_evt);
+void fim_realtime_event(char *file);
+
+//
+void fim_whodata_event(whodata_evt * w_evt);
+
+//
+void fim_audit_inode_event(char *file, char inode_key[], fim_event_mode mode, whodata_evt * w_evt);
 
 //
 int fim_registry_event (char * key, fim_entry_data * data, int pos);
@@ -109,7 +115,12 @@ void fim_get_checksum (fim_entry_data * data);
 int fim_insert (char *file_name, fim_entry_data * data, struct stat *file_stat);
 
 //
-int fim_update (char * file, fim_entry_data * data);
+int fim_update (char * file, fim_entry_data * data, fim_entry_data * old_data);
+
+#ifndef WIN32
+//
+int fim_update_inode(char * file, char inode_key[]);
+#endif
 
 //
 int fim_delete (char * file_name);
@@ -207,8 +218,6 @@ void audit_set_db_consistency(void);
 int check_auditd_enabled(void);
 int set_auditd_config(void);
 int init_auditd_socket(void);
-int audit_add_rule(const char *path, const char *key);
-int audit_delete_rule(const char *path, const char *key);
 void *audit_main(int *audit_sock);
 void *audit_reload_thread();
 void *audit_healthcheck_thread(int *audit_sock);

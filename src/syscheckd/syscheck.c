@@ -130,7 +130,7 @@ int Start_win32_Syscheck()
         /* Disabled */
         if (!syscheck.dir) {
             minfo(FIM_DIRECTORY_NOPROVIDED);
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, -1);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL);
         } else if (!syscheck.dir[0]) {
             minfo(FIM_DIRECTORY_NOPROVIDED);
         }
@@ -144,7 +144,7 @@ int Start_win32_Syscheck()
         }
 
         if (!syscheck.registry) {
-            dump_syscheck_entry(&syscheck, "", 0, 1, NULL, 0, NULL, -1);
+            dump_syscheck_entry(&syscheck, "", 0, 1, NULL, 0, NULL);
         }
         syscheck.registry[0].entry = NULL;
 

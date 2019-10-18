@@ -277,7 +277,7 @@ typedef struct _config {
 } syscheck_config;
 
 
-int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag, int overwrite) __attribute__((nonnull(1, 2)));
+int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag) __attribute__((nonnull(1, 2)));
 
 void set_linked_path(syscheck_config *syscheck, const char *entry, int position);
 

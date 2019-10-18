@@ -204,7 +204,7 @@ int audit_manage_rules(int action, const char *path, const char *key) {
             type = AUDIT_WATCH;
         }
     } else {
-        mdebug2("audit_manage_rules(): Cannot stat %s", path);
+        mdebug2(FIM_STAT_FAILED, path, errno, strerror(errno));
         retval = -1;
         goto end;
     }

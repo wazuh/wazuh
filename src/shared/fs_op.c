@@ -139,8 +139,12 @@ bool HasFilesystem(__attribute__((unused))const char * path, __attribute__((unus
     case PROCFS:
         return set.proc;
     case TMPFS:
+#ifdef _STATFS_F_FLAGS
         // In modern Linux, /dev is TMPFS and ~ST_NODEV
         return set.dev && (stfs.f_flags & ST_NODEV) == 0;
+#else
+        return set.dev;
+#endif
     case SYSFS:
         return set.sys;
     case CIFS:

@@ -158,7 +158,7 @@ int realtime_process()
                     struct timeval timeout = {0, syscheck.rt_delay * 1000};
                     select(0, NULL, NULL, NULL, &timeout);
 
-                    fim_process_event(final_name, FIM_REALTIME, NULL);
+                    fim_realtime_event(final_name);
                 }
             }
 

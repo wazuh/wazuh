@@ -13,13 +13,22 @@
 #include "config.h"
 
 int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg,
-        const char *restrictfile, int recursion_limit, const char *tag, int overwrite)
+        const char *restrictfile, int recursion_limit, const char *tag)
 {
-    unsigned int pl;
+    unsigned int pl = 0;
+    int overwrite = -1;
+    int j;
+
+    for (j = 0; syscheck->dir && syscheck->dir[j]; j++) {
+        /* Duplicate entry */
+        if (strcmp(syscheck->dir[j], entry) == 0) {
+            mdebug2("Overwriting the file entry %s", entry);
+            overwrite = j;
+        }
+    }
+
     /* If overwrite < 0, syscheck entry is added at the end */
-    if(overwrite < 0) {
-        pl = 0;
-    } else {
+    if(overwrite != -1) {
         pl = overwrite;
     }
 
@@ -256,7 +265,7 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
             /* Duplicated entry */
             if (syscheck->registry[i].arch == arch && strcmp(syscheck->registry[i].entry, tmp_entry) == 0) {
                 mdebug2("Overwriting the registration entry: %s", syscheck->registry[i].entry);
-                dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag, i);
+                dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag);
                 free_strarray(entry);
                 return (1);
             }
@@ -271,7 +280,7 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
         }
 
         /* Add new entry */
-        dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag, -1);
+        dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag);
 
         if (clean_tag)
             free(clean_tag);
@@ -325,7 +334,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     }
 
     while (*dir) {
-        int j = 0;
         int opts = 0;
         char *tmp_dir;
 
@@ -342,15 +350,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 
         /* Remove spaces at the end */
-        tmp_str = strchr(tmp_dir, ' ');
-        if (tmp_str) {
-            tmp_str++;
-
-            /* Check if it is really at the end */
-            if ((*tmp_str == '\0') || (*tmp_str == ' ')) {
-                tmp_str--;
-                *tmp_str = '\0';
-            }
+        tmp_str = tmp_dir + strlen(tmp_dir) - 1;
+        while(*tmp_str == ' ') {
+            *tmp_str = '\0';
+            tmp_str--;
         }
 #ifdef WIN32
         /* Change forward slashes to backslashes on entry */
@@ -629,9 +632,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                    goto out_free;
                }
             } else {
-                merror(FIM_INVALID_ATTRIBUTE, *attrs);
-                ret = 0;
-                goto out_free;
+                mwarn(FIM_UNKNOWN_ATTRIBUTE, *attrs);
             }
             attrs++;
             values++;
@@ -671,13 +672,11 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
         }
 
-        int overwrite = 0;
-
-        char expandedpath[OS_MAXSTR];
-        char *ptfile;
-
+        char real_path[PATH_MAX + 1];
 #ifdef WIN32
-        if(!ExpandEnvironmentStrings(tmp_dir, expandedpath, sizeof(expandedpath) - 1)){
+        char expandedpath[PATH_MAX + 1];
+
+        if(!ExpandEnvironmentStrings(tmp_dir, expandedpath, PATH_MAX + 1)){
             merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
             os_free(restrictfile);
             os_free(tag);
@@ -686,79 +685,54 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
         str_lowercase(expandedpath);
 
-        /* Change forward slashes to backslashes on entry */
-        ptfile = strchr(expandedpath, '/');
+        // Get absolute path
+        int retval = GetFullPathName(expandedpath, PATH_MAX, real_path, NULL);
 
-        while (ptfile) {
-            *ptfile = '\\';
-
-            ptfile++;
-            ptfile = strchr(ptfile, '/');
+        if (retval == 0) {
+            int error = GetLastError();
+            mwarn("Couldn't get full path name '%s' (%d):'%s'\n", expandedpath, error, win_strerror(error));
+            os_free(restrictfile);
+            os_free(tag);
+            continue;
         }
 #else
-        strncpy(expandedpath, tmp_dir, sizeof(expandedpath) - 1);
+        strncpy(real_path, tmp_dir, PATH_MAX + 1);
 #endif
-        ptfile = expandedpath;
-        int size_expanded = strlen(expandedpath);
-        ptfile += size_expanded - 1;
-
-        if (*ptfile == PATH_SEP && size_expanded > 1) {
-            *ptfile = '\0';
-        }
-
-        /* Add directory - look for the last available */
-
-        for (j = 0; syscheck->dir && syscheck->dir[j]; j++) {
-            /* Duplicate entry */
-            if (strcmp(syscheck->dir[j], expandedpath) == 0) {
-                mdebug2("Overwriting the file entry %s", expandedpath);
-                dump_syscheck_entry(syscheck, expandedpath, opts, 0, restrictfile, recursion_limit, clean_tag, j);
-                ret = 1;
-                overwrite = 1;
-            }
-        }
-
         /* Check for glob */
         /* The mingw32 builder used by travis.ci can't find glob.h
          * Yet glob must work on actual win32.
          */
 #ifndef __MINGW32__
-        if (strchr(expandedpath, '*') ||
-                strchr(expandedpath, '?') ||
-                strchr(expandedpath, '[')) {
+        if (strchr(real_path, '*') ||
+                strchr(real_path, '?') ||
+                strchr(real_path, '[')) {
             int gindex = 0;
             glob_t g;
 
             if (glob(tmp_dir, 0, NULL, &g) != 0) {
-                merror(GLOB_ERROR, expandedpath);
+                merror(GLOB_ERROR, real_path);
                 ret = 1;
                 goto out_free;
             }
 
             if (g.gl_pathv[0] == NULL) {
-                merror(GLOB_NFOUND, expandedpath);
+                merror(GLOB_NFOUND, real_path);
                 ret = 1;
                 goto out_free;
             }
 
             while (g.gl_pathv[gindex]) {
-                if(overwrite == 0) {
-                    dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit, clean_tag, -1);
-                }
+                dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit, clean_tag);
                 gindex++;
             }
 
             globfree(&g);
         }
         else {
-            if(overwrite == 0) {
-                dump_syscheck_entry(syscheck, expandedpath, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
-            }
+            dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag);
         }
 #else
-        if(overwrite == 0) {
-            dump_syscheck_entry(syscheck, expandedpath, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
-        }
+        dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag);
 #endif
 
         if (restrictfile) {
@@ -1178,7 +1152,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         return (0);
                     }
                 } else {
-                    merror(FIM_INVALID_OPTION, node[i]->attributes[0] ? node[i]->attributes[0] : "", xml_nodiff);
+                    merror(FIM_INVALID_OPTION, node[i]->attributes[0] ? node[i]->attributes[0] : "", node[i]->element);
                     return (OS_INVALID);
                 }
             }
@@ -1302,7 +1276,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     mdebug1("Found nodiff regex node %s OK?", node[i]->content);
                     mdebug1("Found nodiff regex size %d", nodiff_size);
                 } else {
-                    merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0]);
+                    merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0], node[i]->element);
                     return (OS_INVALID);
                 }
             }

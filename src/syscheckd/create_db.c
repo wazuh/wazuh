@@ -227,7 +227,7 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
         } else {
             saved_data->scanned = 1;
             if (json_event = fim_json_event(file_name, saved_data, entry_data, dir_position, FIM_MODIFICATION, mode, w_evt), json_event) {
-                if (fim_update(file_name, entry_data) == -1) {
+                if (fim_update(file_name, entry_data, saved_data) == -1) {
                     free_entry_data(entry_data);
                     os_free(file_stat);
                     w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -317,53 +317,88 @@ int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt) {
 }
 
 
-void fim_audit_inode_event(whodata_evt * w_evt) {
+void fim_realtime_event(char *file) {
+    char inode_key[OS_SIZE_128];
+    struct stat file_stat;
+
+    if (w_stat(file, &file_stat) >= 0) {
+        // Add and modify events
+        snprintf(inode_key, OS_SIZE_128, "%ld:%ld", (unsigned long)file_stat.st_dev, (unsigned long)file_stat.st_ino);
+    } else {
+        // Deleted file need get inode and dev from saved data
+        w_mutex_lock(&syscheck.fim_entry_mutex);
+        fim_entry_data * saved_data = NULL;
+
+        if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file), saved_data) {
+            snprintf(inode_key, OS_SIZE_128, "%ld:%ld", (unsigned long)saved_data->dev, (unsigned long)saved_data->inode);
+        } else {
+            minfo("Data not found for file %s", file);
+            w_mutex_unlock(&syscheck.fim_entry_mutex);
+            return;
+        }
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
+    }
+    fim_audit_inode_event(file, inode_key, FIM_REALTIME, NULL);
+}
+
+
+void fim_whodata_event(whodata_evt * w_evt) {
+    char inode_key[OS_SIZE_128];
+
+    snprintf(inode_key, OS_SIZE_128, "%s:%s", w_evt->dev, w_evt->inode);
+    fim_audit_inode_event(w_evt->path, inode_key, FIM_WHODATA, w_evt);
+}
+
+
+void fim_audit_inode_event(char *file, char inode_key[], fim_event_mode mode, whodata_evt * w_evt) {
     fim_inode_data * inode_data;
     struct stat file_stat;
-    char *key_inodehash;
-
-    os_calloc(OS_SIZE_128, sizeof(char), key_inodehash);
-    snprintf(key_inodehash, OS_SIZE_128, "%s:%s", w_evt->dev, w_evt->inode);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    if (inode_data = OSHash_Get_ex(syscheck.fim_inode, key_inodehash), inode_data) {
+    if (inode_data = OSHash_Get_ex(syscheck.fim_inode, inode_key), inode_data) {
+        // Modified and delete events
         char **event_paths = NULL;
         int i = 0;
 
         os_calloc(inode_data->items, sizeof(char*), event_paths);
 
         while(inode_data->paths && inode_data->paths[i] && i < inode_data->items) {
-            os_strdup(inode_data->paths[i], event_paths[i]);
+            if (strcmp(file, inode_data->paths[i]) != 0) {
+                os_strdup(inode_data->paths[i], event_paths[i]);
+            }
             i++;
         }
 
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-        if (w_evt->path) {
-            fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+        // For add events we don't have the path saved.
+        if (file) {
+            fim_process_event(file, mode, w_evt);
         }
 
+        // An alert is generated for each path with the same inode
         for(; i > 0; i--) {
-            fim_process_event(event_paths[i - 1], FIM_WHODATA, w_evt);
+            fim_process_event(event_paths[i - 1], mode, w_evt);
             os_free(event_paths[i - 1]);
         }
         os_free(event_paths);
     } else {
+        // Add events
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-        if (w_stat(w_evt->path, &file_stat) < 0) {
-            mdebug2(FIM_STAT_FAILED, w_evt->path, errno, strerror(errno));
+        if (w_stat(file, &file_stat) < 0) {
+            mdebug2(FIM_STAT_FAILED, file, errno, strerror(errno));
         } else {
             switch(file_stat.st_mode & S_IFMT) {
                 case FIM_REGULAR:
                     // Regular file
-                    fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+                    fim_process_event(file, mode, w_evt);
                     break;
 
                 case FIM_DIRECTORY:
                     // Directory path
-                    fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+                    fim_process_event(file, mode, w_evt);
                     break;
                 // TODO: Case for symbolic links?
                 default:
@@ -373,7 +408,6 @@ void fim_audit_inode_event(whodata_evt * w_evt) {
         }
     }
 
-    os_free(key_inodehash);
     return;
 }
 
@@ -398,7 +432,7 @@ int fim_registry_event (char * key, fim_entry_data * data, int pos) {
     } else {
         if (strcmp(saved_data->hash_sha256, data->hash_sha256) != 0) {
             json_event = fim_json_event(key, saved_data, data, pos, FIM_MODIFICATION, 0, NULL);
-            if (fim_update(key, data) < 0) {
+            if (fim_update(key, data, saved_data) < 0) {
                 w_mutex_unlock(&syscheck.fim_entry_mutex);
                 return OS_INVALID;
             }
@@ -544,10 +578,6 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
         data->mtime = file_stat->st_mtime;
     }
 
-    if (options & CHECK_INODE) {
-        data->inode = file_stat->st_ino;
-    }
-
 #ifdef WIN32
     if (options & CHECK_OWNER) {
         data->user_name = get_user(file_name, 0, &data->uid);
@@ -609,6 +639,7 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, f
         data->hash_sha256[0] = '\0';
     }
 
+    data->inode = file_stat->st_ino;
     data->dev = file_stat->st_dev;
     data->mode = mode;
     data->options = options;
@@ -692,70 +723,59 @@ void fim_get_checksum (fim_entry_data * data) {
 
 // Inserts a file in the syscheck hash table structure (inodes and paths)
 int fim_insert (char * file, fim_entry_data * data, __attribute__((unused))struct stat *file_stat) {
-    char * inode_key = NULL;
-
     if (rbtree_insert(syscheck.fim_entry, file, data) == NULL) {
         mdebug1(FIM_RBTREE_DUPLICATE_INSERT, file);
         return (-1);
     }
 
 #ifndef WIN32
-    fim_inode_data * inode_data;
-
+    char inode_key[OS_SIZE_128];
     // Function OSHash_Add_ex doesn't alloc memory for the data of the hash table
-    os_calloc(OS_SIZE_128, sizeof(char), inode_key);
-    snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (long unsigned)file_stat->st_dev, (long unsigned)file_stat->st_ino);
-
-    if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), !inode_data) {
-        os_calloc(1, sizeof(fim_inode_data), inode_data);
-
-        inode_data->paths = os_AddStrArray(file, inode_data->paths);
-        inode_data->items = 1;
-
-        if (OSHash_Add(syscheck.fim_inode, inode_key, inode_data) != 2) {
-            mdebug1(FIM_HASH_INSERT_INODE_HASH, inode_key, file);
-            os_free(inode_key);
-            return (-1);
-        }
-    } else {
-        if (!os_IsStrOnArray(file, inode_data->paths)) {
-            inode_data->paths = os_AddStrArray(file, inode_data->paths);
-            inode_data->items++;
-        }
-    }
+    snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)file_stat->st_dev, (unsigned long)file_stat->st_ino);
+    fim_update_inode(file, inode_key);
 #endif
 
-    os_free(inode_key);
     return 0;
 }
 
 
 // Update an entry in the syscheck hash table structure (inodes and paths)
-int fim_update (char * file, fim_entry_data * data) {
-    char * inode_key = NULL;
-
-    os_calloc(OS_SIZE_128, sizeof(char), inode_key);
-    snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)data->dev, (unsigned long)data->inode);
+int fim_update (char * file, fim_entry_data * data, __attribute__((unused)) fim_entry_data * old_data) {
+    int retval = 0;
 
     if (!file || strcmp(file, "") == 0) {
         merror(FIM_ERROR_UPDATE_ENTRY, file);
-        return -1;
+        retval = -1;
     }
 
 #ifndef WIN32
-    fim_entry_data * old_data;
-    char * old_inode_key = NULL;
-    os_calloc(OS_SIZE_128, sizeof(char), old_inode_key);
+    char old_inode_key[OS_SIZE_128];
+    char inode_key[OS_SIZE_128];
+
+    snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)data->dev, (unsigned long)data->inode);
+    snprintf(old_inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)old_data->dev, (unsigned long)old_data->inode);
 
     // If we detect a inode change, remove old entry from inode hash table
-    if (old_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file), old_data) {
-        snprintf(old_inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)old_data->dev, (unsigned long)old_data->inode);
-
-        if(strcmp(inode_key, old_inode_key) != 0) {
-            delete_inode_item(old_inode_key, file);
-        }
+    if(strcmp(inode_key, old_inode_key) != 0) {
+        delete_inode_item(old_inode_key, file);
     }
 
+    if (fim_update_inode(file, inode_key) == -1) {
+        retval = -1;
+    }
+#endif
+
+    if (rbtree_replace(syscheck.fim_entry, file, data) == NULL) {
+        mdebug1(FIM_RBTREE_REPLACE, file);
+        retval = -1;
+    }
+
+    return retval;
+}
+
+
+#ifndef WIN32
+int fim_update_inode(char * file, char inode_key[]) {
     fim_inode_data * inode_data;
 
     if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), !inode_data) {
@@ -766,8 +786,7 @@ int fim_update (char * file, fim_entry_data * data) {
 
         if (OSHash_Add(syscheck.fim_inode, inode_key, inode_data) != 2) {
             mdebug1(FIM_HASH_INSERT_INODE_HASH, inode_key, file);
-            os_free(inode_key);
-            return (-1);
+            return -1;
         }
     } else {
         if (!os_IsStrOnArray(file, inode_data->paths)) {
@@ -775,17 +794,10 @@ int fim_update (char * file, fim_entry_data * data) {
             inode_data->items++;
         }
     }
-#endif
 
-    if (rbtree_replace(syscheck.fim_entry, file, data) == NULL) {
-        mdebug1(FIM_RBTREE_REPLACE, file);
-        os_free(inode_key);
-        return (-1);
-    }
-
-    os_free(inode_key);
     return 0;
 }
+#endif
 
 
 // Deletes a path from the syscheck hash table structure and sends a deletion event
@@ -794,11 +806,10 @@ int fim_delete (char * file_name) {
 
     if (data = rbtree_get(syscheck.fim_entry, file_name), data) {
 #ifndef WIN32
-        char * inode_key = NULL;
-        os_calloc(OS_SIZE_128, sizeof(char), inode_key);
+        char inode_key[OS_SIZE_128];
+
         snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)data->dev, (unsigned long)data->inode);
         delete_inode_item(inode_key, file_name);
-        os_free(inode_key);
 #endif
         rbtree_delete(syscheck.fim_entry, file_name);
     }
