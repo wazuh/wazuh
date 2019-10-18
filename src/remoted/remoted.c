@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -67,7 +67,7 @@ void HandleRemote(int uid)
     }
 
     /* Bind TCP */
-    if (logr.proto[position] == TCP_PROTO) {
+    if (logr.proto[position] == IPPROTO_TCP) {
         if ((logr.sock = OS_Bindporttcp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0) {
             merror_exit(BIND_ERROR, logr.port[position], errno, strerror(errno));
         } else if (logr.conn[position] == SECURE_CONN) {
@@ -109,7 +109,7 @@ void HandleRemote(int uid)
     minfo(STARTUP_MSG " Listening on port %d/%s (%s).",
     (int)getpid(),
     logr.port[position],
-    logr.proto[position] == TCP_PROTO ? "TCP" : "UDP",
+    logr.proto[position] == IPPROTO_TCP ? "TCP" : "UDP",
     logr.conn[position] == SECURE_CONN ? "secure" : "syslog");
 
     /* If secure connection, deal with it */
@@ -117,7 +117,7 @@ void HandleRemote(int uid)
         HandleSecure();
     }
 
-    else if (logr.proto[position] == TCP_PROTO) {
+    else if (logr.proto[position] == IPPROTO_TCP) {
         HandleSyslogTCP();
     }
 

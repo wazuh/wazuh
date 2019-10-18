@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 25, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -132,7 +132,8 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 #ifndef WIN32
 #ifndef CLIENT
     else if (!strcmp(node->values[0], WM_VULNDETECTOR_CONTEXT.name)) {
-        if (wm_vuldet_read(xml, children, cur_wmodule) < 0) {
+        mwarn("This vulnerability-detector declaration is deprecated. Use <vulnerability-detector> instead.");
+        if (Read_Vuln(xml, children, cur_wmodule, 0) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }

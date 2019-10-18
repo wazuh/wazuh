@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * March 9, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -21,6 +21,7 @@ static const char *XML_HARDWARE = "hardware";
 static const char *XML_PACKAGES = "packages";
 static const char *XML_PORTS = "ports";
 static const char *XML_PROCS = "processes";
+static const char *XML_HOTFIXES = "hotfixes";
 
 // Parse XML configuration
 int wm_sys_read(XML_NODE node, wmodule *module) {
@@ -35,6 +36,9 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
         syscollector->flags.osinfo = 1;
         syscollector->flags.hwinfo = 1;
         syscollector->flags.programinfo = 1;
+#ifdef WIN32
+        syscollector->flags.hotfixinfo = 1;
+#endif
         syscollector->flags.portsinfo = 1;
         syscollector->flags.allports = 0;
         syscollector->flags.procinfo = 1;
@@ -134,6 +138,19 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_PACKAGES, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+        } else if (!strcmp(node[i]->element, XML_HOTFIXES)) {
+#ifdef WIN32
+                if (!strcmp(node[i]->content, "yes"))
+                    syscollector->flags.hotfixinfo = 1;
+                else if (!strcmp(node[i]->content, "no"))
+                    syscollector->flags.hotfixinfo = 0;
+                else {
+                    merror("Invalid content for tag '%s' at module '%s'.", XML_HOTFIXES, WM_SYS_CONTEXT.name);
+                    return OS_INVALID;
+                }
+#else
+                mwarn("The '%s' option is only available on Windows systems. Ignoring it.", XML_HOTFIXES);
+#endif
         } else if (!strcmp(node[i]->element, XML_PROCS)) {
             if (!strcmp(node[i]->content, "yes"))
                 syscollector->flags.procinfo = 1;

@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -100,6 +100,7 @@ int OS_ReadXMLRules(const char *rulefile,
     const char *xml_notsame_agent = "not_same_agent";
     const char *xml_notsame_id = "not_same_id";
     const char *xml_notsame_field = "not_same_field";
+    const char *xml_global_frequency = "global_frequency";
 
     const char *xml_options = "options";
 
@@ -203,8 +204,11 @@ int OS_ReadXMLRules(const char *rulefile,
             config_ruleinfo = NULL;
 
             /* Check if the rule element is correct */
-            if ((!rule[j]->element) ||
-                    (strcasecmp(rule[j]->element, xml_rule) != 0)) {
+            if (!rule[j]->element) {
+                goto cleanup;
+            }
+
+            if (strcasecmp(rule[j]->element, xml_rule) != 0) {
                 merror(RL_INV_RULE, node[i]->element);
                 retval = -1;
                 goto cleanup;
@@ -322,7 +326,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     if(config_ruleinfo->srcip == NULL) {
                         merror_exit(MEM_ERROR, errno, strerror(errno));
                     }
-                    
+
                     /* Allocate memory for the individual entries */
                     os_calloc(1, sizeof(os_ip),
                               config_ruleinfo->srcip[ip_s]);
@@ -552,6 +556,9 @@ int OS_ReadXMLRules(const char *rulefile,
                                       xml_notsame_agent) == 0) {
                     config_ruleinfo->context_opts &= NOT_SAME_AGENT;
                 } else if (strcasecmp(rule_opt[k]->element,
+                                      xml_global_frequency) == 0) {
+                    config_ruleinfo->context_opts |= GLOBAL_FREQUENCY;
+                } else if (strcasecmp(rule_opt[k]->element,
                                       xml_same_field) == 0) {
 
                     if (config_ruleinfo->context_opts & SAME_FIELD) {
@@ -576,7 +583,7 @@ int OS_ReadXMLRules(const char *rulefile,
                                         xml_notsame_field) == 0) {
 
                     if (config_ruleinfo->context_opts & NOT_SAME_FIELD) {
-                            
+
                         int size;
                         for (size = 0; config_ruleinfo->not_same_fields[size] != NULL; size++);
 
@@ -1036,7 +1043,7 @@ static RuleInfo *_OS_AllocateRule()
 
     ruleinfo_pt->event_search = NULL;
 
-    ruleinfo_pt->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+    w_mutex_init(&ruleinfo_pt->mutex, NULL);
 
     return (ruleinfo_pt);
 }

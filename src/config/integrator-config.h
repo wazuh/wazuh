@@ -2,7 +2,7 @@
  * Copyright (C) 2014 Daniel B. Cid
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -10,8 +10,8 @@
 
 #include "shared.h"
 
-#ifndef _CINTEGRATORCONFIG__H
-#define _CINTEGRATORCONFIG__H
+#ifndef CINTEGRATORCONFIG_H
+#define CINTEGRATORCONFIG_H
 
 #ifndef ARGV0
 #define ARGV0 "ossec-integrator"
@@ -34,4 +34,4 @@ typedef struct _IntegratorConfig
     OSMatch *location;
 }IntegratorConfig;
 
-#endif
+#endif /* CINTEGRATORCONFIG_H */

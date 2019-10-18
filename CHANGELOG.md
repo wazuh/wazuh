@@ -1,18 +1,174 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.10.0]
+## [v3.12.0]
+
+
+## [v3.11.0]
+
+### Added
+
+- Add support to Windows agents for vulnerability detector. ([#2787](https://github.com/wazuh/wazuh/pull/2787))
+- Make the Wazuh service to start after the network systemd unit (by @VAdamec). ([#1106](https://github.com/wazuh/wazuh/pull/1106))
+- Add process inventory support for Mac OS X agents. ([#3322](https://github.com/wazuh/wazuh/pull/3322))
+- Add port inventory support for MAC OS X agents. ([#3349](https://github.com/wazuh/wazuh/pull/3349))
+- Make Analysisd compile the CDB list upon start. ([#3488](https://github.com/wazuh/wazuh/pull/3488))
+- New rules option `global_frequency` to make frequency rules independent from the event source. ([#3931](https://github.com/wazuh/wazuh/pull/3931))
+- Add a validation for avoiding agents to keep trying to connect to an invalid address indefinitely. ([#3951](https://github.com/wazuh/wazuh/pull/3951))
 
 ### Changed
 
-- Improved error message when some of required Wazuh daemons are down. Allow restarting cluster nodes except when `ossec-execd` is down ([#3496](https://github.com/wazuh/wazuh/pull/3496))
+- Now EventChannel alerts include the full message with the translation of coded fields. ([#3320](https://github.com/wazuh/wazuh/pull/3320))
+- Changed `-G` agent-auth description in help message. ([#3856](https://github.com/wazuh/wazuh/pull/3856))
+- Unified the Makefile flags allowed values. ([#4034](https://github.com/wazuh/wazuh/pull/4034))
 
 ### Fixed
 
+- Fix frequency rules to be increased for the same agent by default. ([#3931](https://github.com/wazuh/wazuh/pull/3931))
+- Fix `protocol`, `system_name`, `data` and `extra_data` static fields detection. ([#3591](https://github.com/wazuh/wazuh/pull/3591))
+- Fix overwriting agents by `Authd` when `force` option is less than 0. ([#3527](https://github.com/wazuh/wazuh/pull/3527))
+- Fix Syscheck `nodiff` option for substring paths. ([#3015](https://github.com/wazuh/wazuh/pull/3015))
+- Fix Logcollector wildcards to not detect directories as log files. ([#3788](https://github.com/wazuh/wazuh/pull/3788))
+- Make Slack integration work with agentless alerts (by @dmitryax). ([#3971](https://github.com/wazuh/wazuh/pull/3971))
+- Fix bugs reported by Clang analyzer. ([#3887](https://github.com/wazuh/wazuh/pull/3887))
+- Fix compilation errors on OpenBSD platform. ([#3105](https://github.com/wazuh/wazuh/pull/3105))
+- Fix on-demand configuration labels section to obtain labels attributes. ([#3490](https://github.com/wazuh/wazuh/pull/3490))
+- Fixed race condition between `wazuh-clusterd` and `wazuh-modulesd` showing a 'No such file or directory' in `cluster.log` when synchronizing agent-info files in a cluster environment ([#4007](https://github.com/wazuh/wazuh/issues/4007))
+- Fixed 'ConnectionError object has no attribute code' error when package repository is not available ([#3441](https://github.com/wazuh/wazuh/issues/3441))
+- Fix the blocking of files monitored by Who-data in Windows agents. ([#3872](https://github.com/wazuh/wazuh/pull/3872))
+- Fix the processing of EventChannel logs with unexpected characters. ([#3320](https://github.com/wazuh/wazuh/pull/3320))
+- Active response Kaspersky script now logs the action request in _active-responses.log_ ([#2748](https://github.com/wazuh/wazuh/pull/2748))
+- Fix service's installation path for CentOS 8. ([#4060](https://github.com/wazuh/wazuh/pull/4060))
+- Add macOS Catalina to the list of detected versions. ([#4061](https://github.com/wazuh/wazuh/pull/4061))
+- Prevent FIM from producing false negatives due to wrong checksum comparison. ([#4066](https://github.com/wazuh/wazuh/pull/4066))
+- Fix `previous_output` count for alerts when matching by group. ([#4097](https://github.com/wazuh/wazuh/pull/4097))
+
+
+## [v3.10.2] - 2019-09-23
+
+### Fixed
+
+- Fix error in Logcollector when reloading localfiles with timestamp wildcards. ([#3995](https://github.com/wazuh/wazuh/pull/3995))
+
+
+## [v3.10.1] - 2019-09-19
+
+### Fixed
+
+- Fix error after removing a high volume of agents from a group using the Wazuh API. ([#3907](https://github.com/wazuh/wazuh/issues/3907))
+- Fix error in Remoted when reloading agent keys (busy resource). ([#3988](https://github.com/wazuh/wazuh/issues/3988))
+- Fix invalid read in Remoted counters. ([#3989](https://github.com/wazuh/wazuh/issues/3989))
+
+
+## [v3.10.0] - 2019-09-16
+
+### Added
+
+- Add framework function to obtain full summary of agents. ([#3842](https://github.com/wazuh/wazuh/pull/3842))
+- SCA improvements. ([#3286](https://github.com/wazuh/wazuh/pull/3286))
+  - Refactor de SCA internal logic and policy syntax. ([#3249](https://github.com/wazuh/wazuh/issues/3249))
+  - Support to follow symbolic links. ([#3228](https://github.com/wazuh/wazuh/issues/3228))
+  - Add numerical comparator for SCA rules. ([#3374](https://github.com/wazuh/wazuh/issues/3374))
+  - Add SCA decoded events count to global stats. ([#3623](https://github.com/wazuh/wazuh/issues/3623))
+- Extend duplicate file detection for LogCollector. ([#3867](https://github.com/wazuh/wazuh/pull/3867))
+- Add HIPAA and NIST 800 53 compliance mapping as rule groups.([#3411](https://github.com/wazuh/wazuh/pull/3411) & [#3420](https://github.com/wazuh/wazuh/pull/3420))
+- Add SCA compliance groups to rule groups in alerts. ([#3427](https://github.com/wazuh/wazuh/pull/3427))
+- Add IPv6 loopback address to localhost list in DB output module (by @aquerubin). ([#3140](https://github.com/wazuh/wazuh/pull/3140))
+- Accept `]` and `>` as terminal prompt characters for Agentless. ([#3209](https://github.com/wazuh/wazuh/pull/3209))
+
+### Changed
+
+- Modify logs for agent authentication issues by Remoted. ([#3662](https://github.com/wazuh/wazuh/pull/3662))
+- Make Syscollector logging messages more user-friendly. ([#3397](https://github.com/wazuh/wazuh/pull/3397))
+- Make SCA load by default all present policies at the default location. ([#3607](https://github.com/wazuh/wazuh/pull/3607))
+- Increase IPSIZE definition for IPv6 compatibility (by @aquerubin). ([#3259](https://github.com/wazuh/wazuh/pull/3259))
+- Replace local protocol definitions with Socket API definitions (by @aquerubin). ([#3260](https://github.com/wazuh/wazuh/pull/3260))
+- Improved error message when some of required Wazuh daemons are down. Allow restarting cluster nodes except when `ossec-execd` is down. ([#3496](https://github.com/wazuh/wazuh/pull/3496))
+- Allow existing aws_profile argument to work with vpcflowlogs in AWS wodle configuration. Thanks to Adam Williams (@awill1988). ([#3729](https://github.com/wazuh/wazuh/pull/3729))
+
+### Fixed
+
+- Fix exception handling when using an invalid bucket in AWS wodle ([#3652](https://github.com/wazuh/wazuh/pull/3652))
+- Fix error message when an AWS bucket is empty ([#3743](https://github.com/wazuh/wazuh/pull/3743))
+- Fix error when getting profiles in custom AWS buckets ([#3786](https://github.com/wazuh/wazuh/pull/3786))
+- Fix SCA integrity check when switching between manager nodes. ([#3884](https://github.com/wazuh/wazuh/pull/3884))
+- Fix alert email sending when no_full_log option is set in a rule. ([#3174](https://github.com/wazuh/wazuh/pull/3174))
+- Fix error in Windows who-data when handling the directories list. ([#3883](https://github.com/wazuh/wazuh/pull/3883))
+- Fix error in the hardware inventory collector for PowerPC architectures. ([#3624](https://github.com/wazuh/wazuh/pull/3624))
+- Fix the use of mutexes in the `OS_Regex` library. ([#3533](https://github.com/wazuh/wazuh/pull/3533))
+- Fix invalid read in the `OS_Regex` library. ([#3815](https://github.com/wazuh/wazuh/pull/3815))
+- Fix compilation error on FreeBSD 13 and macOS 10.14. ([#3832](https://github.com/wazuh/wazuh/pull/3832))
+- Fix typo in the license of the files. ([#3779](https://github.com/wazuh/wazuh/pull/3779))
+- Fix error in `execd` when upgrading agents remotely while auto-restarting. ([#3437](https://github.com/wazuh/wazuh/pull/3437))
+- Prevent integrations from inheriting descriptors. ([#3514](https://github.com/wazuh/wazuh/pull/3514))
+- Overwrite rules label fix and rules features tests. ([#3414](https://github.com/wazuh/wazuh/pull/3414))
+- Fix typo: replace `readed` with `read`. ([#3328](https://github.com/wazuh/wazuh/pull/3328))
+- Introduce global mutex for Rootcheck decoder. ([#3530](https://github.com/wazuh/wazuh/pull/3530))
+- Fix errors reported by scan-build. ([#3452](https://github.com/wazuh/wazuh/pull/3452) & [#3785](https://github.com/wazuh/wazuh/pull/3785))
+- Fix the handling of `wm_exec()` output.([#3486](https://github.com/wazuh/wazuh/pull/3486))
+- Fix FIM duplicated entries in Windows. ([#3504](https://github.com/wazuh/wazuh/pull/3504))
+- Remove socket deletion from epoll. ([#3432](https://github.com/wazuh/wazuh/pull/3432))
+- Let the sources installer support NetBSD. ([#3444](https://github.com/wazuh/wazuh/pull/3444))
+- Fix error message from openssl v1.1.1. ([#3413](https://github.com/wazuh/wazuh/pull/3413))
+- Fix compilation issue for local installation. ([#3339](https://github.com/wazuh/wazuh/pull/3339))
 - Fix exception handling when /tmp have no permissions and tell the user the problem. ([#3401](https://github.com/wazuh/wazuh/pull/3401))
+- Fix who-data alerts when audit logs contain hex fields. ([#3909](https://github.com/wazuh/wazuh/pull/3909))
+- Remove useless `select()` calls in Analysisd decoders. ([#3964](https://github.com/wazuh/wazuh/pull/3964))
 
 
-## [v3.9.2]
+## [v3.9.5] - 2019-08-08
+
+### Fixed
+
+- Fixed a bug in the Framework that prevented Cluster and API from handling the file _client.keys_ if it's mounted as a volume on Docker.
+- Fixed a bug in Analysisd that printed the millisecond part of the alerts' timestamp without zero-padding. That prevented Elasticsearch 7 from indexing those alerts. ([#3814](https://github.com/wazuh/wazuh/issues/3814))
+
+
+## [v3.9.4] - 2019-08-07
+
+### Changed
+
+- Prevent agent on Windows from including who-data on FIM events for child directories without who-data enabled, even if it's available. ([#3601](https://github.com/wazuh/wazuh/issues/3601))
+- Prevent Rootcheck configuration from including the `<ignore>` settings if they are empty. ([#3634](https://github.com/wazuh/wazuh/issues/3634))
+- Wazuh DB will delete the agent DB-related files immediately when removing an agent. ([#3691](https://github.com/wazuh/wazuh/issues/3691))
+
+### Fixed
+
+- Fixed bug in Remoted when correlating agents and their sockets in TCP mode. ([#3602](https://github.com/wazuh/wazuh/issues/3602))
+- Fix bug in the agent that truncated its IP address if it occupies 15 characters. ([#3615](https://github.com/wazuh/wazuh/issues/3615))
+- Logcollector failed to overwrite duplicate `<localfile>` stanzas. ([#3616](https://github.com/wazuh/wazuh/issues/3616))
+- Analysisd could produce a double free if an Eventchannel message contains an invalid XML member. ([#3626](https://github.com/wazuh/wazuh/issues/3626))
+- Fixed defects in the code reported by Coverity. ([#3627](https://github.com/wazuh/wazuh/issues/3627))
+- Fixed bug in Analysisd when handling invalid JSON input strings. ([#3648](https://github.com/wazuh/wazuh/issues/3648))
+- Fix handling of SCA policies with duplicate ID in Wazuh DB. ([#3668](https://github.com/wazuh/wazuh/issues/3668))
+- Cluster could fail synchronizing some files located in Docker volumes. ([#3669](https://github.com/wazuh/wazuh/issues/3669))
+- Fix a handler leak in the FIM whodata engine for Windows. ([#3690](https://github.com/wazuh/wazuh/issues/3690))
+- The Docker listener module was storing and ignoring the output of the integration. ([#3768](https://github.com/wazuh/wazuh/issues/3768))
+- Fixed memory leaks in Syscollector for macOS agents. ([#3795](https://github.com/wazuh/wazuh/pull/3795))
+- Fix dangerous mutex initialization in Windows hosts. ([#3805](https://github.com/wazuh/wazuh/issues/3805))
+
+
+## [v3.9.3] - 2019-07-08
+
+### Changed
+
+- Windows Eventchannel log collector will no longer report bookmarked events by default (those that happened while the agent was stopped). ([#3485](https://github.com/wazuh/wazuh/pull/3485))
+- Remoted will discard agent-info data not in UTF-8 format. ([#3581](https://github.com/wazuh/wazuh/pull/3581))
+
+### Fixed
+
+- Osquery integration did not follow the osquery results file (*osqueryd.results.log*) as of libc 2.28. ([#3494](https://github.com/wazuh/wazuh/pull/3494))
+- Windows Eventchannnel log collector did not update the bookmarks so it reported old events repeatedly. ([#3485](https://github.com/wazuh/wazuh/pull/3485))
+- The agent sent invalid info data in the heartbeat message if it failed to get the host IP address. ([#3555](https://github.com/wazuh/wazuh/pull/3555))
+- Modulesd produced a memory leak when being queried for its running configuration. ([#3564](https://github.com/wazuh/wazuh/pull/3564))
+- Analysisd and Logtest crashed when trying rules having `<different_geoip>` and no `<not_same_field>` stanza. ([#3587](https://github.com/wazuh/wazuh/pull/3587))
+- Vulnerability Detector failed to parse the Canonical's OVAL feed due to a syntax change. ([#3563](https://github.com/wazuh/wazuh/pull/3563))
+- AWS Macie events produced erros in Elasticsearch. ([#3608](https://github.com/wazuh/wazuh/pull/3608))
+- Rules with `<list lookup="address_match_key" />` produced a false match if the CDB list file is missing. ([#3609](https://github.com/wazuh/wazuh/pull/3609))
+- Remote configuration was missing the `<ignore>` stanzas for Syscheck and Rootcheck when defined as sregex. ([#3617](https://github.com/wazuh/wazuh/pull/3617))
+
+
+## [v3.9.2] 2019-06-10
 
 ### Added
 

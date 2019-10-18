@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _OS_RULES
-#define _OS_RULES
+#ifndef OS_RULES
+#define OS_RULES
 
 #define MAX_LAST_EVENTS 11
 
@@ -28,12 +28,13 @@
 #define SAME_SRCPORT        0x020
 #define SAME_DSTPORT        0x040
 #define SAME_DODIFF         0x100
-#define SAME_FIELD          0x200
-#define NOT_SAME_FIELD      0x400
+#define SAME_FIELD          0x080
+#define NOT_SAME_FIELD      0x800
 #define NOT_SAME_USER       0xffe /* 0xfff - 0x001  */
 #define NOT_SAME_SRCIP      0xffd /* 0xfff - 0x002  */
 #define NOT_SAME_ID         0xffb /* 0xfff - 0x004  */
 #define NOT_SAME_AGENT      0xff7 /* 0xfff - 0x008 */
+#define GLOBAL_FREQUENCY    0x1000
 
 /* Alert options  - store on a uint16 */
 #define DO_FTS          0x0001
@@ -61,6 +62,10 @@
 #define RULE_STATUS     1024
 #define RULE_ACTION     2048
 #define RULE_DYNAMIC    4096
+#define RULE_PROTOCOL   8192
+#define RULE_SYSTEMNAME 16384
+#define RULE_DATA       32768
+#define RULE_EXTRA_DATA 65536
 
 #define RULEINFODETAIL_TEXT     0
 #define RULEINFODETAIL_LINK     1
@@ -150,8 +155,11 @@ typedef struct _RuleInfo {
     OSMatch *status;
     OSMatch *hostname;
     OSMatch *program_name;
+    OSMatch *data;
     OSMatch *extra_data;
     OSMatch *location;
+    OSMatch *system_name;
+    OSMatch *protocol;
     FieldInfo **fields;
     char *action;
 
@@ -261,4 +269,4 @@ int _setlevels(RuleNode *node, int nnode);
 extern int _max_freq;
 extern int default_timeframe;
 
-#endif /* _OS_RULES */
+#endif /* OS_RULES */

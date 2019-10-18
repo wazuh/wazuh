@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -82,7 +82,8 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_dstuser = "dstuser";
     const char *xml_url = "url";
     const char *xml_id = "id";
-    const char *xml_data = "extra_data";
+    const char *xml_data = "data";
+    const char *xml_extra_data = "extra_data";
     const char *xml_hostname = "hostname";
     const char *xml_program_name = "program_name";
     const char *xml_status = "status";
@@ -132,6 +133,7 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_notsame_agent = "not_same_agent";
     const char *xml_notsame_id = "not_same_id";
     const char *xml_notsame_field = "not_same_field";
+    const char *xml_global_frequency = "global_frequency";
 
     const char *xml_options = "options";
 
@@ -147,12 +149,16 @@ int Rules_OP_ReadRules(const char *rulefile)
     char *dstport = NULL;
     char *srcgeoip = NULL;
     char *dstgeoip = NULL;
+    char *protocol = NULL;
+    char *system_name = NULL;
 
     char *status = NULL;
     char *hostname = NULL;
+    char *data = NULL;
     char *extra_data = NULL;
     char *program_name = NULL;
     char *location = NULL;
+    RuleInfo *config_ruleinfo = NULL;
 
     size_t i;
     default_timeframe = 360;
@@ -247,11 +253,14 @@ int Rules_OP_ReadRules(const char *rulefile)
         }
 
         while (rule[j]) {
-            RuleInfo *config_ruleinfo = NULL;
+            config_ruleinfo = NULL;
 
             /* Check if the rule element is correct */
-            if ((!rule[j]->element) ||
-                    (strcasecmp(rule[j]->element, xml_rule) != 0)) {
+            if (!rule[j]->element) {
+                goto cleanup;
+            }
+
+            if (strcasecmp(rule[j]->element, xml_rule) != 0) {
                 merror("Invalid configuration. '%s' is not "
                        "a valid element.", rule[j]->element);
                 goto cleanup;
@@ -346,9 +355,12 @@ int Rules_OP_ReadRules(const char *rulefile)
                 dstport = NULL;
                 srcgeoip = NULL;
                 dstgeoip = NULL;
+                system_name = NULL;
+                protocol = NULL;
 
                 status = NULL;
                 hostname = NULL;
+                data = NULL;
                 extra_data = NULL;
                 program_name = NULL;
                 location = NULL;
@@ -589,6 +601,14 @@ int Rules_OP_ReadRules(const char *rulefile)
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element, xml_data) == 0) {
+                        data =
+                            loadmemory(data,
+                                       rule_opt[k]->content);
+
+                        if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
+                            config_ruleinfo->alert_opts |= DO_EXTRAINFO;
+                        }
+                    } else if (strcasecmp(rule_opt[k]->element, xml_extra_data) == 0) {
                         extra_data =
                             loadmemory(extra_data,
                                        rule_opt[k]->content);
@@ -604,6 +624,14 @@ int Rules_OP_ReadRules(const char *rulefile)
                     } else if (strcasecmp(rule_opt[k]->element, xml_action) == 0) {
                         config_ruleinfo->action =
                             loadmemory(config_ruleinfo->action,
+                                       rule_opt[k]->content);
+                    } else if(strcasecmp(rule_opt[k]->element, xml_system_name) == 0){
+                        system_name =
+                            loadmemory(system_name,
+                                       rule_opt[k]->content);
+                    } else if(strcasecmp(rule_opt[k]->element, xml_protocol) == 0){
+                        protocol =
+                            loadmemory(protocol,
                                        rule_opt[k]->content);
                     } else if (strcasecmp(rule_opt[k]->element, xml_location) == 0) {
                             location = loadmemory(location, rule_opt[k]->content);
@@ -624,8 +652,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                                     strcasecmp(rule_opt[k]->values[0], xml_action) &&
                                     strcasecmp(rule_opt[k]->values[0], xml_id) &&
                                     strcasecmp(rule_opt[k]->values[0], xml_url) &&
-                                    strcasecmp(rule_opt[k]->values[0], "data") &&
                                     strcasecmp(rule_opt[k]->values[0], xml_data) &&
+                                    strcasecmp(rule_opt[k]->values[0], xml_extra_data) &&
                                     strcasecmp(rule_opt[k]->values[0], xml_status) &&
                                     strcasecmp(rule_opt[k]->values[0], xml_system_name))
                                     config_ruleinfo->fields[ifield]->name = loadmemory(config_ruleinfo->fields[ifield]->name, rule_opt[k]->values[0]);
@@ -704,6 +732,14 @@ int Rules_OP_ReadRules(const char *rulefile)
                                         rule_type = RULE_STATUS;
                                     } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_action) == 0) {
                                         rule_type = RULE_ACTION;
+                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_protocol) == 0) {
+                                        rule_type = RULE_PROTOCOL;
+                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_system_name) == 0) {
+                                        rule_type = RULE_SYSTEMNAME;
+                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_data) == 0) {
+                                        rule_type = RULE_DATA;
+                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_extra_data) == 0) {
+                                        rule_type = RULE_EXTRA_DATA;
                                     } else {
                                         rule_type = RULE_DYNAMIC;
 
@@ -924,6 +960,9 @@ int Rules_OP_ReadRules(const char *rulefile)
                                           xml_notsame_agent) == 0) {
                         config_ruleinfo->context_opts &= NOT_SAME_AGENT;
                     } else if (strcasecmp(rule_opt[k]->element,
+                                          xml_global_frequency) == 0) {
+                        config_ruleinfo->context_opts |= GLOBAL_FREQUENCY;
+                    } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_field) == 0) {
 
                         if (config_ruleinfo->context_opts & SAME_FIELD) {
@@ -948,7 +987,6 @@ int Rules_OP_ReadRules(const char *rulefile)
                                           xml_notsame_field) == 0) {
 
                         if (config_ruleinfo->context_opts & NOT_SAME_FIELD) {
-                            
                             int size;
                             for (size = 0; config_ruleinfo->not_same_fields[size] != NULL; size++);
 
@@ -1225,6 +1263,19 @@ int Rules_OP_ReadRules(const char *rulefile)
                     hostname = NULL;
                 }
 
+                /* Add data */
+                if (data) {
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->data);
+                    if (!OSMatch_Compile(data,
+                                         config_ruleinfo->data, 0)) {
+                        merror(REGEX_COMPILE, data,
+                               config_ruleinfo->data->error);
+                        goto cleanup;
+                    }
+                    free(data);
+                    data = NULL;
+                }
+
                 /* Add extra data */
                 if (extra_data) {
                     os_calloc(1, sizeof(OSMatch), config_ruleinfo->extra_data);
@@ -1343,6 +1394,28 @@ int Rules_OP_ReadRules(const char *rulefile)
                     if_matched_regex = NULL;
                 }
 
+                /* Add protocol */
+                if(protocol){
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->protocol);
+                    if(!OSMatch_Compile(protocol, config_ruleinfo->protocol, 0)){
+                        merror(REGEX_COMPILE, protocol, config_ruleinfo->protocol->error);
+                        goto cleanup;
+                    }
+                    free(protocol);
+                    protocol = NULL;
+                }
+
+                /* Add system_name */
+                if(system_name){
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->system_name);
+                    if(!OSMatch_Compile(system_name, config_ruleinfo->system_name, 0)){
+                        merror(REGEX_COMPILE, system_name, config_ruleinfo->system_name->error);
+                        goto cleanup;
+                    }
+                    free(system_name);
+                    system_name = NULL;
+                }
+
                 OS_ClearNode(rule_opt);
             } /* end of elements block */
 
@@ -1391,7 +1464,6 @@ int Rules_OP_ReadRules(const char *rulefile)
                 if (!config_ruleinfo->group_search) {
                     merror_exit(MEM_ERROR, errno, strerror(errno));
                 }
-                //OSList_SetFreeDataPointer(config_ruleinfo->group_search, (void (*)(void *)) Free_Eventinfo);
 
                 /* Mark rules that match this group */
                 OS_MarkGroup(NULL, config_ruleinfo);
@@ -1454,14 +1526,15 @@ cleanup:
     free(url);
     free(if_matched_group);
     free(if_matched_regex);
-
-
-
-
-
-
+    free(system_name);
+    free(protocol);
+    free(data);
     free(rulepath);
     OS_ClearNode(rule);
+
+    if (retval) {
+        free(config_ruleinfo);
+    }
 
     /* Clean global node */
     OS_ClearNode(node);
@@ -1957,7 +2030,7 @@ static void printRuleinfo(const RuleInfo *rule, int node)
 int AddHash_Rule(RuleNode *node)
 {
     char id_key[15] = {'\0'};
-    
+
     while (node) {
         snprintf(id_key, 14, "%d", node->ruleinfo->sigid);
 
@@ -1967,7 +2040,7 @@ int AddHash_Rule(RuleNode *node)
             merror("At AddHash_Rule(): OSHash_Add() failed");
             break;
         }
-        
+
         if (node->child) AddHash_Rule(node->child);
 
         node = node->next;

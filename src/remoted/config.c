@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -96,8 +96,8 @@ cJSON *getRemoteConfig(void) {
             else if (logr.conn[i] == SECURE_CONN) cJSON_AddStringToObject(conn,"connection","secure");
             if (logr.ipv6 && logr.ipv6[i]) cJSON_AddStringToObject(conn,"ipv6","yes"); else cJSON_AddStringToObject(conn,"ipv6","no");
             if (logr.lip && logr.lip[i]) cJSON_AddStringToObject(conn,"local_ip",logr.lip[i]);
-            if (logr.proto && logr.proto[i] == UDP_PROTO) cJSON_AddStringToObject(conn,"protocol","udp");
-            else if (logr.proto && logr.proto[i] == TCP_PROTO) cJSON_AddStringToObject(conn,"protocol","tcp");
+            if (logr.proto && logr.proto[i] == IPPROTO_UDP) cJSON_AddStringToObject(conn,"protocol","udp");
+            else if (logr.proto && logr.proto[i] == IPPROTO_TCP) cJSON_AddStringToObject(conn,"protocol","tcp");
             if (logr.port && logr.port[i]){
                 sprintf(port,"%d",logr.port[i]);
                 cJSON_AddStringToObject(conn,"port",port);

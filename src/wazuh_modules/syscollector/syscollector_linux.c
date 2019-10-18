@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * Aug, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -170,7 +170,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
         }
         fclose(fp);
     }else{
-        mterror(WM_SYS_LOGTAG, "Unable to get list of %s opened ports.", protocol);
+        mtdebug1(WM_SYS_LOGTAG, "Unable to get list of %s opened ports.", protocol);
     }
     free(laddress);
     free(raddress);
@@ -265,7 +265,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
         }
         fclose(fp);
     }else{
-        mterror(WM_SYS_LOGTAG, "Unable to get list of %s opened ports.", protocol);
+        mtdebug1(WM_SYS_LOGTAG, "Unable to get list of %s opened ports.", protocol);
     }
 }
 
@@ -276,17 +276,8 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
     char *protocol;
     int random_id = os_random();
     char *timestamp;
-    time_t now;
-    struct tm localtm;
 
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH - 1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -382,8 +373,6 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
     char *format = "rpm";
     char *timestamp;
-    time_t now;
-    struct tm localtm;
     cJSON *object = NULL;
     cJSON *package = NULL;
 
@@ -408,34 +397,27 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
     // Set timestamp
 
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    timestamp = w_get_timestamp(time(NULL));
 
     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
-        mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): failed to initialize the DB handler: %s", db_strerror(ret));
+        mterror(WM_SYS_LOGTAG, "Failed to initialize the DB handler: %s", db_strerror(ret));
         free(timestamp);
         return NULL;
     }
 
     // Set Little-endian order by default
     if ((ret = dbp->set_lorder(dbp, 1234)) != 0) {
-        mtwarn(WM_SYS_LOGTAG, "sys_rpm_packages(): Error setting byte-order.");
+        mtwarn(WM_SYS_LOGTAG, "Error setting byte-order.");
     }
 
     if ((ret = dbp->open(dbp, NULL, RPM_DATABASE, NULL, DB_HASH, DB_RDONLY, 0)) != 0) {
-        mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Failed to open database '%s': %s", RPM_DATABASE, db_strerror(ret));
+        mterror(WM_SYS_LOGTAG, "Failed to open database '%s': %s", RPM_DATABASE, db_strerror(ret));
         free(timestamp);
         return NULL;
     }
 
     if ((ret = dbp->cursor(dbp, NULL, &cursor, 0)) != 0) {
-        mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Error creating cursor: %s", db_strerror(ret));
+        mterror(WM_SYS_LOGTAG, "Error creating cursor: %s", db_strerror(ret));
         free(timestamp);
         return NULL;
     }
@@ -526,16 +508,10 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
                     }
 
                     if (!strncmp(info->tag, "install_time", 12)) {    // Format date
-                        char installt[TIME_LENGTH];
-                        struct tm itime;
-                        time_t dateint = result;
-                        localtime_r(&dateint, &itime);
-
-                        snprintf(installt,TIME_LENGTH - 1,"%d/%02d/%02d %02d:%02d:%02d",
-                                itime.tm_year + 1900, itime.tm_mon + 1,
-                                itime.tm_mday, itime.tm_hour, itime.tm_min, itime.tm_sec);
+                        char *installt = w_get_timestamp(result);
 
                         cJSON_AddStringToObject(package, info->tag, installt);
+                        free(installt);
                     } else if (!strncmp(info->tag, "epoch", 5)) {
                         epoch = result;
                     } else {
@@ -551,7 +527,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
                     break;
 
                 default:
-                    mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Unknown type of data: %d", info->type);
+                    mterror(WM_SYS_LOGTAG, "Unknown type of data: %d", info->type);
             }
         }
 
@@ -585,7 +561,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     }
 
     if (ret == DB_NOTFOUND && j <= 1) {
-        mtwarn(WM_SYS_LOGTAG, "sys_rpm_packages(): Not found any record in database '%s'", RPM_DATABASE);
+        mtwarn(WM_SYS_LOGTAG, "Not found any record in database '%s'", RPM_DATABASE);
     }
 
     cursor->c_close(cursor);
@@ -614,8 +590,6 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
     size_t length;
     int i, installed = 1;
     char *timestamp;
-    time_t now;
-    struct tm localtm;
     cJSON *object = NULL;
     cJSON *package = NULL;
 
@@ -624,18 +598,12 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
     // Set timestamp
 
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    timestamp = w_get_timestamp(time(NULL));
 
     memset(read_buff, 0, OS_MAXSTR);
 
     if ((fp = fopen(file, "r"))) {
+        w_file_cloexec(fp);
 
         while(fgets(read_buff, OS_MAXSTR, fp) != NULL){
 
@@ -830,17 +798,8 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
     char *string;
     int random_id = os_random();
     char *timestamp;
-    time_t now;
-    struct tm localtm;
 
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -863,14 +822,16 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
     /* Get CPU and memory information */
     hw_info *sys_info;
     if (sys_info = get_system_linux(), sys_info){
-        cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
+        if(sys_info->cpu_name) {
+            cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
+        }
         cJSON_AddNumberToObject(hw_inventory, "cpu_cores", sys_info->cpu_cores);
         cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
         cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
         cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
         cJSON_AddNumberToObject(hw_inventory, "ram_usage", sys_info->ram_usage);
 
-        free(sys_info->cpu_name);
+        os_free(sys_info->cpu_name);
         free(sys_info);
     }
 
@@ -894,17 +855,8 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
     char *string;
     int random_id = os_random();
     char *timestamp;
-    time_t now;
-    struct tm localtm;
 
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -957,23 +909,15 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
     char ** ifaces_list;
     int i = 0, size_ifaces = 0;
-    struct ifaddrs *ifaddr, *ifa;
+    struct ifaddrs *ifaddr = NULL, *ifa;
     int random_id = os_random();
     char *timestamp;
-    time_t now;
-    struct tm localtm;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
 
-    now = time(NULL);
-    localtime_r(&now, &localtm);
+    timestamp = w_get_timestamp(time(NULL));
 
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if (random_id < 0)
         random_id = -random_id;
@@ -981,7 +925,10 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
     if (getifaddrs(&ifaddr) == -1) {
-        mterror(WM_SYS_LOGTAG, "getifaddrs() failed.");
+        if (ifaddr) {
+            freeifaddrs(ifaddr);
+        }
+        mterror(WM_SYS_LOGTAG, "Extracting the interfaces of the system.");
         free(timestamp);
         return;
     }
@@ -989,14 +936,22 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
         i++;
     }
+
+    if (i == 0) {
+        mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
+        free(timestamp);
+        return;
+    }
+
     os_calloc(i, sizeof(char *), ifaces_list);
 
     /* Create interfaces list */
     size_ifaces = getIfaceslist(ifaces_list, ifaddr);
 
     if(!ifaces_list[0]){
-        mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
+        mtinfo(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
         free(ifaces_list);
+        freeifaddrs(ifaddr);
         free(timestamp);
         return;
     }
@@ -1047,13 +1002,14 @@ hw_info *get_system_linux(){
     FILE *fp;
     hw_info *info;
     char string[OS_MAXSTR];
-
+    char *saveptr;
     char *end;
 
     os_calloc(1, sizeof(hw_info), info);
+    init_hw_info(info);
 
     if (!(fp = fopen("/proc/cpuinfo", "r"))) {
-        mterror(WM_SYS_LOGTAG, "Unable to read cpuinfo file.");
+        mterror(WM_SYS_LOGTAG, "Unable to read the CPU name.");
         info->cpu_name = strdup("unknown");
     } else {
         char *aux_string = NULL;
@@ -1061,8 +1017,8 @@ hw_info *get_system_linux(){
             if ((aux_string = strstr(string, "model name")) != NULL){
 
                 char *cpuname;
-                cpuname = strtok(string, ":");
-                cpuname = strtok(NULL, "\n");
+                strtok_r(string, ":", &saveptr);
+                cpuname = strtok_r(NULL, "\n", &saveptr);
                 if (cpuname[0] == '\"' && (end = strchr(++cpuname, '\"'), end)) {
                     *end = '\0';
                 }
@@ -1072,52 +1028,60 @@ hw_info *get_system_linux(){
             } else if ((aux_string = strstr(string, "cpu MHz")) != NULL){
 
                 char *frec;
-                frec = strtok(string, ":");
-                frec = strtok(NULL, "\n");
+                strtok_r(string, ":", &saveptr);
+                frec = strtok_r(NULL, "\n", &saveptr);
                 if (frec[0] == '\"' && (end = strchr(++frec, '\"'), end)) {
                     *end = '\0';
                 }
                 info->cpu_MHz = atof(frec);
             }
         }
-        free(aux_string);
+        if (!info->cpu_name) {
+            info->cpu_name = strdup("unknown");
+        }
         fclose(fp);
     }
 
     info->cpu_cores = get_nproc();
 
     if (!(fp = fopen("/proc/meminfo", "r"))) {
-        mterror(WM_SYS_LOGTAG, "Unable to read meminfo file.");
+        mterror(WM_SYS_LOGTAG, "Unable to read the RAM memory information.");
     } else {
-        char *aux_string = NULL;
         while (fgets(string, OS_MAXSTR, fp) != NULL){
+            char *aux_string = NULL;
+
             if ((aux_string = strstr(string, "MemTotal")) != NULL){
 
-                char *end_string;
-                aux_string = strtok(string, ":");
-                aux_string = strtok(NULL, "\n");
-                if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
-                    *end = '\0';
+                char *end_string = NULL;
+                strtok_r(string, ":", &saveptr);
+                aux_string = strtok_r(NULL, "\n", &saveptr);
+                if (aux_string) {
+                    if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
+                        *end = '\0';
+                    }
+                    info->ram_total = strtol(aux_string, &end_string, 10);
+                } else {
+                    info->ram_total = 0;
                 }
-                info->ram_total = strtol(aux_string, &end_string, 10);
-
             } else if ((aux_string = strstr(string, "MemFree")) != NULL){
 
-                char *end_string;
-                aux_string = strtok(string, ":");
-                aux_string = strtok(NULL, "\n");
-                if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
-                    *end = '\0';
+                char *end_string = NULL;
+                strtok_r(string, ":", &saveptr);
+                aux_string = strtok_r(NULL, "\n", &saveptr);
+                if (aux_string) {
+                    if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
+                        *end = '\0';
+                    }
+                    info->ram_free = strtol(aux_string, &end_string, 10);
+                } else {
+                    info->ram_free = 0;
                 }
-                info->ram_free = strtol(aux_string, &end_string, 10);
-
             }
         }
 
         if (info->ram_total > 0) {
             info->ram_usage = 100 - (info->ram_free * 100 / info->ram_total);
         }
-        free(aux_string);
         fclose(fp);
     }
 
@@ -1480,8 +1444,6 @@ char* get_default_gateway(char *ifa_name){
 void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     char *timestamp;
-    time_t now;
-    struct tm localtm;
     int random_id = os_random();
 
     if (random_id < 0)
@@ -1490,14 +1452,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
 
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    timestamp = w_get_timestamp(time(NULL));
 
     PROCTAB* proc = openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV);
 
@@ -1689,7 +1644,7 @@ int read_entry(u_int8_t* bytes, rpm_data *info) {
 }
 
 void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
-    
+
     struct ifaddrs *ifa;
     int k = 0;
     int family = 0;
@@ -1709,7 +1664,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
     state = get_oper_state(iface_name);
     cJSON_AddStringToObject(interface, "state", state);
     free(state);
-  
+
     /* Get MAC address */
     char addr_path[PATH_LENGTH] = {'\0'};
     snprintf(addr_path, PATH_LENGTH, "%s%s/address", WM_SYS_IFDATA_DIR, iface_name);
@@ -1723,11 +1678,11 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
             }
             cJSON_AddStringToObject(interface, "MAC", mac);
         } else {
-            mtdebug1(WM_SYS_LOGTAG, "Invalid MAC address length for interface \"%s\" at \"%s\": file is empty.", iface_name, addr_path);
+            mtdebug1(WM_SYS_LOGTAG, "Invalid MAC address length for interface '%s' at '%s': file is empty.", iface_name, addr_path);
         }
         fclose(fs_if_addr);
     } else {
-        mtwarn(WM_SYS_LOGTAG, "Unable to read MAC address for interface \"%s\" from \"%s\": %s (%d)", iface_name, addr_path, strerror(errno), errno);
+        mtdebug1(WM_SYS_LOGTAG, "Unable to read MAC address for interface '%s' from '%s': %s (%d)", iface_name, addr_path, strerror(errno), errno);
     }
 
     cJSON *ipv4 = cJSON_CreateObject();
@@ -1763,7 +1718,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                 if (result == 0) {
                     cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
                 } else {
-                    mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                    mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 address for interface '%s': %s\n", iface_name, gai_strerror(result));
                 }
 
                 /* Get Netmask for IPv4 address */
@@ -1777,7 +1732,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     if (result == 0) {
                         cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
                     } else {
-                        mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 netmask for interface '%s': %s\n", iface_name, gai_strerror(result));
                     }
 
                     /* Get broadcast address (or destination address in a Point to Point connection) */
@@ -1791,7 +1746,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                         if (result == 0) {
                             cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
                         } else {
-                            mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                            mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 broadcast for interface '%s': %s\n", iface_name, gai_strerror(result));
                         }
                     } else if ((host[0] != '\0') && (netmask[0] != '\0')) {
                         char * broadaddr;
@@ -1817,14 +1772,16 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     char ** parts = NULL;
                     char *ip_addrr;
                     parts = OS_StrBreak('%', host, 2);
-                    ip_addrr = w_strtrim(parts[0]);
-                    cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(ip_addrr));
-                    for (k=0; parts[k]; k++){
-                        free(parts[k]);
+                    if(parts) {
+                        ip_addrr = w_strtrim(parts[0]);
+                        cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(ip_addrr));
+                        for (k=0; parts[k]; k++){
+                            free(parts[k]);
+                        }
+                        free(parts);
                     }
-                    free(parts);
                 } else {
-                    mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                    mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 address for interface '%s': %s\n", iface_name, gai_strerror(result));
                 }
 
                 /* Get Netmask for IPv6 address */
@@ -1838,7 +1795,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     if (result == 0) {
                         cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
                     } else {
-                        mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 netmask for interface '%s': %s\n", iface_name, gai_strerror(result));
                     }
                 }
 
@@ -1853,7 +1810,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     if (result == 0) {
                         cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(broadaddr6));
                     } else {
-                        mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 broadcast for interface '%s': %s\n", iface_name, gai_strerror(result));
                     }
                 }
 

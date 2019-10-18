@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef __GETLL_H
-#define __GETLL_H
+#ifndef GETLL_H
+#define GETLL_H
 
 #include "eventinfo.h"
 #include "analysisd.h"
@@ -33,4 +33,4 @@ extern FILE *_ejflog;
 
 void OS_RotateLogs(int day,int year,char *mon);
 
-#endif /* __GETLL_H */
+#endif /* GETLL_H */

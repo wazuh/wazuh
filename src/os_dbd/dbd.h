@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
-#ifndef _DBD_H
-#define _DBD_H
+#ifndef DBD_H
+#define DBD_H
 
 #include "shared.h"
 #include "db_op.h"
@@ -38,5 +38,4 @@ void OS_DBD(DBConfig *db_config) __attribute__((nonnull)) __attribute__((noretur
 /* Set config pointer for osbd_op */
 void osdb_setconfig(DBConfig *db_config);
 
-#endif /* _DBD_H */
-
+#endif /* DBD_H */

@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -391,11 +391,23 @@ void *Data_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *or
 {
 #ifdef TESTRULE
     if (!alert_only) {
-        print_out("       extra_data: '%s'", field);
+        print_out("       data: '%s'", field);
     }
 #endif
 
     lf->data = field;
+    return (NULL);
+}
+
+void *Extra_Data_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
+{
+#ifdef TESTRULE
+    if (!alert_only) {
+        print_out("       extra_data: '%s'", field);
+    }
+#endif
+
+    lf->extra_data = field;
     return (NULL);
 }
 

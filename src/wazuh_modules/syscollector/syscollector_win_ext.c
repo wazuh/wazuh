@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * Aug, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -330,8 +330,6 @@ char* length_to_ipv6_mask(int mask_length){
                 case 1:
                     string[j++] = '8';
                     break;
-                case 0:
-                    break;
             }
             length = 0;
         }
@@ -405,14 +403,14 @@ char* parse_raw_smbios_bbserial(BYTE* rawData, DWORD rawDataSize){
 	SMBIOSStructureHeader *header;
 	char *serialNumber = NULL, *tmp = NULL;
 	BYTE serialNumberStrNum = 0, curStrNum = 0;
-	
+
 	if (rawData == NULL || !rawDataSize) return NULL;
-	
+
 	while(pos < rawDataSize)
 	{
 		/* Get structure header */
 		header = (SMBIOSStructureHeader*)(rawData + pos);
-		
+
 		/* Check if this SMBIOS structure represents the Base Board Information */
 		if (header->Type == 2)
 		{
@@ -425,20 +423,20 @@ char* parse_raw_smbios_bbserial(BYTE* rawData, DWORD rawDataSize){
 				break;
 			}
 		}
-		
+
 		/* Skip formatted area length */
 		pos += header->FormattedAreaLength;
-		
+
 		/* Reset current string number */
 		curStrNum = 0;
-		
+
 		/* Read unformatted area */
 		/* This area is formed by NULL-terminated strings */
 		/* The area itself ends with an additional NULL terminator */
 		while(pos < rawDataSize)
 		{
 			tmp = (char*)(rawData + pos);
-			
+
 			/* Check if we found a NULL terminator */
 			if (tmp[0] == 0)
 			{
@@ -456,24 +454,24 @@ char* parse_raw_smbios_bbserial(BYTE* rawData, DWORD rawDataSize){
 					tmp++;
 				}
 			}
-			
+
 			/* Increase current string number */
 			curStrNum++;
-			
+
 			/* Check if we reached the Serial Number */
 			if (header->Type == 2 && curStrNum == serialNumberStrNum)
 			{
 				serialNumber = strdup(tmp);
 				break;
 			}
-			
+
 			/* Prepare position to access the next string */
 			pos += (DWORD)strlen(tmp);
 		}
-		
+
 		if (serialNumber) break;
 	}
-	
+
 	return serialNumber;
 }
 
@@ -482,11 +480,11 @@ __declspec( dllexport ) int get_baseboard_serial(char **serial)
     int ret = 0;
     DWORD smbios_size = 0;
     PRawSMBIOSData smbios = NULL;
-    
+
     DWORD Signature = 0;
     const BYTE byteSignature[] = { 'B', 'M', 'S', 'R' }; // "RSMB" (little endian)
     memcpy(&Signature, byteSignature, 4);
-    
+
     /* Get raw SMBIOS firmware table size */
     /* Reference: https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/nf-sysinfoapi-getsystemfirmwaretable */
     smbios_size = GetSystemFirmwareTable(Signature, 0, NULL, 0);
@@ -508,7 +506,7 @@ __declspec( dllexport ) int get_baseboard_serial(char **serial)
             } else {
                 ret = 3;
             }
-            
+
             free(smbios);
         } else {
             ret = 2;
@@ -516,7 +514,7 @@ __declspec( dllexport ) int get_baseboard_serial(char **serial)
     } else {
         ret = 1;
     }
-    
+
     return ret;
 }
 

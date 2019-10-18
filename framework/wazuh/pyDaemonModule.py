@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import errno
 import os
@@ -53,7 +53,7 @@ def pyDaemon():
     os.chdir('/')
 
 def create_pid(name, pid):
-    filename = "{0}{1}/{2}-{3}.pid".format(common.ossec_path, common.os_pidfile, name, pid)
+    filename = "{0}/{1}/{2}-{3}.pid".format(common.ossec_path, common.os_pidfile, name, pid)
 
     with open(filename, 'a') as fp:
         try:
@@ -63,7 +63,7 @@ def create_pid(name, pid):
             raise WazuhException(3002, str(e))
 
 def delete_pid(name, pid):
-    filename = "{0}{1}/{2}-{3}.pid".format(common.ossec_path, common.os_pidfile, name, pid)
+    filename = "{0}/{1}/{2}-{3}.pid".format(common.ossec_path, common.os_pidfile, name, pid)
     try:
         if os.path.exists(filename):
             os.unlink(filename)

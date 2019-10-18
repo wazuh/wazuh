@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _ERROR_MESSAGES__H
-#define _ERROR_MESSAGES__H
+#ifndef ERROR_MESSAGES_H
+#define ERROR_MESSAGES_H
 
 /***  Error messages - English ***/
 
@@ -67,7 +67,7 @@
 #define QUEUE_ERROR     "(1210): Queue '%s' not accessible: '%s'."
 #define QUEUE_FATAL     "(1211): Unable to access queue: '%s'. Giving up.."
 #define PID_ERROR       "(1212): Unable to create PID file."
-#define DENYIP_WARN     "(1213): Message from '%s' not allowed."
+#define DENYIP_WARN     "(1213): Message from '%s' not allowed. Cannot find the ID of the agent."
 #define MSG_ERROR       "(1214): Problem receiving message from '%s'."
 #define CLIENT_ERROR    "(1215): No client configured. Exiting."
 #define CONNS_ERROR     "(1216): Unable to connect to '%s': '%s'."
@@ -95,7 +95,7 @@
 #define NO_CONFIG       "(1239): Configuration file not found: '%s'."
 #define INVALID_TIME    "(1240): Invalid time format: '%s'."
 #define INVALID_DAY     "(1241): Invalid day format: '%s'."
-#define ACCEPT_ERROR    "(1242): Couldn't accept TCP connections."
+#define ACCEPT_ERROR    "(1242): Couldn't accept TCP connections: %s (%d)"
 #define RECV_ERROR      "(1243): Couldn't receive message from peer."
 #define DUP_SECURE      "(1244): Can't add more than one secure connection."
 #define SEND_DISCON     "(1245): Sending message to disconnected agent '%s'."
@@ -194,14 +194,15 @@
 #define OPEN_UNABLE     "(1963): Unable to open file '%s'."
 #define NON_TEXT_FILE   "(1964): File '%s' is not ASCII or UTF-8 encoded."
 #define EXCLUDE_FILE    "(1965): File excluded: '%s'."
+#define DUP_FILE_INODE  "(1966): Inode for file '%s' already found. Skipping it."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
 #define NO_AUTHFILE     "(1402): Authentication key file '%s' not found."
 #define ENCFORMAT_ERROR "(1403): Incorrectly formatted message from agent '%s' (host '%s')."
-#define ENCKEY_ERROR    "(1404): Authentication error. Wrong key from '%s'."
+#define ENCKEY_ERROR    "(1404): Authentication error. Wrong key or corrupt payload. Message received from agent '%s' at '%s'."
 #define ENCSIZE_ERROR   "(1405): Message size not valid: '%64s'."
-#define ENCSUM_ERROR    "(1406): Checksum mismatch on message from '%s'."
+#define ENCSUM_ERROR    "(1406): Checksum mismatch. Message received from agent '%s' at '%s'."
 #define ENCTIME_ERROR   "(1407): Duplicated counter for '%s'."
 #define ENC_IP_ERROR    "(1408): Invalid ID %s for the source ip: '%s' (name '%s')."
 #define ENCFILE_CHANGED "(1409): Authentication file changed. Updating."
@@ -251,6 +252,7 @@
 #define AG_NOKEYS_EXIT  "(4109): Unable to start without auth keys. Exiting."
 #define AG_MAX_ERROR    "(4110): Maximum number of agents '%d' reached."
 #define AG_AX_AGENTS    "(4111): Maximum number of agents allowed: '%d'."
+#define AG_INV_MNGIP    "(4112): Invalid server address found: '%s'"
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."
@@ -296,11 +298,11 @@
 #define VU_QUERY_ERROR              "(5407): The query could not be formed."
 #define VU_OS_VERSION_ERROR         "(5408): Invalid OS version."
 #define VU_REFRESH_DB_ERROR         "(5409): Could not refresh the %s DB."
-#define VU_GET_SOFTWARE_ERROR       "(5410): The software of the agent '%s' could not be obtained."
+#define VU_GET_SOFTWARE_ERROR       "(5410): The software of the agent %s could not be obtained."
 #define VU_AG_CHECK_ERR             "(5411): Agent vulnerabilities could not be checked."
 #define VU_TABLE_ERROR              "(5412): Table %s is not available."
 #define VU_PACKAGE_TABLE_ERROR      "(5414): The packages table for agent %s could not be created."
-#define VU_DB_TIMESTAMP_OVAL_ERROR  "(5417): Stored timestamp could not be compared. %s OVAL will continue updating."
+#define VU_DB_TIMESTAMP_FEED_ERROR  "(5417): Stored timestamp could not be compared. %s feed will continue updating."
 #define VU_SSL_LIBRARY_ERROR        "(5418): Could not initialize the OpenSSL library."
 #define VU_SSL_CREATE_ERROR         "(5419): The SSL structure could not be created."
 #define VU_SSL_CONTEXT_ERROR        "(5420): Unable to create a new SSL context."
@@ -313,24 +315,59 @@
 #define VU_CREATE_DB_ERROR          "(5427): The database could not be checked or created."
 #define VU_SOFTWARE_REQUEST_ERROR   "(5428): Agent %s software could not be requested."
 #define VU_NO_AGENT_ERROR           "(5429): The agents information could not be processed."
-#define VU_CREATE_HASH_ERRO         "(5430): The agents hash table could not be created."
-#define VU_SYSC_SCAN_REQUEST_ERROR  "(5431): Last Syscollector scan from the agent %s could not be requested."
+#define VU_CREATE_HASH_ERRO         "(5430): The '%s' hash table could not be created."
+#define VU_SYSC_SCAN_REQUEST_ERROR  "(5431): Last software scan from the agent %s could not be requested."
 #define VU_HTTP_HEADER_ERROR        "(5432): Invalid HTTP header."
 #define VU_PACKAGE_RECOG_ERROR      "(5433): The package could not be recognized in '%s'."
 #define VU_NO_SYSC_SCANS            "(5434): No package inventory found for agent %s, so their vulnerabilities will not be checked."
 #define VU_GLOBALDB_OPEN_ERROR      "(5435): Could not open global_db."
-#define VU_REPORT_ERROR             "(5436): The agent %s vulnerabilities could not be reported."
-#define VU_UPDATE_RETRY             "(5437): Failed when updating %s %s database. Retrying in %lu seconds..."
+#define VU_REPORT_ERROR             "(5436): The agent %s vulnerabilities could not be reported. Error: %s."
+#define VU_UPDATE_RETRY             "(5437): Failed when updating '%s %s' database. Retrying in %lu seconds."
 #define VU_API_REQ_INV              "(5489): There was no valid response to '%s' after %d attempts."
-#define VU_PARSED_FEED_ERROR        "(5491): The %s feed couldn't be parsed."
+#define VU_PARSED_FEED_ERROR        "(5491): The %s feed couldn't be parsed from '%s' file."
 #define VU_VER_EXTRACT_ERROR        "(5493): The version of '%s' could not be extracted."
 #define VU_GLOBALDB_ERROR           "(5496): Could not connect to global DB."
-#define VU_NULL_AGENT_ID            "(5497): The agent database returned a null agent ID. Skipping agent."
-#define VU_NULL_AGENT_IP            "(5498): The agent database returned a null registration IP address. Skipping agent %s."
-#define VU_API_REQ_INV_NEW          "(5499): There was no valid response to '%s' after %d attempts. Trying the next page..."
-#define VU_UNC_SEVERITY             "(5500): Uncontrolled severity has been found: '%s'."
-#define VU_FEED_NODE_NULL_ELM       "(5506): Null elements needing value have been found in a node of the feed. The update will not continue."
-
+#define VU_UNCOMPRESS_ERROR         "(5497): Could not uncompress the file downloaded from '%s'."
+#define VU_CPES_INSERT_ERROR        "(5499): Could not insert the CPEs."
+#define VU_CPE_INDEX_GET_ERROR      "(5500): Could not get the lower CPE index."
+#define VU_AGENT_CPE_EXT_ERROR      "(5501): Could not extract the CPE list from the agent %s."
+#define VU_INV_WAZUHDB_RES          "(5502): Invalid response from wazuh-db: '%s'."
+#define VU_AGENT_CPE_UPD_ERROR      "(5503): Could not update the CPE list from the agent %s."
+#define VU_AGENT_CPE_GEN_ERROR      "(5504): Could not generate the CPE inventory from the agent %s."
+#define VU_AGENT_CPE_PARSE_ERROR    "(5505): Could not parse the CPE '%s' from the agent %d."
+#define VU_GEN_SEARCH_TERMS_ERROR   "(5506): Could not generate the search terms for %s:%s:%s:%s in the agent %s."
+#define VU_CPE_PARSING_ERROR        "(5508): Could not parse the '%s' term of '%s'."
+#define VU_UNKNOWN_NVD_TAG          "(5510): An unexpected tag was found when processing the CVE list: '%s'."
+#define VU_UNKNOWN_NVD_CVE_TAG      "(5511): An unexpected tag was found when processing the CVE: '%s'."
+#define VU_PARSING_ERROR            "(5513): Could not decode the CPE '%s' for the agent %s."
+#define VU_WAZUH_DB_CPE_IN_ERROR    "(5515): Could not insert the CPEs from the agent %s into the database."
+#define VU_NVD_ROW_GET_ERROR        "(5517): Could not get the %s ID row."
+#define VU_SOCKET_RETRY_ERROR       "(5519): Unable to connect to socket '%s'."
+#define VU_FIND_NVD_ERROR           "(5520): No vulnerabilities could be found in the NVD for agent %s."
+#define VU_REPORT_NVD_ERROR         "(5521): Could not report vulnerabilities from the NVD for agent %s."
+#define VU_INVALID_DIC_TAG          "(5522): Invalid tag found when parsing the CPE dictionary: '%s'."
+#define VU_NULL_AGENT_ID            "(5524): The agent database returned a null agent ID. Skipping agent."
+#define VU_NULL_AGENT_IP            "(5525): The agent database returned a null registration IP address. Skipping agent %s."
+#define VU_API_REQ_INV_NEW          "(5526): There was no valid response to '%s' after %d attempts. Trying the next page."
+#define VU_UNC_SEVERITY             "(5527): Uncontrolled severity has been found: '%s'."
+#define VU_CPE_CLEAN_REQUEST_ERROR  "(5528): The CPEs of the agent %s could not be cleaned."
+#define VU_INVALID_CPE              "(5531): The ID %d is not a CPE."
+#define VU_HOTFIX_REQUEST_ERROR     "(5532): The hotfixes of the agent %s could not be requested."
+#define VU_MULTIPATH_ERROR          "(5535): Invalid multi_path '%s': %s."
+#define VU_REGEX_COMPILE_ERROR      "(5536): Cannot compile '%s' regular expression."
+#define VU_RH_REQ_FAIL_MAX          "(5541): The allowed number of failed pages (%d) has been exhausted. The feed will not be updated."
+#define VU_WCPE_GET_TIMEST_ERROR    "(5542): Could not get the update date of the Wazuh CPE dictionary."
+#define VU_CPEHELPER_INVALID_ACTION "(5556): Action %s of the CPE helper has to be used with %s."
+#define VU_INVALID_TRANSLATION_OS   "(5557): Invalid replacement OS: '%s-%s'."
+#define VU_WCPE_GET_VERFORMAT_ERROR "(5558): Could not get the version format of the Wazuh CPE dictionary."
+#define VU_WCPE_INV_VERFORMAT       "(5559): Invalid format version for the CPE helper: '%s'."
+#define VU_SEND_AGENT_REPORT_ERROR  "(5560): Could not send the %s report for %s in the agent %s."
+#define VU_UNC_SYSTEM               "(5561): Uncontrolled Operating System has been found: '%s'."
+#define VU_INV_ENTRY_TYPE           "(5562): Invalid entry type found when processing the CPE helper. Error: %d."
+#define VU_INVALID_DB_INT           "(5563): The integrity of the database is invalid, so Vulnerability Detector will stop working."
+#define VU_FEED_NODE_NULL_ELM       "(5564): Null elements needing value have been found in a node of the feed. The update will not continue."
+#define VU_INVALID_TERM_CONDITION   "(5571): Could not get the CPE term condition. Error in: %s term (%d:%d)."
+#define VU_WDB_LASTSCAN_ERROR       "(5575): Could not update the last scan for agent %s."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
@@ -364,7 +401,6 @@
 #define FIM_ERROR_WHODATA_HANDLER_REMOVE            "(6626): The handler '%s' could not be removed from the whodata hash table."
 #define FIM_ERROR_WHODATA_HANDLER_EVENT             "(6627): Could not get the time of the event whose handler is '%llu'."
 #define FIM_ERROR_WHODATA_EVENTID                   "(6628): Invalid EventID. The whodata cannot be extracted."
-#define FIM_ERROR_WHODATA_CREATION_DATE             "(6629): The creation date for '%s' could not be extracted."
 #define FIM_ERROR_WHODATA_EVENTADD_DUP              "(6630): The event could not be added to the '%s' hash table because it is duplicated. Target: '%s'."
 #define FIM_ERROR_WHODATA_EVENTADD                  "(6631): The event could not be added to the '%s' hash table. Target: '%s'."
 #define FIM_ERROR_WHODATA_GET_SID                   "(6632): Could not obtain the sid of Everyone. Error '%lu'."
@@ -491,4 +527,4 @@
 #define GMF_BUFF_ERROR  "Could not get path because it is too long and was shrunk by (%d) characters with a max of (%d)."
 #define GMF_UNKN_ERROR  "Could not run GetModuleFileName which returned (%ld)."
 
-#endif /* _ERROR_MESSAGES__H */
+#endif /* ERROR_MESSAGES_H */

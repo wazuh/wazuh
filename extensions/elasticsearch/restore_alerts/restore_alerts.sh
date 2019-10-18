@@ -3,7 +3,7 @@
 # Restore alerts from Wazuh alerts folder to Elasticsearch cluster.
 # Copyright (C) 2015-2019, Wazuh Inc.All rights reserved.
 # Wazuh.com
-# This program is a free software; you can redistribute it
+# This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
@@ -72,7 +72,7 @@ install_logstash () {
     if [[ ! -z $YUM_CMD ]]; then
         # Import the ElasticsearchPGP Key
         rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
-        
+
         echo -e "[elasticsearch-6.x]\nname=Elasticsearch repository for 6.x packages\nbaseurl=https://artifacts.elastic.co/packages/6.x/yum\ngpgcheck=1\ngpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch\nenabled=1\nautorefresh=1\ntype=rpm-md" | \
         tee -a /etc/yum.repos.d/elasticsearch.repo
 
@@ -110,17 +110,17 @@ previous_checks() {
     OSSEC_DIRECTORY="/var/ossec"
     LOGSTASH_BIN="/usr/share/logstash/bin/logstash"
     ALERTS_PATH="${OSSEC_DIRECTORY}/logs/alerts"
-    
+
     if ! [ -f $LOGSTASH_CONF ]; then
         print "Can't find Logstash ($LOGSTASH_CONF) configuration. \nExiting."
         exit 1
     fi
-    
+
     if ! [ -f $LOGSTASH_BIN ]; then
         print "----------------------------------------------------"
         print "  Can't find $LOGSTASH_BIN. Installing Logstash..."
         print "----------------------------------------------------"
-        
+
         print ""
         print "In order to avoid problems with Elasticsearch and"
         print "Logstash, both of them must have the same version."
@@ -189,7 +189,7 @@ setup_conf () {
 }
 
 end_and_exit () {
-    
+
     rm /tmp/$LOGSTASH_CONF
 
     print "\n### [Restoration ended] ###"
@@ -228,9 +228,9 @@ WM2ELS_restore () {
     ## Date to array
     setup_conf
     echo "##### Starting, reindexing alerts from $dateFrom to $dateTo"
-    
+
     dateFromAux=$dateFrom
-    
+
     while : ; do
         edit_conf
         IFS='-' read -r -a current_date <<< "$dateFromAux"

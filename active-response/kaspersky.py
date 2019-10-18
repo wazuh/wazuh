@@ -17,19 +17,22 @@ import socket
 import os
 import sys
 import json
+import time
 from os.path import dirname, abspath
 from socket import socket, AF_UNIX, SOCK_DGRAM
 
 ##################################################################################################################
-# Sets the sockets path
+# Sets the file paths
 ##################################################################################################################
 
 wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
 wazuh_queue = '{0}/queue/ossec/queue'.format(wazuh_path)
+now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
+ar_log_file = '{0}/logs/active-responses.log'.format(wazuh_path)
 
 ##################################################################################################################
 # Read and parser arguments.
-##################################################################################################################			
+##################################################################################################################
 
 parser = argparse.ArgumentParser()
 
@@ -71,9 +74,16 @@ def set_logger(name, foreground=None):
 		format = '%(asctime)s {}: %(message)s'.format(name)
 		logging.basicConfig(level=logging.INFO, format=format, datefmt="%Y-%m-%d %H:%M:%S")
 
+def ar_log():
+        # Logging the AR request
+        args_list = (' '.join(sys.argv[1:]))
+        msg = '{0} {1} {2}'.format(now, os.path.realpath(__file__), args_list)
+        f = open(ar_log_file, 'a')
+        f.write(msg +'\n')
+        f.close()
 
 ##################################################################################################################
-# Kaspersky logs management. 
+# Kaspersky logs management.
 ##################################################################################################################
 
 def logger(msg, mode, foreground=None):
@@ -107,13 +117,13 @@ def run_kaspersky():
 		log_message = "Memory scan."
 		logger(log_message, "INFO", foreground = args.verbose)
 		task = '--start-task 5'
-	if args.custom_scan_folder:	
+	if args.custom_scan_folder:
 		if os.path.exists(args.custom_scan_folder):
 			log_message = "Custom scan folder."
 			logger(log_message, "INFO", foreground = args.verbose)
 			scan_folder(args.custom_scan_folder)
-	if args.custom_scan_file:	
-		if os.path.exists(args.custom_scan_file):	
+	if args.custom_scan_file:
+		if os.path.exists(args.custom_scan_file):
 			if args.action:
 				log_message = "Custom scan file with action."
 				logger(log_message, "INFO", foreground = args.verbose)
@@ -139,7 +149,7 @@ def run_kaspersky():
 		log_message = "Run custom flags: {}.".format(args.custom_flags)
 		logger(log_message, "INFO", foreground = args.verbose)
 		task = '{}'.format(args.custom_flags)
-	
+
 	if args.enable_realtime:
 		log_message = "Enable realtime."
 		logger(log_message, "INFO", foreground=args.verbose)
@@ -148,7 +158,7 @@ def run_kaspersky():
 	if args.disable_realtime:
 		log_message = "Disable realtime."
 		logger(log_message, "INFO", foreground=args.verbose)
-		task = '--stop-task 1'	
+		task = '--stop-task 1'
 
 	if task != '':
 		kesl_control = '{}{} {}'.format(bin_path, binary, task)
@@ -162,7 +172,7 @@ def run_kaspersky():
 
 
 ##################################################################################################################
-# Run Kaspersky with the corresponding task. 
+# Run Kaspersky with the corresponding task.
 ##################################################################################################################
 
 def send_kaspersky(task):
@@ -171,7 +181,7 @@ def send_kaspersky(task):
 
 
 ##################################################################################################################
-# Prepares a task to scan a specific directory. 
+# Prepares a task to scan a specific directory.
 ##################################################################################################################
 
 def scan_folder(folder_path):
@@ -214,7 +224,7 @@ def scan_folder(folder_path):
 
 
 ##################################################################################################################
-# Obtains the previous path of an existing task for later deletion. 
+# Obtains the previous path of an existing task for later deletion.
 ##################################################################################################################
 
 def get_previous_path(path, get_query):
@@ -235,7 +245,7 @@ def get_previous_path(path, get_query):
 
 
 ##################################################################################################################
-# Creates a custom option file to add the path of the directory to be scanned. 
+# Creates a custom option file to add the path of the directory to be scanned.
 ##################################################################################################################
 
 def create_custom_settings_file(folder_path):
@@ -254,7 +264,7 @@ def create_custom_settings_file(folder_path):
 
 
 ##################################################################################################################
-# Removes the custom options file after create the task that uses it. 
+# Removes the custom options file after create the task that uses it.
 ##################################################################################################################
 
 def remove_custom_settings_file(path):
@@ -283,14 +293,14 @@ def parse_tasks_states(tasks):
 			ids.append(id_fields[len(id_fields)-1].replace(" ",""))
 		if " State " in line:
 			states_fields = line.split(":")
-			states.append(states_fields[len(states_fields)-1].replace(" ",""))	
+			states.append(states_fields[len(states_fields)-1].replace(" ",""))
 
 	states_dict = dict(zip(ids, states))
 	return states_dict
 
 
 ##################################################################################################################
-# Send logs events by socket. 
+# Send logs events by socket.
 ##################################################################################################################
 
 def send_msg(wazuh_queue, msg):
@@ -317,9 +327,9 @@ def send_msg(wazuh_queue, msg):
 ##################################################################################################################
 
 def main():
-	set_logger('wazuh-kaspersky', foreground=args.verbose)
-	run_kaspersky()
-
+    ar_log()
+    set_logger('wazuh-kaspersky', foreground=args.verbose)
+    run_kaspersky()
 
 if __name__ == "__main__":
 	main()

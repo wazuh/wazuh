@@ -1,13 +1,13 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import re
 from glob import glob
 from xml.etree.ElementTree import fromstring
 import wazuh.configuration as configuration
 from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
+from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml, filter_array_by_query
 import os
 from sys import version_info
 
@@ -242,29 +242,34 @@ class Rule:
         return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
 
     @staticmethod
-    def get_rules(status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None, path=None,
-                  file=None, id=None, level=None, offset=0, limit=common.database_limit, sort=None, search=None):
-
+    def get_rules(offset=0, limit=common.database_limit, sort=None, search=None, filters={}, q=''):
         """
         Gets a list of rules.
 
-        :param status: Filters by status: enabled, disabled, all.
-        :param group: Filters by group.
-        :param pci: Filters by pci requirement.
-        :param gpg13: Filter by gpg13 requirement.
-        :param gdpr: Filter by gdpr requirement.
-        :param hipaa: Filter by hipaa requirement.
-        :param nist_800_53: Filter by nist_800_53 requirement.
-        :param file: Filters by file of the rule.
-        :param path: Filters by file of the path.
-        :param id: Filters by rule ID.
-        :param level: Filters by level. It can be an integer or an range (i.e. '2-4' that means levels from 2 to 4).
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
+        :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}.
+            This filter is used for filtering by 'status', 'group', 'pci', 'gpg13', 'gdpr', 'hipaa', 'nist_800_53',
+            'file', 'path', 'id' and 'level'.
+        :param q: Defines query to filter.
+
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+        # set default values to parameters
+        status = filters.get('status', None)
+        group = filters.get('group', None)
+        pci = filters.get('pci', None)
+        gpg13 = filters.get('gpg13', None)
+        gdpr = filters.get('gdpr', None)
+        hipaa = filters.get('hipaa', None)
+        nist_800_53 = filters.get('nist_800_53', None)
+        path = filters.get('path', None)
+        file_ = filters.get('file', None)
+        id_ = filters.get('id', None)
+        level = filters.get('level', None)
+
         all_rules = []
 
         if level:
@@ -298,10 +303,10 @@ class Rule:
             elif path and path != r.path:
                 rules.remove(r)
                 continue
-            elif file and file != r.file:
+            elif file_ and file_ != r.file:
                 rules.remove(r)
                 continue
-            elif id and int(id) != r.id:
+            elif id_ and int(id_) != r.id:
                 rules.remove(r)
                 continue
             elif level:
@@ -315,6 +320,10 @@ class Rule:
 
         if search:
             rules = search_array(rules, search['value'], search['negation'])
+
+        if q:
+            # rules contains a list of Rule objects, it is necessary to cast it into dictionaries
+            rules = filter_array_by_query(q, [rule.to_dict() for rule in rules])
 
         if sort:
             rules = sort_array(rules, sort['fields'], sort['order'], Rule.SORT_FIELDS)

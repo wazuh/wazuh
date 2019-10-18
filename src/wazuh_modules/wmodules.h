@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 22, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -83,7 +83,7 @@ typedef enum crypto_type {
 #include "wm_command.h"
 #include "wm_ciscat.h"
 #include "wm_aws.h"
-#include "wm_vuln_detector.h"
+#include "vulnerability_detector/wm_vuln_detector.h"
 #include "wm_osquery_monitor.h"
 #include "wm_download.h"
 #include "wm_azure.h"
@@ -141,6 +141,9 @@ void wm_append_sid(pid_t sid);
 void wm_remove_sid(pid_t sid);
 #endif
 
+// Initialize children pool
+void wm_children_pool_init();
+
 // Terminate every child process group
 void wm_kill_children();
 
@@ -196,5 +199,9 @@ size_t wmcom_getconfig(const char * section, char ** output);
 
 // Sleep function for Windows and Unix (milliseconds)
 void wm_delay(unsigned int ms);
+
+#ifdef __MACH__
+void freegate(gateway *gate);
+#endif
 
 #endif // W_MODULES

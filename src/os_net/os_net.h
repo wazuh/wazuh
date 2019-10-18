@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -12,9 +12,8 @@
  * APIs for many network operations
  */
 
-
-#ifndef __OS_NET_H
-#define __OS_NET_H
+#ifndef OS_NET_H
+#define OS_NET_H
 
 /* OS_Bindport*
  * Bind a specific port (protocol and a ip).
@@ -90,6 +89,11 @@ int OS_SetKeepalive(int socket);
  * Enable SO_KEEPALIVE options for TCP
  */
 #ifndef CLIENT
+
+#ifdef __MACH__
+#define TCP_KEEPIDLE TCP_KEEPALIVE
+#endif
+
 void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt);
 #endif
 /* Set the delivery timeout for a socket
@@ -137,4 +141,4 @@ ssize_t os_recv_waitall(int sock, void * buf, size_t size);
 // Wrapper for select()
 int wnet_select(int sock, int timeout);
 
-#endif /* __OS_NET_H */
+#endif /* OS_NET_H */
