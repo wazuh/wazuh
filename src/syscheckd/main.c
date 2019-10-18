@@ -110,7 +110,7 @@ int main(int argc, char **argv)
             if (!test_config) {
                 minfo(FIM_DIRECTORY_NOPROVIDED);
             }
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, -1);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL);
         } else if (!syscheck.dir[0]) {
             if (!test_config) {
                 minfo(FIM_DIRECTORY_NOPROVIDED);
@@ -171,9 +171,6 @@ int main(int argc, char **argv)
         rootcheck_connect();
     }
 
-    /* Initial time to settle */
-    sleep(syscheck.tsleep + 2);
-
     /* Connect to the queue */
     if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
         minfo(FIM_WAITING_QUEUE, DEFAULTQPATH, errno, strerror(errno), 5);
@@ -233,20 +230,27 @@ int main(int argc, char **argv)
         r = 0;
         while (syscheck.dir[r] != NULL) {
             if (syscheck.opts[r] & REALTIME_ACTIVE) {
-  #ifdef INOTIFY_ENABLED
-                minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
-  #elif defined(WIN32)
-                minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
-  #else
+#if defined (INOTIFY_ENABLED) || defined (WIN32)
+                struct stat file_stat;
+                if (w_stat(syscheck.dir[r], &file_stat) >= 0) {
+                    switch(file_stat.st_mode & S_IFMT) {
+                    case FIM_REGULAR:
+                        mwarn(FIM_WARN_FILE_REALTIME, syscheck.dir[r]);
+                        break;
+
+                    case FIM_DIRECTORY:
+                        minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
+                        break;
+                    }
+                } else {
+                    mdebug2(FIM_STAT_FAILED, syscheck.dir[r], errno, strerror(errno));
+                }
+#else
                 mwarn(FIM_WARN_REALTIME_DISABLED, syscheck.dir[r]);
-  #endif
+#endif
             }
             r++;
         }
-    }
-
-    if (syscheck.rootcheck) {
-        mtinfo("rootcheck", STARTUP_MSG, (int)getpid());
     }
 
     /* Some sync time */
@@ -266,6 +270,11 @@ int main(int argc, char **argv)
 
     /* Start the daemon */
     start_daemon();
+
+    // We shouldn't reach this point unless syscheck is disabled
+    while(1) {
+        pause();
+    }
 
 }
 
