@@ -31,7 +31,7 @@ LIST(APPEND tests_names "test_version_op")
 LIST(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
 LIST(APPEND tests_names "test_create_db")
-LIST(APPEND tests_flags "-Wl,--wrap,merror_exit -Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_delete -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_replace -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Add")
+LIST(APPEND tests_flags "-Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_delete -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_replace -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Add")
 
 LIST(APPEND tests_names "test_syscheck_audit")
 LIST(APPEND tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,IsSocket -Wl,--wrap,IsFile -Wl,--wrap,IsDir -Wl,--wrap,IsLink -Wl,--wrap,IsFile -Wl,--wrap,audit_restart \

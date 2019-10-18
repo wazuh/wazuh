@@ -35,10 +35,6 @@ int __wrap_OSHash_Add() {
     return mock();
 }
 
-int __wrap_merror_exit() {
-    return mock();
-}
-
 fim_entry_data *__wrap_rbtree_get() {
     fim_entry_data *data = mock_type(fim_entry_data *);
     return data;
@@ -678,24 +674,6 @@ void test_fim_check_depth_success(void **state)
 }
 
 
-void test_fim_check_depth_failure_position(void **state)
-{
-    (void) state;
-    int ret;
-
-    // Load syscheck default values
-    syscheck_set_internals();
-    Read_Syscheck_Config("test_syscheck.conf");
-
-    char * path = "folder/file.test";
-
-    ret = fim_check_depth(path, 100);
-
-    assert_int_equal(ret, -1);
-
-}
-
-
 void test_fim_check_depth_failure_strlen(void **state)
 {
     (void) state;
@@ -754,7 +732,7 @@ void test_fim_insert_success_new(void **state)
     // Added
     will_return(__wrap_OSHash_Add, 2);
 
-    ret = fim_insert (file, data, &file_stat);
+    ret = fim_insert(file, data, &file_stat);
     free_entry_data(data);
 
     assert_int_equal(ret, 0);
@@ -798,7 +776,7 @@ void test_fim_insert_success_add(void **state)
     // Not duplicated
     will_return(__wrap_rbtree_insert, 1);
     // Already in hash table
-    fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));;
+    fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));
     inode_data->items = 1;
     inode_data->paths = os_AddStrArray(file, inode_data->paths);
     will_return(__wrap_OSHash_Get, inode_data);
@@ -930,7 +908,12 @@ void test_fim_update_success(void **state)
         "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
     );
 
-    will_return(__wrap_rbtree_get, NULL);
+    // (fim_update_inode) In hash table
+    fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));
+    inode_data->items = 1;
+    inode_data->paths = os_AddStrArray("test.file", inode_data->paths);
+    will_return(__wrap_OSHash_Get, inode_data);
+
     will_return(__wrap_rbtree_replace, 1);
 
     ret = fim_update(file, data, data);
@@ -969,12 +952,10 @@ void test_fim_update_failure_nofile(void **state)
         "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
     );
 
-    will_return(__wrap_merror_exit, -99);
-
     ret = fim_update(NULL, data, data);
     free_entry_data(data);
 
-    assert_int_equal(ret, -99);
+    assert_int_equal(ret, -1);
 }
 
 
@@ -1007,6 +988,12 @@ void test_fim_update_failure_rbtree(void **state)
         "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
     );
 
+    // (fim_update_inode) In hash table
+    fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));
+    inode_data->items = 1;
+    inode_data->paths = os_AddStrArray("test.file", inode_data->paths);
+    will_return(__wrap_OSHash_Get, inode_data);
+
     will_return(__wrap_rbtree_replace, 0);
 
     ret = fim_update(file, data, data);
@@ -1030,6 +1017,42 @@ void test_fim_delete_no_data(void **state)
 }
 
 
+void test_fim_update_inode_in_hash(void **state)
+{
+    (void) state;
+    int ret;
+
+    char * file = "test-file.tst";
+    char * inode_key = "1212:9090";
+
+    fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));
+    inode_data->items = 1;
+    inode_data->paths = os_AddStrArray("test.file", inode_data->paths);
+    will_return(__wrap_OSHash_Get, inode_data);
+
+    ret = fim_update_inode(file, inode_key);
+
+    assert_int_equal(ret, 0);
+}
+
+
+void test_fim_update_inode_not_in_hash(void **state)
+{
+    (void) state;
+    int ret;
+
+    char * file = "test-file.tst";
+    char * inode_key = "1212:9090";
+
+    will_return(__wrap_OSHash_Get, NULL);
+    will_return(__wrap_OSHash_Add, 2);
+
+    ret = fim_update_inode(file, inode_key);
+
+    assert_int_equal(ret, 0);
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_fim_json_event, delete_json),
@@ -1048,7 +1071,6 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_scan_info_json_end, delete_json),
         cmocka_unit_test_teardown(test_fim_get_checksum, delete_entry_data),
         cmocka_unit_test(test_fim_check_depth_success),
-        cmocka_unit_test(test_fim_check_depth_failure_position),
         cmocka_unit_test(test_fim_check_depth_failure_strlen),
         cmocka_unit_test(test_fim_insert_success_new),
         cmocka_unit_test(test_fim_insert_success_add),
@@ -1058,6 +1080,8 @@ int main(void) {
         //cmocka_unit_test(test_fim_update_failure_nofile),
         cmocka_unit_test(test_fim_update_failure_rbtree),
         cmocka_unit_test(test_fim_delete_no_data),
+        cmocka_unit_test(test_fim_update_inode_in_hash),
+        cmocka_unit_test(test_fim_update_inode_not_in_hash),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
