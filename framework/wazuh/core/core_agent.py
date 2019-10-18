@@ -2,18 +2,15 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
-import errno
 import fcntl
 import hashlib
 import ipaddress
-import operator
 import socket
 from base64 import b64encode
 from datetime import date, datetime, timedelta, timezone
-from functools import reduce
 from glob import glob
 from json import loads
-from os import chown, chmod, path, makedirs, urandom, listdir, stat, remove
+from os import chown, chmod, path, makedirs, urandom, stat, remove
 from platform import platform
 from shutil import copyfile, rmtree
 from time import time, sleep
@@ -25,12 +22,11 @@ from wazuh import common, configuration
 from wazuh.InputValidator import InputValidator
 from wazuh.cluster.utils import get_manager_status
 from wazuh.database import Connection
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError, create_exception_dic
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
-from wazuh.results import WazuhResult
 from wazuh.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
-    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, SQLiteBackend, WazuhDBBackend, safe_move
+    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, SQLiteBackend, WazuhDBBackend, safe_move
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):

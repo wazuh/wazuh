@@ -649,7 +649,8 @@ def delete_groups(list_groups=None, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_list_group(pretty=False, wait_for_complete=False, list_groups=None, offset=0, limit=None, sort=None, search=None):
+def get_list_group(pretty=False, wait_for_complete=False, list_groups=None, offset=0, limit=None, sort=None,
+                   search=None):
     """Get groups.
 
     Returns a list containing basic information about each agent group such as number of agents belonging to the group
@@ -692,7 +693,7 @@ def get_list_group(pretty=False, wait_for_complete=False, list_groups=None, offs
 
 @exception_handler
 def delete_single_group(group_id, pretty=False, wait_for_complete=False):
-    """Deletes a group. Agents that were assigned only to the deleted group will automatically revert to the default group.
+    """Deletes a group. Agents that were assigned only to the deleted group will automatically revert to default group.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response

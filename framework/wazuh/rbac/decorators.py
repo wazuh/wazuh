@@ -8,7 +8,7 @@ from functools import wraps
 from api.authentication import AuthenticationManager
 from wazuh.common import rbac, system_agents, system_groups, broadcast
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
-from wazuh.exception import WazuhError, create_exception_dic
+from wazuh.exception import WazuhError
 from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import AffectedItemsWazuhResult
 

@@ -13,10 +13,10 @@ from wazuh.InputValidator import InputValidator
 from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryDistinctAgents, WazuhDBQueryGroupByAgents, \
     WazuhDBQueryMultigroups, Agent
 from wazuh.database import Connection
-from wazuh.exception import WazuhError, WazuhInternalError, WazuhException, create_exception_dic
+from wazuh.exception import WazuhError, WazuhInternalError, WazuhException
 from wazuh.rbac.decorators import expose_resources
-from wazuh.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
 from wazuh.results import WazuhResult, AffectedItemsWazuhResult
+from wazuh.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
