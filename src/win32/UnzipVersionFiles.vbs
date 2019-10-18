@@ -1,23 +1,25 @@
 On Error Resume Next
+
+home_dir = Replace(WScript.Arguments.Item(1), Chr(34), "")
+
 mySubOrFuncName = WScript.Arguments.Item(0)  'name of the subroutine or function
 subCall = "call " & mySubOrFuncName & "()"
 Execute subCall
 
 public Function ExtractConfigurationFiles()
-	destFolder = "C:\Program Files (x86)\ossec-agent\"
+	destFolder = home_dir
 	ExtractFiles(destFolder)
 	ExtractConfigurationFiles = 0
 End Function
 
 
 public Function ExtractSCAFiles()
-	destFolder = "C:\Program Files (x86)\ossec-agent\ruleset\sca\"
+	destFolder = home_dir & "ruleset\sca\"
 	ExtractFiles(destFolder)
 	ExtractSCAFiles = 0
 End Function
 
 private Function ExtractFiles(destFolder)
-	On Error Resume Next
 	Set fso = CreateObject("Scripting.FileSystemObject")
 	set objFolder = fso.GetFolder(destFolder)
 	Set objShell = CreateObject("Shell.Application")

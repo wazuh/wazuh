@@ -85,8 +85,8 @@
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[ADDRESS]&quot;,&quot;[SERVER_PORT]&quot;,&quot;[PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[TIME_RECONNECT]&quot;,&quot;[WAZUH_MANAGER]&quot;,&quot;[WAZUH_MANAGER_PORT]&quot;,&quot;[WAZUH_PROTOCOL]&quot;,&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;,&quot;[WAZUH_TIME_RECONNECT]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
 
-        <CustomAction Id="InstallConfigurationFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs ExtractConfigurationFiles" />
-        <CustomAction Id="InstallSCAFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs ExtractSCAFiles" />
+        <CustomAction Id="InstallConfigurationFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs ExtractConfigurationFiles &quot;[APPLICATIONFOLDER]&quot;" />
+        <CustomAction Id="InstallSCAFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs ExtractSCAFiles &quot;[APPLICATIONFOLDER]&quot;" />
 
         <CustomAction Id="ReplaceConfiguration" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript ReplaceConf.vbs &quot;[APPLICATIONFOLDER]&quot;" />
 
@@ -296,17 +296,16 @@
                         <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" KeyPath="yes" />
                     </Component>
 
-                    <Component Id="OSSEC_PRE6.CONF" DiskId="1" Guid="71947F0E-56D6-4E14-8539-214DFF6CA2BE" NeverOverwrite="yes" Permanent="yes">
+                    <!--Component Id="OSSEC_PRE6.CONF" DiskId="1" Guid="71947F0E-56D6-4E14-8539-214DFF6CA2BE" NeverOverwrite="yes" Permanent="yes">
                         <File Id="OSSEC_PRE6.CONF" Name="ossec.conf" Source="default-ossec-pre6.conf" KeyPath="yes">
                             <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
                         </File>
                         <Condition>VersionNT &lt; 600</Condition>
-                    </Component>
+                    </Component-->
                     <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes" Permanent="yes">
                         <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes">
                             <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
                         </File>
-                        <Condition>VersionNT &gt;= 600</Condition>
                     </Component>
                     <Component Id="INTERNAL_OPTIONS.CONF" DiskId="1" Guid="D2F2A5B9-1A98-4BB8-8AC4-D948CA97DD0E">
                         <File Id="INTERNAL_OPTIONS.CONF" Name="internal_options.conf" Source="internal_options.conf" DefaultVersion="1.0"/>
@@ -612,7 +611,7 @@
             <ComponentRef Id="REPLACECONF.VBS" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
-            <ComponentRef Id="OSSEC_PRE6.CONF" />
+            <!--ComponentRef Id="OSSEC_PRE6.CONF" /-->
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="LICENSE.TXT" />
             <ComponentRef Id="LIBWINPTHREAD_1.DLL" />

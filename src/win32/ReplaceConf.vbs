@@ -18,17 +18,15 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
       Set file = objFSO.OpenTextFile(home_dir & "profile.template", ForReading)
       newline = file.ReadAll
       file.Close
-
       re.Pattern = "(</client>)"
       re.Global = False
-      strNewText = re.Replace(strNewText, "$1" & vbCrLf & newline)
+      strNewText = re.Replace(strNewText, "$1" & vbCrLf & vbCrLf & "  " & newline)
     End If
 
     If objFSO.fileExists(home_dir & "header-comments.template") Then
       Set file = objFSO.OpenTextFile(home_dir & "header-comments.template", ForReading)
       newline = file.ReadAll
       file.Close
-
       re.Pattern = "<!--" & vbCrLf & "(.*" & vbCrLf & ")*-->"
       re.Global = False
       strNewText = re.Replace(strNewText, newline)
@@ -38,7 +36,6 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
       Set file = objFSO.OpenTextFile(home_dir & "logging.template", ForReading)
       newline = file.ReadAll
       file.Close
-
       re.Pattern = "  <logging>" & vbCrLf & "(.*" & vbCrLf & ")*  </logging>"
       re.Global = False
       strNewText = re.Replace(strNewText, newline)
@@ -48,7 +45,6 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
       Set file = objFSO.OpenTextFile(home_dir & "rootcheck.template", ForReading)
       newline = file.ReadAll
       file.Close
-
       re.Pattern = "  <rootcheck>" & vbCrLf & "(.*" & vbCrLf & ")*  </rootcheck>"
       re.Global = False
       strNewText = re.Replace(strNewText, newline)
@@ -58,7 +54,6 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
       Set file = objFSO.OpenTextFile(home_dir & "wodle-openscap.template", ForReading)
       newline = file.ReadAll
       file.Close
-
       re.Pattern = "  <wodle-openscap>" & vbCrLf & "(.*" & vbCrLf & ")*  </wodle-openscap>"
       re.Global = False
       strNewText = re.Replace(strNewText, newline)
@@ -68,7 +63,6 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
       Set file = objFSO.OpenTextFile(home_dir & "wodle-syscollector.template", ForReading)
       newline = file.ReadAll
       file.Close
-
       re.Pattern = "  <wodle-syscollector>" & vbCrLf & "(.*" & vbCrLf & ")*  </wodle-syscollector>"
       re.Global = False
       strNewText = re.Replace(strNewText, newline)
@@ -78,7 +72,6 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
       Set file = objFSO.OpenTextFile(home_dir & "syscheck.template", ForReading)
       newline = file.ReadAll
       file.Close
-
       re.Pattern = "  <syscheck>" & vbCrLf & "(.*" & vbCrLf & ")*  </syscheck>"
       re.Global = False
       strNewText = re.Replace(strNewText, newline)
@@ -92,6 +85,15 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
 	  re.Global = False
 	  strNewText = re.Replace(strNewText, newline)
 	End If
+
+  If objFSO.fileExists(home_dir & "sca.template") Then
+    Set file = objFSO.OpenTextFile(home_dir & "sca.template", ForReading)
+    newline = file.ReadAll
+    file.Close
+    re.Pattern = "  <sca>" & vbCrLf & "(.*" & vbCrLf & ")*  </sca>"
+    re.Global = False
+    strNewText = re.Replace(strNewText, newline)
+  End If  
     
   If objFSO.fileExists(home_dir & "localfile-commands.template") Then
 	  Set file = objFSO.OpenTextFile(home_dir & "localfile-commands.template", ForReading)

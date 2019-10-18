@@ -1,0 +1,14 @@
+  <localfile>
+    <location>Application</location>
+    <log_format>eventlog</log_format>
+  </localfile>
+
+  <localfile>
+    <location>Security</location>
+    <log_format>eventlog</log_format>
+  </localfile>
+
+  <localfile>
+    <location>System</location>
+    <log_format>eventlog</log_format>
+  </localfile>
