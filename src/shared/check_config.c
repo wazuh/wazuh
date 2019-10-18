@@ -47,8 +47,6 @@ int test_manager_conf(const char *path, char **output) {
         return OS_INVALID;
     }
 
-    wm_strcat(output, "Test OK", '\n');
-
     return 0;
 }
 
@@ -78,8 +76,6 @@ int test_agent_conf(const char *path, int type, char **output) {
         return OS_INVALID;
     }
 
-    wm_strcat(output, "Test OK", '\n');
-
     return 0;
 }
 
@@ -102,8 +98,6 @@ int test_remote_conf(const char *path, int type, char **output) {
     } else if(Test_ClientBuffer(path, type, output) < 0) {
         return OS_INVALID;
     }
-
-    wm_strcat(output, "Test OK", '\n');
 
     return 0;
 }

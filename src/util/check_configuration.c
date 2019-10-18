@@ -107,20 +107,25 @@ int main(int argc, char **argv)
         }
 
         if(!filepath) {
-            filepath = type_flag == CRMOTE_CONFIG ? strdup(DEFAULTDIR SHAREDCFG_DIR "/default") : strdup(DEFAULTCPATH);
+            filepath = type_flag == CRMOTE_CONFIG ? strdup(DEFAULTDIR SHAREDCFG_DIR "/default/agent.conf") : strdup(DEFAULTCPATH);
         }
 
         char *output = NULL;
+        int result;
         if(type_flag == MANAGER_CFG) {
-            test_manager_conf(filepath, &output);
+            result = test_manager_conf(filepath, &output);
         }
         else if(type_flag == CAGENT_CGFILE) {
-            test_agent_conf(filepath, type_flag, &output);
+            result = test_agent_conf(filepath, type_flag, &output);
         }
         else if(type_flag == CRMOTE_CONFIG) {
-            test_remote_conf(filepath, type_flag, &output);
+            result = test_remote_conf(filepath, type_flag, &output);
         }
-        printf("%s\n", output);
+        if (result == 0) {
+            printf("Configuration validated successfully\n");
+        } else {
+            printf("%s\n", output);
+        }
 
         os_free(output);
         os_free(filepath);

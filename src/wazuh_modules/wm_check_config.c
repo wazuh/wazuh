@@ -85,44 +85,78 @@ void *wm_chk_conf_main() {
                 break;
 
             default:
-
                 if(check_event_rcvd(buffer, &filetype, &filepath) < 0) {
                     break;
                 }
 
                 if(!filepath) {
-                    if(strcmp(filetype, "remote")) {
-                        filepath = strdup(DEFAULTDIR SHAREDCFG_DIR "/default");
+                    if(strcmp(filetype, "remote") == 0) {
+                        filepath = strdup(DEFAULTDIR SHAREDCFG_DIR "/default/agent.conf");
                     } else {
                         filepath = strdup(DEFAULTCPATH);
                     }
                 }
 
                 char *output = NULL;
-                test_file(filetype, filepath, &output);
+                int result = test_file(filetype, filepath, &output);
 
                 cJSON *temp_obj = cJSON_CreateObject();
+
                 if(output) {
-                    char *aux = strdup(output);
-
-                    if(strstr(aux, "Test OK") && !(strstr(aux, "ERROR"))) {
-                        cJSON_AddStringToObject(temp_obj, "error", "0");
-                    } else if(strstr(aux, "Test OK") && strstr(aux, "ERROR")) {
-                        cJSON_AddStringToObject(temp_obj, "error", "2");
-                        cJSON_AddStringToObject(temp_obj, "error_mesage", WARN_RESULT);
-                    } else if(!strstr(aux, "Test OK")) {
+                    char *aux = strtok(output, "\n");
+                    char *aux_2 = NULL;        
+                    int i;
+                    int size = (int) strlen(aux);
+                    cJSON *temp_obj2 = cJSON_CreateArray();
+                    
+                    if(result) {
                         cJSON_AddStringToObject(temp_obj, "error", "1");
+                    } else {
+                        cJSON_AddStringToObject(temp_obj, "error", "0");
                     }
-                    cJSON_AddStringToObject(temp_obj, "data", aux);
 
+                    while(aux){
+                        cJSON *validator = cJSON_CreateObject();
+                        aux_2 = strdup(aux);
+                        if(strstr(aux, "WARNING")) {
+                            cJSON_AddStringToObject(validator, "type", "WARNING");
+                            for (i = 0; i <= size - 9; i++) {
+                                aux_2[i] = aux_2[i + 9];
+                            }
+                            cJSON_AddStringToObject(validator, "message", aux_2);
+                        } else if(strstr(aux, "INFO")) {
+                            cJSON_AddStringToObject(validator, "type", "INFO");
+                            for (i = 0; i <= size - 6; i++) {
+                                aux_2[i] = aux_2[i + 6];
+                            }
+                            cJSON_AddStringToObject(validator, "message", aux_2);
+                        } else if (result){
+                            cJSON_AddStringToObject(validator, "type", "ERROR");
+                            if (strstr(aux_2, "ERROR")) {
+                                for (i = 0; i <= size - 7; i++) {
+                                    aux_2[i] = aux_2[i + 7];
+                                }
+                            }
+                            cJSON_AddStringToObject(validator, "message", aux_2);
+                        }
+                        cJSON_AddItemToArray(temp_obj2, validator);
+                        aux = strtok(NULL, "\n");
+                        if (aux) {
+                            size = (int) strlen(aux);
+                        }
+                    }
+                    cJSON_AddItemToObject(temp_obj, "data", temp_obj2);
                     os_free(output);
                     output = cJSON_PrintUnformatted(temp_obj);
                     os_free(aux);
-                } else {
-                    cJSON_AddStringToObject(temp_obj, "error", "1");
-                    cJSON_AddStringToObject(temp_obj, "data", "failure testing the configuration file");
-                    output = cJSON_PrintUnformatted(temp_obj);
+                    os_free(aux_2);
+                } else {	
+                    cJSON_AddStringToObject(temp_obj, "error", "1");	
+                    cJSON_AddStringToObject(temp_obj, "data", "failure testing the configuration file");	
+                    output = cJSON_PrintUnformatted(temp_obj);	
                 }
+
+                mwarn("%s", output);
 
                 /* Send the test result to API socket */
                 /* send_message(output); */
@@ -237,9 +271,10 @@ fail:
     return -1;
 }
 
-void test_file(const char *filetype, const char *filepath, char **output) {
+int test_file(const char *filetype, const char *filepath, char **output) {
 
     int result_code;
+    int result;
     int timeout = 2000; // Change timeout to an option 
     char *output_msg = NULL;
     char cmd[OS_SIZE_6144] = {0,};
@@ -247,15 +282,13 @@ void test_file(const char *filetype, const char *filepath, char **output) {
 
     if (wm_exec(cmd, &output_msg, &result_code, timeout, NULL) < 0) {
         if (result_code == EXECVE_ERROR) {
-            // mwarn("Path is invalid or file has insufficient permissions. %s", cmd);
             wm_strcat(output, "WARNING: Path is invalid or file has insufficient permissions:", '\n');
         } else {
-            // mwarn("Error executing [%s]", cmd);
             wm_strcat(output, "WARNING: Error executing: ", '\n');
         }
         wm_strcat(output, cmd, '\n');
         os_free(output_msg);
-        return;
+        return OS_INVALID;
     }
 
     if (output_msg && *output_msg) {
@@ -266,17 +299,20 @@ void test_file(const char *filetype, const char *filepath, char **output) {
         wm_strcat(output, output_msg, '\n');
     }
 
-    if(strcmp(filetype, "manager")) {
-        test_manager_conf(filepath, output);
-    } else if(strcmp(filetype, "agent")) {
-        test_agent_conf(filepath, CAGENT_CGFILE, output);
-    } else if(strcmp(filetype, "remote")) {
-        test_remote_conf(filepath, CRMOTE_CONFIG, output);
+    if(strcmp(filetype, "manager") == 0) {
+        result = test_manager_conf(filepath, &output_msg);
+    } else if(strcmp(filetype, "agent") == 0) {
+        result = test_agent_conf(filepath, CAGENT_CGFILE, &output_msg);
+    } else if(strcmp(filetype, "remote") == 0) {
+        result = test_remote_conf(filepath, CRMOTE_CONFIG, &output_msg);
     } else {
         wm_strcat(output, "Unknown value for -t option.", '\n');
+        return OS_INVALID;
     }
 
     os_free(output_msg);
+
+    return result;
 }
 
 void send_message(const char *output) {

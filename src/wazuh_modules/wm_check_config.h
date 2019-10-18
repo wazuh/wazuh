@@ -32,7 +32,7 @@ typedef struct wm_check_conf_t {
 
 wmodule *wm_chk_conf_read();
 int check_event_rcvd(const char *buffer, char **filetype, char **filepath);
-void test_file(const char *filetype, const char *filepath, char **output);
+int test_file(const char *filetype, const char *filepath, char **output);
 void send_message(const char *output);
 
 
