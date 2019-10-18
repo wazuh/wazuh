@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -999,7 +999,7 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
     } else {
         os_strdup(ctime(&fim_start), agt_info->syscheck_time);
 
-        /* Remove newline */
+        /* Remove syscheck_time newline */
         tmp_str = strchr(agt_info->syscheck_time, '\n');
         if (tmp_str) {
             *tmp_str = '\0';
@@ -1009,6 +1009,12 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
         os_strdup("Unknown", agt_info->syscheck_endtime);
     } else {
         os_strdup(ctime(&fim_end), agt_info->syscheck_endtime);
+        
+        /* Remove syscheck_endtime newline */
+        tmp_str = strchr(agt_info->syscheck_endtime, '\n');
+        if (tmp_str) {
+            *tmp_str = '\0';
+        }
     }
 
     /* Agent name of null, means it is the server info */
