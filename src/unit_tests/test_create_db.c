@@ -933,7 +933,7 @@ void test_fim_update_success(void **state)
     will_return(__wrap_rbtree_get, NULL);
     will_return(__wrap_rbtree_replace, 1);
 
-    ret = fim_update(file, data);
+    ret = fim_update(file, data, data);
     free_entry_data(data);
 
     assert_int_equal(ret, 0);
@@ -971,7 +971,7 @@ void test_fim_update_failure_nofile(void **state)
 
     will_return(__wrap_merror_exit, -99);
 
-    ret = fim_update(NULL, data);
+    ret = fim_update(NULL, data, data);
     free_entry_data(data);
 
     assert_int_equal(ret, -99);
@@ -1009,7 +1009,7 @@ void test_fim_update_failure_rbtree(void **state)
 
     will_return(__wrap_rbtree_replace, 0);
 
-    ret = fim_update(file, data);
+    ret = fim_update(file, data, data);
     free_entry_data(data);
 
     assert_int_equal(ret, -1);
