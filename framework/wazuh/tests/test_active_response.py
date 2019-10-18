@@ -17,7 +17,7 @@ with patch('wazuh.common.ossec_uid'):
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 
-@pytest.mark.parametrize('rbac, expected_exception, agent_id, command, arguments, custom', [
+@pytest.mark.parametrize('expected_exception, agent_id, command, arguments, custom', [
     (1650, '000', None, [], False),
     (1652, '000', 'random', [], False),
     (1652, '000', 'invalid_cmd', [], False),
@@ -27,7 +27,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     (None, '001', 'restart-ossec0', ["arg1", "arg2"], False),
     (None, '000', 'restart-ossec0', [], False),
 ])
-def test_run_command(rbac, expected_exception, agent_id, command, arguments, custom):
+def test_run_command(expected_exception, agent_id, command, arguments, custom):
     """
     Tests run_command function
     """
@@ -39,7 +39,7 @@ def test_run_command(rbac, expected_exception, agent_id, command, arguments, cus
         assert ret == {'message': 'Command sent.'}
 
 
-@pytest.mark.parametrize('rbac, expected_exception, command, arguments, custom', [
+@pytest.mark.parametrize('expected_exception, command, arguments, custom', [
     (1650, None, [], False),
     (1652, 'random', [], False),
     (1652, 'invalid_cmd', [], False),
