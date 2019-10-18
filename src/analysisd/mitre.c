@@ -66,7 +66,7 @@ int mitre_load(char * mode){
 
     /* Getting array size */
     if (size_ids = cJSON_GetArraySize(root), size_ids == 0) {
-        mdebug1("Mitre info loading failed. Query's response has 0 elements.");
+        mdebug1("Mitre info loading failed. Query response has 0 elements.");
         merror("Mitre matrix information could not be loaded.");
         cJSON_Delete(root);
         result = -1;
@@ -116,7 +116,7 @@ int mitre_load(char * mode){
             goto end;
         }
         if (size_tactics = cJSON_GetArraySize(tactics_json), size_tactics == 0) {
-            mdebug1("Mitre info loading failed. Query's response has 0 elements. Response: %s", response);
+            mdebug1("Mitre info loading failed. Query response has 0 elements. Response: %s", response);
             merror("Mitre matrix information could not be loaded.");
             cJSON_Delete(tactics_json);
             cJSON_Delete(root);
