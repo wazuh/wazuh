@@ -812,39 +812,6 @@ class Agent:
 
         return remove_agent
 
-    @staticmethod
-    def get_all_groups_sql(offset=0, limit=common.database_limit, sort=None, search=None):
-        """Gets the existing groups.
-
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        db_query = WazuhDBQueryDistinct(offset=offset, limit=limit, sort=sort, search=search, select=['name'],
-                                        fields={'name': '`group`'}, count=True, get_data=True, table='agent',
-                                        db_path=common.database_path_global, default_sort_field='`group`')
-        db_query.run()
-
-        return {'totalItems': db_query.total_items, 'items': [tuple[0] for tuple in db_query.conn]}
-
-    @staticmethod
-    def group_exists_sql(group_id):
-        """Checks if the group exists
-
-        :param group_id: Group ID.
-        :return: True if group exists, False otherwise
-        """
-        # Input Validation of group_id
-        if not InputValidator().group(group_id):
-            raise WazuhError(1722)
-
-        db_query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select=['group'],
-                                      query="group=" + group_id, count=True, get_data=False)
-        db_query.run()
-
-        return bool(db_query.total_items)
 
     @staticmethod
     def group_exists(group_id):
@@ -862,106 +829,6 @@ class Agent:
         else:
             return False
 
-    @staticmethod
-    def multi_group_exists(group_id):
-        """Checks if the group exists
-
-        :param group_id: Group ID.
-        :return: String of groups if group exists, an empty list otherwise
-        """
-        all_multigroups = []
-        for file in listdir(common.groups_path):
-            filepath = path.join(common.groups_path, file)
-            f = open(filepath, 'r')
-            all_multigroups.append(f.read())
-            f.close()
-        if group_id in all_multigroups:
-            return all_multigroups
-        else:
-            return []
-
-    @staticmethod
-    def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
-                        filters=None, q=""):
-        """Gets the agents in a group
-
-        :param group_id: Group ID.
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :param filters: Defines required field filters.
-        Format: {"field1":"value1", "field2":["value2","value3"]}
-        :param q: Defines query to filter in DB.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        check_group_exists(group_id)
-
-        db_query = WazuhDBQueryMultigroups(group_id=group_id, offset=offset, limit=limit, sort=sort, search=search,
-                                           select=select, filters=filters, count=True, get_data=True, query=q)
-        data = db_query.run()
-
-        return data
-
-    @staticmethod
-    def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None, q="",
-                                 filters=None):
-        """Gets the agents without a group
-
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :param filters: Values to filter by on database (legacy format).
-        :param q: Defines query to filter in DB.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-
-        return Agent.get_agent_group(group_id="null", offset=offset, limit=limit, sort=sort, search=search,
-                                     select=select, q='id!=0' + (';' + q if q else ''), filters=filters)
-
-    @staticmethod
-    def create_multi_group(group_id):
-        """Creates a multi group.
-
-        :param group_id: Group ID.
-        :return: Confirmation message.
-        """
-        if ',' not in group_id:
-            # if there's not , in the group_id, then it isn't a multigroup and therefore the function does nothing
-            return
-
-        # Create group in /var/multigroups
-        msg = None
-        try:
-            folder = hashlib.sha256(group_id.encode()).hexdigest()[:8]
-            multi_group_path = path.join(common.multi_groups_path, folder)
-            mkdir_with_mode(multi_group_path)
-            chown(multi_group_path, common.ossec_uid(), common.ossec_gid())
-            chmod(multi_group_path, 0o770)
-            msg = "Group '{0}' created.".format(group_id)
-            return msg
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise WazuhInternalError(1005, extra_message=str(e))
-        return msg
-
-    @staticmethod
-    def set_group(agent_id, group_id, force=False, replace=False):
-        """Set a group to an agent.
-
-        :param agent_id: Agent ID.
-        :param group_id: Group ID.
-        :param force: No check if agent exists
-        :param replace: Replace agent group instead of appending.
-        :return: Confirmation message.
-        """
-        if replace:
-            return Agent.replace_group(agent_id=agent_id, group_id=group_id, force=force)
-        else:
-            return Agent.add_group_to_agent(agent_id=agent_id, group_id=group_id, force=force)
 
     @staticmethod
     def get_agents_group_file(agent_id):
@@ -988,61 +855,6 @@ class Agent:
         except Exception as e:
             raise WazuhInternalError(1005, extra_message=str(e))
 
-    @staticmethod
-    def replace_group(agent_id, group_id, force=False):
-        """Replaces a group to an agent.
-
-        :param agent_id: Agent ID.
-        :param group_id: Group ID.
-        :param force: No check if agent exists
-        :return: Confirmation message.
-        """
-        # Input Validation of group_id
-        if not InputValidator().group(group_id):
-            raise WazuhError(1722)
-
-        agent_id = agent_id.zfill(3)
-        if agent_id == "000":
-            raise WazuhError(1703)
-
-        # Check if agent exists
-        if not force:
-            Agent(agent_id).get_basic_information()
-
-        # Assign group in /queue/agent-groups
-        Agent.set_agent_group_file(agent_id, group_id)
-
-        # Create group in /etc/shared
-        if not Agent.group_exists(group_id):
-            Agent.create_group(group_id)
-
-        return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
-
-    @staticmethod
-    def set_multi_group(agent_id, group_id, force=False):
-        """Set a multi group to an agent.
-
-        :param agent_id: Agent ID.
-        :param group_id: Group ID.
-        :param force: No check if agent exists
-        :return: Confirmation message.
-        """
-        # Input Validation of all groups_id
-        if not reduce(operator.iand, map(InputValidator().group, group_id.split(','))):
-            raise WazuhError(1722, extra_message=group_id)
-
-        agent_id = agent_id.zfill(3)
-        if agent_id == "000":
-            raise WazuhError(1703)
-
-        # Check if agent exists
-        if not force:
-            Agent(agent_id).get_basic_information()
-
-        # Assign group in /queue/agent-groups
-        Agent.set_agent_group_file(agent_id, group_id)
-
-        return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
 
     @staticmethod
     def check_multigroup_limit(agent_id):
@@ -1102,22 +914,6 @@ class Agent:
 
         return f"Agent '{agent_id}' removed from '{group_id}'. " + ("Agent reassigned to group default."
                                                                     if set_default else "")
-
-    @staticmethod
-    def get_number_of_agents_in_multigroup(multigroup_name):
-        """Returns the number of agents belonging to a multigroup
-
-        :param multigroup_name: name of the multigroup
-        :return:
-        """
-        # Connect DB
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhInternalError(1600)
-
-        conn = Connection(db_global[0])
-        conn.execute('select count(*) from agent where `group` = :group_name', {'group_name': multigroup_name})
-        return int(conn.fetch())
 
     @staticmethod
     def _get_protocol(wpk_repo, use_http=False):
@@ -1725,17 +1521,6 @@ def calculate_status(last_keep_alive, pending, today=datetime.utcnow()):
         return "disconnected" if difference > common.limit_seconds else ("pending" if pending else "active")
 
 
-def check_group_exists(group_id):
-    """ Check if agent group exists
-
-    :param group_id: Group ID.
-    :return: Exception if group does not exist
-    """
-    if group_id != 'null' and not glob(path.join(common.shared_path, group_id)) and \
-            not glob(path.join(common.multi_groups_path, group_id)):
-        raise WazuhError(1710, extra_message=group_id)
-
-
 def send_restart_command(agent_id):
     """ Send restart command to an agent
 
@@ -1744,18 +1529,6 @@ def send_restart_command(agent_id):
     """
     oq = OssecQueue(common.ARQUEUE)
     ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS, agent_id)
-    oq.close()
-
-    return ret_msg
-
-
-def send_restart_command_all():
-    """Send restart command to all agents
-
-    :return: OSSEC message
-    """
-    oq = OssecQueue(common.ARQUEUE)
-    ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS)
     oq.close()
 
     return ret_msg
