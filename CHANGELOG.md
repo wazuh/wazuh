@@ -41,6 +41,7 @@ All notable changes to this project will be documented in this file.
 - Fix service's installation path for CentOS 8. ([#4060](https://github.com/wazuh/wazuh/pull/4060))
 - Add macOS Catalina to the list of detected versions. ([#4061](https://github.com/wazuh/wazuh/pull/4061))
 - Prevent FIM from producing false negatives due to wrong checksum comparison. ([#4066](https://github.com/wazuh/wazuh/pull/4066))
+- Fix `previous_output` count for alerts when matching by group. ([#4097](https://github.com/wazuh/wazuh/pull/4097))
 
 
 ## [v3.10.2] - 2019-09-23
