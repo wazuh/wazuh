@@ -2565,7 +2565,6 @@ components:
       in: query
       name: list_agents
       description: List of agents IDs (separated by comma)
-      required: true
       schema:
         type: array
         items:
@@ -3701,8 +3700,9 @@ paths:
         - active-response
       summary: 'Run AR command in all agents'
       description: 'Runs an Active Response command on all agents'
-      operationId: api.controllers.active_response_controller.run_command_all
+      operationId: api.controllers.active_response_controller.run_command
       parameters:
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
@@ -3718,35 +3718,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Command sent to all agents."
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-  /active-response/{agent_id}:
-    put:
-      tags:
-        - active-response
-      summary: 'Run AR command in an agent'
-      description: 'Runs an Active Response command on a specified agent'
-      operationId: api.controllers.active_response_controller.run_command
-      parameters:
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ActiveResponseBody'
-      responses:
-        '200':
-          description: 'Command sent to agent'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Command sent."
+                message: "Command sent to shown agents."
         default:
           $ref: '#/components/responses/ResponseError'
 
