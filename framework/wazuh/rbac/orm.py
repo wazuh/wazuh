@@ -33,7 +33,7 @@ _Base = declarative_base()
 _Session = sessionmaker(bind=_engine)
 
 # IDs reserved for administrator roles and policies, these can not be modified or deleted
-admins_id = [1]
+admins_id = [1, 2]
 admin_policy = [1]
 
 
@@ -116,7 +116,7 @@ class Policies(_Base):
 
         :return: Dict with the information of the policy
         """
-        return {'id': self.id, 'name': self.name, 'policy': self.policy}
+        return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy)}
 
     def to_dict(self):
         """Return the information of one policy and the roles that have assigned
@@ -127,7 +127,7 @@ class Policies(_Base):
         for role in self.roles:
             roles.append(role.get_role())
 
-        return {'id': self.id, 'name': self.name, 'policy': self.policy, 'roles': roles}
+        return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy), 'roles': roles}
 
 
 class Roles(_Base):
@@ -163,7 +163,7 @@ class Roles(_Base):
 
         :return: Dict with the information of the role
         """
-        return {'id': self.id, 'name': self.name, 'rule': self.rule}
+        return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule)}
 
     def to_dict(self):
         """Return the information of one role and the policies that have assigned
@@ -174,7 +174,7 @@ class Roles(_Base):
         for policy in self.policies:
             policies.append(policy.get_policy())
 
-        return {'id': self.id, 'name': self.name, 'rule': self.rule, 'policies': policies}
+        return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule), 'policies': policies}
 
 
 class RolesManager:
@@ -190,6 +190,8 @@ class RolesManager:
         """
         try:
             role = self.session.query(Roles).filter_by(name=name).first()
+            if not role:
+                return SecurityError.ROLE_NOT_EXIST
             return role
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
@@ -202,6 +204,8 @@ class RolesManager:
         """
         try:
             role = self.session.query(Roles).filter_by(id=role_id).first()
+            if not role:
+                return SecurityError.ROLE_NOT_EXIST
             return role
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
@@ -255,7 +259,7 @@ class RolesManager:
                 self.session.query(Roles).filter_by(id=role_id).delete()
                 self.session.commit()
                 return True
-            return False
+            return SecurityError.ADMIN_RESOURCES
         except IntegrityError:
             self.session.rollback()
             return False
@@ -313,20 +317,22 @@ class RolesManager:
         """
         try:
             role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
-            if role_to_update and role_to_update.id not in admins_id and role_to_update is not None:
-                # Rule is not a valid json
-                if rule is not None and not json_validator(rule):
-                    return SecurityError.INVALID
-                # Change the name of the role
-                if name is not None:
-                    if self.session.query(Roles).filter_by(name=name).first() is not None:
-                        return SecurityError.ALREADY_EXIST
-                    role_to_update.name = name
-                # Change the rule of the role
-                if rule is not None:
-                    role_to_update.rule = json.dumps(rule)
-                self.session.commit()
-                return True
+            if role_to_update and role_to_update is not None:
+                if role_to_update.id not in admins_id:
+                    # Rule is not a valid json
+                    if rule is not None and not json_validator(rule):
+                        return SecurityError.INVALID
+                    # Change the name of the role
+                    if name is not None:
+                        if self.session.query(Roles).filter_by(name=name).first() is not None:
+                            return SecurityError.ALREADY_EXIST
+                        role_to_update.name = name
+                    # Change the rule of the role
+                    if rule is not None:
+                        role_to_update.rule = json.dumps(rule)
+                    self.session.commit()
+                    return True
+                return SecurityError.ADMIN_RESOURCES
             return SecurityError.ROLE_NOT_EXIST
         except IntegrityError:
             self.session.rollback()
@@ -353,11 +359,13 @@ class PoliciesManager:
         """
         try:
             policy = self.session.query(Policies).filter_by(name=name).first()
+            if not policy:
+                return SecurityError.POLICY_NOT_EXIST
             return policy
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST
 
-    def get_policy_by_id(self, policy_id: int):
+    def get_policy_id(self, policy_id: int):
         """Get the information about one policy specified by id
 
         :param policy_id: ID of the policy that want to get its information
@@ -365,6 +373,8 @@ class PoliciesManager:
         """
         try:
             policy = self.session.query(Policies).filter_by(id=policy_id).first()
+            if not policy:
+                return SecurityError.POLICY_NOT_EXIST
             return policy
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST
@@ -438,6 +448,7 @@ class PoliciesManager:
                 self.session.query(Policies).filter_by(id=policy_id).delete()
                 self.session.commit()
                 return True
+            return SecurityError.ADMIN_RESOURCES
         except IntegrityError:
             self.session.rollback()
             return False
@@ -497,21 +508,23 @@ class PoliciesManager:
         """
         try:
             policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
-            if policy_to_update and policy_to_update.id not in admin_policy and policy_to_update is not None:
-                # Policy is not a valid json
-                if policy is not None and not json_validator(policy):
-                    return SecurityError.INVALID
-                if name is not None:
-                    if self.session.query(Policies).filter_by(name=name).first() is not None:
-                        return SecurityError.ALREADY_EXIST
-                    policy_to_update.name = name
-                if policy is not None:
-                    if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
-                        policy_to_update.policy = json.dumps(policy)
-                self.session.commit()
-                return True
+            if policy_to_update and policy_to_update is not None:
+                if policy_to_update.id not in admin_policy:
+                    # Policy is not a valid json
+                    if policy is not None and not json_validator(policy):
+                        return SecurityError.INVALID
+                    if name is not None:
+                        if self.session.query(Policies).filter_by(name=name).first() is not None:
+                            return SecurityError.ALREADY_EXIST
+                        policy_to_update.name = name
+                    if policy is not None:
+                        if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
+                            policy_to_update.policy = json.dumps(policy)
+                    self.session.commit()
+                    return True
+                return SecurityError.ADMIN_RESOURCES
             return SecurityError.POLICY_NOT_EXIST
-        except IntegrityError as e:
+        except IntegrityError:
             self.session.rollback()
             return SecurityError.POLICY_NOT_EXIST
 
@@ -562,11 +575,11 @@ class RolesPoliciesManager:
                     self.session.commit()
                     return True
                 else:
-                    return SecurityError.ADMIN_RESOURCES
+                    return SecurityError.ALREADY_EXIST
             return SecurityError.ADMIN_RESOURCES
         except IntegrityError:
             self.session.rollback()
-            return SecurityError.ADMIN_RESOURCES
+            return SecurityError.INVALID
 
     def add_role_to_policy(self, policy_id: int, role_id: int):
         """Clone of the previous function
@@ -659,11 +672,11 @@ class RolesPoliciesManager:
                     self.session.commit()
                     return True
                 else:
-                    return False
-            return False
+                    return SecurityError.INVALID
+            return SecurityError.ADMIN_RESOURCES
         except IntegrityError:
             self.session.rollback()
-            return False
+            return SecurityError.INVALID
 
     def remove_all_policies_in_role(self, role_id: int):
         """Removes all relations with policies. Does not eliminate roles and policies
@@ -764,6 +777,11 @@ with RolesManager() as rm:
     rm.add_role('wazuh', {
         "FIND": {
             "r'^auth[a-zA-Z]+$'": ["administrator"]
+        }
+    })
+    rm.add_role('wazuh-app', {
+        "FIND": {
+            "r'^auth[a-zA-Z]+$'": ["administrator-app"]
         }
     })
 

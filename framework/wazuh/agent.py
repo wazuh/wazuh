@@ -35,21 +35,6 @@ from wazuh.utils import chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dic
     md5, SQLiteBackend, WazuhDBBackend, safe_move, process_array
 
 
-def create_exception_dic(id, e):
-    """
-    Creates a dictionary with a list of agent ids and it's error codes.
-    """
-    exception_dic = {'id': id, 'error': {'message': e.message}}
-
-    if isinstance(e, WazuhException):
-        exception_dic['error']['code'] = e.code
-        exception_dic['error']['remediation'] = e.remediation
-    else:
-        exception_dic['error']['code'] = 1000
-
-    return exception_dic
-
-
 class WazuhDBQueryAgents(WazuhDBQuery):
 
     def __init__(self, offset=0, limit=common.database_limit, sort=None, search=None, select=None, count=True,
