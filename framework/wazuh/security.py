@@ -368,22 +368,22 @@ def set_role_policy(role_id, policy_ids):
     :param policy_ids: List of policies ids
     :return Role-Policies information
     """
-    result = AffectedItemsWazuhResult(none_msg='No links created',
-                                      some_msg='Some roles and policies could not be linked',
-                                      all_msg='All roles and policies were linked')
+    result = AffectedItemsWazuhResult(none_msg=f'No link created to role {role_id[0]}',
+                                      some_msg=f'Some policies could not be linked to role {role_id[0]}',
+                                      all_msg=f'All policies were linked to role {role_id[0]}')
     with orm.RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
             role_policy = rpm.add_policy_to_role(role_id=role_id[0], policy_id=policy_id)
             if role_policy == SecurityError.ALREADY_EXIST:
-                result.add_failed_item(id_={'role_id': role_id[0], 'policy_id': policy_id}, error=WazuhError(4011))
+                result.add_failed_item(id_=policy_id, error=WazuhError(4011))
             elif role_policy == SecurityError.ROLE_NOT_EXIST:
-                result.add_failed_item(id_={'role_id': role_id[0], 'policy_id': policy_id}, error=WazuhError(4002))
+                result.add_failed_item(id_=policy_id, error=WazuhError(4002))
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
-                result.add_failed_item(id_={'role_id': role_id[0], 'policy_id': policy_id}, error=WazuhError(4007))
+                result.add_failed_item(id_=policy_id, error=WazuhError(4007))
             elif role_policy == SecurityError.ADMIN_RESOURCES:
-                result.add_failed_item(id_={'role_id': role_id[0], 'policy_id': policy_id}, error=WazuhError(4008))
+                result.add_failed_item(id_=policy_id, error=WazuhError(4008))
             else:
-                result.affected_items.append({'role_id': role_id[0], 'policy_id': policy_id})
+                result.affected_items.append(policy_id)
                 result.total_affected_items += 1
 
     return result
@@ -397,22 +397,22 @@ def remove_role_policy(role_id, policy_ids):
     :param policy_ids: List of policies ids
     :return Result of operation
     """
-    result = AffectedItemsWazuhResult(none_msg='No links deleted',
-                                      some_msg='Some links between roles and policies could not be deleted',
-                                      all_msg='All links between roles and policies were deleted')
+    result = AffectedItemsWazuhResult(none_msg=f'No policy unlinked from role {role_id[0]}',
+                                      some_msg=f'Some policies could not be unlinked from role {role_id[0]}',
+                                      all_msg=f'All policies were unlinked from role {role_id[0]}')
     with orm.RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
             role_policy = rpm.remove_policy_in_role(role_id=role_id[0], policy_id=policy_id)
             if role_policy == SecurityError.INVALID:
-                result.add_failed_item(id_={'role_id': role_id[0], 'policy_id': policy_id}, error=WazuhError(4010))
+                result.add_failed_item(id_=policy_id, error=WazuhError(4010))
             elif role_policy == SecurityError.ROLE_NOT_EXIST:
-                result.add_failed_item(id_={'role_id': role_id[0], 'policy_id': policy_id}, error=WazuhError(4002))
+                result.add_failed_item(id_=policy_id, error=WazuhError(4002))
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
-                result.add_failed_item(id_={'role_id': role_id[0], 'policy_id': policy_id}, error=WazuhError(4007))
+                result.add_failed_item(id_=policy_id, error=WazuhError(4007))
             elif role_policy == SecurityError.ADMIN_RESOURCES:
-                result.add_failed_item(id_={'role_id': role_id[0], 'policy_id': policy_id}, error=WazuhError(4008))
+                result.add_failed_item(id_=policy_id, error=WazuhError(4008))
             else:
-                result.affected_items.append({'role_id': role_id[0], 'policy_id': policy_id})
+                result.affected_items.append(policy_id)
                 result.total_affected_items += 1
 
     return result
