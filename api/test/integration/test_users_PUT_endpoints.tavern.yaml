@@ -37,13 +37,14 @@ stages:
     request:
       <<: *put_users_request
       json:
-        password: "new_user1A"
+        password: "new_user2A!"
     response:
       status_code: 200
       body:
         data:
-          items: !anything
-          totalItems: 1
+          affected_items:
+            - username: new_user
+          total_affected_items: 1
 
   - name: Update an non-existent user
     request:
@@ -54,9 +55,20 @@ stages:
       json:
         password: "new_user1A"
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 5001
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 5001
+                message: !anystr
+                remediation: !anystr
+              id:
+                - non-existent
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   - name: Update an existent user (invalid body)
     request:
@@ -72,10 +84,11 @@ stages:
     request:
       <<: *put_users_request
       json:
-        password: "new_user1A"
+        password: "new_user1A!!!?"
     response:
       status_code: 200
       body:
         data:
-          items: !anything
-          totalItems: 1
+          affected_items:
+            - username: new_user
+          total_affected_items: 1

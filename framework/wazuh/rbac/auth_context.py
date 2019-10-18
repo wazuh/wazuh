@@ -289,46 +289,81 @@ class RBAChecker:
     @staticmethod
     def run_testing():
         policies = [
-            # {
-            #     "actions": ["syscheck:put", "syscheck:get", "syscheck:delete"],
-            #     "resources": ["agent:id:*"],
-            #     "effect": "allow"
-            # },
-            # {
-            #     "actions": ["lists:get"],
-            #     "resources": ["list:path:*"],
-            #     "effect": "allow"
-            # },
-            # {
-            #     "actions": ["active_response:command"],
-            #     "resources": ["agent:id:001"],
-            #     "effect": "allow"
-            # },
-            # {
-            #     "actions": ["active_response:command"],
-            #     "resources": ["agent:id:001", "agent:id:002"],
-            #     "effect": "deny"
-            # },
-            # {
-            #     "actions": ["active_response:command"],
-            #     "resources": ["agent:id:001", "agent:id:002", "agent:id:004"],
-            #     "effect": "deny"
-            # },
-            # {
-            #     "actions": ["active_response:command"],
-            #     "resources": ["agent:id:001", "agent:id:002"],
-            #     "effect": "deny"
-            # },
-            # {
-            #     "actions": ["active_response:command"],
-            #     "resources": ["agent:group:default"],
-            #     "effect": "allow"
-            # },
-            # {
-            #     "actions": ["active_response:command"],
-            #     "resources": ["agent:group:group1"],
-            #     "effect": "deny"
-            # }
+            {
+                "actions": ["syscheck:put", "syscheck:get", "syscheck:delete"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["lists:get"],
+                "resources": ["list:path:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:id:001"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:id:001", "agent:id:002"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:id:001", "agent:id:002", "agent:id:004"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:id:001", "agent:id:002"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:group:default"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["active_response:command"],
+                "resources": ["agent:group:group1"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["security:read"],
+                "resources": ["role:id:1", "role:id:99", "role:id:2", "policy:id:55"],
+                "effect": "deny"
+            },
+            {
+                "actions": ["security:read"],
+                "resources": ["role:id:1", "role:id:99", "role:id:2", "policy:id:55", "role:id:6"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["security:update"],
+                "resources": ["role:id:1", "role:id:99", "role:id:2", "policy:id:55", "role:id:6", "policy:id:1"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["security:read"],
+                "resources": ["policy:id:1"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["security:delete"],
+                "resources": ["role:id:1", "role:id:2"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["security:delete"],
+                "resources": ["policy:id:1", "policy:id:2"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["security:update"],
+                "resources": ["policy:id:1", "policy:id:2", "policy:id:3"],
+                "effect": "allow"
+            }
         ]
 
         return policies
