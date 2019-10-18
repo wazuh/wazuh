@@ -359,7 +359,7 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         result.add_failed_items_from(other)
         result.affected_items = result.affected_items + other.affected_items
         result.sortable_fields = result.sortable_fields | other.sortable_fields
-        result.total_affected_items = other.total_affected_items
+        result.total_affected_items = result.total_affected_items + other.total_affected_items
 
         return result
 
