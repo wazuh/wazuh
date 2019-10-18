@@ -393,8 +393,7 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items:
-            - 'role 4: policy 2'
+          affected_items: !anything
           total_affected_items: 1
 
   # POST /security/roles/{role_id}/policies/{policy}
@@ -410,8 +409,7 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items:
-            - 'role 3: policy 3'
+          affected_items: !anything
           total_affected_items: 1
 
   # POST /security/roles/{non-existent role_id}/policies/{policy}
