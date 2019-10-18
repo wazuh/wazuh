@@ -279,6 +279,8 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
     if add_denied:
         for res_id, target_param in target.items():
             try:
+                denied = {original[target_param]} - allowed[res_id]
+            except TypeError:
                 denied = set(original[target_param]) - allowed[res_id]
             except KeyError:
                 denied = set()
