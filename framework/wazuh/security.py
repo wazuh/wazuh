@@ -2,410 +2,417 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import json
+import re
 
+from api.authentication import AuthenticationManager
 from wazuh import common
 from wazuh.exception import WazuhError
 from wazuh.rbac import orm
+from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import SecurityError
+from wazuh.results import AffectedItemsWazuhResult
 from wazuh.utils import process_array
 
+# Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
+_user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
 
-class Role:
-    """Role Object.
+
+@expose_resources(actions=['security:read'], resources=['user:id:{username_list}'])
+def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by=None,
+              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+    """Get the information of a specified user
+
+    :param username_list: Name of the user (None for all users)
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    :param sort_ascending: Sort in ascending (true) or descending (false) order
+    :param search_text: Text to search
+    :param complementary_search: Find items without the text to search
+    :param search_in_fields: Fields to search in
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    SORT_FIELDS = ['name']
+    result = AffectedItemsWazuhResult(none_msg='No user was shown',
+                                      some_msg='Some users could not be shown',
+                                      all_msg='All specified users were shown')
+    affected_items = list()
+    with AuthenticationManager() as auth:
+        for username in username_list:
+            user = auth.get_user(username)
+            affected_items.append(user) if user else result.add_failed_item(id_=username, error=WazuhError(5001))
 
-    def __init__(self, role_id=None, name=None, rule=None, policies=None):
-        self.role_id = role_id
-        self.name = name
-        self.rule = rule
-        if policies is None:
-            self.policies = list()
-        else:
-            self.policies = policies
+    processed_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                                    complementary_search=complementary_search, sort_by=sort_by,
+                                    sort_ascending=sort_ascending, offset=offset, limit=limit)
+    result.affected_items = processed_items['items']
+    result.total_affected_items = processed_items['totalItems']
 
-    def __str__(self):
-        return str(self.to_dict())
-
-    def to_dict(self):
-        return {'id': self.role_id, 'name': self.name, 'rule': self.rule, 'policies': self.policies}
-
-    @staticmethod
-    def get_role(role_id):
-        """Returns the information of a certain role
-
-        :param role_id: ID of the role on which the information will be collected
-        :return Role information.
-        """
-        return_role = None
-        with orm.RolesManager() as rm:
-            role = rm.get_role_id(role_id)
-            if role and role != SecurityError.ROLE_NOT_EXIST:
-                return_role = role.to_dict()
-                return_role['rule'] = json.loads(return_role['rule'])
-                # It is necessary to load the policies (json.loads) for a correct visualization
-                for index, policy in enumerate(return_role['policies']):
-                    return_role['policies'][index]['policy'] = \
-                        json.loads(return_role['policies'][index]['policy'])
-                # Removes the policies field because when creating a role it is not connected to any of them.
-                if len(return_role['policies']) == 0:
-                    return_role.pop('policies', None)
-
-        if return_role is None:
-            raise WazuhError(4002)
-
-        return return_role
-
-    @staticmethod
-    def get_roles(offset=0, limit=common.database_limit, sort_by=None,
-                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
-        """Returns information from all system roles, does not return information from its associated policies
-
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param sort_ascending: Sort in ascending (true) or descending (false) order
-        :param search_text: Text to search
-        :param complementary_search: Find items without the text to search
-        :param search_in_fields: Fields to search in
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        data = list()
-
-        with orm.RolesManager() as rm:
-            roles = rm.get_roles()
-            for role in roles:
-                dict_role = role.to_dict()
-                dict_role.pop('policies', None)
-                dict_role['rule'] = json.loads(dict_role['rule'])
-                data.append(dict_role)
-
-        return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
-                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                             offset=offset, limit=limit)
-
-    @staticmethod
-    def remove_role(role_id):
-        """Removes a certain role from the system
-
-        :param role_id: ID of the role to be removed
-        :return Result of operation.
-        """
-        response = dict()
-
-        with orm.RolesManager() as rm:
-            if rm.delete_role(role_id):
-                response['removed_roles'] = [int(role_id)]
-            else:
-                response['incorrect_roles'] = [int(role_id)]
-
-        return response
-
-    @staticmethod
-    def remove_roles(list_roles=None):
-        """Removes a list of roles from the system
-
-        :param list_roles: List of roles to be removed
-        :return Result of operation.
-        """
-        if list_roles is None:
-            list_roles = list()
-        status_correct = list()
-        response = dict()
-
-        with orm.RolesManager() as rm:
-            if len(list_roles) > 0:
-                for role in list_roles:
-                    if rm.delete_role(role):
-                        status_correct.append(int(role))
-                response['removed_roles'] = status_correct
-                # Symmetric difference: The symmetric difference of two sets A and B is
-                # the set of elements which are in either of the sets A or B but not in both.
-                response['incorrect_roles'] = list(set(list_roles) ^ set(status_correct))
-            else:
-                response['removed_roles'] = rm.delete_all_roles()
-
-        return response
-
-    @staticmethod
-    def add_role(name=None, rule=None):
-        """Creates a role in the system
-
-        :param name: The new role name
-        :param rule: The new rule
-        :return Role information.
-        """
-        with orm.RolesManager() as rm:
-            status = rm.add_role(name=name, rule=rule)
-            if status == SecurityError.ALREADY_EXIST:
-                raise WazuhError(4005)
-            if status == SecurityError.INVALID:
-                raise WazuhError(4003)
-
-        return Role.get_role(role_id=rm.get_role(name=name).id)
-
-    @staticmethod
-    def update_role(role_id, name=None, rule=None):
-        """Updates a role in the system
-
-        :param role_id: Role id to be update
-        :param name: The new role name
-        :param rule: The new rule
-        :return Role information.
-        """
-        if name is None and rule is None:
-            raise WazuhError(4001)
-
-        with orm.RolesManager() as rm:
-            status = rm.update_role(role_id=role_id, name=name, rule=rule)
-            if status == SecurityError.ALREADY_EXIST:
-                raise WazuhError(4005)
-            if status == SecurityError.INVALID:
-                raise WazuhError(4003)
-            if status == SecurityError.ROLE_NOT_EXIST:
-                raise WazuhError(4002)
-
-        return Role.get_role(role_id=role_id)
+    return result
 
 
-class Policy:
-    """Policy Object.
+@expose_resources(actions=['security:create_user'], resources=['*:*:*'])
+def create_user(username: str = None, password: str = None):
+    """Create a new user
+
+    :param username: Name for the new user
+    :param password: Password for the new user
+    :return: Status message
     """
-    SORT_FIELDS = ['name']
+    if not _user_password.match(password):
+        raise WazuhError(5007)
 
-    def __init__(self, policy_id=None, name=None, policy=None, roles=None):
-        self.policy_id = policy_id
-        self.name = name
-        self.policy = policy
-        if roles is None:
-            self.roles = list()
+    result = AffectedItemsWazuhResult(none_msg='User could not be created',
+                                      all_msg='User created correctly')
+    with AuthenticationManager() as auth:
+        if auth.add_user(username, password):
+            operation = auth.get_user(username)
+            if operation:
+                result.affected_items.append(operation)
+                result.total_affected_items = 1
+            else:
+                result.add_failed_item(id_=username, error=WazuhError(5000))
         else:
-            self.roles = roles
+            result.add_failed_item(id_=username, error=WazuhError(5000))
 
-    def __str__(self):
-        return str(self.to_dict())
-
-    def to_dict(self):
-        return {'id': self.policy_id, 'name': self.name, 'policy': self.policy, 'roles': self.roles}
-
-    @staticmethod
-    def get_policy(policy_id):
-        """Returns the information of a certain policy
-
-        :param policy_id: ID of the policy on which the information will be collected
-        :return Policy information.
-        """
-        return_policy = None
-        with orm.PoliciesManager() as pm:
-            policy = pm.get_policy_by_id(policy_id)
-            if policy and policy != SecurityError.POLICY_NOT_EXIST:
-                return_policy = policy.to_dict()
-                return_policy['policy'] = json.loads(return_policy['policy'])
-                # It is necessary to load the roles (json.loads) for a correct visualization
-                for index, role in enumerate(return_policy['roles']):
-                    return_policy['roles'][index]['rule'] = \
-                        json.loads(return_policy['roles'][index]['rule'])
-                # Removes the roles field because when creating a policy it is not connected to any of them.
-                if len(return_policy['roles']) == 0:
-                    return_policy.pop('roles', None)
-
-        if return_policy is None:
-            raise WazuhError(4007)
-
-        # return {'items': return_policies, 'totalItems': len(return_policies)}
-        return return_policy
-
-    @staticmethod
-    def get_policies(offset=0, limit=common.database_limit, sort_by=None,
-                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
-        """Here we will be able to obtain all policies
-
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param sort_ascending: Sort in ascending (true) or descending (false) order
-        :param search_text: Text to search
-        :param complementary_search: Find items without the text to search
-        :param search_in_fields: Fields to search in
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        data = list()
-        with orm.PoliciesManager() as pm:
-            policies = pm.get_policies()
-            for policy in policies:
-                dict_policy = policy.to_dict()
-                dict_policy.pop('roles', None)
-                dict_policy['policy'] = json.loads(dict_policy['policy'])
-                data.append(dict_policy)
-
-        return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
-                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                             offset=offset, limit=limit)
-
-    @staticmethod
-    def remove_policy(policy_id):
-        """Removes a certain policy from the system
-
-        :param policy_id: ID of the policy to be removed
-        :return Result of operation.
-        """
-        response = dict()
-        with orm.PoliciesManager() as pm:
-            if pm.delete_policy(policy_id):
-                response['removed_policies'] = [int(policy_id)]
-            else:
-                response['incorrect_policies'] = [int(policy_id)]
-
-        return response
-
-    @staticmethod
-    def remove_policies(list_policies=None):
-        """Removes a list of policies from the system
-
-        :param list_policies: List of policies to be removed
-        :return Result of operation.
-        """
-        if list_policies is None:
-            list_policies = list()
-        status_correct = list()
-        response = dict()
-
-        with orm.PoliciesManager() as pm:
-            if len(list_policies) > 0:
-                for policy in list_policies:
-                    if pm.delete_policy(policy):
-                        status_correct.append(int(policy))
-                response['removed_policies'] = status_correct
-                # Symmetric difference: The symmetric difference of two sets A and B is
-                # the set of elements which are in either of the sets A or B but not in both.
-                response['incorrect_policies'] = list(set(list_policies) ^ set(status_correct))
-            else:
-                response['removed_policies'] = pm.delete_all_policies()
-
-        return response
-
-    @staticmethod
-    def add_policy(name=None, policy=None):
-        """Creates a policy in the system
-
-        :param name: The new policy name
-        :param policy: The new policy
-        :return Policy information.
-        """
-        with orm.PoliciesManager() as pm:
-            status = pm.add_policy(name=name, policy=policy)
-            if status == SecurityError.ALREADY_EXIST:
-                raise WazuhError(4009)
-            if status == SecurityError.INVALID:
-                raise WazuhError(4006)
-
-        return Policy.get_policy(policy_id=pm.get_policy(name=name).id)
-
-    @staticmethod
-    def update_policy(policy_id, name=None, policy=None):
-        """Updates a policy in the system
-
-        :param policy_id: Policy id to be update
-        :param name: The new policy name
-        :param policy: The new policy
-        :return Policy information.
-        """
-        if name is None and policy is None:
-            raise WazuhError(4001)
-
-        with orm.PoliciesManager() as pm:
-            status = pm.update_policy(policy_id=policy_id, name=name, policy=policy)
-            if status == SecurityError.ALREADY_EXIST:
-                raise WazuhError(4013)
-            if status == SecurityError.INVALID:
-                raise WazuhError(4006)
-            if status == SecurityError.POLICY_NOT_EXIST:
-                raise WazuhError(4007)
-
-        return Policy.get_policy(policy_id=policy_id)
+    return result
 
 
-class RolePolicy:
-    """RolePolicy Object.
+@expose_resources(actions=['security:update'], resources=['user:id:{username}'])
+def update_user(username=None, password=None):
+    """Update a specified user
+
+    :param username: Name for the new user
+    :param password: Password for the new user
+    :return: Status message
     """
-    SORT_FIELDS = ['name']
-
-    def __init__(self, role_id=None, policy_id=None):
-        self.role_id = role_id
-        self.policy_id = policy_id
-
-    def __str__(self):
-        return str(self.to_dict())
-
-    def to_dict(self):
-        return {'role_id': self.role_id, 'policy_id': self.policy_id}
-
-    @staticmethod
-    def __add_unique_element(src_list, element):
-        new_list = []
-
-        if type(element) in [list, tuple]:
-            new_list.extend(element)
+    if not _user_password.match(password):
+        raise WazuhError(5007)
+    result = AffectedItemsWazuhResult(all_msg='User modified correctly',
+                                      none_msg='User could not be updated')
+    with AuthenticationManager() as auth:
+        query = auth.update_user(username[0], password)
+        if query is False:
+            result.add_failed_item(id_=username[0], error=WazuhError(5001))
+        elif query == 'admin':
+            result.add_failed_item(id_=username[0], error=WazuhError(5004))
         else:
-            new_list.append(element)
+            result.affected_items.append(auth.get_user(username[0]))
+            result.total_affected_items += 1
 
-        for item in new_list:
-            if item is not None and item != '':
-                i = item.strip()
-                if i not in src_list:
-                    src_list.append(i)
+    return result
 
-    @staticmethod
-    def set_role_policy(role_id, policies_ids):
-        """Create a relationship between a role and a policy
 
-        :param role_id: The new role_id
-        :param policies_ids: List of policies ids
-        :return Role-Policies information.
-        """
-        with orm.RolesPoliciesManager() as rpm:
-            for policy_id in policies_ids:
-                role_policy = rpm.exist_role_policy(role_id, policy_id)
-                if role_policy is True:
-                    raise WazuhError(4011,
-                                     extra_message='Role id ' + str(role_id) + ' - ' + 'Policy id ' + str(policy_id))
-                elif role_policy == SecurityError.ROLE_NOT_EXIST:
-                    raise WazuhError(4002, extra_message='Role id ' + str(role_id))
-                elif role_policy == SecurityError.POLICY_NOT_EXIST:
-                    raise WazuhError(4007, extra_message='Policy id ' + str(policy_id))
+@expose_resources(actions=['security:delete'], resources=['user:id:{username_list}'],
+                  post_proc_kwargs={'exclude_codes': [5004]})
+def delete_user(username_list):
+    """Delete a specified user
 
-        with orm.RolesPoliciesManager() as rpm:
-            for policy_id in policies_ids:
-                status = rpm.add_policy_to_role(role_id=role_id, policy_id=policy_id)
-                if status == SecurityError.ADMIN_RESOURCES:
-                    raise WazuhError(4008)
+    :param username_list: List of usernames
+    :return: Status message
+    """
+    result = AffectedItemsWazuhResult(none_msg='No user was deleted',
+                                      some_msg='Some users could not be deleted',
+                                      all_msg='Users deleted correctly')
+    with AuthenticationManager() as auth:
+        for username in username_list:
+            user = auth.get_user(username)
+            query = auth.delete_user(username)
+            if query is False:
+                result.add_failed_item(id_=username, error=WazuhError(5001))
+            elif query == 'admin':
+                result.add_failed_item(id_=username, error=WazuhError(5004))
+            elif user:
+                result.affected_items.append(user)
+                result.total_affected_items += 1
 
-        return Role.get_role(role_id=role_id)
+    return result
 
-    @staticmethod
-    def remove_role_policy(role_id, policies_ids):
-        """Removes a relationship between a role and a policy
 
-        :param role_id: The new role_id
-        :param policies_ids: List of policies ids
-        :return Result of operation.
-        """
-        with orm.RolesPoliciesManager() as rpm:
-            for policy_id in policies_ids:
-                role_policy = rpm.exist_role_policy(role_id, policy_id)
-                if not role_policy:
-                    raise WazuhError(4010,
-                                     extra_message='Role id ' + str(role_id) + ' - ' + 'Policy id ' + str(policy_id))
-                elif role_policy == SecurityError.ROLE_NOT_EXIST:
-                    raise WazuhError(4002, extra_message='Role id ' + str(role_id))
-                elif role_policy == SecurityError.POLICY_NOT_EXIST:
-                    raise WazuhError(4007, extra_message='Policy id ' + str(policy_id))
+@expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'])
+def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
+              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+    """Returns information from all system roles, does not return information from its associated policies
 
-        with orm.RolesPoliciesManager() as rpm:
-            for policy_id in policies_ids:
-                status = rpm.remove_policy_in_role(role_id=role_id, policy_id=policy_id)
-                if status == SecurityError.ADMIN_RESOURCES:
-                    raise WazuhError(4008)
+    :param role_ids: List of roles ids (None for all roles)
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    :param sort_ascending: Sort in ascending (true) or descending (false) order
+    :param search_text: Text to search
+    :param complementary_search: Find items without the text to search
+    :param search_in_fields: Fields to search in
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+    affected_items = list()
+    result = AffectedItemsWazuhResult(none_msg='No role were shown',
+                                      some_msg='Some roles could not be shown',
+                                      all_msg='All specified roles were shown')
+    with orm.RolesManager() as rm:
+        for r_id in role_ids:
+            role = rm.get_role_id(int(r_id))
+            if role != SecurityError.ROLE_NOT_EXIST:
+                affected_items.append(role.to_dict())
+            else:
+                # Role id does not exist
+                result.add_failed_item(id_=r_id, error=WazuhError(4002))
 
-        return Role.get_role(role_id=role_id)
+    affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                                   complementary_search=complementary_search, sort_by=sort_by,
+                                   sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
+    result.affected_items = affected_items
+    result.total_affected_items = len(affected_items)
+
+    return result
+
+
+@expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'],
+                  post_proc_kwargs={'exclude_codes': [4008]})
+def remove_roles(role_ids):
+    """Removes a certain role from the system
+
+    :param role_ids: List of roles ids (None for all roles)
+    :return Result of operation
+    """
+    result = AffectedItemsWazuhResult(none_msg='No role were deleted',
+                                      some_msg='Some roles could not be delete',
+                                      all_msg='All specified roles were deleted')
+    with orm.RolesManager() as rm:
+        for r_id in role_ids:
+            role = rm.get_role_id(int(r_id))
+            role_delete = rm.delete_role(int(r_id))
+            if role_delete == SecurityError.ADMIN_RESOURCES:
+                result.add_failed_item(id_=r_id, error=WazuhError(4008))
+            elif role_delete is False:
+                result.add_failed_item(id_=r_id, error=WazuhError(4002))
+            elif role:
+                result.affected_items.append(role.to_dict())
+                result.total_affected_items += 1
+
+    return result
+
+
+@expose_resources(actions=['security:create'], resources=['*:*:*'])
+def add_role(name=None, rule=None):
+    """Creates a role in the system
+
+    :param name: The new role name
+    :param rule: The new rule
+    :return Role information
+    """
+    result = AffectedItemsWazuhResult(none_msg='Role could not be created',
+                                      all_msg='Role created correctly')
+    with orm.RolesManager() as rm:
+        status = rm.add_role(name=name, rule=rule)
+        if status == SecurityError.ALREADY_EXIST:
+            result.add_failed_item(id_=name, error=WazuhError(4005))
+        elif status == SecurityError.INVALID:
+            result.add_failed_item(id_=name, error=WazuhError(4003))
+        else:
+            result.affected_items.append(rm.get_role(name=name).to_dict())
+            result.total_affected_items += 1
+
+    return result
+
+
+@expose_resources(actions=['security:update'], resources=['role:id:{role_id}'])
+def update_role(role_id=None, name=None, rule=None):
+    """Updates a role in the system
+
+    :param role_id: Role id to be update
+    :param name: The new role name
+    :param rule: The new rule
+    :return Role information
+    """
+    if name is None and rule is None:
+        raise WazuhError(4001)
+    result = AffectedItemsWazuhResult(none_msg='Role could not be updated',
+                                      all_msg='Role updated correctly')
+    with orm.RolesManager() as rm:
+        status = rm.update_role(role_id=int(role_id[0]), name=name, rule=rule)
+        if status == SecurityError.ALREADY_EXIST:
+            result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4005))
+        elif status == SecurityError.INVALID:
+            result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4003))
+        elif status == SecurityError.ROLE_NOT_EXIST:
+            result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4002))
+        elif status == SecurityError.ADMIN_RESOURCES:
+            result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4008))
+        else:
+            result.affected_items.append(rm.get_role_id(role_id=role_id[0]).to_dict())
+            result.total_affected_items += 1
+
+    return result
+
+
+@expose_resources(actions=['security:read'], resources=['policy:id:{policy_ids}'])
+def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None,
+                 sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+    """Returns the information of a certain policy
+
+    :param policy_ids: ID of the policy on which the information will be collected (All for all policies)
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    :param sort_ascending: Sort in ascending (true) or descending (false) order
+    :param search_text: Text to search
+    :param complementary_search: Find items without the text to search
+    :param search_in_fields: Fields to search in
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+    result = AffectedItemsWazuhResult(none_msg='No policy were shown',
+                                      some_msg='Some policies could not be shown',
+                                      all_msg='All specified policies were shown')
+    affected_items = list()
+    with orm.PoliciesManager() as pm:
+        for p_id in policy_ids:
+            policy = pm.get_policy_id(int(p_id))
+            if policy != SecurityError.POLICY_NOT_EXIST:
+                affected_items.append(policy.to_dict())
+            else:
+                # Policy id does not exist
+                result.add_failed_item(id_=p_id, error=WazuhError(4007))
+
+    affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                                   complementary_search=complementary_search, sort_by=sort_by,
+                                   sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
+    result.affected_items = affected_items
+    result.total_affected_items = len(affected_items)
+
+    return result
+
+
+@expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'],
+                  post_proc_kwargs={'exclude_codes': [4008]})
+def remove_policies(policy_ids=None):
+    """Removes a certain policy from the system
+
+    :param policy_ids: ID of the policy to be removed (All for all policies)
+    :return Result of operation
+    """
+    result = AffectedItemsWazuhResult(none_msg='No policies were deleted',
+                                      some_msg='Some policies could not be deleted',
+                                      all_msg='All specified policies were deleted')
+    with orm.PoliciesManager() as pm:
+        for p_id in policy_ids:
+            policy = pm.get_policy_id(int(p_id))
+            policy_delete = pm.delete_policy(int(p_id))
+            if policy_delete == SecurityError.ADMIN_RESOURCES:
+                result.add_failed_item(id_=p_id, error=WazuhError(4008))
+            elif policy_delete is False:
+                result.add_failed_item(id_=p_id, error=WazuhError(4007))
+            elif policy:
+                result.affected_items.append(policy.to_dict())
+                result.total_affected_items += 1
+
+    return result
+
+
+@expose_resources(actions=['security:create'], resources=['*:*:*'])
+def add_policy(name=None, policy=None):
+    """Creates a policy in the system
+
+    :param name: The new policy name
+    :param policy: The new policy
+    :return Policy information
+    """
+    result = AffectedItemsWazuhResult(none_msg='Policy could not be created',
+                                      all_msg='Policy created correctly')
+    with orm.PoliciesManager() as pm:
+        status = pm.add_policy(name=name, policy=policy)
+        if status == SecurityError.ALREADY_EXIST:
+            result.add_failed_item(id_=name, error=WazuhError(4009))
+        elif status == SecurityError.INVALID:
+            result.add_failed_item(id_=name, error=WazuhError(4006))
+        else:
+            result.affected_items.append(pm.get_policy(name=name).to_dict())
+            result.total_affected_items += 1
+
+    return result
+
+
+@expose_resources(actions=['security:update'], resources=['policy:id:{policy_id}'])
+def update_policy(policy_id=None, name=None, policy=None):
+    """Updates a policy in the system
+
+    :param policy_id: Policy id to be update
+    :param name: The new policy name
+    :param policy: The new policy
+    :return Policy information
+    """
+    if name is None and policy is None:
+        raise WazuhError(4001)
+    result = AffectedItemsWazuhResult(none_msg='Policy could not be updated',
+                                      all_msg='Policy updated correctly')
+    with orm.PoliciesManager() as pm:
+        status = pm.update_policy(policy_id=int(policy_id[0]), name=name, policy=policy)
+        if status == SecurityError.ALREADY_EXIST:
+            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4013))
+        elif status == SecurityError.INVALID:
+            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4006))
+        elif status == SecurityError.POLICY_NOT_EXIST:
+            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4007))
+        elif status == SecurityError.ADMIN_RESOURCES:
+            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4008))
+        else:
+            result.affected_items.append(pm.get_policy_id(policy_id[0]).to_dict())
+            result.total_affected_items += 1
+
+    return result
+
+
+@expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'])
+def set_role_policy(role_id, policy_ids):
+    """Create a relationship between a role and a policy
+
+    :param role_id: The new role_id
+    :param policy_ids: List of policies ids
+    :return Role-Policies information
+    """
+    result = AffectedItemsWazuhResult(none_msg=f'No link created to role {role_id[0]}',
+                                      some_msg=f'Some policies could not be linked to role {role_id[0]}',
+                                      all_msg=f'All policies were linked to role {role_id[0]}')
+    with orm.RolesPoliciesManager() as rpm:
+        for policy_id in policy_ids:
+            role_policy = rpm.add_policy_to_role(role_id=role_id[0], policy_id=policy_id)
+            if role_policy == SecurityError.ALREADY_EXIST:
+                result.add_failed_item(id_=policy_id, error=WazuhError(4011))
+            elif role_policy == SecurityError.ROLE_NOT_EXIST:
+                result.add_failed_item(id_=policy_id, error=WazuhError(4002))
+            elif role_policy == SecurityError.POLICY_NOT_EXIST:
+                result.add_failed_item(id_=policy_id, error=WazuhError(4007))
+            elif role_policy == SecurityError.ADMIN_RESOURCES:
+                result.add_failed_item(id_=policy_id, error=WazuhError(4008))
+            else:
+                result.affected_items.append(policy_id)
+                result.total_affected_items += 1
+
+    return result
+
+
+@expose_resources(actions=['security:delete'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'])
+def remove_role_policy(role_id, policy_ids):
+    """Removes a relationship between a role and a policy
+
+    :param role_id: The new role_id
+    :param policy_ids: List of policies ids
+    :return Result of operation
+    """
+    result = AffectedItemsWazuhResult(none_msg=f'No policy unlinked from role {role_id[0]}',
+                                      some_msg=f'Some policies could not be unlinked from role {role_id[0]}',
+                                      all_msg=f'All policies were unlinked from role {role_id[0]}')
+    with orm.RolesPoliciesManager() as rpm:
+        for policy_id in policy_ids:
+            role_policy = rpm.remove_policy_in_role(role_id=role_id[0], policy_id=policy_id)
+            if role_policy == SecurityError.INVALID:
+                result.add_failed_item(id_=policy_id, error=WazuhError(4010))
+            elif role_policy == SecurityError.ROLE_NOT_EXIST:
+                result.add_failed_item(id_=policy_id, error=WazuhError(4002))
+            elif role_policy == SecurityError.POLICY_NOT_EXIST:
+                result.add_failed_item(id_=policy_id, error=WazuhError(4007))
+            elif role_policy == SecurityError.ADMIN_RESOURCES:
+                result.add_failed_item(id_=policy_id, error=WazuhError(4008))
+            else:
+                result.affected_items.append(policy_id)
+                result.total_affected_items += 1
+
+    return result

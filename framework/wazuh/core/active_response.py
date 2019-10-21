@@ -4,8 +4,8 @@
 
 from wazuh import common
 from wazuh.ossec_queue import OssecQueue
-from wazuh.results import WazuhResult
 from wazuh.exception import WazuhError
+from wazuh.agent import Agent
 
 
 def create_message(command, custom, arguments):
@@ -58,21 +58,15 @@ def shell_escape(command):
     return command
 
 
-def send_command(msg_queue, agent_ids=None):
+def send_command(msg_queue, oq, agent_id):
     """Send the message to the agent
 
     :param msg_queue: Message previously created, contains what is necessary to launch the active response command
     in the agent.
-    :param agent_ids: Run AR command in the agent.
+    :param agent_id: Run AR command in the agent.
     :return: WazuhResult.
     """
-    oq = OssecQueue(common.ARQUEUE)
-    ret_msg = None
-    for agent_id in agent_ids:
-        ret_msg = oq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=OssecQueue.AR_TYPE)
-    oq.close()
-
-    if agent_ids is None:
-        return WazuhResult({'message': 'Command sent to all agents.'})
-
-    return WazuhResult({'message': ret_msg})
+    agent_info = Agent(agent_id).get_basic_information()
+    if agent_info['status'].lower() != 'active':
+        raise WazuhError(1651)
+    oq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=OssecQueue.AR_TYPE)
