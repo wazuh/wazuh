@@ -36,10 +36,16 @@ static char __flogfile[OS_FLSIZE + 1];
 static char __jlogfile[OS_FLSIZE + 1];
 static char __ejlogfile[OS_FLSIZE + 1];
 
+/* Last time of each log rotation */
+time_t last_archive_log = 0;
+time_t last_archive_json = 0;
+time_t last_alerts_log = 0;
+time_t last_alerts_json = 0;
+
 struct timespec local_timespec;
 
 // Open a valid log or die. No return on error.
-static FILE * openlog(FILE * fp, char path[OS_FLSIZE + 1], const char * logdir, int year, const char * month, const char * tag, int day, const char * ext, const char * lname, int * counter, int rotate, __attribute__((unused)) rotation_list *list);
+FILE * openlog(FILE * fp, char path[OS_FLSIZE + 1], const char * logdir, int year, const char * month, const char * tag, int day, const char * ext, const char * lname, int * counter, int rotate, __attribute__((unused)) rotation_list *list);
 
 void OS_InitLog()
 {
@@ -270,24 +276,48 @@ FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char
     return fp;
 }
 
-static FILE * rotate_logs(rotation_list *list, char *log_file, int day, int counter, int rotate, FILE *_flog, const char *month,
-                 int year, const char *folder, const char *log_daily, int compress, const char *ext, const char *tag) {
+FILE * rotate_logs(rotation_list *list, char *log_file, int today, int counter, int rotate, FILE *_flog, const char *month,
+                 int year, const char *folder, const char *log_daily, int compress, const char *ext, const char *tag, time_t *last_rot) {
     char compress_file[OS_FLSIZE + 1];
     char *previous_log = NULL;
+    int last_counter;
+    char *logfile;
+    struct tm last_day;
+
+    localtime_r(last_rot, &last_day);
+    os_strdup(log_file, logfile);
 
     if (list && list->last) {
         os_strdup(list->last->string_value, previous_log);
     } else {
         os_strdup(log_file, previous_log);
     }
-    if (list && list->last && list->last->first_value == day) {
+    if (list && list->last && list->last->first_value == today) {
         counter = list->last->second_value;
         rotate = 1;
     } else {
         counter = 0;
         rotate = 0;
     }
-    _flog = openlog(_flog, log_file, folder, year, month, tag, day, ext, log_daily, &counter, rotate, list);
+    _flog = openlog(_flog, log_file, folder, year, month, tag, today, ext, log_daily, &counter, rotate, list);
+
+    /* Log signing */
+    if (list && list->last) {
+        if (list->last->first_value == last_day.tm_mday) {
+            last_counter = list->last->prev ? list->last->prev->second_value : -1;
+        } else {
+            last_counter = list->last->second_value;
+        }
+        if (list->last->prev && list->last->prev->first_value != last_day.tm_mday) {
+            *last_rot = *last_rot - 86400;
+        }
+    } else {
+        last_counter = -1;
+    }
+    sign_log(folder, logfile, last_rot, last_counter, tag, ext);
+    *last_rot = time(NULL);
+
+    /* Log compression */
     memset(compress_file, '\0', OS_FLSIZE + 1);
     snprintf(compress_file, OS_FLSIZE, "%s.gz", previous_log);
     if (compress) {
@@ -299,7 +329,9 @@ static FILE * rotate_logs(rotation_list *list, char *log_file, int day, int coun
             }
         }
     }
+
     os_free(previous_log);
+    os_free(logfile);
     return _flog;
 }
 
@@ -323,7 +355,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
             if (Config.alerts_log_plain && current_time > alerts_time) {
                 if (Config.alerts_min_size ? (_aflog && !fseek(_aflog, 0, SEEK_END) && ftell(_aflog) > Config.alerts_min_size) : 1) {
                     _aflog = rotate_logs(Config.log_alerts_plain, __alogfile, day, __acounter, rotate, _aflog, mon, year,
-                                ALERTS, ALERTS_DAILY, Config.alerts_compress_rotation, "log", "alerts");
+                                ALERTS, ALERTS_DAILY, Config.alerts_compress_rotation, "log", "alerts", &last_alerts_log);
                     remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
                     add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
                     alerts_time = calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval);
@@ -333,7 +365,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
             if (Config.alerts_log_json && current_time > alerts_time_json) {
                 if (Config.alerts_min_size ? (_jflog && !fseek(_jflog, 0, SEEK_END) && ftell(_jflog) > Config.alerts_min_size) : 1) {
                     _jflog = rotate_logs(Config.log_alerts_json, __jlogfile, day, __jcounter, rotate, _jflog, mon, year,
-                                ALERTS, ALERTSJSON_DAILY, Config.alerts_compress_rotation, "json", "alerts");
+                                ALERTS, ALERTSJSON_DAILY, Config.alerts_compress_rotation, "json", "alerts", &last_alerts_json);
                     remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
                     add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
                     alerts_time_json = calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval);
@@ -347,7 +379,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
             if (Config.archives_log_plain && current_time > archive_time) {
                 if (Config.archives_min_size ? (_eflog && !fseek(_eflog, 0, SEEK_END) && ftell(_eflog) > Config.archives_min_size) : 1) {
                     _eflog = rotate_logs(Config.log_archives_plain, __elogfile, day, __ecounter, rotate, _eflog, mon, year,
-                                EVENTS, EVENTS_DAILY, Config.archives_compress_rotation, "log", "archive");
+                                EVENTS, EVENTS_DAILY, Config.archives_compress_rotation, "log", "archive", &last_archive_log);
                     remove_old_logs(path_archives, Config.archives_maxage, "archives", Config.log_archives_plain, Config.log_archives_json);
                     add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
                     archive_time = calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval);
@@ -357,7 +389,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
             if (Config.archives_log_json && current_time > archive_time_json) {
                 if (Config.archives_min_size ? (_ejflog && !fseek(_ejflog, 0, SEEK_END) && ftell(_ejflog) > Config.archives_min_size) : 1) {
                     _ejflog = rotate_logs(Config.log_archives_json, __ejlogfile, day, __ejcounter, rotate, _ejflog, mon, year,
-                                EVENTS, EVENTSJSON_DAILY, Config.archives_compress_rotation, "json", "archive");
+                                EVENTS, EVENTSJSON_DAILY, Config.archives_compress_rotation, "json", "archive", &last_archive_json);
                     remove_old_logs(path_archives, Config.archives_maxage, "archive", Config.log_archives_plain, Config.log_archives_json);
                     add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
                     archive_time_json = calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval);
@@ -373,7 +405,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
         if (Config.alerts_log_plain) {
             if (_aflog && !fseek(_aflog, 0, SEEK_END) && ftell(_aflog) > Config.alerts_max_size) {
                 _aflog = rotate_logs(Config.log_alerts_plain, __alogfile, day, __acounter, rotate, _aflog, mon, year,
-                            ALERTS, ALERTS_DAILY, Config.alerts_compress_rotation, "log", "alerts");
+                            ALERTS, ALERTS_DAILY, Config.alerts_compress_rotation, "log", "alerts", &last_alerts_log);
                 remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
                 add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
                 __alerts_rsec = local_timespec.tv_sec;
@@ -383,7 +415,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
         if (Config.alerts_log_json) {
             if (_jflog && !fseek(_jflog, 0, SEEK_END) && ftell(_jflog) > Config.alerts_max_size) {
                 _jflog = rotate_logs(Config.log_alerts_json, __jlogfile, day, __jcounter, rotate, _jflog, mon, year,
-                            ALERTS, ALERTSJSON_DAILY, Config.alerts_compress_rotation, "json", "alerts");
+                            ALERTS, ALERTSJSON_DAILY, Config.alerts_compress_rotation, "json", "alerts", &last_alerts_json);
                 remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
                 add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
                 __alerts_rsec = local_timespec.tv_sec;
@@ -397,7 +429,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
         if (Config.archives_log_plain) {
             if (_eflog && !fseek(_eflog, 0, SEEK_END) && ftell(_eflog) > Config.archives_max_size) {
                 _eflog = rotate_logs(Config.log_archives_plain, __elogfile, day, __ecounter, rotate, _eflog, mon, year,
-                            EVENTS, EVENTS_DAILY, Config.archives_compress_rotation, "log", "archive");
+                            EVENTS, EVENTS_DAILY, Config.archives_compress_rotation, "log", "archive", &last_archive_log);
                 remove_old_logs(path_archives, Config.archives_maxage, "archive", Config.log_archives_plain, Config.log_archives_json);
                 add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
                 __archives_rsec = local_timespec.tv_sec;
@@ -407,7 +439,7 @@ void OS_RotateLogs(int day, int year, char *mon) {
         if (Config.archives_log_json) {
             if (_ejflog && !fseek(_ejflog, 0, SEEK_END) && ftell(_ejflog) > Config.archives_max_size) {
                 _ejflog = rotate_logs(Config.log_archives_json, __ejlogfile, day, __ejcounter, rotate, _ejflog, mon, year,
-                            EVENTS, EVENTSJSON_DAILY, Config.archives_compress_rotation, "json", "archive");
+                            EVENTS, EVENTSJSON_DAILY, Config.archives_compress_rotation, "json", "archive", &last_archive_json);
                 remove_old_logs(path_archives, Config.archives_maxage, "archive", Config.log_archives_plain, Config.log_archives_json);
                 add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
                 __archives_rsec = local_timespec.tv_sec;

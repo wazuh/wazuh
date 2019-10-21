@@ -2607,6 +2607,7 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args) {
                     Update_Hour();
                 }
 
+                sign_firewall_logs();
                 today = day;
                 strncpy(prev_month, mon, 3);
                 prev_year = year;
