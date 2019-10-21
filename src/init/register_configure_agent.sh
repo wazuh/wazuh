@@ -14,6 +14,7 @@ sed="sed -ri"
 # By default, use gnu sed (gsed).
 use_unix_sed="False"
 
+# Special function to use generic sed
 unix_sed() {
     sed_expression="$1"
     target_file="$2"
@@ -23,6 +24,7 @@ unix_sed() {
     rm "${target_file}.tmp"
 }
 
+# Update the value of a XML tag inside the ossec.conf
 edit_value_tag() {
 
     if [ ! -z "$1" ] && [ ! -z "$2" ]; then
@@ -38,6 +40,7 @@ edit_value_tag() {
     fi
 }
 
+# Change address block of the ossec.conf
 add_adress_block() {
 
     SET_ADDRESSES="$@"
@@ -80,6 +83,7 @@ add_adress_block() {
     echo "</ossec_config>" >> ${DIRECTORY}/etc/ossec.conf
 }
 
+# Add new parameter to the list of options
 add_parameter () {
     if [ ! -z "$3" ]; then
         OPTIONS="$1 $2 $3"
@@ -87,6 +91,7 @@ add_parameter () {
     echo ${OPTIONS}
 }
 
+# Get variables that we changed in new develop
 get_deprecated_vars () {
     if [ ! -z "${WAZUH_MANAGER_IP}" ] && [ -z "${WAZUH_MANAGER}" ]; then
         WAZUH_MANAGER=${WAZUH_MANAGER_IP}
@@ -117,6 +122,7 @@ get_deprecated_vars () {
     fi
 }
 
+# Set all defined variables from environment
 set_vars () {
     export WAZUH_MANAGER=$(launchctl getenv WAZUH_MANAGER)
     export WAZUH_MANAGER_PORT=$(launchctl getenv WAZUH_MANAGER_PORT)
@@ -144,6 +150,7 @@ set_vars () {
     export WAZUH_PEM=$(launchctl getenv WAZUH_PEM)
 }
 
+# Remove all defined variables from environment
 unset_vars() {
 
     OS=$1
@@ -164,10 +171,12 @@ unset_vars() {
     done
 }
 
+# Function to convert strings to lower version
 tolower () {
    echo $1 | tr '[:upper:]' '[:lower:]'
 }
 
+# Main function the script begin here
 main () {
 
     uname_s=$(uname -s)
