@@ -12,14 +12,17 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/sha256/sha256_op.h"
-#include "monitord.h"
+#include "getloglocation.h"
 #include <openssl/md5.h>
 #include <openssl/sha.h>
+
+static const char *(months[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                                };
 
 /* Sign a log file */
 void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 {
-    int i;
     size_t n;
 
     os_md5 mf_sum;
@@ -37,10 +40,10 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     char logfilesum[OS_FLSIZE + 1];
     char logfilesum_old[OS_FLSIZE + 1];
-    char logfile_r[OS_FLSIZE + 1];
     char buffer[4096];
 
     FILE *fp;
+    struct stat statbuf;
 
     unsigned char md5_digest[16];
     unsigned char md[SHA_DIGEST_LENGTH];
@@ -54,8 +57,7 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
     umask(0027);
 
     /* Create the checksum file names */
-    snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext);
-    snprintf(logfilesum, OS_FLSIZE, "%s.sum", logfile_r);
+    snprintf(logfilesum, OS_FLSIZE, "%s.sum", logfile);
     snprintf(logfilesum_old, OS_FLSIZE, "%s.%s.sum", logfile_old, ext);
 
     MD5_Init(&md5_ctx);
@@ -85,7 +87,7 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     /* Generate MD5, SHA-1, and SHA-256 of the current file */
 
-    if (fp = fopen(logfile_r, "r"), fp) {
+    if (fp = fopen(logfile, "r"), fp) {
         while (n = fread(buffer, 1, 2048, fp), n > 0) {
             SHA1_Update(&sha1_ctx, buffer, n);
             MD5_Update(&md5_ctx, buffer, (unsigned long)n);
@@ -93,23 +95,6 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
         }
 
         fclose(fp);
-
-        // Include rotated files
-
-        for (i = 1; snprintf(logfile_r, OS_FLSIZE + 1, "%s-%.3d.%s", logfile, i, ext), !IsFile(logfile_r) && FileSize(logfile_r) > 0; i++) {
-            if (fp = fopen(logfile_r, "r"), fp) {
-                while (n = fread(buffer, 1, 2048, fp), n > 0) {
-                    SHA1_Update(&sha1_ctx, buffer, n);
-                    MD5_Update(&md5_ctx, buffer, (unsigned long)n);
-                    SHA256_Update(&sha256_ctx, buffer, n);
-                }
-
-                fclose(fp);
-            } else {
-                merror(FOPEN_ERROR, logfile_r, errno, strerror(errno));
-                break;
-            }
-        }
 
         MD5_Final(md5_digest, &md5_ctx);
         char *mpos = mf_sum;
@@ -150,10 +135,43 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
     fprintf(fp, "SHA256 (%s) = %s\n\n", logfile, sf256_sum);
 
     fprintf(fp, "Chained checksum:\n");
-    fprintf(fp, "MD5  (%s) = %s\n", logfilesum_old, mf_sum_old);
-    fprintf(fp, "SHA1 (%s) = %s\n\n", logfilesum_old, sf_sum_old);
-    fprintf(fp, "SHA256 (%s) = %s\n\n", logfilesum_old, sf256_sum_old);
+    if (!strcmp(logfile_old, "\0") || stat(logfilesum_old, &statbuf) == -1) {
+        fprintf(fp, "No previous log rotation signing file\n");
+    } else {
+        fprintf(fp, "MD5  (%s) = %s\n", logfilesum_old, mf_sum_old);
+        fprintf(fp, "SHA1 (%s) = %s\n\n", logfilesum_old, sf_sum_old);
+        fprintf(fp, "SHA256 (%s) = %s\n\n", logfilesum_old, sf256_sum_old);
+    }
     fclose(fp);
 
     return;
+}
+
+void sign_log(const char * logdir, const char *logfile, time_t *last_rot,
+                int last_counter, const char * tag, const char * ext) {
+
+    char logfile_old[OS_FLSIZE + 1];
+    struct tm pp_old;
+
+    localtime_r(last_rot, &pp_old);
+
+    if (last_counter > 0) {
+        snprintf(logfile_old, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%03d", logdir, pp_old.tm_year + 1900, months[pp_old.tm_mon], tag, pp_old.tm_mday, last_counter);
+    } else if (last_counter == 0){
+        snprintf(logfile_old, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d", logdir, pp_old.tm_year + 1900, months[pp_old.tm_mon], tag, pp_old.tm_mday);
+    } else {
+        logfile_old[0] = '\0';
+    }
+
+    OS_SignLog(logfile, logfile_old, ext);
+}
+
+void sign_firewall_logs()
+{
+    time_t tm_old;
+
+    tm_old = time(NULL);
+    tm_old -= 93500;
+
+    sign_log(FWLOGS, FWLOGS_DAILY, &tm_old, 0, "firewall", "log");
 }

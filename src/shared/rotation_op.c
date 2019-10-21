@@ -381,6 +381,14 @@ void add_new_rotation_node(rotation_list *list, char *value, int keep_files) {
         } else {
             mdebug2("Removing the rotated file '%s'.", list->first->string_value);
         }
+        /* Delete sign file */
+        char sign_log[OS_FLSIZE+3];
+        snprintf(sign_log, OS_FLSIZE+3, "%s.sum", list->first->string_value);
+        if (unlink(sign_log) == -1) {
+            mdebug1("Unable to delete '%s' due to '%s'", sign_log, strerror(errno));
+        } else {
+            mdebug2("Removing the sign file '%s'.", sign_log);
+        }
         r_node = list->first;
         list->first = list->first->next;
         if (list->first) {
@@ -458,7 +466,7 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold, const 
 
 void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold, const char * type, rotation_list *list_log, rotation_list *list_json) {
     char path[PATH_MAX];
-    char ext[8];
+    char ext[9];
     DIR *dir;
     struct dirent *dirent;
     time_t now = time(NULL);
@@ -493,13 +501,12 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                if (!strcmp(ext, "log") || !strcmp(ext, "log.gz"))
-                {
+                if (!strcmp(ext, "log") || !strcmp(ext, "log.gz") || !strcmp(ext, "log.sum")) {
                     snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
                     delete_node(list_log, path);
-                } else if (!strcmp(ext, "json") || !strcmp(ext, "json.gz")) {
+                } else if (!strcmp(ext, "json") || !strcmp(ext, "json.gz") || !strcmp(ext, "json.sum")) {
                     snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
@@ -512,13 +519,12 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                if (!strcmp(ext, "log") || !strcmp(ext, "log.gz"))
-                {
+                if (!strcmp(ext, "log") || !strcmp(ext, "log.gz") || !strcmp(ext, "log.sum")) {
                     snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
                     delete_node(list_log, path);
-                } else if (!strcmp(ext, "json") || !strcmp(ext, "json.gz")) {
+                } else if (!strcmp(ext, "json") || !strcmp(ext, "json.gz") || !strcmp(ext, "json.sum")) {
                     snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
@@ -542,7 +548,7 @@ time_t calc_next_rotation(time_t tm, struct tm *rot, const char units, int inter
     switch (units) {
         case 'w':
             /* Seconds left to the next rotation day depending if its this week or the next */
-            seconds = (interval > rot->tm_wday) ? (interval-rot->tm_wday) * 24 * 3600 : (7-(rot->tm_wday-interval)) * 24 * 3600;
+            seconds = (interval > rot->tm_wday) ? (interval-rot->tm_wday) * 24 * 3600 : (((7-(rot->tm_wday-interval)) * 24 * 3600) + 3600);
             ret = tm + seconds;
             localtime_r(&ret, rot);
             rot->tm_hour = 0;

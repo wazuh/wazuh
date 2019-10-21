@@ -32,5 +32,9 @@ extern FILE *_jflog;
 extern FILE *_ejflog;
 
 void OS_RotateLogs(int day,int year,char *mon);
+void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext);
+void sign_firewall_logs();
+void sign_log(const char * logdir, const char *logfile, time_t *last_rot,
+                int last_counter, const char * tag, const char * ext);
 
 #endif /* GETLL_H */

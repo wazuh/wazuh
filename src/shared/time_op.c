@@ -129,8 +129,11 @@ int day_to_int(const char *day)
 char *int_to_day(int day)
 {
     struct tm timeinfo;
+    time_t now = time(NULL);
     char *buffer = NULL;
+
     os_calloc(80, sizeof(char), buffer);
+    localtime_r(&now, &timeinfo);
 
     timeinfo.tm_wday = day % 7;
     strftime(buffer, 80,"%A", &timeinfo);

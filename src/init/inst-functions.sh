@@ -966,9 +966,9 @@ InstallLocal()
     fi
 
     # Install Vulnerability Detector files
-    ${INSTALL} -d -m 0760 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities
-    ${INSTALL} -d -m 0760 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities/dictionaries
-    ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} wazuh_modules/vulnerability_detector/*.json ${PREFIX}/queue/vulnerabilities/dictionaries
+    ${INSTALL} -d -m 0660 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities
+    ${INSTALL} -d -m 0440 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities/dictionaries
+    ${INSTALL} -m 0440 -o root -g ${OSSEC_GROUP} wazuh_modules/vulnerability_detector/*.json ${PREFIX}/queue/vulnerabilities/dictionaries
 
     ### Install Python
     ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
