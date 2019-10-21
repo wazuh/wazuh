@@ -191,9 +191,9 @@
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
 
-            <Custom Action="InstallConfigurationFiles" After="InstallFinalize">NOT Installed</Custom>
+            <Custom Action="InstallConfigurationFiles" After="InstallFinalize">NOT Installed AND NOT WIX_UPGRADE_DETECTED</Custom>
             <Custom Action="InstallSCAFiles" After="InstallFinalize">(NOT Installed) OR (REINSTALL)</Custom>
-            <Custom Action="ReplaceConfiguration" After="InstallFinalize">NOT Installed</Custom>
+            <Custom Action="ReplaceConfiguration" After="InstallFinalize">NOT Installed AND NOT WIX_UPGRADE_DETECTED</Custom>
 
             <Custom Action="CustomAction_NoGroup_NoName_RunAuthd" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
             <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
