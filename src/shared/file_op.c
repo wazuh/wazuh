@@ -2980,3 +2980,10 @@ void w_descriptor_cloexec(__attribute__((unused)) int fd){
     }
 #endif
 }
+
+// Add a trailing separator to a path string
+
+int trail_path_separator(char * dest, const char * src, size_t n) {
+    const char STR_SEPARATOR[] = { PATH_SEP, '\0' };
+    return snprintf(dest, n, "%s%s", src, src[strlen(src) - 1] == PATH_SEP ? "" : STR_SEPARATOR);
+}

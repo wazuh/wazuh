@@ -27,9 +27,11 @@
 #define UCS2_BE 2
 
 #ifdef WIN32
+#define PATH_SEP '\\'
 typedef uint64_t wino_t;
 int isVista;
 #else
+#define PATH_SEP '/'
 typedef ino_t wino_t;
 #endif
 
@@ -498,5 +500,17 @@ void w_ch_exec_dir();
 DWORD FileSizeWin(const char * file);
 
 #endif // Windows
+
+/**
+ * @brief Add a trailing separator to a path string
+ *
+ * The trailing separator ('/' on UNIX, '\ ' on Windows) is only added if the source string does not end with such character.
+ *
+ * @param dest Destination string.
+ * @param src Source path string.
+ * @param n Size of the destination string.
+ * @return int number of bytes written in the string. If is greater or equal than n, the string remained truncated.
+ */
+int trail_path_separator(char * dest, const char * src, size_t n);
 
 #endif /* FILE_OP_H */

@@ -468,11 +468,12 @@ int fim_configuration_directory(const char * path, const char entry[]) {
     if (!path) {
         return position;
     }
-    snprintf(full_path, OS_SIZE_4096 + 1, "%s%c", path, PATH_SEP);
+
+    trail_path_separator(full_path, path, sizeof(full_path));
 
     if (strcmp("file", entry) == 0) {
         while(syscheck.dir[it]) {
-            snprintf(full_entry, OS_SIZE_4096 + 1, "%s%c", syscheck.dir[it], PATH_SEP);
+            trail_path_separator(full_entry, syscheck.dir[it], sizeof(full_entry));
             match = w_compare_str(full_entry, full_path);
 
             if (top < match && full_path[match - 1] == PATH_SEP) {

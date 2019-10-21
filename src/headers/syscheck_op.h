@@ -17,7 +17,6 @@
 #include <pwd.h>
 #include <grp.h>
 
-#define PATH_SEP '/'
 // Windows file attributes
 #define FILE_ATTRIBUTE_READONLY                 0x00000001
 #define FILE_ATTRIBUTE_HIDDEN                   0x00000002
@@ -65,7 +64,6 @@
 #include <sddl.h>
 
 #define BUFFER_LEN 1024
-#define PATH_SEP '\\'
 
 #endif
 
