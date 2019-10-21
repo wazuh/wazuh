@@ -190,6 +190,10 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
 
     os_calloc(1, sizeof(struct stat), file_stat);
     if (w_stat(file_name, file_stat) < 0) {
+        if(errno != ENOENT) {
+            mdebug1(FIM_STAT_FAILED, file_name, errno, strerror(errno));
+            return 0;
+        }
         if (options & CHECK_SEECHANGES) {
             delete_target_file(file_name);
         }
@@ -197,10 +201,10 @@ int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, who
     } else {
         //File attributes
         if (entry_data = fim_get_data(file_name, file_stat, mode, options), !entry_data) {
-            merror("Couldn't get attributes for file: '%s'", file_name);
+            mdebug1(FIM_GET_ATTRIBUTES, file_name);
             os_free(file_stat);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
-            return OS_INVALID;
+            return 0;
         }
     }
 
@@ -332,7 +336,6 @@ void fim_realtime_event(char *file) {
         if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file), saved_data) {
             snprintf(inode_key, OS_SIZE_128, "%ld:%ld", (unsigned long)saved_data->dev, (unsigned long)saved_data->inode);
         } else {
-            minfo("Data not found for file %s", file);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return;
         }
@@ -694,10 +697,7 @@ void fim_get_checksum (fim_entry_data * data) {
             data->hash_sha1,
             data->hash_sha256);
 
-    if (size < 0) {
-        merror("Wrong size, can't get checksum: %s", checksum);
-        *checksum = '\0';
-    } else if (size >= OS_SIZE_128) {
+    if (size >= OS_SIZE_128) {
         // Needs more space
         os_realloc(checksum, (size + 1) * sizeof(char), checksum);
         snprintf(checksum,
