@@ -1943,6 +1943,54 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             yield event
 
 
+class CiscoUmbrella(AWSCustomBucket):
+
+    def __init__(self, **kwargs):
+        db_table_name = 'cisco_umbrella'
+        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+
+    def load_information_from_file(self, log_key):
+        """Load data from a Cisco Umbrella log file."""
+        with self.decompress_file(log_key=log_key) as f:
+            if 'dnslogs' in self.prefix:
+                fieldnames = ('timestamp', 'most_granular_identity',
+                              'identities', 'internal_ip', 'external_ip',
+                              'action', 'query_type', 'response_code', 'domain',  # noqa: E501
+                              'categories', 'most_granular_identity_type',
+                              'identity_types', 'blocked_categories'
+                              )
+            elif 'proxylogs' in self.prefix:
+                fieldnames = ('timestamp', 'identities', 'internal_ip',
+                              'external_ip', 'destination_ip', 'content_type',
+                              'verdict', 'url', 'referer', 'user_agent',
+                              'status_code', 'requested_size', 'response_size',
+                              'response_body_size', 'sha', 'categories',
+                              'av_detections', 'puas', 'amp_disposition',
+                              'amp_malware_name', 'amp_score', 'identity_type',
+                              'blocked_categories'
+                              )
+            elif 'iplogs' in self.prefix:
+                fieldnames = ('timestamp', 'identity', 'source_ip',
+                              'source_port', 'destination_ip',
+                              'destination_port', 'categories'
+                              )
+            #elif 'cloudfirewalllogs' in self.prefix:
+            #    fieldnames = ('timestamp', 'origin_id', 'identity',
+            #                  'direction', 'ip_protocol', 'packet_size',
+            #                  'source_ip', 'source_port', 'destination_ip',
+            #                  'destination_port', 'data_center', 'rule_id',
+            #                  'verdict'
+            #                  )
+            else:
+                print("ERROR: Only 'dnslogs', 'proxylogs' or 'iplogs' are allowed for Cisco Umbrella")
+                exit(12)
+            csv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=',')
+
+        # remove None values in csv_file
+        return [dict({k: v for k, v in row.items() if v is not None},
+                source='cisco_umbrella') for row in csv_file]
+
+
 class AWSService(WazuhIntegration):
     """
     Class for getting AWS Services logs from API calls
@@ -2254,6 +2302,8 @@ def main(argv):
                 bucket_type = AWSCustomBucket
             elif options.type.lower() == 'guardduty':
                 bucket_type = AWSGuardDutyBucket
+            elif options.type.lower() == 'cisco_umbrella':
+                bucket_type = CiscoUmbrella
             else:
                 raise Exception("Invalid type of bucket")
             bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,
