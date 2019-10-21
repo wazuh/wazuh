@@ -54,7 +54,7 @@ stages:
              id: '001'
          totalItems: !anyint
 
- - name: Try show agents with offset -1
+ - name: Try to show agents using offset -1
    request:
      <<: *get_agents
      params:
@@ -67,7 +67,7 @@ stages:
        title: !anystr
        type: !anystr
 
- - name: Try show agents with offset not integer value
+ - name: Try to show agents with offset not integer value
    request:
      <<: *get_agents
      params:
@@ -77,7 +77,7 @@ stages:
      body:
        <<: *error_spec
 
- - name: Try show agents with offset too large 9999999999999999999
+ - name: Try to show agents with offset too large 9999999999999999999
    request:
      <<: *get_agents
      params:
@@ -87,7 +87,7 @@ stages:
      body:
        code: 2003
 
- - name: Try show agents with limit 0
+ - name: Try to show agents with limit 0
    request:
      <<: *get_agents
      params:
@@ -97,7 +97,7 @@ stages:
      body:
        <<: *error_spec
 
- - name: Try show agents with limit not integer value
+ - name: Try to show agents with limit not integer value
    request:
      <<: *get_agents
      params:
@@ -107,7 +107,7 @@ stages:
      body:
        <<: *error_spec
 
- - name: Try show agents with limit 9999
+ - name: Try to show agents with limit 9999
    request:
      <<: *get_agents
      params:
@@ -129,7 +129,7 @@ stages:
          items: !anything
          totalItems: !anyint
 
- - name: Try show agents with wrong sort
+ - name: Try to show agents using wrong sort
    request:
      <<: *get_agents
      params:
@@ -152,7 +152,7 @@ stages:
            id: '000'
          totalItems: !anyint
 
- - name: Try show agents with wrong search
+ - name: Try to show agents using wrong search
    request:
      <<: *get_agents
      params:
@@ -188,7 +188,7 @@ stages:
          items: !anything
          totalItems: !anyint
 
- - name: Try show agents with not allowed selector
+ - name: Try to show agents using a not allowed selector
    request:
      <<: *get_agents
      params:
@@ -198,7 +198,7 @@ stages:
      body:
        code: 1724
 
- - name: Try show agents with not allowed selector (invalid character)
+ - name: Try to show agents using not allowed selector (invalid character)
    request:
      <<: *get_agents
      params:
@@ -212,13 +212,13 @@ stages:
    request:
      <<: *get_agents
      params:
-       version: 'Wazuhv3.9.0'
+       version: 'Wazuhv3.9.2'
    response:
      status_code: 200
      body:
        data:
          items: !anything
-         totalItems: !anyint
+         totalItems: 2
 
  - name: Try show agents with not existed version
    request:
@@ -602,8 +602,26 @@ stages:
      body:
        <<: *error_spec
 
+ - name: Try to show a list of agents
+   request:
+     <<: *get_agents
+     params:
+       list_agents: "001,002,003"
+   response:
+     status_code: 200
+     body:
+       data:
+         items:
+           - status: active
+             id: '001'
+           - status: active
+             id: '002'
+           - status: active
+             id: '003'
+         totalItems: 3
+
 ---
-test_name: GET /agents/:agent_id
+test_name: GET /agents/{agent_id}
 
 stages:
 
@@ -618,28 +636,30 @@ stages:
      status_code: 200
      body:
        data:
-         dateAdd: !anystr
-         id: "000"
-         ip: !anystr
-         lastKeepAlive: !anystr
-         manager: !anystr
-         name: !anystr
-         node_name: !anystr
-         os:
-           arch: !anystr
-           codename: !anystr
-           major: !anystr
-           minor: !anystr
-           name: !anystr
-           platform: !anystr
-           uname: !anystr
-           version: !anystr
-         registerIP: !anystr
-         status: !anystr
-         version: !anystr
+         items:
+           -  dateAdd: !anystr
+              id: "000"
+              ip: !anystr
+              lastKeepAlive: !anystr
+              manager: !anystr
+              name: !anystr
+              node_name: !anystr
+              os:
+               arch: !anystr
+               codename: !anystr
+               major: !anystr
+               minor: !anystr
+               name: !anystr
+               platform: !anystr
+               uname: !anystr
+               version: !anystr
+              registerIP: !anystr
+              status: !anystr
+              version: !anystr
+         totalItems: 1
 
   # GET /agents/999
- - name: Try show not existing agent
+ - name: Try to show not existing agent
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/999"
      method: GET
@@ -711,9 +731,10 @@ stages:
        <<: *error_spec
 
 ---
-test_name: GET /agents/:agent/config/:component/:configuration
+test_name: GET /agents/{agent_id}/config/{component}/{configuration}
 
 stages:
+
   # GET /agents/001/config/agent/client
  - name: Request-Agent-Client
    request:
@@ -736,13 +757,11 @@ stages:
            time-reconnect: !anyint
 
  - name: Request-Agent-Buffer
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/buffer"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -753,13 +772,11 @@ stages:
            events_per_second: !anyint
 
  - name: Request-Agent-Labels
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/labels"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -767,13 +784,11 @@ stages:
          labels: !anything
 
  - name: Request-Agent-Internal
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -805,13 +820,11 @@ stages:
              verify_msg_id: !anyint
 
  - name: Request-Agentless-Agentless
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/agentless/agentless"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -825,13 +838,11 @@ stages:
              type: !anystr
 
  - name: Request-Analysis-Global
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/global"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -854,13 +865,11 @@ stages:
            zeromq_output: !anystr
 
  - name: Request-Analysis-Active-response
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/active_response"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -868,13 +877,11 @@ stages:
          active-response: !anything
 
  - name: Request-Analysis-Alerts
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/alerts"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -884,13 +891,11 @@ stages:
            log_alert_level: !anyint
 
  - name: Request-Analysis-Command
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/command"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -898,13 +903,11 @@ stages:
          command: !anything
 
  - name: Request-Analysis-Internal
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -926,13 +929,11 @@ stages:
              stats_percent_diff: !anyint
 
  - name: Request-Auth-Auth
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/auth/auth"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -953,13 +954,11 @@ stages:
            use_source_ip: !anystr
 
  - name: Request-Com-Active-response (Manager)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/active-response"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -969,13 +968,11 @@ stages:
            disabled: !anystr
 
  - name: Request-Com-Active-response (Agent)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/com/active-response"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -986,13 +983,11 @@ stages:
            disabled: !anystr
 
  - name: Request-Com-Internal (Manager)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1003,13 +998,11 @@ stages:
              max_restart_lock: !anyint
 
  - name: Request-Com-Internal (Agent)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/com/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1020,13 +1013,11 @@ stages:
              max_restart_lock: !anyint
 
  - name: Request-Com-Cluster (Manager)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/cluster"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1042,13 +1033,11 @@ stages:
          port: !anyint
 
  - name: Request-Csyslog-Csyslog
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/csyslog/csyslog"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1061,13 +1050,11 @@ stages:
              use_fqdn: !anystr
 
  - name: Request-Integrator-Integration
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/integrator/integration"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1081,13 +1068,11 @@ stages:
              name: !anystr
 
  - name: Request-Logcollector-Localfile (Manager)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/localfile"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1095,13 +1080,11 @@ stages:
          localfile: !anything
 
  - name: Request-Logcollector-Localfile (Agent)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/logcollector/localfile"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1109,35 +1092,29 @@ stages:
          localfile: !anything
 
  - name: Request-Logcollector-Socker (Manager)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/socket"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
 
  - name: Request-Logcollector-Socker (Agent)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/logcollector/socket"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
 
  - name: Request-Logcollector-Internal (Manager)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1161,13 +1138,11 @@ stages:
              vcheck_files: !anyint
 
  - name: Request-Logcollector-Internal (Agent)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/logcollector/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1191,13 +1166,11 @@ stages:
              vcheck_files: !anyint
 
  - name: Request-Mail-Global
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/mail/global"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1210,13 +1183,11 @@ stages:
            smtp_server: !anystr
 
  - name: Request-Mail-Alerts
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/mail/alerts"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1224,13 +1195,11 @@ stages:
          email_alerts: !anything
 
  - name: Request-Mail-Internal
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/mail/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1241,13 +1210,11 @@ stages:
              strict_checking: !anyint
 
  - name: Request-Monitor-Internal
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/monitor/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1264,13 +1231,11 @@ stages:
            size_rotate: !anyint
 
  - name: Request-Request-Remote
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/request/remote"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1283,13 +1248,11 @@ stages:
              queue_size: !anystr
 
  - name: Request-Request-Internal
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/request/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1317,13 +1280,11 @@ stages:
              verify_msg_id: !anyint
 
  - name: Request-Syscheck-Syscheck (Manager)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/syscheck"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1339,13 +1300,11 @@ stages:
            whodata: !anything
 
  - name: Request-Syscheck-Syscheck (Agent)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/syscheck/syscheck"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1361,13 +1320,11 @@ stages:
            whodata: !anything
 
  - name: Request-Syscheck-Rootcheck (Manager)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/rootcheck"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1389,13 +1346,11 @@ stages:
            skip_nfs: !anystr
 
  - name: Request-Syscheck-Rootcheck (Agent)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/syscheck/rootcheck"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1417,13 +1372,11 @@ stages:
            skip_nfs: !anystr
 
  - name: Request-Syscheck-Internal (Manager)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1440,13 +1393,11 @@ stages:
              sleep_after: !anyint
 
  - name: Request-Syscheck-Internal (Agent)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/syscheck/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1463,13 +1414,11 @@ stages:
              sleep_after: !anyint
 
  - name: Request-Wmodules-Wmodules (Manager)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/wmodules/wmodules"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1477,13 +1426,11 @@ stages:
          wmodules: !anything
 
  - name: Request-Wmodules-Wmodules (Agent)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wmodules/wmodules"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1491,134 +1438,115 @@ stages:
          wmodules: !anything
 
  - name: Try show not existing agent
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/999/config/mail/global"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        code: 1701
 
  - name: Try show not existing agent by name
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_name/config/mail/global"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Request Error
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/mail/global"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        code: 1117
 
  - name: Request Error Component Parameter
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wrong_component/global"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Request Error Configuration Parameter
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/mail/wrong_configuration"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Request Error Component and Configuration Parameters
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wrong_component/wrong_configuration"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
 ---
-test_name: GET /agents/:agent_id/group/is_sync
+test_name: GET /agents/{agent_id}/group/is_sync
 
 stages:
- - name: Try get sync agent 000 (manager)
 
+ - name: Try get sync agent 000 (manager)
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group/is_sync"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        code: 1703
 
  - name: Try get sync not existing agent
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/is_sync"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        code: 1701
 
  - name: Try get sync agent by name
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group/is_sync"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Get agent sync
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/is_sync"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1626,56 +1554,49 @@ stages:
          synced: !anybool
 
 ---
-test_name: GET /agents/:agent_id/key
+test_name: GET /agents/{agent_id}/key
 
 stages:
- - name: Try get key agent 000 (manager)
 
+ - name: Try get key agent 000 (manager)
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/key"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        code: 1703
 
  - name: Try get key not existing agent
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/999/key"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        code: 1701
 
  - name: Try get key agent by name
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/key"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Get agent key
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/key"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1686,14 +1607,13 @@ stages:
 test_name: GET /agents/groups
 
 stages:
- - name: Basic response agents groups
 
+ - name: Basic response agents groups
    request: &get_agents_groups
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      save:
@@ -1705,13 +1625,11 @@ stages:
          totalItems: !anyint
 
  - name: Pagination
-
    request:
      <<: *get_agents_groups
      params:
        offset: 0
        limit: 1
-
    response:
      status_code: 200
      body:
@@ -1722,36 +1640,30 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with offset -1
-
    request:
      <<: *get_agents_groups
      params:
        offset: -1
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
-
    request:
      <<: *get_agents_groups
      params:
        offset: wrong_offset
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
-
    request:
      <<: *get_agents_groups
      params:
        offset: 9999999999999999999
-
    response:
      status_code: 200
      body:
@@ -1760,48 +1672,40 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with limit 0
-
    request:
      <<: *get_agents_groups
      params:
        limit: 0
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
-
    request:
      <<: *get_agents_groups
      params:
        limit: wrong_limit
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
-
    request:
      <<: *get_agents_groups
      params:
        limit: 9999
-
    response:
      status_code: 400
      body:
        code: 1405
 
  - name: Sort
-
    request:
      <<: *get_agents_groups
      params:
        sort: -name
-
    response:
      status_code: 200
      body:
@@ -1810,24 +1714,20 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with wrong sort
-
    request:
      <<: *get_agents_groups
      params:
        sort: -wrong_sort
-
    response:
      status_code: 400
      body:
        code: 1403
 
  - name: Search
-
    request:
      <<: *get_agents_groups
      params:
        search: default
-
    response:
      status_code: 200
      body:
@@ -1837,12 +1737,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with wrong search
-
    request:
      <<: *get_agents_groups
      params:
        search: wrong_search
-
    response:
      status_code: 200
      body:
@@ -1851,12 +1749,10 @@ stages:
          totalItems: 0
 
  - name: Try show agents with wrong hash
-
    request:
      <<: *get_agents_groups
      params:
        hash: wrong_hash
-
    response:
      status_code: 400
      body:
@@ -1883,13 +1779,12 @@ marks:
          - sha3_512
 
 stages:
- - name: Filter hash
 
+ - name: Filter hash
    request:
      <<: *get_agents_groups
      params:
        hash: "{hash:s}"
-
    response:
      status_code: 200
      body:
@@ -1901,14 +1796,13 @@ stages:
 test_name: GET /agents/groups/{group_id}
 
 stages:
- - name: Try get all agent in one groups
 
+ - name: Try get all agent in one groups
    request: &groups_id_request
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      save:
@@ -1920,13 +1814,11 @@ stages:
          totalItems: !anyint
 
  - name: Pagination
-
    request:
      <<: *groups_id_request
      params:
        offset: 0
        limit: 1
-
    response:
      status_code: 200
      body: &groups_id_response
@@ -1948,110 +1840,92 @@ stages:
          totalItems: !int "{expected_items:d}"
 
  - name: Try show agents with offset -1
-
    request:
      <<: *groups_id_request
      params:
        offset: -1
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
-
    request:
      <<: *groups_id_request
      params:
        offset: wrong_offset
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
-
    request:
      <<: *groups_id_request
      params:
        offset: 9999999999999999999
-
    response:
      status_code: 400
      body:
        code: 2003
 
  - name: Try show agents with limit 0
-
    request:
      <<: *groups_id_request
      params:
        limit: 0
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
-
    request:
      <<: *groups_id_request
      params:
        limit: wrong_limit
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
-
    request:
      <<: *groups_id_request
      params:
        limit: 9999
-
    response:
      status_code: 400
      body:
        code: 1405
 
  - name: Params, bad group name
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_group"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        code: 1710
 
  - name: Params, bad group name (not alphanumeric)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_%_group"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Sort
-
    request:
      <<: *groups_id_request
      params:
        sort: -id
-
    response:
      status_code: 200
      body:
@@ -2060,24 +1934,20 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with wrong sort
-
    request:
      <<: *groups_id_request
      params:
        sort: -wrong_sort
-
    response:
      status_code: 400
      body:
        code: 1403
 
  - name: Search
-
    request:
      <<: *groups_id_request
      params:
        search: '001'
-
    response:
      status_code: 200
      body:
@@ -2087,12 +1957,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with wrong search
-
    request:
      <<: *groups_id_request
      params:
        search: wrong_search
-
    response:
      status_code: 200
      body:
@@ -2101,12 +1969,10 @@ stages:
          totalItems: 0
 
  - name: Filter select one field
-
    request:
      <<: *groups_id_request
      params:
        select: 'os.platform'
-
    response:
      status_code: 200
      body:
@@ -2115,12 +1981,10 @@ stages:
          totalItems: !anyint
 
  - name: Filter select multiple fields
-
    request:
      <<: *groups_id_request
      params:
        select: 'dateAdd,mergedSum'
-
    response:
      status_code: 200
      body:
@@ -2129,37 +1993,31 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with not allowed selector
-
    request:
      <<: *groups_id_request
      params:
        select: param_test
-
    response:
      status_code: 400
      body:
        code: 1724
 
  - name: Try show agents with not allowed selector (invalid character)
-
    request:
      <<: *groups_id_request
      params:
        select: param_%_test
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Status multiple
-
    request:
      <<: *groups_id_request
      params:
        limit: 1
        status: active,disconnected
-
    response:
      status_code: 200
      body:
@@ -2168,24 +2026,20 @@ stages:
         totalItems: !anyint
 
  - name: Try show agents with not allowed status
-
    request:
      <<: *groups_id_request
      params:
        status: wrong_status
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Filter agents by query
-
    request:
      <<: *groups_id_request
      params:
        q: group=default;lastKeepAlive<1d
-
    response:
      status_code: 200
      body:
@@ -2194,24 +2048,20 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with bad query
-
    request:
      <<: *groups_id_request
      params:
        q: group=default;lastKeepAe<1d
-
    response:
      status_code: 400
      body:
        code: 1408
 
  - name: Try show agents with bad query (invalid character)
-
    request:
      <<: *groups_id_request
      params:
        q: group=default;lastKeep%<1d
-
    response:
      status_code: 400
      body:
@@ -2248,13 +2098,12 @@ marks:
        - version
 
 stages:
- - name: Filter groups, select
 
+ - name: Filter groups, select
    request:
      <<: *groups_id_request
      params:
        select: "{field}"
-
    response:
      status_code: 200
      body:
@@ -2262,12 +2111,10 @@ stages:
          totalItems: !anyint
 
  - name: Filter groups, sort
-
    request:
      <<: *groups_id_request
      params:
        sort: "{field}"
-
    response:
      status_code: 200
      body:
@@ -2278,8 +2125,8 @@ stages:
 test_name: GET /agents/groups/{group_id}/configuration
 
 stages:
- - name: Write configuration example
 
+ - name: Write configuration example
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/configuration"
      method: PUT
@@ -2288,14 +2135,12 @@ stages:
        Authorization: "Bearer {test_login_token}"
      data:
        "{file_xml:s}"
-
    response:
      status_code: 200
      body:
        message: !anystr
 
  - name: Try get the configuration of a group
-
    request: &groups_id_config_request
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/configuration"
      method: GET
@@ -2303,7 +2148,6 @@ stages:
        Authorization: "Bearer {test_login_token}"
      params:
        limit: 1
-
    response:
      status_code: 200
      body: &groups_id_config_response
@@ -2314,7 +2158,6 @@ stages:
          totalItems: !anyint
 
  - name: Try get the configuration of a bad group
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_group/configuration"
      method: GET
@@ -2322,14 +2165,12 @@ stages:
        Authorization: "Bearer {test_login_token}"
      params:
        limit: 1
-
    response:
      status_code: 400
      body:
        code: 1710
 
  - name: Try get the configuration of a bad group (not alphanumeric)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_%group/configuration"
      method: GET
@@ -2337,20 +2178,17 @@ stages:
        Authorization: "Bearer {test_login_token}"
      params:
        limit: 1
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Pagination
-
    request:
      <<: *groups_id_config_request
      params:
        offset: 0
        limit: 1
-
    response:
      status_code: 200
      body:
@@ -2361,36 +2199,30 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with offset -1
-
    request:
      <<: *groups_id_config_request
      params:
        offset: -1
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
-
    request:
      <<: *groups_id_config_request
      params:
        offset: wrong_offset
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
-
    request:
      <<: *groups_id_config_request
      params:
        offset: 9999999999999999999
-
    response:
      status_code: 200
      body:
@@ -2399,36 +2231,30 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with limit 0
-
    request:
      <<: *groups_id_config_request
      params:
        limit: 0
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
-
    request:
      <<: *groups_id_config_request
      params:
        limit: wrong_limit
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
-
    request:
      <<: *groups_id_config_request
      params:
        limit: 9999
-
    response:
      status_code: 400
      body:
@@ -2441,8 +2267,8 @@ includes:
  - !include common.yaml
 
 stages:
- - name: Try get the files of a group
 
+ - name: Try get the files of a group
    request: &groups_id_files_request
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/files"
      method: GET
@@ -2451,7 +2277,6 @@ stages:
      params:
        limit: 2
        offset: 0
-
    response:
      status_code: 200
      body:
@@ -2468,13 +2293,11 @@ stages:
          hash_saved: data.items.1.hash
 
  - name: Pagination
-
    request:
      <<: *groups_id_files_request
      params:
        limit: 1
        offset: 1
-
    response:
      status_code: 200
      body:
@@ -2485,36 +2308,30 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with offset -1
-
    request:
      <<: *groups_id_files_request
      params:
        offset: -1
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
-
    request:
      <<: *groups_id_files_request
      params:
        offset: wrong_offset
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
-
    request:
      <<: *groups_id_files_request
      params:
        offset: 9999999999999999999
-
    response:
      status_code: 200
      body:
@@ -2523,43 +2340,36 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with limit 0
-
    request:
      <<: *groups_id_files_request
      params:
        limit: 0
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
-
    request:
      <<: *groups_id_files_request
      params:
        limit: wrong_limit
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
-
    request:
      <<: *groups_id_files_request
      params:
        limit: 9999
-
    response:
      status_code: 400
      body:
        code: 1405
 
  - name: Try get the files of a bad group name
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_group/files"
      method: GET
@@ -2567,14 +2377,12 @@ stages:
        Authorization: "Bearer {test_login_token}"
      params:
        limit: 1
-
    response:
      status_code: 400
      body:
        code: 1710
 
  - name: Try get the files of a bad group name (no alphanumeric)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_%_group/files"
      method: GET
@@ -2582,19 +2390,16 @@ stages:
        Authorization: "Bearer {test_login_token}"
      params:
        limit: 1
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Sort
-
    request:
      <<: *groups_id_files_request
      params:
        sort: -hash
-
    response:
      status_code: 200
      body:
@@ -2603,24 +2408,20 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with wrong sort
-
    request:
      <<: *groups_id_files_request
      params:
        sort: -wrong_sort
-
    response:
      status_code: 400
      body:
        code: 1403
 
  - name: Search
-
    request:
      <<: *groups_id_files_request
      params:
        search: agent.conf
-
    response:
      status_code: 200
      body:
@@ -2630,12 +2431,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with wrong search
-
    request:
      <<: *groups_id_request
      params:
        search: wrong_search
-
    response:
      status_code: 200
      body:
@@ -2644,12 +2443,10 @@ stages:
          totalItems: 0
 
  - name: Try get the files of a group, filter bad hash
-
    request:
      <<: *groups_id_files_request
      params:
        hash: wrong_hash
-
    response:
      status_code: 400
      body:
@@ -2676,13 +2473,12 @@ marks:
          - sha3_512
 
 stages:
- - name: Filter hash
 
+ - name: Filter hash
    request:
      <<: *groups_id_files_request
      params:
        hash: "{hash:s}"
-
    response:
      status_code: 200
      body:
@@ -2697,47 +2493,41 @@ includes:
  - !include common.yaml
 
 stages:
- - name: Try get one file of a group
 
+ - name: Try get one file of a group
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/files/agent.conf/json"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
        <<: *groups_id_config_response
 
  - name: Try get one file of a group, bad group
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_group/files/agent.conf/json"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        code: 1006
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_%_group/files/agent.conf/json"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Extra parameters
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wñ!/files/agent.conf/json"
      method: GET
@@ -2745,7 +2535,6 @@ stages:
        Authorization: "Bearer {test_login_token}"
      params:
        limit: 0
-
    response:
      status_code: 400
      body: &error_spec_invalid_param
@@ -2759,14 +2548,13 @@ includes:
  - !include common.yaml
 
 stages:
- - name: Try get one file of a group
 
+ - name: Try get one file of a group
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/files/agent.conf/xml"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      headers:
@@ -2774,33 +2562,28 @@ stages:
 
 
  - name: Try get one file of a group, bad group
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_group/files/agent.conf/xml"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        code: 1006
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_%_group/files/agent.conf/xml"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Extra parameters
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wñ!/files/agent.conf/xml"
      method: GET
@@ -2808,24 +2591,22 @@ stages:
        Authorization: "Bearer {test_login_token}"
      params:
        limit: 0
-
    response:
      status_code: 400
      body:
        <<: *error_spec_invalid_param
 
 ---
-test_name: GET /agents/name/:agent_name
+test_name: GET /agents/name/{agent_name}
 
 stages:
- - name: Basic response agents name
 
+ - name: Basic response agents name
    request: &get_agents_by_name
      url: "{protocol:s}://{host:s}:{port:d}/agents/name/{expected_agent_name}"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -2834,25 +2615,21 @@ stages:
          name: "{expected_agent_name}"
 
  - name: Error agent name
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/name/wrong_agent"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        code: 1701
 
  - name: Select one field
-
    request:
      <<: *get_agents_by_name
      params:
        select: name
-
    response:
      status_code: 200
      body:
@@ -2860,12 +2637,10 @@ stages:
          name: "{expected_agent_name}"
 
  - name: Select three fields
-
    request:
      <<: *get_agents_by_name
      params:
        select: name,id,status
-
    response:
      status_code: 200
      body:
@@ -2875,24 +2650,20 @@ stages:
          status: !anystr
 
  - name: Try show agents with wrong select
-
    request:
      <<: *get_agents_by_name
      params:
        select: wrong_select
-
    response:
      status_code: 400
      body:
        code: 1724
 
  - name: Invalid parameter in request (Only one item, sort is useless)
-
    request:
      <<: *get_agents_by_name
      params:
        sort: name
-
    response:
      status_code: 400
      body:
@@ -2902,8 +2673,8 @@ stages:
 test_name: GET /agents/no_group
 
 stages:
- - name: Get the agents without group
 
+ - name: Get the agents without group
    request: &no_group_request
      url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
      method: GET
@@ -2911,7 +2682,6 @@ stages:
        Authorization: "Bearer {test_login_token}"
      params:
        limit: 1
-
    response:
      status_code: 200
      body: &no_group_response
@@ -2920,13 +2690,11 @@ stages:
          totalItems: !anyint
 
  - name: Pagination
-
    request:
      <<: *no_group_request
      params:
        offset: 0
        limit: 1
-
    response:
      status_code: 200
      body:
@@ -2942,84 +2710,70 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with offset -1
-
    request:
      <<: *no_group_request
      params:
        offset: -1
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
-
    request:
      <<: *no_group_request
      params:
        offset: wrong_offset
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
-
    request:
      <<: *no_group_request
      params:
        offset: 9999999999999999999
-
    response:
      status_code: 400
      body:
        code: 2003
 
  - name: Try show agents with limit 0
-
    request:
      <<: *no_group_request
      params:
        limit: 0
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
-
    request:
      <<: *no_group_request
      params:
        limit: wrong_limit
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
-
    request:
      <<: *no_group_request
      params:
        limit: 9999
-
    response:
      status_code: 400
      body:
        code: 1405
 
  - name: Sort
-
    request:
      <<: *no_group_request
      params:
        sort: -id
-
    response:
      status_code: 200
      body:
@@ -3028,24 +2782,20 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with wrong sort
-
    request:
      <<: *no_group_request
      params:
        sort: -wrong_sort
-
    response:
      status_code: 400
      body:
        code: 1403
 
  - name: Search
-
    request:
      <<: *no_group_request
      params:
        search: never_connected
-
    response:
      status_code: 200
      body:
@@ -3055,12 +2805,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with wrong search
-
    request:
      <<: *no_group_request
      params:
        search: wrong_search
-
    response:
      status_code: 200
      body:
@@ -3069,12 +2817,10 @@ stages:
          totalItems: 0
 
  - name: Filter agents by query
-
    request:
      <<: *no_group_request
      params:
        q: group=default;lastKeepAlive<1d
-
    response:
      status_code: 200
      body:
@@ -3083,24 +2829,20 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with bad query
-
    request:
      <<: *no_group_request
      params:
        q: group=default;lastKeepAe<1d
-
    response:
      status_code: 400
      body:
        code: 1408
 
  - name: Try show agents with bad query (invalid character)
-
    request:
      <<: *no_group_request
      params:
        q: group=default;lastKeep%<1d
-
    response:
      status_code: 400
      body:
@@ -3125,8 +2867,8 @@ marks:
        - status
 
 stages:
- - name: Get the agents without group, sort
 
+ - name: Get the agents without group, sort
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
      method: GET
@@ -3135,14 +2877,12 @@ stages:
      params:
        limit: 1
        sort: "{field}"
-
    response:
      status_code: 200
      body:
        <<: *no_group_response
 
  - name: Select
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
      method: GET
@@ -3151,7 +2891,6 @@ stages:
      params:
        limit: 1
        select: "{field}"
-
    response:
      status_code: 200
      body:
@@ -3164,8 +2903,8 @@ includes:
  - !include common.yaml
 
 stages:
- - name: Get the outdated agents
 
+ - name: Get the outdated agents
    request: &agents_outdated_request
      url: "{protocol:s}://{host:s}:{port:d}/agents/outdated"
      method: GET
@@ -3173,7 +2912,6 @@ stages:
        Authorization: "Bearer {test_login_token}"
      params:
        limit: 1
-
    response:
      status_code: 200
      body:
@@ -3182,13 +2920,11 @@ stages:
          totalItems: !anyint
 
  - name: Pagination
-
    request:
      <<: *agents_outdated_request
      params:
        offset: 0
        limit: 1
-
    response:
      status_code: 200
      body:
@@ -3200,84 +2936,70 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with offset -1
-
    request:
      <<: *agents_outdated_request
      params:
        offset: -1
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
-
    request:
      <<: *agents_outdated_request
      params:
        offset: wrong_offset
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
-
    request:
      <<: *agents_outdated_request
      params:
        offset: 9999999999999999999
-
    response:
      status_code: 400
      body:
        code: 2003
 
  - name: Try show agents with limit 0
-
    request:
      <<: *agents_outdated_request
      params:
        limit: 0
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
-
    request:
      <<: *agents_outdated_request
      params:
        limit: wrong_limit
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
-
    request:
      <<: *agents_outdated_request
      params:
        limit: 9999
-
    response:
      status_code: 400
      body:
        code: 1405
 
  - name: Sort
-
    request:
      <<: *agents_outdated_request
      params:
        sort: -id
-
    response:
      status_code: 200
      body:
@@ -3286,24 +3008,20 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with wrong sort
-
    request:
      <<: *agents_outdated_request
      params:
        sort: -wrong_sort
-
    response:
      status_code: 400
      body:
        code: 1403
 
  - name: Filter agents by query
-
    request:
      <<: *agents_outdated_request
      params:
        q: group=default;lastKeepAlive<1d
-
    response:
      status_code: 200
      body:
@@ -3312,24 +3030,20 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with bad query
-
    request:
      <<: *agents_outdated_request
      params:
        q: group=default;lastKeepAe<1d
-
    response:
      status_code: 400
      body:
        code: 1408
 
  - name: Try show agents with bad query (invalid character)
-
    request:
      <<: *agents_outdated_request
      params:
        q: group=default;lastKeep%<1d
-
    response:
      status_code: 400
      body:
@@ -3347,13 +3061,12 @@ marks:
        - version
 
 stages:
- - name: Get the agents without group, sort
 
+ - name: Get the agents without group, sort
    request:
      <<: *agents_outdated_request
      params:
        sort: "{field}"
-
    response:
      status_code: 200
      body:
@@ -3365,30 +3078,24 @@ stages:
 test_name: GET /agents/stats/distinct
 
 stages:
- - name: Returns all the different combinations that agents have for the selected fields. It also indicates the total number of agents that have each combination.
 
-   request: &agents_distinct_request
+ - name: Returns all the different combinations that agents have for the selected fields. It also indicates the total number of agents that have each combination.
+   request: &distinct_request
      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
        <<: *basic_response
 
  - name: Get the different combinations for os.platform
-
-   request: &distinct_request
-     url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
+   request:
+     <<: *distinct_request
      params:
        limit: 2
        fields: os.platform
-
    response:
      status_code: 200
      body:
@@ -3401,20 +3108,17 @@ stages:
          totalItems: !anyint
 
  - name: Fields error
-
    request:
      <<: *distinct_request
      params:
        limit: 2
        fields: wrong_field
-
    response:
      status_code: 400
      body:
        code: 1724
 
  - name: Get the different combinations for os.platform, search
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
      method: GET
@@ -3424,7 +3128,6 @@ stages:
        limit: 2
        fields: os.platform
        search: linux
-
    response:
      status_code: 200
      body:
@@ -3433,7 +3136,6 @@ stages:
          totalItems: !anyint
 
  - name: Get the different combinations for os.platform, search
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
      method: GET
@@ -3443,20 +3145,17 @@ stages:
        limit: 2
        fields: os.platform
        select: invalid
-
    response:
      status_code: 400
      body:
        code: 1724
 
  - name: Pagination
-
    request:
      <<: *distinct_request
      params:
        offset: 0
        limit: 1
-
    response:
      status_code: 200
      body:
@@ -3472,84 +3171,70 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with offset -1
-
    request:
      <<: *distinct_request
      params:
        offset: -1
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
-
    request:
      <<: *distinct_request
      params:
        offset: wrong_offset
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
-
    request:
      <<: *distinct_request
      params:
        offset: 9999999999999999999
-
    response:
      status_code: 400
      body:
        code: 2003
 
  - name: Try show agents with limit 0
-
    request:
      <<: *distinct_request
      params:
        limit: 0
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
-
    request:
      <<: *distinct_request
      params:
        limit: wrong_limit
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
-
    request:
      <<: *distinct_request
      params:
        limit: 9999
-
    response:
      status_code: 400
      body:
        code: 1405
 
  - name: Sort
-
    request:
      <<: *distinct_request
      params:
        sort: -id
-
    response:
      status_code: 200
      body:
@@ -3558,24 +3243,20 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with wrong sort
-
    request:
      <<: *distinct_request
      params:
        sort: -wrong_sort
-
    response:
      status_code: 400
      body:
        code: 1403
 
  - name: Search
-
    request:
      <<: *distinct_request
      params:
        search: never_connected
-
    response:
      status_code: 200
      body:
@@ -3585,12 +3266,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with wrong search
-
    request:
      <<: *distinct_request
      params:
        search: wrong_search
-
    response:
      status_code: 200
      body:
@@ -3599,12 +3278,10 @@ stages:
          totalItems: 0
 
  - name: Filter agents by query
-
    request:
      <<: *distinct_request
      params:
        q: group=default;lastKeepAlive<1d
-
    response:
      status_code: 200
      body:
@@ -3613,24 +3290,20 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with bad query
-
    request:
      <<: *distinct_request
      params:
        q: group=default;lastKeepAe<1d
-
    response:
      status_code: 400
      body:
        code: 1408
 
  - name: Try show agents with bad query (invalid character)
-
    request:
      <<: *distinct_request
      params:
        q: group=default;lastKeep%<1d
-
    response:
      status_code: 400
      body:
@@ -3664,8 +3337,8 @@ marks:
       - version
 
 stages:
- - name: Get the different combinations for os.platform, sorted
 
+ - name: Get the different combinations for os.platform, sorted
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
      method: GET
@@ -3675,7 +3348,6 @@ stages:
        limit: 2
        fields: os.platform
        sort: "{field}"
-
    response:
      status_code: 200
      body:
@@ -3684,7 +3356,6 @@ stages:
          totalItems: !anyint
 
  - name: Get the different combinations for os.platform, select
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
      method: GET
@@ -3694,7 +3365,6 @@ stages:
        limit: 2
        fields: os.name
        select: "{field}"
-
    response:
      status_code: 200
      body:
@@ -3706,17 +3376,16 @@ stages:
 test_name: GET /agents/summary
 
 stages:
- - name: Get the summary of an agent
 
-   request: &agents_summary_request
+ - name: Get the summary of an agent
+   request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/summary"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
-     body: &agents_summary_response
+     body:
        data:
          active: !anyint
          disconnected: !anyint
@@ -3725,7 +3394,6 @@ stages:
          total: !anyint
 
  - name: Extra parameter
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/summary"
      method: GET
@@ -3733,7 +3401,6 @@ stages:
        Authorization: "Bearer {test_login_token}"
      params:
        limit: 0
-
    response:
      status_code: 400
      body:
@@ -3743,29 +3410,26 @@ stages:
 test_name: GET /agents/summary/os
 
 stages:
- - name: Get the summary/os of an agent
 
+ - name: Get the summary/os of an agent
    request: &agents_summary_os_request
      url: "{protocol:s}://{host:s}:{port:d}/agents/summary/os"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
-     body: &agents_summary_os_response
+     body:
        data:
          items: !anything
          totalItems: !anyint
 
  - name: Pagination
-
    request:
      <<: *agents_summary_os_request
      params:
        offset: 0
        limit: 1
-
    response:
      status_code: 200
      body:
@@ -3774,84 +3438,70 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with offset -1
-
    request:
      <<: *agents_summary_os_request
      params:
        offset: -1
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
-
    request:
      <<: *no_group_request
      params:
        offset: wrong_offset
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
-
    request:
      <<: *agents_summary_os_request
      params:
        offset: 9999999999999999999
-
    response:
      status_code: 400
      body:
        code: 2003
 
  - name: Try show agents with limit 0
-
    request:
      <<: *agents_summary_os_request
      params:
        limit: 0
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
-
    request:
      <<: *agents_summary_os_request
      params:
        limit: wrong_limit
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
-
    request:
      <<: *agents_summary_os_request
      params:
        limit: 9999
-
    response:
      status_code: 400
      body:
        code: 1405
 
  - name: Sort
-
    request:
      <<: *agents_summary_os_request
      params:
        sort: -id
-
    response:
      status_code: 200
      body:
@@ -3860,24 +3510,20 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with wrong sort
-
    request:
      <<: *agents_summary_os_request
      params:
        sort: -wrong_sort
-
    response:
      status_code: 400
      body:
        code: 1403
 
  - name: Search
-
    request:
      <<: *agents_summary_os_request
      params:
        search: never_connected
-
    response:
      status_code: 200
      body:
@@ -3887,12 +3533,10 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with wrong search
-
    request:
      <<: *agents_summary_os_request
      params:
        search: wrong_search
-
    response:
      status_code: 200
      body:
@@ -3901,25 +3545,21 @@ stages:
          totalItems: 0
 
  - name: Filter summary/os, sort
-
    request:
      <<: *agents_summary_os_request
      params:
        sort: "{field}"
        limit: 1
-
    response:
      status_code: 200
      body:
        <<: *basic_response
 
  - name: Filter agents by query
-
    request:
      <<: *agents_summary_os_request
      params:
        q: group=default;lastKeepAlive<1d
-
    response:
      status_code: 200
      body:
@@ -3928,24 +3568,20 @@ stages:
          totalItems: !anyint
 
  - name: Try show agents with bad query
-
    request:
      <<: *agents_summary_os_request
      params:
        q: group=default;lastKeepAe<1d
-
    response:
      status_code: 400
      body:
        code: 1408
 
  - name: Try show agents with bad query (invalid character)
-
    request:
      <<: *agents_summary_os_request
      params:
        q: group=default;lastKeep%<1d
-
    response:
      status_code: 400
      body:
@@ -3981,13 +3617,12 @@ marks:
        - version
 
 stages:
- - name: Get the summary os, sorted
 
+ - name: Get the summary os, sorted
    request:
      <<: *agents_summary_os_request
      params:
        sort: "{field}"
-
    response:
      status_code: 200
      body:
@@ -3996,59 +3631,52 @@ stages:
          totalItems: !anyint
 
 ---
-test_name: GET /agents/:agent_id/upgrade_result
+test_name: GET /agents/{agent_id}/upgrade_result
 
 marks:
  - skip
 
 stages:
- - name: Try get upgrade result agent 000 (manager)
 
+ - name: Try get upgrade result agent 000 (manager)
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        code: 1703
 
  - name: Try get upgrade result not existing agent
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/999/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        code: 1701
 
  - name: Try get upgrade result agent by name
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
        <<: *error_spec
 
  - name: Get agent upgrade result not upgrade
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 400
      body:
@@ -4060,26 +3688,21 @@ stages:
        type: !anystr
 
  - name: Update an agent
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade?wait_for_complete=true"
      method: PUT
-
    response:
      status_code: 200
      body:
        message: !anystr
-
    delay_after: 60
 
  - name: Get agent upgrade result
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:

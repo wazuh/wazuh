@@ -21,7 +21,7 @@ from xml.parsers.expat import ExpatError
 from wazuh import Wazuh
 from wazuh import common
 from wazuh import configuration
-from wazuh.agent import Agent
+from wazuh.core.core_agent import Agent
 from wazuh.cluster.utils import get_manager_status, get_cluster_status, manager_restart, read_cluster_config
 from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult
@@ -513,7 +513,7 @@ def get_info() -> Dict:
     """
     # get name from agent 000
     manager = Agent(id=0)
-    manager._load_info_from_DB()
+    manager.load_info_from_db()
 
     # read cluster configuration
     cluster_config = read_cluster_config()

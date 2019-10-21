@@ -99,7 +99,7 @@ from wazuh import configuration as configuration
 from wazuh import exception
 from wazuh import manager as manager
 from wazuh import pyDaemonModule, utils
-from wazuh.agent import Agent
+from wazuh.core.core_agent import Agent
 from wazuh.cluster import (__author__, __licence__, __ossec_name__,
                            __version__, client)
 from wazuh.cluster import cluster as cluster

@@ -9,7 +9,7 @@ from glob import glob
 from operator import itemgetter
 
 from wazuh import common
-from wazuh.agent import Agent
+from wazuh.core.core_agent import Agent
 from wazuh.database import Connection
 from wazuh.exception import WazuhInternalError
 from wazuh.ossec_queue import OssecQueue

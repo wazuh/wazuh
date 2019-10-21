@@ -4,7 +4,7 @@
 import json
 
 from wazuh import common
-from wazuh.agent import Agent
+from wazuh.core.core_agent import Agent
 from wazuh.cluster import local_client
 from wazuh.cluster.common import as_wazuh_object, WazuhJSONEncoder
 from wazuh.utils import filter_array_by_query

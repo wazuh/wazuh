@@ -20,7 +20,7 @@ from time import time
 
 from wazuh import common
 from wazuh.InputValidator import InputValidator
-from wazuh.agent import Agent
+from wazuh.core.core_agent import Agent
 from wazuh.exception import WazuhException
 from wazuh.utils import md5, mkdir_with_mode
 from wazuh.wlogging import WazuhLogger

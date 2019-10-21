@@ -129,20 +129,127 @@ components:
       type: object
       required:
         - total_affected_items
+        - failed_items
+        - total_failed_items
       properties:
         total_affected_items:
           type: integer
           format: int32
-          description: Number of items that have successfully did the requested operation.
+          description: Number of items that have successfully done the requested operation.
         failed_items:
           type: array
-          description: List of items that have failed when doing the requested operation. It's not returned when it's empty.
+          description: List of items that have failed when doing the requested operation.
           items:
             $ref: '#/components/schemas/SimpleApiError'
         total_failed_items:
           type: integer
           format: int32
           description: Number of items that have failed during the requested operation.
+
+    AllItemsResponseAgents:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/Agent'
+                  - type: array
+
+    AllItemsResponseGroups:
+      allOf:
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/AgentGroup'
+                  - type: array
+        - $ref: '#/components/schemas/AllItemsResponse'
+
+    AllItemsResponseAgentIDs:
+      allOf:
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/AgentID'
+                  - type: array
+        - $ref: '#/components/schemas/AllItemsResponse'
+
+    AllItemsResponseGroupIDs:
+      allOf:
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/GroupID'
+                  - type: array
+        - $ref: '#/components/schemas/AllItemsResponse'
+
+    AllItemsResponseAgentsSimple:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/AgentSimple'
+                  - type: array
+
+    AllItemsResponseAgentsSynced:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/AgentSynced'
+                  - type: array
+
+    AllItemsResponseAgentsKeys:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/AgentIdKey'
+                  - type: array
 
     AllItemsResponseRoles:
       allOf:
@@ -210,10 +317,6 @@ components:
           description: Server hostname.
         timestamp:
           type: string
-
-    GroupId:
-      type: string
-      format: alphanumeric
 
     ## Active-response models
     ActiveResponseBody:
@@ -324,8 +427,6 @@ components:
       type: object
       required:
       - affected_agents
-      allOf:
-        - $ref: '#/components/schemas/ItemAffected'
       properties:
         affected_agents:
           type: array
@@ -357,13 +458,6 @@ components:
           type: string
           description: Agent name used at registration process.
 
-    AgentSimpleResponse:
-      type: object
-      required:
-      - id
-      - name
-      $ref: '#/components/schemas/AgentSimple'
-
     AgentStatus:
       type: string
       enum:
@@ -373,7 +467,7 @@ components:
       - disconnected
       description: Agent status. It is calculated based on the last keep alive and the Wazuh version.
 
-    AgentsSummary:
+    AgentsSummaryStatus:
       type: object
       properties:
         total:
@@ -392,11 +486,50 @@ components:
           type: integer
           format: int32
 
+    AgentDistinct:
+      allOf:
+        - $ref: '#/components/schemas/AgentSimple'
+        - $ref: '#/components/schemas/ExtraAgentFields'
+        - type: object
+          properties:
+            count:
+              type: integer
+              format: int32
+              description: Returns the number of agents with the specific unique fields
+
+    AgentSynced:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 'Agent ID'
+        synced:
+          type: boolean
+          description: 'Sync info'
+
     AgentID:
       type: string
       minLength: 3
       description: Agent ID.
       format: numbers
+
+    GroupID:
+      type: string
+      minLength: 1
+      description: Group name.
+      format: group_names
+
+    GroupFile:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            properties:
+              filename:
+                type: string
+              hash:
+                type: string
 
     AgentConfiguration:
       type: object
@@ -2162,7 +2295,7 @@ components:
               type: integer
               format: int32
         agent_status:
-          $ref: '#/components/schemas/AgentsSummary'
+          $ref: '#/components/schemas/AgentsSummaryStatus'
         agent_version:
           type: object
           description: Recount of the number of Wazuh agents group by version.
@@ -2212,6 +2345,7 @@ components:
       schema:
         type: string
         format: names
+        maxLength: 128
     benchmark:
       in: query
       name: benchmark
@@ -2523,16 +2657,16 @@ components:
     group_id:
       in: path
       name: group_id
-      description: Group ID.
+      description: Group ID. (Name of the group)
       required: true
       schema:
-        $ref: '#/components/schemas/GroupId'
+        $ref: '#/components/schemas/GroupID'
     agent_group:
       in: query
       name: group
       description: Filters by group of agents.
       schema:
-        $ref: '#/components/schemas/GroupId'
+        $ref: '#/components/schemas/GroupID'
     hash:
       in: query
       name: hash
@@ -2573,11 +2707,10 @@ components:
       in: query
       name: list_groups
       description: Array of group's IDs
-      required: true
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/GroupId'
+          $ref: '#/components/schemas/GroupID'
     list_policies:
       in: query
       name: list_policies
@@ -2705,7 +2838,7 @@ components:
     purge:
       in: query
       name: purge
-      description: Delete an agent from the key store
+      description: Permanently delete an agent from the key store
       schema:
         type: boolean
         default: false
@@ -2715,7 +2848,7 @@ components:
       description: Query to filter results by. For example q=&quot;status=active&quot;
       schema:
         type: string
-        format: query
+#        format: query
     rationale:
       in: query
       name: rationale
@@ -2829,6 +2962,7 @@ components:
           - never_connected
           - disconnected
         minItems: 1
+
     statusRLDParam:
       in: query
       name: status
@@ -3579,7 +3713,7 @@ components:
     force_single_group:
       in: query
       name: force_single_group
-      description: Wheter to append new group to current agent's group or replace it.
+      description: Whether to append new group to current agent's multigroup or replace it.
       schema:
         type: boolean
     wpk_repo:
@@ -3596,6 +3730,12 @@ components:
       schema:
         type: boolean
         default: false
+    upgrade_version:
+      in: query
+      name: version
+      description: Wazuh version to upgrade to.
+      schema:
+        type: string
     force:
       in: query
       name: force
@@ -3727,8 +3867,7 @@ paths:
       tags:
       - agents
       summary: Delete agents
-      description: |
-        Deletes agents, using a list of them or a criterion based on the status or time of the last connection.
+      description: Deletes all agents or a list of them with optional criteria based on the status or time of the last connection.
       operationId: api.controllers.agents_controller.delete_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3748,26 +3887,35 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AllItemsResponse'
+                      allOf:
+                        - $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                        - type: object
+                          properties:
+                            older_than:
+                              type: string
+                              format: timeframe
+                              description: Returns older than parameter used. It can be the default value or the parameter send by the user.
               example:
-                message: All selected agents were deleted
                 data:
-                  affected_agents:
-                  - '003'
-                  - '005'
-                  older_than: 10s
-                  total_affected_agents: 2
+                  affected_items:
+                    - '001'
+                    - '002'
+                    - '003'
+                  older_than: 1s
+                  total_affected_items: 3
+                message: All shown agents were deleted
         default:
           $ref: '#/components/responses/ResponseError'
     get:
       tags:
       - agents
-      summary: 'Get all agents'
-      description: 'Returns a list with the available agents.'
-      operationId: api.controllers.agents_controller.get_all_agents
+      summary: 'Get agents'
+      description: 'Returns information about all available agents or a list of them'
+      operationId: api.controllers.agents_controller.get_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/select'
@@ -3797,97 +3945,98 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/Agent'
+                      $ref: '#/components/schemas/AllItemsResponseAgents'
               example:
                 data:
-                  totalItems: 7
-                  items:
-                  - status: active
-                    configSum: ab73af41699f13fdd81903b5f23d8d00
-                    group:
-                    - default
-                    name: agent1
-                    mergedSum: f1a9e24e02ba4cc5ea80a9d3feb3bb9a
-                    ip: 192.168.185.7
-                    registerIP: any
-                    manager: manager
-                    node_name: node02
-                    dateAdd: '2018-10-11T09:38:47Z'
-                    version: Wazuh v3.8.0
-                    lastKeepAlive: '2018-10-11T13:58:08Z'
-                    os:
-                      major: '16'
-                      name: Ubuntu
-                      uname: Linux |ubuntu |4.4.0-135-generic |#161-Ubuntu SMP Mon Aug 27 10:45:01
-                        UTC 2018 |x86_64
-                      platform: ubuntu
-                      version: 16.04.5 LTS
-                      codename: Xenial Xerus
-                      arch: x86_64
-                      minor: '04'
-                    id: '001'
-                  - status: active
-                    name: manager
-                    ip: 127.0.0.1
-                    registerIP: 127.0.0.1
-                    manager: manager
-                    node_name: node01
-                    dateAdd: '2018-10-11T09:37:23Z'
-                    version: Wazuh v3.8.0
-                    lastKeepAlive: '9999-12-31T23:59:59Z'
-                    os:
-                      major: '18'
-                      name: Ubuntu
-                      uname: Linux |manager |4.15.0-36-generic |#39-Ubuntu SMP Mon Sep 24 16:19:09
-                        UTC 2018 |x86_64
-                      platform: ubuntu
-                      version: 18.04.1 LTS
-                      codename: Bionic Beaver
-                      arch: x86_64
-                      minor: '04'
-                    id: '000'
-                  - status: never_connected
-                    dateAdd: '2018-10-11T13:58:23Z'
-                    name: NewHost_2
-                    ip: 10.0.10.10
-                    registerIP: any
-                    id: '123'
-                    node_name: unknown
-                  - status: never_connected
-                    dateAdd: '2018-10-11T13:58:22Z'
-                    name: NewHost
-                    ip: 10.0.0.9
-                    registerIP: 10.0.0.9
-                    id: '007'
-                    node_name: unknown
-                  - status: never_connected
-                    dateAdd: '2018-10-11T13:58:10Z'
-                    group:
-                    - default
-                    name: server001
-                    ip: 10.0.0.62
-                    registerIP: any
-                    id: '002'
-                    node_name: unknown
+                  affected_items:
+                    - configSum: 29e0926e5a77442212e824868a2a61df
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group1
+                      id: '001'
+                      ip: 172.18.0.6
+                      lastKeepAlive: '2019-10-16T09:13:34Z'
+                      manager: wazuh-worker2
+                      mergedSum: a13d9b2edc5bdd5ef7331c0d5b9ecf34
+                      name: wazuh-agent1
+                      node_name: worker2
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent1 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                    - configSum: e2f47d482da37c099fa1d6e4c43b523c
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group2
+                      id: '002'
+                      ip: 172.18.0.7
+                      lastKeepAlive: '2019-10-16T09:13:28Z'
+                      manager: wazuh-worker2
+                      mergedSum: d6fde33dc232d8f91359b2e98994c933
+                      name: wazuh-agent2
+                      node_name: worker2
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent2 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                    - configSum: dadc074e9a4f036c5d905c280c3b5bcc
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group3
+                      id: '003'
+                      ip: 172.18.0.8
+                      lastKeepAlive: '2019-10-16T09:13:29Z'
+                      manager: wazuh-master
+                      mergedSum: e40515ffa928c72ee167ed41d88245c4
+                      name: wazuh-agent3
+                      node_name: master-node
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent3 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                  total_affected_items: 3
+                message: All selected agents information is shown
         default:
           $ref: '#/components/responses/ResponseError'
     post:
       tags:
       - agents
       summary: 'Add agent'
-      description: 'Add a new agent.'
+      description: 'Adds a new agent.'
       operationId: api.controllers.agents_controller.add_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-
       requestBody:
         content:
           application/json:
@@ -3896,15 +4045,21 @@ paths:
                   name:
                     description: Agent name.
                     type: string
+                    format: names
                   ip:
                     description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option behind_proxy_server to yes at api.yaml and make sure the proxy is setting HTTP header 'X-Forwarded-For' with origin IP address. Allowed values: IP, IP/NET, ANY"
                     type: string
+                    format: alphanumeric
                   force_time:
                     description: Remove the old agent with the same IP if disconnected since <force_time> seconds.
                     type: integer
-                    minimum: 1
+                    format: int32
+                    minimum: 0
                 required:
                 - name
+              example:
+                name: NewHost_2
+                ip: 10.0.10.11
       responses:
         '200':
           description: 'Add an agent'
@@ -3947,12 +4102,21 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/ItemAffected'
+                      allOf:
+                        - $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                        - type: object
+                          properties:
+                            older_than:
+                              type: string
+                              format: timeframe
+                              description: Returns older than parameter used when deleting the agent.
               example:
-                message: All selected agents were deleted
                 data:
-                  affected_agents:
-                  - '008'
+                  affected_items:
+                    - '003'
+                  older_than: 0s
+                  total_affected_items: 1
+                message: All selected agents were deleted
         default:
           $ref: '#/components/responses/ResponseError'
     get:
@@ -3977,32 +4141,37 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/Agent'
+                      $ref: '#/components/schemas/AllItemsResponseAgents'
               example:
                 data:
-                  configSum: "ab73af41699f13fdd81903b5f23d8d00"
-                  dateAdd: '2018-10-11T09:37:23Z'
-                  group:
-                    - default
-                  id: "002"
-                  ip: "172.18.0.6"
-                  lastKeepAlive: "2019-03-14T11:36:55Z"
-                  manager: "9f393e777dfb"
-                  mergedSum: "f8d49771911ed9d5c45b03a40babd065"
-                  name: "176772c37776"
-                  node_name: "worker1"
-                  os:
-                    arch: "x86_64"
-                    codename: "Bionic Beaver"
-                    major: "18"
-                    minor: "04"
-                    name: "Ubuntu"
-                    platform: "ubuntu"
-                    uname: "Linux |176772c37776 |4.15.0-46-generic |#49~16.04.1-Ubuntu SMP Tue Feb 12 17:45:24 UTC 2019 |x86_64"
-                    version: "18.04.2 LTS"
-                  registerIP: "172.18.0.6"
-                  status: "active"
-                  version: "Wazuh v3.8.2"
+                  affected_items:
+                    - configSum: e2f47d482da37c099fa1d6e4c43b523c
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group2
+                      id: '002'
+                      ip: 172.18.0.7
+                      lastKeepAlive: '2019-10-16T09:34:58Z'
+                      manager: wazuh-worker2
+                      mergedSum: d6fde33dc232d8f91359b2e98994c933
+                      name: wazuh-agent2
+                      node_name: worker2
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent2 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                  total_affected_items: 1
+                message: All selected agents information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -4033,45 +4202,45 @@ paths:
                       $ref: '#/components/schemas/AgentConfiguration'
               example:
                 data:
-                    localfile:
-                      - logformat: command
-                        command: df -P
-                        alias: df -P
-                        target:
-                          - agent
-                        frequency: 360
-                      - logformat: full_command
-                        command: netstat -tulpn | sed 's/\\([[:alnum:]]\\+\\)\\ \\+[[:digit:]]\\+\\ \\+[[:digit:]]\\+\\ \\+\\(.*\\):\\([[:digit:]]*\\)\\ \\+\\([0-9\\.\\:\\*]\\+\\).\\+\\ \\([[:digit:]]*\\/[[:alnum:]\\-]*\\).*/\\1 \\2 == \\3 == \\4 \\5/' | sort -k 4 -g | sed 's/ == \\(.*\\) ==/:\\1/' | sed 1,2d
-                        alias: netstat listening ports
-                        target:
-                          - agent
-                        frequency: 360
-                      - logformat: full_command
-                        command: last -n 20
-                        alias: last -n 20
-                        target:
-                          - agent
-                        frequency: 360
-                      - file: /var/ossec/logs/active-responses.log
-                        logformat: syslog
-                        target:
-                          - agent
-                      - file: /var/log/auth.log
-                        logformat: syslog
-                        target:
-                          - agent
-                      - file: /var/log/syslog
-                        logformat: syslog
-                        target:
-                          - agent
-                      - file: /var/log/dpkg.log
-                        logformat: syslog
-                        target:
-                          - agent
-                      - file: /var/log/kern.log
-                        logformat: syslog
-                        target:
-                          - agent
+                  localfile:
+                    - alias: df -P
+                      command: df -P
+                      frequency: 360
+                      ignore_binaries: 'no'
+                      logformat: command
+                      only-future-events: 'yes'
+                      target:
+                        - agent
+                    - alias: netstat listening ports
+                      command: netstat -tulpn | sed 's/\([[:alnum:]]\+\)\ \+[[:digit:]]\+\ \+[[:digit:]]\+\
+                        \+\(.*\):\([[:digit:]]*\)\ \+\([0-9\.\:\*]\+\).\+\ \([[:digit:]]*\/[[:alnum:]\-]*\).*/\1
+                        \2 == \3 == \4 \5/' | sort -k 4 -g | sed 's/ == \(.*\) ==/:\1/' | sed 1,2d
+                      frequency: 360
+                      ignore_binaries: 'no'
+                      logformat: full_command
+                      only-future-events: 'yes'
+                      target:
+                        - agent
+                    - alias: last -n 20
+                      command: last -n 20
+                      frequency: 360
+                      ignore_binaries: 'no'
+                      logformat: full_command
+                      only-future-events: 'yes'
+                      target:
+                        - agent
+                    - file: "/var/ossec/logs/active-responses.log"
+                      ignore_binaries: 'no'
+                      logformat: syslog
+                      only-future-events: 'yes'
+                      target:
+                        - agent
+                    - file: "/var/log/dpkg.log"
+                      ignore_binaries: 'no'
+                      logformat: syslog
+                      only-future-events: 'yes'
+                      target:
+                        - agent
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -4079,22 +4248,33 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Removes agent from all groups'
-      description: 'Removes the agent from all groups. The agent will automatically revert to the "default" group.'
-      operationId: api.controllers.agents_controller.delete_agent_group
+      summary: 'Remove agent from groups'
+      description: 'Removes the agent from all groups or a list of them. The agent will automatically revert to the "default" group if it is removed from all its assigned groups.'
+      operationId: api.controllers.agents_controller.delete_single_agent_multiple_groups
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/list_groups'
       responses:
         '200':
           description: 'Remove the agent from all groups'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/AllItemsResponseGroupIDs'
               example:
-                message: "Agent '012' removed from all groups. Assignment reverted to default."
+                data:
+                  affected_items:
+                    - group1
+                  total_affected_items: 1
+                message: Agent removed from shown groups
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -4120,12 +4300,16 @@ paths:
                   - type: object
                     properties:
                       data:
-                        properties:
-                          syncef:
-                            type: boolean
+                        $ref: '#/components/schemas/AllItemsResponseAgentsSynced'
               example:
                 data:
-                    synced: false
+                  affected_items:
+                    - id: '002'
+                      synced: true
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: Sync info shown for all selected agents.
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -4134,8 +4318,8 @@ paths:
       tags:
         - agents
       summary: 'Remove an agent from a specific group'
-      description: 'Removes an agent from a group. If the agent has multigroups, it will preserve all previous groups except the last one.'
-      operationId: api.controllers.agents_controller.delete_agent_single_group
+      description: 'Removes an agent from an specified group. If the agent has multigroups, it will preserve all previous groups except the last one.'
+      operationId: api.controllers.agents_controller.delete_single_agent_single_group
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4156,8 +4340,8 @@ paths:
     put:
       tags:
         - agents
-      summary: 'Add agent group'
-      description: 'Adds an agent to the specified group.'
+      summary: 'Assign an agent to a group'
+      description: 'Assign an agent to a specified group'
       operationId: api.controllers.agents_controller.put_agent_single_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -4199,14 +4383,14 @@ paths:
                   - type: object
                     properties:
                       data:
-                        type: object
-                        properties:
-                          key:
-                            type: string
-                            description: Agent key.
+                        $ref: '#/components/schemas/AllItemsResponseAgentsKeys'
               example:
                 data:
-                  key: MDA0IG1haW5fZGF0YWJhc2UgMTAuMC4wLjE1IDIzNGM1Y2MzZjhhNzA2OWY2ZGRjN2I0NDc1MWZmNmE1Zjg3MjExMTJiZWJhNmFhMWUyMDIzNWI4MTBjYWNiM2I=
+                  affected_items:
+                    - id: '002'
+                      key: MDAyIHdhenVoLWFnZW50MiBhbnkgMzAxYzk0Y2I3NDc5MzliMjAyYTg0OGE3NGIwMTNkODQwZWJkNWUyZmIxMjQ3NzhlNDhjYzUxOGE4MWQyNDFkYw==
+                  total_affected_items: 1
+                message: Shown keys for all selected agents
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -4216,7 +4400,7 @@ paths:
         - agents
       summary: 'Restart an agent'
       description: 'Restarts the specified agent.'
-      operationId: api.controllers.agents_controller.put_restart_agent
+      operationId: api.controllers.agents_controller.restart_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4253,7 +4437,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/wpk_repo'
-        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/upgrade_version'
         - $ref: '#/components/parameters/use_http'
         - $ref: '#/components/parameters/force'
       responses:
@@ -4356,9 +4540,9 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Remove multiple agents from a single group.'
-      description: 'Removes multiple agents from a specified group.'
-      operationId: api.controllers.agents_controller.delete_multiple_agent_group
+      summary: 'Remove agents assignment from a single group.'
+      description: 'Remove all agents assignment or a list of them from the specified group.'
+      operationId: api.controllers.agents_controller.delete_multiple_agent_single_group
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4366,7 +4550,7 @@ paths:
         - $ref: '#/components/parameters/group_id'
       responses:
         '200':
-          description: 'Remove multiple agents from a single group.'
+          description: 'Remove multiple agents assignment from a single group.'
           content:
             application/json:
               schema:
@@ -4375,40 +4559,35 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/ItemAffected'
+                      allOf:
+                        - $ref: '#/components/schemas/AllItemsResponseAgentIDs'
               example:
-                message: All selected agents were removed from group dmz
                 data:
-                  affected_agents:
-                  - '001'
-                  - '002'
+                  affected_items:
+                    - '002'
+                    - '006'
+                    - '008'
+                    - '010'
+                  total_affected_items: 4
+                message: All selected agents were removed from group testserver
         default:
           $ref: '#/components/responses/ResponseError'
 
     put:
       tags:
         - agents
-      summary: 'Add multiple agents to a group'
-      description: 'Adds multiple agents to the specified group.'
-      operationId: api.controllers.agents_controller.put_multiple_agent_group
+      summary: 'Assign agents to a single group'
+      description: 'Assign all agents or a list of them to the specified group.'
+      operationId: api.controllers.agents_controller.put_multiple_agent_single_group
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/group_id'
-
-      requestBody:
-        content:
-          application/json:
-            schema:
-              properties:
-                ids:
-                  description: List of agents ID.
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/AgentID'
+        - $ref: '#/components/parameters/force_single_group'
       responses:
         '200':
-          description: 'Add multiple agents to a group'
+          description: 'Assign multiple agents to a single group'
           content:
             application/json:
               schema:
@@ -4417,13 +4596,29 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/ItemAffected'
+                      allOf:
+                        - $ref: '#/components/schemas/AllItemsResponseAgentIDs'
               example:
-                message: All selected agents assigned to group dmz
                 data:
-                  affected_agents:
-                  - '001'
-                  - '002'
+                  affected_items:
+                    - '001'
+                    - '002'
+                  failed_items:
+                    - error:
+                        code: 1701
+                        message: Agent does not exist
+                        remediation: Please, use `GET /agents?select=id,name` to find all available agents
+                      id:
+                        - '999'
+                    - error:
+                        code: 1753
+                        message: Could not assign group. Agent status is never_connected
+                        remediation: Please select another agent or connect your agent before assigning groups
+                      id:
+                        - '011'
+                  total_affected_items: 2
+                  total_failed_items: 2
+                message: Some agents were not assigned to group2 and removed from the other groups
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -4431,9 +4626,9 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Delete a list of groups'
-      description: Deletes multiple groups.
-      operationId: api.controllers.agents_controller.delete_list_group
+      summary: 'Delete groups'
+      description: 'Deletes all groups or a list of them'
+      operationId: api.controllers.agents_controller.delete_groups
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4449,29 +4644,34 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentGroupDeleted'
+                      allOf:
+                      - $ref: '#/components/schemas/AllItemsResponseGroupIDs'
+                      - $ref: '#/components/schemas/AgentGroupDeleted'
               example:
-                message: All selected groups were deleted
                 data:
-                  affected_groups:
-                  - 'webserver'
-                  - 'dataserver'
                   affected_agents:
-                  - '002'
-                  - '005'
-                  - '003'
+                    - '002'
+                    - '005'
+                    - '003'
+                  affected_items:
+                    - 'webserver'
+                    - 'dataserver'
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  message: All selected groups were deleted
         default:
           $ref: '#/components/responses/ResponseError'
 
     get:
       tags:
         - agents
-      summary: 'Get all groups'
-      description: 'Returns a list containing basic information about each agent group such as number of agents belonging to the group and the checksums of the configuration and shared files.'
+      summary: 'Get groups'
+      description: 'Get information about all groups or a list of them. Returns a list containing basic information about each group such as number of agents belonging to the group and the checksums of the configuration and shared files.'
       operationId: api.controllers.agents_controller.get_list_group
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_groups'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -4488,29 +4688,24 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/AgentGroup'
+                      $ref: '#/components/schemas/AllItemsResponseGroups'
               example:
                 data:
-                  item:
-                  - count: 2
-                    name: default
-                    mergedSum: f8d49771911ed9d5c45b03a40babd065
-                    configSum: ab73af41699f13fdd81903b5f23d8d00
-                  - count: 3
-                    name: dmz
-                    mergedSum: 220d6c5fc253f251827ee7487341c0fc
-                    configSum: cfbae9ecc10eb15f1b4fc736de6758cc
-                  - count: 0
-                    name: pciserver
-                    mergedSum: 220d6c5fc253f251827ee7487341c0fc
-                    configSum: ab73af41699f13fdd81903b5f23d8d00
+                  affected_items:
+                    - count: 2
+                      name: default
+                      mergedSum: f8d49771911ed9d5c45b03a40babd065
+                      configSum: ab73af41699f13fdd81903b5f23d8d00
+                    - count: 3
+                      name: dmz
+                      mergedSum: 220d6c5fc253f251827ee7487341c0fc
+                      configSum: cfbae9ecc10eb15f1b4fc736de6758cc
+                    - count: 0
+                      name: pciserver
+                      mergedSum: 220d6c5fc253f251827ee7487341c0fc
+                      configSum: ab73af41699f13fdd81903b5f23d8d00
+                  total_affected_items: 3
+                message: Obtained information about all selected groups
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -4520,7 +4715,7 @@ paths:
         - agents
       summary: 'Delete group'
       description: 'Deletes a group. Agents that were assigned only to the deleted group will automatically revert to the "default" group.'
-      operationId: api.controllers.agents_controller.delete_group
+      operationId: api.controllers.agents_controller.delete_single_group
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4536,15 +4731,20 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentGroupDeleted'
+                      allOf:
+                      - $ref: '#/components/schemas/AllItemsResponseGroupIDs'
+                      - $ref: '#/components/schemas/AgentGroupDeleted'
               example:
-                message: All selected groups were deleted
                 data:
-                  affected_groups:
-                  - 'dmz'
                   affected_agents:
-                  - '001'
-                  - '002'
+                    - '002'
+                    - '005'
+                    - '003'
+                  affected_items:
+                    - 'webserver'
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  message: All selected groups were deleted
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -4553,7 +4753,7 @@ paths:
         - agents
       summary: 'Get agents in a group'
       description: 'Returns the list of agents that belongs to the specified group.'
-      operationId: api.controllers.agents_controller.get_agent_in_group
+      operationId: api.controllers.agents_controller.get_agents_in_group
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4576,61 +4776,87 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/Agent'
+                      $ref: '#/components/schemas/AllItemsResponseAgents'
               example:
                 data:
-                  totalItems: 3
-                  items:
-                  - os:
-                      arch: x86_64
-                      codename: Bionic Beaver
-                      major: '18'
-                      minor: '04'
-                      name: Ubuntu
-                      platform: ubuntu
-                      uname: Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64
-                      version: 18.04.1 LTS
-                    group:
-                      - default
-                      - dmz
-                    lastKeepAlive: '2019-02-19T10:31:09Z'
-                    ip: 172.17.0.201
-                    manager: manager
-                    status: active
-                    version: Wazuh v3.8.2
-                    dateAdd: '2019-02-19T10:25:42Z'
-                    name: agent-1
-                    configSum: ab73af41699f13fdd81903b5f23d8d00
-                    registerIP: 172.17.0.201
-                    node_name: node01
-                    id: '001'
-                    mergedSum: f8d49771911ed9d5c45b03a40babd065
-                  - group:
-                    - default
-                    - dmz
-                    status: never_connected
-                    dateAdd: '2019-02-19T10:30:59Z'
-                    name: server001
-                    registerIP: 10.0.0.62
-                    ip: 10.0.0.62
-                    node_name: unknown
-                    id: '002'
-                  - group:
-                    - dmz
-                    ip: 10.0.0.15
-                    status: never_connected
-                    dateAdd: '2019-02-19T10:31:00Z'
-                    name: main_database
-                    registerIP: 10.0.0.15
-                    node_name: unknown
-                    id: '004'
+                  affected_items:
+                    - configSum: 29e0926e5a77442212e824868a2a61df
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group1
+                      id: '001'
+                      ip: 172.18.0.6
+                      lastKeepAlive: '2019-10-16T09:13:34Z'
+                      manager: wazuh-worker2
+                      mergedSum: a13d9b2edc5bdd5ef7331c0d5b9ecf34
+                      name: wazuh-agent1
+                      node_name: worker2
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent1 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                    - configSum: e2f47d482da37c099fa1d6e4c43b523c
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group2
+                      id: '002'
+                      ip: 172.18.0.7
+                      lastKeepAlive: '2019-10-16T09:13:28Z'
+                      manager: wazuh-worker2
+                      mergedSum: d6fde33dc232d8f91359b2e98994c933
+                      name: wazuh-agent2
+                      node_name: worker2
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent2 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                    - configSum: dadc074e9a4f036c5d905c280c3b5bcc
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group3
+                      id: '003'
+                      ip: 172.18.0.8
+                      lastKeepAlive: '2019-10-16T09:13:29Z'
+                      manager: wazuh-master
+                      mergedSum: e40515ffa928c72ee167ed41d88245c4
+                      name: wazuh-agent3
+                      node_name: master-node
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent3 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                  total_affected_items: 3
+                message: All selected agents information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -4667,8 +4893,6 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
       responses:
         '200':
           description: 'Get group configuration'
@@ -4680,18 +4904,9 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/GroupConfiguration'
+                      $ref: '#/components/schemas/GroupConfiguration'
               example:
                 data:
-                  totalItems: 1
-                  items:
                   - filters:
                       os: Linux
                   - config:
@@ -4705,7 +4920,7 @@ paths:
       tags:
         - agents
       summary: 'Update group configuration'
-      description: Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration tags/syntax.
+      description: "Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration tags/syntax."
       operationId: api.controllers.agents_controller.put_group_config
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -4763,16 +4978,8 @@ paths:
                     data:
                       allOf:
                         - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                properties:
-                                  filename:
-                                    type: string
-                                  hash:
-                                    type: string
+                        - $ref: '#/components/schemas/GroupFile'
+
               example:
                 data:
                   totalItems: 24
@@ -4896,40 +5103,6 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /agents/groups/{group_id}/files/{file_name}:
-    put:
-      tags:
-        - agents
-      summary: 'Upload file into a group'
-      operationId: api.controllers.agents_controller.put_group_file
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_id'
-        - $ref: '#/components/parameters/file_name'
-
-      requestBody:
-        required: true
-        content:
-          application/xml:
-            schema:
-              properties:
-                tmp_file:
-                  description: Updated file
-                  type: string
-
-      responses:
-        '200':
-          description: 'Post group file'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: Agent configuration was updated successfully
-        default:
-          $ref: '#/components/responses/ResponseError'
-
   /agents/insert:
     post:
       tags:
@@ -4965,6 +5138,7 @@ paths:
                     description: Remove the old agent with the same IP if disconnected since <force_time> seconds.
                     type: integer
                     format: int32
+                    minimum: 0
                 required:
                   - name
               example:
@@ -4974,7 +5148,7 @@ paths:
                 key: 1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64
       responses:
         '200':
-          description: 'Get group file'
+          description: 'Inser new agent'
           content:
             application/json:
               schema:
@@ -5005,7 +5179,7 @@ paths:
         - $ref: '#/components/parameters/select'
       responses:
         '200':
-          description: 'Get agent'
+          description: 'Get agent by name'
           content:
             application/json:
               schema:
@@ -5014,16 +5188,37 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/Agent'
+                      $ref: '#/components/schemas/AllItemsResponseAgents'
               example:
                 data:
-                  ip: 10.0.0.9
-                  status: never_connected
-                  dateAdd: "2019-02-19T10:31:12Z"
-                  name: NewHost
-                  registerIP: 10.0.0.9
-                  node_name: unknown
-                  id: "007"
+                  affected_items:
+                    - configSum: 29e0926e5a77442212e824868a2a61df
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group1
+                      id: '001'
+                      ip: 172.18.0.6
+                      lastKeepAlive: '2019-10-16T09:13:34Z'
+                      manager: wazuh-worker2
+                      mergedSum: a13d9b2edc5bdd5ef7331c0d5b9ecf34
+                      name: wazuh-agent1
+                      node_name: worker2
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent1 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                  total_affected_items: 1
+                message: All selected agents information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5031,7 +5226,7 @@ paths:
     get:
       tags:
         - agents
-      summary: 'Get agents without group'
+      summary: 'Get all agents without group'
       description: 'Returns a list with the available agents without group.'
       operationId: api.controllers.agents_controller.get_agent_no_group
       parameters:
@@ -5054,39 +5249,87 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/Agent'
+                      $ref: '#/components/schemas/AllItemsResponseAgents'
               example:
                 data:
-                  totalItems: 3
-                  items:
-                    - ip: 10.0.0.20
-                      status: never_connected
-                      dateAdd: "2019-02-19T10:31:00Z"
-                      name: server002
-                      registerIP: 10.0.0.20
-                      node_name: unknown
-                      id: "006"
-                    - ip: 10.0.0.9
-                      status: never_connected
-                      dateAdd: "2019-02-19T10:31:12Z"
-                      name: NewHost
-                      registerIP: 10.0.0.9
-                      node_name: unknown
-                      id: "007"
-                    - ip: 10.0.10.10
-                      status: never_connected
-                      dateAdd: "2019-02-19T10:31:13Z"
-                      name: NewHost_2
-                      registerIP: 10.0.10.10
-                      node_name: unknown
-                      id: "123"
+                  affected_items:
+                    - configSum: 29e0926e5a77442212e824868a2a61df
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group1
+                      id: '001'
+                      ip: 172.18.0.6
+                      lastKeepAlive: '2019-10-16T09:13:34Z'
+                      manager: wazuh-worker2
+                      mergedSum: a13d9b2edc5bdd5ef7331c0d5b9ecf34
+                      name: wazuh-agent1
+                      node_name: worker2
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent1 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                    - configSum: e2f47d482da37c099fa1d6e4c43b523c
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group2
+                      id: '002'
+                      ip: 172.18.0.7
+                      lastKeepAlive: '2019-10-16T09:13:28Z'
+                      manager: wazuh-worker2
+                      mergedSum: d6fde33dc232d8f91359b2e98994c933
+                      name: wazuh-agent2
+                      node_name: worker2
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent2 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                    - configSum: dadc074e9a4f036c5d905c280c3b5bcc
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      group:
+                        - default
+                        - group3
+                      id: '003'
+                      ip: 172.18.0.8
+                      lastKeepAlive: '2019-10-16T09:13:29Z'
+                      manager: wazuh-master
+                      mergedSum: e40515ffa928c72ee167ed41d88245c4
+                      name: wazuh-agent3
+                      node_name: master-node
+                      os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent3 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
+                          12 13:35:51 UTC 2019 |x86_64
+                        version: 16.04.6 LTS
+                      registerIP: any
+                      status: active
+                      version: Wazuh v3.10.0
+                  total_affected_items: 3
+                message: All selected agents information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5103,6 +5346,7 @@ paths:
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/query'
       responses:
         '200':
@@ -5111,28 +5355,21 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/AgentSimpleResponse'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseAgentsSimple'
               example:
                 data:
-                  totalItems: 2
-                  items:
+                  affected_items:
                     - version: Wazuh v3.0.0
                       id: "003"
                       name: main_database
                     - version: Wazuh v3.0.0
                       id: "004"
                       name: dmz002
+                  total_affected_items: 2
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5140,23 +5377,13 @@ paths:
     put:
       tags:
       - agents
-      summary: 'Restart a list of agents'
-      operationId: api.controllers.agents_controller.restart_list_agents
+      summary: 'Restarts agents'
+      description: 'Restarts all agents or a list of them'
+      operationId: api.controllers.agents_controller.restart_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-
-      requestBody:
-        content:
-          application/json:
-            schema:
-              properties:
-                ids:
-                  description: Array of agent ID's.
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/AgentID'
-
+        - $ref: '#/components/parameters/list_agents'
       responses:
         '200':
           description: Agents restarted
@@ -5168,33 +5395,14 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/ItemAffected'
+                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
-                  message: All selected agents were restarted
+                  message: Restart command sent to all selected agents
                   data:
-                    affected_agents:
-                    - '002'
-                    - '004'
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-    post:
-      tags:
-      - agents
-      summary: 'Restarts all agents'
-      operationId: api.controllers.agents_controller.restart_all_agents
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: Agents restarted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Restarting all agents"
+                    affected_items:
+                      - '002'
+                      - '004'
+                    total_affected_items: 2
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5208,11 +5416,11 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/fields'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/fields'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/query'
       responses:
@@ -5227,66 +5435,20 @@ paths:
                   properties:
                     data:
                       allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
+                      - $ref: '#/components/schemas/ListMetadata'
+                      - type: object
+                        properties:
+                          items:
+                            type: array
                             items:
-                              type: array
-                              items:
-                                properties:
-                                  os:
-                                    properties:
-                                      platform:
-                                        type: string
-                                        nullable: true
-                                      version:
-                                        type: string
-                                        nullable: true
-                                      name:
-                                        type: string
-                                        nullable: true
-                                  count:
-                                    type: integer
+                              $ref: '#/components/schemas/AgentDistinct'
               example:
-                data:
-                  totalItems: 7
-                  items:
-                    - os:
-                        platform: ubuntu
-                      count: 2
-                    - count: 5
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-  /agents/summary:
-    get:
-      tags:
-        - agents
-      summary: 'Get agents summary'
-      description: 'Returns a summary of the available agents.'
-      operationId: api.controllers.agents_controller.get_agent_summary
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: 'Get summary of agents'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/AgentsSummary'
-              example:
-                data:
-                  total: 7
-                  active: 2
-                  disconnected: 0
-                  never_connected: 5
-                  pending: 0
+                items:
+                  - count: 11
+                    os:
+                      arch: x86_64
+                  - count: 2
+                totalItems: 13
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5294,15 +5456,14 @@ paths:
     get:
       tags:
         - agents
-      summary: 'Get OS summary'
-      description: 'Returns a summary of the OS.'
+      summary: 'Get agents OS summary'
+      description: 'Returns a summary of the OS of available agents.'
       operationId: api.controllers.agents_controller.get_agent_summary_os
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/query'
       responses:
@@ -5327,9 +5488,41 @@ paths:
                                 type: string
               example:
                 data:
-                  totalItems: 1
                   items:
                     - ubuntu
+                  totalItems: 1
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /agents/summary/status:
+    get:
+      tags:
+        - agents
+      summary: 'Get agents status summary'
+      description: 'Returns a summary of the status of available agents.'
+      operationId: api.controllers.agents_controller.get_agent_summary_status
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Get summary of agents'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/AgentsSummaryStatus'
+              example:
+                data:
+                  total: 7
+                  active: 2
+                  disconnected: 0
+                  never_connected: 5
+                  pending: 0
         default:
           $ref: '#/components/responses/ResponseError'
 

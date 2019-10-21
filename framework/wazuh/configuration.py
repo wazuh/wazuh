@@ -486,7 +486,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
 
     :return: agent.conf as dictionary.
     """
-    if not os_path.exists("{0}/{1}".format(common.shared_path, group_id)):
+    if not os_path.exists(os_path.join(common.shared_path, group_id)):
         raise WazuhError(1710, group_id)
     agent_conf = os_path.join(common.shared_path, group_id if group_id is not None else '', filename)
 
@@ -545,9 +545,10 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
 
     :return: configuration file as dictionary.
     """
-    file_path = os_path.join(common.shared_path, group_id, filename) \
-        if not filename == 'ar.conf' \
-        else os_path.join(common.shared_path, filename)
+    if not os_path.exists(os_path.join(common.shared_path, group_id)):
+        raise WazuhError(1710, group_id)
+
+    file_path = os_path.join(common.shared_path, group_id if not filename == 'ar.conf' else '', filename)
 
     if not os_path.exists(file_path):
         raise WazuhError(1006, file_path)
@@ -559,11 +560,10 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
         'rcl': _rcl2json
     }
 
-    data = {}
     if type_conf:
         if type_conf in types:
             if type_conf == 'conf':
-                data = types[type_conf](group_id, limit=None, filename=filename)
+                data = types[type_conf](group_id, limit=None, filename=filename, return_format=return_format)
             else:
                 data = types[type_conf](file_path)
         else:
@@ -694,6 +694,9 @@ def upload_group_file(group_id, file_data, file_name='agent.conf'):
     :param file_name: File name to update
     :return: Confirmation message in string
     """
+    # Check if the group exists
+    if not os_path.exists(os_path.join(common.shared_path, group_id)):
+        raise WazuhError(1710, group_id)
 
     if file_name == 'agent.conf':
         if len(file_data) == 0:

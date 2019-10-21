@@ -290,6 +290,61 @@ class RBAChecker:
     def run_testing():
         policies = [
             {
+                "actions": ["agent:read"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["agent:modify_group"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["agent:upgrade"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["agent:restart"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["agent:delete"],
+                "resources": ["agent:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["agent:create"],
+                "resources": ["*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["group:read"],
+                "resources": ["group:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["group:delete"],
+                "resources": ["group:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["group:create"],
+                "resources": ["*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["group:modify_assignments"],
+                "resources": ["group:id:*"],
+                "effect": "allow"
+            },
+            {
+                "actions": ["group:update_config"],
+                "resources": ["group:id:*"],
+                "effect": "allow"
+            },
+            {
                 "actions": ["syscheck:put", "syscheck:get", "syscheck:delete"],
                 "resources": ["agent:id:*"],
                 "effect": "allow"

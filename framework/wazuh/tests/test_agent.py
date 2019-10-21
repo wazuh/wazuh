@@ -18,7 +18,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         from wazuh import common
-        from wazuh.agent import Agent
+        from wazuh.core.core_agent import Agent
         from wazuh.exception import WazuhException
         from wazuh.utils import WazuhVersion
 
@@ -80,7 +80,7 @@ def get_manager_version():
     Get manager version
     """
     manager = Agent(id=0)
-    manager._load_info_from_DB()
+    manager.load_info_from_db()
 
     return manager.version
 
@@ -262,11 +262,11 @@ def test_get_distinct_agents(test_data, fields, expected_items):
 
 
 @patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_get_agents_summary(test_data):
+def test_get_agents_summary_status(test_data):
     """Test get_agents_summary function."""
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
-        summary = Agent.get_agents_summary()
+        summary = Agent.get_agents_summary_status()
         assert summary['active'] == 3
         assert summary['never_connected'] == 1
         assert summary['pending'] == 1
@@ -274,11 +274,11 @@ def test_get_agents_summary(test_data):
 
 
 @patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_get_os_summary(test_data):
+def test_get_agents_summary_os(test_data):
     """Tests get_os_summary function."""
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
-        summary = Agent.get_os_summary()
+        summary = Agent.get_agents_summary_os()
         assert summary['items'] == ['ubuntu']
 
 
@@ -309,9 +309,9 @@ def test_get_config_error(ossec_socket_mock, test_data, agent_id, component, con
         mock_db.return_value = test_data.global_db
         if expected_exception:
             with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-                Agent.get_config(agent_id=agent_id, component=component, configuration=configuration)
+                Agent.get_agents_config(agent_id=agent_id, component=component, configuration=configuration)
         else:
-            res = Agent.get_config(agent_id=agent_id, component=component, configuration=configuration)
+            res = Agent.get_agents_config(agent_id=agent_id, component=component, configuration=configuration)
             assert res == {"message": "value"}
 
 
@@ -319,20 +319,20 @@ def test_get_config_error(ossec_socket_mock, test_data, agent_id, component, con
     False,
     True
 ])
-@patch('wazuh.agent.WazuhDBBackend.connect_to_db')
-@patch('wazuh.agent.remove')
-@patch('wazuh.agent.rmtree')
-@patch('wazuh.agent.chown')
-@patch('wazuh.agent.chmod')
-@patch('wazuh.agent.stat')
-@patch('wazuh.agent.glob', return_value=['/var/db/global.db'])
+@patch('wazuh.core.core_agent.WazuhDBBackend.connect_to_db')
+@patch('wazuh.core.core_agent.remove')
+@patch('wazuh.core.core_agent.rmtree')
+@patch('wazuh.core.core_agent.chown')
+@patch('wazuh.core.core_agent.chmod')
+@patch('wazuh.core.core_agent.stat')
+@patch('wazuh.core.core_agent.glob', return_value=['/var/db/global.db'])
 @patch("wazuh.common.ossec_path", new=test_data_path)
-@patch('wazuh.agent.path.exists', side_effect=lambda x: not (common.backup_path in x))
+@patch('wazuh.core.core_agent.path.exists', side_effect=lambda x: not (common.backup_path in x))
 @patch('wazuh.database.isfile', return_value=True)
-@patch('wazuh.agent.path.isdir', return_value=True)
-@patch('wazuh.agent.safe_move')
-@patch('wazuh.agent.makedirs')
-@patch('wazuh.agent.chmod_r')
+@patch('wazuh.core.core_agent.path.isdir', return_value=True)
+@patch('wazuh.core.core_agent.safe_move')
+@patch('wazuh.core.core_agent.makedirs')
+@patch('wazuh.core.core_agent.chmod_r')
 @freeze_time('1975-01-01')
 @patch("wazuh.common.ossec_uid", return_value=getpwnam("root"))
 @patch("wazuh.common.ossec_gid", return_value=getgrnam("root"))
@@ -347,7 +347,7 @@ def test_remove_manual(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, safe_mov
                                   for row in test_data.global_db.execute(
                                                 'select id, name, register_ip, internal_key from agent where id > 0')])
 
-    with patch('wazuh.agent.open', mock_open(read_data=client_keys_text)) as m:
+    with patch('wazuh.core.core_agent.open', mock_open(read_data=client_keys_text)) as m:
         with patch('sqlite3.connect') as mock_db:
             mock_db.return_value = test_data.global_db
             Agent('001')._remove_manual(backup=backup)
@@ -374,20 +374,20 @@ def test_remove_manual(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, safe_mov
     ('001', 1748),
     ('001', 1747)
 ])
-@patch('wazuh.agent.WazuhDBBackend.connect_to_db')
-@patch('wazuh.agent.remove')
-@patch('wazuh.agent.rmtree')
-@patch('wazuh.agent.chown')
-@patch('wazuh.agent.chmod')
-@patch('wazuh.agent.stat')
-@patch('wazuh.agent.glob')
+@patch('wazuh.core.core_agent.WazuhDBBackend.connect_to_db')
+@patch('wazuh.core.core_agent.remove')
+@patch('wazuh.core.core_agent.rmtree')
+@patch('wazuh.core.core_agent.chown')
+@patch('wazuh.core.core_agent.chmod')
+@patch('wazuh.core.core_agent.stat')
+@patch('wazuh.core.core_agent.glob')
 @patch("wazuh.common.client_keys", new=os.path.join(test_data_path, 'etc', 'client.keys'))
-@patch('wazuh.agent.path.exists', side_effect=lambda x: not (common.backup_path in x))
+@patch('wazuh.core.core_agent.path.exists', side_effect=lambda x: not (common.backup_path in x))
 @patch('wazuh.database.isfile', return_value=True)
-@patch('wazuh.agent.path.isdir', return_value=True)
-@patch('wazuh.agent.safe_move')
-@patch('wazuh.agent.makedirs')
-@patch('wazuh.agent.chmod_r')
+@patch('wazuh.core.core_agent.path.isdir', return_value=True)
+@patch('wazuh.core.core_agent.safe_move')
+@patch('wazuh.core.core_agent.makedirs')
+@patch('wazuh.core.core_agent.chmod_r')
 @freeze_time('1975-01-01')
 @patch("wazuh.common.ossec_uid", return_value=getpwnam("root"))
 @patch("wazuh.common.ossec_gid", return_value=getgrnam("root"))
@@ -406,7 +406,7 @@ def test_remove_manual_error(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, sa
     glob_mock.return_value = ['/var/db/global.db'] if expected_exception != 1600 else []
     rmtree_mock.side_effect = Exception("Boom!")
 
-    with patch('wazuh.agent.open', mock_open(read_data=client_keys_text)) as m:
+    with patch('wazuh.core.core_agent.open', mock_open(read_data=client_keys_text)) as m:
         with patch('sqlite3.connect') as mock_db:
             mock_db.return_value = test_data.global_db
             if expected_exception == 1747:
@@ -422,7 +422,7 @@ def test_remove_manual_error(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, sa
     ('001'),
     ('002')
 ])
-@patch('wazuh.agent.requests')
+@patch('wazuh.core.core_agent.requests')
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_get_available_versions(requests_mock, test_data, agent_id):
     """
@@ -435,7 +435,7 @@ def test_get_available_versions(requests_mock, test_data, agent_id):
         mock_db.return_value = test_data.global_db
         manager_version = get_manager_version()
         agent = Agent(agent_id)
-        agent._load_info_from_DB()
+        agent.load_info_from_db()
         # mock request with available versions from server
         requests_mock.return_value.get.return_value = wpk_versions
         available_versions = agent._get_versions()
@@ -449,8 +449,8 @@ def test_get_available_versions(requests_mock, test_data, agent_id):
     ('001'),
     ('002')
 ])
-@patch('wazuh.agent.OssecSocket')
-@patch('wazuh.agent.Agent._send_wpk_file')
+@patch('wazuh.core.core_agent.OssecSocket')
+@patch('wazuh.core.core_agent.Agent._send_wpk_file')
 @patch('socket.socket.sendto', return_value=1)
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_upgrade(socket_sendto, _send_wpk_file, ossec_socket_mock, test_data, agent_id):
@@ -467,7 +467,7 @@ def test_upgrade(socket_sendto, _send_wpk_file, ossec_socket_mock, test_data, ag
         assert result == 'Upgrade procedure started'
 
 
-@patch('wazuh.agent.OssecSocket')
+@patch('wazuh.core.core_agent.OssecSocket')
 @patch('requests.get', side_effect=requests.exceptions.RequestException)
 @patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_upgrade_not_access_repo(request_mock, ossec_socket_mock, test_data):
@@ -485,10 +485,10 @@ def test_upgrade_not_access_repo(request_mock, ossec_socket_mock, test_data):
     ('001'),
     ('002')
 ])
-@patch('wazuh.agent.hashlib.sha1')
-@patch('wazuh.agent.open')
-@patch('wazuh.agent.requests.get')
-@patch('wazuh.agent.Agent._get_versions')
+@patch('wazuh.core.core_agent.hashlib.sha1')
+@patch('wazuh.core.core_agent.open')
+@patch('wazuh.core.core_agent.requests.get')
+@patch('wazuh.core.core_agent.Agent._get_versions')
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_get_wpk_file(versions_mock, get_req_mock, open_mock, sha1_mock, test_data, agent_id):
     """
@@ -515,7 +515,7 @@ def test_get_wpk_file(versions_mock, get_req_mock, open_mock, sha1_mock, test_da
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
         agent = Agent(agent_id)
-        agent._load_info_from_DB()
+        agent.load_info_from_db()
         # mock return value of hexdigest function
         manager_version, hash_manager_version = get_manager_info(wpk_versions)
         sha1_mock.return_value.hexdigest.return_value = hash_manager_version
@@ -530,11 +530,11 @@ def test_get_wpk_file(versions_mock, get_req_mock, open_mock, sha1_mock, test_da
     ('001'),
     ('002')
 ])
-@patch('wazuh.agent.open')
-@patch('wazuh.agent.OssecSocket')
-@patch('wazuh.agent.stat')
-@patch('wazuh.agent.requests.get')
-@patch('wazuh.agent.Agent._get_wpk_file')
+@patch('wazuh.core.core_agent.open')
+@patch('wazuh.core.core_agent.OssecSocket')
+@patch('wazuh.core.core_agent.stat')
+@patch('wazuh.core.core_agent.requests.get')
+@patch('wazuh.core.core_agent.Agent._get_wpk_file')
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_send_wpk_file(_get_wpk_mock, get_req_mock, stat_mock, ossec_socket_mock,
                        open_mock, test_data, agent_id):
@@ -576,8 +576,8 @@ def test_get_outdated_agents(test_data):
 
 
 @patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-@patch('wazuh.agent.OssecQueue')
-@patch('wazuh.agent.Agent.get_agent_group', return_value={'items': [{'id': '001'}, {'id': '002'}]})
+@patch('wazuh.core.core_agent.OssecQueue')
+@patch('wazuh.core.core_agent.Agent.get_agent_group', return_value={'items': [{'id': '001'}, {'id': '002'}]})
 def test_restart_agents_by_group_ok(mock_get_agent_group, mock_ossec_queue,
                                     test_data):
     """Test restart_agents_by_group method when all agents are restarted."""
@@ -591,8 +591,8 @@ def test_restart_agents_by_group_ok(mock_get_agent_group, mock_ossec_queue,
 
 
 @patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-@patch('wazuh.agent.OssecQueue')
-@patch('wazuh.agent.Agent.get_agent_group', return_value={'items': [{'id': '001'}, {'id': '002'}, {'id': '003'}, {'id': '005'}]})
+@patch('wazuh.core.core_agent.OssecQueue')
+@patch('wazuh.core.core_agent.Agent.get_agent_group', return_value={'items': [{'id': '001'}, {'id': '002'}, {'id': '003'}, {'id': '005'}]})
 def test_restart_agents_by_group_ko(mock_get_agent_group, mock_ossec_queue,
                                     test_data):
     """Test restart_agents_by_group method when some agents are not restarted."""
@@ -610,7 +610,7 @@ def test_restart_agents_by_group_ko(mock_get_agent_group, mock_ossec_queue,
             assert set(failed_id['error']) == {'message', 'code'}
 
 
-@patch('wazuh.agent.Agent.get_all_groups')
+@patch('wazuh.core.core_agent.Agent.get_all_groups')
 @patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_get_full_overview(mock_get_all_groups, test_data):
     """Test get_full_sumary method."""

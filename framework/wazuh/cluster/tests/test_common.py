@@ -25,7 +25,7 @@ objects_to_encode = [
      'mycallable': Wazuh().to_dict},
     {'foo': 'bar',
      'foo2': 3,
-     'mycallable': Agent.get_agents_summary},
+     'mycallable': get_agents_summary_status},
     {'foo': 'bar',
      'foo2': 3,
      'mycallable': status},
