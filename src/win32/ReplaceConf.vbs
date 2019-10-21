@@ -18,9 +18,9 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
       Set file = objFSO.OpenTextFile(home_dir & "profile.template", ForReading)
       newline = file.ReadAll
       file.Close
-      re.Pattern = "(</client>)"
+      re.Pattern = "(</server>)"
       re.Global = False
-      strNewText = re.Replace(strNewText, "$1" & vbCrLf & vbCrLf & "  " & newline)
+      strNewText = re.Replace(strNewText, "$1" & vbCrLf & "    " & newline)
     End If
 
     If objFSO.fileExists(home_dir & "header-comments.template") Then

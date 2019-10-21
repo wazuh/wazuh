@@ -295,13 +295,6 @@
                     <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9" NeverOverwrite="yes" Permanent="yes">
                         <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" KeyPath="yes" />
                     </Component>
-
-                    <!--Component Id="OSSEC_PRE6.CONF" DiskId="1" Guid="71947F0E-56D6-4E14-8539-214DFF6CA2BE" NeverOverwrite="yes" Permanent="yes">
-                        <File Id="OSSEC_PRE6.CONF" Name="ossec.conf" Source="default-ossec-pre6.conf" KeyPath="yes">
-                            <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
-                        </File>
-                        <Condition>VersionNT &lt; 600</Condition>
-                    </Component-->
                     <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes" Permanent="yes">
                         <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes">
                             <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
@@ -611,7 +604,6 @@
             <ComponentRef Id="REPLACECONF.VBS" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
-            <!--ComponentRef Id="OSSEC_PRE6.CONF" /-->
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="LICENSE.TXT" />
             <ComponentRef Id="LIBWINPTHREAD_1.DLL" />
