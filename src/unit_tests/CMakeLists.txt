@@ -5,56 +5,72 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.13)
+cmake_minimum_required(VERSION 3.13)
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../headers)
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../)
+set(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../)
 
-FIND_LIBRARY(WAZUHLIB NAMES libwazuh.a HINTS "${CMAKE_SOURCE_DIR}/../")
-FIND_LIBRARY(WAZUHEXT NAMES libwazuhext.so HINTS "${CMAKE_SOURCE_DIR}/../")
+include_directories(${SRC_FOLDER}/headers)
+include_directories(${SRC_FOLDER})
 
-ADD_COMPILE_OPTIONS(-ggdb)
-ENABLE_TESTING()
+
+# Wazuh libraries
+find_library(WAZUHLIB NAMES libwazuh.a HINTS "${SRC_FOLDER}")
+if(NOT WAZUHLIB)
+  message(FATAL_ERROR "libwazuh.a not found! Aborting...")
+endif()
+
+find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}")
+if(NOT WAZUHEXT)
+  message(FATAL_ERROR "libwazuhext.so not found! Aborting...")
+endif()
+
+
+# Add compiling flags
+add_compile_options(-ggdb -g -coverage)
+
+
+# Enable testing
+enable_testing()
 
 
 # Tests list and flags
-LIST(APPEND tests_names "test_file_op")
-LIST(APPEND tests_flags "-Wl,--wrap,isChroot -Wl,--wrap,chmod -Wl,--wrap,File_DateofChange -Wl,--wrap,getpid -Wl,--wrap,unlink")
+list(APPEND tests_names "test_file_op")
+list(APPEND tests_flags "-Wl,--wrap,isChroot -Wl,--wrap,chmod -Wl,--wrap,File_DateofChange -Wl,--wrap,getpid -Wl,--wrap,unlink")
 
-LIST(APPEND tests_names "test_integrity_op")
-LIST(APPEND tests_flags " ")
+list(APPEND tests_names "test_integrity_op")
+list(APPEND tests_flags " ")
 
-LIST(APPEND tests_names "test_rbtree_op")
-LIST(APPEND tests_flags " ")
+list(APPEND tests_names "test_rbtree_op")
+list(APPEND tests_flags " ")
 
-LIST(APPEND tests_names "test_version_op")
-LIST(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
+list(APPEND tests_names "test_version_op")
+list(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
-LIST(APPEND tests_names "test_create_db")
-LIST(APPEND tests_flags "-Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_delete -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_replace -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Add")
+list(APPEND tests_names "test_create_db")
+list(APPEND tests_flags "-Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_delete -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_replace -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Add")
 
-LIST(APPEND tests_names "test_syscheck_audit")
-LIST(APPEND tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,IsSocket -Wl,--wrap,IsFile -Wl,--wrap,IsDir -Wl,--wrap,IsLink -Wl,--wrap,IsFile -Wl,--wrap,audit_restart \
+list(APPEND tests_names "test_syscheck_audit")
+list(APPEND tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,IsSocket -Wl,--wrap,IsFile -Wl,--wrap,IsDir -Wl,--wrap,IsLink -Wl,--wrap,IsFile -Wl,--wrap,audit_restart \
                          -Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,fopen -Wl,--wrap,fwrite -Wl,--wrap,fprintf -Wl,--wrap,fclose -Wl,--wrap,symlink -Wl,--wrap,unlink \
                          -Wl,--wrap,audit_open -Wl,--wrap,audit_get_rule_list -Wl,--wrap,audit_close -Wl,--wrap,mdebug1 -Wl,--wrap,W_Vector_length -Wl,--wrap,search_audit_rule \
                          -Wl,--wrap,audit_add_rule -Wl,--wrap,W_Vector_insert_unique")
 
-LIST(APPEND tests_names "test_seechanges")
-LIST(APPEND tests_flags " ")
+list(APPEND tests_names "test_seechanges")
+list(APPEND tests_flags " ")
 
 # Config files
-CONFIGURE_FILE("test_syscheck.conf" "test_syscheck.conf" COPYONLY)
+configure_file("test_syscheck.conf" "test_syscheck.conf" COPYONLY)
 
 
 # Generate syscheck library
-FILE(GLOB sysfiles ../syscheckd/*.o)
-LIST(REMOVE_ITEM sysfiles ../syscheckd/main.o)
-FILE(GLOB rootfiles ../rootcheck/*.o)
+file(GLOB sysfiles ../syscheckd/*.o)
+list(REMOVE_ITEM sysfiles ../syscheckd/main.o)
+file(GLOB rootfiles ../rootcheck/*.o)
 
-ADD_LIBRARY(SYSCHECK_O STATIC ${sysfiles})
-ADD_LIBRARY(ROOTCHECK_O STATIC ${rootfiles})
+add_library(SYSCHECK_O STATIC ${sysfiles})
+add_library(ROOTCHECK_O STATIC ${rootfiles})
 
-SET_SOURCE_FILES_PROPERTIES(
+set_source_files_properties(
   ${sysfiles}
   ${rootfiles}
   PROPERTIES
@@ -62,48 +78,48 @@ SET_SOURCE_FILES_PROPERTIES(
   GENERATED true
   )
 
-SET_TARGET_PROPERTIES(
+set_target_properties(
   SYSCHECK_O
   ROOTCHECK_O
   PROPERTIES
   LINKER_LANGUAGE C
   )
 
-TARGET_LINK_LIBRARIES(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 
 # Generate analysisd library
-FILE(GLOB analysisd_files ../analysisd/*.o)
-LIST(REMOVE_ITEM analysisd_files ../analysisd/main.o)
+file(GLOB analysisd_files ../analysisd/*.o)
+list(REMOVE_ITEM analysisd_files ../analysisd/main.o)
 
-ADD_LIBRARY(ANALYSISD_O STATIC ${analysisd_files})
+add_library(ANALYSISD_O STATIC ${analysisd_files})
 
-SET_SOURCE_FILES_PROPERTIES(
+set_source_files_properties(
   ${analysisd_files}
   PROPERTIES
   EXTERNAL_OBJECT true
   GENERATED true
   )
 
-SET_TARGET_PROPERTIES(
+set_target_properties(
   ANALYSISD_O
   PROPERTIES
   LINKER_LANGUAGE C
   )
 
-TARGET_LINK_LIBRARIES(ANALYSISD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+target_link_libraries(ANALYSISD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 
-# Declare all tests targets
-LIST(LENGTH tests_names count)
-MATH(EXPR count "${count} - 1")
-FOREACH(i RANGE ${count})
-    LIST(GET tests_names ${i} test_name)
-    LIST(GET tests_flags ${i} test_flags)
+# Compiling tests
+list(LENGTH tests_names count)
+math(EXPR count "${count} - 1")
+foreach(counter RANGE ${count})
+    list(GET tests_names ${counter} test_name)
+    list(GET tests_flags ${counter} test_flags)
 
-    ADD_EXECUTABLE(${test_name} ${test_name}.c)
+    add_executable(${test_name} ${test_name}.c)
 
-    TARGET_LINK_LIBRARIES(
+    target_link_libraries(
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
@@ -113,12 +129,52 @@ FOREACH(i RANGE ${count})
         -fprofile-arcs
         -ftest-coverage
     )
-    IF(test_flags STREQUAL " ")
-    ELSE()
-        TARGET_LINK_LIBRARIES(
+    if(NOT test_flags STREQUAL " ")
+        target_link_libraries(
             ${test_name}
             ${test_flags}
         )
-    ENDIF()
-    ADD_TEST(${test_name} ${test_name})
-ENDFOREACH()
+    endif()
+    add_test(${test_name} ${test_name})
+endforeach()
+
+
+# Coverage
+find_program(LCOV_PATH lcov)
+if(NOT LCOV_PATH)
+  message(FATAL_ERROR "lcov not found! Aborting...")
+endif()
+
+find_program(GCOV_PATH gcov)
+if(NOT GCOV_PATH)
+  message(FATAL_ERROR "gcov not found! Aborting...")
+endif()
+
+find_program(GENHTML_PATH genhtml)
+if(NOT GENHTML_PATH)
+  message(FATAL_ERROR "genhtml not found! Aborting...")
+endif()
+
+add_custom_target(coverage
+    # Cleanup lcov
+    COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} -directory ${SRC_FOLDER} --zerocounters
+
+    # Create baseline to make sure untouched files show up in the report
+    COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -c -i -d ${SRC_FOLDER} -o coverage.base
+
+    # Run tests
+    COMMAND ctest
+
+    # Capturing lcov counters and generating report
+    COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} --directory ${SRC_FOLDER} --capture --output-file coverage.info
+
+    # Add baseline counters
+    COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -a coverage.base -a coverage.info --output-file coverage.total
+    COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} --remove coverage.total ${SRC_FOLDER}/external/* --output-file coverage.info.cleaned
+
+    # Generate HTML report
+    COMMAND ${GENHTML_PATH} -q --output-directory coverage-report --title "WAZUH tests coverage" --show-details --legend coverage.info.cleaned
+
+    # Clean counters
+    COMMAND ${CMAKE_COMMAND} -E remove coverage.base coverage.total coverage.info.cleaned
+)
