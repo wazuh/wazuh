@@ -138,7 +138,7 @@ components:
           description: Number of items that have successfully done the requested operation.
         failed_items:
           type: array
-          description: List of items that have failed when doing the requested operation. It's not returned when it's empty.
+          description: List of items that have failed when doing the requested operation.
           items:
             $ref: '#/components/schemas/SimpleApiError'
         total_failed_items:
