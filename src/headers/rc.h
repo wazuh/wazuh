@@ -10,8 +10,8 @@
 
 /* Remote Control shared headers */
 
-#ifndef __RC_H
-#define __RC_H
+#ifndef RC_H
+#define RC_H
 
 /* Global headers */
 #define CONTROL_HEADER      "#!-"
@@ -38,4 +38,4 @@
 #define HC_FIM_DB_ES        "fim-db-end-scan"
 #define CFGA_DB_DUMP        "sca-dump"
 
-#endif
+#endif /* RC_H */

@@ -54,6 +54,10 @@ USE_FRAMEWORK_LIB=no
 MINGW_HOST=unknown
 USE_MSGPACK_OPT=yes
 
+DISABLE_SHARED?=no
+DISABLE_SYSC?=no
+DISABLE_CISCAT?=no
+
 ifneq ($(HAS_CHECKMODULE),)
 ifneq ($(HAS_SEMODULE_PACKAGE),)
 USE_SELINUX=yes
@@ -91,7 +95,7 @@ ifeq (${uname_S},Linux)
 #		OSSEC_LDFLAGS+=-lmagic
 		CFLAGS+=-Wl,--start-group
 		USE_AUDIT=yes
-ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
+ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 		CFLAGS+=-I$(EXTERNAL_AUDIT)lib
 endif
 else
@@ -142,11 +146,11 @@ ifeq (${uname_S},NetBSD)
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 else
 ifeq (${uname_S},OpenBSD)
-#		DEFINES+=-DOpenBSD
+		DEFINES+=-DOpenBSD
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-L/usr/local/lib
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
+		OSSEC_LDFLAGS+=-Wl,-zorigin '-Wl,-rpath,$$ORIGIN/../lib'
 else
 ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
@@ -155,7 +159,7 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-DOS_BIG_ENDIAN
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-lrt
-ifndef DISABLE_SHARED
+ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 endif
 		OSSEC_CFLAGS+=-pthread
@@ -180,23 +184,23 @@ else
 		OSSEC_LDFLAGS+=-pthread
 endif # winagent
 
-ifndef DISABLE_SYSC
+ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 	DEFINES+=-DENABLE_SYSC
 endif
 
-ifndef DISABLE_CISCAT
+ifeq (,$(filter ${DISABLE_CISCAT},YES yes y Y 1))
 	DEFINES+=-DENABLE_CISCAT
 endif
 
-ifndef DISABLE_SHARED
+ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 	DEFINES+=-DENABLE_SHARED
 endif
 
-ifdef DEBUGAD
+ifneq (,$(filter ${DEBUGAD},YES yes y Y 1))
 	DEFINES+=-DDEBUGAD
 endif
 
-ifdef DEBUG
+ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 	OSSEC_CFLAGS+=-g
 else
 	OSSEC_CFLAGS+=-DNDEBUG
@@ -206,18 +210,21 @@ endif #DEBUG
 OSSEC_CFLAGS+=${OFLAGS}
 OSSEC_LDFLAGS+=${OFLAGS}
 
-ifneq (,$(filter ${CLEANFULL},yes y Y 1))
+ifneq (,$(filter ${CLEANFULL},YES yes y Y 1))
 	DEFINES+=-DCLEANFULL
 endif
 
-ifneq (,$(filter ${ONEWAY},yes y Y 1))
+ifneq (,$(filter ${ONEWAY},YES yes y Y 1))
 	DEFINES+=-DONEWAY_ENABLED
 endif
 
-ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
+ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
         DEFINES+=-DENABLE_AUDIT
 endif
 
+ifeq (${COVERITY}, YES)
+	DEFINES+=-D__coverity__
+endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra
@@ -232,7 +239,7 @@ BINCOLOR="\033[37;1m"
 MAKECOLOR="\033[32;1m"
 ENDCOLOR="\033[0m"
 
-ifndef V
+ifeq (,$(filter ${V},YES yes y Y 1))
 	QUIET_CC      = @printf '    %b %b\n' ${CCCOLOR}CC${ENDCOLOR} ${SRCCOLOR}$@${ENDCOLOR} 1>&2;
 	QUIET_LINK    = @printf '    %b %b\n' ${LINKCOLOR}LINK${ENDCOLOR} ${BINCOLOR}$@${ENDCOLOR} 1>&2;
 	QUIET_CCBIN   = @printf '    %b %b\n' ${LINKCOLOR}CC${ENDCOLOR} ${BINCOLOR}$@${ENDCOLOR} 1>&2;
@@ -284,7 +291,7 @@ OSSEC_RANLIB  =${QUIET_RANLIB}${MING_BASE}ranlib
 OSSEC_WINDRES =${QUIET_CCBIN}${MING_BASE}windres
 
 
-ifneq (,$(filter ${USE_INOTIFY},auto yes y Y 1))
+ifneq (,$(filter ${USE_INOTIFY},YES auto yes y Y 1))
 	DEFINES+=-DINOTIFY_ENABLED
 	ifeq (${uname_S},FreeBSD)
 		OSSEC_LDFLAGS+=-L/usr/local/lib -I/usr/local/include
@@ -293,24 +300,24 @@ ifneq (,$(filter ${USE_INOTIFY},auto yes y Y 1))
 	endif
 endif
 
-ifneq (,$(filter ${USE_BIG_ENDIAN},yes y Y 1))
+ifneq (,$(filter ${USE_BIG_ENDIAN},YES yes y Y 1))
 	DEFINES+=-DOS_BIG_ENDIAN
 endif
 
-ifneq (,$(filter ${USE_PRELUDE},auto yes y Y 1))
+ifneq (,$(filter ${USE_PRELUDE},YES auto yes y Y 1))
 	DEFINES+=-DPRELUDE_OUTPUT_ENABLED
 	OSSEC_LIBS+=-lprelude
 	OSSEC_LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --pthread-cflags')
 	OSSEC_LIBS+=$(shell sh -c '${PRELUDE_CONFIG} --libs')
 endif # USE_PRELUDE
 
-ifneq (,$(filter ${USE_ZEROMQ},auto yes y Y 1))
+ifneq (,$(filter ${USE_ZEROMQ},YES auto yes y Y 1))
 	DEFINES+=-DZEROMQ_OUTPUT_ENABLED
 	#LDFLAGS+=-L/usr/local/lib -I/usr/local/include -lzmq -lczmq
 	OSSEC_LIBS+=-lzmq -lczmq
 endif # USE_ZEROMQ
 
-ifneq (,$(filter ${USE_GEOIP},auto yes y Y 1))
+ifneq (,$(filter ${USE_GEOIP},YES auto yes y Y 1))
 	DEFINES+=-DLIBGEOIP_ENABLED
 	OSSEC_LIBS+=-lGeoIP
 endif # USE_GEOIP
@@ -433,26 +440,27 @@ failtarget:
 help: failtarget
 	@echo
 	@echo "General options: "
-	@echo "   make V=1                     Display full compiler messages"
-	@echo "   make DEBUG=1                 Build with symbols and without optimization"
-	@echo "   make DEBUGAD                 Enables extra debugging logging in ossec-analysisd"
+	@echo "   make V=yes                   Display full compiler messages. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DEBUG=yes               Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DEBUGAD=yes             Enables extra debugging logging in ossec-analysisd. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PREFIX=/path            Install OSSEC to '/path'. Defaults to /var/ossec"
 	@echo "   make MAXAGENTS=NUMBER        Set the number of maximum agents to NUMBER. Defaults to 2048"
-	@echo "   make ONEWAY=no               Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager"
-	@echo "   make CLEANFULL=no            Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'"
+	@echo "   make ONEWAY=yes              Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make CLEANFULL=yes           Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make RESOURCES_URL           Set the Wazuh resources URL"
-	@echo "   make USE_ZEROMQ=0            Build with zeromq support"
-	@echo "   make USE_PRELUDE=0           Build with prelude support"
-	@echo "   make USE_INOTIFY=0           Build with inotify support"
-	@echo "   make BIG_ENDIAN=0            Build with big endian support"
-	@echo "   make USE_SELINUX=0           Build with SELinux policies"
-	@echo "   make USE_AUDIT=1             Build with audit service support"
-	@echo "   make USE_FRAMEWORK_LIB=0     Use external SQLite library for the framework"
-	@echo "   make USE_MSGPACK_OPT=yes     Use default architecture for building msgpack library"
+	@echo "   make USE_ZEROMQ=yes          Build with zeromq support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_PRELUDE=yes         Build with prelude support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_INOTIFY=yes         Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make BIG_ENDIAN=yes          Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_SELINUX=yes         Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_AUDIT=yes           Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_FRAMEWORK_LIB=yes   Use external SQLite library for the framework. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_MSGPACK_OPT=yes     Use default architecture for building msgpack library. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make OFLAGS=-Ox              Overrides optimization level"
-	@echo "   make DISABLE_SHARED=true	   Not to build the Wazuh shared library (for unsupported systems)"
-	@echo "   make DISABLE_SYSC=true       Not to build the Syscollector module (for unsupported systems)"
-	@echo "   make DISABLE_CISCAT=true     Not to build the CIS-CAT module (for unsupported systems)"
+	@echo "   make DISABLE_SHARED=yes      Not to build the Wazuh shared library (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DISABLE_SYSC=yes        Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DISABLE_CISCAT=yes      Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make OPTIMIZE_CPYTHON=yes    When PREFIX points to other directory than default, the python interpreter is rebuilt, enable this flag to optimize the process. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql          Build with MYSQL Support"
@@ -461,7 +469,7 @@ help: failtarget
 	@echo "                                Use PGSQL_CFLAGS adn PGSQL_LIBS to override defaults"
 	@echo
 	@echo "Geoip support: "
-	@echo "   make USE_GEOIP=1             Build with GeoIP support"
+	@echo "   make USE_GEOIP=yes           Build with GeoIP support. Allowed values are auto 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo
 	@echo "User options: "
 	@echo "   make OSSEC_GROUP=ossec       Set ossec group"
@@ -470,7 +478,7 @@ help: failtarget
 	@echo "   make OSSEC_USER_REM=ossecr   Set ossec user rem"
 	@echo
 	@echo "Examples: Client with debugging enabled"
-	@echo "   make TARGET=agent DEBUG=1"
+	@echo "   make TARGET=agent DEBUG=yes"
 
 .PHONY: settings
 settings:
@@ -500,6 +508,9 @@ settings:
 	@echo "    USE_SELINUX:        ${USE_SELINUX}"
 	@echo "    USE_AUDIT:          ${USE_AUDIT}"
 	@echo "    USE_FRAMEWORK_LIB:  ${USE_FRAMEWORK_LIB}"
+	@echo "    DISABLE_SHARED:     ${DISABLE_SHARED}"
+	@echo "    DISABLE_SYSC:       ${DISABLE_SYSC}"
+	@echo "    DISABLE_CISCAT:     ${DISABLE_CISCAT}"
 	@echo "Mysql settings:"
 	@echo "    includes:           ${MI}"
 	@echo "    libs:               ${ML}"
@@ -534,7 +545,7 @@ BUILD_SERVER+=ossec-dbd -
 BUILD_SERVER+=ossec-integratord
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
-ifneq (,$(filter ${USE_FRAMEWORK_LIB},yes y Y 1))
+ifneq (,$(filter ${USE_FRAMEWORK_LIB},YES yes y Y 1))
 BUILD_SERVER+=wazuh-framework
 endif
 
@@ -572,7 +583,7 @@ endif
 agent: external
 	${MAKE} ${BUILD_AGENT}
 
-ifneq (,$(filter ${USE_SELINUX},yes y Y 1))
+ifneq (,$(filter ${USE_SELINUX},YES yes y Y 1))
 server local hybrid agent: selinux
 endif
 
@@ -638,7 +649,7 @@ ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(LIBCURL_LIB) $(LIBFFI_LIB)
 endif
 ifeq (${uname_S},Linux)
-ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
+ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
 
@@ -763,7 +774,11 @@ $(EXTERNAL_CURL)Makefile:
 	cd $(EXTERNAL_CURL) && ./configure --with-darwinssl --disable-ldap --without-libidn2
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
+ifeq (${uname_S},Linux)
 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2
+else
+	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure --disable-ldap --without-libidn2
+endif
 endif
 
 
@@ -802,7 +817,7 @@ $(EXTERNAL_AUDIT)Makefile:
 
 #### msgpack #########
 
-ifeq (,$(filter ${USE_MSGPACK_OPT},yes y Y 1))
+ifeq (,$(filter ${USE_MSGPACK_OPT},YES yes y Y 1))
         MSGPACK_ARCH=-march=i486
 endif
 
@@ -872,10 +887,9 @@ external/%.tar.gz:
 #### OSSEC Libs ####
 ####################
 
-ifdef DISABLE_SHARED
+ifneq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 BUILD_LIBS = libwazuh.a $(EXTERNAL_LIBS)
-endif
-ifndef DISABLE_SHARED
+else
 WAZUHEXT_LIB = libwazuhext.$(SHARED)
 BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
 endif
@@ -942,11 +956,11 @@ config/%.o: config/%.c
 
 wmodules_c := $(wildcard wazuh_modules/wm*.c)
 
-ifeq (${TARGET},agent)
-	wmodules_c := $(filter-out wazuh_modules/wm_vuln_detector.c,$(wmodules_c))
+ifneq (${TARGET},agent)
+	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/vulnerability_detector/*.c)
 endif
 
-ifndef DISABLE_SYSC
+ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/syscollector/*.c)
 endif
 
@@ -960,7 +974,7 @@ wazuh_modules/syscollector/syscollector_win_ext.dll: wazuh_modules/syscollector/
 	${OSSEC_SHARED} ${OSSEC_LDFLAGS} $^ -o $@ $(OSSEC_LIBS) $(JSON_LIB) -liphlpapi -lws2_32
 endif # DLL for Windows
 
-ifndef DISABLE_SYSC
+ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 wazuh_modules/syscollector/%.o: wazuh_modules/syscollector/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 endif
@@ -1060,7 +1074,7 @@ libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os
 
 ### libwazuhext #########
 
-ifndef DISABLE_SHARED
+ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 ifeq (${uname_S},Darwin)
 WAZUH_SHFLAGS=-install_name @rpath/libwazuhext.$(SHARED)
 
@@ -1433,7 +1447,7 @@ wazuh-modulesd: ${wmodulesd_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 ### wazuh-framework ##
-ifneq (,$(filter ${USE_FRAMEWORK_LIB},yes y Y 1))
+ifneq (,$(filter ${USE_FRAMEWORK_LIB},YES yes y Y 1))
 wazuh-framework: ${shared_o} ${wdblib_o}
 	${MAKE} -C ../framework build PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${USE_FRAMEWORK_LIB}
 endif
@@ -1443,7 +1457,7 @@ endif
 WPYTHON_DIR := ${PREFIX}/framework/python
 OPTIMIZE_CPYTHON?=no
 
-ifneq (,$(filter ${OPTIMIZE_CPYTHON},yes y Y 1))
+ifneq (,$(filter ${OPTIMIZE_CPYTHON},YES yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
 endif
 
@@ -1475,7 +1489,7 @@ ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
 endif
 endif
 
-ifndef DISABLE_SHARED
+ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 build_python: $(WAZUHEXT_LIB)
 endif
 
@@ -1501,7 +1515,7 @@ CFLAGS_TEST = -g -O0 --coverage
 
 # LIBS_TEST = -lcheck -lm -lrt -lsubunit
 
-ifdef TEST
+ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
 	# OSSEC_CFLAGS+=${CFLAGS_TEST} -Itests
 	OSSEC_LDFLAGS+=${CFLAGS_TEST}
@@ -1520,7 +1534,7 @@ run_tests:
 	@$(foreach bin,${test_programs},./${bin} || exit 1;)
 
 build_tests: external
-	${MAKE} DEBUG=1 TEST=1 ${test_programs}
+	${MAKE} DEBUG=yes TEST=yes ${test_programs}
 
 test_c := $(wildcard tests/*.c)
 test_o := $(test_c:.c=.o)

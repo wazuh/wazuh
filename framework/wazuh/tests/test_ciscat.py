@@ -9,6 +9,7 @@ with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         from wazuh import ciscat
 
+
 @patch("wazuh.ciscat.get_item_agent", return_value=None)
 def test_get_ciscat_agent(mock_response):
     """

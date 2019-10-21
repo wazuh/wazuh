@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __FTS_H
-#define __FTS_H
+#ifndef FTS_H
+#define FTS_H
 
 #include "eventinfo.h"
 
@@ -34,4 +34,4 @@ void FTS_Flush();
 extern unsigned int fts_minsize_for_str;
 extern int fts_list_size;
 
-#endif /* __FTS_H */
+#endif /* FTS_H */

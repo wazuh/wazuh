@@ -10,8 +10,8 @@
 
 /* Common API for dealing with rules */
 
-#ifndef _OS_RULESOP_H
-#define _OS_RULESOP_H
+#ifndef OS_RULESOP_H
+#define OS_RULESOP_H
 
 #include "shared.h"
 
@@ -32,6 +32,7 @@
 #define NOT_SAME_SRCIP      0xffd /* 0xfff - 0x002 */
 #define NOT_SAME_ID         0xffb /* 0xfff - 0x004 */
 #define NOT_SAME_AGENT      0xff7 /* 0xfff - 0x008 */
+#define GLOBAL_FREQUENCY    0x1000
 
 /* Alert options - stored in a uint8 */
 #define DO_FTS          0x0001
@@ -162,4 +163,4 @@ int OS_ReadXMLRules(const char *rulefile,
                     void *(*ruleact_function)(RuleInfo *rule_1, void *data_1),
                     void *data) __attribute__((nonnull(1, 2)));
 
-#endif
+#endif /* OS_RULESOP_H */

@@ -284,7 +284,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 file_name = SHAREDCFG_FILENAME;
                 snprintf(destination_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
                 mdebug1("Downloading shared file '%s' from '%s'", merged, file_url);
-                downloaded = wurl_request(file_url,destination_path);
+                downloaded = wurl_request(file_url,destination_path, NULL, NULL);
                 w_download_status(downloaded,file_url,destination_path);
                 r_group->merged_is_downloaded = !downloaded;
 
@@ -318,7 +318,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                         snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, file_name);
                         snprintf(download_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
                         mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
-                        downloaded = wurl_request(file_url,download_path);
+                        downloaded = wurl_request(file_url,download_path, NULL, NULL);
 
                         if (!w_download_status(downloaded, file_url, destination_path)) {
                             OS_MoveFile(download_path, destination_path);
@@ -780,10 +780,9 @@ static void c_files()
     }
 
     OSHashNode *my_node;
-    unsigned int *i;
-    os_calloc(1, sizeof(unsigned int), i);
+    unsigned int i;
 
-    for (my_node = OSHash_Begin(m_hash, i); my_node; my_node = OSHash_Next(m_hash, i, my_node)) {
+    for (my_node = OSHash_Begin(m_hash, &i); my_node; my_node = OSHash_Next(m_hash, &i, my_node)) {
         os_free(key);
         os_free(data);
         os_strdup(my_node->key, key);
@@ -791,7 +790,6 @@ static void c_files()
             os_strdup(my_node->data, data);
         }
         else {
-            os_free(i);
             os_free(key);
             os_free(data);
             closedir(dp);
@@ -836,7 +834,6 @@ static void c_files()
         p_size++;
     }
 
-    os_free(i);
     os_free(key);
     os_free(data);
     /* Unlock mutex */
@@ -1073,7 +1070,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             // Copy sum before unlock mutex
-            if (*f_sum[0]->sum) {
+            if (f_sum[0]->sum && *(f_sum[0]->sum)) {
                 memcpy(tmp_sum, f_sum[0]->sum, sizeof(tmp_sum));
             }
 

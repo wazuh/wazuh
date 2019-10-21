@@ -171,6 +171,16 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
         return;
     }
 
+    if (strcmp(key, "extra_data") == 0){
+        os_strdup(value, lf->extra_data);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       extra_data: '%s'", lf->extra_data);
+        }
+#endif
+        return;
+    }
+
     if (strcmp(key, "systemname") == 0){
         lf->systemname = strdup(value);
 #ifdef TESTRULE

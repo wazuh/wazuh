@@ -5,6 +5,7 @@
 import errno
 import hashlib
 import operator
+
 import socket
 from base64 import b64encode
 from datetime import date, datetime, timedelta, timezone
@@ -28,8 +29,8 @@ from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
-    get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-    md5, safe_move
+                        get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
+                        md5, SQLiteBackend, WazuhDBBackend, filter_array_by_query, safe_move
 from wazuh.wdb import WazuhDBConnection
 
 
@@ -54,9 +55,10 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id',
                  min_select_fields={'lastKeepAlive', 'version', 'id'}, remove_extra_fields=True):
+        backend = SQLiteBackend(common.database_path_global)
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select, filters=filters,
                               fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
-                              db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
+                              min_select_fields=min_select_fields, count=count, get_data=get_data, backend=backend,
                               date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'})
         self.remove_extra_fields = remove_extra_fields
 
@@ -119,21 +121,18 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-        agent_items = [{field: value for field, value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
-                        if value is not None} for db_tuple in self.conn]
-
         today = datetime.utcnow()
 
         # compute 'status' field, format id with zero padding and remove non-user-requested fields.
         # Also remove, extra fields (internal key and registration IP)
         selected_fields = self.select['fields'] - self.extra_fields if self.remove_extra_fields else self.select['fields']
         selected_fields |= {'id'}
-        agent_items = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
-                        for key, value in item.items() if key in selected_fields} for item in agent_items]
+        self._data = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
+                        for key, value in item.items() if key in selected_fields} for item in self._data]
 
-        agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in agent_items]
+        self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in self._data]
 
-        return {'items': agent_items, 'totalItems': self.total_items}
+        return super()._format_data_into_dictionary()
 
     def _parse_legacy_filters(self):
         if 'older_than' in self.legacy_filters:
@@ -158,34 +157,24 @@ class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents): pass
 
 
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
-    def __init__(self, filter_fields, offset, limit, sort, search, select, count, get_data, query, filters={},
-                 default_sort_field='id', min_select_fields={'last_keepalive','version','id'}):
-        WazuhDBQueryGroupBy.__init__(self, filter_fields=filter_fields, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
-                              filters=filters, fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
-                              db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'})
-        self.remove_extra_fields=True
+    def __init__(self, filter_fields, *args, **kwargs):
+        WazuhDBQueryAgents.__init__(self, *args, **kwargs)
+        WazuhDBQueryGroupBy.__init__(self, table=self.table, fields=self.fields, filter_fields=filter_fields,
+                                     default_sort_field=self.default_sort_field, backend=self.backend, *args, **kwargs)
+        self.remove_extra_fields = True
 
 
 class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
-    def __init__(self, group_id, offset, limit, sort, search, select, count, get_data, query, filters={},
-                 default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'},
-                 remove_extra_fields=True):
+    def __init__(self, group_id, query, *args, **kwargs):
         self.group_id = group_id
         query = 'group={}'.format(group_id) + (';'+query if query else '')
-        WazuhDBQueryAgents.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                    filters=filters, default_sort_field=default_sort_field, query=query,
-                                    min_select_fields=min_select_fields, count=count, get_data=get_data,
-                                    remove_extra_fields=remove_extra_fields)
-
+        WazuhDBQueryAgents.__init__(self, query=query, *args, **kwargs)
 
     def _default_query(self):
         return "SELECT {0} FROM agent a LEFT JOIN belongs b ON a.id = b.id_agent" if self.group_id != "null" else "SELECT {0} FROM agent a"
 
-
     def _default_count_query(self):
         return 'COUNT(DISTINCT a.id)'
-
 
     def _get_total_items(self):
         WazuhDBQueryAgents._get_total_items(self)
@@ -277,55 +266,6 @@ class Agent:
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
 
-    def _load_info_from_agent_db(self, table, select, filters={}, or_filters={}, count=False, offset=0, limit=common.database_limit, sort={}, search={}):
-        """
-        Make a request to agent's database using Wazuh DB
-
-        :param table: DB table to retrieve data from
-        :param select: DB fields to retrieve
-        :param filters: filter conditions
-        :param or_filters: filter conditions using or operator.
-        :param sort: Dictionary of form {'fields':[], 'order':'asc'}/{'fields':[], 'order':'desc'}
-        :param search: Dictionary of form {'value': '', 'negation':false, 'fields': []}
-        """
-        self.get_basic_information()  # check if the agent exists
-
-        wdb_conn = WazuhDBConnection()
-
-        query = "agent {} sql select {} from {}".format(self.id, ','.join(select), table)
-
-        if filters:
-            query += " and (" + " and ".join(["{} = '{}'".format(key, value) for key, value in filters.items()]) + ")"
-        if or_filters:
-            query += " or (" + " or ".join(["{} = '{}'".format(key, value) for key, value in or_filters.items()]) + ")"
-
-        if search:
-            query += " and not" if bool(search['negation']) else " and "
-            query += '(' + " or ".join("{} like '%{}%'".format(x, search['value']) for x in select) + ')'
-
-        if "from {} and".format(table) in query:
-            query = query.replace("from {} and".format(table), "from {} where".format(table))
-        elif "from {} or".format(table) in query:
-            query = query.replace("from {} or".format(table), "from {} where".format(table))
-
-        if limit:
-            if limit > common.maximum_database_limit:
-                raise WazuhException(1405, str(limit))
-            query += ' limit {} offset {}'.format(limit, offset)
-        elif limit == 0:
-            raise WazuhException(1406)
-
-        if sort and sort['fields']:
-            str_order = "desc" if sort['order'] == 'asc' else "asc"
-            order_str_fields = []
-            for field in sort['fields']:
-                order_str_field = '{0} {1}'.format(field, str_order)
-                order_str_fields.append(order_str_field)
-            query += ' order by ' + ','.join(order_str_fields)
-
-        return wdb_conn.execute(query, count)
-
-
     def get_basic_information(self, select=None):
         """
         Gets public attributes of existing agent.
@@ -371,9 +311,14 @@ class Agent:
             if self.status.lower() != 'active':
                 raise WazuhException(1707, '{0} - {1}'.format(self.id, self.status))
 
-            oq = OssecQueue(common.ARQUEUE)
-            ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS, self.id)
-            oq.close()
+            # Check if agent has active-response disabled
+            agent_conf = self.get_config(self.id, 'com', 'active-response')
+            if agent_conf['active-response']['disabled'] == 'yes':
+                raise WazuhException(1750)
+            else:
+                oq = OssecQueue(common.ARQUEUE)
+                ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS, self.id)
+                oq.close()
 
         return ret_msg
 
@@ -475,7 +420,7 @@ class Agent:
             raise WazuhException(1746, str(e))
 
         # Tell wazuhbd to delete agent database
-        wdb_conn = WazuhDBConnection()
+        wdb_conn = WazuhDBBackend(self.id).connect_to_db()
         wdb_conn.delete_agents_db([self.id])
 
         try:
@@ -649,7 +594,7 @@ class Agent:
 
         conn = Connection(db_global[0])
         conn.execute("SELECT name FROM agent WHERE (id = 0)")
-        manager_name = str(conn.fetch()[0])
+        manager_name = str(conn.fetch())
 
         if name == manager_name:
             raise WazuhException(1705, name)
@@ -793,7 +738,7 @@ class Agent:
         query = "SELECT :attr FROM agent WHERE id = :id"
         request = {'attr':attr, 'id': self.id}
         conn.execute(query, request)
-        query_value = str(conn.fetch()[0])
+        query_value = str(conn.fetch())
 
         return query_value
 
@@ -924,6 +869,20 @@ class Agent:
 
             return final_dict
 
+    @staticmethod
+    def restart_agents_by_group(group_id: str) -> Dict:
+        """Restart all the agents which belong to a group.
+
+        :param group_id: Name of the group
+        :return: Confirmation message
+        """
+        # list with agent IDs to restart. Contains key-value pairs.
+        agent_list = Agent.get_agent_group(group_id=group_id,
+                                           select={'fields': ['id']}).get('items')
+        # format agent_list as a list with strings of agent IDs
+        agent_list = [elem.get('id') for elem in agent_list]
+
+        return Agent.restart_agents(agent_id=agent_list)
 
     @staticmethod
     def get_agent_by_name(agent_name, select=None):
@@ -940,7 +899,7 @@ class Agent:
         conn = Connection(db_global[0])
         conn.execute("SELECT id FROM agent WHERE name = :name", {'name': agent_name})
         try:
-            agent_id = str(conn.fetch()[0]).zfill(3)
+            agent_id = str(conn.fetch()).zfill(3)
         except TypeError as e:
             raise WazuhException(1701, agent_name)
 
@@ -985,7 +944,7 @@ class Agent:
         conn = Connection(db_global[0])
         conn.execute("SELECT id FROM `group` WHERE name = :name", {'name': group_name})
         try:
-            group_id = conn.fetch()[0]
+            group_id = conn.fetch()
         except TypeError as e:
             raise WazuhException(1701, group_name)
 
@@ -1137,11 +1096,7 @@ class Agent:
         if not Agent.group_exists(group_id):
             raise WazuhException(1710, group_id)
 
-        # If the new multi group doesnt exists, create it
-        if not Agent.multi_group_exists(agent_group):
-            Agent.create_multi_group(agent_group)
-
-        Agent().set_multi_group(str(agent_id),agent_group)
+        Agent().set_multi_group(str(agent_id), agent_group)
 
         # Check if the multigroup still exists in other agents
         multi_group_list = []
@@ -1218,7 +1173,7 @@ class Agent:
 
 
     @staticmethod
-    def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None, hash_algorithm='md5'):
+    def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None, filters={}, q=''):
         """
         Gets the existing groups.
 
@@ -1226,9 +1181,13 @@ class Agent:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
-        :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
+        :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}.
+            This filter is used to set hash algorithm for getting mergedsum and configsum in this method.
+        :param q: Defines query to filter.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+        # set hash algorithm used to get mergedsum and configsum, 'md5' by default
+        hash_algorithm = filters['hash'] if 'hash' in filters else 'md5'
         try:
             # Connect DB
             db_global = glob(common.database_path_global)
@@ -1250,10 +1209,8 @@ class Agent:
                 conn.execute(query, request)
                 id_group = conn.fetch()
 
-                if id_group == None:
+                if id_group is None:
                     continue
-
-                id_group = id_group[0]
 
                 # Group count
                 query = "SELECT {0} FROM belongs WHERE id_group = :id"
@@ -1264,7 +1221,7 @@ class Agent:
                 merged_sum = get_hash(full_entry + "/merged.mg", hash_algorithm)
                 conf_sum   = get_hash(full_entry + "/agent.conf", hash_algorithm)
 
-                item = {'count':conn.fetch()[0], 'name': entry}
+                item = {'count': conn.fetch(), 'name': entry}
 
                 if merged_sum:
                     item['mergedSum'] = merged_sum
@@ -1277,6 +1234,9 @@ class Agent:
 
             if search:
                 data = search_array(data, search['value'], search['negation'], fields=['name'])
+
+            if q:
+                data = filter_array_by_query(q, data)
 
             if sort:
                 data = sort_array(data, sort['fields'], sort['order'])
@@ -1474,33 +1434,6 @@ class Agent:
         return msg
 
     @staticmethod
-    def create_multi_group(group_id):
-        """
-        Creates a multi group.
-        :param group_id: Group ID.
-        :return: Confirmation message.
-        """
-
-        if ',' not in group_id:
-            # if there's not , in the group_id, then it isn't a multigroup and therefore the function does nothing
-            return
-
-        # Create group in /var/multigroups
-        try:
-            folder = hashlib.sha256(group_id.encode()).hexdigest()[:8]
-            multi_group_path = "{0}/{1}".format(common.multi_groups_path, folder)
-            mkdir_with_mode(multi_group_path)
-            chown(multi_group_path, common.ossec_uid(), common.ossec_gid())
-            chmod(multi_group_path, 0o770)
-            msg = "Group '{0}' created.".format(group_id)
-            return msg
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise WazuhException(1005, str(e))
-
-        return msg
-
-    @staticmethod
     def remove_multi_group(groups_id):
         """
         Removes groups by IDs.
@@ -1518,10 +1451,7 @@ class Agent:
                 groups_to_remove.append(','.join(group_list))
                 group_list.remove(group_to_remove)
                 if len(group_list) > 1:
-                    # create new multigroup
                     new_group = ','.join(group_list)
-                    if not Agent.multi_group_exists(new_group):
-                        Agent.create_multi_group(new_group)
                 else:
                     new_group = 'default' if not group_list else group_list[0]
 
@@ -1643,7 +1573,7 @@ class Agent:
         """
         Unset a group to a list of agents.
 
-        :param agent_id: List of Agent IDs.
+        :param agent_id_list: List of Agent IDs.
         :param group_id: Group ID.
         :return: Confirmation message.
         """
@@ -1654,7 +1584,7 @@ class Agent:
         if len(agent_id_list) < 1:
             raise WazuhException(1732)
 
-        # raise an exception if group not exists
+        # raise an exception if group does not exist
         if not Agent.group_exists(group_id):
             raise WazuhException(1710)
 
@@ -1798,7 +1728,7 @@ class Agent:
 
 
     @staticmethod
-    def unset_single_group_agent(agent_id, group_id, force):
+    def unset_single_group_agent(agent_id, group_id=None, force=False):
         """
         Unset the agent group. If agent has multigroups, it will preserve all previous groups except the last one.
 
@@ -1823,12 +1753,10 @@ class Agent:
         group_list.remove(group_id)
         if len(group_list) > 1:
             multigroup_name = ','.join(group_list)
-            if not Agent.multi_group_exists(multigroup_name):
-                Agent.create_multi_group(multigroup_name)
         else:
             multigroup_name = 'default' if not group_list else group_list[0]
 
-        Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
+        Agent.unset_all_groups_agent(agent_id=agent_id, force=True, group_id=multigroup_name)
 
         return f"Group '{group_id}' unset for agent '{agent_id}'." if multigroup_name != 'default' else \
                f"Agent {agent_id} set to group default."
@@ -1848,7 +1776,7 @@ class Agent:
 
         conn = Connection(db_global[0])
         conn.execute('select count(*) from agent where `group` = :group_name', {'group_name': multigroup_name})
-        return int(conn.fetch()[0])
+        return int(conn.fetch())
 
 
     @staticmethod
@@ -1930,17 +1858,20 @@ class Agent:
         if (version is None or WazuhVersion(version) >= WazuhVersion("v3.4.0")) and self.os['platform'] != "windows":
             versions_url = protocol + wpk_repo + "linux/" + self.os['arch'] + "/versions"
         else:
-            if self.os['platform']=="windows":
+            if self.os['platform'] == "windows":
                 versions_url = protocol + wpk_repo + "windows/versions"
-            elif self.os['platform']=="ubuntu":
-                versions_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/versions"
+            elif self.os['platform'] == "ubuntu":
+                versions_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + \
+                               self.os['minor'] + "/" + self.os['arch'] + "/versions"
             else:
-                versions_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/versions"
+                versions_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + \
+                               self.os['arch'] + "/versions"
 
         try:
             result = requests.get(versions_url)
-        except requests.exceptions.RequestException as e:
-            raise WazuhException(1713, e.code)
+        except requests.exceptions.RequestException:
+            error = "Selected version repository ({}) isn't reachable".format(versions_url)
+            raise WazuhException(1713, error)
 
         if result.ok:
             versions = [version.split() for version in result.text.split('\n')]
@@ -1951,10 +1882,10 @@ class Agent:
 
         return versions
 
-
     def _get_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, use_http=False):
         """
-        Searchs latest Wazuh WPK file for its distribution and version. Downloads the WPK if it is not in the upgrade folder.
+        Searchs latest Wazuh WPK file for its distribution and version.
+        Downloads the WPK if it is not in the upgrade folder.
         """
         # Get manager version
         manager = Agent(id=0)
@@ -1966,16 +1897,16 @@ class Agent:
         agent_new_ver = None
         versions = self._get_versions(wpk_repo=wpk_repo, version=version, use_http=use_http)
         if not version:
-            for versions in versions:
-                if WazuhVersion(versions[0]) == manager_ver:
-                    agent_new_ver = versions[0]
-                    agent_new_shasum = versions[1]
+            for ver in versions:
+                if WazuhVersion(ver[0]) == manager_ver:
+                    agent_new_ver = ver[0]
+                    agent_new_shasum = ver[1]
                     break
         else:
-            for versions in versions:
-                if WazuhVersion(versions[0]) == WazuhVersion(version):
-                    agent_new_ver = versions[0]
-                    agent_new_shasum = versions[1]
+            for ver in versions:
+                if WazuhVersion(ver[0]) == WazuhVersion(version):
+                    agent_new_ver = ver[0]
+                    agent_new_shasum = ver[1]
                     break
         if not agent_new_ver:
             raise WazuhException(1718, version)
@@ -1983,11 +1914,14 @@ class Agent:
         # Comparing versions
         agent_ver = self.version
 
-        if (manager_ver < WazuhVersion(agent_new_ver) and not force):
-            raise WazuhException(1717, "Manager: {0} / Agent: {1} -> {2}".format(manager_ver, agent_new_ver))
+        if manager_ver < WazuhVersion(agent_new_ver) and not force:
+            raise WazuhException(1717, WazuhException.ERRORS[1717] + ". Manager; {0} / Agent; {1} -> {2}".format(
+                manager_ver, agent_ver, agent_new_ver), cmd_error=True)
 
-        if (WazuhVersion(agent_ver) >= WazuhVersion(agent_new_ver) and not force):
-            raise WazuhException(1749, "Agent: {0} -> {1}".format(agent_ver, agent_new_ver))
+        if WazuhVersion(agent_ver) >= WazuhVersion(agent_new_ver) and not force:
+            raise WazuhException(1749,
+                                 WazuhException.ERRORS[1749] + ". Agent; {0} -> {1}".format(agent_ver, agent_new_ver),
+                                 cmd_error=True)
 
         if debug:
             print("Agent version: {0}".format(agent_ver))
@@ -1995,7 +1929,7 @@ class Agent:
 
         protocol = self._get_protocol(wpk_repo, use_http)
         # Generating file name
-        if self.os['platform']=="windows":
+        if self.os['platform'] == "windows":
             wpk_file = "wazuh_agent_{0}_{1}.wpk".format(agent_new_ver, self.os['platform'])
             wpk_url = protocol + wpk_repo + "windows/" + wpk_file
 
@@ -2005,12 +1939,17 @@ class Agent:
                 wpk_url = protocol + wpk_repo + "linux/" + self.os['arch'] + "/" + wpk_file
 
             else:
-                if self.os['platform']=="ubuntu":
-                    wpk_file = "wazuh_agent_{0}_{1}_{2}.{3}_{4}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['minor'], self.os['arch'])
-                    wpk_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/" + wpk_file
+                if self.os['platform'] == "ubuntu":
+                    wpk_file = "wazuh_agent_{0}_{1}_{2}.{3}_{4}.wpk".format(agent_new_ver, self.os['platform'],
+                                                                            self.os['major'], self.os['minor'],
+                                                                            self.os['arch'])
+                    wpk_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + \
+                              self.os['minor'] + "/" + self.os['arch'] + "/" + wpk_file
                 else:
-                    wpk_file = "wazuh_agent_{0}_{1}_{2}_{3}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['arch'])
-                    wpk_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/" + wpk_file
+                    wpk_file = "wazuh_agent_{0}_{1}_{2}_{3}.wpk".format(agent_new_ver, self.os['platform'],
+                                                                        self.os['major'], self.os['arch'])
+                    wpk_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + \
+                              self.os['arch'] + "/" + wpk_file
 
         wpk_file_path = "{0}/var/upgrade/{1}".format(common.ossec_path, wpk_file)
 
@@ -2021,7 +1960,8 @@ class Agent:
             # Comparing SHA1 hash
             if not sha1hash == agent_new_shasum:
                 if debug:
-                    print("Downloaded file SHA1 does not match (downloaded: {0} / repository: {1})".format(sha1hash, agent_new_shasum))
+                    print("Downloaded file SHA1 does not match (downloaded: {0} / repository: {1})".format(
+                        sha1hash, agent_new_shasum))
             else:
                 if debug:
                     print("WPK file already downloaded: {0} - SHA1SUM: {1}".format(wpk_file_path, sha1hash))
@@ -2034,29 +1974,35 @@ class Agent:
         try:
             result = requests.get(wpk_url)
         except requests.exceptions.RequestException as e:
-            raise WazuhException(1714, e.code)
+            raise WazuhException(1714,
+                                 WazuhException.ERRORS[1714] + ". Can't access to the WPK file in {}".format(wpk_url),
+                                 cmd_error=True)
 
         if result.ok:
             with open(wpk_file_path, 'wb') as fd:
                 for chunk in result.iter_content(chunk_size=128):
                     fd.write(chunk)
         else:
-            error = "Can't access to the WPK file in {}".format(wpk_url)
-            raise WazuhException(1714, error)
+            raise WazuhException(1714,
+                                 WazuhException.ERRORS[1714] + ". Can't access to the WPK file in {}".format(wpk_url),
+                                 cmd_error=True)
 
         # Get SHA1 file sum
         sha1hash = hashlib.sha1(open(wpk_file_path, 'rb').read()).hexdigest()
         # Comparing SHA1 hash
         if not sha1hash == agent_new_shasum:
-            raise WazuhException(1714)
+            raise WazuhException(1714,
+                                 "The file has lost integrity in the transfer. "
+                                 "Original SHA1; {} , Received SHA1; {}".format(agent_new_shasum, sha1hash),
+                                 cmd_error=True)
 
         if debug:
             print("WPK file downloaded: {0} - SHA1SUM: {1}".format(wpk_file_path, sha1hash))
 
         return [wpk_file, sha1hash]
 
-
-    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1, timeout=common.open_retries, use_http=False):
+    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None,
+                       chunk_size=None, rl_timeout=-1, timeout=common.open_retries, use_http=False):
         """
         Sends WPK file to agent.
         """
@@ -2107,7 +2053,11 @@ class Agent:
             if debug:
                 print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
-            raise WazuhException(1715, data.replace("err ",""))
+            raise WazuhException(
+                1715,
+                WazuhException.ERRORS[1715] +
+                ". The file was not received correctly or there has been a timeout in the call [Agent side]",
+                cmd_error=True)
 
         # Sending reset lock timeout
         s = OssecSocket(common.REQUEST_SOCKET)
@@ -2120,7 +2070,10 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
-            raise WazuhException(1715, data.replace("err ",""))
+            raise WazuhException(1715,
+                                 WazuhException.ERRORS[1715] + ". A timeout has occurred in the call. "
+                                 "Check that the agent is active and there are no problems with the network.",
+                                 cmd_error=True)
 
         # Sending file to agent
         if debug:
@@ -2145,7 +2098,8 @@ class Agent:
                 bytes_read = file.read(chunk_size)
                 if show_progress:
                     bytes_read_acum = bytes_read_acum + len(bytes_read)
-                    show_progress(int(bytes_read_acum * 100 / wpk_file_size) + (bytes_read_acum * 100 % wpk_file_size > 0))
+                    show_progress(int(bytes_read_acum * 100 / wpk_file_size) +
+                                  (bytes_read_acum * 100 % wpk_file_size > 0))
             elapsed_time = time() - start_time
         finally:
             file.close()
@@ -2161,7 +2115,10 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
-            raise WazuhException(1715, data.replace("err ",""))
+            raise WazuhException(1715,
+                                 "The agent has been disconnected during the process "
+                                 "or the file has been modified [Agent side]",
+                                 cmd_error=True)
 
         # Get file SHA1 from agent and compare
         s = OssecSocket(common.REQUEST_SOCKET)
@@ -2173,16 +2130,22 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if not data.startswith('ok '):
-            raise WazuhException(1715, data.replace("err ",""))
+        if not data.startswith('ok'):
+            raise WazuhException(
+                1715,
+                extra_message="Error sending WPK file. Error when receiving SHA1 from the upgrade file "
+                              "or the installer is invalid",
+                cmd_error=True)
         rcv_sha1 = data.split(' ')[1]
         if rcv_sha1 == file_sha1:
             return ["WPK file sent", wpk_file]
         else:
-            raise WazuhException(1715, data.replace("err ",""))
+            raise WazuhException(1715,
+                                 "The file has lost integrity in the transfer. "
+                                 "Original SHA1; {} , Received SHA1; {}".format(file_sha1, rcv_sha1), cmd_error=True)
 
-
-    def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1, use_http=False):
+    def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None, chunk_size=None,
+                rl_timeout=-1, use_http=False):
         """
         Upgrade agent using a WPK file.
         """
@@ -2192,17 +2155,19 @@ class Agent:
         self._load_info_from_DB()
 
         # Check if agent is active.
-        if not self.status == 'Active':
+        if self.status != 'Active':
             raise WazuhException(1720)
 
         # Check if remote upgrade is available for the selected agent version
         if WazuhVersion(self.version) < WazuhVersion("3.0.0-alpha4"):
-            raise WazuhException(1719, version)
+            raise WazuhException(1719, WazuhException.ERRORS[1719] + ". Version; {}".format(version), cmd_error=True)
 
-        if self.os['platform']=="windows" and int(self.os['major']) < 6:
-            raise WazuhException(1721, self.os['name'])
+        if self.os['platform'] == "windows" and int(self.os['major']) < 6:
+            raise WazuhException(1721,
+                                 WazuhException.ERRORS[1721] + ". OS name; {} OS platform; {} OS major; {}".format(
+                                     self.os['name'], self.os['platform'], self.os['major']), cmd_error=True)
 
-        if wpk_repo == None:
+        if wpk_repo is None:
             wpk_repo = common.wpk_repo_url
 
         if not wpk_repo.endswith('/'):
@@ -2210,13 +2175,14 @@ class Agent:
 
         # Send file to agent
         sending_result = self._send_wpk_file(wpk_repo=wpk_repo, debug=debug, version=version, force=force,
-                                             show_progress=show_progress, chunk_size=chunk_size, rl_timeout=rl_timeout, use_http=use_http)
+                                             show_progress=show_progress, chunk_size=chunk_size, rl_timeout=rl_timeout,
+                                             use_http=use_http)
         if debug:
             print(sending_result[0])
 
         # Send upgrading command
         s = OssecSocket(common.REQUEST_SOCKET)
-        if self.os['platform']=="windows":
+        if self.os['platform'] == "windows":
             msg = "{0} com upgrade {1} upgrade.bat".format(str(self.id).zfill(3), sending_result[1])
         else:
             msg = "{0} com upgrade {1} upgrade.sh".format(str(self.id).zfill(3), sending_result[1])
@@ -2230,15 +2196,22 @@ class Agent:
             print("RESPONSE: {0}".format(data))
         s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if data.startswith('ok'):
-            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): started. Current version: {2}".format(str(self.id).zfill(3), self.name, self.version)).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.sendto(
+                ("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): started. Current version: {2}".format(
+                    str(self.id).zfill(3), self.name, self.version)).encode(), common.ossec_path + "/queue/ossec/queue")
             s.close()
             return "Upgrade procedure started"
         else:
-            return data
-            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): aborted: {2}".format(str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.sendto(
+                ("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): aborted: {2}".format(
+                    str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(),
+                common.ossec_path + "/queue/ossec/queue")
             s.close()
-            raise WazuhException(1716, data.replace("err ",""))
-
+            raise WazuhException(1716,
+                                 "Error when receiving the upgrade command. "
+                                 "It is possible that the agent has been disconnected "
+                                 "or a timeout has occurred in the call",
+                                 cmd_error=True)
 
     @staticmethod
     def upgrade_agent(agent_id, wpk_repo=None, version=None, force=False, chunk_size=None, use_http=False):
@@ -2249,8 +2222,8 @@ class Agent:
         :return: Upgrade message.
         """
 
-        return Agent(agent_id).upgrade(wpk_repo=wpk_repo, version=version, force=True if int(force)==1 else False, chunk_size=chunk_size, use_http=use_http)
-
+        return Agent(agent_id).upgrade(wpk_repo=wpk_repo, version=version, force=True if int(force) == 1 else False,
+                                       chunk_size=chunk_size, use_http=use_http)
 
     def upgrade_result(self, debug=False, timeout=common.upgrade_result_retries):
         """
@@ -2282,18 +2255,24 @@ class Agent:
                 print("RESPONSE: {0}".format(data))
         s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if data.startswith('ok 0'):
-            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): succeeded. New version: {2}".format(str(self.id).zfill(3), self.name, self.version)).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): succeeded. New version: {2}".format(
+                str(self.id).zfill(3), self.name, self.version)).encode(), common.ossec_path + "/queue/ossec/queue")
             s.close()
             return "Agent upgraded successfully"
         elif data.startswith('ok 2'):
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): failed: restored to previous version".format(str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
             s.close()
-            raise WazuhException(1716, "Agent restored to previous version")
+            raise WazuhException(1716, "Error upgrading agent. Agent {} restored to previous version".format(self.id),
+                                 cmd_error=True)
         else:
-            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): lost: {2}".format(str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): lost: {2}".format(
+                str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(),
+                     common.ossec_path + "/queue/ossec/queue")
             s.close()
-            raise WazuhException(1716, data.replace("err ",""))
-
+            raise WazuhException(1716,
+                                 data.replace("err ", "") +
+                                 ". The update status information could not be retrieved. Check the internet connection"
+                                 " and that the agent is active.", cmd_error=True)
 
     @staticmethod
     def get_upgrade_result(agent_id, timeout=3):
@@ -2301,13 +2280,14 @@ class Agent:
         Read upgrade result output from agent.
 
         :param agent_id: Agent ID.
+        :param timeout: Timeout of the call.
         :return: Upgrade result.
         """
 
         return Agent(agent_id).upgrade_result(timeout=int(timeout))
 
-
-    def _send_custom_wpk_file(self, file_path, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1, timeout=common.open_retries):
+    def _send_custom_wpk_file(self, file_path, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1,
+                              timeout=common.open_retries):
         """
         Sends custom WPK file to agent.
         """
@@ -2316,7 +2296,9 @@ class Agent:
 
         # Check WPK file
         if not path.isfile(file_path):
-            raise WazuhException(1006)
+            raise WazuhException(
+                1006, extra_message='File {} does not exist or API does not have permissions on it'.format(file_path),
+                cmd_error=True)
 
         wpk_file = path.basename(file_path)
         wpk_file_size = stat(file_path).st_size
@@ -2334,7 +2316,11 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
-            raise WazuhException(1715, data.replace("err ",""))
+            raise WazuhException(
+                1715,
+                data.replace("err ", "") +
+                ". Please check the internet connection and that the agent is active (timeout). Agent {}".format(
+                    self.id), cmd_error=True)
 
         # Open file on agent
         s = OssecSocket(common.REQUEST_SOCKET)
@@ -2360,14 +2346,17 @@ class Agent:
             if debug:
                 print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
-            raise WazuhException(1715, data.replace("err ",""))
+            raise WazuhException(
+                1715, extra_message="The file was not received correctly or there has been a timeout in the call",
+                cmd_error=True)
 
         # Sending file to agent
         if debug:
             print("Chunk size: {0} bytes".format(chunk_size))
-        file = open(file_path, "rb")
-        if not file:
-            raise WazuhException(1715, data.replace("err ",""))
+        try:
+            file = open(file_path, "rb")
+        except:
+            raise WazuhException(1715, "API does not have permissions on this file", cmd_error=True)
         try:
             start_time = time()
             bytes_read = file.read(chunk_size)
@@ -2380,12 +2369,16 @@ class Agent:
                 data = s.receive().decode()
                 s.close()
                 if not data.startswith('ok'):
-                    raise WazuhException(1715, data.replace("err ",""))
+                    raise WazuhException(1715,
+                                         data.replace("err ", "") +
+                                         ". The agent {} has been disconnected while receiving the upgrade file".format(
+                                             self.id), cmd_error=True)
                 bytes_read = file.read(chunk_size)
                 file_sha1.update(bytes_read)
                 if show_progress:
                     bytes_read_acum = bytes_read_acum + len(bytes_read)
-                    show_progress(int(bytes_read_acum * 100 / wpk_file_size) + (bytes_read_acum * 100 % wpk_file_size > 0))
+                    show_progress(int(bytes_read_acum * 100 / wpk_file_size) +
+                                  (bytes_read_acum * 100 % wpk_file_size > 0))
             elapsed_time = time() - start_time
             calc_sha1 = file_sha1.hexdigest()
             if debug:
@@ -2404,7 +2397,9 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
-            raise WazuhException(1715, data.replace("err ",""))
+            raise WazuhException(1715, extra_message=data.replace("err ", "") +
+                                 ". The agent has been disconnected during the process or the file has been modified",
+                                 cmd_error=True)
 
         # Get file SHA1 from agent and compare
         s = OssecSocket(common.REQUEST_SOCKET)
@@ -2417,13 +2412,17 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok '):
-            raise WazuhException(1715, data.replace("err ",""))
+            raise WazuhException(
+                1715,
+                "Error sending WPK file. Error when receiving SHA1 from the upgrade file or the installer is invalid",
+                cmd_error=True)
         rcv_sha1 = data.split(' ')[1]
         if calc_sha1 == rcv_sha1:
             return ["WPK file sent", wpk_file]
         else:
-            raise WazuhException(1715, data.replace("err ",""))
-
+            raise WazuhException(1715,
+                                 "The file has lost integrity in the transfer. "
+                                 "Original SHA1; {} , Received SHA1; {}".format(calc_sha1, rcv_sha1), cmd_error=True)
 
     def upgrade_custom(self, file_path, installer, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1):
         """
@@ -2432,7 +2431,7 @@ class Agent:
         self._load_info_from_DB()
 
         # Check if agent is active.
-        if not self.status == 'Active':
+        if self.status != 'Active':
             raise WazuhException(1720)
 
         # Send file to agent
@@ -2458,8 +2457,9 @@ class Agent:
         else:
             s.sendto(("1:wazuh-upgrade:wazuh: Custom installation on agent {0} ({1}): aborted: {2}".format(str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(), common.ossec_path + "/queue/ossec/queue")
             s.close()
-            raise WazuhException(1716, data.replace("err ",""))
-
+            raise WazuhException(1716,
+                                 "File {} . It is possible that the agent has been disconnected "
+                                 "or a timeout has occurred in the call".format(file_path), cmd_error=True)
 
     @staticmethod
     def upgrade_agent_custom(agent_id, file_path=None, installer=None):
@@ -2467,13 +2467,14 @@ class Agent:
         Read upgrade result output from agent.
 
         :param agent_id: Agent ID.
+        :param file_path: Path of the file to update
+        :param installer: Installer script
         :return: Upgrade message.
         """
         if not file_path or not installer:
             raise WazuhException(1307)
 
         return Agent(agent_id).upgrade_custom(file_path=file_path, installer=installer)
-
 
     def getconfig(self, component, config):
         """

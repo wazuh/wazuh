@@ -101,6 +101,11 @@ functions = {
         'type': 'distributed_master',
         'is_async': False
     },
+    'PUT/agents/groups/:group_id/restart': {
+        'function': Agent.restart_agents_by_group,
+        'type': 'local_master',
+        'is_async': False
+    },
     'PUT/agents/:agent_name': {
         'function': Agent.add_agent,
         'type': 'local_master',
@@ -579,6 +584,11 @@ functions = {
     },
     '/syscollector/:agent_id/netiface': {
         'function': syscollector.get_netiface_agent,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    '/syscollector/:agent_id/hotfixes': {
+        'function': syscollector.get_hotfixes_agent,
         'type': 'distributed_master',
         'is_async': False
     },

@@ -193,6 +193,19 @@ int wdb_parse(char * input, char * output) {
                     merror("Unable to update 'sys_programs' table for agent '%s'", sagent_id);
                 }
             }
+        } else if (strcmp(query, "hotfix") == 0) {
+            if (!next) {
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                if (wdb_parse_hotfixes(wdb, next, output) == 0){
+                    mdebug2("Updated 'sys_hotfixes' table for agent '%s'", sagent_id);
+                } else {
+                    merror("Unable to update 'sys_hotfixes' table for agent '%s'", sagent_id);
+                }
+            }
         } else if (strcmp(query, "process") == 0) {
             if (!next) {
                 mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
@@ -593,6 +606,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         cJSON *description = NULL;
         cJSON *rationale = NULL;
         cJSON *remediation = NULL;
+        cJSON *condition = NULL;
         cJSON *file = NULL;
         cJSON *directory = NULL;
         cJSON *process = NULL;
@@ -688,6 +702,12 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                 return -1;
             }
 
+            condition = cJSON_GetObjectItem(check, "condition");
+            if(condition && !condition->valuestring){
+                mdebug1("Malformed JSON: field 'condition' must be a string");
+                return -1;
+            }
+
             directory = cJSON_GetObjectItem(check, "directory");
             if( directory && !directory->valuestring ) {
                 mdebug1("Malformed JSON: field 'directory' must be a string");
@@ -743,7 +763,22 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         }
 
 
-        if (result = wdb_sca_save(wdb,id->valueint,scan_id->valueint,title->valuestring,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL ,result_check ? result_check->valuestring : "",policy_id->valuestring,command ? command->valuestring : NULL,status ? status->valuestring : NULL,reason ? reason->valuestring : NULL), result < 0) {
+        if (result = wdb_sca_save(wdb, id->valueint, scan_id->valueint, title->valuestring,
+                    description ? description->valuestring : NULL,
+                    rationale ? rationale->valuestring : NULL,
+                    remediation ? remediation->valuestring : NULL,
+                    condition ? condition->valuestring : NULL,
+                    file ? file->valuestring : NULL,
+                    directory ? directory->valuestring : NULL,
+                    process ? process->valuestring : NULL,
+                    registry ? registry->valuestring : NULL,
+                    reference ? reference->valuestring : NULL,
+                    result_check ? result_check->valuestring : "",
+                    policy_id->valuestring,
+                    command ? command->valuestring : NULL,
+                    status ? status->valuestring : NULL, reason ? reason->valuestring : NULL),
+            result < 0)
+        {
             mdebug1("Cannot save Security Configuration Assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment information.");
         } else {
@@ -1968,6 +2003,7 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
     char * sysname;
     char * release;
     char * version;
+    char * os_release;
     int result;
 
     if (next = strchr(input, ' '), !next) {
@@ -2160,16 +2196,30 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
 
         release = curr;
         *next++ = '\0';
+        curr = next;
 
         if (!strcmp(release, "NULL"))
             release = NULL;
 
-        if (!strcmp(next, "NULL"))
-            version = NULL;
-        else
-            version = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid OS info query syntax.");
+            mdebug2("OS info query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
+            return -1;
+        }
 
-        if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version), result < 0) {
+        version = curr;
+        *next++ = '\0';
+
+        if (!strcmp(version, "NULL"))
+            version = NULL;
+
+        if (!strcmp(next, "NULL"))
+            os_release = NULL;
+        else
+            os_release = next;
+
+        if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version, os_release), result < 0) {
             mdebug1("Cannot save OS information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save OS information.");
         } else {
@@ -2841,6 +2891,91 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         mdebug1("Invalid Package info query syntax.");
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", curr);
+        return -1;
+    }
+}
+
+int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
+    char * curr;
+    char * next;
+    char * scan_id;
+    char * scan_time;
+    char *hotfix;
+    int result;
+
+    if (next = strchr(input, ' '), !next) {
+        mdebug1("Invalid Hotfix info query syntax.");
+        mdebug2("Hotfix info query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Hotfix info query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    curr = input;
+    *next++ = '\0';
+
+    if (strcmp(curr, "save") == 0) {
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Hotfix info query syntax.");
+            mdebug2("Hotfix info query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Hotfix info query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_id = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Hotfix info query syntax.");
+            mdebug2("Hotfix info query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Hotfix info query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_time = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Hotfix info query syntax.");
+            mdebug2("Hotfix info query: %s", scan_time);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Hotfix info query syntax, near '%.32s'", scan_time);
+            return -1;
+        }
+
+        hotfix = curr;
+        *next++ = '\0';
+
+        if (result = wdb_hotfix_save(wdb, scan_id, scan_time, hotfix), result < 0) {
+            mdebug1("Cannot save Hotfix information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save Hotfix information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "del") == 0) {
+
+        if (!strcmp(next, "NULL"))
+            scan_id = NULL;
+        else
+            scan_id = next;
+
+        if (result = wdb_hotfix_delete(wdb, scan_id), result < 0) {
+            mdebug1("Cannot delete old Process information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Hotfix information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+
+    } else {
+        mdebug1("Invalid Hotfix info query syntax.");
+        mdebug2("DB query error near: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Hotfix info query syntax, near '%.32s'", curr);
         return -1;
     }
 }

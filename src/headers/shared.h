@@ -24,16 +24,16 @@
 #define FORTIFY_SOURCE
 #endif
 
-#ifndef __SHARED_H
-#define __SHARED_H
+#ifndef SHARED_H
+#define SHARED_H
 
-#ifndef _LARGEFILE64_SOURCE
-#define _LARGEFILE64_SOURCE
-#endif
+#ifndef LARGEFILE64_SOURCE
+#define LARGEFILE64_SOURCE
+#endif /* LARGEFILE64_SOURCE */
 
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
+#ifndef FILE_OFFSET_BITS
+#define FILE_OFFSET_BITS 64
+#endif /* FILE_OFFSET_BITS */
 
 /* Global headers */
 #include <sys/types.h>
@@ -71,6 +71,7 @@
 #include <ctype.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <pthread.h>
 
 /* The mingw32 builder used by travis.ci can't find glob.h
  * Yet glob must work on actual win32.
@@ -104,13 +105,13 @@
 
 #include "os_err.h"
 
-#ifndef _LARGEFILE64_SOURCE
-#define _LARGEFILE64_SOURCE
-#endif
+#ifndef LARGEFILE64_SOURCE
+#define LARGEFILE64_SOURCE
+#endif /* LARGEFILE64_SOURCE */
 
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
+#ifndef FILE_OFFSET_BITS
+#define FILE_OFFSET_BITS 64
+#endif /* FILE_OFFSET_BITS */
 
 /* Global portability code */
 
@@ -126,8 +127,10 @@ typedef uint8_t u_int8_t;
 
 #endif /* SOLARIS */
 
-#if defined HPUX
+#if defined(HPUX) || defined(DOpenBSD)
 #include <limits.h>
+typedef uint64_t u_int64_t;
+typedef int int32_t;
 typedef uint32_t u_int32_t;
 typedef uint16_t u_int16_t;
 typedef uint8_t u_int8_t;
@@ -189,6 +192,8 @@ extern const char *__local_name;
 
 #define w_strdup(x,y) ({ int retstr = 0; if (x) { os_strdup(x, y);} else retstr = 1; retstr;})
 
+#define w_strlen(x) ({ size_t ret = 0; if (x) ret = strlen(x); ret;})
+
 #ifdef CLIENT
 #define isAgent 1
 #else
@@ -244,4 +249,4 @@ extern const char *__local_name;
 #include "auth_client.h"
 #include "os_utils.h"
 
-#endif /* __SHARED_H */
+#endif /* SHARED_H */
