@@ -7,7 +7,7 @@ import logging
 
 from api.models.base_model_ import Data
 from api.util import exception_handler, raise_if_exc, remove_nones_to_dict
-from wazuh.agent import Agent
+from wazuh.core.core_agent import Agent
 from wazuh.cluster.dapi.dapi import DistributedAPI
 
 loop = asyncio.get_event_loop()

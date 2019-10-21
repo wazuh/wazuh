@@ -121,7 +121,7 @@ def test_last_scan(sock_mock, wazuh_conn_mock, connec_mock, db_mock, version, ag
             assert set(result.keys()) == {'start', 'end'}
 
 
-@patch("wazuh.agent.Agent.get_basic_information", side_effect=KeyError)
+@patch("wazuh.core.core_agent.Agent.get_basic_information", side_effect=KeyError)
 def test_failed_last_scan_key_error_agent_version(info_mock):
     """Test last_scan function when a ErrorKey appears."""
     result = last_scan('001')
@@ -147,7 +147,7 @@ def test_failed_last_scan_not_agent_db(glob_mock, info_mock):
 @patch("wazuh.ossec_queue.OssecQueue._connect")
 @patch("wazuh.syscheck.OssecQueue.send_msg_to_agent", return_value='Test message')
 @patch("wazuh.ossec_queue.OssecQueue.close")
-@patch("wazuh.agent.Agent.get_basic_information", return_value={'status': 'active'})
+@patch("wazuh.core.core_agent.Agent.get_basic_information", return_value={'status': 'active'})
 def test_run(mock_info, mock_close, mock_send_msg, mock_ossec_queue, mock_open, agent_id, all_agents):
     """Test run function."""
     result = run(agent_id, all_agents)

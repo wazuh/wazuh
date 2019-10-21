@@ -18,7 +18,7 @@ path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Waz
 # Import framework
 try:
     from wazuh import Wazuh
-    from wazuh.agent import Agent
+    from wazuh.core.core_agent import Agent
     from wazuh.exception import WazuhException
     from wazuh import common
 except Exception as e:
@@ -66,7 +66,7 @@ def main():
         use_http = True
 
     agent = Agent(id=args.agent)
-    agent._load_info_from_DB()
+    agent.load_info_from_db()
 
     agent_info = "{0}/queue/agent-info/{1}-{2}".format(common.ossec_path, agent.name, agent.registerIP)
     if not os.path.isfile(agent_info):
@@ -139,11 +139,10 @@ def main():
         upgrade_result = agent.upgrade_result(debug=args.debug)
         if not args.silent:
             if not args.debug:
-                agent._load_info_from_DB()
+                agent.load_info_from_db()
                 print("Agent upgraded: {0} -> {1}".format(prev_ver, agent.version))
             else:
                 print(upgrade_result)
-
 
 
 if __name__ == "__main__":

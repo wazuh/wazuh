@@ -23,6 +23,7 @@ with open(test_data_path + 'RBAC_decorators_permissions_white.json') as f:
                              config['rbac'],
                              config['fake_system_resources'],
                              config['allowed_resources'],
+                             config.get('result', None),
                              'white') for config in json.load(f)]
 with open(test_data_path + 'RBAC_decorators_permissions_black.json') as f:
     configurations_black = [(config['decorator_params'],
@@ -30,6 +31,7 @@ with open(test_data_path + 'RBAC_decorators_permissions_black.json') as f:
                              config['rbac'],
                              config['fake_system_resources'],
                              config['allowed_resources'],
+                             config.get('result', None),
                              'black') for config in json.load(f)]
 
 with open(test_data_path + 'RBAC_decorators_resourceless_white.json') as f:
@@ -55,13 +57,14 @@ def get_identifier(resources):
     return list_params
 
 
-@pytest.mark.parametrize('decorator_params, function_params, rbac, fake_system_resources, allowed_resources, mode',
+@pytest.mark.parametrize('decorator_params, function_params, rbac, '
+                         'fake_system_resources, allowed_resources, result, mode',
                          configurations_black + configurations_white)
 @patch('wazuh.rbac.orm.create_engine')
 @patch('wazuh.rbac.orm.declarative_base')
 @patch('wazuh.rbac.orm.sessionmaker')
 def test_expose_resources(mock_create_engine, mock_declarative_base, mock_session_maker,
-                          decorator_params, function_params, rbac, fake_system_resources, allowed_resources, mode):
+                          decorator_params, function_params, rbac, fake_system_resources, allowed_resources, result, mode):
     wazuh.rbac.decorators.switch_mode(mode)
     def mock_expand_resource(resource):
         fake_values = fake_system_resources.get(resource, resource.split(':')[-1])
@@ -78,7 +81,9 @@ def test_expose_resources(mock_create_engine, mock_declarative_base, mock_sessio
 
             try:
                 framework_dummy(rbac=rbac, **function_params)
+                assert (result is None or result == "allow")
             except WazuhError as e:
+                assert (result is None or result == "deny")
                 for allowed_resource in allowed_resources:
                     print(allowed_resource)
                     assert (len(allowed_resource) == 0)

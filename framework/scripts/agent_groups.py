@@ -11,7 +11,7 @@ from signal import signal, SIGINT
 import logging
 from wazuh.cluster.cluster import read_config
 from wazuh import Wazuh
-from wazuh.agent import Agent
+from wazuh.core.core_agent import Agent
 from wazuh.exception import WazuhException
 
 # Global variables

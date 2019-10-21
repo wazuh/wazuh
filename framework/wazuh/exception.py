@@ -317,11 +317,15 @@ class WazuhException(Exception):
         1747: {'message': "Could not remove agent group assigment from database"},
         1748: {'message': "Could not remove agent files"},
         1749: {'message': "Downgrading an agent requires the force flag.",
-               'remediation': "Use -F to force the downgrade"
+               'remediation': "Use force=1 parameter to force the downgrade"
                },
-        1750: {'message': 'Could not restart selected agent, active-response is disabled in the agent',
+        1750: {'message': 'Could not send restart command, active-response is disabled in the agent',
                'remediation': "You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`"},
-
+        1751: {'message': 'Could not assign agent to group',
+               'remediation': 'Agent already belongs to specified group, please select another agent'},
+        1752: {'message': 'Could not force single group for the agent'},
+        1753: {'message': 'Could not assign group. Agent status is never_connected',
+               'remediation': 'Please select another agent or connect your agent before assigning groups'},
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
         1801: {'message': 'Wrong \'path\' parameter',
@@ -466,8 +470,6 @@ class WazuhException(Exception):
         4013: {'message': 'The specified name already exist'},
         4014: {'message': 'Parameter {param} is required',
                'remediation': 'Please, make sure the parameter is defined'},
-        4015: {'message': 'Invalid value for parameter {param}',
-               'remediation': 'Please, make sure parameter is not empty'},
 
         # User management
         5000: {'message': 'The user could not be created',
@@ -617,16 +619,3 @@ class WazuhClusterError(WazuhException):
     This type of exception is raised inside the cluster.
     """
     pass
-
-
-def create_exception_dic(item, e):
-    """Creates an exception from an item and it's error codes.
-    """
-    exception_dic = {'id': item, 'error': {'message': e.message}}
-    if isinstance(e, WazuhException):
-        exception_dic['error']['code'] = e.code
-        exception_dic['error']['remediation'] = e.remediation
-    else:
-        exception_dic['error']['code'] = 1000
-
-    return exception_dic

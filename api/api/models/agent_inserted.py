@@ -21,14 +21,14 @@ from api import util
 
 class AgentInserted(Model):
 
-    def __init__(self, name='', ip=None, id='', key='', force_time=-1):
+    def __init__(self, name='', ip=None, agent_id='', key='', force_time=-1):
         """AgentAdded body model
         :param name: Agent name.
         :type name: str
         :param ip: If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY
         :type ip: str
-        :param id: Agent ID. All posible values since 000 onwards.
-        :type id: str
+        :param agent_id: Agent ID. All posible values since 000 onwards.
+        :type agent_id: str
         :param key: Key to use when communicating with the manager. The agent must have the same key on its `client.keys` file.
         :type key: str
         :param force_time: Remove the old agent with the same IP if disconnected since <force_time> seconds.
@@ -37,7 +37,7 @@ class AgentInserted(Model):
         self.swagger_types = {
             'name': str,
             'ip': str,
-            'id': str,
+            'agent_id': str,
             'key': str,
             'force_time': int
         }
@@ -45,14 +45,14 @@ class AgentInserted(Model):
         self.attribute_map = {
             'name': 'name',
             'ip': 'ip',
-            'id': 'id',
+            'agent_id': 'id',
             'key': 'key',
             'force_time': 'force_time'
         }
 
         self._name = name
         self._ip = ip
-        self._id = id
+        self._agent_id = agent_id
         self._key = key
         self._force_time = force_time
 
@@ -97,19 +97,19 @@ class AgentInserted(Model):
         self._ip = ip
 
     @property
-    def id(self) -> str:
+    def agent_id(self) -> str:
         """
         :return: Agent id
         :rtype: str
         """
-        return self._id
+        return self._agent_id
 
-    @id.setter
-    def id(self, id):
+    @agent_id.setter
+    def agent_id(self, agent_id):
         """
-        :param id: Agent id
+        :param agent_id: Agent id
         """
-        self._id = id
+        self._agent_id = agent_id
 
     @property
     def key(self) -> str:

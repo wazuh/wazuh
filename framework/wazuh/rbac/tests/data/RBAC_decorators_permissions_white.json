@@ -13,6 +13,26 @@
         "post_proc_kwargs": null
     },
     "function_params": {
+      "agent_list": []
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "allowed_resources": [[]],
+    "result": "allow"
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "allow",
+        "agent:id:002": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
       "agent_list": ["001"]
     },
     "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},

@@ -322,9 +322,9 @@ class DistributedAPI:
             :param node_name: Node to forward a request to.
             :return: a JSON response
             """
-            node_name, agent_id = node_name
-            if agent_id and ('agent_id' not in self.f_kwargs or isinstance(self.f_kwargs['agent_id'], list)):
-                self.f_kwargs['agent_id'] = agent_id
+            node_name, agent_list = node_name
+            if agent_list:
+                self.f_kwargs['agent_id' if 'agent_id' in self.f_kwargs else 'agent_list'] = agent_list
             if node_name == 'unknown' or node_name == '' or node_name == self.node_info['node']:
                 # The request will be executed locally if the the node to forward to is unknown, empty or the master
                 # itself
@@ -362,11 +362,12 @@ class DistributedAPI:
         return response
 
     async def get_solver_node(self) -> Dict:
-        """
-        Gets the node(s) that can solve a request, the node(s) that has all the necessary information to answer it.
-        Only called when the request type is 'master_distributed' and the node_type is master.
+        """ Gets the node(s) that can solve a request
 
-        :return: node name and whether the result is list or not
+        Get the node(s) that have all the necessary information to answer the request. Only called when the request type
+        is 'master_distributed' and the node_type is master.
+
+        :return: List of node names with agents
         """
         select_node = ['node_name']
         if 'agent_id' in self.f_kwargs or 'agent_list' in self.f_kwargs:
@@ -389,13 +390,7 @@ class DistributedAPI:
                     else:
                         node_name[self.node_info['node']] = non_existent_ids
 
-                return node_name
-            # if the request is only for one agent
-            else:
-                # Get the node where the agent 'agent_id' is reporting
-                node_name = agent.Agent.get_agent(self.f_kwargs['agent_id'],
-                                                  select=select_node)['node_name']
-                return {node_name: [self.f_kwargs['agent_id']]}
+            return node_name
 
         elif 'node_id' in self.f_kwargs:
             node_id = self.f_kwargs['node_id']
