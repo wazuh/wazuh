@@ -163,7 +163,7 @@ def get_agents_keys(agent_list=None):
 
 
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'extra_fields': ['older_than'], 'exclude_codes': [1703]})
+                  post_proc_kwargs={'exclude_codes': [1703]})
 def delete_agents(agent_list=None, backup=False, purge=False, status="all", older_than="7d"):
     """Deletes a list of agents.
 
@@ -208,6 +208,7 @@ def delete_agents(agent_list=None, backup=False, purge=False, status="all", olde
                 result.add_failed_item(id_=agent_id, error=e)
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)
+        result['older_than'] = older_than
 
     return result
 
@@ -396,7 +397,7 @@ def create_group(group_id):
 
 
 @expose_resources(actions=["group:delete"], resources=["group:id:{group_list}"],
-                  post_proc_kwargs={'extra_affected': 'affected_agents', 'exclude_codes': [1712]})
+                  post_proc_kwargs={'exclude_codes': [1712]})
 def delete_groups(group_list=None):
     """Delete a list of groups and remove it from every agent assignments.
 
