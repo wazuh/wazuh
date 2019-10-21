@@ -343,7 +343,7 @@ class RBAChecker:
                 "actions": ["group:update_config"],
                 "resources": ["group:id:*"],
                 "effect": "allow"
-            }
+            },
             {
                 "actions": ["syscheck:put", "syscheck:get", "syscheck:delete"],
                 "resources": ["agent:id:*"],
