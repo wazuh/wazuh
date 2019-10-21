@@ -4,9 +4,9 @@ test_name: DELETE /security/roles/{role_id}
 includes:
   - !include common.yaml
 
-#marks:
-#  - usefixtures:
-#      - security_tests
+marks:
+  - usefixtures:
+      - security_tests
 
 stages:
 
