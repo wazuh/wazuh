@@ -85,6 +85,7 @@
 #define VU_AG_PART_SCAN       "(5574): A partial scan will be run on agent %s."
 #define VU_NO_PACKAGE_SCAN    "(5576): The package inventory of the agent %s is not available, but an hotfix analysis will be launched."
 #define VU_NO_HOTFIX_AVAIL    "(5577): It is not possible to perform a hotfix scan on agent %s."
+#define VU_NO_HOTFIX_FEED     "(5578): We have not found a hotfix that solves %s in the Microsoft feed, so it is not possible to know if the %s agent is vulnerable."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
