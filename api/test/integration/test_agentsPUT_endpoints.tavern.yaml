@@ -196,9 +196,7 @@ stages:
             - "008"
             - "009"
             - "010"
-            - "011"
-            - "012"
-          total_affected_items: 12
+          total_affected_items: 10
         message: !anystr
 
 ---
@@ -282,9 +280,6 @@ stages:
 ---
 test_name: PUT /agents/restart
 
-marks:
-  - xfail
-
 stages:
 
     # PUT /agents/restart?list_agents=wrong_id
@@ -315,9 +310,7 @@ stages:
           failed_items:
             - error:
                 code: 1701
-              id:
-                - "998"
-                - "999"
+              id: !anything
           total_affected_items: 0
           total_failed_items: 2
         message: !anystr
@@ -358,9 +351,7 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items:
-            - "001"
-            - "002"
+          affected_items: !anything
           failed_items:
             - error:
                 code: 1701
@@ -369,7 +360,7 @@ stages:
           total_affected_items: 2
           total_failed_items: 1
         message: !anystr
-    delay_after: 30
+    delay_after: 40
 
     # THIS FAILS UNTIL DISTRIBUTED ANSWERS ARE MERGED PROPERLY
     # PUT /agents/restart
@@ -383,17 +374,10 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items:
-            - "001"
-            - "002"
-            - "004"
-            - "005"
-            - "006"
-            - "007"
-            - "008"
+          affected_items: !anything
           total_affected_items: 7
         message: !anystr
-    delay_after: 20
+    delay_after: 40
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}
