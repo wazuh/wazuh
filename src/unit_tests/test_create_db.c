@@ -35,12 +35,21 @@ int __wrap_OSHash_Add() {
     return mock();
 }
 
+int __wrap_lstat() {
+    return mock();
+}
+
 fim_entry_data *__wrap_rbtree_get() {
     fim_entry_data *data = mock_type(fim_entry_data *);
     return data;
 }
 
 fim_inode_data *__wrap_OSHash_Get() {
+    fim_inode_data *data = mock_type(fim_inode_data *);
+    return data;
+}
+
+fim_inode_data *__wrap_OSHash_Get_ex() {
     fim_inode_data *data = mock_type(fim_inode_data *);
     return data;
 }
@@ -656,6 +665,37 @@ void test_fim_get_checksum(void **state)
 }
 
 
+void test_fim_get_checksum_wrong_size(void **state)
+{
+    (void) state;
+    fim_entry_data *data = fill_entry_struct(
+        -1,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        12345678,
+        123456,
+        511,
+        ""
+    );
+
+    *state = data;
+    fim_get_checksum(data);
+    assert_string_equal(data->checksum, "551cab7f774d4633a3be09207b4cdea1db03b9c0");
+}
+
+
 void test_fim_check_depth_success(void **state)
 {
     (void) state;
@@ -1053,6 +1093,162 @@ void test_fim_update_inode_not_in_hash(void **state)
 }
 
 
+void test_fim_update_inode_not_in_hash_not_added(void **state)
+{
+    (void) state;
+    int ret;
+
+    char * file = "test-file.tst";
+    char * inode_key = "1212:9090";
+
+    will_return(__wrap_OSHash_Get, NULL);
+    will_return(__wrap_OSHash_Add, 1);
+
+    ret = fim_update_inode(file, inode_key);
+
+    assert_int_equal(ret, -1);
+}
+
+
+void test_fim_configuration_directory_no_path(void **state)
+{
+    (void) state;
+    int ret;
+
+    const char * entry = "file";
+
+    ret = fim_configuration_directory(NULL, entry);
+
+    assert_int_equal(ret, -1);
+}
+
+
+void test_fim_configuration_directory_file(void **state)
+{
+    (void) state;
+    int ret;
+
+    const char * path = "/sbin";
+    const char * entry = "file";
+
+    ret = fim_configuration_directory(path, entry);
+
+    assert_int_equal(ret, 4);
+}
+
+
+void test_fim_configuration_directory_not_found(void **state)
+{
+    (void) state;
+    int ret;
+
+    const char *path = "/invalid";
+    const char *entry = "file";
+
+    ret = fim_configuration_directory(path, entry);
+
+    assert_int_equal(ret, -1);
+}
+
+
+void test_init_fim_data_entry(void **state)
+{
+    (void) state;
+
+    fim_entry_data *data = calloc(1, sizeof(fim_entry_data));
+
+    init_fim_data_entry(data);
+    *state = data;
+
+    assert_int_equal(data->size, 0);
+    assert_null(data->perm);
+    assert_null(data->attributes);
+    assert_null(data->uid);
+    assert_null(data->gid);
+    assert_null(data->user_name);
+    assert_null(data->group_name);
+    assert_int_equal(data->mtime, 0);
+    assert_int_equal(data->inode, 0);
+    assert_int_equal(data->hash_md5[0], 0);
+    assert_int_equal(data->hash_sha1[0], 0);
+    assert_int_equal(data->hash_sha256[0], 0);
+}
+
+
+void test_fim_audit_inode_event_modify(void **state)
+{
+    (void) state;
+
+    // Load syscheck default values
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
+
+    char * file = "/test/test.file2";
+    char * inode_key = "1212:9090";
+
+    whodata_evt *w_evt;
+    w_evt = calloc(1, sizeof(whodata_evt));
+    w_evt->user_id = strdup("100");
+    w_evt->user_name = strdup("test");
+    w_evt->group_id = strdup("1000");
+    w_evt->group_name = strdup("testing");
+    w_evt->process_name = strdup("test_proc");
+    w_evt->path = strdup("/test/test.file");
+    w_evt->audit_uid = strdup("99");
+    w_evt->audit_name = strdup("audit_user");
+    w_evt->effective_uid = strdup("999");
+    w_evt->effective_name = strdup("effective_user");
+    w_evt->inode = strdup("606060");
+    w_evt->dev = strdup("12345678");
+    w_evt->ppid = 1000;
+    w_evt->process_id = 1001;
+
+    // Already in hash table
+    fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));
+    inode_data->items = 1;
+    inode_data->paths = os_AddStrArray(file, inode_data->paths);
+    will_return(__wrap_OSHash_Get_ex, inode_data);
+
+    fim_audit_inode_event(file, inode_key, FIM_WHODATA, w_evt);
+}
+
+
+void test_fim_audit_inode_event_add(void **state)
+{
+    (void) state;
+
+    // Load syscheck default values
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
+
+    char * file = "/test/test.file2";
+    char * inode_key = "1212:9090";
+
+    whodata_evt *w_evt;
+    w_evt = calloc(1, sizeof(whodata_evt));
+    w_evt->user_id = strdup("100");
+    w_evt->user_name = strdup("test");
+    w_evt->group_id = strdup("1000");
+    w_evt->group_name = strdup("testing");
+    w_evt->process_name = strdup("test_proc");
+    w_evt->path = strdup("/test/test.file");
+    w_evt->audit_uid = strdup("99");
+    w_evt->audit_name = strdup("audit_user");
+    w_evt->effective_uid = strdup("999");
+    w_evt->effective_name = strdup("effective_user");
+    w_evt->inode = strdup("606060");
+    w_evt->dev = strdup("12345678");
+    w_evt->ppid = 1000;
+    w_evt->process_id = 1001;
+
+    // Not in hash table
+    will_return(__wrap_OSHash_Get_ex, NULL);
+    will_return(__wrap_lstat, -1);
+
+    fim_audit_inode_event(file, inode_key, FIM_WHODATA, w_evt);
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_fim_json_event, delete_json),
@@ -1070,6 +1266,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_scan_info_json_start, delete_json),
         cmocka_unit_test_teardown(test_fim_scan_info_json_end, delete_json),
         cmocka_unit_test_teardown(test_fim_get_checksum, delete_entry_data),
+        cmocka_unit_test_teardown(test_fim_get_checksum_wrong_size, delete_entry_data),
         cmocka_unit_test(test_fim_check_depth_success),
         cmocka_unit_test(test_fim_check_depth_failure_strlen),
         cmocka_unit_test(test_fim_insert_success_new),
@@ -1077,11 +1274,18 @@ int main(void) {
         cmocka_unit_test(test_fim_insert_failure_duplicated),
         cmocka_unit_test(test_fim_insert_failure_new),
         cmocka_unit_test(test_fim_update_success),
-        //cmocka_unit_test(test_fim_update_failure_nofile),
+        cmocka_unit_test(test_fim_update_failure_nofile),
         cmocka_unit_test(test_fim_update_failure_rbtree),
         cmocka_unit_test(test_fim_delete_no_data),
         cmocka_unit_test(test_fim_update_inode_in_hash),
         cmocka_unit_test(test_fim_update_inode_not_in_hash),
+        cmocka_unit_test(test_fim_update_inode_not_in_hash_not_added),
+        cmocka_unit_test(test_fim_configuration_directory_no_path),
+        cmocka_unit_test(test_fim_configuration_directory_file),
+        cmocka_unit_test(test_fim_configuration_directory_not_found),
+        cmocka_unit_test_teardown(test_init_fim_data_entry, delete_entry_data),
+        cmocka_unit_test(test_fim_audit_inode_event_modify),
+        cmocka_unit_test(test_fim_audit_inode_event_add),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
