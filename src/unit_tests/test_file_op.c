@@ -37,10 +37,20 @@ int __wrap_File_DateofChange(const char *file)
     return 1;
 }
 
+int __wrap_stat()
+{
+    return 1;
+}
+
 int __wrap_unlink(const char *file)
 {
     check_expected_ptr(file);
     return mock();
+}
+
+int __wrap__mferror()
+{
+    return 0;
 }
 
 /* tests */
