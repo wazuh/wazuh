@@ -85,9 +85,9 @@ static void init_conf()
 static void read_internal()
 {
     int aux;
-    if ((aux = getDefine_Int("authd", "timeout_seconds", options.auth.timeout_sec.min, options.auth.timeout_sec.max)) != INT_OPT_NDEF)
+    if ((aux = getDefine_Int("auth", "timeout_seconds", options.auth.timeout_sec.min, options.auth.timeout_sec.max)) != INT_OPT_NDEF)
         config.timeout_sec = aux;
-    if ((aux = getDefine_Int("authd", "timeout_microseconds", options.auth.timeout_usec.min, options.auth.timeout_usec.max)) != INT_OPT_NDEF)
+    if ((aux = getDefine_Int("auth", "timeout_microseconds", options.auth.timeout_usec.min, options.auth.timeout_usec.max)) != INT_OPT_NDEF)
         config.timeout_usec = aux;
     if ((aux = getDefine_Int("authd", "debug", options.auth.log_level.min, options.auth.log_level.max)) != INT_OPT_NDEF)
         config.log_level = aux;
