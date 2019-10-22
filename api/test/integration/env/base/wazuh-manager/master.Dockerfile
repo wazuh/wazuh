@@ -41,11 +41,15 @@ FROM base as wazuh-env-security_white_rbac
 ONBUILD COPY configurations/rbac/security/rbac.db /var/ossec/api/configuration/security/rbac.db
 ADD configurations/rbac/security/white_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
+ONBUILD COPY configurations/rbac/security/healthcheck/healthcheck.py /tmp/healthcheck.py
+ONBUILD COPY configurations/rbac/security/healthcheck/security_rbac.txt /tmp/security_rbac.txt
 
 FROM base as wazuh-env-security_black_rbac
 ONBUILD COPY configurations/rbac/security/rbac.db /var/ossec/api/configuration/security/rbac.db
 ADD configurations/rbac/security/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
+ONBUILD COPY configurations/rbac/security/healthcheck/healthcheck.py /tmp/healthcheck.py
+ONBUILD COPY configurations/rbac/security/healthcheck/security_rbac.txt /tmp/security_rbac.txt
 
 FROM wazuh-env-${ENVIRONMENT}
 

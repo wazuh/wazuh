@@ -17,7 +17,8 @@ from wazuh.utils import process_array
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
 
 
-@expose_resources(actions=['security:read'], resources=['user:id:{username_list}'])
+@expose_resources(actions=['security:read'], resources=['user:id:{username_list}'],
+                  post_proc_kwargs={'exclude_codes': [5001]})
 def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Get the information of a specified user
@@ -103,7 +104,7 @@ def update_user(username=None, password=None):
 
 
 @expose_resources(actions=['security:delete'], resources=['user:id:{username_list}'],
-                  post_proc_kwargs={'exclude_codes': [5004]})
+                  post_proc_kwargs={'exclude_codes': [5001, 5004]})
 def delete_user(username_list):
     """Delete a specified user
 
@@ -128,7 +129,8 @@ def delete_user(username_list):
     return result
 
 
-@expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'])
+@expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'],
+                  post_proc_kwargs={'exclude_codes': [4002]})
 def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Returns information from all system roles, does not return information from its associated policies
@@ -166,7 +168,7 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
 
 
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4008]})
+                  post_proc_kwargs={'exclude_codes': [4002, 4008]})
 def remove_roles(role_ids):
     """Removes a certain role from the system
 
@@ -244,7 +246,8 @@ def update_role(role_id=None, name=None, rule=None):
     return result
 
 
-@expose_resources(actions=['security:read'], resources=['policy:id:{policy_ids}'])
+@expose_resources(actions=['security:read'], resources=['policy:id:{policy_ids}'],
+                  post_proc_kwargs={'exclude_codes': [4007]})
 def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None,
                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Returns the information of a certain policy
@@ -282,7 +285,7 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
 
 
 @expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4008]})
+                  post_proc_kwargs={'exclude_codes': [4007, 4008]})
 def remove_policies(policy_ids=None):
     """Removes a certain policy from the system
 
@@ -307,7 +310,8 @@ def remove_policies(policy_ids=None):
     return result
 
 
-@expose_resources(actions=['security:create'], resources=['*:*:*'])
+@expose_resources(actions=['security:create'], resources=['*:*:*'],
+                  post_proc_kwargs={'exclude_codes': [4006, 4009]})
 def add_policy(name=None, policy=None):
     """Creates a policy in the system
 
@@ -360,7 +364,8 @@ def update_policy(policy_id=None, name=None, policy=None):
     return result
 
 
-@expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'])
+@expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
+                  post_proc_kwargs={'exclude_codes': [4002, 4007, 4008, 4011]})
 def set_role_policy(role_id, policy_ids):
     """Create a relationship between a role and a policy
 
@@ -389,7 +394,8 @@ def set_role_policy(role_id, policy_ids):
     return result
 
 
-@expose_resources(actions=['security:delete'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'])
+@expose_resources(actions=['security:delete'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
+                  post_proc_kwargs={'exclude_codes': [4002, 4007, 4008, 4010]})
 def remove_role_policy(role_id, policy_ids):
     """Removes a relationship between a role and a policy
 
