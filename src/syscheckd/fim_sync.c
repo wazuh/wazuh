@@ -262,8 +262,8 @@ void fim_sync_push_msg(const char * msg) {
     char * copy;
     os_strdup(msg, copy);
 
-    if (queue_push_ex_block(fim_sync_queue, copy) == -1) {
-        merror("Cannot push a data synchronization message.");
+    if (queue_push_ex(fim_sync_queue, copy) == -1) {
+        mdebug2("Cannot push a data synchronization message: queue is full.");
         free(copy);
     }
 }
