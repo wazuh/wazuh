@@ -53,8 +53,8 @@ def optimize_resources():
     """This function preprocess the policies of the user for a more easy treatment in the decorator of the RBAC
     """
     # For production
-    # rbac = RBAChecker(auth_context='{}')
-    # policies = rbac.run()
+    rbac = RBAChecker(auth_context='{}')
+    policies = rbac.run()
 
     # Testing
     policies = RBAChecker.run_testing()

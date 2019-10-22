@@ -37,7 +37,16 @@ ONBUILD COPY configurations/manager/wazuh-master/ossec-totals-27.log /var/ossec/
 FROM base AS wazuh-env-cluster
 ONBUILD COPY configurations/cluster/wazuh-master/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
 
+FROM base as wazuh-env-security_white_rbac
+ONBUILD COPY configurations/rbac/security/rbac.db /var/ossec/api/configuration/security/rbac.db
+ADD configurations/rbac/security/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base as wazuh-env-security_black_rbac
+ONBUILD COPY configurations/rbac/security/rbac.db /var/ossec/api/configuration/security/rbac.db
+ADD configurations/rbac/security/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
 FROM wazuh-env-${ENVIRONMENT}
 
 HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python3 /tmp/healthcheck.py || exit 1
-

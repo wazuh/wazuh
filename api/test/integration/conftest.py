@@ -127,17 +127,15 @@ def environment_ciscat():
     down_env()
 
 
-@pytest.fixture(name="security_rbac_tests", scope="session")
-def environment_security_rbac():
-    values = build_and_up("security_rbac")
+@pytest.fixture(name="security_white_rbac_tests", scope="session")
+def environment_white_security_rbac():
+    values = build_and_up("security_white_rbac")
     while values['retries'] < values['max_retries']:
-        master_health = check_health()
-        if master_health:
-            agents_healthy = check_health(node_type='agent', agents=[1, 2, 3])
-            if agents_healthy is True:
-                time.sleep(10)
-                yield
-                break
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
         else:
             values['retries'] += 1
-    down_env()
+    # down_env()

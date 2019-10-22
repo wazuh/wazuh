@@ -3,18 +3,18 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import copy
 import re
+from collections import defaultdict
 from functools import wraps
 
+from api import configuration
 from api.authentication import AuthenticationManager
 from wazuh.common import rbac, system_agents, system_groups, broadcast
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
 from wazuh.exception import WazuhError
 from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import AffectedItemsWazuhResult
-from collections import defaultdict
 
-#mode = configuration.read_api_config()['rbac']['mode']
-mode = 'white'
+mode = configuration.read_api_config()['rbac']['mode']
 
 
 def switch_mode(m):
@@ -57,11 +57,11 @@ def _expand_resource(resource):
         elif resource_type == 'role:id':
             with RolesManager() as rm:
                 roles = rm.get_roles()
-            return [role_id.id for role_id in roles]
+            return {role_id.id for role_id in roles}
         elif resource_type == 'policy:id':
             with PoliciesManager() as pm:
                 policies = pm.get_policies()
-            return [policy_id.id for policy_id in policies]
+            return {policy_id.id for policy_id in policies}
         elif resource_type == 'user:id':
             users_system = set()
             with AuthenticationManager() as auth:
