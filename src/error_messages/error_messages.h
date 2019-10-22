@@ -480,6 +480,7 @@
 
 #define FIM_ERROR_INOTIFY_ADD_MAX_REACHED           "(6700): Unable to add inotify watch to real time monitoring: '%s'. '%d' '%d': The maximum limit of inotify watches has been reached."
 #define FIM_UNKNOWN_ATTRIBUTE                       "(6701): Unknown attribute '%s' for directory option."
+#define FIM_ERROR_INSERT_INODE_HASH                  "(6702): Unable to add inode to db: '%s' => '%s'"
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

@@ -229,5 +229,6 @@
 #define FIM_RBTREE_REPLACE                  "(6328): Unable to update file to db, key not found: '%s'"
 #define FIM_REGISTRY_EVENT_FAIL             "(6329): Unable to save registry key: '%s'"
 #define FIM_RUNNING_SCAN                    "(6330): The scan has been running during: %.3f sec (%.3f clock sec)"
+#define FIM_GET_ATTRIBUTES                  "(6331): Couldn't get attributes for file: '%s'"
 
 #endif /* DEBUG_MESSAGES_H */
