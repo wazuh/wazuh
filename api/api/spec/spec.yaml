@@ -161,6 +161,21 @@ components:
                   - $ref: '#/components/schemas/Agent'
                   - type: array
 
+    AllItemsResponseAgentsDistinct:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/AgentDistinct'
+                  - type: array
+
     AllItemsResponseGroups:
       allOf:
         - type: object
@@ -4893,18 +4908,25 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
       responses:
         '200':
           description: 'Get group configuration'
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/GroupConfiguration'
+                type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/ListMetadata'
+                      - type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/GroupConfiguration'
               example:
                 data:
                   - filters:
@@ -4971,14 +4993,11 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - $ref: '#/components/schemas/GroupFile'
+                properties:
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/ListMetadata'
+                      - $ref: '#/components/schemas/GroupFile'
 
               example:
                 data:
@@ -5054,15 +5073,12 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          description: "The output format depends on the type of file that has been requested: rootkit file, rootkit trojans or rcl."
+                properties:
+                  data:
+                    oneOf:
+                      - type: array
+                      - type: object
+                        description: "The output format depends on the type of file that has been requested: rootkit file, rootkit trojans or rcl."
               example:
                 data:
                   vars:
@@ -5430,18 +5446,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                      - $ref: '#/components/schemas/ListMetadata'
-                      - type: object
-                        properties:
-                          items:
-                            type: array
-                            items:
-                              $ref: '#/components/schemas/AgentDistinct'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseAgentsDistinct'
               example:
                 items:
                   - count: 11
@@ -5462,10 +5471,6 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: 'Get summary of agents OS'
