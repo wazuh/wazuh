@@ -95,8 +95,6 @@ void test_get_unix_version_Centos7(void **state)
     will_return(__wrap_fopen, 1);
     will_return(__wrap_fgets, "CentOS Linux release 7.5.1804 (Core)");
     will_return(__wrap_fgets, 1);
-    will_return(__wrap_fgets, "EOF");
-    will_return(__wrap_fgets, 0);
 
     ret = get_unix_version();
     *state = ret;
@@ -105,7 +103,8 @@ void test_get_unix_version_Centos7(void **state)
     assert_string_equal(ret->os_name, "CentOS Linux");
     assert_string_equal(ret->os_major, "7");
     assert_string_equal(ret->os_minor, "5");
-    assert_string_equal(ret->os_version, "7.5 (Core)");
+    assert_string_equal(ret->os_build, "1804");
+    assert_string_equal(ret->os_version, "7.5.1804 (Core)");
     assert_string_equal(ret->os_codename, "Core");
     assert_string_equal(ret->os_platform, "centos");
     assert_string_equal(ret->sysname, "Linux");
@@ -130,8 +129,6 @@ void test_get_unix_version_centos_release(void **state)
 
     will_return(__wrap_fgets, "CentOS Linux release 7.5.1804 (Core)");
     will_return(__wrap_fgets, 1);
-    will_return(__wrap_fgets, "EOF");
-    will_return(__wrap_fgets, 0);
 
     ret = get_unix_version();
     *state = ret;
@@ -140,7 +137,8 @@ void test_get_unix_version_centos_release(void **state)
     assert_string_equal(ret->os_name, "CentOS Linux");
     assert_string_equal(ret->os_major, "7");
     assert_string_equal(ret->os_minor, "5");
-    assert_string_equal(ret->os_version, "7.5 (Core)");
+    assert_string_equal(ret->os_build, "1804");
+    assert_string_equal(ret->os_version, "7.5.1804 (Core)");
     assert_string_equal(ret->os_codename, "Core");
     assert_string_equal(ret->os_platform, "centos");
     assert_string_equal(ret->sysname, "Linux");
@@ -169,8 +167,6 @@ void test_get_unix_version_fedora_release(void **state)
 
     will_return(__wrap_fgets, "Fedora release 29 (Twenty Nine)");
     will_return(__wrap_fgets, 1);
-    will_return(__wrap_fgets, "EOF");
-    will_return(__wrap_fgets, 0);
 
     ret = get_unix_version();
     *state = ret;
