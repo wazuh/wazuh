@@ -14,6 +14,8 @@
 #include "eventinfo.h"
 #include "analysisd.h"
 
+#define SECONDS_PER_DAY 86400
+
 /* Start the log location (need to be called before getlog) */
 void OS_InitLog(void);
 void OS_InitFwLog(void);
