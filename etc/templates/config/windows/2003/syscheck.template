@@ -1,0 +1,107 @@
+<syscheck>
+    <!-- By default it is disabled. In the Install you must choose to enable it. -->
+    <disabled>yes</disabled>
+
+    <!-- Frequency that syscheck is executed default every 12 hours -->
+    <frequency>43200</frequency>
+
+    <!-- Default files to be monitored. -->
+    <directories check_all="yes">%WINDIR%\regedit.exe</directories>
+    <directories check_all="yes">%WINDIR%\system.ini</directories>
+    <directories check_all="yes">%WINDIR%\win.ini</directories>
+
+    <directories check_all="yes">%WINDIR%\SysNative\at.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\attrib.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\cacls.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\cmd.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\drivers\etc</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\eventcreate.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\ftp.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\lsass.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\net.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\net1.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\netsh.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\reg.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\regedt32.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\regsvr32.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\runas.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\sc.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\schtasks.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\sethc.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\subst.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\wbem\WMIC.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\WindowsPowerShell\v1.0\powershell.exe</directories>
+    <directories check_all="yes">%WINDIR%\SysNative\winrm.vbs</directories>
+
+    <!-- 32-bit programs. -->
+    <directories check_all="yes">%WINDIR%\System32\at.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\attrib.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\cacls.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\cmd.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\drivers\etc</directories>
+    <directories check_all="yes">%WINDIR%\System32\eventcreate.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\ftp.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\net.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\net1.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\netsh.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\reg.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\regedit.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\regedt32.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\regsvr32.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\runas.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\sc.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\schtasks.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\sethc.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\subst.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\wbem\WMIC.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\WindowsPowerShell\v1.0\powershell.exe</directories>
+    <directories check_all="yes">%WINDIR%\System32\winrm.vbs</directories>
+    <directories check_all="yes" realtime="yes">%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\Startup</directories>
+
+    <ignore type="sregex">.log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$</ignore>
+
+    <!-- Windows registry entries to monitor. -->
+    <windows_registry>HKEY_LOCAL_MACHINE\Software\Classes\batfile</windows_registry>
+    <windows_registry>HKEY_LOCAL_MACHINE\Software\Classes\cmdfile</windows_registry>
+    <windows_registry>HKEY_LOCAL_MACHINE\Software\Classes\comfile</windows_registry>
+    <windows_registry>HKEY_LOCAL_MACHINE\Software\Classes\exefile</windows_registry>
+    <windows_registry>HKEY_LOCAL_MACHINE\Software\Classes\piffile</windows_registry>
+    <windows_registry>HKEY_LOCAL_MACHINE\Software\Classes\AllFilesystemObjects</windows_registry>
+    <windows_registry>HKEY_LOCAL_MACHINE\Software\Classes\Directory</windows_registry>
+    <windows_registry>HKEY_LOCAL_MACHINE\Software\Classes\Folder</windows_registry>
+    <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Classes\Protocols</windows_registry>
+    <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Policies</windows_registry>
+    <windows_registry>HKEY_LOCAL_MACHINE\Security</windows_registry>
+    <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Microsoft\Internet Explorer</windows_registry>
+
+    <windows_registry>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services</windows_registry>
+    <windows_registry>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\KnownDLLs</windows_registry>
+    <windows_registry>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\winreg</windows_registry>
+
+    <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run</windows_registry>
+    <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunOnce</windows_registry>
+    <windows_registry>HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunOnceEx</windows_registry>
+    <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\URL</windows_registry>
+    <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies</windows_registry>
+    <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Windows</windows_registry>
+    <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon</windows_registry>
+
+    <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Microsoft\Active Setup\Installed Components</windows_registry>
+
+    <!-- Windows registry entries to ignore. -->
+    <registry_ignore>HKEY_LOCAL_MACHINE\Security\Policy\Secrets</registry_ignore>
+    <registry_ignore>HKEY_LOCAL_MACHINE\Security\SAM\Domains\Account\Users</registry_ignore>
+    <registry_ignore type="sregex">\Enum$</registry_ignore>
+    <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\MpsSvc\Parameters\AppCs</registry_ignore>
+    <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\MpsSvc\Parameters\PortKeywords\DHCP</registry_ignore>
+    <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\MpsSvc\Parameters\PortKeywords\IPTLSIn</registry_ignore>
+    <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\MpsSvc\Parameters\PortKeywords\IPTLSOut</registry_ignore>
+    <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\MpsSvc\Parameters\PortKeywords\RPC-EPMap</registry_ignore>
+    <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\MpsSvc\Parameters\PortKeywords\Teredo</registry_ignore>
+    <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\PolicyAgent\Parameters\Cache</registry_ignore>
+    <registry_ignore>HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunOnceEx</registry_ignore>
+    <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\ADOVMPPackage\Final</registry_ignore>
+
+    <!-- Frequency for ACL checking (seconds) -->
+    <windows_audit_interval>300</windows_audit_interval>
+  </syscheck>
