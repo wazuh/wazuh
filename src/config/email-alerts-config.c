@@ -226,12 +226,11 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
                                  Mail->gran_group[granto_size], 0)) {
                 if (output == NULL){
                     merror(REGEX_COMPILE, node[i]->content,
-                           Mail->gran_location[granto_size]->error);
+                           Mail->gran_group[granto_size]->error);
                 } else {
                     snprintf(message, OS_FLSIZE + 1,
                             "Syntax error on regex: '%s': %d.",
-                             node[i]->content,
-                            Mail->gran_location[granto_size]->error);
+                            node[i]->content, Mail->gran_group[granto_size]->error);
                     wm_strcat(output, message, '\n');
                 }
                 return (-1);

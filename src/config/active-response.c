@@ -752,6 +752,7 @@ next:
             return OS_INVALID;
         }
     }
+    os_free(repeated_t);
 
     int enable_ca_verification = 0;
     char **ca_verification = OS_GetContents(&xml, caverify);

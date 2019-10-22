@@ -359,7 +359,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
         } else {
             snprintf(message, OS_FLSIZE + 1,
                 "Invalid option <%s> for Syslog remote connection.",
-                node[i]->element);
+                xml_queue_size);
             wm_strcat(output, message, '\n');
         }
         return OS_INVALID;

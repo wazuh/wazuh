@@ -256,7 +256,6 @@ void free_AgentlessConfig(agentlessd_config *config) {
                     os_free(config->entries[i]->server);
                 }
                 os_free(config->entries[i]->type);
-                os_free(config->entries[i]->options);
                 os_free(config->entries[i]->command);
                 os_free(config->entries[i]);
                 i++;

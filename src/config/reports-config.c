@@ -242,10 +242,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
         } else if (output == NULL) {
             merror("No \"email to\" and title configured for report. Ignoring it.");
         } else {
-            snprintf(message, OS_FLSIZE + 1,
-                "No \"email to\" and title configured for report. Ignoring it.",
-                 mon_config->reports[s]->title);
-            wm_strcat(output, message, '\n');
+            wm_strcat(output, "No \"email to\" and title configured for report. Ignoring it.", '\n');
         }
     }
 

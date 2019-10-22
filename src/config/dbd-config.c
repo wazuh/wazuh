@@ -17,7 +17,7 @@ int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2,
 {
     int i = 0;
     DBConfig *db_config;
-    char *message[OS_FLSIZE];
+    char message[OS_FLSIZE];
 
     /* XML definitions */
     const char *xml_dbhost = "hostname";
