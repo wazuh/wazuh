@@ -44,7 +44,7 @@ edit_value_tag() {
 
 # Change address block of the ossec.conf
 add_adress_block() {
-
+    # Getting function parameters on new variable
     SET_ADDRESSES="$@"
 
     # Remove the server configuration
