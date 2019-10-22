@@ -745,9 +745,8 @@ stages:
         data:
           affected_items:
             - username: normal
-            - username: wazuh-app
           failed_items: []
-          total_affected_items: 2
+          total_affected_items: 1
           total_failed_items: 0
         message: Users deleted correctly
 
@@ -866,3 +865,89 @@ stages:
       status_code: 400
       body:
         <<: *permission_denied
+
+---
+test_name: CREATE USERS RBAC
+
+stages:
+
+  - name: Create one specified user (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        username: newUser
+        password: stringA1!
+    response:
+      status_code: 400
+      body:
+        <<: *permission_denied
+
+---
+test_name: CREATE ROLES AND POLICIES RBAC
+
+stages:
+
+  - name: Create one specified role (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: newUserRole
+        rule:
+          FIND$:
+            definition: newUser
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - id: 7
+              name: newUserRole
+              policies: []
+              rule:
+                FIND$:
+                  definition: newUser
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: Role created correctly
+
+  - name: Create one specified policy (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: newUserPolicy
+        policy:
+          actions:
+            - security:delete
+          effect: allow
+          resources:
+            - role:id:*
+            - policy:id:*
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - id: 11
+              name: newUserPolicy
+              policy:
+                actions:
+                  - security:delete
+                effect: allow
+                resources:
+                  - role:id:*
+                  - policy:id:*
+              roles: []
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: Policy created correctly

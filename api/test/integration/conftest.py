@@ -138,4 +138,4 @@ def environment_white_security_rbac():
             break
         else:
             values['retries'] += 1
-    # down_env()
+    down_env()
