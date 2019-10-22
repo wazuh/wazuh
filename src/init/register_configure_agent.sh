@@ -8,8 +8,10 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
+# Load ossec-init variables
 . /etc/ossec-init.conf
 
+# Set default sed alias
 sed="sed -ri"
 # By default, use gnu sed (gsed).
 use_unix_sed="False"
@@ -154,7 +156,7 @@ set_vars () {
 unset_vars() {
 
     OS=$1
-
+    # String of variables that we could use
     vars="WAZUH_MANAGER_IP WAZUH_PROTOCOL WAZUH_MANAGER_PORT WAZUH_NOTIFY_TIME \
           WAZUH_TIME_RECONNECT WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PASSWORD \
           WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM \
@@ -181,6 +183,7 @@ main () {
 
     uname_s=$(uname -s)
 
+    # Check what kind of system we are working with
     if [ "${uname_s}" = "Darwin" ]; then
         sed="sed -ire"
         set_vars
@@ -221,12 +224,13 @@ main () {
         edit_value_tag "notify_time" ${WAZUH_KEEP_ALIVE_INTERVAL}
         edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
 
+    # Throw error if agent is already registered (client keys with key).
     elif [ -s ${DIRECTORY}/etc/client.keys ] && [ ! -z "${WAZUH_MANAGER}" ]; then
         echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: ERROR: The agent is already registered." >> ${DIRECTORY}/logs/ossec.log
     fi
 
     if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z "${WAZUH_REGISTRATION_SERVER}" ]; then
-        # Options to be used in register time.
+        # Options to be used at register time.
         OPTIONS="-m ${WAZUH_REGISTRATION_SERVER}"
         OPTIONS=$(add_parameter "${OPTIONS}" "-p" "${WAZUH_REGISTRATION_PORT}")
         OPTIONS=$(add_parameter "${OPTIONS}" "-P" "${WAZUH_REGISTRATION_PASSWORD}")
@@ -241,4 +245,5 @@ main () {
     unset_vars ${uname_s}
 }
 
+# Start script execution
 main
