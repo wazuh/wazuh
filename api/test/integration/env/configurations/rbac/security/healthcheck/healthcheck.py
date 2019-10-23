@@ -1,6 +1,6 @@
 import os
 
-os.system("/var/ossec/bin/ossec_control status > /tmp/output.txt")
+os.system("/var/ossec/bin/ossec-control status > /tmp/output.txt")
 check = os.popen("diff -q /tmp/output.txt /tmp/security_rbac.txt").read()
 
 if "differ" in check:
