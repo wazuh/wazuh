@@ -59,6 +59,9 @@ list(APPEND tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,IsSocket -Wl
 list(APPEND tests_names "test_seechanges")
 list(APPEND tests_flags " ")
 
+list(APPEND tests_names "test_syscom")
+list(APPEND tests_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig -Wl,--wrap,getSyscheckInternalOptions")
+
 # Config files
 configure_file("test_syscheck.conf" "test_syscheck.conf" COPYONLY)
 
@@ -158,23 +161,23 @@ endif()
 
 add_custom_target(coverage
     # Cleanup lcov
-    COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} -directory ${SRC_FOLDER} --zerocounters
+    COMMAND ${LCOV_PATH}  -directory ${SRC_FOLDER} --zerocounters
 
     # Create baseline to make sure untouched files show up in the report
-    COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -c -i -d ${SRC_FOLDER} -o coverage.base
+    COMMAND ${LCOV_PATH} -q -c -i -d ${SRC_FOLDER} -o coverage.base
 
     # Run tests
     COMMAND ctest
 
     # Capturing lcov counters and generating report
-    COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} --directory ${SRC_FOLDER} --capture --output-file coverage.info
+    COMMAND ${LCOV_PATH} -q --directory ${SRC_FOLDER} --capture --output-file coverage.info
 
     # Add baseline counters
-    COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -a coverage.base -a coverage.info --output-file coverage.total
-    COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} --remove coverage.total ${SRC_FOLDER}/external/* --output-file coverage.info.cleaned
+    COMMAND ${LCOV_PATH} -q -a coverage.base -a coverage.info --output-file coverage.total
+    COMMAND ${LCOV_PATH} --remove coverage.total "*external/*" --output-file coverage.info.cleaned
 
     # Generate HTML report
-    COMMAND ${GENHTML_PATH} -q --output-directory coverage-report --title "WAZUH tests coverage" --show-details --legend coverage.info.cleaned
+    COMMAND ${GENHTML_PATH} -q --output-directory coverage-report --title "WAZUH tests coverage" --legend coverage.info.cleaned
 
     # Clean counters
     COMMAND ${CMAKE_COMMAND} -E remove coverage.base coverage.total coverage.info.cleaned
