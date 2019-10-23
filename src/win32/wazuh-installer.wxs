@@ -466,11 +466,11 @@
                         </Component>
                         <Component Id="SCA_WIN2012R2_DOMAIN" DiskId="1" Guid="6C7B21C9-2B01-4A6B-BAC5-782382D10FBB">
                             <File Id="SCA_WIN2012R2_DOMAIN.ZIP" Name="2012R2_domain.zip" Source="..\..\etc\sca\windows\2012R2\domain\2012R2_domain.zip" />
-                            <Condition>VersionNT64 = 603 AND MsiNTProductType = 2</Condition>
+                            <Condition>MAJORVERSION = 0 AND VersionNT64 = 603 AND MsiNTProductType = 2</Condition>
                         </Component>
                         <Component Id="SCA_WIN2012R2_MEMBER" DiskId="1" Guid="4EA82D11-D36B-4153-A6A7-8B5374296601">
                             <File Id="SCA_WIN2012R2_MEMBER.ZIP" Name="2012R2_MEMBER.zip" Source="..\..\etc\sca\windows\2012R2\member\2012R2_member.zip" />
-                            <Condition>VersionNT64 = 603 AND MsiNTProductType = 3</Condition>
+                            <Condition>MAJORVERSION = 0 AND VersionNT64 = 603 AND MsiNTProductType = 3</Condition>
                         </Component>
                       </Directory>
                     </Directory>
