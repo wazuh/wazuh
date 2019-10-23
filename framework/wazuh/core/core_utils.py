@@ -10,6 +10,7 @@ from wazuh.database import Connection
 from wazuh.exception import WazuhInternalError
 
 
+@common.context_cached('system_agents')
 def get_agents_info():
     """Get all agents IDs in the system
 
@@ -23,6 +24,7 @@ def get_agents_info():
     return agents_list
 
 
+@common.context_cached('system_groups')
 def get_groups():
     """Get all groups in the system
 

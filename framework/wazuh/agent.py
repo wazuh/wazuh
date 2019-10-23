@@ -12,6 +12,7 @@ from wazuh import common, configuration
 from wazuh.InputValidator import InputValidator
 from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryDistinctAgents, WazuhDBQueryGroupByAgents, \
     WazuhDBQueryMultigroups, Agent
+from wazuh.core.core_utils import get_agents_info, get_groups
 from wazuh.database import Connection
 from wazuh.exception import WazuhError, WazuhInternalError, WazuhException
 from wazuh.rbac.decorators import expose_resources
@@ -127,8 +128,9 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
             filters = dict()
         filters['id'] = agent_list
 
+        system_agents = get_agents_info()
         for agent_id in agent_list:
-            if agent_id not in common.system_agents.get():
+            if agent_id not in system_agents:
                 result.add_failed_item(id_=agent_id, error=WazuhError(1701))
 
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
@@ -151,9 +153,10 @@ def get_agents_keys(agent_list=None):
                                       some_msg='Some agent keys were not obtained',
                                       none_msg='No agent keys were obtained'
                                       )
+    system_agents = get_agents_info()
     for agent_id in agent_list:
         try:
-            if agent_id not in common.system_agents.get():
+            if agent_id not in system_agents:
                 raise WazuhError(1701)
             result.affected_items.append({'id': agent_id, 'key': Agent(agent_id).get_key()})
         except WazuhException as e:
@@ -186,12 +189,12 @@ def delete_agents(agent_list=None, backup=False, purge=False, status="all", olde
                                                                           'id': agent_list})
         data = db_query.run()
         can_purge_agents = list(map(operator.itemgetter('id'), data['items']))
-
+        system_agents = get_agents_info()
         for agent_id in agent_list:
             try:
                 if agent_id == "000":
                     raise WazuhError(1703)
-                elif agent_id not in common.system_agents.get():
+                elif agent_id not in system_agents:
                     raise WazuhError(1701)
                 else:
                     my_agent = Agent(agent_id)
@@ -408,10 +411,11 @@ def delete_groups(group_list=None):
                                       some_msg='Some groups were not deleted',
                                       none_msg='No group was deleted')
     affected_agents = set()
+    system_groups = get_groups()
     for group_id in group_list:
         try:
             # Check if group exists
-            if group_id not in common.system_groups.get():
+            if group_id not in system_groups:
                 raise WazuhError(1710)
             if group_id == 'default':
                 raise WazuhError(1712)
@@ -457,10 +461,10 @@ def assign_agents_to_group(group_list=None, agent_list=None, replace=False, repl
     # Check if the group exists
     if not Agent.group_exists(group_id):
         raise WazuhError(1710)
-
+    system_agents = get_agents_info()
     for agent_id in agent_list:
         try:
-            if agent_id not in common.system_agents.get():
+            if agent_id not in system_agents:
                 raise WazuhError(1701)
             if agent_id == "000":
                 raise WazuhError(1703)
@@ -487,11 +491,11 @@ def remove_agent_from_group(group_list=None, agent_list=None):
     agent_id = agent_list[0]
 
     # Check if agent and group exist and it is not 000
-    if agent_id not in common.system_agents.get():
+    if agent_id not in get_agents_info():
         raise WazuhError(1701)
     if agent_id == '000':
         raise WazuhError(1703)
-    if group_id not in common.system_groups.get():
+    if group_id not in get_groups():
         raise WazuhError(1710)
 
     return WazuhResult({'message': Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)})
@@ -516,7 +520,7 @@ def remove_agent_from_groups(agent_list=None, group_list=None):
     # Check if agent exists and it is not 000
     if agent_id == '000':
         raise WazuhError(1703)
-    if agent_id not in common.system_agents.get():
+    if agent_id not in get_agents_info():
         raise WazuhError(1701)
 
     # We move default group to last position in case it is contained in group_list. When an agent is removed from all
@@ -526,9 +530,10 @@ def remove_agent_from_groups(agent_list=None, group_list=None):
     except ValueError:
         pass
 
+    system_groups = get_groups()
     for group_id in group_list:
         try:
-            if group_id not in common.system_groups.get():
+            if group_id not in system_groups:
                 raise WazuhError(1710)
             Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
             result.affected_items.append(group_id)
@@ -555,14 +560,14 @@ def remove_agents_from_group(agent_list=None, group_list=None):
                                       none_msg=f'No agent was removed from group {group_id}'
                                       )
     # Check if group exists
-    if group_id not in common.system_groups.get():
+    if group_id not in get_groups():
         raise WazuhError(1710)
 
     for agent_id in agent_list:
         try:
             if agent_id == '000':
                 raise WazuhError(1703)
-            if agent_id not in common.system_agents.get():
+            if agent_id not in get_agents_info():
                 raise WazuhError(1701)
             Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
             result.affected_items.append(agent_id)
