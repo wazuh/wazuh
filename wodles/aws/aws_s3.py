@@ -1974,21 +1974,20 @@ class CiscoUmbrella(AWSCustomBucket):
                               'source_port', 'destination_ip',
                               'destination_port', 'categories'
                               )
-            #elif 'cloudfirewalllogs' in self.prefix:
-            #    fieldnames = ('timestamp', 'origin_id', 'identity',
-            #                  'direction', 'ip_protocol', 'packet_size',
-            #                  'source_ip', 'source_port', 'destination_ip',
-            #                  'destination_port', 'data_center', 'rule_id',
-            #                  'verdict'
-            #                  )
             else:
                 print("ERROR: Only 'dnslogs', 'proxylogs' or 'iplogs' are allowed for Cisco Umbrella")
                 exit(12)
             csv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=',')
 
-        # remove None values in csv_file
-        return [dict({k: v for k, v in row.items() if v is not None},
-                source='cisco_umbrella') for row in csv_file]
+            # remove None values in csv_file
+            return [dict({k: v for k, v in row.items() if v is not None},
+                    source='cisco_umbrella') for row in csv_file]
+
+    def marker_only_logs_after(self, aws_region, aws_account_id):
+        return '{init}{only_logs_after}'.format(
+            init=self.get_full_prefix(aws_account_id, aws_region),
+            only_logs_after=self.only_logs_after.strftime('%Y-%m-%d')
+        )
 
 
 class AWSService(WazuhIntegration):
