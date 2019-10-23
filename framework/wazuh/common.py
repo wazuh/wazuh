@@ -5,10 +5,10 @@
 import json
 import os
 from contextvars import ContextVar
+from functools import wraps
 from grp import getgrnam
 from pwd import getpwnam
-from typing import Dict, List
-
+from typing import Dict
 
 try:
     here = os.path.abspath(os.path.dirname(__file__))
@@ -125,7 +125,29 @@ max_groups_per_multigroup = 256
 
 # Context variables
 rbac: ContextVar[Dict] = ContextVar('rbac', default=dict())
-system_agents: ContextVar[List] = ContextVar('system_agents', default=list())
-system_groups: ContextVar[List] = ContextVar('system_groups', default=list())
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
-system_groups: ContextVar[List] = ContextVar('system_groups', default=list())
+
+
+_context_cache = dict()
+
+
+def context_cached(key):
+    """Saves the result of the decorated function in a cache, so next calls
+    to it just returns the previous result saving time and resources. The cache gets
+    invalidated at the end of the request.
+
+    :param key: unique identifier for the cache entry
+    :return: The result of the first call to the decorated function
+    """
+    if key not in _context_cache:
+        _context_cache[key] = ContextVar(key, default=None)
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if _context_cache[key].get() is None:
+                result = func(*args, **kwargs)
+                _context_cache[key].set(result)
+            return _context_cache[key].get()
+        return wrapper
+    return decorator

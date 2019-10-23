@@ -8,7 +8,7 @@ from functools import wraps
 
 from api import configuration
 from api.authentication import AuthenticationManager
-from wazuh.common import rbac, system_agents, system_groups, broadcast
+from wazuh.common import rbac, broadcast
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
 from wazuh.exception import WazuhError
 from wazuh.rbac.orm import RolesManager, PoliciesManager
@@ -35,25 +35,16 @@ def _expand_resource(resource):
     name, attribute, value = resource.split(':')
     resource_type = ':'.join([name, attribute])
 
-    # Set agents context variable
-    if resource_type == 'agent:id':
-        system_agents.set(get_agents_info())
-
     # This is the special case, expand_group can receive * or the name of the group. That's why it' s always called
     if resource_type == 'agent:group':
-        system_agents.set(get_agents_info())
         return expand_group(value)
-
-    # Set groups context variable
-    if resource_type == 'group:id':
-        system_groups.set(get_groups())
 
     # We need to transform the wildcard * to the resource of the system
     if value == '*':
         if resource_type == 'agent:id':
-            return system_agents.get()
+            return get_agents_info()
         elif resource_type == 'group:id':
-            return system_groups.get()
+            return get_groups()
         elif resource_type == 'role:id':
             with RolesManager() as rm:
                 roles = rm.get_roles()
