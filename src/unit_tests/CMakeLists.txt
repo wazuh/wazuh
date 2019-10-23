@@ -26,7 +26,7 @@ endif()
 
 
 # Add compiling flags
-add_compile_options(-ggdb -g -coverage)
+add_compile_options(-ggdb -O0 -g -coverage)
 
 
 # Enable testing
@@ -161,23 +161,23 @@ endif()
 
 add_custom_target(coverage
     # Cleanup lcov
-    COMMAND ${LCOV_PATH}  -directory ${SRC_FOLDER} --zerocounters
+    COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} -directory ${SRC_FOLDER} --rc lcov_branch_coverage=1 --zerocounters
 
     # Create baseline to make sure untouched files show up in the report
-    COMMAND ${LCOV_PATH} -q -c -i -d ${SRC_FOLDER} -o coverage.base
+    COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -c -i -d ${SRC_FOLDER} --rc lcov_branch_coverage=1 -o coverage.base
 
     # Run tests
     COMMAND ctest
 
     # Capturing lcov counters and generating report
-    COMMAND ${LCOV_PATH} -q --directory ${SRC_FOLDER} --capture --output-file coverage.info
+    COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} --directory ${SRC_FOLDER} --capture --rc lcov_branch_coverage=1 --output-file coverage.info
 
     # Add baseline counters
-    COMMAND ${LCOV_PATH} -q -a coverage.base -a coverage.info --output-file coverage.total
-    COMMAND ${LCOV_PATH} --remove coverage.total "*external/*" --output-file coverage.info.cleaned
+    COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -a coverage.base -a coverage.info --rc lcov_branch_coverage=1 --output-file coverage.total
+    COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} --remove coverage.total "*external/*" --rc lcov_branch_coverage=1 --output-file coverage.info.cleaned
 
     # Generate HTML report
-    COMMAND ${GENHTML_PATH} -q --output-directory coverage-report --title "WAZUH tests coverage" --legend coverage.info.cleaned
+    COMMAND ${GENHTML_PATH} -q --output-directory coverage-report --title "WAZUH unit-tests coverage" --rc lcov_branch_coverage=1 --legend coverage.info.cleaned
 
     # Clean counters
     COMMAND ${CMAKE_COMMAND} -E remove coverage.base coverage.total coverage.info.cleaned
