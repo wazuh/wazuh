@@ -212,7 +212,7 @@ char *get_converted_link_path(int position);
 int audit_init(void);
 char * audit_get_id(const char * event);
 int init_regex(void);
-int add_audit_rules_syscheck(void);
+int add_audit_rules_syscheck(bool first_time);
 void audit_read_events(int *audit_sock, int reading_mode);
 void audit_set_db_consistency(void);
 int check_auditd_enabled(void);
