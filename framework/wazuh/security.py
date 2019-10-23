@@ -94,8 +94,6 @@ def update_user(username=None, password=None):
         query = auth.update_user(username[0], password)
         if query is False:
             result.add_failed_item(id_=username[0], error=WazuhError(5001))
-        elif query == 'admin':
-            result.add_failed_item(id_=username[0], error=WazuhError(5004))
         else:
             result.affected_items.append(auth.get_user(username[0]))
             result.total_affected_items += 1

@@ -407,7 +407,7 @@ stages:
           total_failed_items: 0
         message: All specified roles were shown
 
-  - name: Get a specified roles by its id (It doesn't exist but we have all the permissions on the resource roles)
+  - name: Get a specified role by its id (It doesn't exist but we have all the permissions on the resource roles)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       headers:
@@ -710,6 +710,60 @@ stages:
         <<: *permission_denied
 
 ---
+test_name: CREATE LINK ROLE-POLICIES RBAC
+
+stages:
+
+  - name: Create one specified link between one role and a list of policies (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/4/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        policy_ids: 5,6,7
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4000
+                message: 'Permission denied: Resource type: policy:id'
+                remediation: !anystr
+              id:
+                - '6'
+                - '7'
+            - error:
+                code: 4011
+                message: The specified role-policy already exist
+                remediation: !anything
+              id:
+                - '5'
+          total_affected_items: 0
+          total_failed_items: 3
+        message: No link created to role 4
+
+---
+test_name: DELETE LINK ROLE-POLICIES RBAC
+
+stages:
+
+  - name: Delete one specified link between one role and a list of policies (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/4/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        policy_ids: 5,6,7
+    response:
+      status_code: 400
+      body:
+        <<: *permission_denied
+
+---
 test_name: DELETE USERS RBAC
 
 stages:
@@ -803,7 +857,7 @@ test_name: DELETE ROLES RBAC
 
 stages:
 
-  - name: Delete one specified role in the system (Allow)
+  - name: Delete all roles in the system (Allow)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       headers:

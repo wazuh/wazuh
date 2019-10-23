@@ -139,3 +139,17 @@ def environment_white_security_rbac():
         else:
             values['retries'] += 1
     down_env()
+
+
+@pytest.fixture(name="security_black_rbac_tests", scope="session")
+def environment_black_security_rbac():
+    values = build_and_up("security_black_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    # down_env()
