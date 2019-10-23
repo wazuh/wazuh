@@ -132,7 +132,10 @@ int realtime_process()
         for (size_t i = 0; i < (size_t) len; i += REALTIME_EVENT_SIZE + event->len) {
             event = (struct inotify_event *) (void *) &buf[i];
 
-            if (event->len) {
+            if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
+                mwarn("Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
+                send_log_msg("ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
+            } else if (event->len) {
                 char wdchar[33];
                 char final_name[MAX_LINE + 1];
                 char *entry;

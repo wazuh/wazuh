@@ -86,6 +86,13 @@ int send_rootcheck_msg(const char *msg)
     return (0);
 }
 
+// Send a message related to logs
+int send_log_msg(const char * msg)
+{
+    fim_send_msg(LOCALFILE_MQ, SYSCHECK, msg);
+    return (0);
+}
+
 
 // Periodically run the integrity checker
 void start_daemon()
