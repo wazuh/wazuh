@@ -489,6 +489,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     SYSTEMTIME system_time;
 
     if (action == EvtSubscribeActionDeliver) {
+        fim_element *item;
         char hash_id[21];
 
         // Extract the necessary memory size
@@ -748,6 +749,9 @@ add_whodata_evt:
             break;
             // Close fd
             case 4658:
+                os_calloc(1, sizeof(fim_element), item);
+                os_calloc(1, sizeof(struct stat), item->statbuf);
+
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
                     unsigned int mask = w_evt->mask;
                     if (!w_evt->scan_directory) {
@@ -762,14 +766,14 @@ add_whodata_evt:
                         } else {
                             // At this point the file can be created
                         }
-                        fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+                        fim_checker(w_evt->path, item, w_evt);
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         if (mask & DELETE) {
-                            fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+                            fim_checker(w_evt->path, item, w_evt);
                         } else if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             // Check that a new file has been added
                             GetSystemTime(&w_dir->timestamp);
-                            fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+                            fim_checker(w_evt->path, item, w_evt);
 
                             mdebug1(FIM_WHODATA_SCAN, w_evt->path);
                         } else {
@@ -781,7 +785,10 @@ add_whodata_evt:
                     free_win_whodata_evt(w_evt);
                 } // In else section: The file was opened before Wazuh started Syscheck.
 
+                os_free(item->statbuf);
+                os_free(item);
             break;
+
             default:
                 merror(FIM_ERROR_WHODATA_EVENTID);
                 retval = 1;

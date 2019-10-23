@@ -46,6 +46,13 @@ typedef enum fim_scan_event {
     FIM_SCAN_END
 } fim_scan_event;
 
+typedef struct fim_element {
+    struct stat *statbuf;
+    int index;
+    int configuration;
+    int mode;
+} fim_element;
+
 /* Win32 does not have lstat */
 #ifdef WIN32
     #define w_stat(x, y) stat(x, y)
@@ -76,13 +83,13 @@ void read_internal(int debug_level);
 int fim_scan();
 
 //
-int fim_directory (char * path, int dir_position, fim_event_mode mode, whodata_evt * w_evt);
+void fim_checker(char * path, fim_element *item, whodata_evt *w_evt);
 
 //
-int fim_check_file (char * file_name, int dir_position, fim_event_mode mode, whodata_evt * w_evt);
+int fim_directory (char * dir, fim_element *item, whodata_evt * w_evt);
 
 //
-int fim_process_event(char * file, fim_event_mode mode, whodata_evt *w_evt);
+int fim_file (char * file, fim_element *item, whodata_evt * w_evt);
 
 //
 void fim_realtime_event(char *file);
@@ -91,7 +98,7 @@ void fim_realtime_event(char *file);
 void fim_whodata_event(whodata_evt * w_evt);
 
 //
-void fim_audit_inode_event(char *file, char inode_key[], fim_event_mode mode, whodata_evt * w_evt);
+void fim_audit_inode_event(char *file, const char *inode_key, fim_event_mode mode, whodata_evt * w_evt);
 
 //
 int fim_registry_event (char * key, fim_entry_data * data, int pos);
@@ -103,7 +110,7 @@ int fim_configuration_directory(const char * path, const char entry[]);
 int fim_check_depth(char * path, int dir_position);
 
 //
-fim_entry_data * fim_get_data (const char * file_name, struct stat *file_stat, fim_event_mode mode, int options);
+fim_entry_data * fim_get_data (const char * file_name, fim_element *item);
 
 //
 void init_fim_data_entry(fim_entry_data *data);

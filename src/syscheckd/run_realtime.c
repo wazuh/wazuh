@@ -246,6 +246,10 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     }
 
     if (dwBytes) {
+        fim_element *item;
+        os_calloc(1, sizeof(fim_element), item);
+        os_calloc(1, sizeof(struct stat), item->statbuf);
+
         do {
             pinfo = (PFILE_NOTIFY_INFORMATION) &rtlocald->buffer[offset];
             offset += pinfo->NextEntryOffset;
@@ -271,10 +275,15 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
             Sleep(syscheck.rt_delay);
 
-            /* Check the change */
             str_lowercase(final_path);
-            fim_process_event(final_path, FIM_REALTIME, NULL);
+            item->mode = FIM_REALTIME;
+
+            /* Check the change */
+            fim_checker(final_path, item, NULL);
         } while (pinfo->NextEntryOffset != 0);
+
+        os_free(item->statbuf);
+        os_free(item);
     }
 
     realtime_win32read(rtlocald);
