@@ -766,7 +766,7 @@ int test_no_rc_execute() {
     pthread_barrier_init (&barrier, NULL, MAX_TEST_THREADS);
 
     for (i = 0; i < MAX_TEST_THREADS; i++) {
-        if (error = CreateThreadJoinable(&threads[i], test_no_rc_exec_thread, &regex), error) {
+        if (error = CreateThreadJoinable(&threads[i], test_no_rc_exec_thread, &regex, 8192), error) {
             goto end;
         }
     }
