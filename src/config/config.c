@@ -51,8 +51,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oslogging = "logging";                  /* Logging Config */
     const char *oscluster = "cluster";                  /* Cluster Config */
     const char *ossocket = "socket";                    /* Socket Config */
+    const char *ossca = "sca";                          /* Security Configuration Assessment */
     const char *osvulndet = "vulnerability-detector";   /* Vulnerability Detector Config */
-    const char *ossca = "sca";     /* Security Configuration Assessment */
     const char *osgcp = "gcp-pubsub";                   /* Google Cloud - Wazuh Module */
 
 #ifndef WIN32

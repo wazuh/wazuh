@@ -10,7 +10,7 @@
  */
 
 #include "wmodules.h"
-#include <os_net/os_net.h>
+#include "os_net/os_net.h"
 #include <sys/stat.h>
 #include "os_crypto/sha256/sha256_op.h"
 #include "shared.h"
@@ -176,16 +176,12 @@ void wm_gcp_run(wm_gcp *data) {
     char *save_ptr;
 
     for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
-        char *msg_name;
-
         switch (data->logging) {
             case 0:
                 mtinfo(WM_GCP_LOGTAG, "Logging disabled.");
                 break;
             case 1:
-                msg_name = strstr(line, "- DEBUG -");
-
-                if (msg_name) {
+                if (strstr(line, "- DEBUG -")) {
                     mtdebug1(WM_GCP_LOGTAG, "%s", line);
                 } else if (!strstr(line, "- WARNING -") && !strstr(line, "- INFO -")
                 && !strstr(line, "- ERROR -") && !strstr(line, "- CRITICAL -")) {

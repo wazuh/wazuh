@@ -42,6 +42,7 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
         gcp->pull_on_start = 1;
         gcp->logging = 2;
         gcp->interval = WM_DEF_INTERVAL / 2;
+        gcp->time_interval = 0;
         module->context = &WM_GCP_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = gcp;
@@ -106,16 +107,15 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
 
-            char relative_path[PATH_MAX] = {0};
-
-            sprintf(relative_path, "%s/", DEFAULTDIR);
-            strcat(relative_path, nodes[i]->content);
-
             char realpath_buffer[PATH_MAX] = {0};
 
             if(nodes[i]->content[0] == '/') {
                 sprintf(realpath_buffer, "%s", nodes[i]->content);
             } else {
+                char relative_path[PATH_MAX] = {0};
+
+                sprintf(relative_path, "%s/", DEFAULTDIR);
+                strcat(relative_path, nodes[i]->content);
                 const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
                 if (!realpath_buffer_ref) {
                     mwarn("File '%s' from tag '%s' not found.", realpath_buffer, XML_CREDENTIALS_FILE);
@@ -162,13 +162,13 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
             }
         }
         else if (!strcmp(nodes[i]->element, XML_MAX_MESSAGES)) {
-            int max_messages = eval_bool(nodes[i]->content);
-
-            if(max_messages == OS_INVALID) {
-                merror("Invalid content for tag '%s'", XML_ENABLED);
+            if (!nodes[i]->content) {
+                merror("Empty content for tag '%s'", XML_MAX_MESSAGES);
                 return OS_INVALID;
             }
-            gcp->max_messages = max_messages;
+
+            char *endptr;
+            gcp->max_messages = strtoul(nodes[i]->content, &endptr, 0);
         }
         else if (!strcmp(nodes[i]->element, XML_PULL_ON_START)) {
             int pull_on_start = eval_bool(nodes[i]->content);
