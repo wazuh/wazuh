@@ -23,6 +23,7 @@ typedef struct os_info {
     char *release;
     char *version;
     char *machine;
+    char *os_release;
 } os_info;
 
 char *OSX_ReleaseName(const int version);

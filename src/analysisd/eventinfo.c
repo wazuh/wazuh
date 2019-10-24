@@ -236,6 +236,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
             continue;
         }
         frequency_count++;
+
         /* If reached here, we matched */
         my_lf->matched = rule->level;
         lf->matched = rule->level;
@@ -270,7 +271,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 
     /* Check if sid search is valid */
     if (!list) {
-        merror("No group search!");
+        merror("No group search.");
         return NULL;
     }
 
@@ -448,6 +449,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
                 }
             }
         }
+
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
@@ -458,14 +460,15 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 
 
         /* Check if the number of matches worked */
-        if (frequency_count < rule->frequency) {
-            if (frequency_count <= 10) {
-                add_lastevt(my_lf->last_events, frequency_count, lf->full_log);
-            }
+        if (frequency_count <= 10) {
+            add_lastevt(my_lf->last_events, frequency_count, lf->full_log);
+        }
 
+        if (frequency_count < rule->frequency) {
             frequency_count++;
             continue;
         }
+        frequency_count++;
 
         /* If reached here, we matched */
         my_lf->matched = rule->level;

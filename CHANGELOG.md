@@ -1,10 +1,16 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.12.0]
+
+### Added
+- Add support for monitoring AWS S3 buckets in GovCloud regions. ([#3953](https://github.com/wazuh/wazuh/issues/3953))
+
 ## [v3.11.0]
 
 ### Added
 
+- Add support to Windows agents for vulnerability detector. ([#2787](https://github.com/wazuh/wazuh/pull/2787))
 - Make the Wazuh service to start after the network systemd unit (by @VAdamec). ([#1106](https://github.com/wazuh/wazuh/pull/1106))
 - Add process inventory support for Mac OS X agents. ([#3322](https://github.com/wazuh/wazuh/pull/3322))
 - Add port inventory support for MAC OS X agents. ([#3349](https://github.com/wazuh/wazuh/pull/3349))
@@ -37,6 +43,7 @@ All notable changes to this project will be documented in this file.
 - Fix service's installation path for CentOS 8. ([#4060](https://github.com/wazuh/wazuh/pull/4060))
 - Add macOS Catalina to the list of detected versions. ([#4061](https://github.com/wazuh/wazuh/pull/4061))
 - Prevent FIM from producing false negatives due to wrong checksum comparison. ([#4066](https://github.com/wazuh/wazuh/pull/4066))
+- Fix `previous_output` count for alerts when matching by group. ([#4097](https://github.com/wazuh/wazuh/pull/4097))
 
 
 ## [v3.10.2] - 2019-09-23
