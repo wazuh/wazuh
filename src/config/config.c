@@ -99,7 +99,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
 #endif
-    const char *oswmodules_config = "wazuh_modules";    /* Wazuh Modules Config */
+    const char *oswmodules_config = "modules";    /* Wazuh Modules Config */
     const char *oswdatabase = "database";               /* Wazuh Database Config */
     const char *oswdownload = "download";               /* Wazuh Download Config */
 
