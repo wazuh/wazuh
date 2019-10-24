@@ -47,7 +47,7 @@ list(APPEND tests_names "test_version_op")
 list(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
 list(APPEND tests_names "test_create_db")
-list(APPEND tests_flags "-Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_delete -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_replace -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Get_ex \
+list(APPEND tests_flags "-Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_replace -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Get_ex \
                          -Wl,--wrap,OSHash_Add -Wl,--wrap,lstat")
 
 list(APPEND tests_names "test_syscheck_audit")

@@ -27,10 +27,6 @@ int __wrap_rbtree_replace() {
     return mock();
 }
 
-int __wrap_rbtree_delete() {
-    return mock();
-}
-
 int __wrap_OSHash_Add() {
     return mock();
 }
@@ -582,7 +578,7 @@ void test_fim_check_restrict_success(void **state)
     int ret;
 
     OSMatch *restriction;
-    os_calloc(1, sizeof(OSMatch), restriction);
+    restriction = calloc(1, sizeof(OSMatch));
     OSMatch_Compile("test$", restriction, 0);
 
     ret = fim_check_restrict("my_test", restriction);
@@ -597,7 +593,7 @@ void test_fim_check_restrict_failure(void **state)
     int ret;
 
     OSMatch *restriction;
-    os_calloc(1, sizeof(OSMatch), restriction);
+    restriction = calloc(1, sizeof(OSMatch));
     OSMatch_Compile("test$", restriction, 0);
 
     ret = fim_check_restrict("my_test_", restriction);
