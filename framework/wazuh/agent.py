@@ -57,7 +57,7 @@ def get_agents_summary_status(agent_list=None):
     """Counts the number of agents by status.
 
     :param agent_list: List of agents ID's.
-    :return: WazuhResult
+    :return: WazuhResult.
     """
     db_query = WazuhDBQueryAgents(limit=None, select=['status'], filters={'id': agent_list})
     data = db_query.run()
@@ -75,7 +75,7 @@ def get_agents_summary_os(agent_list=None):
     """Gets a list of available OS.
 
     :param agent_list: List of agents ID's.
-    :return: WazuhResult
+    :return: WazuhResult.
     """
     db_query = WazuhDBQueryDistinctAgents(select=['os.platform'], filters={'id': agent_list},
                                           default_sort_field='os_platform', min_select_fields=set())
@@ -84,19 +84,21 @@ def get_agents_summary_os(agent_list=None):
 
 
 @expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1703]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1703]})
 def restart_agents(agent_list=None):
-    """Restarts a list of agents
+    """Restarts a list of agents..
 
     :param agent_list: List of agents ID's.
-    :return: Message.
+    :return: AffectedItemsWazuhResult.
     """
     result = AffectedItemsWazuhResult(none_msg='Could not send command to any agent',
                                       all_msg='Restart command sent to all agents',
                                       some_msg='Could not send command to some agents')
+
+    system_agents = get_agents_info()
     for agent_id in agent_list:
         try:
-            if agent_id not in common.system_agents.get():
+            if agent_id not in system_agents:
                 raise WazuhError(1701)
             if agent_id == "000":
                 raise WazuhError(1703)
@@ -111,7 +113,8 @@ def restart_agents(agent_list=None):
     return result
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"])
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701]})
 def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, 
                filters=None, q=None):
     """Gets a list of available agents with basic attributes.
@@ -124,7 +127,7 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
     :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
     :param filters: Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
     :param q: Defines query to filter in DB.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    :return: AffectedItemsWazuhResult.
     """
     result = AffectedItemsWazuhResult(all_msg='All selected agents information is shown',
                                       some_msg='Some agents information is not shown',
@@ -150,11 +153,11 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
 
 
 def get_agent_by_name(name=None, select=None):
-    """Gets an agent by its name
+    """Gets an agent by its name.
 
-    :param name: Agent_name
+    :param name: Agent_name.
     :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    :return: AffectedItemsWazuhResult.
     """
     db_query = WazuhDBQueryAgents(filters={'name': name})
     data = db_query.run()
@@ -174,10 +177,10 @@ def get_agents_in_group(group_id, offset=0, limit=common.database_limit, sort=No
     :param limit: Maximum number of items to return.
     :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
     :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-    :param filters: Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}.
+    :param filters: Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}.
     :param q: Defines query to filter in DB.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    :return: AffectedItemsWazuhResult.
     """
     if not Agent.group_exists(group_id):
         raise WazuhError(1710)
@@ -187,12 +190,13 @@ def get_agents_in_group(group_id, offset=0, limit=common.database_limit, sort=No
     return get_agents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, q=q)
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"])
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701]})
 def get_agents_keys(agent_list=None):
-    """Get the key of existing agents
+    """Get the key of existing agents.
 
     :param agent_list: List of agents ID's.
-    :return: Agent key.
+    :return: AffectedItemsWazuhResult.
     """
     result = AffectedItemsWazuhResult(all_msg='Obtained keys for all selected agents',
                                       some_msg='Some agent keys were not obtained',
@@ -212,7 +216,7 @@ def get_agents_keys(agent_list=None):
 
 
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1703]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1703]})
 def delete_agents(agent_list=None, backup=False, purge=False, status="all", older_than="7d"):
     """Deletes a list of agents.
 
@@ -223,8 +227,7 @@ def delete_agents(agent_list=None, backup=False, purge=False, status="all", olde
     "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never_connected agents, uses the register date.
     :param status: Filters by agent status: active, disconnected or never_connected. Multiples statuses separated
     by commas.
-    :return: Dictionary with affected_agents (deleted agents), timeframe applied, failed_ids if it necessary
-    (agents that could not be deleted), and a message.
+    :return: AffectedItemsWazuhResult.
     """
     result = AffectedItemsWazuhResult(all_msg='All selected agents were deleted',
                                       some_msg='Some agents were not deleted',
@@ -271,7 +274,7 @@ def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1):
     :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
     :param key: name of the new agent.
     :param force_time: Remove old agent with same IP if disconnected since <force_time> seconds.
-    :return: Agent ID.
+    :return: Agent ID and Agent key.
     """
     # Check length of agent name
     if len(name) > 128:
@@ -282,21 +285,22 @@ def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1):
     return WazuhResult({'id': new_agent.id, 'key': new_agent.key})
 
 
-@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"])
-def get_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_ascending=True,
-               search_text=None, complementary_search=False, search_in_fields=None, hash_algorithm='md5'):
+@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],
+                  post_proc_kwargs={'exclude_codes': [1710]})
+def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_ascending=True,
+                     search_text=None, complementary_search=False, search_in_fields=None, hash_algorithm='md5'):
     """Gets the existing groups.
 
     :param group_list: List of Group names.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
-    :param sort_by: Fields to sort the items by
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
+    :param sort_by: Fields to sort the items by.
+    :param sort_ascending: Sort in ascending (true) or descending (false) order.
+    :param search_text: Text to search.
+    :param complementary_search: Find items without the text to search.
+    :param search_in_fields: Fields to search in.
     :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    :return: AffectedItemsWazuhResult.
     """
 
     # Connect DB
@@ -367,13 +371,13 @@ def get_group_files(group_list=None, offset=0, limit=None, search_text=None, sea
     :param group_list: List of Group names.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
-    :param sort_by: Fields to sort the items by
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
+    :param sort_by: Fields to sort the items by.
+    :param sort_ascending: Sort in ascending (true) or descending (false) order.
+    :param search_text: Text to search.
+    :param complementary_search: Find items without the text to search.
+    :param search_in_fields: Fields to search in.
     :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    :return: WazuhResult.
     """
     # We access unique group_id from list, this may change if and when we decide to add option to get files for
     # a list of groups
@@ -446,16 +450,17 @@ def create_group(group_id):
 
 
 @expose_resources(actions=["group:delete"], resources=["group:id:{group_list}"],
-                  post_proc_kwargs={'exclude_codes': [1712]})
+                  post_proc_kwargs={'exclude_codes': [1710, 1712]})
 def delete_groups(group_list=None):
     """Delete a list of groups and remove it from every agent assignments.
 
     :param group_list: List of Group names.
-    :return: Confirmation message.
+    :return: AffectedItemsWazuhResult.
     """
     result = AffectedItemsWazuhResult(all_msg='All selected groups were deleted',
                                       some_msg='Some groups were not deleted',
                                       none_msg='No group was deleted')
+
     affected_agents = set()
     system_groups = get_groups()
     for group_id in group_list:
@@ -467,13 +472,15 @@ def delete_groups(group_list=None):
                 raise WazuhError(1712)
             agent_list = list(map(operator.itemgetter('id'),
                                   WazuhDBQueryMultigroups(group_id=group_id, limit=None).run()['items']))
-            affected_agents_result = remove_agents_from_group(agent_list=agent_list, group_list=[group_id])
-            if affected_agents_result.total_failed_items == 0:
-                Agent.delete_single_group(group_id)
-                result.affected_items.append(group_id)
-                affected_agents.update(affected_agents_result.affected_items)
-            else:
-                raise WazuhError(4000)
+            try:
+                affected_agents_result = remove_agents_from_group(agent_list=agent_list, group_list=[group_id])
+                if affected_agents_result.total_failed_items != 0:
+                    raise WazuhError(4015)
+            except WazuhError:
+                raise WazuhError(4015)
+            Agent.delete_single_group(group_id)
+            result.affected_items.append(group_id)
+            affected_agents.update(affected_agents_result.affected_items)
         except WazuhException as e:
             result.add_failed_item(id_=group_id, error=e)
 
@@ -487,15 +494,15 @@ def delete_groups(group_list=None):
 @expose_resources(actions=["group:modify_assignments"], resources=['group:id:{replace_list}'], post_proc_func=None)
 @expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_list}'], post_proc_func=None)
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1703, 1751, 1752, 1753]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1751, 1752, 1753]})
 def assign_agents_to_group(group_list=None, agent_list=None, replace=False, replace_list=None):
-    """Assign a list of agents to a group
+    """Assign a list of agents to a group.
 
     :param group_list: List of Group names.
     :param agent_list: List of Agent IDs.
     :param replace: Whether to append new group to current agent's group or replace it.
-    :param replace_list: List of Group names that can be replaced
-    :return: Confirmation message.
+    :param replace_list: List of Group names that can be replaced.
+    :return: AffectedItemsWazuhResult.
     """
     group_id = group_list[0]
     result = AffectedItemsWazuhResult(all_msg=f'All selected agents were assigned to {group_id}'
@@ -528,7 +535,7 @@ def assign_agents_to_group(group_list=None, agent_list=None, replace=False, repl
 @expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_list}'], post_proc_func=None)
 @expose_resources(actions=["agent:modify_group"], resources=['agent:id:{agent_list}'], post_proc_func=None)
 def remove_agent_from_group(group_list=None, agent_list=None):
-    """Removes an agent assignment from a specified group
+    """Removes an agent assignment from a specified group.
 
     :param group_list: List of Group names.
     :param agent_list: List of Agent IDs.
@@ -550,13 +557,13 @@ def remove_agent_from_group(group_list=None, agent_list=None):
 
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 @expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"],
-                  post_proc_kwargs={'exclude_codes': [1734, 1745]})
+                  post_proc_kwargs={'exclude_codes': [1710, 1734, 1745]})
 def remove_agent_from_groups(agent_list=None, group_list=None):
-    """Removes an agent assigment from a list of groups
+    """Removes an agent assigment from a list of groups.
 
     :param agent_list: List of agents ID's.
     :param group_list: List of Group names.
-    :return: Confirmation message.
+    :return: AffectedItemsWazuhResult.
     """
     agent_id = agent_list[0]
     result = AffectedItemsWazuhResult(all_msg='Specified agent removed from shown groups',
@@ -594,13 +601,13 @@ def remove_agent_from_groups(agent_list=None, group_list=None):
 
 @expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"], post_proc_func=None)
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1703, 1734]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1734]})
 def remove_agents_from_group(agent_list=None, group_list=None):
-    """Remove a list of agents assignment from a specified group
+    """Remove a list of agents assignment from a specified group.
 
     :param agent_list: List of agents ID's.
     :param group_list: List of Group names.
-    :return: Confirmation message.
+    :return: AffectedItemsWazuhResult.
     """
     group_id = group_list[0]
     result = AffectedItemsWazuhResult(all_msg=f'All selected agents were removed from group {group_id}',
@@ -627,7 +634,7 @@ def remove_agents_from_group(agent_list=None, group_list=None):
     return result
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"])
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
                         q=None):
     """Gets the outdated agents.
@@ -639,7 +646,7 @@ def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, 
     :param search: Looks for items with the specified string.
     :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
     :param q: Defines query to filter in DB.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    :return: AffectedItemsWazuhResult.
     """
 
     result = AffectedItemsWazuhResult(all_msg='All selected agents information is shown',
@@ -667,11 +674,11 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, ch
     """Read upgrade result output from agent.
 
     :param agent_list: List of agents ID's.
-    :param wpk_repo: URL for WPK download
-    :param version: Version to upgrade to
-    :param force: force the update even if it is a downgrade
-    :param chunk_size: size of each update chunk
-    :param use_http: False for HTTPS protocol, True for HTTP protocol
+    :param wpk_repo: URL for WPK download.
+    :param version: Version to upgrade to.
+    :param force: force the update even if it is a downgrade.
+    :param chunk_size: size of each update chunk.
+    :param use_http: False for HTTPS protocol, True for HTTP protocol.
     :return: Upgrade message.
     """
     # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
@@ -687,7 +694,7 @@ def get_upgrade_result(agent_list=None, timeout=3):
     """Read upgrade result output from agent.
 
     :param agent_list: List of agents ID's.
-    :param timeout: Maximum time for the call to be considered failed
+    :param timeout: Maximum time for the call to be considered failed.
     :return: Upgrade result.
     """
     # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
@@ -702,8 +709,8 @@ def upgrade_agents_custom(agent_list=None, file_path=None, installer=None):
     """Read upgrade result output from agent.
 
     :param agent_list: List of agents ID's.
-    :param file_path: Path to the installation file
-    :param installer: Selected installer
+    :param file_path: Path to the installation file.
+    :param installer: Selected installer.
     :return: Upgrade message.
     """
     if not file_path or not installer:
@@ -721,9 +728,9 @@ def get_agent_config(agent_list=None, component=None, config=None):
     """Read selected configuration from agent.
 
     :param agent_list: List of agents ID's.
-    :param component: Selected component
-    :param config: Configuration to get, written on disk
-    :return: WazuhResult(Loaded configuration in JSON)
+    :param component: Selected component.
+    :param config: Configuration to get, written on disk.
+    :return: WazuhResult(Loaded configuration in JSON).
     """
     # We access unique agent_id from list, this may change if and when we decide a final way to handle get responses
     # with failed ids and a list of agents
@@ -737,21 +744,25 @@ def get_agent_config(agent_list=None, component=None, config=None):
     return WazuhResult(my_agent.getconfig(component=component, config=config))
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"])
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703]})
 def get_agents_sync_group(agent_list=None):
     """Get agents configuration sync status.
 
     :param agent_list: List of agents ID's.
-    :return Sync status
+    :return AffectedItemsWazuhResult.
     """
     result = AffectedItemsWazuhResult(none_msg='No sync info shown.',
                                       all_msg='Sync info shown for all selected agents.',
                                       some_msg='Could not show sync info for some selected agents.')
 
+    system_agents = get_agents_info()
     for agent_id in agent_list:
         try:
             if agent_id == "000":
                 raise WazuhError(1703)
+            if agent_id not in system_agents:
+                raise WazuhError(1701)
             else:
                 # Check if agent exists and it is active
                 agent_info = Agent(agent_id).get_basic_information()
@@ -777,13 +788,13 @@ def get_agents_sync_group(agent_list=None):
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_file_conf(group_list=None, type_conf=None, return_format=None, filename=None):
-    """ Reads configuration file for specified group
+    """ Reads configuration file for specified group.
 
     :param group_list: List of Group names.
-    :param type_conf: Type of file
-    :param return_format: Format of the answer (xml or json)
+    :param type_conf: Type of file.
+    :param return_format: Format of the answer (xml or json).
     :param filename: Filename to read config from.
-    :return: agent.conf as dictionary.
+    :return: WazuhResult.
     """
     # We access unique group_id from list, this may change if and when we decide to add option to get configuration
     # files for a list of groups
@@ -795,13 +806,13 @@ def get_file_conf(group_list=None, type_conf=None, return_format=None, filename=
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_agent_conf(group_list=None, filename='agent.conf', offset=0, limit=common.database_limit):
-    """ Reads agent conf for specified group
+    """ Reads agent conf for specified group.
 
     :param group_list: List of Group names.
     :param filename: Filename to read config from.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
-    :return: agent.conf as dictionary.
+    :return: WazuhResult.
     """
     # We access unique group_id from list, this may change if and when we decide to add option to get agent conf for
     # a list of groups
@@ -812,12 +823,12 @@ def get_agent_conf(group_list=None, filename='agent.conf', offset=0, limit=commo
 
 @expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], post_proc_func=None)
 def upload_group_file(group_list=None, file_data=None, file_name='agent.conf'):
-    """Updates a group file
+    """Updates a group file.
 
     :param group_list: List of Group names.
-    :param file_data: Relative path of temporary file to upload
-    :param file_name: File name to update
-    :return: Confirmation message in string
+    :param file_data: Relative path of temporary file to upload.
+    :param file_name: File name to update.
+    :return: Confirmation message.
     """
     # We access unique group_id from list, this may change if and when we decide to add option to update files for
     # a list of groups

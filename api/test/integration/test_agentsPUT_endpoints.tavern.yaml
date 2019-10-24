@@ -207,7 +207,7 @@ stages:
     # PUT /agents/group/group2/configuration
   - name: Update group2 configuration
     request:
-      url: http://localhost:55000/agents/groups/group2/configuration
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/group2/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -222,7 +222,7 @@ stages:
     # PUT /agents/group/wrong_group/configuration
   - name: Try to update configuration of a non existing group
     request:
-      url: http://localhost:55000/agents/groups/wrong_group/configuration
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_group/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -237,7 +237,7 @@ stages:
     # PUT /agents/group/group1/configuration
   - name: Try to update configuration using an empty file
     request:
-      url: http://localhost:55000/agents/groups/group1/configuration
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/group1/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -250,7 +250,7 @@ stages:
     # PUT /agents/group/group1/configuration
   - name: Try to update configuration using an invalid configuration file
     request:
-      url: http://localhost:55000/agents/groups/group1/configuration
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/group1/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -265,7 +265,7 @@ stages:
     # PUT /agents/group/group1/configuration
   - name: Try to update configuration using a wrong configuration file
     request:
-      url: http://localhost:55000/agents/groups/group1/configuration
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/group1/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -375,7 +375,9 @@ stages:
       body:
         data:
           affected_items: !anything
+          failed_items: !anything
           total_affected_items: 7
+          total_failed_items: 5
         message: !anystr
     delay_after: 40
 

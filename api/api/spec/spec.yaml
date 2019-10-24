@@ -157,9 +157,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/Agent'
-                  - type: array
+                $ref: '#/components/schemas/Agent'
 
     AllItemsResponseAgentsDistinct:
       allOf:
@@ -172,9 +170,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/AgentDistinct'
-                  - type: array
+                $ref: '#/components/schemas/AgentDistinct'
 
     AllItemsResponseGroups:
       allOf:
@@ -186,9 +182,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/AgentGroup'
-                  - type: array
+                $ref: '#/components/schemas/AgentGroup'
         - $ref: '#/components/schemas/AllItemsResponse'
 
     AllItemsResponseAgentIDs:
@@ -201,9 +195,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/AgentID'
-                  - type: array
+                $ref: '#/components/schemas/AgentID'
         - $ref: '#/components/schemas/AllItemsResponse'
 
     AllItemsResponseGroupIDs:
@@ -216,9 +208,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/GroupID'
-                  - type: array
+                $ref: '#/components/schemas/GroupID'
         - $ref: '#/components/schemas/AllItemsResponse'
 
     AllItemsResponseAgentsSimple:
@@ -232,9 +222,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/AgentSimple'
-                  - type: array
+                $ref: '#/components/schemas/AgentSimple'
 
     AllItemsResponseAgentsSynced:
       allOf:
@@ -247,9 +235,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/AgentSynced'
-                  - type: array
+                $ref: '#/components/schemas/AgentSynced'
 
     AllItemsResponseAgentsKeys:
       allOf:
@@ -262,9 +248,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/AgentIdKey'
-                  - type: array
+                $ref: '#/components/schemas/AgentIdKey'
 
     AllItemsResponseRoles:
       allOf:
@@ -277,9 +261,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/RolesResponse'
-                  - type: integer
+                $ref: '#/components/schemas/RolesResponse'
 
     AllItemsResponsePolicies:
       allOf:

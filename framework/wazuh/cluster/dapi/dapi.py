@@ -166,6 +166,7 @@ class DistributedAPI:
             common.rbac.set(self.rbac_permissions)
             common.broadcast.set(self.broadcasting)
             data = self.f(**self.f_kwargs)
+            common.reset_context_cache()
             self.logger.debug("Finished executing request locally")
             return data
         try:

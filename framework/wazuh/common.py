@@ -127,7 +127,6 @@ max_groups_per_multigroup = 256
 rbac: ContextVar[Dict] = ContextVar('rbac', default=dict())
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
 
-
 _context_cache = dict()
 
 
@@ -151,3 +150,11 @@ def context_cached(key):
             return _context_cache[key].get()
         return wrapper
     return decorator
+
+
+def reset_context_cache():
+    """Reset context cache
+    """
+
+    for context_var in _context_cache.values():
+        context_var.set(None)

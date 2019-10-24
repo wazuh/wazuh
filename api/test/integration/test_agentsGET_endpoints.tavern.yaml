@@ -892,7 +892,6 @@ stages:
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-
    response:
      status_code: 200
      body:
@@ -1718,8 +1717,7 @@ stages:
      body:
        data:
          affected_items:
-           - id:
-               '001'
+           - id: '001'
              synced: !anybool
          failed_items: []
          total_affected_items: 1
@@ -2057,7 +2055,7 @@ stages:
        limit: 2
    response:
      status_code: 200
-     body: &groups_id_response
+     body:
        data:
          affected_items:
            - id: '006'
@@ -2519,9 +2517,6 @@ stages:
 ---
 test_name: GET /agents/groups/{group_id}/files
 
-includes:
- - !include common.yaml
-
 stages:
 
  - name: Try get the files of a group
@@ -2745,9 +2740,6 @@ stages:
 ---
 test_name: GET /agents/groups/{group_id}/files/{filename}/json
 
-includes:
- - !include common.yaml
-
 stages:
 
  - name: Try get one file of a group
@@ -2785,9 +2777,6 @@ stages:
 
 ---
 test_name: GET /agents/groups/{group_id}/files/{filename}/xml
-
-includes:
- - !include common.yaml
 
 stages:
 
@@ -3079,9 +3068,6 @@ stages:
 ---
 test_name: GET /agents/no_group {sort,select}
 
-includes:
- - !include common.yaml
-
 marks:
  - parametrize:
      key: field
@@ -3124,9 +3110,6 @@ stages:
 
 ---
 test_name: GET /agents/outdated
-
-includes:
- - !include common.yaml
 
 stages:
 
@@ -3546,7 +3529,7 @@ test_name: GET /agents/summary/status
 
 stages:
 
- - name: Get the summary of an agent
+ - name: Get the agents status summary
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/summary/status"
      method: GET
@@ -3568,7 +3551,7 @@ test_name: GET /agents/summary/os
 stages:
 
  - name: Get the summary/os of all agents
-   request: &agents_summary_os_request
+   request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/summary/os"
      method: GET
      headers:

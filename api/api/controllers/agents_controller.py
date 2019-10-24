@@ -41,7 +41,6 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge
                 'status': status,
                 'older_than': older_than
                 }
-
     dapi = DistributedAPI(f=agent.delete_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -677,7 +676,7 @@ def get_list_group(pretty=False, wait_for_complete=False, list_groups=None, offs
                 'search_in_fields': ['name'],
                 'hash_algorithm': hash_}
 
-    dapi = DistributedAPI(f=agent.get_groups,
+    dapi = DistributedAPI(f=agent.get_agent_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
