@@ -288,6 +288,6 @@ class RBAChecker:
     # This is for TESTING. This method returns a list of hardcoded policies for testing
     @staticmethod
     def run_testing():
-        policies = []
+        testing_policies = []
 
-        return policies
+        return testing_policies
