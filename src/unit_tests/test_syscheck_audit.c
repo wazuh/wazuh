@@ -62,19 +62,19 @@ int __wrap__merror()
     return 0;
 }
 
-int __wrap__mdebug1()
-{
-    return 0;
-}
-
 int __wrap_fopen(const char *filename, const char *mode)
 {
     check_expected(filename);
     return mock();
 }
 
-int __wrap_fwrite()
+size_t __real_fwrite(const void * ptr, size_t size, size_t count, FILE * stream);
+size_t __wrap_fwrite(const void * ptr, size_t size, size_t count, FILE * stream)
 {
+    FILE * str = 0;
+    if ((void*)stream > (void*)ptr) {
+        return __real_fwrite(ptr, size, count, stream);
+    }
     return 1;
 }
 
@@ -400,10 +400,10 @@ void test_add_audit_rules_syscheck_not_added(void **state)
     (void) state;
 
     char *entry = "/var/test";
-    os_calloc(2, sizeof(char *), syscheck.dir);
-    os_calloc(strlen(entry) + 2, sizeof(char), syscheck.dir[0]);
+    syscheck.dir = calloc (2, sizeof(char *));
+    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
     snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
-    os_calloc(2, sizeof(int *), syscheck.opts);
+    syscheck.opts = calloc (2, sizeof(int *));
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
@@ -432,10 +432,10 @@ void test_add_audit_rules_syscheck_added(void **state)
     (void) state;
 
     char *entry = "/var/test";
-    os_calloc(2, sizeof(char *), syscheck.dir);
-    os_calloc(strlen(entry) + 2, sizeof(char), syscheck.dir[0]);
+    syscheck.dir = calloc(2, sizeof(char *));
+    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
     snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
-    os_calloc(2, sizeof(int *), syscheck.opts);
+    syscheck.opts = calloc(2, sizeof(int *));
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
@@ -467,8 +467,8 @@ void test_filterkey_audit_events_custom(void **state)
     (void) state;
 
     char *key = "test_key";
-    os_calloc(2, sizeof(char *), syscheck.audit_key);
-    os_calloc(strlen(key) + 2, sizeof(char), syscheck.audit_key[0]);
+    syscheck.audit_key = calloc(2, sizeof(char *));
+    syscheck.audit_key[0] = calloc(strlen(key) + 2, sizeof(char));
     snprintf(syscheck.audit_key[0], strlen(key) + 1, "%s", key);
 
     int ret;
@@ -487,8 +487,8 @@ void test_filterkey_audit_events_discard(void **state)
     (void) state;
 
     char *key = "test_key";
-    os_calloc(2, sizeof(char *), syscheck.audit_key);
-    os_calloc(strlen(key) + 2, sizeof(char), syscheck.audit_key[0]);
+    syscheck.audit_key = calloc(2, sizeof(char *));
+    syscheck.audit_key[0] = calloc(strlen(key) + 2, sizeof(char));
     snprintf(syscheck.audit_key[0], strlen(key) + 1, "%s", key);
 
     int ret;
