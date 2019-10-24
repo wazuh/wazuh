@@ -9,7 +9,7 @@ from typing import List
 import connexion
 
 import wazuh.ciscat as ciscat
-from api.models.base_model_ import Data
+from api.authentication import get_permissions
 from api.util import remove_nones_to_dict, parse_api_param, exception_handler, raise_if_exc
 from wazuh.cluster.dapi.dapi import DistributedAPI
 
@@ -45,7 +45,7 @@ def get_agents_ciscat_results(agent_id: str, pretty: bool = False, wait_for_comp
     :return: Data
     """
     f_kwargs = {
-        'agent_id': agent_id,
+        'agent_list': [agent_id],
         'offset': offset,
         'limit': limit,
         'sort': parse_api_param(sort, 'sort'),
@@ -69,9 +69,9 @@ def get_agents_ciscat_results(agent_id: str, pretty: bool = False, wait_for_comp
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    response = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return response, 200
