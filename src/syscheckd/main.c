@@ -17,6 +17,8 @@
 
 #ifndef WIN32
 
+// LCOV_EXCL_START
+
 /* Print help statement */
 __attribute__((noreturn)) static void help_syscheckd()
 {
@@ -279,3 +281,5 @@ int main(int argc, char **argv)
 }
 
 #endif /* !WIN32 */
+
+// LCOV_EXCL_STOP

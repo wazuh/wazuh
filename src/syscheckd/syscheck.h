@@ -223,6 +223,7 @@ void *audit_reload_thread();
 void *audit_healthcheck_thread(int *audit_sock);
 char *gen_audit_path(char *cwd, char *path0, char *path1);
 void audit_reload_rules(void);
+void audit_parse(char *buffer);
 int audit_health_check(int audit_socket);
 void clean_rules(void);
 int filterkey_audit_events(char *buffer);

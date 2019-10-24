@@ -406,6 +406,7 @@ int init_regex(void) {
 }
 
 
+// LCOV_EXCL_START
 // Init Audit events reader thread
 int audit_init(void) {
     audit_health_check_creation = 0;
@@ -480,13 +481,17 @@ int audit_init(void) {
     return 1;
 
 }
+// LCOV_EXCL_STOP
 
+
+// LCOV_EXCL_START
 void audit_set_db_consistency(void) {
     w_mutex_lock(&audit_mutex);
     audit_db_consistency_flag = 1;
     w_cond_signal(&audit_db_consistency);
     w_mutex_unlock(&audit_mutex);
 }
+// LCOV_EXCL_STOP
 
 
 // Extract id: node=... type=CWD msg=audit(1529332881.955:3867): cwd="..."
@@ -1074,13 +1079,16 @@ void audit_parse(char *buffer) {
 }
 
 
+// LCOV_EXCL_START
 void audit_reload_rules(void) {
     mdebug1(FIM_AUDIT_RELOADING_RULES);
     int rules_added = add_audit_rules_syscheck();
     mdebug1(FIM_AUDIT_RELOADED_RULES, rules_added);
 }
+// LCOV_EXCL_STOP
 
 
+// LCOV_EXCL_START
 void *audit_reload_thread() {
 
     sleep(RELOAD_RULES_INTERVAL);
@@ -1092,8 +1100,10 @@ void *audit_reload_thread() {
 
     return NULL;
 }
+// LCOV_EXCL_STOP
 
 
+// LCOV_EXCL_START
 void *audit_healthcheck_thread(int *audit_sock) {
 
     w_mutex_lock(&audit_hc_mutex);
@@ -1109,8 +1119,10 @@ void *audit_healthcheck_thread(int *audit_sock) {
 
     return NULL;
 }
+// LCOV_EXCL_STOP
 
 
+// LCOV_EXCL_START
 void * audit_main(int *audit_sock) {
     count_reload_retries = 0;
 
@@ -1184,6 +1196,7 @@ void * audit_main(int *audit_sock) {
 
     return NULL;
 }
+// LCOV_EXCL_STOP
 
 
 void audit_read_events(int *audit_sock, int mode) {
@@ -1324,6 +1337,7 @@ void audit_read_events(int *audit_sock, int mode) {
 }
 
 
+// LCOV_EXCL_START
 void clean_rules(void) {
     int i;
     w_mutex_lock(&audit_mutex);
@@ -1339,6 +1353,7 @@ void clean_rules(void) {
     }
     w_mutex_unlock(&audit_mutex);
 }
+// LCOV_EXCL_STOP
 
 
 int filterkey_audit_events(char *buffer) {

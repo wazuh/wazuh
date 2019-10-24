@@ -98,7 +98,7 @@ error:
     return strlen(*output);
 }
 
-
+// LCOV_EXCL_START
 #ifndef WIN32
 void * syscom_main(__attribute__((unused)) void * arg) {
     int sock;
@@ -181,3 +181,4 @@ void * syscom_main(__attribute__((unused)) void * arg) {
 }
 
 #endif
+// LCOV_EXCL_STOP
