@@ -1855,11 +1855,17 @@ int Test_Syscheck(const char *path, int type, char **output){
 void Free_Syscheck(syscheck_config *config) {
     if (config) {
         int i;
+        int pl = 0;
         free(config->opts);
         free(config->remote_db);
         free(config->db);
         free(config->scan_day);
         free(config->scan_time);
+        
+        while (config->dir[pl]) {
+                pl++;
+        }
+
         if (config->ignore) {
             for (i=0; config->ignore[i] != NULL; i++) {
                 free(config->ignore[i]);
@@ -1880,10 +1886,11 @@ void Free_Syscheck(syscheck_config *config) {
             free(config->nodiff);
         }
         if (config->converted_links) {
-            for (i=0; config->converted_links[i] != NULL; i++) {
-                free(config->converted_links[i]);
+            pl = pl + 1;
+            for (i = 0; i != pl; i ++) {
+                os_free(config->converted_links[i]);
             }
-            free(config->converted_links);
+            os_free(config->converted_links);
         }
         if (config->nodiff_regex) {
             for (i=0; config->nodiff_regex[i] != NULL; i++) {

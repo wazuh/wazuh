@@ -39,6 +39,15 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
 
     Config->hide_cluster_info = 0;
 
+    if (output){
+        if (Config->cluster_name)
+            free(Config->cluster_name);
+        if (Config->node_name)
+            free(Config->node_name);
+        if (Config->node_type)
+            free(Config->node_type);
+    }
+
     for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
             if (output == NULL) {

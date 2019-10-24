@@ -114,6 +114,27 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     regex.d_sub_strings = NULL;
     regex.mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
+    if (output){
+        if (Config->includes) {
+            int i;
+            for (i = 0; Config->includes[i]; i++) {
+                free(Config->includes[i]);
+            }
+        }
+        if (Config->lists) {
+            int i;
+            for (i = 0; Config->lists[i]; i++) {
+                free(Config->lists[i]);
+            }
+        }
+        if (Config->decoders) {
+            int i;
+            for (i = 0; Config->decoders[i]; i++) {
+                free(Config->decoders[i]);
+            }
+        } 
+    }
+
     if (node) {
         while (node[i]) {
             if (!node[i]->element) {

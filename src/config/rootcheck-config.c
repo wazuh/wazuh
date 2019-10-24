@@ -63,6 +63,23 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
 
     rootcheck = (rkconfig *)configp;
 
+    if (output && rootcheck){
+        if (rootcheck->rootkit_files)
+            free(rootcheck->rootkit_files);
+        if (rootcheck->rootkit_trojans)
+            free(rootcheck->rootkit_trojans);
+        if (rootcheck->winaudit)
+            free(rootcheck->winaudit);
+        if (rootcheck->unixaudit)
+            free(rootcheck->unixaudit);
+        if (rootcheck->winmalware)
+            free(rootcheck->winmalware);
+        if (rootcheck->winapps)
+            free(rootcheck->winapps);
+        if (rootcheck->basedir)
+            free(rootcheck->basedir);
+    }
+
     /* If rootcheck is defined, enable it by default */
     if (rootcheck->disabled == RK_CONF_UNPARSED) {
         rootcheck->disabled = RK_CONF_UNDEFINED;
