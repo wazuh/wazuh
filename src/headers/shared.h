@@ -170,6 +170,12 @@ typedef uint8_t u_int8_t;
 #define MSG_DONTWAIT MSG_NONBLOCK
 #endif
 
+#if defined(__GNUC__) && __GNUC__ >= 7
+#define fallthrough __attribute__ ((fallthrough))
+#else
+#define fallthrough ((void) 0)
+#endif
+
 extern const char *__local_name;
 /*** Global prototypes ***/
 /*** These functions will exit on error. No need to check return code ***/
