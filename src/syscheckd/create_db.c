@@ -87,7 +87,7 @@ int fim_scan() {
 
 void fim_checker(char *path, fim_element *item, whodata_evt *w_evt) {
     fim_entry_data *saved_data;
-    cJSON *json_event;
+    cJSON *json_event = NULL;
     int node;
     int depth;
 
@@ -130,10 +130,12 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt) {
         }
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-        char *json_formated = cJSON_PrintUnformatted(json_event);
-        send_syscheck_msg(json_formated);
-        os_free(json_formated);
-        cJSON_Delete(json_event);
+        if (json_event) {
+            char *json_formated = cJSON_PrintUnformatted(json_event);
+            send_syscheck_msg(json_formated);
+            os_free(json_formated);
+            cJSON_Delete(json_event);
+        }
 
         return;
     }
