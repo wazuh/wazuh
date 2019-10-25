@@ -373,7 +373,7 @@ int fim_whodata_initialize() {
 #endif
 
 #else
-    mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
+    mwarn(FIM_WARN_WHODATA_UNSUPPORTED);
 #endif
 
     return 0;
