@@ -357,7 +357,7 @@ int wdb_parse(char * input, char * output) {
                 } else {
                     mdebug1("Mitre DB Cannot execute SQL query; err database %s/%s.db: %s", WDB_DIR, WDB_MITRE_NAME, sqlite3_errmsg(wdb->db));
                     mdebug2("Mitre DB SQL query: %s", sql);
-                    snprintf(output, OS_MAXSTR + 1, "err Cannot execute SQL query; %s", sqlite3_errmsg(wdb->db));
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot execute Mitre database query; %s", sqlite3_errmsg(wdb->db));
                     result = -1;
                 }
             }
