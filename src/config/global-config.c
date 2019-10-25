@@ -125,6 +125,7 @@ int Read_Analysis(const OS_XML *xml, XML_NODE node, void *d1)
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else if (strcmp(node[i]->element, xml_fts) == 0) {
             /* Get children */
             xml_node **children = NULL;
@@ -144,6 +145,7 @@ int Read_Analysis(const OS_XML *xml, XML_NODE node, void *d1)
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else if (strcmp(node[i]->element, xml_labels) == 0) {
             /* Get children */
             xml_node **children = NULL;
@@ -163,6 +165,7 @@ int Read_Analysis(const OS_XML *xml, XML_NODE node, void *d1)
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else if (strcmp(node[i]->element, xml_threads) == 0) {
             /* Get children */
             xml_node **children = NULL;
@@ -194,6 +197,7 @@ int Read_Analysis(const OS_XML *xml, XML_NODE node, void *d1)
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else if (strcmp(node[i]->element, xml_queue_size) == 0) {
             /* Get children */
             xml_node **children = NULL;
@@ -235,6 +239,7 @@ int Read_Analysis(const OS_XML *xml, XML_NODE node, void *d1)
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else if (strcmp(node[i]->element, xml_thread_stack_size) == 0) {
             SetConf(node[i]->content, &Config->thread_stack_size , options.global.thread_stack_size, xml_thread_stack_size);
         } else {
