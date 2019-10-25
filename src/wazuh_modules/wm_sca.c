@@ -227,6 +227,7 @@ void * wm_sca_main(wm_sca_t * data) {
 #ifndef WIN32
     w_create_thread(wm_sca_request_thread, data);
     w_create_thread(wm_sca_dump_db_thread, data);
+    w_create_thread(wm_sca_check_integrity_periodically, data);
 #else
     w_create_thread(NULL,
                     0,
@@ -3192,4 +3193,65 @@ static int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg)
         os_strdup(msg, data->alert_msg[i]);
     }
     return 0;
+}
+
+/*
+    Thread that sends the integrity hash to the manager every configurable number of seconds.
+    If the manager has a different integrity hash, it will request the agent to send a new
+    sca scan and integrity hash.
+ */
+static void *wm_sca_check_integrity_periodically (wm_sca_t * data) {
+    unsigned int time_sleep = 300;
+
+    while (1) {
+        /* Thread sleeps for 5 minutes until the next time it sends the hash */
+        mdebug2("Sleeping for %d seconds.", (int)time_sleep);
+        wm_delay(1000 * time_sleep);
+
+        /* Send hash for every policy file */
+        if (data->policies) {
+            int i;
+            OSHash *check_list = OSHash_Create();
+
+            for (i = 0; data->policies[i]; i++) {
+                if (!data->policies[i]->enabled) {
+                    continue;
+                }
+
+                int cis_db_index = i;
+
+                mdebug1("Calculating hash for scanned results.");
+                char *integrity_hash = wm_sca_hash_integrity(cis_db_index);
+
+                /* Send integrity hash to the manager */
+            #ifdef WIN32
+                int queue_fd = 0;
+            #else
+                int queue_fd = data->queue;
+            #endif
+
+                mdebug2("Sending integrity hash: %s", integrity_hash);
+
+                if (wm_sendmsg(data->msg_delay, queue_fd, integrity_hash, WM_SCA_STAMP, SCA_MQ) < 0) {
+                    merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+
+                    if (data->queue >= 0){
+                        close(data->queue);
+                    }
+
+                    if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0){
+                        mwarn("Can't connect to queue.");
+                    }
+                    else{
+                        if (wm_sendmsg(data->msg_delay, data->queue, integrity_hash, WM_SCA_STAMP, SCA_MQ) < 0) {
+                            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                            close(data->queue);
+                        }
+                    }
+                }
+
+                os_free(integrity_hash);
+            }
+        }
+    }
 }
