@@ -4,9 +4,9 @@ test_name: POST /security/roles
 includes:
   - !include common.yaml
 
-#marks:
-#  - usefixtures:
-#    - security_tests
+marks:
+  - usefixtures:
+    - security_tests
 
 stages:
 

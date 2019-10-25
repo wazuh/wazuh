@@ -1,0 +1,1007 @@
+---
+test_name: GET USERS RBAC
+
+includes:
+ - !include common.yaml
+
+marks:
+  - usefixtures:
+    - security_white_rbac_tests
+
+stages:
+
+  - type: ref
+    id: login_get_token
+
+  - name: Get all users in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: administrator
+            - username: guest
+            - username: normal
+            - username: python
+          failed_items: []
+          total_affected_items: 4
+          total_failed_items: 0
+        message: All specified users were shown
+
+  - name: Get a specified user by its username (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        usernames: normal
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: normal
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: All specified users were shown
+
+  - name: Get a specified user by its username (Deny)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        usernames: wazuh
+    response:
+      status_code: 400
+      body: &permission_denied
+        code: 4000
+        dapi_errors:
+          master-node:
+            error: Permission denied
+        detail: Permission denied
+        remediation: !anystr
+        status: 400
+        title: Wazuh Error
+        type: about:blank
+
+  - name: Get a list of users by its username (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        usernames: normal,python,guest
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: guest
+            - username: normal
+            - username: python
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: All specified users were shown
+
+  - name: Get a list of users by its username (Deny)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        usernames: wazuh,ossec
+    response:
+      status_code: 400
+      body:
+        <<: *permission_denied
+
+  - name: Get a list of users by its username (Both)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        usernames: normal,python,guest,ossec,wazuh,administrator
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: administrator
+            - username: guest
+            - username: normal
+            - username: python
+          failed_items:
+            - error:
+                code: 4000
+                message: 'Permission denied: Resource type: user:id'
+                remediation: !anystr
+              id:
+                - ossec
+                - wazuh
+          total_affected_items: 4
+          total_failed_items: 2
+        message: Some users could not be shown
+
+---
+test_name: GET ROLES RBAC
+
+stages:
+
+  - name: Get all roles in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - id: 1
+              name: wazuh
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
+              rule:
+                FIND:
+                  r'^auth[a-zA-Z]+$':
+                    - administrator
+            - id: 2
+              name: wazuh-app
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
+              rule:
+                FIND:
+                  r'^auth[a-zA-Z]+$':
+                    - administrator-app
+            - id: 3
+              name: technical
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
+                - id: 2
+                  name: wazuh-appPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - agent:id:001
+                      - agent:id:002
+                      - agent:id:003
+                - id: 5
+                  name: normalPolicy
+                  policy:
+                    actions:
+                      - agent:update
+                      - agent:delete
+                    effect: deny
+                    resources:
+                      - agent:id:*
+                - id: 8
+                  name: policy2
+                  policy:
+                    actions:
+                      - role:read
+                    effect: allow
+                    resources:
+                      - role:id:1
+              rule:
+                MATCH:
+                  definition: technicalRule
+            - id: 4
+              name: administrator
+              policies:
+                - id: 4
+                  name: administratorPolicy
+                  policy:
+                    actions:
+                      - agent:update
+                      - agent:delete
+                    effect: allow
+                    resources:
+                      - agent:id:*
+                - id: 5
+                  name: normalPolicy
+                  policy:
+                    actions:
+                      - agent:update
+                      - agent:delete
+                    effect: deny
+                    resources:
+                      - agent:id:*
+              rule:
+                MATCH:
+                  definition: administratorRule
+            - id: 5
+              name: normalUser
+              policies:
+                - id: 2
+                  name: wazuh-appPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - agent:id:001
+                      - agent:id:002
+                      - agent:id:003
+                - id: 3
+                  name: technicalPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - "*:*:*"
+                - id: 10
+                  name: policy4
+                  policy:
+                    actions:
+                      - policy:delete
+                    effect: deny
+                    resources:
+                      - policy:id:*
+              rule:
+                MATCH:
+                  definition: normalRule
+            - id: 6
+              name: ossec
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
+                - id: 2
+                  name: wazuh-appPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - agent:id:001
+                      - agent:id:002
+                      - agent:id:003
+                - id: 3
+                  name: technicalPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - "*:*:*"
+                - id: 4
+                  name: administratorPolicy
+                  policy:
+                    actions:
+                      - agent:update
+                      - agent:delete
+                    effect: allow
+                    resources:
+                      - agent:id:*
+                - id: 5
+                  name: normalPolicy
+                  policy:
+                    actions:
+                      - agent:update
+                      - agent:delete
+                    effect: deny
+                    resources:
+                      - agent:id:*
+                - id: 6
+                  name: ossecPolicy
+                  policy:
+                    actions:
+                      - role:read
+                    effect: allow
+                    resources:
+                      - role:id:*
+                - id: 7
+                  name: policy1
+                  policy:
+                    actions:
+                      - role:read
+                    effect: deny
+                    resources:
+                      - role:id:*
+                - id: 8
+                  name: policy2
+                  policy:
+                    actions:
+                      - role:read
+                    effect: allow
+                    resources:
+                      - role:id:1
+                - id: 9
+                  name: policy3
+                  policy:
+                    actions:
+                      - policy:read
+                    effect: allow
+                    resources:
+                      - policy:id:1
+                - id: 10
+                  name: policy4
+                  policy:
+                    actions:
+                      - policy:delete
+                    effect: deny
+                    resources:
+                      - policy:id:*
+              rule:
+                MATCH:
+                  definition: ossecRule
+          failed_items: []
+          total_affected_items: 6
+          total_failed_items: 0
+        message: All specified roles were shown
+
+  - name: Get a specified role by its id (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        role_ids: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - id: 1
+              name: wazuh
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
+              rule:
+                FIND:
+                  r'^auth[a-zA-Z]+$':
+                    - administrator
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: All specified roles were shown
+
+  - name: Get a specified role by its id (It doesn't exist but we have all the permissions on the resource roles)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        role_ids: 99
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4002
+                message: The specified role does not exist
+                remediation: Please, create the specified role with the endpoint POST /security/roles
+              id:
+                - '99'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: No role were shown
+
+  - name: Get a list of roles by its id (Existent and no existent)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        role_ids: 1,2,99
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - id: 1
+              name: wazuh
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
+              rule:
+                FIND:
+                  r'^auth[a-zA-Z]+$':
+                    - administrator
+            - id: 2
+              name: wazuh-app
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
+              rule:
+                FIND:
+                  r'^auth[a-zA-Z]+$':
+                    - administrator-app
+          failed_items:
+            - error:
+                code: 4002
+                message: The specified role does not exist
+                remediation: Please, create the specified role with the endpoint POST /security/roles
+              id:
+                - '99'
+          total_affected_items: 2
+          total_failed_items: 1
+        message: Some roles could not be shown
+
+---
+test_name: GET POLICIES RBAC
+
+stages:
+
+  - name: Get all policies in the system (All denied)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: No policy were shown
+
+  - name: Get a specified policy by its id (Deny)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        policy_ids: 1,2,3
+    response:
+      status_code: 400
+      body:
+        <<: *permission_denied
+
+---
+test_name: UPDATE USERS RBAC
+
+stages:
+
+  - name: Update one specified user in the system (All denied)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/guest"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        password: stringA1!
+    response:
+      status_code: 400
+      body:
+        <<: *permission_denied
+
+  - name: Update one specified user in the system (All denied)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/wazuh"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        password: stringA1!
+    response:
+      status_code: 400
+      body:
+        <<: *permission_denied
+
+---
+test_name: UPDATE ROLES RBAC
+
+stages:
+
+  - name: Update one specified role in the system (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/3"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: technicalModified
+        rule:
+          FIND$:
+            definition: technicalRuleModified
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - id: 3
+              name: technicalModified
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
+                - id: 2
+                  name: wazuh-appPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - agent:id:001
+                      - agent:id:002
+                      - agent:id:003
+                - id: 5
+                  name: normalPolicy
+                  policy:
+                    actions:
+                      - agent:update
+                      - agent:delete
+                    effect: deny
+                    resources:
+                      - agent:id:*
+                - id: 8
+                  name: policy2
+                  policy:
+                    actions:
+                      - role:read
+                    effect: allow
+                    resources:
+                      - role:id:1
+              rule:
+                FIND$:
+                  definition: technicalRuleModified
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: Role updated correctly
+
+  - name: Update one specified role in the system (Deny)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/2"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: wazuh-appModified
+        rule:
+          FIND$:
+            definition: wazuh-appRuleModified
+    response:
+      status_code: 400
+      body:
+        <<: *permission_denied
+
+---
+test_name: UPDATE POLICIES RBAC
+
+stages:
+
+  - name: Update one specified policy in the system (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/5"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: normalPolicyModified
+        policy:
+          actions:
+            - agent:delete
+          effect: deny
+          resources:
+            - agent:id:099
+            - agent:id:002
+            - agent:id:003
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - id: 5
+              name: normalPolicyModified
+              policy:
+                actions:
+                  - agent:delete
+                effect: deny
+                resources:
+                  - agent:id:099
+                  - agent:id:002
+                  - agent:id:003
+              roles:
+                - id: 3
+                  name: technicalModified
+                  rule:
+                    FIND$:
+                      definition: technicalRuleModified
+                - id: 4
+                  name: administrator
+                  rule:
+                    MATCH:
+                      definition: administratorRule
+                - id: 6
+                  name: ossec
+                  rule:
+                    MATCH:
+                      definition: ossecRule
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: Policy updated correctly
+
+  - name: Update one specified policy in the system (Deny)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/4"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: administratorPolicyModified
+        policy:
+          actions:
+            - agent:delete
+          effect: allow
+          resources:
+            - agent:id:*
+    response:
+      status_code: 400
+      body:
+        <<: *permission_denied
+
+---
+test_name: CREATE LINK ROLE-POLICIES RBAC
+
+stages:
+
+  - name: Create one specified link between one role and a list of policies (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/4/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        policy_ids: 5,6,7
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4000
+                message: 'Permission denied: Resource type: policy:id'
+                remediation: !anystr
+              id:
+                - '6'
+                - '7'
+            - error:
+                code: 4011
+                message: The specified role-policy already exist
+                remediation: !anything
+              id:
+                - '5'
+          total_affected_items: 0
+          total_failed_items: 3
+        message: No link created to role 4
+
+---
+test_name: DELETE LINK ROLE-POLICIES RBAC
+
+stages:
+
+  - name: Delete one specified link between one role and a list of policies (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/4/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        policy_ids: 5,6,7
+    response:
+      status_code: 400
+      body:
+        <<: *permission_denied
+
+---
+test_name: DELETE USERS RBAC
+
+stages:
+
+  - name: Delete one specified user in the system (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        usernames: guest
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: guest
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: Users deleted correctly
+
+  - name: Delete all allowed user in the system (All)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: normal
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: Users deleted correctly
+
+  - name: Delete all allowed user in the system (All)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: No user was deleted
+
+  - name: Delete a list of users in the system (Allow and deny)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        usernames: wazuh,normal,guest
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4000
+                message: 'Permission denied: Resource type: user:id'
+                remediation: Please, make sure you have permissions to execute current request,
+                  for more information on setting up permissions please visit XXXX
+              id:
+                - wazuh
+            - error:
+                code: 5001
+                message: The user does not exist
+                remediation: The user can be created with the endpoint POST /security/users
+              id:
+                - guest
+                - normal
+          total_affected_items: 0
+          total_failed_items: 3
+        message: No user was deleted
+
+---
+test_name: DELETE ROLES RBAC
+
+stages:
+
+  - name: Delete all roles in the system (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: No role were deleted
+
+  - name: Delete one specified role in the system (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        role_ids: 2,3
+    response:
+      status_code: 400
+      body:
+        <<: *permission_denied
+
+---
+test_name: DELETE POLICIES RBAC
+
+stages:
+
+  - name: Delete one specified policy in the system (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: No policies were deleted
+
+  - name: Delete one specified policy in the system (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        policy_ids: 2,3
+    response:
+      status_code: 400
+      body:
+        <<: *permission_denied
+
+---
+test_name: CREATE USERS RBAC
+
+stages:
+
+  - name: Create one specified user (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        username: newUser
+        password: stringA1!
+    response:
+      status_code: 400
+      body:
+        <<: *permission_denied
+
+---
+test_name: CREATE ROLES AND POLICIES RBAC
+
+stages:
+
+  - name: Create one specified role (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: newUserRole
+        rule:
+          FIND$:
+            definition: newUser
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - id: 7
+              name: newUserRole
+              policies: []
+              rule:
+                FIND$:
+                  definition: newUser
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: Role created correctly
+
+  - name: Create one specified policy (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: newUserPolicy
+        policy:
+          actions:
+            - security:delete
+          effect: allow
+          resources:
+            - role:id:*
+            - policy:id:*
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - id: 11
+              name: newUserPolicy
+              policy:
+                actions:
+                  - security:delete
+                effect: allow
+                resources:
+                  - role:id:*
+                  - policy:id:*
+              roles: []
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: Policy created correctly
