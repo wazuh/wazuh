@@ -21,6 +21,8 @@ FROM base AS wazuh-env-ciscat
 FROM base AS wazuh-env-syscollector
 FROM base AS wazuh-env-security
 FROM base AS wazuh-env-manager
+FROM base as wazuh-env-rules_white_rbac
+FROM base as wazuh-env-rules_black_rbac
 
 FROM base AS wazuh-env-cluster
 ONBUILD COPY configurations/cluster/wazuh-manager/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
