@@ -787,3 +787,5 @@ with RolesManager() as rm:
 
 with RolesPoliciesManager() as rpm:
     rpm.add_policy_to_role_admin(role_id=rm.get_role(name='wazuh').id, policy_id=pm.get_policy(name='wazuhPolicy').id)
+    rpm.add_policy_to_role_admin(
+        role_id=rm.get_role(name='wazuh-app').id, policy_id=pm.get_policy(name='wazuhPolicy').id)

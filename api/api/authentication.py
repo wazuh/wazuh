@@ -76,9 +76,6 @@ class AuthenticationManager:
         :param password: string Password provided by user. It will be stored hashed
         :return: True if the user has been modify successfuly. False otherwise
         """
-        if username == 'wazuh' or username == 'wazuh-app':
-            return 'admin'
-
         try:
             user = self.session.query(_User).filter_by(username=username).first()
             if user is not None:
