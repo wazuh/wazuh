@@ -111,7 +111,7 @@ class WazuhGCloudSubscriber:
         """Make request for pulling messages from the subscription.
 
         :param max_messages: Maximum number of messages to retrieve
-        :return: Response of pull request. If the deadlide is exceeded,
+        :return: Response of pull request. If the deadline is exceeded,
             the method will return an empty PullResponse object
         """
         try:
