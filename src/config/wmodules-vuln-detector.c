@@ -164,7 +164,12 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         }
         upd->dist_ref = FEED_UBUNTU;
     } else  if (strcasestr(feed, vu_feed_tag[FEED_DEBIAN]) && version) {
-        if (!strcmp(version, "9") || strcasestr(version, vu_feed_tag[FEED_STRETCH])) {
+        if (!strcmp(version, "10") || strcasestr(version, vu_feed_tag[FEED_BUSTER])) {
+            os_index = CVE_BUSTER;
+            os_strdup(vu_feed_tag[FEED_BUSTER], upd->version);
+            upd->dist_tag_ref = FEED_BUSTER;
+            upd->dist_ext = vu_feed_ext[FEED_BUSTER];
+        } else if (!strcmp(version, "9") || strcasestr(version, vu_feed_tag[FEED_STRETCH])) {
             os_index = CVE_STRETCH;
             os_strdup(vu_feed_tag[FEED_STRETCH], upd->version);
             upd->dist_tag_ref = FEED_STRETCH;
