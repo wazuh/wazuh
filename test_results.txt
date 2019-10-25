@@ -1,0 +1,7 @@
+============================= test session starts ==============================
+platform linux -- Python 3.6.8, pytest-4.4.0, py-1.8.0, pluggy-0.12.0 -- /usr/bin/python3.6
+cachedir: .pytest_cache
+rootdir: /home/davidjiglesias/git/wazuh
+plugins: cov-2.7.1, tavern-0.26.4
+collecting ... 
+========================= no tests ran in 0.00 seconds =========================
