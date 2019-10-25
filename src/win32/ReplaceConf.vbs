@@ -54,7 +54,7 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     Set file = objFSO.OpenTextFile(home_dir & "wodle-openscap.template", ForReading)
     newline = file.ReadAll
     file.Close
-    re.Pattern = "  <wodle-openscap>" & vbCrLf & "(.*" & vbCrLf & ")*  </wodle-openscap>"
+    re.Pattern = "  <wodle name=""openscap"">" & vbCrLf & "(.*" & vbCrLf & ")*  </wodle>"
     re.Global = False
     strNewText = re.Replace(strNewText, newline)
   End If
@@ -63,7 +63,7 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     Set file = objFSO.OpenTextFile(home_dir & "wodle-syscollector.template", ForReading)
     newline = file.ReadAll
     file.Close
-    re.Pattern = "  <wodle-syscollector>" & vbCrLf & "(.*" & vbCrLf & ")*  </wodle-syscollector>"
+    re.Pattern = "  <wodle name=""syscollector\"">" & vbCrLf & "(.*" & vbCrLf & ")*  </wodle>"
     re.Global = False
     strNewText = re.Replace(strNewText, newline)
   End If
