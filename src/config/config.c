@@ -36,9 +36,9 @@ static int Read_RemoteConf(XML_NODE node, int modules)
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_remote_conf) == 0) {
             if (modules & CAGENT_CONFIG) {
-                SetConf(node[i]->content, &remote_conf, options.client.remote_conf, xml_remote_conf);
-            } else {
                 mwarn("Trying to modify '%s' option from 'agent.conf'. This is not permitted.", xml_remote_conf);
+            } else {
+                SetConf(node[i]->content, &remote_conf, options.client.remote_conf, xml_remote_conf);
             }
         }
     }
