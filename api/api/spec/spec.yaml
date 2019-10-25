@@ -2875,6 +2875,13 @@ components:
       description: Filters by remediation.
       schema:
         type: string
+    rule_requirement:
+      in: path
+      name: requirement
+      required: true
+      schema:
+        type: string
+        enum: ['pci', 'gdpr', 'hipaa', 'nist-800-53', 'gpg13']
     result:
       in: query
       name: result
@@ -2904,6 +2911,16 @@ components:
       required: True
       schema:
         type: string
+    rule_ids:
+      in: query
+      name: rule_ids
+      description: List of rule IDs.
+      schema:
+        type: array
+        items:
+          type: integer
+          format: int32
+          minimum: 1
     rulesetPath:
       in: query
       name: path
@@ -3243,15 +3260,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    rule_id:
-      in: path
-      name: rule_id
-      description: Filters by rule ID.
-      required: true
-      schema:
-        type: integer
-        format: int32
-        minimum: 1
     rootcheck_status:
       in: query
       name: status
@@ -8098,10 +8106,11 @@ paths:
     get:
       tags:
       - rules
-      summary: Get information about all Wazuh rules.
+      summary: Get information about a list of Wazuh rules.
       description: Returns a list containing information about each rule such as file where it's defined, description, rule group, status, etc.
       operationId: api.controllers.rules_controller.get_rules
       parameters:
+        - $ref: '#/components/parameters/rule_ids'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
@@ -8125,18 +8134,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/Rules'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
                   totalItems: 2
@@ -8189,63 +8191,6 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /rules/{rule_id}:
-    get:
-      tags:
-      - rules
-      summary: Filters rules by ID.
-      description: Filters results of /rules endpoint filtering by ID.
-      operationId: api.controllers.rules_controller.get_rules_id
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/rule_id'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-      responses:
-        '200':
-          description: "Rules"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/Rules'
-              example:
-                data:
-                  totalItems: 1
-                  items:
-                    - file: 0225-mcafee_av_rules.xml
-                      path: ruleset/rules
-                      id: 7514
-                      level: 5
-                      description: McAfee Windows AV - EICAR test file detected.
-                      status: enabled
-                      groups:
-                      - mcafee
-                      pci:
-                      -
-                      gdpr:
-                      -
-                      details:
-                        if_sid: "7505"
-                        match: contains the EICAR test file
-                        options: alert_by_email
-        default:
-          $ref: '#/components/responses/ResponseError'
-
   /rules/groups:
     get:
       tags:
@@ -8290,14 +8235,15 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /rules/pci:
+  /rules/requirement:
     get:
       tags:
       - rules
-      summary: Get all PCI requirements.
-      description: Returns all PCI requirements names defined in the Wazuh ruleset.
+      summary: Get all specified requirement.
+      description: Returns all specified requirement names defined in the Wazuh ruleset.
       operationId: api.controllers.rules_controller.get_rules_pci
       parameters:
+        - $ref: '#/components/parameters/rule_requirement'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
@@ -8331,180 +8277,6 @@ paths:
                     - "1.3.4"
                     - "1.4"
                     - "10.1"
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-  /rules/gdpr:
-    get:
-      tags:
-      - rules
-      summary: Get all GDPR requirements.
-      description: Returns all GDPR requirements names defined in the Wazuh ruleset.
-      operationId: api.controllers.rules_controller.get_rules_gdpr
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-      responses:
-        '200':
-          description: 'GDPR requirements names'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                type: string
-              example:
-                data:
-                  totalItems: 4
-                  items:
-                    - "II_5.1.f"
-                    - "IV_30.1.g"
-                    - "IV_32.2"
-                    - "IV_35.7.d"
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-  /rules/gpg13:
-    get:
-      tags:
-      - rules
-      summary: Get all GPG13 requirements.
-      description: Returns all GPG13 requirements names defined in the Wazuh ruleset.
-      operationId: api.controllers.rules_controller.get_rules_gpg13
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-      responses:
-        '200':
-          description: 'GPG13 requirements names'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                type: string
-              example:
-                data:
-                  totalItems: 4
-                  items:
-                    - "1.3"
-                    - "10.1"
-                    - "3.1"
-                    - "3.2"
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-  /rules/hipaa:
-    get:
-      tags:
-      - rules
-      summary: Get all HIPAA requirements.
-      description: Returns all HIPAA requirements names defined in the Wazuh ruleset.
-      operationId: api.controllers.rules_controller.get_rules_hipaa
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-      responses:
-        '200':
-          description: 'HIPAA requirements names'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                type: string
-              example:
-                data:
-                  totalItems: 3
-                  items:
-                    - "164.312.a.1"
-                    - "164.312.b"
-                    - "164.312.c.2"
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-  /rules/nist-800-53:
-    get:
-      tags:
-      - rules
-      summary: Get all NIST-800-53 requirements.
-      description: Returns all NIST-800-53 requirements names defined in the Wazuh ruleset.
-      operationId: api.controllers.rules_controller.get_rules_nist_800_53
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-      responses:
-        '200':
-          description: 'NIST-800-53 requirements names'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                type: string
-              example:
-                data:
-                  totalItems: 3
-                  items:
-                    - "CM.3"
-                    - "AU.3"
-                    - "IA.10"
         default:
           $ref: '#/components/responses/ResponseError'
 

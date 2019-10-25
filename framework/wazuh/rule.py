@@ -15,11 +15,12 @@ from wazuh.core.crule import check_status, load_rules_from_file, Status
 
 
 @expose_resources(actions='rules:read', resources=['*:*:*'])
-def get_rules(status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None, path=None,
-              file=None, rule_id=None, level=None, offset=0, limit=common.database_limit, sort_by=None,
+def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
+              path=None, file=None, level=None, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
     """Gets a list of rules.
 
+    :param rule_ids: IDs of rules.
     :param status: Filters the rules by status.
     :param group: Filters the rules by group.
     :param pci: Filters the rules by pci requirement.
@@ -29,7 +30,6 @@ def get_rules(status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=No
     :param nist_800_53: Filters the rules by nist_800_53 requirement.
     :param path: Filters the rules by path.
     :param file: Filters the rules by file name.
-    :param rule_id: ID of the rule.
     :param level: Filters the rules by level. level=2 or level=2-5.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
@@ -52,9 +52,11 @@ def get_rules(status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=No
         if len(levels) < 0 or len(levels) > 2:
             raise WazuhError(1203)
 
-    for rule_file in get_rules_files(status=status, limit=None)['items']:
+    for rule_file in get_rules_files(status=status, limit=None):
         all_rules.extend(load_rules_from_file(rule_file['file'], rule_file['path'], rule_file['status']))
 
+    import pydevd_pycharm
+    pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
     rules = list(all_rules)
     for r in all_rules:
         if group and group not in r['groups']:
@@ -73,7 +75,7 @@ def get_rules(status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=No
             rules.remove(r)
         elif file and file != r['file']:
             rules.remove(r)
-        elif rule_id and int(rule_id) != r['id']:
+        elif rule_ids and r['id'] not in rule_ids:
             rules.remove(r)
         elif level:
             if len(levels) == 1:
@@ -82,10 +84,11 @@ def get_rules(status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=No
             elif not (int(levels[0]) <= r['level'] <= int(levels[1])):
                 rules.remove(r)
 
-    result.affected_items.append(process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
-                                               complementary_search=complementary_search, sort_by=sort_by,
-                                               sort_ascending=sort_ascending,
-                                               allowed_sort_fields=Status.SORT_FIELDS, offset=offset, limit=limit, q=q))
+    result.affected_items = process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
+                                          complementary_search=complementary_search, sort_by=sort_by,
+                                          sort_ascending=sort_ascending, allowed_sort_fields=Status.SORT_FIELDS.value,
+                                          offset=offset, limit=limit, q=q)['items']
+    result.total_affected_items = len(rules)
 
     return result
 
@@ -119,7 +122,7 @@ def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.da
     exclude_filenames = []
     for tag in tags:
         if tag in ruleset_conf:
-            item_status = Status.S_DISABLED if tag == 'rule_exclude' else Status.S_ENABLED
+            item_status = Status.S_DISABLED.value if tag == 'rule_exclude' else Status.S_ENABLED.value
 
             if type(ruleset_conf[tag]) is list:
                 items = ruleset_conf[tag]
@@ -150,14 +153,14 @@ def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.da
                 item_name = os.path.basename(item)
                 item_dir = os.path.relpath(os.path.dirname(item), start=common.ossec_path)
                 if item_name in exclude_filenames:
-                    item_status = Status.S_DISABLED
+                    item_status = Status.S_DISABLED.value
                 else:
-                    item_status = Status.S_ENABLED
+                    item_status = Status.S_ENABLED.value
                 tmp_data.append({'file': item_name, 'path': item_dir, 'status': item_status})
 
     data = list(tmp_data)
     for d in tmp_data:
-        if status and status != 'all' and status != d['status']:
+        if status and status != Status.S_ALL.value and status != d['status']:
             data.remove(d)
         if path and path != d['path']:
             data.remove(d)
@@ -166,7 +169,7 @@ def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.da
 
     return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit)['items']
 
 
 @expose_resources(actions='rules:read', resources=['*:*:*'])
@@ -194,7 +197,7 @@ def get_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascendi
 
     result.affected_items.append(process_array(groups, search_text=search_text, search_in_fields=search_in_fields,
                                                complementary_search=complementary_search, sort_by=sort_by,
-                                               sort_ascending=sort_ascending, offset=offset, limit=limit))
+                                               sort_ascending=sort_ascending, offset=offset, limit=limit)['items'])
 
     return result
 
@@ -223,7 +226,7 @@ def get_requirement(requirement, offset=0, limit=common.database_limit, sort_by=
 
     return process_array(req, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit)['items']
 
 
 @expose_resources(actions='rules:read', resources=['*:*:*'])

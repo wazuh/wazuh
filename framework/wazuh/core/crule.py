@@ -51,8 +51,8 @@ def add_unique_element(src_list, element):
 
 def check_status(status):
     if status is None:
-        return Status.S_ALL
-    elif status in Status.SORT_FIELDS:
+        return Status.S_ALL.value
+    elif status in Status.SORT_FIELDS.value:
         return status
     else:
         raise WazuhError(1202)
@@ -81,12 +81,12 @@ def set_groups(groups, general_groups, rule):
         else:
             ossec_groups.append(g)
 
-    _add_unique_element(rule['pci'], pci_groups)
-    _add_unique_element(rule['gpg13'], gpg13_groups)
-    _add_unique_element(rule['gdpr'], gdpr_groups)
-    _add_unique_element(rule['hipaa'], hipaa_groups)
-    _add_unique_element(rule['nist_800_53'], nist_800_53_groups)
-    _add_unique_element(rule['groups'], ossec_groups)
+    add_unique_element(rule['pci'], pci_groups)
+    add_unique_element(rule['gpg13'], gpg13_groups)
+    add_unique_element(rule['gdpr'], gdpr_groups)
+    add_unique_element(rule['hipaa'], hipaa_groups)
+    add_unique_element(rule['nist_800_53'], nist_800_53_groups)
+    add_unique_element(rule['groups'], ossec_groups)
 
 
 def load_rules_from_file(rule_file, rule_path, rule_status):
@@ -104,7 +104,7 @@ def load_rules_from_file(rule_file, rule_path, rule_status):
                         rule = {'file': rule_file, 'path': rule_path, 'id': int(xml_rule.attrib['id']),
                                 'level': int(xml_rule.attrib['level']), 'status': rule_status, 'details': dict(),
                                 'pci': list(), 'gpg13': list(), 'gdpr': list(), 'hipaa': list(), 'nist_800_53': list(),
-                                'groups': list()}
+                                'groups': list(), 'description': ''}
                         for k in xml_rule.attrib:
                             if k != 'id' and k != 'level':
                                 rule['details'][k] = xml_rule.attrib[k]
@@ -119,18 +119,18 @@ def load_rules_from_file(rule_file, rule_path, rule_status):
                             elif tag == "description":
                                 rule['description'] += value
                             elif tag == "field":
-                                _add_detail(xml_rule_tags.attrib['name'], value, rule['details'])
+                                add_detail(xml_rule_tags.attrib['name'], value, rule['details'])
                             elif tag in ("list", "info"):
                                 list_detail = {'name': value}
                                 for attrib, attrib_value in xml_rule_tags.attrib.items():
                                     list_detail[attrib] = attrib_value
-                                _add_detail(tag, list_detail, rule['details'])
+                                add_detail(tag, list_detail, rule['details'])
                             # show rule variables
                             elif tag in {'regex', 'match', 'user', 'id'} and value != '' and value[0] == "$":
                                 for variable in filter(lambda x: x.get('name') == value[1:], root.findall('var')):
-                                    _add_detail(tag, variable.text, rule['details'])
+                                    add_detail(tag, variable.text, rule['details'])
                             else:
-                                _add_detail(tag, value, rule['details'])
+                                add_detail(tag, value, rule['details'])
 
                         # Set groups
                         set_groups(groups=groups, general_groups=general_groups, rule=rule)
