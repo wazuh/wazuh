@@ -426,7 +426,7 @@ int audit_init(void) {
     // Check if auditd is installed and running.
     int aupid = check_auditd_enabled();
     if (aupid <= 0) {
-        mdebug1(FIM_AUDIT_NORUNNING);
+        mwarn(FIM_AUDIT_NORUNNING);
         return (-1);
     }
 

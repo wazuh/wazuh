@@ -27,7 +27,7 @@
 #define FIM_WARN_AUDIT_CONFIGURATION_MODIFIED   "(6910): Audit plugin configuration was modified. You need to restart Auditd. Who-data will be disabled."
 #define FIM_WARN_AUDIT_RULES_MODIFIED           "(6911): Detected Audit rules manipulation: Audit rules removed."
 #define FIM_WARN_AUDIT_CONNECTION_CLOSED        "(6912): Audit: connection closed."
-#define FIM_WARN_AUDIT_THREAD_NOSTARTED         "(6913): Audit events reader thread not started."
+#define FIM_WARN_AUDIT_THREAD_NOSTARTED         "(6913): Who-data engine could not start. Switching who-data to real-time."
 
 #define FIM_WARN_GENDIFF_SNAPSHOT               "(6914): Cannot create a snapshot of file '%s'"
 
@@ -43,5 +43,6 @@
 #define FIM_WARN_FILE_REALTIME                  "(6921): Unable to configure real-time option for file: '%s'"
 #define FIM_PATH_NOT_OPEN                       "(6922): Cannot open '%s': %s"
 #define FIM_WARN_SKIP_EVENT                     "(6923): Unable to process file '%s'"
+#define FIM_AUDIT_NORUNNING                     "(6224): Who-data engine cannot start because Auditd is not running."
 
 #endif /* WARN_MESSAGES_H */

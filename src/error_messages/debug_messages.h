@@ -163,7 +163,7 @@
 
 #define FIM_AUDIT_NEWRULE                   "(6270): Added audit rule for monitoring directory: '%s'."
 #define FIM_AUDIT_RULEDUP                   "(6271): Audit rule for monitoring directory '%s' already added."
-#define FIM_AUDIT_NORUNNING                 "(6272): Auditd is not running."
+
 #define FIM_AUDIT_NOCONF                    "(6273): Cannot apply Audit config."
 #define FIM_AUDIT_NORULES                   "(6274): No rules added. Audit events reader thread will not start."
 #define FIM_AUDIT_RELOADING_RULES           "(6275): Reloading Audit rules..."
