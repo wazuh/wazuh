@@ -57,7 +57,7 @@ def optimize_resources():
     policies = rbac.run()
 
     # Testing
-    policies = RBAChecker.run_testing()
+    # policies = RBAChecker.run_testing()
 
     preprocessor = PreProcessor()
     for policy in policies:

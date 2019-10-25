@@ -1,9 +1,9 @@
 ---
 test_name: GET /agents
 
-#marks:
-#  - usefixtures:
-#    - base_tests
+marks:
+  - usefixtures:
+    - agents_white_rbac_tests
 
 includes:
  - !include common.yaml
