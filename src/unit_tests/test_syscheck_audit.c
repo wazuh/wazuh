@@ -768,6 +768,58 @@ void test_audit_parse_mv(void **state)
 }
 
 
+void test_audit_parse_rm(void **state)
+{
+    (void) state;
+
+    char * buffer = " \
+        type=SYSCALL msg=audit(1571988027.797:3004340): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55578e6d8490 a2=200 a3=7f9cd931bca0 items=3 ppid=3211 pid=56650 auid=2 uid=30 gid=5 euid=2 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"rm\" exe=\"/usr/bin/rm\" key=\"wazuh_fim\" \
+        type=CWD msg=audit(1571988027.797:3004340): cwd=\"/root/test\" \
+        type=PATH msg=audit(1571988027.797:3004340): item=0 name=\"/root/test\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PATH msg=audit(1571988027.797:3004340): item=1 name=(null) inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PATH msg=audit(1571988027.797:3004340): item=2 name=(null) inode=24 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PROCTITLE msg=audit(1571988027.797:3004340): proctitle=726D002D726600666F6C6465722F \
+    ";
+
+    expect_value(__wrap_fim_whodata_event, w_evt->process_id, 56650);
+    expect_string(__wrap_fim_whodata_event, w_evt->user_id, "30");
+    expect_string(__wrap_fim_whodata_event, w_evt->group_id, "5");
+    expect_string(__wrap_fim_whodata_event, w_evt->process_name, "/usr/bin/rm");
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/");
+    expect_string(__wrap_fim_whodata_event, w_evt->audit_uid, "2");
+    expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "2");
+    expect_string(__wrap_fim_whodata_event, w_evt->inode, "24");
+    expect_value(__wrap_fim_whodata_event, w_evt->ppid, 3211);
+
+    audit_parse(buffer);
+}
+
+
+void test_audit_parse_chmod(void **state)
+{
+    (void) state;
+
+    char * buffer = " \
+        type=SYSCALL msg=audit(1571992092.822:3004348): arch=c000003e syscall=268 success=yes exit=0 a0=ffffff9c a1=5648a8ab74c0 a2=1ff a3=fff items=1 ppid=3211 pid=58280 auid=4 uid=99 gid=78 euid=29 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"chmod\" exe=\"/usr/bin/chmod\" key=\"wazuh_fim\" \
+        type=CWD msg=audit(1571992092.822:3004348): cwd=\"/root/test\" \
+        type=PATH msg=audit(1571992092.822:3004348): item=0 name=\"/root/test/file\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PROCTITLE msg=audit(1571992092.822:3004348): proctitle=63686D6F6400373737002F726F6F742F746573742F66696C65 \
+    ";
+
+    expect_value(__wrap_fim_whodata_event, w_evt->process_id, 58280);
+    expect_string(__wrap_fim_whodata_event, w_evt->user_id, "99");
+    expect_string(__wrap_fim_whodata_event, w_evt->group_id, "78");
+    expect_string(__wrap_fim_whodata_event, w_evt->process_name, "/usr/bin/chmod");
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/file");
+    expect_string(__wrap_fim_whodata_event, w_evt->audit_uid, "4");
+    expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "29");
+    expect_string(__wrap_fim_whodata_event, w_evt->inode, "19");
+    expect_value(__wrap_fim_whodata_event, w_evt->ppid, 3211);
+
+    audit_parse(buffer);
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_check_auditd_enabled),
@@ -798,6 +850,8 @@ int main(void) {
         cmocka_unit_test(test_audit_parse_hex),
         cmocka_unit_test(test_audit_parse_delete),
         cmocka_unit_test(test_audit_parse_mv),
+        cmocka_unit_test(test_audit_parse_rm),
+        cmocka_unit_test(test_audit_parse_chmod),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
