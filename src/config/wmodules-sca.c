@@ -17,6 +17,7 @@ static const char *XML_SCAN_DAY = "day";
 static const char *XML_WEEK_DAY = "wday";
 static const char *XML_TIME = "time";
 static const char *XML_INTERVAL = "interval";
+static const char *XML_INTEGRITY_INTERVAL = "integrity_interval";
 static const char *XML_SCAN_ON_START= "scan_on_start";
 static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
@@ -83,6 +84,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
     int month_interval = 0;
     wm_sca_t *sca;
 
+    /* Default values */
     if(!module->data) {
         os_calloc(1, sizeof(wm_sca_t), sca);
         sca->enabled = 1;
@@ -94,6 +96,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         sca->alert_msg = NULL;
         sca->queue = -1;
         sca->interval = WM_DEF_INTERVAL / 2;
+        sca->integrity_interval = 300;
         sca->policies = NULL;
         module->context = &WM_SCA_CONTEXT;
         module->tag = strdup(module->context->name);
@@ -275,6 +278,30 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             if (sca->interval < 60) {
                 mwarn("Interval must be greater than 60 seconds. New interval value: 60s");
                 sca->interval = 60;
+            }
+        }
+        else if (!strcmp(nodes[i]->element, XML_INTEGRITY_INTERVAL)) {
+            char *endptr;
+            sca->integrity_interval = strtoul(nodes[i]->content, &endptr, 0);
+
+            if (sca->integrity_interval == 0 || sca->integrity_interval == UINT_MAX) {
+                merror("Invalid integrity interval value.");
+                return OS_INVALID;
+            }
+
+            switch (*endptr) {
+                case 'h':
+                    sca->interval *= 3600;
+                    break;
+                case 'm':
+                    sca->interval *= 60;
+                    break;
+                case 's':
+                case '\0':
+                    break;
+                default:
+                    merror("Invalid interval value.");
+                    return OS_INVALID;
             }
         }
         else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START))

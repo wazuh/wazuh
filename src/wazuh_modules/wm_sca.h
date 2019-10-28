@@ -47,6 +47,7 @@ typedef struct wm_sca_t {
     unsigned int interval;
     int scan_day;
     int scan_wday;
+    int integrity_interval;
     int msg_delay;
     unsigned int summary_delay;
     time_t next_time;

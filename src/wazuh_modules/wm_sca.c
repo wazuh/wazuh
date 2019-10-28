@@ -235,6 +235,12 @@ void * wm_sca_main(wm_sca_t * data) {
                     data,
                     0,
                     NULL);
+    w_create_thread(NULL,
+                    0,
+                    (LPTHREAD_START_ROUTINE)wm_sca_check_integrity_periodically,
+                    data,
+                    0,
+                    NULL);
 #endif
 
     wm_sca_start(data);
@@ -3201,7 +3207,7 @@ static int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg)
     sca scan and integrity hash.
  */
 static void *wm_sca_check_integrity_periodically (wm_sca_t * data) {
-    unsigned int time_sleep = 300;
+    unsigned int time_sleep = data->integrity_interval;
 
     while (1) {
         /* Thread sleeps for 5 minutes until the next time it sends the hash */
@@ -3211,7 +3217,6 @@ static void *wm_sca_check_integrity_periodically (wm_sca_t * data) {
         /* Send hash for every policy file */
         if (data->policies) {
             int i;
-            OSHash *check_list = OSHash_Create();
 
             for (i = 0; data->policies[i]; i++) {
                 if (!data->policies[i]->enabled) {
