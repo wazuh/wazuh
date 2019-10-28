@@ -32,10 +32,10 @@ def test_select_key_affected_items(response, select_key):
     :return: True if request response item key matches used select param
     """
     if '.' in select_key:
-        assert response.json()["data"]["affected_items"][0][select_key.split('.')[0]] == select_key.split('.')[0]
-        assert response.json()["data"]["affected_items"][0][select_key.split('.')[1]] == select_key.split('.')[1]
+        assert list(response.json()["data"]["affected_items"][0])[0] == select_key.split('.')[0]
+        assert list(response.json()["data"]["affected_items"][0][select_key.split('.')[0]])[0] == select_key.split('.')[1]
     else:
-        assert response.json()["data"]["affected_items"][0][select_key] == select_key
+        assert list(response.json()["data"]["affected_items"][0])[0] == select_key
     return
 
 
