@@ -10,6 +10,7 @@
 #ifndef _W_ROTATION
 #define _W_ROTATION
 #define PATH_SEP_ROT '/'
+#define SECONDS_PER_DAY 86400
 
 /*  Rotation node
  * - first_value: The day of the log

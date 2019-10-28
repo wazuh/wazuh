@@ -203,7 +203,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
         DIFF_LAST_FILE
     );
 
-    if (w_compress_gzfile(filename, compressed_file) != 0) {
+    if (w_compress_gzfile(filename, compressed_file, 0) != 0) {
         mwarn(FIM_WARN_GENDIFF_SNAPSHOT, filename);
     }
 
@@ -346,7 +346,7 @@ char *seechanges_addfile(const char *filename)
     /* If the file is not there, create compressed file*/
     if (w_uncompress_gzfile(compressed_file, old_location) != 0) {
         seechanges_createpath(old_location);
-        if (w_compress_gzfile(filename, compressed_file) != 0) {
+        if (w_compress_gzfile(filename, compressed_file, 0) != 0) {
             mwarn(FIM_WARN_GENDIFF_SNAPSHOT, filename);
         }
         return (NULL);

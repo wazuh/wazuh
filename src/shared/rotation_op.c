@@ -537,68 +537,67 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     closedir(dir);
 }
 
-time_t calc_next_rotation(time_t tm, struct tm *rot, const char units, int interval)
+time_t calc_next_rotation(time_t tm, const char units, int interval)
 {
     int counter;  /* Number of intervals to rotate in a day */
     int i = 1;
+    struct tm rot;
     time_t ret = tm;
     int seconds, n_minutes;
-    localtime_r(&ret, rot);
+    localtime_r(&ret, &rot);
 
     switch (units) {
         case 'w':
             /* Seconds left to the next rotation day depending if its this week or the next */
-            seconds = (interval > rot->tm_wday) ? (interval-rot->tm_wday) * 24 * 3600 : (((7-(rot->tm_wday-interval)) * 24 * 3600) + 3600);
+            seconds = (interval > rot.tm_wday) ? (interval-rot.tm_wday) * SECONDS_PER_DAY : (((7-(rot.tm_wday-interval)) * SECONDS_PER_DAY) + 3600);
             ret = tm + seconds;
-            localtime_r(&ret, rot);
-            rot->tm_hour = 0;
-            rot->tm_min = 0;
+            localtime_r(&ret, &rot);
+            rot.tm_hour = 0;
+            rot.tm_min = 0;
         break;
         case 'h':
             counter = 24 / interval;
-            while (rot->tm_hour >= i*interval && i < counter) {
+            while (rot.tm_hour >= i*interval && i < counter) {
                 i++;
             }
             /* The next rotation is tomorrow */
             if (i == counter) {
-                ret += 24 * 3600;
-                localtime_r(&ret, rot);
-                rot->tm_hour = 0;
+                ret += SECONDS_PER_DAY;
+                localtime_r(&ret, &rot);
+                rot.tm_hour = 0;
             /* The next rotation is today */
             } else {
-                rot->tm_hour = i*interval;
+                rot.tm_hour = i*interval;
             }
-            rot->tm_min = 0;
+            rot.tm_min = 0;
         break;
         case 'm':
             counter = 24*60 / interval;
-            n_minutes = (rot->tm_hour*60 + rot->tm_min) / interval;
+            n_minutes = (rot.tm_hour*60 + rot.tm_min) / interval;
             /* The next rotation is tomorrow */
             if (n_minutes == counter-1) {
-                ret += 24 * 3600;
-                localtime_r(&ret, rot);
-                rot->tm_hour = 0;
-                rot->tm_min = 0;
+                ret += SECONDS_PER_DAY;
+                localtime_r(&ret, &rot);
+                rot.tm_hour = 0;
+                rot.tm_min = 0;
             /* The next rotation is today */
             } else {
                 /* The next rotation will be in the next n_minutes iteration */
-                rot->tm_hour = 0;
-                rot->tm_min = 0;
-                rot->tm_sec = 0;
-                ret = mktime(rot);
+                rot.tm_hour = 0;
+                rot.tm_min = 0;
+                rot.tm_sec = 0;
+                ret = mktime(&rot);
                 ret += interval * 60 * (n_minutes + 1);
-                localtime_r(&ret, rot);
+                localtime_r(&ret, &rot);
             }
         break;
     }
 
-    rot->tm_sec = 0;
-    ret = mktime(rot);
+    rot.tm_sec = 0;
+    ret = mktime(&rot);
 
-    mdebug2("Next scheduled rotation: %d/%d/%d %d:%d:%d", rot->tm_mday, rot->tm_mon+1, rot->tm_year+1900, rot->tm_hour, rot->tm_min, rot->tm_sec);
+    mdebug2("Next scheduled rotation: %d/%d/%d %d:%d:%d", rot.tm_mday, rot.tm_mon+1,
+            rot.tm_year+1900, rot.tm_hour, rot.tm_min, rot.tm_sec);
 
     return ret;
 }
-
-
-

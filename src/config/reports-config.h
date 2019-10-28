@@ -35,7 +35,6 @@ typedef struct _monitor_config {
     int keep_rotated_files;
     unsigned long min_size_rotate;  // This is the value that we put in the configuration (not converted to bytes). We need it to show the configuration.
     unsigned long size_rotate;      // This is the value that we put in the configuration (not converted to bytes). We need it to show the configuration.
-    int daily_rotations;
 
     char *smtpserver;
     char *emailfrom;

@@ -2556,7 +2556,7 @@ int w_remove_line_from_file(char *file,int line){
 
 
 /* file to gzip */
-int w_compress_gzfile(const char *filesrc, const char *filedst) {
+int w_compress_gzfile(const char *filesrc, const char *filedst, int remove) {
     FILE *fd;
     gzFile gz_fd;
     char *buf;
@@ -2607,6 +2607,14 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
     fclose(fd);
     gzclose(gz_fd);
     os_free(buf);
+
+    /* Remove uncompressed file */
+    if (remove) {
+        if (unlink(filesrc) == -1) {
+            merror("Unable to delete '%s' due to '%s'", filesrc, strerror(errno));
+        }
+    }
+
     return 0;
 }
 

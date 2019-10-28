@@ -13,25 +13,12 @@
 
 /* Global variables */
 monitor_config mond;
-const char * MONTHS[] = {
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec"
-};
 
 time_t last_rot_log;
 time_t last_rot_json;
 
-static void rotate_logs(rotation_list *list, char *path, char *new_path, int *day, int interval, int today, int json, time_t *last_rot, time_t now) {
+static void rotate_logs(rotation_list *list, char *path, char *new_path, int *day, int interval, int today, int json,
+                        time_t *last_rot, time_t now) {
     int counter;
     struct tm t;
     time_t last_day;
@@ -48,7 +35,7 @@ static void rotate_logs(rotation_list *list, char *path, char *new_path, int *da
                 t.tm_sec = 0;
                 last_day = mktime(&t);
                 /* If there are no rotated logs from the day before */
-                counter = now - last_day >= 172800 ? -1 : list->last->second_value;
+                counter = now - last_day >= SECONDS_PER_DAY*2 ? -1 : list->last->second_value;
             }
         } else {
             counter = list->last->second_value;
@@ -56,10 +43,10 @@ static void rotate_logs(rotation_list *list, char *path, char *new_path, int *da
     }
 
     if (list && list->last && *day == list->last->first_value) {
-        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, *day != today ? 1 : 0, json, mond.daily_rotations,
+        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, *day != today ? 1 : 0, json,
                                 counter, mond.log_list_plain, mond.log_list_json);
     } else {
-        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, *day != today ? 1 : 0, json, mond.daily_rotations,
+        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, *day != today ? 1 : 0, json,
                                 -1, mond.log_list_plain, mond.log_list_json);
     }
     if (new_path) {
@@ -91,7 +78,6 @@ void Monitord()
 {
     time_t tm, n_time, n_time_json;
     struct tm p;
-    struct tm rot;
     int counter = 0;
     int interval_log = 0, interval_json = 0;
     int interval_set_log = 0, interval_set_json = 0;
@@ -127,7 +113,7 @@ void Monitord()
     today_json = today;
 
     /* Calculate when is the next rotation */
-    n_time = mond.interval ? calc_next_rotation(tm, &rot, mond.interval_units, mond.interval) : 0;
+    n_time = mond.interval ? calc_next_rotation(tm, mond.interval_units, mond.interval) : 0;
     n_time_json = mond.interval ? n_time : 0;
 
     /* Set internal log path to rotate them */
@@ -202,25 +188,25 @@ void Monitord()
                 check_size_interval(tm, n_time, size, &interval_log, &interval_set_log);
                 if (tm > n_time && (long) size >= mond.min_size && mond.ossec_log_plain) {
                     rotate_logs(mond.log_list_plain, path_ossec, new_path, &today_log, interval_log, p.tm_mday, 0, &last_rot_log, tm);
-                    n_time = calc_next_rotation(tm, &rot, mond.interval_units, mond.interval);
+                    n_time = calc_next_rotation(tm, mond.interval_units, mond.interval);
                     interval_set_log = 0;
                 }
                 /* Rotate ossec.json by size (min_size) and interval */
                 check_size_interval(tm, n_time_json, size_json, &interval_json, &interval_set_json);
                 if (tm > n_time_json && (long) size_json >= mond.min_size && mond.ossec_log_json) {
                     rotate_logs(mond.log_list_json, path_ossec_json, new_path, &today_json, interval_json, p.tm_mday, 1, &last_rot_json, tm);
-                    n_time_json = calc_next_rotation(tm, &rot, mond.interval_units, mond.interval);
+                    n_time_json = calc_next_rotation(tm, mond.interval_units, mond.interval);
                     interval_set_json = 0;
                 }
             } else {
                 /* Rotation by size (max_size) */
                 if (mond.max_size > 0) {
                     /* If log file reachs maximum size, rotate ossec.log */
-                    if ( (long) size >= mond.max_size && mond.ossec_log_plain) {
+                    if ((long) size >= mond.max_size && mond.ossec_log_plain) {
                         rotate_logs(mond.log_list_plain, path_ossec, new_path, &today_log, 0, p.tm_mday, 0, &last_rot_log, tm);
                     }
                     /* If log file reachs maximum size, rotate ossec.json */
-                    if ( (long) size_json >= mond.max_size && mond.ossec_log_json) {
+                    if ((long) size_json >= mond.max_size && mond.ossec_log_json) {
                         rotate_logs(mond.log_list_json, path_ossec_json, new_path, &today_json, 0, p.tm_mday, 1, &last_rot_json, tm);
                     }
                 }
@@ -234,7 +220,7 @@ void Monitord()
                     if (mond.ossec_log_json) {
                         rotate_logs(mond.log_list_json, path_ossec_json, new_path, &today_json, 1, p.tm_mday, 1, &last_rot_json, tm);
                     }
-                    n_time = calc_next_rotation(tm, &rot, mond.interval_units, mond.interval);
+                    n_time = calc_next_rotation(tm, mond.interval_units, mond.interval);
                 }
             }
         }
