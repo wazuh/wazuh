@@ -157,9 +157,20 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/Agent'
-                  - type: array
+                $ref: '#/components/schemas/Agent'
+
+    AllItemsResponseAgentsDistinct:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/AgentDistinct'
 
     AllItemsResponseGroups:
       allOf:
@@ -171,9 +182,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/AgentGroup'
-                  - type: array
+                $ref: '#/components/schemas/AgentGroup'
         - $ref: '#/components/schemas/AllItemsResponse'
 
     AllItemsResponseAgentIDs:
@@ -186,9 +195,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/AgentID'
-                  - type: array
+                $ref: '#/components/schemas/AgentID'
         - $ref: '#/components/schemas/AllItemsResponse'
 
     AllItemsResponseGroupIDs:
@@ -201,9 +208,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/GroupID'
-                  - type: array
+                $ref: '#/components/schemas/GroupID'
         - $ref: '#/components/schemas/AllItemsResponse'
 
     AllItemsResponseAgentsSimple:
@@ -217,9 +222,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/AgentSimple'
-                  - type: array
+                $ref: '#/components/schemas/AgentSimple'
 
     AllItemsResponseAgentsSynced:
       allOf:
@@ -232,9 +235,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/AgentSynced'
-                  - type: array
+                $ref: '#/components/schemas/AgentSynced'
 
     AllItemsResponseAgentsKeys:
       allOf:
@@ -247,9 +248,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/AgentIdKey'
-                  - type: array
+                $ref: '#/components/schemas/AgentIdKey'
 
     AllItemsResponseRoles:
       allOf:
@@ -262,9 +261,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/RolesResponse'
-                  - type: integer
+                $ref: '#/components/schemas/RolesResponse'
 
     AllItemsResponsePolicies:
       allOf:
@@ -4893,18 +4890,25 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
       responses:
         '200':
           description: 'Get group configuration'
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/GroupConfiguration'
+                type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/ListMetadata'
+                      - type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/GroupConfiguration'
               example:
                 data:
                   - filters:
@@ -4971,14 +4975,11 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - $ref: '#/components/schemas/GroupFile'
+                properties:
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/ListMetadata'
+                      - $ref: '#/components/schemas/GroupFile'
 
               example:
                 data:
@@ -5054,15 +5055,12 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          description: "The output format depends on the type of file that has been requested: rootkit file, rootkit trojans or rcl."
+                properties:
+                  data:
+                    oneOf:
+                      - type: array
+                      - type: object
+                        description: "The output format depends on the type of file that has been requested: rootkit file, rootkit trojans or rcl."
               example:
                 data:
                   vars:
@@ -5430,18 +5428,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                      - $ref: '#/components/schemas/ListMetadata'
-                      - type: object
-                        properties:
-                          items:
-                            type: array
-                            items:
-                              $ref: '#/components/schemas/AgentDistinct'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseAgentsDistinct'
               example:
                 items:
                   - count: 11
@@ -5462,10 +5453,6 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: 'Get summary of agents OS'

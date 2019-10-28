@@ -286,7 +286,6 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
         def wrapper(*args, **kwargs):
             target_params, req_permissions, add_denied = \
                 _get_required_permissions(actions=actions, resources=resources, **kwargs)
-
             allow = _match_permissions(req_permissions=req_permissions)
             original_kwargs = copy.deepcopy(kwargs)
 

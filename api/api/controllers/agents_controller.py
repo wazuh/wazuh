@@ -41,7 +41,6 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge
                 'status': status,
                 'older_than': older_than
                 }
-
     dapi = DistributedAPI(f=agent.delete_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -380,7 +379,7 @@ def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=
     :return: ApiResponse
     """
     f_kwargs = {'agent_list': [agent_id],
-                'group_id': group_id,
+                'group_list': [group_id],
                 'replace': force_single_group}
 
     dapi = DistributedAPI(f=agent.assign_agents_to_group,
@@ -677,7 +676,7 @@ def get_list_group(pretty=False, wait_for_complete=False, list_groups=None, offs
                 'search_in_fields': ['name'],
                 'hash_algorithm': hash_}
 
-    dapi = DistributedAPI(f=agent.get_groups,
+    dapi = DistributedAPI(f=agent.get_agent_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -734,7 +733,8 @@ def get_agents_in_group(group_id, pretty=False, wait_for_complete=False, offset=
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: AllItemsResponseAgents
     """
-    f_kwargs = {'offset': offset,
+    f_kwargs = {'group_id': group_id,
+                'offset': offset,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
@@ -742,9 +742,9 @@ def get_agents_in_group(group_id, pretty=False, wait_for_complete=False, offset=
                 'filters': {
                     'status': status,
                 },
-                'q': 'group=' + group_id + (';' + q if q else '')}
+                'q': q}
 
-    dapi = DistributedAPI(f=agent.get_agents,
+    dapi = DistributedAPI(f=agent.get_agents_in_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -785,15 +785,20 @@ def post_group(group_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_group_config(group_id, pretty=False, wait_for_complete=False):
+def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit):
     """Get group configuration defined in the `agent.conf` file.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param group_id: Group ID.
+    :param offset: First element to return in the collection
+    :param limit: Maximum number of elements to return
     :return: GroupConfiguration
     """
-    f_kwargs = {'group_list': [group_id]}
+    f_kwargs = {'group_list': [group_id],
+                'offset': offset,
+                'limit': limit}
+
     dapi = DistributedAPI(f=agent.get_agent_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -912,7 +917,7 @@ def get_group_file_json(group_id, file_name, pretty=False, wait_for_complete=Fal
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    response = Data(data['data']['items'])
 
     return response, 200
 
@@ -942,7 +947,7 @@ def get_group_file_xml(group_id, file_name, pretty=False, wait_for_complete=Fals
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = connexion.lifecycle.ConnexionResponse(body=data["message"], mimetype='application/xml')
+    response = connexion.lifecycle.ConnexionResponse(body=data["data"], mimetype='application/xml')
 
     return response
 
@@ -998,10 +1003,10 @@ def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=
     :param select: Select which fields to return (separated by comma)
     :return: AllItemsResponseAgents
     """
-    f_kwargs = {'filters': {'name': agent_name},
+    f_kwargs = {'name': agent_name,
                 'select': select}
 
-    dapi = DistributedAPI(f=agent.get_agents,
+    dapi = DistributedAPI(f=agent.get_agent_by_name,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1036,7 +1041,7 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=da
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'q': 'group=null' + (';' + q if q else '')}
+                'q': 'id!=000;group=null' + (';' + q if q else '')}
 
     dapi = DistributedAPI(f=agent.get_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1125,9 +1130,8 @@ def get_agent_fields(pretty=False, wait_for_complete=False, fields=None, offset=
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -1156,21 +1160,14 @@ def get_agent_summary_status(pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_agent_summary_os(pretty=False, wait_for_complete=False, offset=0, limit=database_limit, search=None, q=None):
+def get_agent_summary_os(pretty=False, wait_for_complete=False):
     """Get agents OS summary.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param search: Looks for elements with the specified string
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: ListMetadata
     """
-    f_kwargs = {'offset': offset,
-                'limit': limit,
-                'search': parse_api_param(search, 'search'),
-                'q': q}
+    f_kwargs = {}
 
     dapi = DistributedAPI(f=agent.get_agents_summary_os,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
