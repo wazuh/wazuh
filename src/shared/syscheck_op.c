@@ -520,7 +520,6 @@ char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__(
     char *buf;
     char *user_name = NULL;
     int bufsize;
-    int s;
     int errno;
 
     bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
@@ -530,14 +529,16 @@ char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__(
 
     os_calloc(bufsize, sizeof(char), buf);
 
-    /* TODO: getpwuid_r don't works on Solaris */
-    s = getpwuid_r(uid, &pwd, buf, bufsize, &result);
+#ifdef SOLARIS
+    result = getpwuid_r(uid, &pwd, buf, bufsize);
+#else
+    errno = getpwuid_r(uid, &pwd, buf, bufsize, &result);
+#endif
     if (result == NULL) {
-        if (s == 0) {
+        if (errno == 0) {
             mdebug2("User with uid '%d' not found.\n", uid);
         }
         else {
-            errno = s;
             mdebug2("Failed getting user_name (%d): '%s'\n", errno, strerror(errno));
         }
     } else {
