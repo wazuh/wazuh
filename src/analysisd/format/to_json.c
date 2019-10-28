@@ -506,7 +506,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
     W_ParseJSON(root, lf);
     out = cJSON_PrintUnformatted(root);
-    if (lf->generated_rule->mitre_id) {
+    if (lf->generated_rule && lf->generated_rule->mitre_id) {
         mdebug2("Sending mitre event: %s", out);
     }
     cJSON_Delete(root);
