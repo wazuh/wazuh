@@ -445,7 +445,7 @@ void test_add_audit_rules_syscheck_not_added(void **state)
     will_return(__wrap_W_Vector_insert_unique, 1);
 
     int ret;
-    ret = add_audit_rules_syscheck();
+    ret = add_audit_rules_syscheck(0);
 
     assert_int_equal(ret, 1);
 }
@@ -476,7 +476,7 @@ void test_add_audit_rules_syscheck_added(void **state)
     will_return(__wrap_W_Vector_insert_unique, 1);
 
     int ret;
-    ret = add_audit_rules_syscheck();
+    ret = add_audit_rules_syscheck(0);
 
     free(syscheck.dir[0]);
     free(syscheck.dir);
