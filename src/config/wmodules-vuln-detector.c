@@ -594,7 +594,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
     vu_os_feed *os_list = NULL;
     int result;
     char multi_provider;
-    provider_options p_options;
+    provider_options p_options = { .multi_path = 0 };
     int retval = OS_INVALID;
 
     wm_vuldet_init_provider_options(&p_options);
@@ -1011,6 +1011,7 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
                 os_realloc(options->multi_allowed_os_name, (elements + 2) * sizeof(char *), options->multi_allowed_os_name);
                 os_realloc(options->multi_allowed_os_ver, (elements + 2) * sizeof(char *), options->multi_allowed_os_ver);
                 os_strdup(node[i]->content, options->multi_allowed_os_name[elements]);
+                os_strdup(*node[i]->values, options->multi_allowed_os_ver[elements]);
                 options->multi_allowed_os_name[elements + 1] = NULL;
                 options->multi_allowed_os_ver[elements + 1] = NULL;
 
@@ -1018,7 +1019,6 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
                     merror("Invalid use of '%s' option: it need to be used with the %s attribute.", node[i]->element, XML_REPLACED_OS);
                     return OS_INVALID;
                 }
-                os_strdup(*node[i]->values, options->multi_allowed_os_ver[elements]);
             } else {
                 mwarn("'%s' option can only be used in a multi-provider.", node[i]->element);
             }
