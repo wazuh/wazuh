@@ -586,12 +586,12 @@ void OS_ReadMSG(char *ut_str)
                 }
 
                 /* Copy the structure to the state memory of if_matched_sid */
-                if (currently_rule->sid_prev_matched) {
-                    if (!OSList_AddData(currently_rule->sid_prev_matched, lf)) {
+                if (currently_rule->sid_prev_matched && currently_rule->sid_prev_matched[0]) {
+                    if (!OSList_AddData(currently_rule->sid_prev_matched[0], lf)) {
                         merror("Unable to add data to sig list.");
                     } else {
                         lf->sid_node_to_delete =
-                            currently_rule->sid_prev_matched->last_node;
+                            currently_rule->sid_prev_matched[0]->last_node;
                     }
                 }
 

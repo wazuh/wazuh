@@ -117,10 +117,10 @@ typedef struct _RuleInfo {
     u_int16_t decoded_as;
 
     /* List of previously matched events */
-    OSList *sid_prev_matched;
+    OSList **sid_prev_matched;
 
     /* Pointer to a list (points to sid_prev_matched of if_matched_sid */
-    OSList *sid_search;
+    OSList **sid_search;
 
     /* List of previously matched events in this group.
      * Every rule that has if_matched_group will have this

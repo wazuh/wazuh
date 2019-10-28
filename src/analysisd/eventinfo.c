@@ -40,23 +40,22 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
     const char * field;
 
     /* Checking if sid search is valid */
-    if (!rule->sid_search) {
-        merror("No sid search.");
+    if (!rule->sid_search || !rule->sid_search[0]) {
         return NULL;
     }
 
     while (1) {
-        w_mutex_lock(&rule->sid_search->mutex);
-            if (!rule->sid_search->pending_remove) {
-                rule->sid_search->count++;
-                w_mutex_unlock(&rule->sid_search->mutex);
+        w_mutex_lock(&rule->sid_search[0]->mutex);
+            if (!rule->sid_search[0]->pending_remove) {
+                rule->sid_search[0]->count++;
+                w_mutex_unlock(&rule->sid_search[0]->mutex);
                 break;
             }
-        w_mutex_unlock(&rule->sid_search->mutex);
+        w_mutex_unlock(&rule->sid_search[0]->mutex);
     }
 
     /* Get last node */
-    lf_node = OSList_GetLastNode(rule->sid_search);
+    lf_node = OSList_GetLastNode(rule->sid_search[0]);
     if (!lf_node) {
         lf = NULL;
         goto end;
@@ -245,9 +244,9 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
 
     lf = NULL;
 end:
-    w_mutex_lock(&rule->sid_search->mutex);
-    rule->sid_search->count--;
-    w_mutex_unlock(&rule->sid_search->mutex);
+    w_mutex_lock(&rule->sid_search[0]->mutex);
+    rule->sid_search[0]->count--;
+    w_mutex_unlock(&rule->sid_search[0]->mutex);
     return lf;
 }
 
@@ -817,17 +816,17 @@ void Free_Eventinfo(Eventinfo *lf)
     // Free node to delete
     if(!lf->is_a_copy){
         if (lf->sid_node_to_delete) {
-            w_mutex_lock(&lf->generated_rule->sid_prev_matched->mutex);
-            lf->generated_rule->sid_prev_matched->pending_remove = 1;
-            w_mutex_unlock(&lf->generated_rule->sid_prev_matched->mutex);
-            while (lf->generated_rule->sid_prev_matched->count);
+            w_mutex_lock(&lf->generated_rule->sid_prev_matched[0]->mutex);
+            lf->generated_rule->sid_prev_matched[0]->pending_remove = 1;
+            w_mutex_unlock(&lf->generated_rule->sid_prev_matched[0]->mutex);
+            while (lf->generated_rule->sid_prev_matched[0]->count);
 
-            OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched,
+            OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched[0],
                                     lf->sid_node_to_delete);
 
-            w_mutex_lock(&lf->generated_rule->sid_prev_matched->mutex);
-            lf->generated_rule->sid_prev_matched->pending_remove = 0;
-            w_mutex_unlock(&lf->generated_rule->sid_prev_matched->mutex);
+            w_mutex_lock(&lf->generated_rule->sid_prev_matched[0]->mutex);
+            lf->generated_rule->sid_prev_matched[0]->pending_remove = 0;
+            w_mutex_unlock(&lf->generated_rule->sid_prev_matched[0]->mutex);
         } else if (lf->generated_rule && lf->generated_rule->group_prev_matched) {
             unsigned int i = 0;
 

@@ -311,6 +311,7 @@ int OS_AddRuleInfo(RuleInfo *newrule, int sid)
             sortTheCopiedRules(newrule->sigid);
 
             remove_Rule(NULL, sid);
+            free_RuleInfo(removed);
 
             OS_AddChild(newrule, NULL);
 
@@ -321,12 +322,10 @@ int OS_AddRuleInfo(RuleInfo *newrule, int sid)
             markIdOverwrite(NULL, newrule);
         }
         else {
-
             remove_Rule(NULL, sid);
+            free_RuleInfo(removed);
             OS_AddChild(newrule, NULL);
         }
-
-        free_RuleInfo(removed);
 
         mdebug1(RULE_OVERWRITE, newrule->sigid);
 
@@ -346,8 +345,9 @@ int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule)
         if (r_node->ruleinfo->sigid == orig_rule->if_matched_sid) {
             /* If child does not have a list, create one */
             if (!r_node->ruleinfo->sid_prev_matched) {
-                r_node->ruleinfo->sid_prev_matched = OSList_Create();
-                if (!r_node->ruleinfo->sid_prev_matched) {
+                r_node->ruleinfo->sid_prev_matched = (OSList **)calloc(1, sizeof(OSList*));
+                r_node->ruleinfo->sid_prev_matched[0] = OSList_Create();
+                if (!r_node->ruleinfo->sid_prev_matched[0]) {
                     merror_exit(MEM_ERROR, errno, strerror(errno));
                 }
                 //OSList_SetFreeDataPointer(r_node->ruleinfo->sid_prev_matched, (void (*)(void *)) Free_Eventinfo);
@@ -664,6 +664,16 @@ void free_RuleInfo(RuleInfo *r_info)
         os_free(r_info->regex);
     }
 
+    if (r_info->sid_prev_matched && r_info->sid_prev_matched[0]) {
+        os_free(r_info->sid_prev_matched[0]);
+        r_info->sid_prev_matched[0] = NULL;
+    }
+
+    if (r_info->sid_search && r_info->sid_search[0]) {
+        os_free(r_info->sid_search[0]);
+        r_info->sid_search[0] = NULL;
+    }
+
     int i;
 
     for (i=0; r_info->fields[i]; i++) {
@@ -878,9 +888,10 @@ static void markIdOverwrite (RuleNode *r_node, RuleInfo *r_info)
 
             if (!r_info->sid_prev_matched) {
 
-                r_info->sid_prev_matched = OSList_Create();
+                r_info->sid_prev_matched = (OSList **)calloc(1, sizeof(OSList*));
+                r_info->sid_prev_matched[0] = OSList_Create();
 
-                if (!r_info->sid_prev_matched) {
+                if (!r_info->sid_prev_matched[0]) {
                     merror_exit(MEM_ERROR, errno, strerror(errno));
                 }
             }

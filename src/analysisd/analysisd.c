@@ -2478,10 +2478,10 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
 
             /* Copy the structure to the state memory of if_matched_sid */
-            if (t_currently_rule->sid_prev_matched) {
+            if (t_currently_rule->sid_prev_matched && t_currently_rule->sid_prev_matched[0]) {
                 OSListNode *node;
                 w_mutex_lock(&t_currently_rule->mutex);
-                if (node = OSList_AddData(t_currently_rule->sid_prev_matched, lf), !node) {
+                if (node = OSList_AddData(t_currently_rule->sid_prev_matched[0], lf), !node) {
                     merror("Unable to add data to sig list.");
                 } else {
                     lf->sid_node_to_delete = node;
