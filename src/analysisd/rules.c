@@ -965,7 +965,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                         config_ruleinfo->context_opts &= NOT_SAME_AGENT;
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_global_frequency) == 0) {
-                        config_ruleinfo->context_opts &= GLOBAL_FREQUENCY;
+                        config_ruleinfo->context_opts |= GLOBAL_FREQUENCY;
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_field) == 0) {
 
@@ -991,7 +991,6 @@ int Rules_OP_ReadRules(const char *rulefile)
                                           xml_notsame_field) == 0) {
 
                         if (config_ruleinfo->context_opts & NOT_SAME_FIELD) {
-
                             int size;
                             for (size = 0; config_ruleinfo->not_same_fields[size] != NULL; size++);
 
