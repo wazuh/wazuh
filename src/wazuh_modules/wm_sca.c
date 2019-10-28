@@ -70,6 +70,7 @@ static void wm_sca_send_policies_scanned(wm_sca_t * data);
 static int wm_sca_send_dump_end(wm_sca_t * data, unsigned int elements_sent,char * policy_id,int scan_id);  // Send dump end event
 static int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg);
 static int compare_cis_db_info_t_entry(const void * const a, const void * const  b);
+static void *wm_sca_check_integrity_periodically (wm_sca_t * data); // Send integrity to manager
 
 #ifndef WIN32
 static void * wm_sca_request_thread(wm_sca_t * data);
