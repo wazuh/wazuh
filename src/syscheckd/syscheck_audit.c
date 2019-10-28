@@ -205,7 +205,7 @@ int init_auditd_socket(void) {
 }
 
 
-int add_audit_rules_syscheck(void) {
+int add_audit_rules_syscheck(bool first_time) {
     unsigned int i = 0;
     unsigned int rules_added = 0;
 
@@ -246,7 +246,15 @@ int add_audit_rules_syscheck(void) {
                     merror(FIM_ERROR_WHODATA_CHECK_RULE);
                 }
             } else {
-                merror(FIM_ERROR_WHODATA_MAXNUM_WATCHES, syscheck.dir[i], syscheck.max_audit_entries);
+                static bool reported = false;
+
+                if (first_time || !reported) {
+                    merror(FIM_ERROR_WHODATA_MAXNUM_WATCHES, syscheck.dir[i], syscheck.max_audit_entries);
+                } else {
+                    mdebug1(FIM_ERROR_WHODATA_MAXNUM_WATCHES, syscheck.dir[i], syscheck.max_audit_entries);
+                }
+
+                reported = true;
             }
         }
         i++;
@@ -419,7 +427,7 @@ int audit_init(void) {
     // Check if auditd is installed and running.
     int aupid = check_auditd_enabled();
     if (aupid <= 0) {
-        mdebug1(FIM_AUDIT_NORUNNING);
+        mwarn(FIM_AUDIT_NORUNNING);
         return (-1);
     }
 
@@ -461,7 +469,7 @@ int audit_init(void) {
     // Add Audit rules
     audit_added_rules = W_Vector_init(10);
     audit_added_dirs = W_Vector_init(20);
-    int rules_added = add_audit_rules_syscheck();
+    int rules_added = add_audit_rules_syscheck(true);
     if (rules_added < 1){
         mdebug1(FIM_AUDIT_NORULES);
         return (-1);
@@ -1082,7 +1090,7 @@ void audit_parse(char *buffer) {
 // LCOV_EXCL_START
 void audit_reload_rules(void) {
     mdebug1(FIM_AUDIT_RELOADING_RULES);
-    int rules_added = add_audit_rules_syscheck();
+    int rules_added = add_audit_rules_syscheck(false);
     mdebug1(FIM_AUDIT_RELOADED_RULES, rules_added);
 }
 // LCOV_EXCL_STOP

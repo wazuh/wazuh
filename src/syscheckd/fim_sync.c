@@ -21,7 +21,6 @@
 #include "integrity_op.h"
 
 static long fim_sync_cur_id;
-static long fim_sync_last_msg_time;
 static w_queue_t * fim_sync_queue;
 
 // Starting data synchronization thread
@@ -32,19 +31,19 @@ void * fim_run_integrity(void * args) {
         mdebug2("Performing synchronization check.");
         fim_sync_checksum();
 
-        // Wait for sync_response_timeout seconds since the last message received, or sync_interval
-
         struct timespec timeout = { .tv_sec = time(NULL) + syscheck.sync_interval };
-        long margin = fim_sync_last_msg_time + syscheck.sync_response_timeout;
-
-        timeout.tv_sec = timeout.tv_sec > margin ? timeout.tv_sec : margin;
 
         // Get messages until timeout
         char * msg;
 
         while ((msg = queue_pop_ex_timedwait(fim_sync_queue, &timeout))) {
+            long margin = time(NULL) + syscheck.sync_response_timeout;
+
             fim_sync_dispatch(msg);
             free(msg);
+
+            // Wait for sync_response_timeout seconds since the last message received, or sync_interval
+            timeout.tv_sec = timeout.tv_sec > margin ? timeout.tv_sec : margin;
         }
     }
 
@@ -218,8 +217,6 @@ void fim_sync_dispatch(char * payload) {
         mdebug1(FIM_DBSYNC_INVALID_ARGUMENT, json_arg);
         goto end;
     }
-
-    fim_sync_last_msg_time = time(NULL);
 
     // Discard command if (data.id > global_id)
     // Decrease global ID if (data.id < global_id)

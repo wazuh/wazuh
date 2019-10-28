@@ -263,8 +263,18 @@ int main(int argc, char **argv)
     if (syscheck.enable_whodata) {
 #ifdef ENABLE_AUDIT
         int out = audit_init();
-        if (out < 0)
+        if (out < 0) {
             mwarn(FIM_WARN_AUDIT_THREAD_NOSTARTED);
+
+            // Switch who-data to real-time mode
+
+            for (int i = 0; syscheck.dir[i] != NULL; i++) {
+                if (syscheck.opts[i] & WHODATA_ACTIVE) {
+                    syscheck.opts[i] &= ~WHODATA_ACTIVE;
+                    syscheck.opts[i] |= REALTIME_ACTIVE;
+                }
+            }
+        }
 #else
         merror(FIM_ERROR_WHODATA_AUDIT_SUPPORT);
 #endif

@@ -163,7 +163,7 @@
 
 #define FIM_AUDIT_NEWRULE                   "(6270): Added audit rule for monitoring directory: '%s'."
 #define FIM_AUDIT_RULEDUP                   "(6271): Audit rule for monitoring directory '%s' already added."
-#define FIM_AUDIT_NORUNNING                 "(6272): Auditd is not running."
+
 #define FIM_AUDIT_NOCONF                    "(6273): Cannot apply Audit config."
 #define FIM_AUDIT_NORULES                   "(6274): No rules added. Audit events reader thread will not start."
 #define FIM_AUDIT_RELOADING_RULES           "(6275): Reloading Audit rules..."
@@ -230,5 +230,8 @@
 #define FIM_REGISTRY_EVENT_FAIL             "(6329): Unable to save registry key: '%s'"
 #define FIM_RUNNING_SCAN                    "(6330): The scan has been running during: %.3f sec (%.3f clock sec)"
 #define FIM_GET_ATTRIBUTES                  "(6331): Couldn't get attributes for file: '%s'"
+
+#define FIM_WARN_REALTIME_UNSUPPORTED       "(6332): The realtime monitoring request on unsupported system."
+#define FIM_WARN_WHODATA_UNSUPPORTED        "(6333): The who-data monitoring request on unsupported system."
 
 #endif /* DEBUG_MESSAGES_H */

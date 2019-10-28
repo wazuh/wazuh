@@ -118,7 +118,6 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 int realtime_process()
 {
     ssize_t len;
-    size_t i = 0;
     char buf[REALTIME_EVENT_BUFFER + 1];
     struct inotify_event *event;
 
@@ -128,10 +127,15 @@ int realtime_process()
     if (len < 0) {
         merror(FIM_ERROR_REALTIME_READ_BUFFER);
     } else if (len > 0) {
-        while (i < (size_t) len) {
+        rb_tree * tree = rbtree_init();
+
+        for (size_t i = 0; i < (size_t) len; i += REALTIME_EVENT_SIZE + event->len) {
             event = (struct inotify_event *) (void *) &buf[i];
 
-            if (event->len) {
+            if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
+                mwarn("Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
+                send_log_msg("ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
+            } else if (event->len) {
                 char wdchar[33];
                 char final_name[MAX_LINE + 1];
                 char *entry;
@@ -152,18 +156,28 @@ int realtime_process()
                                 entry,
                                 event->name);
                     }
-                    /* Need a sleep here to avoid triggering on vim
-                    * (and finding the file removed)
-                    */
-                    struct timeval timeout = {0, syscheck.rt_delay * 1000};
-                    select(0, NULL, NULL, NULL, &timeout);
 
-                    fim_realtime_event(final_name);
+                    if (rbtree_insert(tree, final_name, (void *)1) == NULL) {
+                        mdebug2("Duplicate event in real-time buffer: %s", final_name);
+                    }
                 }
             }
-
-            i += REALTIME_EVENT_SIZE + event->len;
         }
+
+        /* Need a sleep here to avoid triggering on vim
+         * (and finding the file removed)
+         */
+        struct timeval timeout = {0, syscheck.rt_delay * 1000};
+        select(0, NULL, NULL, NULL, &timeout);
+
+        char ** paths = rbtree_keys(tree);
+
+        for (int i = 0; paths[i] != NULL; i++) {
+            fim_realtime_event(paths[i]);
+        }
+
+        free_strarray(paths);
+        rbtree_destroy(tree);
     }
 
     return (0);
@@ -235,6 +249,10 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     }
 
     if (dwBytes) {
+        fim_element *item;
+        os_calloc(1, sizeof(fim_element), item);
+        os_calloc(1, sizeof(struct stat), item->statbuf);
+
         do {
             pinfo = (PFILE_NOTIFY_INFORMATION) &rtlocald->buffer[offset];
             offset += pinfo->NextEntryOffset;
@@ -260,10 +278,15 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
             Sleep(syscheck.rt_delay);
 
-            /* Check the change */
             str_lowercase(final_path);
-            fim_process_event(final_path, FIM_REALTIME, NULL);
+            item->mode = FIM_REALTIME;
+
+            /* Check the change */
+            fim_checker(final_path, item, NULL);
         } while (pinfo->NextEntryOffset != 0);
+
+        os_free(item->statbuf);
+        os_free(item);
     }
 
     realtime_win32read(rtlocald);

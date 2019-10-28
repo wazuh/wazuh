@@ -437,7 +437,9 @@ unsigned rb_size(rb_node * node) {
 // Create a red-black tree
 
 rb_tree * rbtree_init() {
-    return calloc(1, sizeof(rb_tree));
+    rb_tree * tree;
+    os_calloc(1, sizeof(rb_tree), tree);
+    return tree;
 }
 
 // Free a red-black tree
