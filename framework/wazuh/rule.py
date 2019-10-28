@@ -3,11 +3,10 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-from glob import glob
 
 import wazuh.configuration as configuration
 from wazuh import common
-from wazuh.core.crule import check_status, load_rules_from_file, Status, process_rule
+from wazuh.core.rule import check_status, load_rules_from_file, Status, process_rule, format_rule_file
 from wazuh.exception import WazuhError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import AffectedItemsWazuhResult
@@ -89,66 +88,17 @@ def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.da
                                       some_msg='Some rules files were shown',
                                       all_msg='All rules files were shown')
     status = check_status(status)
-
     # Rules configuration
     ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
     if not ruleset_conf:
         raise WazuhError(1200)
 
-    tmp_data = []
-    tags = ['rule_include', 'rule_exclude']
-    exclude_filenames = []
-    for tag in tags:
-        if tag in ruleset_conf:
-            item_status = Status.S_DISABLED.value if tag == 'rule_exclude' else Status.S_ENABLED.value
-
-            if type(ruleset_conf[tag]) is list:
-                items = ruleset_conf[tag]
-            else:
-                items = [ruleset_conf[tag]]
-
-            for item in items:
-                item_name = os.path.basename(item)
-                full_dir = os.path.dirname(item)
-                item_dir = os.path.relpath(full_dir if full_dir else common.ruleset_rules_path,
-                                           start=common.ossec_path)
-                if tag == 'rule_exclude':
-                    exclude_filenames.append(item_name)
-                else:
-                    tmp_data.append({'file': item_name, 'path': item_dir, 'status': item_status})
-
-    tag = 'rule_dir'
-    if tag in ruleset_conf:
-        if type(ruleset_conf[tag]) is list:
-            items = ruleset_conf[tag]
-        else:
-            items = [ruleset_conf[tag]]
-
-        for item_dir in items:
-            all_rules = "{0}/{1}/*.xml".format(common.ossec_path, item_dir)
-
-            for item in glob(all_rules):
-                item_name = os.path.basename(item)
-                item_dir = os.path.relpath(os.path.dirname(item), start=common.ossec_path)
-                if item_name in exclude_filenames:
-                    item_status = Status.S_DISABLED.value
-                else:
-                    item_status = Status.S_ENABLED.value
-                tmp_data.append({'file': item_name, 'path': item_dir, 'status': item_status})
-
-    data = list(tmp_data)
-    for d in tmp_data:
-        if status and status != Status.S_ALL.value and status != d['status']:
-            data.remove(d)
-        if path and path != d['path']:
-            data.remove(d)
-        if file and file != d['file']:
-            data.remove(d)
-
-    result.affected_items = process_array(data, search_text=search_text, search_in_fields=search_in_fields,
-                                          complementary_search=complementary_search, sort_by=sort_by,
-                                          sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
+    result.affected_items = process_array(
+        format_rule_file(ruleset_conf, {'status': status, 'path': path, 'file': file}),
+        search_text=search_text, search_in_fields=search_in_fields, complementary_search=complementary_search,
+        sort_by=sort_by, sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
     result.total_affected_items = len(result.affected_items)
+
     return result
 
 
@@ -231,8 +181,8 @@ def get_file(filename=None):
             with open(full_path) as f:
                 return f.read()
         except OSError:
-            WazuhError(1414, extra_message=os.path.join('WAZUH_HOME', rules_path, filename))
+            raise WazuhError(1414, extra_message=os.path.join('WAZUH_HOME', rules_path, filename))
         except Exception:
-            WazuhError(1413, extra_message=os.path.join('WAZUH_HOME', rules_path, filename))
+            raise WazuhError(1413, extra_message=os.path.join('WAZUH_HOME', rules_path, filename))
     else:
         raise WazuhError(1415)
