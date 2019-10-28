@@ -236,8 +236,6 @@ class WazuhIntegration:
                 client = sts_session.client(service_name=service_name)
             else:
                 client = boto_session.client(service_name=service_name)
-                if bucket:
-                    client.head_bucket(Bucket=bucket)
         except botocore.exceptions.ClientError as e:
             print("ERROR: Access error: {}".format(e))
             sys.exit(3)
@@ -797,13 +795,15 @@ class AWSBucket(WazuhIntegration):
             print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
             sys.exit(7)
 
-    def check_empty_bucket(self):
-        """
-        Exits if the bucket is empty
-        """
-        if not 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter='/'):
-            print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
-            exit(14)
+    def check_bucket(self):
+        """Check if the bucket is empty or the credentials are wrong."""
+        try:
+            if not 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter='/'):
+                print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
+                exit(14)
+        except botocore.exceptions.ClientError:
+            print("ERROR: Invalid credentials to access S3 Bucket")
+            exit(3)
 
 
 class AWSLogsBucket(AWSBucket):
@@ -2269,8 +2269,8 @@ def main(argv):
                                  account_alias=options.aws_account_alias,
                                  prefix=options.trail_prefix, delete_file=options.deleteFile,
                                  aws_organization_id=options.aws_organization_id)
-            # check if bucket is empty
-            bucket.check_empty_bucket()
+            # check if bucket is empty or credentials are wrong
+            bucket.check_bucket()
             bucket.iter_bucket(options.aws_account_id, options.regions)
         elif options.service:
             if options.service.lower() == 'inspector':
