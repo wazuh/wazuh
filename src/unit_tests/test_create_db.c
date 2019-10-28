@@ -1239,9 +1239,78 @@ void test_fim_audit_inode_event_add(void **state)
 
     // Not in hash table
     will_return(__wrap_OSHash_Get_ex, NULL);
-    will_return(__wrap_lstat, -1);
 
     fim_audit_inode_event(file, inode_key, FIM_WHODATA, w_evt);
+}
+
+
+void test_fim_checker_file(void **state)
+{
+    (void) state;
+
+    // Load syscheck default values
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
+
+    whodata_evt *w_evt;
+    w_evt = calloc(1, sizeof(whodata_evt));
+    w_evt->user_id = strdup("100");
+    w_evt->user_name = strdup("test");
+    w_evt->group_id = strdup("1000");
+    w_evt->group_name = strdup("testing");
+    w_evt->process_name = strdup("test_proc");
+    w_evt->path = strdup("/test/test.file");
+    w_evt->audit_uid = strdup("99");
+    w_evt->audit_name = strdup("audit_user");
+    w_evt->effective_uid = strdup("999");
+    w_evt->effective_name = strdup("effective_user");
+    w_evt->inode = strdup("606060");
+    w_evt->dev = strdup("12345678");
+    w_evt->ppid = 1000;
+    w_evt->process_id = 1001;
+
+    char * path = "/bin/test.file";
+    fim_element *item = calloc(1, sizeof(fim_element));
+    item->statbuf = calloc(1, sizeof(stat));
+    item->statbuf->st_mode = S_IFREG;
+    will_return(__wrap_lstat, 0);
+
+    fim_checker(path, item, w_evt);
+}
+
+
+void test_fim_checker_directory(void **state)
+{
+    (void) state;
+
+    // Load syscheck default values
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
+
+    whodata_evt *w_evt;
+    w_evt = calloc(1, sizeof(whodata_evt));
+    w_evt->user_id = strdup("100");
+    w_evt->user_name = strdup("test");
+    w_evt->group_id = strdup("1000");
+    w_evt->group_name = strdup("testing");
+    w_evt->process_name = strdup("test_proc");
+    w_evt->path = strdup("/test/test.file");
+    w_evt->audit_uid = strdup("99");
+    w_evt->audit_name = strdup("audit_user");
+    w_evt->effective_uid = strdup("999");
+    w_evt->effective_name = strdup("effective_user");
+    w_evt->inode = strdup("606060");
+    w_evt->dev = strdup("12345678");
+    w_evt->ppid = 1000;
+    w_evt->process_id = 1001;
+
+    char * path = "/bin/test.file";
+    fim_element *item = calloc(1, sizeof(fim_element));
+    item->statbuf = calloc(1, sizeof(stat));
+    item->statbuf->st_mode = S_IFDIR;
+    will_return(__wrap_lstat, 0);
+
+    fim_checker(path, item, NULL);
 }
 
 
@@ -1282,6 +1351,9 @@ int main(void) {
         cmocka_unit_test_teardown(test_init_fim_data_entry, delete_entry_data),
         cmocka_unit_test(test_fim_audit_inode_event_modify),
         cmocka_unit_test(test_fim_audit_inode_event_add),
+        //cmocka_unit_test(test_fim_checker_file),
+        //cmocka_unit_test(test_fim_checker_directory),
+
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
