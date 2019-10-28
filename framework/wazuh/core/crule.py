@@ -144,3 +144,17 @@ def load_rules_from_file(rule_file, rule_path, rule_status):
             raise e
 
     return rules
+
+
+def process_rule(rules, parameters):
+    original_rules = list(rules)
+    for r in original_rules:
+        for key, value in parameters.items():
+            if key == 'level' and value:
+                if len(value) == 1:
+                    if int(value[0]) != r['level']:
+                        rules.remove(r)
+                elif not (int(value[0]) <= r['level'] <= int(value[1])):
+                    rules.remove(r)
+            if value and value not in r[key]:
+                rules.remove(r)

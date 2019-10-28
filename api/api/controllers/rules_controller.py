@@ -96,15 +96,14 @@ def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
 @flask_cached
 def get_rules_requirement(requirement=None, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                  search=None):
+                          search=None):
     """Get all PCI requirements
 
     :param requirement: Get the specified requirement in all rules in the system.
@@ -133,9 +132,8 @@ def get_rules_requirement(requirement=None, pretty=False, wait_for_complete=Fals
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -156,8 +154,7 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
     :param path: Filters by rule path.
     :return: Data object
     """
-    f_kwargs = {'offset': offset,
-                'limit': limit,
+    f_kwargs = {'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['file'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
@@ -175,9 +172,8 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler

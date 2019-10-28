@@ -281,6 +281,19 @@ components:
                   - $ref: '#/components/schemas/PoliciesResponse'
                   - type: integer
 
+    AllItemsResponseRulesFiles:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/RulesFiles'
+
     AllItemsResponseUsers:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -2881,7 +2894,7 @@ components:
       required: true
       schema:
         type: string
-        enum: ['pci', 'gdpr', 'hipaa', 'nist-800-53', 'gpg13']
+        enum: [pci, gdpr, hipaa, nist-800-53, gpg13]
     result:
       in: query
       name: result
@@ -8212,18 +8225,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                type: string
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
                   totalItems: 4
@@ -8235,13 +8241,13 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /rules/requirement:
+  /rules/requirement/{requirement}:
     get:
       tags:
       - rules
       summary: Get all specified requirement.
       description: Returns all specified requirement names defined in the Wazuh ruleset.
-      operationId: api.controllers.rules_controller.get_rules_pci
+      operationId: api.controllers.rules_controller.get_rules_requirement
       parameters:
         - $ref: '#/components/parameters/rule_requirement'
         - $ref: '#/components/parameters/pretty'
@@ -8252,23 +8258,16 @@ paths:
         - $ref: '#/components/parameters/search'
       responses:
         '200':
-          description: 'PCI requirements names'
+          description: 'Requirements names'
           content:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                type: string
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
                   totalItems: 4
@@ -8299,23 +8298,16 @@ paths:
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
         '200':
-          description: 'SCA database elements'
+          description: "Rules"
           content:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/RulesFiles'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseRulesFiles'
               example:
                 data:
                   totalItems: 4
