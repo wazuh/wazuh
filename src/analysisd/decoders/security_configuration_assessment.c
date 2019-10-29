@@ -1180,8 +1180,6 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                     policy_id->valuestring);
             if (!first_scan) {
                 PushDumpRequest(lf->agent_id,policy_id->valuestring,0);
-            } else {
-                PushDumpRequest(lf->agent_id,policy_id->valuestring,1);
             }
 
             break;
