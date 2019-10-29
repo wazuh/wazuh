@@ -1154,12 +1154,12 @@ int Rules_OP_ReadRules(const char *rulefile)
                             goto cleanup;
                         }
 
-                        for (i=0; mitre_opt[i] != NULL; i++) {
+                        for (i = 0; mitre_opt[i] != NULL; i++) {
                             if ((!mitre_opt[i]->element) || (!mitre_opt[i]->content)) {
                                 break;
                             } else if (strcasecmp(mitre_opt[i]->element, xml_mitre_id) == 0) {
                                 int inarray = 0;
-                                for (l=0; l<mitre_size; l++) {
+                                for (l = 0; l < mitre_size; l++) {
                                     if (strcmp(config_ruleinfo->mitre_id[l],mitre_opt[i]->content)== 0) {
                                         inarray = 1;
                                     }

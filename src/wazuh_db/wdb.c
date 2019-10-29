@@ -165,11 +165,9 @@ wdb_t * wdb_t_open_global() {
         }
         
         wdb = wdb_init(wdb_global, s_global);
-        //wdb_pool_append(wdb);
     }
     else {
         wdb = wdb_init(wdb_global, s_global);
-        //wdb_pool_append(wdb);
 
         if (new_wdb = wdb_upgrade(wdb), new_wdb != wdb) {
             // If I had to generate backup and change DB

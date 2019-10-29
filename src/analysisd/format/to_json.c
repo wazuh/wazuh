@@ -99,7 +99,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON * element;
             cJSON_AddItemToObject(rule, "mitre", mitre = cJSON_CreateObject());
             /* Creating id array */
-            for (i=0; lf->generated_rule->mitre_id[i] != NULL; i++) {
+            for (i = 0; lf->generated_rule->mitre_id[i] != NULL; i++) {
             }
             cJSON *mitre_id_array = cJSON_CreateStringArray(mitre_cpy, i);
             cJSON_AddItemToObject(mitre, "id", mitre_id_array);

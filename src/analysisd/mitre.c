@@ -61,7 +61,7 @@ int mitre_load(char * mode){
         goto end;
     }
 
-    /* Response parameter has to be freed before continuing*/
+    /* Response parameter has to be freed before continuing */
     os_free(response);
 
     /* Getting array size */
@@ -73,7 +73,7 @@ int mitre_load(char * mode){
         goto end;
     }
     
-    for (i=0; i<size_ids; i++){
+    for (i = 0; i < size_ids; i++){
         /* Getting Mitre attack ID from Mitre's database in Wazuh-DB  */
         ids = cJSON_GetArrayItem(root, i);
         if (id = cJSON_GetObjectItem(ids,"id"), id == NULL) {
@@ -99,7 +99,6 @@ int mitre_load(char * mode){
             merror("Mitre matrix information could not be loaded.");
             cJSON_Delete(root);
             os_free(response);
-            result = -1;
             goto end;
         }
 
@@ -125,7 +124,7 @@ int mitre_load(char * mode){
             result = -1;
             goto end;
         }
-        for (j=0; j<size_tactics; j++) {
+        for (j = 0; j < size_tactics; j++) {
             tactics = cJSON_GetArrayItem(tactics_json, j);
             if (tactic = cJSON_GetObjectItem(tactics,"phase_name"), tactic == NULL) {
                 mdebug1("Mitre info loading failed. It was not possible to get cJSON item from tactics array.");
