@@ -65,12 +65,11 @@ class WazuhGCloudSubscriber:
 
         :param msg: Event to be sent
         """
-        event_json = json.dumps(self.format_msg(msg))
-        event_final = f'{self.header}{event_json}'.encode(errors='replace')
+        event_json = f'{self.header}{self.format_msg(msg)}'.encode(errors='replace')  # noqa: E501
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
-            s.send(event_final)
+            s.send(event_json)
             s.close()
         except socket.error as e:
             if e.errno == 111:
