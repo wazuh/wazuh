@@ -80,10 +80,10 @@
 #define VU_INSERT_DATA_ERR    "(5567): It was not possible to insert %s in the agent software table."
 #define VU_OVAL_OBJ_INV       "(5569): Invalid OVAL object type: %s."
 #define VU_INS_VARIABLES      "(5570): Inserting variables..."
-#define VU_DISCARD_MATCH_N    "(5572): The matching configuration node '%s' from %s will be discarted because is contemplated by '%s' (%s%s%s%s%s%s%s)."
+#define VU_DISCARD_MATCH_N    "(5572): The matching configuration node '%s' from %s will be discarded because it is contemplated by '%s' (%s%s%s%s%s%s%s)."
 #define VU_AG_FULL_SCAN       "(5573): A full scan will be run on agent %s."
 #define VU_AG_PART_SCAN       "(5574): A partial scan will be run on agent %s."
-#define VU_NO_PACKAGE_SCAN    "(5576): The package inventory of the agent %s is not available, but an hotfix analysis will be launched."
+#define VU_NO_PACKAGE_SCAN    "(5576): The package inventory of the agent %s is not available, but a hotfix analysis will be launched."
 #define VU_NO_HOTFIX_AVAIL    "(5577): It is not possible to perform a hotfix scan on agent %s."
 #define VU_NO_HOTFIX_FEED     "(5578): We have not found a hotfix that solves %s in the Microsoft feed, so it is not possible to know if the %s agent is vulnerable."
 
