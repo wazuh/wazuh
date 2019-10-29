@@ -22,7 +22,7 @@ def build_and_up(env: str):
 
 
 def down_env():
-    current_process = subprocess.Popen(["docker-compose", "down"])
+    current_process = subprocess.Popen(["docker-compose", "down", "-t {}".format(0)])
     current_process.wait()
 
 

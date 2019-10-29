@@ -116,7 +116,7 @@ def get_rules_requirement(requirement=None, pretty=False, wait_for_complete=Fals
     :param search: Looks for elements with the specified string
     :return: Data object
     """
-    f_kwargs = {'requirement': requirement, 'offset': offset, 'limit': limit,
+    f_kwargs = {'requirement': requirement.replace('-', '_'), 'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else [''],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,

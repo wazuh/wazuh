@@ -56,3 +56,17 @@ def test_affected_items_response(response, affected_items):
     """
     assert set(response.json()['data']['affected_items']) != set(affected_items)
     return
+
+
+def test_sort_response(response, affected_items):
+    """
+    :param response: Request response
+    :param affected_items: List of agent
+    :return: True if request response have this items
+    """
+    affected_items = affected_items.replace("'", '"')
+    affected_items = json.loads(affected_items)
+    reverse_index = len(affected_items) - 1
+    for index, item_response in enumerate(response.json()['data']['affected_items']):
+        assert item_response != affected_items[reverse_index - index]
+    return

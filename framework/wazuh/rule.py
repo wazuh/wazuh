@@ -6,14 +6,14 @@ import os
 
 import wazuh.configuration as configuration
 from wazuh import common
-from wazuh.core.rule import check_status, load_rules_from_file, Status, process_rule, format_rule_file
+from wazuh.core.rule import check_status, load_rules_from_file, Status, format_rule_file
 from wazuh.exception import WazuhError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import AffectedItemsWazuhResult
 from wazuh.utils import process_array
 
 
-@expose_resources(actions='rules:read', resources=['*:*:*'])
+@expose_resources(actions='rules:read', resources=['*:*:*'], post_proc_kwargs={'exclude_codes': [1208]})
 def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
               path=None, file=None, level=None, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
@@ -43,7 +43,9 @@ def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr
     result = AffectedItemsWazuhResult(none_msg='No rule was shown',
                                       some_msg='Some rules could not be shown',
                                       all_msg='All selected rules were shown')
-    rules = []
+    rules = list()
+    if rule_ids is None:
+        rule_ids = list()
     levels = None
 
     if level:
@@ -56,8 +58,29 @@ def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr
 
     parameters = {'groups': group, 'pci': pci, 'gpg13': gpg13, 'gdpr': gdpr, 'hipaa': hipaa, 'nist_800_53': nist_800_53,
                   'path': path, 'file': file, 'id': rule_ids, 'level': levels}
+    original_rules = list(rules)
+    no_existent_ids = rule_ids[:]
+    for r in original_rules:
+        for key, value in parameters.items():
+            if key == 'level' and value:
+                if len(value) == 1:
+                    if int(value[0]) != r['level']:
+                        rules.remove(r)
+                elif not (int(value[0]) <= r['level'] <= int(value[1])):
+                    rules.remove(r)
+            elif key == 'id' and value:
+                if r[key] not in value:
+                    try:
+                        rules.remove(r)
+                    except ValueError:
+                        pass
+                else:
+                    no_existent_ids.remove(r[key])
+            elif value and value not in r[key]:
+                rules.remove(r)
+    for rule_id in no_existent_ids:
+        result.add_failed_item(id_=rule_id, error=WazuhError(1208))
 
-    process_rule(rules, parameters)
     result.affected_items = process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
                                           complementary_search=complementary_search, sort_by=sort_by,
                                           sort_ascending=sort_ascending, allowed_sort_fields=Status.SORT_FIELDS.value,
@@ -92,12 +115,11 @@ def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.da
     ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
     if not ruleset_conf:
         raise WazuhError(1200)
-
-    result.affected_items = process_array(
-        format_rule_file(ruleset_conf, {'status': status, 'path': path, 'file': file}),
-        search_text=search_text, search_in_fields=search_in_fields, complementary_search=complementary_search,
-        sort_by=sort_by, sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    result.total_affected_items = len(result.affected_items)
+    rule_file = format_rule_file(ruleset_conf, {'status': status, 'path': path, 'file': file})
+    result.affected_items = process_array(rule_file, search_text=search_text, search_in_fields=search_in_fields,
+                                          complementary_search=complementary_search, sort_by=sort_by,
+                                          sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
+    result.total_affected_items = len(rule_file)
 
     return result
 
@@ -127,7 +149,7 @@ def get_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascendi
     result.affected_items = process_array(list(groups), search_text=search_text, search_in_fields=search_in_fields,
                                           complementary_search=complementary_search, sort_by=sort_by,
                                           sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    result.total_affected_items = len(result.affected_items)
+    result.total_affected_items = len(groups)
 
     return result
 
@@ -149,7 +171,7 @@ def get_requirement(requirement=None, offset=0, limit=common.database_limit, sor
     """
     result = AffectedItemsWazuhResult(none_msg='No rule was shown',
                                       all_msg='Selected rules were shown')
-    valid_requirements = ['pci', 'gdpr', 'hipaa', 'nist-800-53', 'gpg13']
+    valid_requirements = ['pci', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13']
 
     if requirement not in valid_requirements:
         result.add_failed_item(id_=requirement,
@@ -160,7 +182,7 @@ def get_requirement(requirement=None, offset=0, limit=common.database_limit, sor
     result.affected_items = process_array(req, search_text=search_text, search_in_fields=search_in_fields,
                                           complementary_search=complementary_search, sort_by=sort_by,
                                           sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    result.total_affected_items = len(result.affected_items)
+    result.total_affected_items = len(req)
 
     return result
 

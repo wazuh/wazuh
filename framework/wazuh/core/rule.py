@@ -50,7 +50,7 @@ def add_unique_element(src_list, element):
 def check_status(status):
     if status is None:
         return Status.S_ALL.value
-    elif status in Status.SORT_FIELDS.value:
+    elif status in [Status.S_ALL.value, Status.S_ENABLED.value, Status.S_DISABLED.value]:
         return status
     else:
         raise WazuhError(1202)
@@ -58,18 +58,19 @@ def check_status(status):
 
 def set_groups(groups, general_groups, rule):
     pci_groups, gpg13_groups, gdpr_groups, hipaa_groups, nist_800_53_groups, ossec_groups = (list() for i in range(6))
-    guidelines = {'pci_dss_': 8, 'gpg13_': 6, 'gdpr_': 5, 'hipaa_': 6, 'nist_800_53_':12}
+    requirements = {'pci_dss_': ('pci', pci_groups, 8), 'gpg13_': ('gpg13', gpg13_groups, 6),
+                    'gdpr_': ('gdpr', gdpr_groups, 5), 'hipaa_': ('hipaa', hipaa_groups, 6),
+                    'nist_800_53_': ('nist_800_53', nist_800_53_groups, 12), 'groups': ('groups', ossec_groups)}
     groups.extend(general_groups)
     for g in groups:
-        for key, value in guidelines:
-            pci_groups.append(g.strip()[value:]) if key in g else ossec_groups.append(g)
+        for key, value in requirements.items():
+            if key in g:
+                value[1].append(g.strip()[value[2]:])
+            else:
+                requirements['groups'][1].append(g)
 
-    add_unique_element(rule['pci'], pci_groups)
-    add_unique_element(rule['gpg13'], gpg13_groups)
-    add_unique_element(rule['gdpr'], gdpr_groups)
-    add_unique_element(rule['hipaa'], hipaa_groups)
-    add_unique_element(rule['nist_800_53'], nist_800_53_groups)
-    add_unique_element(rule['groups'], ossec_groups)
+    for key, value in requirements.items():
+        add_unique_element(rule[value[0]], value[1])
 
 
 def load_rules_from_file(rule_file, rule_path, rule_status):
@@ -129,53 +130,46 @@ def load_rules_from_file(rule_file, rule_path, rule_status):
     return rules
 
 
-def process_rule(rules, parameters):
-    original_rules = list(rules)
-    for r in original_rules:
-        for key, value in parameters.items():
-            if key == 'level' and value:
-                if len(value) == 1:
-                    if int(value[0]) != r['level']:
-                        rules.remove(r)
-                elif not (int(value[0]) <= r['level'] <= int(value[1])):
-                    rules.remove(r)
-            if value and value not in r[key]:
-                rules.remove(r)
-
-
-def format_rule_file(ruleset_conf, parameters):
-    tmp_data, exclude_filenames = (list() for i in range(2))
-    tags = ['rule_include', 'rule_exclude']
-    for tag in tags:
-        if tag in ruleset_conf:
-            item_status = Status.S_DISABLED.value if tag == 'rule_exclude' else Status.S_ENABLED.value
-            items = ruleset_conf[tag] if type(ruleset_conf[tag]) is list else [ruleset_conf[tag]]
-            for item in items:
-                item_name = os.path.basename(item)
-                full_dir = os.path.dirname(item)
-                item_dir = os.path.relpath(full_dir if full_dir else common.ruleset_rules_path,
-                                           start=common.ossec_path)
-                exclude_filenames.append(item_name) if tag == 'rule_exclude' else \
-                    tmp_data.append({'file': item_name, 'path': item_dir, 'status': item_status})
-
-    tag = 'rule_dir'
-    if tag in ruleset_conf:
-        items = ruleset_conf[tag] if type(ruleset_conf[tag]) is list else [ruleset_conf[tag]]
-        for item_dir in items:
-            all_rules = f"{common.ossec_path}/{item_dir}/*.xml"
-            for item in glob(all_rules):
-                item_name = os.path.basename(item)
-                item_dir = os.path.relpath(os.path.dirname(item), start=common.ossec_path)
-                item_status = Status.S_DISABLED.value if item_name in exclude_filenames else Status.S_ENABLED.value
-                tmp_data.append({'file': item_name, 'path': item_dir, 'status': item_status})
-
+def _remove_files(tmp_data, parameters):
     data = list(tmp_data)
     for d in tmp_data:
         for key, value in parameters.items():
             if key == 'status':
-                if value and value != Status.S_ALL.value and value != d[key]:
-                    data.remove(d)
+                value and value != Status.S_ALL.value and value != d[key] and data.remove(d)
             elif value and value != d[key]:
                 data.remove(d)
 
     return data
+
+
+def _create_rule_dir_dict(ruleset_conf, tag, exclude_filenames, data):
+    items = ruleset_conf[tag] if type(ruleset_conf[tag]) is list else [ruleset_conf[tag]]
+    for item_dir in items:
+        all_rules = f"{common.ossec_path}/{item_dir}/*.xml"
+        for item in glob(all_rules):
+            item_name = os.path.basename(item)
+            item_dir = os.path.relpath(os.path.dirname(item), start=common.ossec_path)
+            item_status = Status.S_DISABLED.value if item_name in exclude_filenames else Status.S_ENABLED.value
+            data.append({'file': item_name, 'path': item_dir, 'status': item_status})
+
+
+def _create_rule_dict(ruleset_conf, tag, exclude_filenames, data):
+    item_status = Status.S_DISABLED.value if tag == 'rule_exclude' else Status.S_ENABLED.value
+    items = ruleset_conf[tag] if type(ruleset_conf[tag]) is list else [ruleset_conf[tag]]
+    for item in items:
+        item_name = os.path.basename(item)
+        full_dir = os.path.dirname(item)
+        item_dir = os.path.relpath(full_dir if full_dir else common.ruleset_rules_path, start=common.ossec_path)
+        exclude_filenames.append(item_name) if tag == 'rule_exclude' else \
+            data.append({'file': item_name, 'path': item_dir, 'status': item_status})
+
+
+def format_rule_file(ruleset_conf, parameters):
+    tmp_data, exclude_filenames = list(), list()
+    tags = ['rule_include', 'rule_exclude', 'rule_dir']
+    for tag in tags:
+        if tag in ruleset_conf:
+            _create_rule_dir_dict(ruleset_conf, tag, exclude_filenames, tmp_data) if tag == 'rule_dir' else\
+                _create_rule_dict(ruleset_conf, tag, exclude_filenames, tmp_data)
+
+    return _remove_files(tmp_data, parameters)
