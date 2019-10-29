@@ -28,7 +28,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
         if (output == NULL) {
             merror("No such attribute '%s' at module.", XML_NAME);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "No such attribute '%s' at module.",
                 XML_NAME);
             wm_strcat(output, message, '\n');
@@ -40,7 +40,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
         if (output == NULL) {
             merror("Module attribute is not '%s'.", XML_NAME);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Module attribute is not '%s'.",
                 XML_NAME);
             wm_strcat(output, message, '\n');
@@ -81,7 +81,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
         if (output == NULL) {
             merror(MEM_ERROR, errno, strerror(errno));
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Could not acquire memory due to [(%d)-(%s)].",
                 errno, strerror(errno));
             wm_strcat(output, message, '\n');
@@ -142,7 +142,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
                 if (output == NULL) {
                     mwarn("Module name 'aws-cloudtrail' is deprecated. Change it to '%s'.", WM_AWS_CONTEXT.name);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "WARNING: Module name 'aws-cloudtrail' is deprecated. Change it to '%s'.",
                         WM_AWS_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -156,7 +156,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
         if (output == NULL) {
             mwarn("The '%s' module is not available on Windows systems. Ignoring.", node->values[0]);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "WARNING: The '%s' module is not available on Windows systems. Ignoring.",
                 node->values[0]);
             wm_strcat(output, message, '\n');
@@ -172,7 +172,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
         if (output == NULL) {
             mwarn("The '%s' module is not available on Windows systems. Ignoring it.", node->values[0]);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "WARNING: The '%s' module is not available on Windows systems. Ignoring it",
                 node->values[0]);
             wm_strcat(output, message, '\n');
@@ -206,7 +206,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
             if (output == NULL) {
                 mwarn("The '%s' module only works for the manager.", node->values[0]);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "WARNING: The '%s' module only works for the manager.",
                     node->values[0]);
                 wm_strcat(output, message, '\n');
@@ -223,7 +223,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
             if (output == NULL) {
                 merror("Unknown module '%s' for the %s configuration file.", node->values[0], type_str);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Unknown module '%s' for the %s configuration file.",
                     node->values[0], type_str);
                 wm_strcat(output, message, '\n');
@@ -278,7 +278,7 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, char **output)
         if (output == NULL) {
             merror(MEM_ERROR, errno, strerror(errno));
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Could not acquire memory due to [(%d)-(%s)].",
                 errno, strerror(errno));
             wm_strcat(output, message, '\n');
@@ -346,7 +346,7 @@ int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1, char **ou
         if (output == NULL) {
             merror(MEM_ERROR, errno, strerror(errno));
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Could not acquire memory due to [(%d)-(%s)].",
                 errno, strerror(errno));
             wm_strcat(output, message, '\n');

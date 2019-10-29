@@ -69,7 +69,7 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
 
             if (syscollector->interval == 0 || syscollector->interval == UINT_MAX) {
                 if (output) {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid interval at module '%s'",
                         WM_SYS_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -94,7 +94,7 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
                 break;
             default:
                 if (output) {
-                    snprintf(message, OS_FLSIZE + 1, "Invalid interval at module '%s'", WM_SYS_CONTEXT.name);
+                    snprintf(message, OS_FLSIZE, "Invalid interval at module '%s'", WM_SYS_CONTEXT.name);
                     wm_strcat(output, message, '\n');
                 } else {
                     merror("Invalid interval at module '%s'", WM_SYS_CONTEXT.name);
@@ -107,7 +107,7 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.scan_on_start = 0;
             else if (output) {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_SCAN_ON_START, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -122,7 +122,7 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.enabled = 1;
             else if (output) {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_DISABLED, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -137,7 +137,7 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.netinfo = 0;
             else if (output) {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_NETWORK, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -152,7 +152,7 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.osinfo = 0;
             else if (output) {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_OS_SCAN, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -167,7 +167,7 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.hwinfo = 0;
             else if (output) {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_HARDWARE, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -182,7 +182,7 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.programinfo = 0;
             else if (output) {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_PACKAGES, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -210,7 +210,7 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.procinfo = 0;
             else if (output) {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_PROCS, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -227,7 +227,7 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
                     } else if (!strcmp(node[i]->values[0], "yes")) {
                         syscollector->flags.allports = 1;
                     } else if (output) {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid content for attribute '%s' at module '%s'.",
                             node[i]->attributes[0], WM_SYS_CONTEXT.name);
                         wm_strcat(output, message, '\n');
@@ -237,7 +237,7 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
                         return OS_INVALID;
                     }
                 } else if (output) {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid attribute for tag '%s' at module '%s'.",
                         XML_PORTS, WM_SYS_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -252,7 +252,7 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.portsinfo = 0;
             else if (output) {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_PORTS, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -262,7 +262,7 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
                 return OS_INVALID;
             }
         } else if (output) {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "No such tag '%s' at module '%s'.",
                 node[i]->element, WM_SYS_CONTEXT.name);
             wm_strcat(output, message, '\n');

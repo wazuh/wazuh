@@ -36,7 +36,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
 
     if (!nodes) {
         if (output) {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "WARNING: Tag <%s> not found at module '%s'.",
                 XML_COMMAND, WM_COMMAND_CONTEXT.name);
             wm_strcat(output, message, '\n');
@@ -76,7 +76,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
             else if (!strcmp(nodes[i]->content, "no"))
                 command->enabled = 1;
             else if (output) {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_DISABLED, WM_COMMAND_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -88,7 +88,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
         } else if (!strcmp(nodes[i]->element, XML_TAG)) {
             if (strlen(nodes[i]->content) == 0) {
                 if (output) {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "WARNING: Empty content for tag '%s' at module '%s'.",
                         XML_TAG, WM_COMMAND_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -117,7 +117,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
         } else if (!strcmp(nodes[i]->element, XML_COMMAND)) {
             if (strlen(nodes[i]->content) == 0) {
                 if (output) {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Empty content for tag '%s' at module '%s'.",
                         XML_COMMAND, WM_COMMAND_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -135,7 +135,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
 
             if ((command->interval == 0 && endptr == nodes[i]->content) || command->interval == ULONG_MAX) {
                 if (output) {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid interval at module '%s'",
                         WM_COMMAND_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -160,7 +160,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
                 break;
             default:
                 if (output) {
-                    snprintf(message, OS_FLSIZE + 1, "Invalid interval at module '%s'", WM_COMMAND_CONTEXT.name);
+                    snprintf(message, OS_FLSIZE, "Invalid interval at module '%s'", WM_COMMAND_CONTEXT.name);
                     wm_strcat(output, message, '\n');
                 } else {
                     merror("Invalid interval at module '%s'", WM_COMMAND_CONTEXT.name);
@@ -173,7 +173,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
             else if (!strcmp(nodes[i]->content, "no"))
                 command->run_on_start = 0;
             else if (output) {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_RUN_ON_START, WM_COMMAND_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -188,7 +188,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
             else if (!strcmp(nodes[i]->content, "no"))
                 command->ignore_output = 0;
             else if (output) {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_IGNORE_OUTPUT, WM_COMMAND_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -202,7 +202,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
 
             if (*endptr || command->timeout < 0) {
                 if (output) {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid content for tag '%s' at module '%s'.",
                         XML_TIMEOUT, WM_COMMAND_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -214,7 +214,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
         } else if (!strcmp(nodes[i]->element, XML_VERIFY_MD5)) {
             if (strlen(nodes[i]->content) != 32) {
                 if (output) {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid content for tag '%s' at module '%s'.",
                         XML_VERIFY_MD5, WM_COMMAND_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -229,7 +229,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
         } else if (!strcmp(nodes[i]->element, XML_VERIFY_SHA1)) {
             if (strlen(nodes[i]->content) != 40) {
                 if (output) {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid content for tag '%s' at module '%s'.",
                         XML_VERIFY_SHA1, WM_COMMAND_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -244,7 +244,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
         } else if (!strcmp(nodes[i]->element, XML_VERIFY_SHA256)) {
             if (strlen(nodes[i]->content) != 64) {
                 if (output) {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid content for tag '%s' at module '%s'.",
                         XML_VERIFY_SHA256, WM_COMMAND_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -262,7 +262,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
             else if (!strcmp(nodes[i]->content, "no"))
                 command->skip_verification = 0;
             else if (output) {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_SKIP_VERIFICATION, WM_COMMAND_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -272,7 +272,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
                 return OS_INVALID;
             }
         } else if (output) {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "No such tag '%s' at module '%s'.",
                 nodes[i]->element, WM_COMMAND_CONTEXT.name);
             wm_strcat(output, message, '\n');
@@ -285,7 +285,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
 
     if (!command->tag) {
         if (output) {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "WARNING: Option <%s> not found at module '%s'.",
                 XML_TAG, WM_COMMAND_CONTEXT.name);
             wm_strcat(output, message, '\n');
@@ -297,7 +297,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg, char **out
 
     if (!command->command) {
         if (output) {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "WARNING: Tag <%s> not found at module '%s'.",
                 XML_COMMAND, WM_COMMAND_CONTEXT.name);
             wm_strcat(output, message, '\n');

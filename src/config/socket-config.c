@@ -64,7 +64,7 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
             if (output == NULL) {
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid NULL content for element: %s.",
                     node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -96,7 +96,7 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                     node[i]->content, node[i]->element);
                 return OS_INVALID;
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Socket type '%s' is not valid at <%s>. Should be 'udp' or 'tcp'.",
                     node[i]->content, node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -109,7 +109,7 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
             merror(XML_INVELEM, node[i]->element);
             return OS_INVALID;
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid element in the configuration: '%s'.",
                 node[i]->element);
             wm_strcat(output, message, '\n');

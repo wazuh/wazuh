@@ -102,7 +102,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
         if (output == NULL) {
             merror_exit(MEM_ERROR, errno, strerror(errno));
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Could not acquire memory due to [(%d)-(%s)].",
                 errno, strerror(errno));
             wm_strcat(output, message, '\n');
@@ -133,7 +133,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
             if (output == NULL) {
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid NULL content for element: %s.",
                     node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -156,7 +156,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': %s.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -167,7 +167,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                 if (output == NULL) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -180,7 +180,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                 if (output == NULL) {
                     merror(PORT_ERROR, logr->port[pl]);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid port number: '%d'.",
                         logr->port[pl]);
                     wm_strcat(output, message, '\n');
@@ -206,7 +206,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                        node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': %s.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -222,7 +222,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                 if (output == NULL) {
                     merror(INVALID_IP, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid ip address: '%s'.",
                         node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -236,7 +236,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                 if (output == NULL) {
                     merror(MEM_ERROR, errno, strerror(errno));
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Could not acquire memory due to [(%d)-(%s)].",
                         errno, strerror(errno));
                     wm_strcat(output, message, '\n');
@@ -251,7 +251,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                 if (output == NULL) {
                     merror(INVALID_IP, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid ip address: '%s'.",
                         node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -265,7 +265,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                 if (output == NULL) {
                     merror(MEM_ERROR, errno, strerror(errno));
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Could not acquire memory due to [(%d)-(%s)].",
                         errno, strerror(errno));
                     wm_strcat(output, message, '\n');
@@ -279,7 +279,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                 if (output == NULL) {
                     merror(INVALID_IP, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid ip address: '%s'.",
                         node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -295,7 +295,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                 if (output == NULL) {
                     merror("Invalid value for option '<%s>'", xml_queue_size);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for option '<%s>'",
                         xml_queue_size);
                     wm_strcat(output, message, '\n');
@@ -307,7 +307,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                 if (output == NULL) {
                     merror("Invalid value for option '<%s>'", xml_queue_size);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for option '<%s>'",
                         xml_queue_size);
                     wm_strcat(output, message, '\n');
@@ -319,7 +319,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid element in the configuration: '%s'.",
                 node[i]->element);
             wm_strcat(output, message, '\n');
@@ -357,7 +357,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
         if (output == NULL) {
             merror("Invalid option <%s> for Syslog remote connection.", xml_queue_size);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid option <%s> for Syslog remote connection.",
                 xml_queue_size);
             wm_strcat(output, message, '\n');

@@ -197,7 +197,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
             goto fail;
         } else {
             char message[OS_FLSIZE];
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid element in the configuration: '%s'.", node[i]->element);
             wm_strcat(output, message, '\n');
             goto fail;
@@ -245,7 +245,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
             if (output == NULL){
                 merror(XML_ERROR, cfgfile, xml.err, xml.err_line);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Error reading XML file '%s': %s (line %d).", cfgfile, xml.err, xml.err_line);
                 wm_strcat(output, message, '\n');
             }
@@ -253,7 +253,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
         } else if (output == NULL){
             merror(XML_ERROR, cfgfile, xml.err, xml.err_line);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Error reading XML file '%s': %s (line %d).", cfgfile, xml.err, xml.err_line);
             wm_strcat(output, message, '\n');
         }
@@ -288,7 +288,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
                     if (output == NULL){
                         merror(CONFIG_ERROR, cfgfile);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Configuration error at '%s'.", cfgfile);
                         wm_strcat(output, message, '\n');
                     }
@@ -357,7 +357,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
                             if (output = NULL){
                                 mwarn("Agent OS filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
                             } else {
-                                snprintf(message, OS_FLSIZE + 1,
+                                snprintf(message, OS_FLSIZE,
                                     "WARNING: Agent OS filter (%d bytes) exceeds the limit (%d)", 
                                     attrlen, OS_PATTERN_MAXSIZE);
                                 wm_strcat(output, message, '\n');
@@ -383,7 +383,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
                             if (output == NULL){
                                 mwarn("Agent profile filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
                             } else {
-                                snprintf(message, OS_FLSIZE + 1,
+                                snprintf(message, OS_FLSIZE,
                                     "WARNING: Agent profile filter (%d bytes) exceeds the limit (%d)", 
                                     attrlen, OS_PATTERN_MAXSIZE);
                                 wm_strcat(output, message, '\n');
@@ -412,7 +412,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
                         if (output == NULL){
                             merror(XML_INVATTR, node[i]->attributes[attrs], cfgfile);
                         } else {
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Configuration error at '%s'.", cfgfile);
                             wm_strcat(output, message, '\n');
                         }
@@ -456,7 +456,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
                     if (output == NULL){
                         merror(CONFIG_ERROR, cfgfile);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Configuration error at '%s'.", cfgfile);
                         wm_strcat(output, message, '\n');
                     }
@@ -472,7 +472,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
             if (output == NULL){
                 merror(XML_INVELEM, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid elemente in the configuration: '%s'.",
                     node[i]->element);
                 wm_strcat(output, message, '\n');

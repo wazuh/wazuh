@@ -68,7 +68,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
                 if (!output) {
                     merror("Invalid timeout at module '%s'", WM_OSCAP_CONTEXT.name);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid timeout at module '%s'",
                         WM_OSCAP_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -99,7 +99,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
                     else if (!strcmp(nodes[i]->values[j], XML_OVAL))
                         cur_eval->type = WM_OSCAP_OVAL;
                     else if (output) {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid content for attribute '%s' at module '%s'.",
                             XML_CONTENT_TYPE, WM_OSCAP_CONTEXT.name);
                         wm_strcat(output, message, '\n');
@@ -109,7 +109,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
                         return OS_INVALID;
                     }
                 } else if (output) {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid attribute '%s' at module '%s'.",
                         nodes[i]->attributes[0], WM_OSCAP_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -122,7 +122,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
 
             if (!cur_eval->path) {
                 if (output){
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "No such attribute '%s' at module '%s'.",
                         XML_PATH, WM_OSCAP_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -134,7 +134,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
 
             if (!cur_eval->type) {
                 if (output){
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "No such attribute '%s' at module '%s'.",
                         XML_CONTENT_TYPE, WM_OSCAP_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -166,7 +166,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
                 if (!strcmp(children[j]->element, XML_PROFILE)) {
                     if (cur_eval->type != WM_OSCAP_XCCDF) {
                         if (output){
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Tag '%s' on incorrect content type at module '%s'",
                                 children[j]->element, WM_OSCAP_CONTEXT.name);
                             wm_strcat(output, message, '\n');
@@ -192,7 +192,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
 
                     if (cur_eval->timeout <= 0 || cur_eval->timeout >= UINT_MAX) {
                         if (output){
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Invalid timeout at module '%s'",
                                 WM_OSCAP_CONTEXT.name);
                             wm_strcat(output, message, '\n');
@@ -205,7 +205,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
                 } else if (!strcmp(children[j]->element, XML_XCCDF_ID)) {
                     if (cur_eval->type != WM_OSCAP_XCCDF) {
                         if (output){
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Tag '%s' on incorrect content type at module '%s'",
                                 children[j]->element, WM_OSCAP_CONTEXT.name);
                             wm_strcat(output, message, '\n');
@@ -220,7 +220,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
 
                     if (!strlen(children[j]->content)) {
                         if (output){
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Invalid content for tag '%s' at module '%s'.",
                                 XML_XCCDF_ID, WM_OSCAP_CONTEXT.name);
                             wm_strcat(output, message, '\n');
@@ -235,7 +235,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
                 } else if (!strcmp(children[j]->element, XML_OVAL_ID)) {
                     if (cur_eval->type != WM_OSCAP_OVAL) {
                         if (output){
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Tag '%s' on incorrect content type at module '%s'",
                                 children[j]->element, WM_OSCAP_CONTEXT.name);
                             wm_strcat(output, message, '\n');
@@ -250,7 +250,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
 
                     if (!strlen(children[j]->content)) {
                         if (output){
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Invalid content for tag '%s' at module '%s'.",
                                 XML_XCCDF_ID, WM_OSCAP_CONTEXT.name);
                             wm_strcat(output, message, '\n');
@@ -267,7 +267,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
 
                     if (!strlen(children[j]->content)) {
                         if (output){
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Invalid content for tag '%s' at module '%s'.",
                                 XML_DS_ID, WM_OSCAP_CONTEXT.name);
                             wm_strcat(output, message, '\n');
@@ -282,7 +282,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
                 } else if (!strcmp(children[j]->element, XML_CPE)) {
                     if (cur_eval->type != WM_OSCAP_XCCDF) {
                         if (output){
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Tag '%s' on incorrect content type at module '%s'",
                                 children[j]->element, WM_OSCAP_CONTEXT.name);
                             wm_strcat(output, message, '\n');
@@ -297,7 +297,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
 
                     if (!strlen(children[j]->content)) {
                         if (output){
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Invalid content for tag '%s' at module '%s'.",
                                 XML_CPE, WM_OSCAP_CONTEXT.name);
                             wm_strcat(output, message, '\n');
@@ -310,7 +310,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
 
                     cur_eval->cpe = strdup(children[j]->content);
                 } else if (output) {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "No such tag '%s' at module '%s'.",
                         children[j]->element, WM_OSCAP_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -331,7 +331,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
 
             if (oscap->interval <= 0 || oscap->interval >= UINT_MAX) {
                 if (output) {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid interval at module '%s'",
                         WM_OSCAP_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -356,7 +356,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
                 break;
             default:
                 if (output) {
-                    snprintf(message, OS_FLSIZE + 1, "Invalid interval at module '%s'", WM_OSCAP_CONTEXT.name);
+                    snprintf(message, OS_FLSIZE, "Invalid interval at module '%s'", WM_OSCAP_CONTEXT.name);
                     wm_strcat(output, message, '\n');
                 } else {
                     merror("Invalid interval at module '%s'", WM_OSCAP_CONTEXT.name);
@@ -369,7 +369,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
             else if (!strcmp(nodes[i]->content, "no"))
                 oscap->flags.scan_on_start = 0;
             else if (output) {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_SCAN_ON_START, WM_OSCAP_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -384,7 +384,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
             else if (!strcmp(nodes[i]->content, "no"))
                 oscap->flags.enabled = 1;
             else if (output) {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_DISABLED, WM_OSCAP_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -394,7 +394,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
                 return OS_INVALID;
             }
         } else if (output) {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "No such tag '%s' at module '%s'.",
                 nodes[i]->element, WM_OSCAP_CONTEXT.name);
             wm_strcat(output, message, '\n');

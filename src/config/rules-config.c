@@ -149,7 +149,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                 if (output == NULL) {
                     merror(XML_VALUENULL, node[i]->element);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid NULL content for element: %s.",
                         node[i]->element);
                     wm_strcat(output, message, '\n');
@@ -244,7 +244,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                     if (output == NULL) {
                         merror(MEM_ERROR, errno, strerror(errno));
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Could not acquire memory due to [(%d)-(%s)].",
                             errno, strerror(errno));
                         wm_strcat(output, message, '\n');
@@ -277,7 +277,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                 retval = OS_INVALID;
                 goto cleanup;
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid element in the configuration: '%s'.",
                     node[i]->element);
                 wm_strcat(output, message, '\n');

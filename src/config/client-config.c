@@ -60,7 +60,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             if (output == NULL) {
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid NULL content for element: %s.",
                     node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -74,7 +74,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 if (output == NULL) {
                     merror(INVALID_IP, logr->lip);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid ip address: '%s'.",
                         logr->lip);
                     wm_strcat(output, message, '\n');
@@ -87,7 +87,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             if (output == NULL) {
                 mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_client_ip);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "WARNING: The <%s> tag is deprecated, please use <server><address> instead.",
                     xml_client_ip);
                 wm_strcat(output, message, '\n');
@@ -97,7 +97,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 if (output == NULL) {
                     merror(INVALID_IP, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid ip address: '%s'.",
                         node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -110,7 +110,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             if (output == NULL) {
                 mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_client_hostname);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "WARNING: The <%s> tag is deprecated, please use <server><address> instead.",
                     xml_client_hostname);
                 wm_strcat(output, message, '\n');
@@ -122,7 +122,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 merror(AG_INV_HOST, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid hostname: '%s'.",
                     node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -133,7 +133,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             if (output == NULL) {
                 mwarn("The <%s> tag is deprecated, please use <server><port> instead.", xml_client_port);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "WARNING: The <%s> tag is deprecated, please use <server><port> instead.",
                     xml_client_port);
                 wm_strcat(output, message, '\n');
@@ -142,7 +142,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -154,7 +154,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 if (output == NULL) {
                     merror(PORT_ERROR, port);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid port number: '%d'.",
                         port);
                     wm_strcat(output, message, '\n');
@@ -168,7 +168,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 if (output == NULL) {
                     merror(XML_INVELEM, node[i]->element);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid element in the configuration: '%s'.",
                         node[i]->element);
                     wm_strcat(output, message, '\n');
@@ -186,7 +186,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 if (output == NULL) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -199,7 +199,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 if (output == NULL) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -211,7 +211,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 if (output == NULL) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -223,7 +223,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 if (output == NULL) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -239,7 +239,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': %s.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -257,7 +257,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': %s.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -267,7 +267,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             if (output == NULL) {
                 mwarn("The <%s> tag is deprecated, please use <server><protocol> instead.", xml_protocol);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "WARNING: The <%s> tag is deprecated, please use <server><protocol> instead.",
                     xml_protocol);
                 wm_strcat(output, message, '\n');
@@ -280,7 +280,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': %s.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -295,7 +295,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': %s.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -305,7 +305,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid element in the configuration: '%s'.",
                 node[i]->element);
             wm_strcat(output, message, '\n');
@@ -366,7 +366,7 @@ int Read_Client_Server(XML_NODE node, agent * logr, char **output)
             if (output == NULL) {
                 merror(XML_VALUENULL, node[j]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid NULL content for element: %s.",
                     node[j]->element);
                 wm_strcat(output, message, '\n');
@@ -384,7 +384,7 @@ int Read_Client_Server(XML_NODE node, agent * logr, char **output)
                 merror(AG_INV_HOST, node[j]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid hostname: '%s'.",
                     node[j]->content);
                 wm_strcat(output, message, '\n');
@@ -395,7 +395,7 @@ int Read_Client_Server(XML_NODE node, agent * logr, char **output)
                 if (output == NULL) {
                     merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[j]->element, node[j]->content);
                     wm_strcat(output, message, '\n');
@@ -407,7 +407,7 @@ int Read_Client_Server(XML_NODE node, agent * logr, char **output)
                 if (output == NULL) {
                     merror(PORT_ERROR, port);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid port number: '%d'.",
                         port);
                     wm_strcat(output, message, '\n');
@@ -423,7 +423,7 @@ int Read_Client_Server(XML_NODE node, agent * logr, char **output)
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': %s.",
                     node[j]->element, node[j]->content);
                 wm_strcat(output, message, '\n');
@@ -433,7 +433,7 @@ int Read_Client_Server(XML_NODE node, agent * logr, char **output)
             merror(XML_INVELEM, node[j]->element);
             return (OS_INVALID);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid element in the configuration: '%s'.",
                 node[j]->element);
             wm_strcat(output, message, '\n');

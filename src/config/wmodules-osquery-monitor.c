@@ -66,7 +66,7 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module, char **output)
                 if (output == NULL) {
                     merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_OSQUERYMONITOR_CONTEXT.name);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid content for tag '%s' at module '%s'.",
                         XML_DISABLED, WM_OSQUERYMONITOR_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -103,7 +103,7 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module, char **output)
                 if (output == NULL) {
                     merror("No such attribute '%s' in osquery element <%s>", *nodes[i]->attributes, XML_PACK);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "No such attribute '%s' in osquery element <%s>",
                         *nodes[i]->attributes, XML_PACK);
                     wm_strcat(output, message, '\n');
@@ -122,7 +122,7 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module, char **output)
                 if (output == NULL) {
                     merror("Invalid content for tag '%s' at module '%s'.", XML_ADD_LABELS, WM_OSQUERYMONITOR_CONTEXT.name);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid content for tag '%s' at module '%s'.",
                         XML_ADD_LABELS, WM_OSQUERYMONITOR_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -134,7 +134,7 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module, char **output)
                 if (output == NULL) {
                     merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_DAEMON, WM_OSQUERYMONITOR_CONTEXT.name);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid content for tag '%s' at module '%s'.",
                         XML_RUN_DAEMON, WM_OSQUERYMONITOR_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -144,7 +144,7 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module, char **output)
         } else if (output == NULL) {
             mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_OSQUERYMONITOR_CONTEXT.name);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "No such tag <%s> at module '%s'.",
                 nodes[i]->element, WM_OSQUERYMONITOR_CONTEXT.name);
             wm_strcat(output, message, '\n');

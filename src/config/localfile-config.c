@@ -49,7 +49,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
         if (output == NULL) {
             mwarn(FILE_LIMIT, maximum_files);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "WARNING: File limit has been reached (%d). Please reduce the number of files or increase \"logcollector.max_files\".", maximum_files);
             wm_strcat(output, message, '\n');
         }
@@ -101,7 +101,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
             if (output == NULL) {
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid NULL content for element: %s.",
                     node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -115,7 +115,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
             } else if (output == NULL){
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "WARNING: Invalid value for element '%s': %s.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -153,7 +153,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
                     mwarn("Invalid attribute '%s' for <%s>",
                         node[i]->attributes[j], xml_localfile_outformat);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "WARNING: Invalid attribute '%s' for <%s>",
                         node[i]->attributes[j], xml_localfile_outformat);
                     wm_strcat(output, message, '\n');
@@ -178,7 +178,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
                             if (output == NULL) {
                                 mwarn("Labels starting with \"_\"  are reserved for internal use. Skipping label '%s'.", node[i]->values[j]);
                             } else {
-                                snprintf(message, OS_FLSIZE + 1,
+                                snprintf(message, OS_FLSIZE,
                                     "WARNING: Labels starting with \"_\"  are reserved for internal use. Skipping label '%s'.", node[i]->values[j]);
                                 wm_strcat(output, message, '\n');
                             }
@@ -249,7 +249,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
                     if (output == NULL) {
                         merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid value for element '%s': %s.",
                             node[i]->element, node[i]->content);
                         wm_strcat(output, message, '\n');
@@ -312,7 +312,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
                     if (output == NULL) {
                         merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid value for element '%s': %s.",
                             node[i]->element, node[i]->content);
                         wm_strcat(output, message, '\n');
@@ -327,7 +327,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
                     if (output == NULL) {
                         merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid value for element '%s': %s.",
                             node[i]->element, node[i]->content);
                         wm_strcat(output, message, '\n');
@@ -341,7 +341,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
                 if (output == NULL) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -410,7 +410,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': %s.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -421,7 +421,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid element in the configuration: '%s'.",
                 node[i]->element);
             wm_strcat(output, message, '\n');
@@ -455,7 +455,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
             if (output == NULL) {
                 minfo(NSTD_EVTLOG, logf[pl].file);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "INFO: Non-standard event log set: '%s'.",
                     logf[pl].file);
                 wm_strcat(output, message, '\n');
@@ -495,7 +495,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
                 if (output == NULL) {
                     minfo(GLOB_ERROR_WIN, logf[pl].file);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "INFO: Glob error. Invalid pattern: '%s' or no files found.",
                         logf[pl].file);
                     wm_strcat(output, message, '\n');
@@ -531,7 +531,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
                 if (output == NULL) {
                     merror(REM_ERROR, logf[pl].file);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Error removing '%s' file.",
                         logf[pl].file);
                     wm_strcat(output, message, '\n');
@@ -553,7 +553,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
                 if (output == NULL) {
                     mwarn(GLOB_ERROR, logf[pl].file);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "WARNING: Glob error. Invalid pattern: '%s'.",
                         logf[pl].file);
                     wm_strcat(output, message, '\n');
@@ -590,7 +590,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
                 if (output == NULL) {
                     merror(REM_ERROR, logf[pl].file);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Error removing '%s' file.",
                         logf[pl].file);
                     wm_strcat(output, message, '\n');

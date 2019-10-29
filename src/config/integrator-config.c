@@ -70,7 +70,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
             if (output == NULL) {
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                         "Invalid NULL content for element: '%s'.",
                         node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -84,7 +84,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
                 if (output == NULL) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -181,7 +181,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
                     merror(REGEX_COMPILE, node[i]->content,
                        integrator_config[s]->location->error);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Syntax error on regex: '%s': %d.",
                         node[i]->content, integrator_config[s]->location->error);
                     wm_strcat(output, message, '\n');
@@ -197,7 +197,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
                 if (output == NULL) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -211,7 +211,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
                 if (output == NULL) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -224,7 +224,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
             return(OS_INVALID);
         }
         else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid element in the configuration: '%s'.",
                 node[i]->element);
             wm_strcat(output, message, '\n');

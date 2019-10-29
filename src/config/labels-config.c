@@ -47,7 +47,7 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
             if (output == NULL) {
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid NULL content for element: %s.",
                     node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -65,7 +65,7 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                                 mwarn("Label keys starting with \"_\"  are reserved for internal use. Skipping label '%s'.",
                                     node[i]->values[j]);
                             } else {
-                                snprintf(message, OS_FLSIZE + 1,
+                                snprintf(message, OS_FLSIZE,
                                     "WARNING: Label keys starting with \"_\"  are reserved for internal use. Skipping label '%s'.",
                                     node[i]->values[j]);
                                 wm_strcat(output, message, '\n');
@@ -89,7 +89,7 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                         merror("Invalid content for attribute '%s'.", node[i]->attributes[j]);
                         goto error;
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid content for attribute '%s'.",
                             node[i]->attributes[j]);
                         wm_strcat(output, message, '\n');
@@ -115,7 +115,7 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                 if (output == NULL) {
                     mwarn("Label '%s' is empty.", key);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "WARNING: Label '%s' is empty.", key);
                     wm_strcat(output, message, '\n');
                 }
@@ -126,7 +126,7 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
             merror(XML_INVELEM, node[i]->element);
             goto error;
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid element in the configuration: '%s'.",
                 node[i]->element);
             wm_strcat(output, message, '\n');

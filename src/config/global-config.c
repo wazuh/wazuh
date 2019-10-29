@@ -67,7 +67,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             if (output == NULL){
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                         "Invalid NULL content for element: '%s'.",
                         node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -82,7 +82,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': '%s'.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -94,7 +94,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                         if (output == NULL){
                             merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
                         } else {
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Invalid value for element '%s': '%s'.",
                                 node[i]->attributes[j], node[i]->values[j]);
                             wm_strcat(output, message, '\n');
@@ -106,7 +106,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                         if (output == NULL){
                             merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
                         } else {
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Invalid value for element '%s': '%s'.",
                                 node[i]->attributes[j], node[i]->values[j]);
                             wm_strcat(output, message, '\n');
@@ -118,7 +118,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                         if (output == NULL){
                             merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
                         } else {
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Invalid value for element '%s': '%s'.",
                                 node[i]->attributes[j], node[i]->values[j]);
                             wm_strcat(output, message, '\n');
@@ -130,7 +130,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                         if (output == NULL){
                             merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
                         } else {
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Invalid value for element '%s': '%s'.",
                                 node[i]->attributes[j], node[i]->values[j]);
                             wm_strcat(output, message, '\n');
@@ -141,7 +141,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                     merror(XML_INVATTR, node[i]->attributes[j], node[i]->element);
                     return OS_INVALID;
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': '%s'.",
                         node[i]->attributes[j], node[i]->values[j]);
                     wm_strcat(output, message, '\n');
@@ -158,7 +158,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': '%s'.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -172,7 +172,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 if (output == NULL){
                     merror(MEM_ERROR, errno, strerror(errno));
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Could not acquire memory due to [(%d)-(%s)].",
                         errno, strerror(errno));
                     wm_strcat(output, message, '\n');
@@ -325,7 +325,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
             if (output == NULL){
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid NULL content for element: '%s'.",
                     node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -357,7 +357,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': '%s'.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -378,7 +378,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': '%s'.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -399,7 +399,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': '%s'.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -425,7 +425,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': '%s'.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -458,7 +458,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': '%s'.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -479,7 +479,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': '%s'.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -500,7 +500,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': '%s'.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -521,7 +521,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': '%s'.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -538,7 +538,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': '%s'.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -555,7 +555,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': '%s'.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -572,7 +572,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': '%s'.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -589,7 +589,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': '%s'.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -604,7 +604,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': '%s'.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -632,7 +632,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                     if (output == NULL){
                         merror(MEM_ERROR, errno, strerror(errno));
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                                 "Could not acquire memory due to [(%d)-(%s)].",
                                 errno, strerror(errno));
                         wm_strcat(output, message, '\n');
@@ -648,7 +648,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                     if (output == NULL){
                         merror(INVALID_IP, node[i]->content);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                                 "Invalid IP addres '%s'.",
                                 node[i]->content);
                         wm_strcat(output, message, '\n');
@@ -667,7 +667,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                     if (output == NULL){
                         merror(MEM_ERROR, errno, strerror(errno));
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                                 "Could not acquire memory due to [(%d)-(%s)].",
                                 errno, strerror(errno));
                         wm_strcat(output, message, '\n');
@@ -688,7 +688,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                            Config->hostname_white_list
                            [hostname_white_size - 2]->error);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                                 "Syntax error on regex: '%s': %d.",
                                 node[i]->content,
                                 Config->hostname_white_list
@@ -712,7 +712,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                 if (output == NULL){
                     merror("Invalid Email address: %s.", node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                             "Invalid Email address: %s.", node[i]->content);
                     wm_strcat(output, message, '\n');
                 }
@@ -726,7 +726,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                     if (output == NULL){
                         merror(MEM_ERROR, errno, strerror(errno));
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                                 "Could not acquire memory due to [(%d)-(%s)].",
                                 errno, strerror(errno));
                         wm_strcat(output, message, '\n');
@@ -774,7 +774,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                     if (output == NULL){
                         merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid value for element '%s': '%s'.",
                             node[i]->element, node[i]->content);
                         wm_strcat(output, message, '\n');
@@ -787,7 +787,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                     if (output == NULL){
                         merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid value for element '%s': '%s'.",
                             node[i]->element, node[i]->content);
                         wm_strcat(output, message, '\n');
@@ -801,7 +801,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                     if (output == NULL){
                         merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid value for element '%s': '%s'.",
                             node[i]->element, node[i]->content);
                         wm_strcat(output, message, '\n');
@@ -859,7 +859,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                         if (output == NULL){
                             merror(XML_VALUEERR, node[i]->element, node[i]->content);
                         } else {
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Invalid value for element '%s': '%s'.",
                                 node[i]->element, node[i]->content);
                             wm_strcat(output, message, '\n');
@@ -873,7 +873,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                     if (output == NULL){
                         merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid value for element '%s': '%s'.",
                                 node[i]->element, node[i]->content);
                         wm_strcat(output, message, '\n');
@@ -885,7 +885,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                     if (output == NULL){
                         merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid value for element '%s': '%s'.",
                             node[i]->element, node[i]->content);
                         wm_strcat(output, message, '\n');
@@ -922,7 +922,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                         if (output == NULL){
                             merror(XML_VALUEERR, node[i]->element, node[i]->content);
                         } else {
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Invalid value for element '%s': '%s'.",
                                 node[i]->element, node[i]->content);
                             wm_strcat(output, message, '\n');
@@ -936,7 +936,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                     if (output == NULL){
                         merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid value for element '%s': '%s'.",
                             node[i]->element, node[i]->content);
                         wm_strcat(output, message, '\n');
@@ -954,7 +954,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                     if (output == NULL){
                         merror("Invalid value for option '<%s>'", xml_queue_size);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid value for option '<%s>'.", xml_queue_size);
                         wm_strcat(output, message, '\n');
                     }
@@ -966,10 +966,10 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
             if (output == NULL){
                 merror(XML_INVELEM, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                                 "Invalid element in the configuration: '%s'.",
                                 node[i]->element);
-                        wm_strcat(output, message, '\n');
+                wm_strcat(output, message, '\n');
             }
             return (OS_INVALID);
         }

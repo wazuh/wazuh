@@ -51,7 +51,7 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
             if (output == NULL) {
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid NULL content for element: %s.",
                     node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -64,7 +64,7 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -80,7 +80,7 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -100,7 +100,7 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': %s.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -113,7 +113,7 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid element in the configuration: '%s'.",
                 node[i]->element);
             wm_strcat(output, message, '\n');

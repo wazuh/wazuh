@@ -59,7 +59,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
         if (output == NULL) {
             merror(FOPEN_ERROR, DEFAULTARPATH, errno, strerror(errno));
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Could not open file '%s' due to [(%d)-(%s)].",
                 DEFAULTARPATH, errno, strerror(errno));
             wm_strcat(output, message, '\n');
@@ -83,7 +83,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
         if (output == NULL) {
             merror("Could not change the group to ossec: %d", errno);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Could not change the group to ossec: %d",
                 errno);
             wm_strcat(output, message, '\n');
@@ -97,7 +97,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
         if (output == NULL) {
             merror("Could not chmod to 0640: %d", errno);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Could not chmod to 0640: %d",
                 errno);
             wm_strcat(output, message, '\n');
@@ -112,7 +112,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
         if (output == NULL) {
             merror(MEM_ERROR, errno, strerror(errno));
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Could not acquire memory due to [(%d)-(%s)].",
                 errno, strerror(errno));
             wm_strcat(output, message, '\n');
@@ -146,7 +146,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
             if (output == NULL) {
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid NULL content for element: %s.",
                     node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -174,7 +174,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
                 if (output == NULL) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -189,7 +189,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
                 if (output == NULL) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -207,7 +207,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 goto error_invalid;
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': %s.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -224,7 +224,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
             merror(XML_INVELEM, node[i]->element);
             goto error_invalid;
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid element in the configuration: '%s'.",
                 node[i]->element);
             wm_strcat(output, message, '\n');
@@ -305,7 +305,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
             mdebug1("No location defined");
             merror(AR_INV_LOC, tmp_location);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid active response location: '%s'.",
                 tmp_location);
             wm_strcat(output, message, '\n');
@@ -343,7 +343,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
                 mdebug1("Invalid command");
                 merror(AR_INV_CMD, tmp_ar->command);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid command '%s' in the active response.",
                     tmp_ar->command);
                 wm_strcat(output, message, '\n');
@@ -360,7 +360,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
             mdebug1("Timeout is not allowed");
             minfo(AR_NO_TIMEOUT, tmp_ar->ar_cmd->name);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "INFO: Timeout not allowed for command: '%s'.",
                 tmp_ar->ar_cmd->name);
             wm_strcat(output, message, '\n');
@@ -386,7 +386,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
         if (output == NULL) {
             merror_exit(MEM_ERROR, errno, strerror(errno));
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Could not acquire memory due to [(%d)-(%s)].",
                 errno, strerror(errno));
             wm_strcat(output, message, '\n');
@@ -465,7 +465,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
         if (output == NULL) {
             merror(MEM_ERROR, errno, strerror(errno));
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Could not acquire memory due to [(%d)-(%s)].",
                 errno, strerror(errno));
             wm_strcat(output, message, '\n');
@@ -494,7 +494,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
             if (output == NULL) {
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid NULL content for element: %s.",
                     node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -510,7 +510,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
                 if (output == NULL) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -537,7 +537,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
                 free(tmp_command);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': %s.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -553,7 +553,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
             free(tmp_command);
             return (OS_INVALID);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid element in the configuration: '%s'.",
                 node[i]->element);
             wm_strcat(output, message, '\n');

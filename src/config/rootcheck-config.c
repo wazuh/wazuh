@@ -100,7 +100,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
             if (output == NULL){
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                         "Invalid NULL content for element: '%s'.",
                         node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -114,7 +114,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -131,7 +131,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -144,7 +144,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -160,7 +160,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -175,7 +175,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -228,7 +228,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                         merror("Invalid attribute for '%s': '%s'.",
                             node[i]->element, *node[i]->attributes);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid attribute for '%s': '%s'.",
                             node[i]->element, *node[i]->attributes);
                         wm_strcat(output, message, '\n');
@@ -239,7 +239,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                         merror("Invalid value for '%s': '%s'.",
                             *node[i]->attributes, *node[i]->values);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid value for '%s': '%s'.",
                             *node[i]->attributes, *node[i]->values);
                         wm_strcat(output, message, '\n');
@@ -256,7 +256,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                         merror(REGEX_COMPILE, rootcheck->ignore[j],
                             rootcheck->ignore_sregex[j]->error);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Syntax error on regex: '%s': %d.",
                             rootcheck->ignore[j], rootcheck->ignore_sregex[j]->error);
                         wm_strcat(output, message, '\n');
@@ -282,7 +282,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -295,7 +295,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -308,7 +308,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -321,7 +321,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -334,7 +334,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -347,7 +347,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -360,7 +360,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -374,7 +374,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -389,7 +389,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -404,7 +404,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -419,7 +419,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -431,7 +431,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid element in the configuration: '%s'.",
                 node[i]->element);
             wm_strcat(output, message, '\n');

@@ -104,7 +104,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
             if (output == NULL) {
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid NULL content for element: %s.",
                     node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -122,7 +122,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
             } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': %s.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -170,7 +170,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                             i++;
                             continue;
                         } else {
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "WARNING: Invalid value for 'relation' attribute: '%s'. (ignored).",
                                 node[i]->values[0]);
                             wm_strcat(output, message, '\n');
@@ -182,7 +182,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                         i++;
                         continue;
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "WARNING: Invalid attribute: %s (ignored).",
                             node[i]->attributes[0]);
                         wm_strcat(output, message, '\n');
@@ -204,7 +204,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                 if (output == NULL) {
                     merror("Invalid filter: %s:%s (ignored).", node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid filter: %s:%s (ignored).",
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -217,7 +217,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid element in the configuration: '%s'.",
                 node[i]->element);
             wm_strcat(output, message, '\n');
@@ -234,7 +234,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
             if (output == NULL) {
                 merror("No \"email to\" configured for the report '%s'. Ignoring it.", mon_config->reports[s]->title);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "No \"email to\" configured for the report '%s'. Ignoring it.",
                      mon_config->reports[s]->title);
                 wm_strcat(output, message, '\n');

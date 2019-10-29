@@ -93,7 +93,7 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
             if (output == NULL){
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                         "Invalid NULL content for element: '%s'.",
                         node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -106,10 +106,10 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
                 if (output == NULL){
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         node[i]->element, node[i]->content);
-                wm_strcat(output, message, '\n');
+                    wm_strcat(output, message, '\n');
                 }
                 return (OS_INVALID);
             }
@@ -189,7 +189,7 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': %s.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -212,7 +212,7 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
                     merror(REGEX_COMPILE, node[i]->content,
                            Mail->gran_location[granto_size]->error);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                             "Syntax error on regex: '%s': %d.",
                             node[i]->content,
                             Mail->gran_location[granto_size]->error);
@@ -228,7 +228,7 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
                     merror(REGEX_COMPILE, node[i]->content,
                            Mail->gran_group[granto_size]->error);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                             "Syntax error on regex: '%s': %d.",
                             node[i]->content, Mail->gran_group[granto_size]->error);
                     wm_strcat(output, message, '\n');
@@ -239,7 +239,7 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                     "Invalid element in the configuration: '%s'.",
                     node[i]->element);
             wm_strcat(output, message, '\n');

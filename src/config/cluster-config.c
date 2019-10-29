@@ -60,7 +60,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
             if (output == NULL) {
                 merror(XML_VALUENULL, node[i]->element);
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid NULL content for element: %s.",
                     node[i]->element);
                 wm_strcat(output, message, '\n');
@@ -78,7 +78,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 if (output == NULL) {
                     merror("Detected a not allowed character in cluster name: \"%s\". Characters allowed: \"%s\".", node[i]->content, C_VALID);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Detected a not allowed character in cluster name: \"%s\". Characters allowed: \"%s\".",
                         node[i]->content, C_VALID);
                     wm_strcat(output, message, '\n');
@@ -98,7 +98,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 if (output == NULL) {
                     merror("Detected a not allowed character in node name: \"%s\". Characters allowed: \"%s\".", node[i]->content, C_VALID);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Detected a not allowed character in node name: \"%s\". Characters allowed: \"%s\".",
                         node[i]->content, C_VALID);
                     wm_strcat(output, message, '\n');
@@ -118,7 +118,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 if (output == NULL) {
                     merror("Detected a not allowed node type '%s'. Valid types are 'master' and 'worker'.", node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Detected a not allowed node type '%s'. Valid types are 'master' and 'worker'.",
                         node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -129,10 +129,10 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
         } else if (!strcmp(node[i]->element, key)) {
             if (output) {
                 if (strlen(node[i]->content) == 0) {
-                    snprintf(message, OS_FLSIZE + 1, "Unspecified key");
+                    snprintf(message, OS_FLSIZE, "Unspecified key");
                     found = 1;
                 } else if (strlen(node[i]->content) !=	32) {
-                    snprintf(message, OS_FLSIZE + 1, "Key must be 32 characters long and only have alphanumeric characters");
+                    snprintf(message, OS_FLSIZE, "Key must be 32 characters long and only have alphanumeric characters");
                     found = 1;
                 }
             }
@@ -143,7 +143,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 if (!output) {
                     merror("Detected a not allowed value for disabled tag '%s'. Valid values are 'yes' and 'no'.", node[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Detected a not allowed value for disabled tag '%s'. Valid values are 'yes' and 'no'.",
                         node[i]->content);
                     wm_strcat(output, message, '\n');
@@ -168,7 +168,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid value for element '%s': %s.",
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
@@ -194,11 +194,11 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                     if (strcmp(children[j]->element, "node") == 0) {
                         if (!strcmp(children[j]->content, "localhost") || !strcmp(children[j]->content, "NODE_IP") ||
                                 !strcmp(children[j]->content, "0.0.0.0") || !strcmp(children[j]->content, "127.0.1.1")) {
-                            snprintf(message, OS_FLSIZE + 1, "Invalid elements in node fields: %s.", children[j]->content);
+                            snprintf(message, OS_FLSIZE, "Invalid elements in node fields: %s.", children[j]->content);
                             found = 1;
                         }
                         if ((j > 0) && (!found)) {
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "WARNING: Found more than one node in configuration. Only master node should be specified. Using as master %s",
                                 children[0]->content);
                                 found = 2;
@@ -211,7 +211,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
             if (output) {
                 int port_var = atoi(node[i]->content);
                 if ((port_var < 1024) || (port_var > 65535)) {
-                    snprintf(message, OS_FLSIZE + 1, "Port must be higher than 1024 and lower than 65535.");
+                    snprintf(message, OS_FLSIZE, "Port must be higher than 1024 and lower than 65535.");
                     found = 1;
                 }
             }
@@ -220,7 +220,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
             merror(XML_INVELEM, node[i]->element);
             return OS_INVALID;
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid element in the configuration: '%s'.",
                 node[i]->content);
             wm_strcat(output, message, '\n');

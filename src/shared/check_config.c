@@ -116,13 +116,13 @@ int validate_target(const char *path, int type, char **output) {
     if (OS_ReadXML(path, &xml) < 0) {
         if (type & CRMOTE_CONFIG) {
 #ifndef CLIENT
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Error reading XML file '%s': %s (line %d).", 
                 path, xml.err, xml.err_line);
             wm_strcat(output, message, '\n');
 #endif
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Error reading XML file '%s': %s (line %d).", 
                 path, xml.err, xml.err_line);
             wm_strcat(output, message, '\n');
@@ -144,13 +144,13 @@ int validate_target(const char *path, int type, char **output) {
             wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
             break;
         } else if (!(type & CRMOTE_CONFIG) && (strcmp(node[i]->element, xml_start_agent) == 0)) {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid configuration file target: '%s' when expected: '%s'.", 
                 node[i]->element, xml_start_ossec);
             wm_strcat(output, message, '\n');
             break;
         } else if ((type & CRMOTE_CONFIG) && (strcmp(node[i]->element, xml_start_ossec) == 0)) {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "Invalid configuration file target: '%s' when expected: '%s'.", 
                 node[i]->element, xml_start_agent);
             wm_strcat(output, message, '\n');

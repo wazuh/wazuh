@@ -71,7 +71,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                 if (output == NULL) {
                     merror("Invalid timeout at module '%s'.", WM_CISCAT_CONTEXT.name);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid timeout at module '%s'.",
                         WM_CISCAT_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -105,7 +105,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                         merror("Invalid content for attribute '%s' at module '%s'.", XML_CONTENT_TYPE, WM_CISCAT_CONTEXT.name);
                         return OS_INVALID;
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid content for attribute '%s' at module '%s'.",
                             XML_CONTENT_TYPE, WM_CISCAT_CONTEXT.name);
                         wm_strcat(output, message, '\n');
@@ -115,7 +115,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                     merror("Invalid attribute '%s' at module '%s'.", nodes[i]->attributes[0], WM_CISCAT_CONTEXT.name);
                     return OS_INVALID;
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid attribute '%s' at module '%s'.",
                         nodes[i]->attributes[0], WM_CISCAT_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -151,7 +151,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                         if (output == NULL) {
                             merror("Tag '%s' on incorrect content type at module '%s'", children[j]->element, WM_CISCAT_CONTEXT.name);
                         } else {
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Tag '%s' on incorrect content type at module '%s'.",
                                 children[j]->element, WM_CISCAT_CONTEXT.name);
                             wm_strcat(output, message, '\n');
@@ -168,7 +168,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                         if (output == NULL) {
                             merror("Invalid timeout at module '%s'", WM_CISCAT_CONTEXT.name);
                         } else {
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "Invalid timeout at module '%s'",
                                 WM_CISCAT_CONTEXT.name);
                             wm_strcat(output, message, '\n');
@@ -181,7 +181,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                         if (output == NULL) {
                             mwarn("Duplicate path for content at module '%s'", WM_CISCAT_CONTEXT.name);
                         } else {
-                            snprintf(message, OS_FLSIZE + 1,
+                            snprintf(message, OS_FLSIZE,
                                 "WARNING: Duplicate path for content at module '%s'",
                                 WM_CISCAT_CONTEXT.name);
                             wm_strcat(output, message, '\n');
@@ -195,7 +195,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                     OS_ClearNode(children);
                     return OS_INVALID;
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "No such tag '%s' at module '%s'.",
                         children[j]->element, WM_CISCAT_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -210,7 +210,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                 if (output == NULL) {
                     merror("No such content path at module '%s'.", WM_CISCAT_CONTEXT.name);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "No such content path at module '%s'.",
                         WM_CISCAT_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -226,7 +226,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                 if (output == NULL) {
                     merror("Invalid interval at module '%s'", WM_CISCAT_CONTEXT.name);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid interval at module '%s'.",
                         WM_CISCAT_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -258,7 +258,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                 if (output == NULL) {
                     merror("Invalid interval at module '%s'", WM_CISCAT_CONTEXT.name);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid interval at module '%s'.",
                         WM_CISCAT_CONTEXT.name);
                     wm_strcat(output, message, '\n');
@@ -275,7 +275,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                 if (output == NULL) {
                     merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         nodes[i]->element, nodes[i]->content);
                     wm_strcat(output, message, '\n');
@@ -287,7 +287,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                     if (output == NULL) {
                         merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                     } else {
-                        snprintf(message, OS_FLSIZE + 1,
+                        snprintf(message, OS_FLSIZE,
                             "Invalid value for element '%s': %s.",
                             nodes[i]->element, nodes[i]->content);
                         wm_strcat(output, message, '\n');
@@ -301,7 +301,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                 if (output == NULL) {
                     merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         nodes[i]->element, nodes[i]->content);
                     wm_strcat(output, message, '\n');
@@ -314,7 +314,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                 if (output == NULL) {
                     merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                 } else {
-                    snprintf(message, OS_FLSIZE + 1,
+                    snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         nodes[i]->element, nodes[i]->content);
                     wm_strcat(output, message, '\n');
@@ -330,7 +330,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                 merror("Invalid content for tag '%s' at module '%s'.", XML_SCAN_ON_START, WM_CISCAT_CONTEXT.name);
                 return OS_INVALID;
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_SCAN_ON_START, WM_CISCAT_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -345,7 +345,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                 merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_CISCAT_CONTEXT.name);
                 return OS_INVALID;
             } else {
-                snprintf(message, OS_FLSIZE + 1,
+                snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_DISABLED, WM_CISCAT_CONTEXT.name);
                 wm_strcat(output, message, '\n');
@@ -359,7 +359,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_CISCAT_CONTEXT.name);
             return OS_INVALID;
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "No such tag '%s' at module '%s'.",
                 nodes[i]->element, WM_CISCAT_CONTEXT.name);
             wm_strcat(output, message, '\n');
@@ -373,7 +373,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
         if (output == NULL) {
             merror("At module '%s': 'day' is not compatible with 'wday'.", WM_CISCAT_CONTEXT.name);
         } else {
-            snprintf(message, OS_FLSIZE + 1,
+            snprintf(message, OS_FLSIZE,
                 "At module '%s': 'day' is not compatible with 'wday'.",
                 WM_CISCAT_CONTEXT.name);
             wm_strcat(output, message, '\n');
