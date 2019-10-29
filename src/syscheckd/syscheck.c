@@ -94,8 +94,7 @@ int fim_initialize() {
     }
 
     if (!OSHash_setSize(syscheck.fim_inode, OS_SIZE_4096)) {
-        merror(LIST_ERROR);
-        return (0);
+        mwarn(LIST_ERROR);
     }
 #endif
 
