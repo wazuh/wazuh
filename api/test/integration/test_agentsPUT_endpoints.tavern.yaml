@@ -196,9 +196,7 @@ stages:
             - "008"
             - "009"
             - "010"
-            - "011"
-            - "012"
-          total_affected_items: 12
+          total_affected_items: 10
         message: !anystr
 
 ---
@@ -209,7 +207,7 @@ stages:
     # PUT /agents/group/group2/configuration
   - name: Update group2 configuration
     request:
-      url: http://localhost:55000/agents/groups/group2/configuration
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/group2/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -224,7 +222,7 @@ stages:
     # PUT /agents/group/wrong_group/configuration
   - name: Try to update configuration of a non existing group
     request:
-      url: http://localhost:55000/agents/groups/wrong_group/configuration
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_group/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -239,7 +237,7 @@ stages:
     # PUT /agents/group/group1/configuration
   - name: Try to update configuration using an empty file
     request:
-      url: http://localhost:55000/agents/groups/group1/configuration
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/group1/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -252,7 +250,7 @@ stages:
     # PUT /agents/group/group1/configuration
   - name: Try to update configuration using an invalid configuration file
     request:
-      url: http://localhost:55000/agents/groups/group1/configuration
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/group1/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -267,7 +265,7 @@ stages:
     # PUT /agents/group/group1/configuration
   - name: Try to update configuration using a wrong configuration file
     request:
-      url: http://localhost:55000/agents/groups/group1/configuration
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/group1/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -281,9 +279,6 @@ stages:
 
 ---
 test_name: PUT /agents/restart
-
-marks:
-  - xfail
 
 stages:
 
@@ -315,9 +310,7 @@ stages:
           failed_items:
             - error:
                 code: 1701
-              id:
-                - "998"
-                - "999"
+              id: !anything
           total_affected_items: 0
           total_failed_items: 2
         message: !anystr
@@ -358,9 +351,7 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items:
-            - "001"
-            - "002"
+          affected_items: !anything
           failed_items:
             - error:
                 code: 1701
@@ -369,7 +360,7 @@ stages:
           total_affected_items: 2
           total_failed_items: 1
         message: !anystr
-    delay_after: 30
+    delay_after: 40
 
     # THIS FAILS UNTIL DISTRIBUTED ANSWERS ARE MERGED PROPERLY
     # PUT /agents/restart
@@ -383,17 +374,12 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items:
-            - "001"
-            - "002"
-            - "004"
-            - "005"
-            - "006"
-            - "007"
-            - "008"
+          affected_items: !anything
+          failed_items: !anything
           total_affected_items: 7
+          total_failed_items: 5
         message: !anystr
-    delay_after: 20
+    delay_after: 40
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}

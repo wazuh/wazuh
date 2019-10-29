@@ -51,6 +51,14 @@ RUN /scripts/configuration_rbac.sh
 ONBUILD COPY configurations/rbac/security/healthcheck/healthcheck.py /tmp/healthcheck.py
 ONBUILD COPY configurations/rbac/security/healthcheck/security_rbac.txt /tmp/security_rbac.txt
 
+FROM base as wazuh-env-agents_white_rbac
+ADD configurations/rbac/agents/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base as wazuh-env-agents_black_rbac
+ADD configurations/rbac/agents/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
 FROM base as wazuh-env-rules_white_rbac
 ADD configurations/rbac/rules/white_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh

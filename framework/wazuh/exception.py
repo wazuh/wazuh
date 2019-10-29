@@ -474,6 +474,9 @@ class WazuhException(Exception):
         4013: {'message': 'The specified name already exist'},
         4014: {'message': 'Parameter {param} is required',
                'remediation': 'Please, make sure the parameter is defined'},
+        4015: {'message': 'Permission denied, could not remove agents from group before deleting it',
+               'remediation': 'Please, make sure you have the right permissions for actions: agent:modify_group and '
+                              'group:modify_assignments before attempting to delete the group'},
 
         # User management
         5000: {'message': 'The user could not be created',

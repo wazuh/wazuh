@@ -38,4 +38,12 @@ ONBUILD COPY configurations/rbac/security/rbac.db /var/ossec/api/configuration/s
 ADD configurations/rbac/security/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
+FROM base as wazuh-env-agents_white_rbac
+ADD configurations/rbac/agents/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base as wazuh-env-agents_black_rbac
+ADD configurations/rbac/agents/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
 FROM wazuh-env-${ENVIRONMENT}
