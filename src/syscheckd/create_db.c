@@ -335,26 +335,30 @@ void fim_audit_inode_event(char *file, const char *inode_key, fim_event_mode mod
         char **event_paths = NULL;
         int i = 0;
 
-        os_calloc(inode_data->items, sizeof(char*), event_paths);
+        os_calloc(inode_data->items + 1, sizeof(char*), event_paths);
 
         while(inode_data->paths && inode_data->paths[i] && i < inode_data->items) {
-            if (strcmp(file, inode_data->paths[i]) != 0) {
-                os_strdup(inode_data->paths[i], event_paths[i]);
-            }
+            os_strdup(inode_data->paths[i], event_paths[i]);
             i++;
         }
+        event_paths[i] = NULL;
 
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         // For add events we don't have the path saved.
-        if (file) {
+        if (!w_is_str_in_array(event_paths, file)) {
             fim_checker(file, item, w_evt);
         }
 
         // An alert is generated for each path with the same inode
-        for(; i > 0; i--) {
-            fim_checker(event_paths[i - 1], item, w_evt);
-            os_free(event_paths[i - 1]);
+        for(i = 0; event_paths[i]; i++) {
+            struct fim_element *hard_link_items;
+
+            os_calloc(1, sizeof(fim_element), hard_link_items);
+            hard_link_items->mode = mode;
+            fim_checker(event_paths[i], hard_link_items, w_evt);
+            os_free(event_paths[i]);
+            os_free(hard_link_items);
         }
         os_free(event_paths);
     } else {
