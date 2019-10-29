@@ -184,9 +184,15 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
             }
         } else if (strcmp(node[i]->element, xml_rootkit_files) == 0) {
             rootcheck->checks.rc_files = 1;
+            if (rootcheck->rootkit_files) {
+                free(rootcheck->rootkit_files);
+            }
             os_strdup(node[i]->content, rootcheck->rootkit_files);
         } else if (strcmp(node[i]->element, xml_rootkit_trojans) == 0) {
             rootcheck->checks.rc_trojans = 1;
+            if (rootcheck->rootkit_trojans) {
+                free(rootcheck->rootkit_trojans);
+            }
             os_strdup(node[i]->content, rootcheck->rootkit_trojans);
         } else if (strcmp(node[i]->element, xml_winaudit) == 0) {
 #ifdef WIN32

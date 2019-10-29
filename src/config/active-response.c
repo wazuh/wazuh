@@ -520,11 +520,17 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
                 return (OS_INVALID);
             }
 
+            if (tmp_command->name) {
+                free(tmp_command->name);
+            }
             tmp_command->name = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, command_expect) == 0) {
             free(tmp_str);
             tmp_str = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, command_executable) == 0) {
+            if (tmp_command->executable) {
+                free(tmp_command->executable);
+            }
             tmp_command->executable = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, timeout_allowed) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {

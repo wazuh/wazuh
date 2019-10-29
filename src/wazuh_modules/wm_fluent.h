@@ -51,7 +51,7 @@ typedef struct wm_fluent_pong_t {
 extern const wm_context WM_FLUENT_CONTEXT;
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
-int wm_fluent_read(xml_node **nodes, wmodule *module);
+int wm_fluent_read(xml_node **nodes, wmodule *module, char **output);
 
 
 #endif // WM_FLUENT_H

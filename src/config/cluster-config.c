@@ -85,6 +85,9 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 }
                 return OS_INVALID;
             }
+            if (Config->cluster_name) {
+                free(Config->cluster_name);
+            }
             os_strdup(node[i]->content, Config->cluster_name);
         } else if (!strcmp(node[i]->element, node_name)) {
             if (!strlen(node[i]->content)) {
@@ -105,6 +108,9 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 }
                 return OS_INVALID;
             }
+            if (Config->node_name) {
+                free(Config->node_name);
+            }
             os_strdup(node[i]->content, Config->node_name);
         } else if (!strcmp(node[i]->element, node_type)) {
             if (!strlen(node[i]->content)) {
@@ -124,6 +130,9 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                     wm_strcat(output, message, '\n');
                 }
                 return OS_INVALID;
+            }
+            if (Config->node_type) {
+                os_free(Config->node_type);
             }
             os_strdup(node[i]->content, Config->node_type);
         } else if (!strcmp(node[i]->element, key)) {

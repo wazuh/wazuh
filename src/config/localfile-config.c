@@ -230,6 +230,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
                 return 0;
             }
 
+            if (logf[pl].file) {
+                free(logf[pl].file);
+            }
             os_strdup(node[i]->content, logf[pl].file);
             logf[pl].command = logf[pl].file;
         } else if (strcmp(node[i]->element, xml_localfile_frequency) == 0) {
@@ -277,8 +280,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
                 }
             }
 #endif
+            if (logf[pl].file) {
+                free(logf[pl].file);
+            }
             os_strdup(node[i]->content, logf[pl].file);
         } else if (strcasecmp(node[i]->element, xml_localfile_logformat) == 0) {
+            if (logf[pl].logformat) {
+                free(logf[pl].logformat);
+            }
             os_strdup(node[i]->content, logf[pl].logformat);
 
             if (strcmp(logf[pl].logformat, "syslog") == 0) {
@@ -350,10 +359,13 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
             }
         } else if (strcasecmp(node[i]->element, xml_localfile_exclude) == 0) {
             if (logf[pl].exclude) {
-                os_free(logf[pl].exclude);
+                free(logf[pl].exclude);
             }
             os_strdup(node[i]->content, logf[pl].exclude);
         } else if (strcasecmp(node[i]->element, xml_localfile_alias) == 0) {
+            if (logf[pl].alias) {
+                free(logf[pl].alias);
+            }
             os_strdup(node[i]->content, logf[pl].alias);
         } else if (!strcmp(node[i]->element, xml_localfile_age)) {
             char *endptr;

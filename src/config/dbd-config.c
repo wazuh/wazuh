@@ -55,12 +55,24 @@ int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2,
         }
         /* Mail notification */
         else if (strcmp(node[i]->element, xml_dbhost) == 0) {
+            if (db_config->host) {
+                free(db_config->host);
+            }
             os_strdup(node[i]->content, db_config->host);
         } else if (strcmp(node[i]->element, xml_dbuser) == 0) {
+            if (db_config->user) {
+                free(db_config->user);
+            }
             os_strdup(node[i]->content, db_config->user);
         } else if (strcmp(node[i]->element, xml_dbpass) == 0) {
+            if (db_config->pass) {
+                free(db_config->pass);
+            }
             os_strdup(node[i]->content, db_config->pass);
         } else if (strcmp(node[i]->element, xml_dbdb) == 0) {
+            if (db_config->db) {
+                free(db_config->db);
+            }
             os_strdup(node[i]->content, db_config->db);
         } else if (strcmp(node[i]->element, xml_dbport) == 0) {
             db_config->port = (unsigned int) atoi(node[i]->content);
@@ -137,7 +149,7 @@ int Test_DBD(const char *path, char **output) {
     }
 
     /* Check for config errors */
-    if (dbdConfig->db_type == MYSQLDB) {
+    if (dbdConfig->db_type != MYSQLDB) {
 #ifndef MYSQL_DATABASE_ENABLED
         if (output == NULL){
             merror(DB_COMPILED, "mysql");

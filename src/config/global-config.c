@@ -761,6 +761,9 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
         } else if (strcmp(node[i]->element, xml_smtpserver) == 0) {
 #ifndef WIN32
             if (Mail) {
+                if (Mail->smtpserver) {
+                    free(Mail->smtpserver);
+                }
                 os_strdup(node[i]->content, Mail->smtpserver);
             }
 #endif

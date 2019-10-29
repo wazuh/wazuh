@@ -352,8 +352,14 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_JAVA_PATH)) {
+            if (ciscat->java_path) {
+                free(ciscat->java_path);
+            }
             ciscat->java_path = strdup(nodes[i]->content);
         } else if (!strcmp(nodes[i]->element, XML_CISCAT_PATH)) {
+            if (ciscat->ciscat_path) {
+                free(ciscat->ciscat_path);
+            }
             ciscat->ciscat_path = strdup(nodes[i]->content);
         } else if (output == NULL) {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_CISCAT_CONTEXT.name);

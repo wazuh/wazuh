@@ -1865,8 +1865,10 @@ void Free_Syscheck(syscheck_config *config) {
         free(config->scan_day);
         free(config->scan_time);
         
-        while (config->dir[pl]) {
-                pl++;
+        if (config->dir) {
+            while (config->dir[pl]) {
+                    pl++;
+            }
         }
 
         if (config->ignore) {

@@ -166,7 +166,9 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
         } else if (strcmp(node[i]->element, xml_lessd_command) == 0) {
             os_strdup(node[i]->content, lessd_config->entries[s]->command);
         } else if (strcmp(node[i]->element, xml_lessd_options) == 0) {
-            os_strdup(node[i]->content, lessd_config->entries[s]->options);
+            if (strcmp(node[i]->content, lessd_config->entries[s]->options) == 0) {
+                os_strdup(node[i]->content, lessd_config->entries[s]->options);
+            }
         } else if (strcmp(node[i]->element, xml_lessd_state) == 0) {
             if (strcmp(node[i]->content, "periodic") == 0) {
                 lessd_config->entries[s]->state |= LESSD_STATE_PERIODIC;
@@ -244,24 +246,21 @@ int Test_Agentlessd(const char *path, char **output) {
 
 void free_AgentlessConfig(agentlessd_config *config) {
     if(config) {
-        int i = 0, j = 0;
+        int i, j;
         if(config->entries) {
-            while(config->entries[i]) {
-                j = 0;
+            for(i= 0; config->entries[i]; i++) {
                 if(config->entries[i]->server) {
-                    while(config->entries[i]->server[j]) {
-                        os_free(config->entries[i]->server[j]);
-                        j++;
+                    for (j= 0; config->entries[i]->server[j]; j++) {
+                        free(config->entries[i]->server[j]);
                     }
-                    os_free(config->entries[i]->server);
+                    free(config->entries[i]->server);
                 }
-                os_free(config->entries[i]->type);
-                os_free(config->entries[i]->command);
-                os_free(config->entries[i]);
-                i++;
+                free(config->entries[i]->type);
+                free(config->entries[i]->command);
+                free(config->entries[i]);
             }
-            os_free(config->entries);
+            free(config->entries);
         }
-        os_free(config);
+        free(config);
     }
 }
