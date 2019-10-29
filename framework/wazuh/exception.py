@@ -110,7 +110,7 @@ class WazuhException(Exception):
         1207: {'message': 'Error reading rule files, wrong permissions',
                'remediation': 'Please, check your permissions over the file'
                },
-        1208: {'message': 'The specified rule does not exist',
+        1208: {'message': 'The rule doesn\'t exist or you don\'t have permission to see it',
                'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
                               ' to get more information about how to configure the rules'
                },

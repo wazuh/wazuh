@@ -13,7 +13,6 @@ from wazuh.results import AffectedItemsWazuhResult
 from wazuh.utils import process_array
 
 
-@expose_resources(actions='rules:read', resources=['*:*:*'], post_proc_kwargs={'exclude_codes': [1208]})
 def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
               path=None, file=None, level=None, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
@@ -90,7 +89,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr
     return result
 
 
-@expose_resources(actions='rules:read', resources=['*:*:*'])
+@expose_resources(actions=['rules:read'], resources=['rule:file:{file}'])
 def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort_by=None,
                     sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Gets a list of the rule files.
@@ -115,16 +114,20 @@ def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.da
     ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
     if not ruleset_conf:
         raise WazuhError(1200)
-    rule_file = format_rule_file(ruleset_conf, {'status': status, 'path': path, 'file': file})
-    result.affected_items = process_array(rule_file, search_text=search_text, search_in_fields=search_in_fields,
+    rules_files = list()
+    if isinstance(file, list):
+        for f in file:
+            rules_files.extend(format_rule_file(ruleset_conf, {'status': status, 'path': path, 'file': f}))
+    else:
+        rules_files = format_rule_file(ruleset_conf, {'status': status, 'path': path, 'file': file})
+    result.affected_items = process_array(rules_files, search_text=search_text, search_in_fields=search_in_fields,
                                           complementary_search=complementary_search, sort_by=sort_by,
                                           sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    result.total_affected_items = len(rule_file)
+    result.total_affected_items = len(rules_files)
 
     return result
 
 
-@expose_resources(actions='rules:read', resources=['*:*:*'])
 def get_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True, search_text=None,
                complementary_search=False, search_in_fields=None):
     """Get all the groups used in the rules.
@@ -154,7 +157,6 @@ def get_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascendi
     return result
 
 
-@expose_resources(actions='rules:read', resources=['*:*:*'])
 def get_requirement(requirement=None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
                     search_text=None, complementary_search=False, search_in_fields=None):
     """Get the requirements used in the rules
@@ -187,7 +189,6 @@ def get_requirement(requirement=None, offset=0, limit=common.database_limit, sor
     return result
 
 
-@expose_resources(actions='rules:read', resources=['*:*:*'])
 def get_file(filename=None):
     """Reads content of specified file
 

@@ -8,10 +8,9 @@ import logging
 import connexion
 
 from api.authentication import get_permissions
-from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc, flask_cached
-from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh import rule as rule_framework
+from wazuh.cluster.dapi.dapi import DistributedAPI
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')

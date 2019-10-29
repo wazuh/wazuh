@@ -2640,8 +2640,10 @@ components:
       name: file
       description: Filters by filename.
       schema:
-        type: string
-        format: alphanumeric
+        type: array
+        items:
+          type: string
+          format: alphanumeric
     full_path_filter:
       in: query
       name: file
@@ -8141,53 +8143,43 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
-                  totalItems: 2
-                  items:
-                    - file: 0016-wazuh_rules.xml
-                      path: ruleset/rules
-                      id: 203
-                      level: 9
-                      description: Agent event queue is full. Events may be lost.
-                      status: enabled
-                      groups:
-                      - agent_flooding
-                      - wazuh
-                      pci:
-                      -
-                      gdpr:
-                      - IV_35.7.d
+                  affected_items:
+                    - description: Generic template for all syslog rules.
                       details:
-                        if_sid: "201"
-                        level: "full"
-                      hipaa:
-                      -
-                      gpg13:
-                        -
-                      nist-800-53:
-                      -
-                    - file: 0015-ossec_rules.xml
-                      path: ruleset/rules
-                      id: 513
-                      level: 9
-                      description: Windows malware detected.
-                      status: enabled
+                        category: syslog
+                        noalert: '1'
+                      file: 0010-rules_config.xml
+                      gdpr: []
+                      gpg13: []
                       groups:
-                      - rootcheck
-                      - gpg13_4.2
-                      - ossec
-                      pci:
-                      -
-                      gdpr:
-                      - IV_35.7.d
+                        - syslog
+                      hipaa: []
+                      id: 1
+                      level: 0
+                      nist_800_53: []
+                      path: ruleset/rules
+                      pci: []
+                      status: enabled
+                    - description: Generic template for all web proxy rules.
                       details:
-                        if_sid: "510"
-                        match: "^Windows Malware"
-                      hipaa:
-                        -
-                      gpg13:
-                        -
-                      nist-800-53:
-                        -
+                        category: squid
+                        noalert: '1'
+                      file: 0010-rules_config.xml
+                      gdpr: []
+                      gpg13: []
+                      groups:
+                        - squid
+                      hipaa: []
+                      id: 5
+                      level: 0
+                      nist_800_53: []
+                      path: ruleset/rules
+                      pci: []
+                      status: enabled
+                  failed_items: []
+                  total_affected_items: 54
+                  total_failed_items: 0
+                message: All selected rules were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8219,12 +8211,17 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
-                  totalItems: 4
-                  items:
-                    - access_control
-                    - access_denied
-                    - accesslog
-                    - account_changed
+                  affected_items:
+                    - active_response
+                    - agentless
+                    - attacks
+                    - firewall
+                    - gdpr_II_5.1.f
+                    - gdpr_IV_30.1.g
+                  failed_items: []
+                  total_affected_items: 6
+                  total_failed_items: 0
+                message: All groups in rules are shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8257,12 +8254,18 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
-                  totalItems: 4
-                  items:
-                    - "1.1.1"
-                    - "1.3.4"
-                    - "1.4"
-                    - "10.1"
+                  affected_items:
+                    - 10.2.6
+                    - 10.2.7
+                    - 10.5.2
+                    - 10.5.5
+                    - 10.6.1
+                    - 11.4
+                    - 11.5
+                  failed_items: []
+                  total_affected_items: 7
+                  total_failed_items: 0
+                message: Selected rules were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8297,8 +8300,7 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseRulesFiles'
               example:
                 data:
-                  totalItems: 4
-                  items:
+                  affected_items:
                     - file: 0010-rules_config.xml
                       path: ruleset/rules
                       status: enabled
@@ -8311,6 +8313,10 @@ paths:
                     - file: 0020-syslog_rules.xml
                       path: ruleset/rules
                       status: enabled
+                  failed_items: []
+                  total_affected_items: 4
+                  total_failed_items: 0
+                  message: All rules files were shown
         default:
           $ref: '#/components/responses/ResponseError'
 

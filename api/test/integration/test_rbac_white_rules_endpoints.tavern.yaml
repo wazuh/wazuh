@@ -1,0 +1,341 @@
+---
+test_name: GET RULES RBAC
+
+marks:
+  - usefixtures:
+    - rules_white_rbac_tests
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+
+  - name: Try to show the rules of the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        limit: 5
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - description: Generic template for all syslog rules.
+              details:
+                category: syslog
+                noalert: '1'
+              file: 0010-rules_config.xml
+              gdpr: []
+              gpg13: []
+              groups:
+                - syslog
+              hipaa: []
+              id: 1
+              level: 0
+              nist_800_53: []
+              path: ruleset/rules
+              pci: []
+              status: enabled
+            - description: Generic template for all firewall rules.
+              details:
+                category: firewall
+                noalert: '1'
+              file: 0010-rules_config.xml
+              gdpr: []
+              gpg13: []
+              groups:
+                - firewall
+              hipaa: []
+              id: 2
+              level: 0
+              nist_800_53: []
+              path: ruleset/rules
+              pci: []
+              status: enabled
+            - description: Generic template for all ids rules.
+              details:
+                category: ids
+                noalert: '1'
+              file: 0010-rules_config.xml
+              gdpr: []
+              gpg13: []
+              groups:
+                - ids
+              hipaa: []
+              id: 3
+              level: 0
+              nist_800_53: []
+              path: ruleset/rules
+              pci: []
+              status: enabled
+            - description: Generic template for all web rules.
+              details:
+                category: web-log
+                noalert: '1'
+              file: 0010-rules_config.xml
+              gdpr: []
+              gpg13: []
+              groups:
+                - web-log
+              hipaa: []
+              id: 4
+              level: 0
+              nist_800_53: []
+              path: ruleset/rules
+              pci: []
+              status: enabled
+            - description: Generic template for all web proxy rules.
+              details:
+                category: squid
+                noalert: '1'
+              file: 0010-rules_config.xml
+              gdpr: []
+              gpg13: []
+              groups:
+                - squid
+              hipaa: []
+              id: 5
+              level: 0
+              nist_800_53: []
+              path: ruleset/rules
+              pci: []
+              status: enabled
+          failed_items: []
+          total_affected_items: 54
+          total_failed_items: 0
+        message: All selected rules were shown
+
+  - name: Try to show the rules of the system (list)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        rule_ids: 1,2,200,500,700,702
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - description: Generic template for all syslog rules.
+              details:
+                category: syslog
+                noalert: '1'
+              file: 0010-rules_config.xml
+              gdpr: []
+              gpg13: []
+              groups:
+                - syslog
+              hipaa: []
+              id: 1
+              level: 0
+              nist_800_53: []
+              path: ruleset/rules
+              pci: []
+              status: enabled
+            - description: Generic template for all firewall rules.
+              details:
+                category: firewall
+                noalert: '1'
+              file: 0010-rules_config.xml
+              gdpr: []
+              gpg13: []
+              groups:
+                - firewall
+              hipaa: []
+              id: 2
+              level: 0
+              nist_800_53: []
+              path: ruleset/rules
+              pci: []
+              status: enabled
+            - description: Grouping of ossec rules.
+              details:
+                category: ossec
+                decoded_as: ossec
+              file: 0015-ossec_rules.xml
+              gdpr: []
+              gpg13: []
+              groups:
+                - ossec
+              hipaa: []
+              id: 500
+              level: 0
+              nist_800_53: []
+              path: ruleset/rules
+              pci: []
+              status: enabled
+            - description: Logcollector Messages Grouped
+              details:
+                category: ossec
+                decoded_as: ossec-logcollector
+              file: 0015-ossec_rules.xml
+              gdpr: []
+              gpg13: []
+              groups:
+                - ossec
+              hipaa: []
+              id: 700
+              level: 0
+              nist_800_53: []
+              path: ruleset/rules
+              pci: []
+              status: enabled
+          failed_items:
+            - error:
+                code: 1208
+                message: The rule doesn't exist or you don't have permission to see it
+                remediation: Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)
+                  to get more information about how to configure the rules
+              id:
+                - 200
+                - 702
+          total_affected_items: 4
+          total_failed_items: 2
+        message: Some rules could not be shown
+
+---
+test_name: GET RULES FILES RBAC
+
+stages:
+
+  - name: Try to show the rules files of the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - file: 0010-rules_config.xml
+              path: ruleset/rules
+              status: enabled
+            - file: 0015-ossec_rules.xml
+              path: ruleset/rules
+              status: enabled
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: All rules files were shown
+
+  - name: Try to show the rules files of the system (list)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        file: 0015-ossec_rules.xml,0010-rules_config.xml
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - file: 0010-rules_config.xml
+              path: ruleset/rules
+              status: enabled
+            - file: 0015-ossec_rules.xml
+              path: ruleset/rules
+              status: enabled
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: All rules files were shown
+
+  - name: Try to show the rules files of the system (no permissions)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        file: 0015-ossec_rules.xml,0010-rules_config.xml
+    response:
+      status_code: 200
+      body: &permissions_denied
+        code: 4000
+        dapi_errors:
+          master-node:
+            error: Permission denied
+        detail: Permission denied
+        remediation: Please, make sure you have permissions to execute current request, for
+          more information on setting up permissions please visit XXXX
+        status: 400
+        title: Wazuh Error
+        type: about:blank
+
+---
+test_name: GET RULES FILES RBAC (Download)
+
+stages:
+
+  - name: Try get one rule file
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0015-ossec_rules.xml/download"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+
+  - name: Try get one rule file (no permissions)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0011-ossec_rules.xml/download"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      body:
+        - <<: *permissions_denied
+
+---
+test_name: GET RULES GROUPS RBAC
+
+stages:
+
+  - name: Try to show the groups of rules in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/groups"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 39
+          total_failed_items: 0
+        message: All groups in rules are shown
+
+---
+test_name: GET PCI REQUIREMENT RBAC
+
+stages:
+
+  - name: Try to show the groups of rules in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/pci"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 7
+          total_failed_items: 0
+        message: Selected rules were shown
