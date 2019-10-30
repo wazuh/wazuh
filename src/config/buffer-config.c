@@ -119,6 +119,7 @@ int Read_ClientBuffer(const OS_XML *xml, XML_NODE node, __attribute__((unused)) 
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

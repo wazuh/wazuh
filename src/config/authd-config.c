@@ -192,6 +192,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else if (!strcmp(node[i]->element, xml_log_level)) {
             SetConf(node[i]->content, &config->log_level, options.auth.log_level, xml_log_level);
         } else {

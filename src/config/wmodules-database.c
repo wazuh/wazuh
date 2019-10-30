@@ -76,6 +76,7 @@ int Read_WDatabase(const OS_XML *xml, XML_NODE node, void *d1, void *d2)
                         return OS_INVALID;
                     }
                 }
+                OS_ClearNode(children);
             }
         } else if (!strcmp(node[i]->element, xml_worker_pool_size)) {
             if (db_config)

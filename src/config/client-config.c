@@ -224,6 +224,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else if (strcmp(node[i]->element, xml_thread_stack_size) == 0) {
             SetConf(node[i]->content, &logr->thread_stack_size, options.global.thread_stack_size, xml_thread_stack_size);
         } else {

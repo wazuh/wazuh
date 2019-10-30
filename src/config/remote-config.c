@@ -283,6 +283,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else if (strcmp(node[i]->element, xml_timeout) == 0) {
             /* Get children */
             xml_node **children = NULL;
@@ -308,6 +309,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else if (strcmp(node[i]->element, xml_rlimit_nofile) == 0) {
             SetConf(node[i]->content, (int *) &logr->rlimit_nofile, options.remote.rlimit_nofile, xml_rlimit_nofile);
         } else if (strcmp(node[i]->element, xml_request) == 0) {
@@ -329,6 +331,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else if (strcmp(node[i]->element, xml_shared) == 0) {
             /* Get children */
             xml_node **children = NULL;
@@ -348,6 +351,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else if (strcmp(node[i]->element, xml_interval) == 0) {
             /* Get children */
             xml_node **children = NULL;
@@ -367,6 +371,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else if (strcmp(node[i]->element, xml_group) == 0) {
             /* Get children */
             xml_node **children = NULL;
@@ -386,6 +391,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else if (strcmp(node[i]->element, xml_memory) == 0) {
             /* Get children */
             xml_node **children = NULL;
@@ -405,6 +411,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else if (strcmp(node[i]->element, xml_tcp) == 0) {
             /* Get children */
             xml_node **children = NULL;
@@ -426,6 +433,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else if (strcmp(node[i]->element, xml_log_level) == 0) {
             SetConf(node[i]->content, &logr->log_level, options.remote.log_level, xml_log_level);
         } else if (strcmp(node[i]->element, xml_thread_stack_size) == 0) {
