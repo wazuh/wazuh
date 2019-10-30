@@ -120,6 +120,11 @@ a human readable message is shown, the new field `message` will be used instead.
 ### GET /cache/config 
 * All cache endpoints have been removed
 
+## Ciscat
+### GET /ciscat/{agent_id}/results
+* The output now fits the affected_items - failed_items pattern to be consistent with the rest
+of endpoints
+
 ## Lists
 ### GET /lists
 * Parameter **status** removed (It was not implemented)
