@@ -68,6 +68,9 @@ list(APPEND tests_flags "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -W
 list(APPEND tests_names "test_syscheck_config")
 list(APPEND tests_flags " ")
 
+list(APPEND tests_names "test_syscheck")
+list(APPEND tests_flags "-Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_setSize")
+
 
 # Config files
 configure_file("test_syscheck.conf" "test_syscheck.conf" COPYONLY)
