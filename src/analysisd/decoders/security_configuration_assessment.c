@@ -1605,6 +1605,7 @@ static void HandleIntegrityCheck(Eventinfo *lf, int *socket, cJSON *event){
     }
 
     if (!policy_id) {
+        merror("Malformed JSON: field 'policy_id' not found.");
         return;
     }
 
@@ -1626,7 +1627,7 @@ static void HandleIntegrityCheck(Eventinfo *lf, int *socket, cJSON *event){
 
                 PushDumpRequest(lf->agent_id, policy_id->valuestring, 0);
             }
-            
+
             break;
         case 1: /* Empty DB */
             mdebug1("Check results DB empty for policy '%s'. Requesting DB dump.",
