@@ -43,6 +43,7 @@ static int SavePolicyInfo(Eventinfo *lf, int *socket, char *name, char *file, ch
 static void HandleCheckEvent(Eventinfo *lf, int *socket, cJSON *event);
 static void HandleScanInfo(Eventinfo *lf, int *socket, cJSON *event);
 static void HandlePoliciesInfo(Eventinfo *lf, int *socket, cJSON *event);
+static void HandleIntegrityCheck(Eventinfo *lf, int *socket, cJSON *event);
 static void HandleDumpEvent(Eventinfo *lf, int *socket, cJSON *event);
 static int CheckEventJSON(cJSON *event, cJSON **scan_id, cJSON **id, cJSON **name, cJSON **title, cJSON **description,
         cJSON **rationale, cJSON **remediation, cJSON **compliance, cJSON **condition, cJSON **check, cJSON **reference,
@@ -233,7 +234,24 @@ int DecodeSCA(Eventinfo *lf, int *socket)
             cJSON_Delete(json_event);
             ret_val = 1;
             return ret_val;
-        } else if (strcmp(type->valuestring,"dump_end") == 0) {
+        }
+        else if (strcmp(type->valuestring, "integrity_check") == 0){
+            char *msg_unformatted = cJSON_PrintUnformatted(json_event);
+
+            if (msg_unformatted) {
+                mdebug1("Got integrity check event: '%s'", msg_unformatted);
+                os_free(msg_unformatted);
+            }
+
+            HandleIntegrityCheck(lf,socket,json_event);
+
+            lf->decoder_info = sca_json_dec;
+
+            cJSON_Delete(json_event);
+            ret_val = 1;
+            return ret_val;
+        }
+        else if (strcmp(type->valuestring,"dump_end") == 0) {
             char *msg_unformatted = cJSON_PrintUnformatted(json_event);
 
             if (msg_unformatted) {
@@ -1559,6 +1577,71 @@ static int CheckPoliciesJSON(cJSON *event,cJSON **policies) {
 
     retval = 0;
     return retval;
+}
+
+/*
+    Handle integrity check received from the agent. If the integrity hash is different from the
+    stored one or there is no hash stored, it will request a new scan. If the integrity hash is
+    the same one, it will do nothing.
+*/
+static void HandleIntegrityCheck(Eventinfo *lf, int *socket, cJSON *event){
+    assert(lf);
+    assert(event);
+
+    cJSON *integrity_hash = NULL;
+    cJSON *policy_id = NULL;
+
+    integrity_hash = cJSON_GetObjectItem(event, "hash");
+    policy_id =  cJSON_GetObjectItem(event, "policy_id");
+
+    if (!integrity_hash){
+        merror("Malformed JSON: field 'hash' not found.");
+        return;
+    }
+
+    if (!integrity_hash->valuestring) {
+        merror("Malformed JSON: field 'hash' must be a string.");
+        return;
+    }
+
+    if (!policy_id) {
+        return;
+    }
+
+    if (!policy_id->valuestring) {
+        merror("Malformed JSON: field 'policy_id' must be a string.");
+        return;
+    }
+
+    char *wdb_response = NULL;
+    os_calloc(OS_MAXSTR, sizeof(char), wdb_response);
+
+    int result_db = FindCheckResults(lf, policy_id->valuestring, socket, wdb_response);
+
+    switch (result_db)  {
+        case 0: /* Integrity check */
+            if(strcmp(wdb_response, integrity_hash->valuestring)) {
+                mdebug1("Scan result integrity failed for policy '%s'. Hash from DB: '%s', hash from summary: '%s'. Requesting DB dump.",
+                        policy_id->valuestring, wdb_response, integrity_hash->valuestring);
+
+                PushDumpRequest(lf->agent_id, policy_id->valuestring, 0);
+            }
+            
+            break;
+        case 1: /* Empty DB */
+            mdebug1("Check results DB empty for policy '%s'. Requesting DB dump.",
+                    policy_id->valuestring);
+
+            PushDumpRequest(lf->agent_id, policy_id->valuestring, 1);
+
+            break;
+        default:
+            merror("Error querying policy monitoring database for agent '%s'", lf->agent_id);
+
+            break;
+    }
+
+    os_free(wdb_response);
 }
 
 static void FillCheckEventInfo(Eventinfo *lf, cJSON *scan_id, cJSON *id, cJSON *name, cJSON *title, cJSON *description,
