@@ -3224,40 +3224,27 @@ static void *wm_sca_check_integrity_periodically (wm_sca_t * data) {
                     continue;
                 }
 
+                cJSON *json_integrity = cJSON_CreateObject();
                 int cis_db_index = i;
 
+                cJSON_AddStringToObject(json_integrity, "type", "integrity_check");
+                
                 mdebug1("Calculating hash for scanned results.");
                 char *integrity_hash = wm_sca_hash_integrity(cis_db_index);
+                
+                cJSON_AddStringToObject(json_integrity, "hash", integrity_hash);
+                cJSON_AddStringToObject(json_integrity, "policy_id", data->policies[cis_db_index]->policy_id);
 
                 /* Send integrity hash to the manager */
-            #ifdef WIN32
-                int queue_fd = 0;
-            #else
-                int queue_fd = data->queue;
-            #endif
-
                 mdebug2("Sending integrity hash: %s", integrity_hash);
 
-                if (wm_sendmsg(data->msg_delay, queue_fd, integrity_hash, WM_SCA_STAMP, SCA_MQ) < 0) {
-                    merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-
-                    if (data->queue >= 0){
-                        close(data->queue);
-                    }
-
-                    if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0){
-                        mwarn("Can't connect to queue.");
-                    }
-                    else{
-                        if (wm_sendmsg(data->msg_delay, data->queue, integrity_hash, WM_SCA_STAMP, SCA_MQ) < 0) {
-                            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-                            close(data->queue);
-                        }
-                    }
-                }
+                wm_sca_send_alert(data, json_integrity);
 
                 os_free(integrity_hash);
+                cJSON_Delete(json_integrity);
             }
         }
     }
+
+    return NULL;
 }
