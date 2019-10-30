@@ -683,8 +683,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             continue;
         }
 
-        str_lowercase(expandedpath);
-
         // Get absolute path
         int retval = GetFullPathName(expandedpath, PATH_MAX, real_path, NULL);
 
@@ -695,6 +693,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             os_free(tag);
             continue;
         }
+
+        str_lowercase(real_path);
 #else
         strncpy(real_path, tmp_dir, PATH_MAX + 1);
 #endif

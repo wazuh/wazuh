@@ -2987,3 +2987,73 @@ int trail_path_separator(char * dest, const char * src, size_t n) {
     const char STR_SEPARATOR[] = { PATH_SEP, '\0' };
     return snprintf(dest, n, "%s%s", src, src[strlen(src) - 1] == PATH_SEP ? "" : STR_SEPARATOR);
 }
+
+// Check if a path is absolute
+
+bool isabspath(const char * path) {
+#ifdef WIN32
+    return strlen(path) >= 3 && isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/');
+#else
+    return path[0] == '/';
+#endif
+}
+
+// Unify path separators (slashes) for Windows paths
+
+void win_path_backslash(char * path) {
+    for (char * c = strchr(path, '/'); c != NULL; c = strchr(c + 1, '/')) {
+        *c = '\\';
+    }
+}
+
+// Get an absolute path
+
+char * abspath(const char * path, char * buffer, size_t size) {
+    // If the path is already absolute, copy and return
+    if (isabspath(path)) {
+        strncpy(buffer, path, size);
+        buffer[size - 1] = '\0';
+#ifdef WIN32
+        buffer[0] = tolower(buffer[0]);
+#endif
+        return buffer;
+    }
+
+    char cwd[PATH_MAX];
+
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        return NULL;
+    }
+
+#ifdef WIN32
+    size_t len;
+
+    switch (path[0]) {
+    case '/':
+    case '\\':
+        // Starts with \: current drive's root
+        if (snprintf(buffer, size, "%c:%s", cwd[0], path) >= (int)size) {
+            return NULL;
+        }
+
+        break;
+
+    default:
+        // Remove root's backslash: "C:\" must be "C:"
+        len = strlen(cwd);
+        cwd[len - 1] = cwd[len - 1] == '\\' ? '\0' : cwd[len - 1];
+
+        if (snprintf(buffer, size, "%s\\%s", cwd, path) >= (int)size) {
+            return NULL;
+        }
+    }
+
+    win_path_backslash(buffer);
+#else
+    if (snprintf(buffer, size, "%s/%s", strcmp(cwd, "/") == 0 ? "" : cwd, path) >= (int)size) {
+        return NULL;
+    }
+#endif
+
+    return buffer;
+}
