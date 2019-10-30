@@ -59,6 +59,9 @@ FROM base as wazuh-env-agents_black_rbac
 ADD configurations/rbac/agents/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
+FROM base_agent AS wazuh-env-syscollector_white_rbac
+FROM base_agent AS wazuh-env-syscollector_black_rbac
+
 FROM wazuh-env-${ENVIRONMENT}
 
 HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python3 /tmp/healthcheck.py || exit 1
