@@ -35,6 +35,14 @@ int __wrap_lstat() {
     return mock();
 }
 
+int __wrap_fim_send_scan_info() {
+    return 1;
+}
+
+int __wrap_send_syscheck_msg() {
+    return 1;
+}
+
 fim_entry_data *__wrap_rbtree_get() {
     fim_entry_data *data = mock_type(fim_entry_data *);
     return data;
@@ -1271,8 +1279,9 @@ void test_fim_checker_file(void **state)
 
     char * path = "/bin/test.file";
     fim_element *item = calloc(1, sizeof(fim_element));
-    item->statbuf = calloc(1, sizeof(stat));
-    item->statbuf->st_mode = S_IFREG;
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    item->statbuf = &buf;
     will_return(__wrap_lstat, 0);
 
     fim_checker(path, item, w_evt);
@@ -1287,30 +1296,98 @@ void test_fim_checker_directory(void **state)
     syscheck_set_internals();
     Read_Syscheck_Config("test_syscheck.conf");
 
-    whodata_evt *w_evt;
-    w_evt = calloc(1, sizeof(whodata_evt));
-    w_evt->user_id = strdup("100");
-    w_evt->user_name = strdup("test");
-    w_evt->group_id = strdup("1000");
-    w_evt->group_name = strdup("testing");
-    w_evt->process_name = strdup("test_proc");
-    w_evt->path = strdup("/test/test.file");
-    w_evt->audit_uid = strdup("99");
-    w_evt->audit_name = strdup("audit_user");
-    w_evt->effective_uid = strdup("999");
-    w_evt->effective_name = strdup("effective_user");
-    w_evt->inode = strdup("606060");
-    w_evt->dev = strdup("12345678");
-    w_evt->ppid = 1000;
-    w_evt->process_id = 1001;
-
     char * path = "/bin/test.file";
     fim_element *item = calloc(1, sizeof(fim_element));
-    item->statbuf = calloc(1, sizeof(stat));
-    item->statbuf->st_mode = S_IFDIR;
+    struct stat buf;
+    buf.st_mode = S_IFDIR;
+    item->statbuf = &buf;
     will_return(__wrap_lstat, 0);
 
     fim_checker(path, item, NULL);
+}
+
+
+void test_fim_checker_deleted(void **state)
+{
+    (void) state;
+
+    // Load syscheck default values
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
+
+    char * path = "/bin/test.file";
+    fim_element *item = calloc(1, sizeof(fim_element));
+
+    will_return(__wrap_lstat, -1);
+    errno = 1;
+
+    fim_checker(path, item, NULL);
+}
+
+
+void test_fim_checker_deleted_enoent(void **state)
+{
+    (void) state;
+
+    // Load syscheck default values
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        12345678,
+        123456,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+    *state = data;
+    char * path = "/bin/test.file";
+    fim_element *item = calloc(1, sizeof(fim_element));
+
+    will_return(__wrap_lstat, -1);
+    errno = ENOENT;
+    will_return(__wrap_rbtree_get, data);
+    will_return(__wrap_rbtree_get, NULL);
+
+    fim_checker(path, item, NULL);
+}
+
+
+void test_fim_scan(void **state)
+{
+    (void) state;
+    int ret;
+
+    will_return_always(__wrap_lstat, 0);
+
+    ret = fim_scan();
+
+    assert_int_equal(ret, 0);
+}
+
+
+void test_fim_directory_nodir(void **state)
+{
+    (void) state;
+    int ret;
+
+    ret = fim_directory(NULL, NULL, NULL);
+
+    assert_int_equal(ret, -1);
 }
 
 
@@ -1351,9 +1428,12 @@ int main(void) {
         cmocka_unit_test_teardown(test_init_fim_data_entry, delete_entry_data),
         cmocka_unit_test(test_fim_audit_inode_event_modify),
         cmocka_unit_test(test_fim_audit_inode_event_add),
-        //cmocka_unit_test(test_fim_checker_file),
-        //cmocka_unit_test(test_fim_checker_directory),
-
+        cmocka_unit_test(test_fim_scan),
+        cmocka_unit_test(test_fim_checker_file),
+        cmocka_unit_test(test_fim_checker_directory),
+        cmocka_unit_test(test_fim_checker_deleted),
+        cmocka_unit_test_teardown(test_fim_checker_deleted_enoent, delete_entry_data),
+        cmocka_unit_test(test_fim_directory_nodir),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

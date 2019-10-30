@@ -48,7 +48,7 @@ list(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
 list(APPEND tests_names "test_create_db")
 list(APPEND tests_flags "-Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_replace -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Get_ex \
-                         -Wl,--wrap,OSHash_Add -Wl,--wrap,lstat")
+                         -Wl,--wrap,OSHash_Add -Wl,--wrap,lstat -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg")
 
 list(APPEND tests_names "test_syscheck_audit")
 list(APPEND tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,IsSocket -Wl,--wrap,IsFile -Wl,--wrap,IsDir -Wl,--wrap,IsLink -Wl,--wrap,IsFile -Wl,--wrap,audit_restart \
