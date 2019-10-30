@@ -228,28 +228,31 @@ int Read_GCP(const OS_XML *xml, xml_node *node, void *d1) {
     // Allocate memory
     if ((cur_wmodule = *wmodules)) {
         cur_wmodule_exists = *wmodules;
-        int found = 0;
 
         while (cur_wmodule_exists) {
             if(cur_wmodule_exists->tag) {
                 if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
                     cur_wmodule = cur_wmodule_exists;
-                    found = 1;
                     break;
                 }
             }
+
+            if (cur_wmodule_exists->next == NULL) {
+                while (cur_wmodule->next) {
+                    cur_wmodule = cur_wmodule->next;
+                }
+
+                os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+                cur_wmodule = cur_wmodule->next;
+                break;
+            }
+
             cur_wmodule_exists = cur_wmodule_exists->next;
         }
-
-        if(!found) {
-            while (cur_wmodule->next)
-                cur_wmodule = cur_wmodule->next;
-
-            os_calloc(1, sizeof(wmodule), cur_wmodule->next);
-            cur_wmodule = cur_wmodule->next;
-        }
-    } else
-        *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
+    } else {
+        os_calloc(1, sizeof(wmodule), cur_wmodule);
+        *wmodules = cur_wmodule;
+    }
 
     if (!cur_wmodule) {
         merror(MEM_ERROR, errno, strerror(errno));
