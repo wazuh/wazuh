@@ -26,19 +26,22 @@ stages:
       body:
         # We get totalItems number of arrays in items, using !anything to check items is in the response
         data:
-          items: !anything
-          totalItems: !anyint
+          affected_items: !anything
+          failed_items: !anything
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
       # Save some data for future use in the test
       save:
         body:
-          returned_benchmark: data.items.0.benchmark
-          returned_profile: data.items.0.profile
-          returned_pass: data.items.0.pass
-          returned_fail: data.items.0.fail
-          returned_error : data.items.0.error
-          returned_notchecked: data.items.0.notchecked
-          returned_unknown: data.items.0.unknown
-          returned_score: data.items.0.score
+          returned_benchmark: data.affected_items.0.benchmark
+          returned_profile: data.affected_items.0.profile
+          returned_pass: data.affected_items.0.pass
+          returned_fail: data.affected_items.0.fail
+          returned_error : data.affected_items.0.error
+          returned_notchecked: data.affected_items.0.notchecked
+          returned_unknown: data.affected_items.0.unknown
+          returned_score: data.affected_items.0.score
 
     # GET /ciscat/001/results?limit=1
   - name: Try to get ciscat results for agent 001 with a set limit of 1 answer
@@ -50,7 +53,7 @@ stages:
       status_code: 200
       body:
         data:
-          items: &full_items_array_001
+          affected_items: &full_items_array_001
             - profile: !anystr
               score: !anyint
               error: !anyint
@@ -62,7 +65,10 @@ stages:
               pass: !anyint
               notchecked: !anyint
               unknown: !anyint
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/001/results?limit=1&search=a
   - name: Try to get ciscat results for agent 001 using limit and search parameter
@@ -75,8 +81,11 @@ stages:
       status_code: 200
       body:
         data:
-          items: *full_items_array_001
-          totalItems: !anyint
+          affected_items: *full_items_array_001
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/001/results?limit=1&profile={returned_profile}
   - name: Try to get ciscat results for agent 001 using profile filtering
@@ -89,9 +98,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - profile: "{tavern.request_vars.params.profile}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/001/results?limit=1&score={returned_score}
   - name: Try to get ciscat results for agent 001 using score filtering
@@ -104,9 +116,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - score: !int "{tavern.request_vars.params.score}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/001/results?limit=1&error={returned_error}
   - name: Try to get ciscat results for agent 001 using error filtering
@@ -119,9 +134,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - error: !int "{tavern.request_vars.params.error}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/001/results?limit=1&fail={returned_fail}
   - name: Try to get ciscat results for agent 001 using fail filtering
@@ -134,9 +152,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - fail: !int "{tavern.request_vars.params.fail}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/001/results?limit=1&pass={returned_pass}
   - name: Try to get ciscat results for agent 001 using pass filtering
@@ -149,9 +170,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - pass: !int "{tavern.request_vars.params.pass}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/001/results?limit=1&benchmark={returned_benchmark}
   - name: Try to get ciscat results for agent 001 using benchmark filtering
@@ -164,9 +188,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - benchmark: "{tavern.request_vars.params.benchmark}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/001/results?limit=1&notchecked={returned_notchecked}
   - name: Try to get ciscat results for agent 001 using notchecked filtering
@@ -179,9 +206,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - notchecked: !int "{tavern.request_vars.params.notchecked}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/001/results?limit=1&unknown={returned_unknown}
   - name: Try to get ciscat results for agent 001 using unknown filtering
@@ -194,9 +224,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - unknown: !int "{tavern.request_vars.params.unknown}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
 ---
 test_name: GET /ciscat/002/results
@@ -215,19 +248,22 @@ stages:
       body:
         # We get totalItems number of arrays in items, using !anything to check items is in the response
         data:
-          items: !anything
-          totalItems: !anyint
+          affected_items: !anything
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
       # Save some data for future use in the test
       save:
         body:
-          returned_benchmark: data.items.0.benchmark
-          returned_profile: data.items.0.profile
-          returned_pass: data.items.0.pass
-          returned_fail: data.items.0.fail
-          returned_error : data.items.0.error
-          returned_notchecked: data.items.0.notchecked
-          returned_unknown: data.items.0.unknown
-          returned_score: data.items.0.score
+          returned_benchmark: data.affected_items.0.benchmark
+          returned_profile: data.affected_items.0.profile
+          returned_pass: data.affected_items.0.pass
+          returned_fail: data.affected_items.0.fail
+          returned_error : data.affected_items.0.error
+          returned_notchecked: data.affected_items.0.notchecked
+          returned_unknown: data.affected_items.0.unknown
+          returned_score: data.affected_items.0.score
 
     # GET /ciscat/002/results?limit=1
   - name: Try to get ciscat results for agent 002 with a set limit of 1 answer
@@ -239,7 +275,7 @@ stages:
       status_code: 200
       body:
         data:
-          items: &full_items_array_002
+          affected_items: &full_items_array_002
             - profile: !anystr
               score: !anyint
               error: !anyint
@@ -251,7 +287,10 @@ stages:
               pass: !anyint
               notchecked: !anyint
               unknown: !anyint
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/002/results?limit=1&search=a
   - name: Try to get ciscat results for agent 002 using limit and search parameter
@@ -264,8 +303,11 @@ stages:
       status_code: 200
       body:
         data:
-          items: *full_items_array_002
-          totalItems: !anyint
+          affected_items: *full_items_array_002
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/002/results?limit=1&profile={returned_profile}
   - name: Try to get ciscat results for agent 002 using profile filtering
@@ -278,9 +320,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - profile: "{tavern.request_vars.params.profile}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/002/results?limit=1&score={returned_score}
   - name: Try to get ciscat results for agent 002 using score filtering
@@ -293,9 +338,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - score: !int "{tavern.request_vars.params.score}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/002/results?limit=1&error={returned_error}
   - name: Try to get ciscat results for agent 002 using error filtering
@@ -308,9 +356,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - error: !int "{tavern.request_vars.params.error}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/002/results?limit=1&fail={returned_fail}
   - name: Try to get ciscat results for agent 002 using fail filtering
@@ -323,9 +374,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - fail: !int "{tavern.request_vars.params.fail}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/002/results?limit=1&pass={returned_pass}
   - name: Try to get ciscat results for agent 002 using pass filtering
@@ -338,9 +392,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - pass: !int "{tavern.request_vars.params.pass}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/002/results?limit=1&benchmark={returned_benchmark}
   - name: Try to get ciscat results for agent 002 using benchmark filtering
@@ -353,9 +410,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - benchmark: "{tavern.request_vars.params.benchmark}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/002/results?limit=1&notchecked={returned_notchecked}
   - name: Try to get ciscat results for agent 002 using notchecked filtering
@@ -368,9 +428,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - notchecked: !int "{tavern.request_vars.params.notchecked}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/002/results?limit=1&unknown={returned_unknown}
   - name: Try to get ciscat results for agent 002 using unknown filtering
@@ -383,9 +446,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - unknown: !int "{tavern.request_vars.params.unknown}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
 ---
 test_name: GET /ciscat/003/results
@@ -404,19 +470,22 @@ stages:
       body:
         # We get totalItems number of arrays in items, using !anything to check items is in the response
         data:
-          items: !anything
-          totalItems: !anyint
+          affected_items: !anything
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
       # Save some data for future use in the test
       save:
         body:
-          returned_benchmark: data.items.0.benchmark
-          returned_profile: data.items.0.profile
-          returned_pass: data.items.0.pass
-          returned_fail: data.items.0.fail
-          returned_error : data.items.0.error
-          returned_notchecked: data.items.0.notchecked
-          returned_unknown: data.items.0.unknown
-          returned_score: data.items.0.score
+          returned_benchmark: data.affected_items.0.benchmark
+          returned_profile: data.affected_items.0.profile
+          returned_pass: data.affected_items.0.pass
+          returned_fail: data.affected_items.0.fail
+          returned_error : data.affected_items.0.error
+          returned_notchecked: data.affected_items.0.notchecked
+          returned_unknown: data.affected_items.0.unknown
+          returned_score: data.affected_items.0.score
 
     # GET /ciscat/003/results?limit=1
   - name: Try to get ciscat results for agent 003 with a set limit of 1 answer
@@ -428,7 +497,7 @@ stages:
       status_code: 200
       body:
         data:
-          items: &full_items_array_003
+          affected_items: &full_items_array_003
             - profile: !anystr
               score: !anyint
               error: !anyint
@@ -440,7 +509,10 @@ stages:
               pass: !anyint
               notchecked: !anyint
               unknown: !anyint
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/003/results?limit=1&search=a
   - name: Try to get ciscat results for agent 003 using limit and search parameter
@@ -453,8 +525,11 @@ stages:
       status_code: 200
       body:
         data:
-          items: *full_items_array_003
-          totalItems: !anyint
+          affected_items: *full_items_array_003
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/003/results?limit=1&profile={returned_profile}
   - name: Try to get ciscat results for agent 003 using profile filtering
@@ -467,9 +542,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - profile: "{tavern.request_vars.params.profile}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/003/results?limit=1&score={returned_score}
   - name: Try to get ciscat results for agent 003 using score filtering
@@ -482,9 +560,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - score: !int "{tavern.request_vars.params.score}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/003/results?limit=1&error={returned_error}
   - name: Try to get ciscat results for agent 003 using error filtering
@@ -497,9 +578,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - error: !int "{tavern.request_vars.params.error}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/003/results?limit=1&fail={returned_fail}
   - name: Try to get ciscat results for agent 003 using fail filtering
@@ -512,9 +596,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - fail: !int "{tavern.request_vars.params.fail}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/003/results?limit=1&pass={returned_pass}
   - name: Try to get ciscat results for agent 003 using pass filtering
@@ -527,9 +614,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - pass: !int "{tavern.request_vars.params.pass}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/003/results?limit=1&benchmark={returned_benchmark}
   - name: Try to get ciscat results for agent 003 using benchmark filtering
@@ -542,9 +632,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - benchmark: "{tavern.request_vars.params.benchmark}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/003/results?limit=1&notchecked={returned_notchecked}
   - name: Try to get ciscat results for agent 003 using notchecked filtering
@@ -557,9 +650,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - notchecked: !int "{tavern.request_vars.params.notchecked}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/003/results?limit=1&unknown={returned_unknown}
   - name: Try to get ciscat results for agent 003 using unknown filtering
@@ -572,9 +668,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - unknown: !int "{tavern.request_vars.params.unknown}"
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
 ---
 # Another GET /ciscat/{agent_id}/results test to parametrize values for sort and select parameters
@@ -608,8 +707,11 @@ stages:
       status_code: 200
       body:
         data:
-          items: *full_items_array_001
-          totalItems: !anyint
+          affected_items: *full_items_array_001
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/001/results?limit=1&select={field}
   - name: Try to get ciscat results for agent 001 with a selected field answer
@@ -623,11 +725,13 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
 
     ## TEST STAGES WITH AGENT 002
 
@@ -642,8 +746,11 @@ stages:
       status_code: 200
       body:
         data:
-          items: *full_items_array_002
-          totalItems: !anyint
+          affected_items: *full_items_array_002
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/002/results?limit=1&select={field}
   - name: Try to get ciscat results for agent 002 with a selected field answer
@@ -657,11 +764,11 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
     ## TEST STAGES WITH AGENT 003
 
@@ -676,8 +783,11 @@ stages:
       status_code: 200
       body:
         data:
-          items: *full_items_array_003
-          totalItems: !anyint
+          affected_items: *full_items_array_003
+          total_affected_items: !anyint
+          failed_items: !anything
+          total_failed_items: 0
+        message: All CISCAT results loaded
 
     # GET /ciscat/003/results?limit=1&select={field}
   - name: Try to get ciscat results for agent 003 with a selected field answer
@@ -691,10 +801,8 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
         data:
-          totalItems: !anyint
-
----
+          total_affected_items: !anyint
