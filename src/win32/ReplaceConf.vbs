@@ -72,7 +72,7 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
 	  Set file = objFSO.OpenTextFile(home_dir & "localfile-events.template", ForReading)
 	  newline = file.ReadAll
 	  file.Close
-	  re.Pattern = "  <localfile>" & vbCrLf	& ".*Application(.*" & vbCrLf & ")*.*Security(.*" & vbCrLf & ")*.*System(.*" & vbCrLf & ")*  </localfile>"
+	  re.Pattern = "  <localfile>" & vbCrLf	& ".*Application(.*" & vbCrLf & ")*.*Security(.*" & vbCrLf & ")*.*System.*" & vbCrLf & ".*" & vbCrLf & "  </localfile>"
 	  re.Global = False
 	  strNewText = re.Replace(strNewText, newline)
 	End If
