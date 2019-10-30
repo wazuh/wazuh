@@ -258,9 +258,9 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        file: 0015-ossec_rules.xml,0010-rules_config.xml
+        file: 0011-ossec_rules.xml,0011-rules_config.xml
     response:
-      status_code: 200
+      status_code: 400
       body: &permissions_denied
         code: 4000
         dapi_errors:
@@ -294,9 +294,9 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
-      status_code: 200
+      status_code: 400
       body:
-        - <<: *permissions_denied
+        <<: *permissions_denied
 
 ---
 test_name: GET RULES GROUPS RBAC
