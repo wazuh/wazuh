@@ -302,6 +302,12 @@ cJSON *getSyscheckConfig(void) {
         cJSON_AddItemToObject(syscfg,"registry_ignore_sregex",rgi);
     }
 #endif
+    if (syscheck.allow_prefilter_cmd) {
+        cJSON_AddStringToObject(syscfg, "allow_prefilter_cmd", "yes");
+    } else {
+        cJSON_AddStringToObject(syscfg, "allow_prefilter_cmd", "no");
+    }
+
     if (syscheck.prefilter_cmd) {
         cJSON_AddStringToObject(syscfg,"prefilter_cmd",syscheck.prefilter_cmd);
     }
