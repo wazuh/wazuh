@@ -252,13 +252,13 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, char **outp
                 sca->scan_day = atoi(nodes[i]->content);
                 if (sca->scan_day < 1 || sca->scan_day > 31) {
                     if (output == NULL) {
-                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-                } else {
-                    snprintf(message, OS_FLSIZE,
-                        "Invalid value for element '%s': %s.",
-                        nodes[i]->element, nodes[i]->content);
-                    wm_strcat(output, message, '\n');
-                }
+                        merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                    } else {
+                        snprintf(message, OS_FLSIZE,
+                            "Invalid value for element '%s': %s.",
+                            nodes[i]->element, nodes[i]->content);
+                        wm_strcat(output, message, '\n');
+                    }
                 return (OS_INVALID);
                 }
             }
@@ -395,8 +395,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, char **outp
                             merror("Empty policy value at '%s'.", WM_SCA_CONTEXT.name);
                         } else {
                             snprintf(message, OS_FLSIZE,
-                                "Policy path is too long at module '%s'. Max path length is %d",
-                                WM_SCA_CONTEXT.name,PATH_MAX);
+                                "Empty policy value at '%s'.", WM_SCA_CONTEXT.name);
                             wm_strcat(output, message, '\n');
                         }
                         OS_ClearNode(children);

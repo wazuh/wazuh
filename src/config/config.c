@@ -327,7 +327,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
                             if (output == NULL){
                                 mwarn("Agent name filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
                             } else {
-                                snprintf(message, OS_FLSIZE + 1
+                                snprintf(message, OS_FLSIZE,
                                     "WARNING: Agent name filter (%d bytes) exceeds the limit (%d)", 
                                     attrlen, OS_PATTERN_MAXSIZE);
                                 wm_strcat(output, message, '\n');

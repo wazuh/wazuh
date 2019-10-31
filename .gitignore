@@ -49,6 +49,7 @@ src/verify-agent-conf
 src/wazuh-modulesd
 src/wazuh-auth
 src/wazuh-db
+src/check_configuration
 
 # Windows agent
 src/win32/*.exe

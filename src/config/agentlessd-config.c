@@ -162,6 +162,7 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
                 }
                 return (OS_INVALID);
             }
+            os_free(lessd_config->entries[s]->type);
             os_strdup(node[i]->content, lessd_config->entries[s]->type);
         } else if (strcmp(node[i]->element, xml_lessd_command) == 0) {
             os_strdup(node[i]->content, lessd_config->entries[s]->command);

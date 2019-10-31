@@ -138,8 +138,7 @@ int validate_target(const char *path, int type, char **output) {
     }
 
     /* Read the main configuration */
-    i = 0;
-    while (node[i]) {
+    for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
             wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
             break;
@@ -160,7 +159,6 @@ int validate_target(const char *path, int type, char **output) {
             OS_ClearXML(&xml);
             return 0;
         }
-        i++;
     }
 
     /* Clear node and xml */

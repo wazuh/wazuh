@@ -99,57 +99,51 @@ void *wm_chk_conf_main() {
 
                 char *output = NULL;
                 int result = test_file(filetype, filepath, &output);
-
                 cJSON *temp_obj = cJSON_CreateObject();
 
                 if(output) {
-                    char *aux = strtok(output, "\n");
-                    char *aux_2 = NULL;        
-                    int i;
-                    int size = (int) strlen(aux);
                     cJSON *temp_obj2 = cJSON_CreateArray();
-                    
                     if(result) {
                         cJSON_AddStringToObject(temp_obj, "error", "1");
                     } else {
                         cJSON_AddStringToObject(temp_obj, "error", "0");
                     }
 
-                    while(aux){
+                    char *current_message;
+                    char *output_data;
+                    for (current_message = strtok(output, "\n"); current_message; current_message = strtok(NULL, "\n")) {
+                        int i;
+                        int size = (int) strlen(current_message);
                         cJSON *validator = cJSON_CreateObject();
-                        aux_2 = strdup(aux);
-                        if(strstr(aux, "WARNING")) {
+                        output_data = strdup(current_message);
+                        if(strstr(current_message, "WARNING")) {
                             cJSON_AddStringToObject(validator, "type", "WARNING");
                             for (i = 0; i <= size - 9; i++) {
-                                aux_2[i] = aux_2[i + 9];
+                                output_data[i] = output_data[i + 9];
                             }
-                            cJSON_AddStringToObject(validator, "message", aux_2);
-                        } else if(strstr(aux, "INFO")) {
+                            cJSON_AddStringToObject(validator, "message", output_data);
+                        } else if(strstr(current_message, "INFO")) {
                             cJSON_AddStringToObject(validator, "type", "INFO");
                             for (i = 0; i <= size - 6; i++) {
-                                aux_2[i] = aux_2[i + 6];
+                                output_data[i] = output_data[i + 6];
                             }
-                            cJSON_AddStringToObject(validator, "message", aux_2);
+                            cJSON_AddStringToObject(validator, "message", output_data);
                         } else if (result){
                             cJSON_AddStringToObject(validator, "type", "ERROR");
-                            if (strstr(aux_2, "ERROR")) {
+                            if (strstr(output_data, "ERROR")) {
                                 for (i = 0; i <= size - 7; i++) {
-                                    aux_2[i] = aux_2[i + 7];
+                                    output_data[i] = output_data[i + 7];
                                 }
                             }
-                            cJSON_AddStringToObject(validator, "message", aux_2);
+                            cJSON_AddStringToObject(validator, "message", output_data);
                         }
                         cJSON_AddItemToArray(temp_obj2, validator);
-                        aux = strtok(NULL, "\n");
-                        if (aux) {
-                            size = (int) strlen(aux);
-                        }
                     }
                     cJSON_AddItemToObject(temp_obj, "data", temp_obj2);
                     os_free(output);
                     output = cJSON_PrintUnformatted(temp_obj);
-                    os_free(aux);
-                    os_free(aux_2);
+                    os_free(current_message);
+                    os_free(output_data);
                 } else {	
                     cJSON_AddStringToObject(temp_obj, "error", "1");	
                     cJSON_AddStringToObject(temp_obj, "data", "failure testing the configuration file");	

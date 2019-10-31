@@ -278,9 +278,9 @@ int Test_Integratord(const char *path, char **output) {
 }
 
 void free_integratord(IntegratorConfig **integrator_config) {
-    int i = 0;
+    int i;
     if(integrator_config) {
-        while(integrator_config[i]) {
+        for(i = 0; integrator_config[i]; i++) {
             os_free(integrator_config[i]->rule_id);
             os_free(integrator_config[i]->name);
             os_free(integrator_config[i]->apikey);
@@ -290,7 +290,6 @@ void free_integratord(IntegratorConfig **integrator_config) {
             os_free(integrator_config[i]->group);
             os_free(integrator_config[i]->location);
             os_free(integrator_config[i]);
-            i++;
         }
         os_free(integrator_config);
     }

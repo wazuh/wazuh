@@ -962,7 +962,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                         "Glob error. Invalid pattern: '%s'.",
                         expandedpath);
                     wm_strcat(output, message, '\n');
-                }                ret = 1;
+                }
+                ret = 1;
                 goto out_free;
             }
 

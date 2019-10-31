@@ -390,6 +390,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
                 "Could not acquire memory due to [(%d)-(%s)].",
                 errno, strerror(errno));
             wm_strcat(output, message, '\n');
+            return OS_INVALID;
         }
     }
     snprintf(tmp_ar->name, OS_FLSIZE, "%s%d",
@@ -639,7 +640,7 @@ int Test_ActiveResponse(const char *path, int type, char **output) {
     test_activeresp = OSList_Create();
 
     if (!test_activecmd || !test_activeresp) {
-        if (output == NULL){
+        if (output == NULL) {
             merror(LIST_ERROR, "Attempting to check Active-Response");
         } else {
             wm_strcat(output, "Active-Response: Unable to create a new list", '\n');
@@ -649,7 +650,7 @@ int Test_ActiveResponse(const char *path, int type, char **output) {
 
     /* type indicates local or remote config */
     if (ReadConfig(CAR | type, path, test_activecmd, test_activeresp, output) < 0) {
-        if (output == NULL){
+        if (output == NULL) {
             merror(CONF_READ_ERROR, "Active-Response");
         } else {
             wm_strcat(output, "Invalid configuration in Active-Response", '\n');
@@ -680,7 +681,7 @@ int Test_Agent_Active_Response(const char *path, char **output) {
 
     OS_XML xml;
     if (OS_ReadXML(path, &xml) < 0) {
-        if (output == NULL){
+        if (output == NULL) {
             merror(XML_ERROR, path, xml.err, xml.err_line);
         } else {
             wm_strcat(output, "ERROR: Invalid configuration in Active-Response", '\n');
@@ -706,36 +707,31 @@ int Test_Agent_Active_Response(const char *path, char **output) {
 
     XML_NODE node = OS_GetElementsbyNode(&xml, NULL);
     XML_NODE child = NULL;
-    char *repeated_t = NULL;
-    int i = 0;
+    char *repeated = NULL;
+    int i;
 
-    while (node && node[i]) {
+    for (i = 0; node && node[i]; i++) {
 
         child = OS_GetElementsbyNode(&xml, node[i]);
-        int j = 0;
+        int j;
 
-        while (child && child[j]) {
+        for (j = 0; child && child[j]; j++) {
 
             if (strcmp(child[j]->element, "active-response") == 0) {
                 XML_NODE child_attr = NULL;
                 child_attr = OS_GetElementsbyNode(&xml, child[j]);
-                int p = 0;
+                int p;
 
-                while (child_attr && child_attr[p]) {
+                for (p = 0; child_attr && child_attr[p]; p++) {
                     if (!strcmp(child_attr[p]->element, "repeated_offenders")) {
-                        os_strdup(child_attr[p]->content, repeated_t);
+                        os_strdup(child_attr[p]->content, repeated);
                         OS_ClearNode(child_attr);
                         goto next;
                     }
-                    p++;
                 }
-
                 OS_ClearNode(child_attr);
             }
-            j++;
         }
-
-        i++;
         OS_ClearNode(child);
         child = NULL;
     }
@@ -744,21 +740,21 @@ next:
     OS_ClearNode(child);
     OS_ClearNode(node);
 
-    if (repeated_t) {
-        char **repeated_a = OS_StrBreak(',', repeated_t, 5);
+    if (repeated) {
+        char **repeated_comp = OS_StrBreak(',', repeated, 5);
 
-        if (!repeated_a) {
-            if (output == NULL){
-                merror(XML_VALUEERR, "repeated_offenders", repeated_t);
+        if (!repeated_comp) {
+            if (output == NULL) {
+                merror(XML_VALUEERR, "repeated_offenders", repeated);
             } else {
                 wm_strcat(output, "ERROR: Invalid configuration in Active-Response", '\n');
             }
-            os_free(repeated_t);
+            os_free(repeated);
             OS_ClearXML(&xml);
             return OS_INVALID;
         }
     }
-    os_free(repeated_t);
+    os_free(repeated);
 
     int enable_ca_verification = 0;
     char **ca_verification = OS_GetContents(&xml, caverify);
@@ -780,8 +776,7 @@ next:
         free_strarray(ca_verification);
     }
 
-    if (enable_ca_verification)
-    {
+    if (enable_ca_verification) {
         char **wcom_ca_store = OS_GetContents(&xml, castore);
         if (!wcom_ca_store) {
             if (output == NULL){
