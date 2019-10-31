@@ -600,7 +600,7 @@
             <ComponentRef Id="AGENT_AUTH.EXE" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
-			<ComponentRef Id="UNZIPVERSIONFILES.VBS" />
+            <ComponentRef Id="UNZIPVERSIONFILES.VBS" />
             <ComponentRef Id="REPLACECONF.VBS" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
@@ -660,7 +660,6 @@
             <ComponentRef Id="W2012R2_CONF" />
             <ComponentRef Id="W10_CONF" />
             <ComponentRef Id="W2016_CONF" />
-
         </Feature>
         <MajorUpgrade Schedule="afterInstallExecute" AllowDowngrades="yes" />
     </Product>
