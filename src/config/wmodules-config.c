@@ -238,9 +238,7 @@ int Read_GCP(const OS_XML *xml, xml_node *node, void *d1) {
             }
 
             if (cur_wmodule_exists->next == NULL) {
-                while (cur_wmodule->next) {
-                    cur_wmodule = cur_wmodule->next;
-                }
+                cur_wmodule = cur_wmodule_exists;
 
                 os_calloc(1, sizeof(wmodule), cur_wmodule->next);
                 cur_wmodule = cur_wmodule->next;
