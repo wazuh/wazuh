@@ -395,6 +395,19 @@ components:
               items:
                 $ref: '#/components/schemas/UsersResponse'
 
+    AllItemsResponseCiscatResult:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                  $ref: '#/components/schemas/CiscatResults'
+
     BasicInfo:
       type: object
       properties:
@@ -5653,40 +5666,25 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/CiscatResults'
+                      $ref: '#/components/schemas/AllItemsResponseCiscatResult'
               example:
                 data:
-                  totalItems: 2
-                  items:
-                  - profile: xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server
-                    score: 57
-                    error: 0
-                    scan:
-                      id: 1406741147
-                      time: "2018-09-06T07:50:15.632Z"
-                    fail: 79
-                    benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
-                    pass: 104
-                    notchecked: 36
-                    unknown: 1
-                  - profile: xccdf_org.cisecurity.benchmarks_profile_Level_1_-_Workstation
-                    score: 64
-                    error: 0
-                    scan:
-                      id: 1406741147
-                      time: "2018-09-06T07:50:52.630Z"
-                    fail: 53
-                    benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
-                    pass: 96
-                    notchecked: 71
-                    unknown: 0
+                  affected_items:
+                    - benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
+                      error: 0
+                      fail: 82
+                      notchecked: 36
+                      pass: 102
+                      profile: xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server
+                      scan:
+                        id: 23487414
+                        time: '2019-10-24T14:30:20.768Z'
+                      score: 55
+                      unknown: 0
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: All CISCAT results loaded
         default:
           $ref: '#/components/responses/ResponseError'
 
