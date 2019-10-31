@@ -250,11 +250,24 @@ in `dapi_errors` key
 * In response, `data` key is now moved to new `message` key
 
 ## Rules
+### GET /rules
+* The response has been changed to the new RBAC generic response
+
 ### GET /rules/files
 * Parameter **download** removed
+* Now this endpoint can receive a list of ids as parameter
+* The response has been changed to the new RBAC generic response
 
 ### GET /rules/files/:file/download
-* This endpoint provides the functionality of GET /rules/files with the old removed **download** param 
+* This endpoint provides the functionality of GET /rules/files with the old removed **download** param
+* The response has been changed to the new RBAC generic response 
+
+### GET /rules/requirement/{requirement}
+* This endpoint provides the functionality of GET /rules/pci GET /rules/gpg13 GET /rules/gdpr GET /rules/hipaa GET /rules/nist-800-53
+* The response has been changed to the new RBAC generic response
+
+### GET /rules/groups
+* The response has been changed to the new RBAC generic response
 
 ## Syscheck
 ### PUT /syscheck

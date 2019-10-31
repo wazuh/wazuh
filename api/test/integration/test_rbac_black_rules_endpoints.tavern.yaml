@@ -1,0 +1,344 @@
+---
+test_name: GET RULES RBAC
+
+marks:
+  - usefixtures:
+    - rules_black_rbac_tests
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+
+  - name: Try to show the rules of the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        limit: 5
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - description: Grouping of wazuh rules.
+              details:
+                decoded_as: wazuh
+              file: 0016-wazuh_rules.xml
+              gdpr: []
+              gpg13: []
+              groups:
+                - wazuh
+              hipaa: []
+              id: 200
+              level: 0
+              nist_800_53: []
+              path: ruleset/rules
+              pci: []
+              status: enabled
+            - description: Agent event queue rule
+              details:
+                if_sid: '200'
+                match: "^wazuh: Agent buffer: "
+              file: 0016-wazuh_rules.xml
+              gdpr: []
+              gpg13: []
+              groups:
+                - agent_flooding
+                - wazuh
+              hipaa: []
+              id: 201
+              level: 0
+              nist_800_53: []
+              path: ruleset/rules
+              pci: []
+              status: enabled
+            - description: Agent event queue is $(level) full.
+              details:
+                if_sid: '201'
+                level: "%"
+              file: 0016-wazuh_rules.xml
+              gdpr:
+                - IV_35.7.d
+              gpg13: []
+              groups:
+                - agent_flooding
+                - gdpr_IV_35.7.d
+                - wazuh
+              hipaa: []
+              id: 202
+              level: 7
+              nist_800_53: []
+              path: ruleset/rules
+              pci: []
+              status: enabled
+            - description: Agent event queue is full. Events may be lost.
+              details:
+                if_sid: '201'
+                level: full
+              file: 0016-wazuh_rules.xml
+              gdpr:
+                - IV_35.7.d
+              gpg13: []
+              groups:
+                - agent_flooding
+                - gdpr_IV_35.7.d
+                - wazuh
+              hipaa: []
+              id: 203
+              level: 9
+              nist_800_53: []
+              path: ruleset/rules
+              pci: []
+              status: enabled
+            - description: Agent event queue is flooded. Check the agent configuration.
+              details:
+                if_sid: '201'
+                level: flooded
+              file: 0016-wazuh_rules.xml
+              gdpr:
+                - IV_35.7.d
+              gpg13: []
+              groups:
+                - agent_flooding
+                - gdpr_IV_35.7.d
+                - wazuh
+              hipaa: []
+              id: 204
+              level: 12
+              nist_800_53: []
+              path: ruleset/rules
+              pci: []
+              status: enabled
+          failed_items: []
+          total_affected_items: 2794
+          total_failed_items: 0
+        message: All selected rules were shown
+
+  - name: Try to show the rules of the system (list)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        rule_ids: 1,2,200,500,700,702
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - description: Grouping of wazuh rules.
+              details:
+                decoded_as: wazuh
+              file: 0016-wazuh_rules.xml
+              gdpr: []
+              gpg13: []
+              groups:
+                - wazuh
+              hipaa: []
+              id: 200
+              level: 0
+              nist_800_53: []
+              path: ruleset/rules
+              pci: []
+              status: enabled
+          failed_items:
+            - error:
+                code: 1208
+                message: The rule doesn't exist or you don't have permission to see it
+                remediation: Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)
+                  to get more information about how to configure the rules
+              id:
+                - 1
+                - 2
+                - 500
+                - 700
+                - 702
+          total_affected_items: 1
+          total_failed_items: 5
+        message: Some rules could not be shown
+
+---
+test_name: GET RULES FILES RBAC
+
+stages:
+
+  - name: Try to show the rules files of the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        limit: 5
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - file: 0016-wazuh_rules.xml
+              path: ruleset/rules
+              status: enabled
+            - file: 0020-syslog_rules.xml
+              path: ruleset/rules
+              status: enabled
+            - file: 0025-sendmail_rules.xml
+              path: ruleset/rules
+              status: enabled
+            - file: 0030-postfix_rules.xml
+              path: ruleset/rules
+              status: enabled
+            - file: 0035-spamd_rules.xml
+              path: ruleset/rules
+              status: enabled
+          failed_items: []
+          total_affected_items: 123
+          total_failed_items: 0
+        message: All rules files were shown
+
+  - name: Try to show the rules files of the system (list)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        file: local_rules.xml,0620-win-generic_rules.xml
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - file: 0620-win-generic_rules.xml
+              path: ruleset/rules
+              status: enabled
+            - file: local_rules.xml
+              path: etc/rules
+              status: enabled
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: All rules files were shown
+
+  - name: Try to show the rules files of the system (list)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        file: local_rules.xml,0015-ossec_rules.xml,0010-rules_config.xml
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - file: local_rules.xml
+              path: etc/rules
+              status: enabled
+          failed_items:
+            - error:
+                code: 4000
+                message: 'Permission denied: Resource type: rule:file'
+                remediation: Please, make sure you have permissions to execute current request,
+                  for more information on setting up permissions please visit XXXX
+              id:
+                - 0010-rules_config.xml
+                - 0015-ossec_rules.xml
+          total_affected_items: 1
+          total_failed_items: 2
+        message: Some rules files were shown
+
+  - name: Try to show the rules files of the system (no permissions)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        file: 0015-ossec_rules.xml,0010-rules_config.xml
+    response:
+      status_code: 400
+      body: &permissions_denied
+        code: 4000
+        dapi_errors:
+          master-node:
+            error: Permission denied
+        detail: Permission denied
+        remediation: Please, make sure you have permissions to execute current request, for
+          more information on setting up permissions please visit XXXX
+        status: 400
+        title: Wazuh Error
+        type: about:blank
+
+---
+test_name: GET RULES FILES RBAC (Download)
+
+stages:
+
+  - name: Try get one rule file
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/local_rules.xml/download"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+
+  - name: Try get one rule file (no permissions)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0015-ossec_rules.xml/download"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 400
+      body:
+        <<: *permissions_denied
+
+---
+test_name: GET RULES GROUPS RBAC
+
+stages:
+
+  - name: Try to show the groups of rules in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/groups"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 396
+          total_failed_items: 0
+        message: All groups in rules are shown
+
+---
+test_name: GET PCI REQUIREMENT RBAC
+
+stages:
+
+  - name: Try to show the groups of rules in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/pci"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 37
+          total_failed_items: 0
+        message: Selected rules were shown

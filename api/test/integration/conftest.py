@@ -217,6 +217,34 @@ def environment_black_ciscat_rbac():
     down_env()
 
 
+@pytest.fixture(name="rules_white_rbac_tests", scope="session")
+def environment_white_rules_rbac():
+    values = build_and_up("rules_white_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="rules_black_rbac_tests", scope="session")
+def environment_black_rules_rbac():
+    values = build_and_up("rules_black_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
 @pytest.fixture(name="syscollector_white_rbac_tests", scope="session")
 def environment_white_syscollector_rbac():
     values = build_and_up("syscollector_white_rbac")

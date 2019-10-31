@@ -21,18 +21,20 @@ FROM base AS wazuh-env-ciscat
 FROM base AS wazuh-env-syscollector
 FROM base AS wazuh-env-security
 FROM base AS wazuh-env-manager
+FROM base as wazuh-env-rules_white_rbac
+FROM base as wazuh-env-rules_black_rbac
 
 FROM base AS wazuh-env-cluster
-ONBUILD COPY configurations/cluster/wazuh-manager/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
+COPY configurations/cluster/wazuh-manager/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
 ADD configurations/cluster/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base as wazuh-env-security_white_rbac
-ONBUILD COPY configurations/rbac/security/rbac.db /var/ossec/api/configuration/security/rbac.db
+COPY configurations/rbac/security/rbac.db /var/ossec/api/configuration/security/rbac.db
 ADD configurations/rbac/security/white_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
 FROM base as wazuh-env-security_black_rbac
-ONBUILD COPY configurations/rbac/security/rbac.db /var/ossec/api/configuration/security/rbac.db
+COPY configurations/rbac/security/rbac.db /var/ossec/api/configuration/security/rbac.db
 ADD configurations/rbac/security/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 

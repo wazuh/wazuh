@@ -10,7 +10,6 @@ import connexion
 
 from api.authentication import generate_token
 from api.authentication import get_permissions
-from api.models.base_model_ import Data
 from api.models.token_response import TokenResponse
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc, parse_api_param
 from wazuh import security
