@@ -233,6 +233,7 @@ typedef struct _config {
     rtfim *realtime;
 
     char *prefilter_cmd;
+    int allow_prefilter_cmd;
 
 } syscheck_config;
 

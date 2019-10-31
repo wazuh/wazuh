@@ -98,6 +98,10 @@ int fim_initialize() {
     }
     OSHash_SetFreeDataPointer(syscheck.fp, (void (*)(void *))free_syscheck_node_data);
 
+    if (!syscheck.allow_prefilter_cmd) {
+        syscheck.prefilter_cmd = NULL;
+    }
+
     return 0;
 }
 

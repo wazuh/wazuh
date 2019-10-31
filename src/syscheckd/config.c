@@ -51,6 +51,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.max_fd_win_rt  = 0;
 #endif
     syscheck.prefilter_cmd  = NULL;
+    syscheck.allow_prefilter_cmd  = 0;
 
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
 
