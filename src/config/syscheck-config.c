@@ -795,7 +795,7 @@ out_free:
     return ret;
 }
 
-int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
+int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp, int modules)
 {
     int i = 0;
     int j = 0;
@@ -1332,6 +1332,11 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             OS_ClearNode(children);
         } /* Allow prefilter cmd */
         else if (strcmp(node[i]->element, xml_allow_prefilter_cmd) == 0) {
+            if (modules & CAGENT_CONFIG) {
+                mwarn("'%s' option can't be set from the manager.", xml_allow_prefilter_cmd);
+                i++;
+                continue;
+            }
             if(strcmp(node[i]->content, "yes") == 0)
                 syscheck->allow_prefilter_cmd = 1;
             else if(strcmp(node[i]->content, "no") == 0)
