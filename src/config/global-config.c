@@ -374,7 +374,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
                 if (Config) {
                     Config->prelude = 0;
                 }
-            } else if (output){
+            } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {

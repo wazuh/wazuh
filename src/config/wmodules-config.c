@@ -56,7 +56,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
 
         while (cur_wmodule_exists) {
             if(cur_wmodule_exists->tag) {
-                if (!output) {
+                if (output == NULL) {
                     if(strcmp(cur_wmodule_exists->tag,node->values[0]) == 0) {
                         cur_wmodule = cur_wmodule_exists;
                         found = 1;
@@ -253,7 +253,7 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, char **output)
 
         while (cur_wmodule_exists) {
             if(cur_wmodule_exists->tag) {
-                if (!output) {
+                if (output == NULL) {
                     if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
                         cur_wmodule = cur_wmodule_exists;
                         found = 1;
@@ -321,7 +321,7 @@ int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1, char **ou
 
         while (cur_wmodule_exists) {
             if(cur_wmodule_exists->tag) {
-                if (!output) {
+                if (output == NULL) {
                     if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
                         cur_wmodule = cur_wmodule_exists;
                         found = 1;

@@ -57,10 +57,10 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
 
     for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
-            if (output) {
-                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
-            } else {
+            if (output == NULL) {
                 merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
             }
             return OS_INVALID;
         } else if (!strcmp(node[i]->element, XML_INTERVAL)) {
@@ -68,13 +68,13 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
             syscollector->interval = strtoul(node[i]->content, &endptr, 0);
 
             if (syscollector->interval == 0 || syscollector->interval == UINT_MAX) {
-                if (output) {
+                if (output == NULL) {
+                    merror("Invalid interval at module '%s'", WM_SYS_CONTEXT.name);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Invalid interval at module '%s'",
                         WM_SYS_CONTEXT.name);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("Invalid interval at module '%s'", WM_SYS_CONTEXT.name);
                 }
                 return OS_INVALID;
             }
@@ -93,11 +93,11 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
             case '\0':
                 break;
             default:
-                if (output) {
+                if (output == NULL) {
+                    merror("Invalid interval at module '%s'", WM_SYS_CONTEXT.name);
+                } else {
                     snprintf(message, OS_FLSIZE, "Invalid interval at module '%s'", WM_SYS_CONTEXT.name);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("Invalid interval at module '%s'", WM_SYS_CONTEXT.name);
                 }
                 return OS_INVALID;
             }
@@ -106,14 +106,14 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
                 syscollector->flags.scan_on_start = 1;
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.scan_on_start = 0;
-            else if (output) {
+            else if (output == NULL) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_SCAN_ON_START, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            } else {
                 snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_SCAN_ON_START, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
-                return OS_INVALID;
-            } else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_SCAN_ON_START, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_DISABLED)) {
@@ -121,14 +121,14 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
                 syscollector->flags.enabled = 0;
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.enabled = 1;
-            else if (output) {
+            else if (output == NULL) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            } else {
                 snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_DISABLED, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
-                return OS_INVALID;
-            } else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_NETWORK)) {
@@ -136,14 +136,14 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
                 syscollector->flags.netinfo = 1;
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.netinfo = 0;
-            else if (output) {
+            else if (output == NULL) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_NETWORK, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            } else {
                 snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_NETWORK, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
-                return OS_INVALID;
-            } else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_NETWORK, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_OS_SCAN)) {
@@ -151,14 +151,14 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
                 syscollector->flags.osinfo = 1;
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.osinfo = 0;
-            else if (output) {
+            else if (output == NULL) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_OS_SCAN, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            } else {
                 snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_OS_SCAN, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
-                return OS_INVALID;
-            } else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_OS_SCAN, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_HARDWARE)) {
@@ -166,14 +166,14 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
                 syscollector->flags.hwinfo = 1;
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.hwinfo = 0;
-            else if (output) {
+            else if (output == NULL) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_HARDWARE, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            } else {
                 snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_HARDWARE, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
-                return OS_INVALID;
-            } else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_HARDWARE, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_PACKAGES)) {
@@ -181,14 +181,14 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
                 syscollector->flags.programinfo = 1;
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.programinfo = 0;
-            else if (output) {
+            else if (output == NULL) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_PACKAGES, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            } else {
                 snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_PACKAGES, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
-                return OS_INVALID;
-            } else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_PACKAGES, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_HOTFIXES)) {
@@ -209,14 +209,14 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
                 syscollector->flags.procinfo = 1;
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.procinfo = 0;
-            else if (output) {
+            else if (output == NULL) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_PROCS, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            } else {
                 snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_PROCS, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
-                return OS_INVALID;
-            } else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_PROCS, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_PORTS)) {
@@ -226,24 +226,24 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
                         syscollector->flags.allports = 0;
                     } else if (!strcmp(node[i]->values[0], "yes")) {
                         syscollector->flags.allports = 1;
-                    } else if (output) {
+                    } else if (output == NULL) {
+                        merror("Invalid content for attribute '%s' at module '%s'.", node[i]->attributes[0], WM_SYS_CONTEXT.name);
+                        return OS_INVALID;
+                    } else {
                         snprintf(message, OS_FLSIZE,
                             "Invalid content for attribute '%s' at module '%s'.",
                             node[i]->attributes[0], WM_SYS_CONTEXT.name);
                         wm_strcat(output, message, '\n');
                         return OS_INVALID;
-                    } else {
-                        merror("Invalid content for attribute '%s' at module '%s'.", node[i]->attributes[0], WM_SYS_CONTEXT.name);
-                        return OS_INVALID;
                     }
-                } else if (output) {
+                } else if (output == NULL) {
+                    merror("Invalid attribute for tag '%s' at module '%s'.", XML_PORTS, WM_SYS_CONTEXT.name);
+                    return OS_INVALID;
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Invalid attribute for tag '%s' at module '%s'.",
                         XML_PORTS, WM_SYS_CONTEXT.name);
                     wm_strcat(output, message, '\n');
-                    return OS_INVALID;
-                } else {
-                    merror("Invalid attribute for tag '%s' at module '%s'.", XML_PORTS, WM_SYS_CONTEXT.name);
                     return OS_INVALID;
                 }
             }
@@ -251,24 +251,24 @@ int wm_sys_read(XML_NODE node, wmodule *module, char **output) {
                 syscollector->flags.portsinfo = 1;
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.portsinfo = 0;
-            else if (output) {
+            else if (output == NULL) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_PORTS, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            } else {
                 snprintf(message, OS_FLSIZE,
                     "Invalid content for tag '%s' at module '%s'.",
                     XML_PORTS, WM_SYS_CONTEXT.name);
                 wm_strcat(output, message, '\n');
                 return OS_INVALID;
-            } else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_PORTS, WM_SYS_CONTEXT.name);
-                return OS_INVALID;
             }
-        } else if (output) {
+        } else if (output == NULL) {
+            merror("No such tag '%s' at module '%s'.", node[i]->element, WM_SYS_CONTEXT.name);
+            return OS_INVALID;
+        } else {
             snprintf(message, OS_FLSIZE,
                 "No such tag '%s' at module '%s'.",
                 node[i]->element, WM_SYS_CONTEXT.name);
             wm_strcat(output, message, '\n');
-            return OS_INVALID;
-        } else {
-            merror("No such tag '%s' at module '%s'.", node[i]->element, WM_SYS_CONTEXT.name);
             return OS_INVALID;
         }
     }

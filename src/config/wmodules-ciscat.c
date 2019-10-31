@@ -326,7 +326,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
                 ciscat->flags.scan_on_start = 1;
             else if (!strcmp(nodes[i]->content, "no"))
                 ciscat->flags.scan_on_start = 0;
-            else if (output) {
+            else if (output == NULL) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_SCAN_ON_START, WM_CISCAT_CONTEXT.name);
                 return OS_INVALID;
             } else {

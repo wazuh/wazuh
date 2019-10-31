@@ -1397,7 +1397,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     if (!OSMatch_Compile(node[i]->content,
                                          syscheck->ignore_regex[ign_size], 0)) {
                         mt_pt = (OSMatch *)syscheck->ignore_regex[ign_size];
-                        if (output) {
+                        if (output == NULL) {
                             merror(REGEX_COMPILE, node[i]->content,
                                mt_pt->error);
                         } else {

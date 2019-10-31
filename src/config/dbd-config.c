@@ -160,7 +160,7 @@ int Test_DBD(const char *path, char **output) {
 #endif
     } else if (dbdConfig->db_type == POSTGDB) {
 #ifndef PGSQL_DATABASE_ENABLED
-        if (output){
+        if (output == NULL){
             merror(DB_COMPILED, "postgresql");
         } else {
             wm_strcat(output, "ERROR: Invalid configuration in Database", '\n');

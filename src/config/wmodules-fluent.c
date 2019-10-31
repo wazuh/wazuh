@@ -60,10 +60,10 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
     {
         if(!nodes[i]->element)
         {
-            if (output) {
-                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
-            } else {
+            if (output == NULL) {
                 merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
             }
             return OS_INVALID;
         }
@@ -72,13 +72,13 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
             int enabled = eval_bool(nodes[i]->content);
 
             if(enabled == OS_INVALID){
-                if (output) {
+                if (output == NULL) {
+                    merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_FLUENT_CONTEXT.name);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Invalid content for tag '%s' at module '%s'.",
                         XML_ENABLED, WM_FLUENT_CONTEXT.name);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_FLUENT_CONTEXT.name);
                 }
                 return OS_INVALID;
             }
@@ -88,22 +88,22 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
         else if (!strcmp(nodes[i]->element, XML_TAG))
         {
             if(strlen(nodes[i]->content) >= OS_MAXSTR) {
-                if (output) {
+                if (output == NULL) {
+                    merror("Tag is too long at module '%s'. Max tag length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Tag is too long at module '%s'. Max tag length is %d",
                         WM_FLUENT_CONTEXT.name,PATH_MAX);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("Tag is too long at module '%s'. Max tag length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
                 }
                 return OS_INVALID;
             } else if (strlen(nodes[i]->content) == 0) {
-                if (output) {
+                if (output == NULL) {
+                    merror("Empty tag value at '%s'.", WM_FLUENT_CONTEXT.name);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Empty tag value at '%s'.", WM_FLUENT_CONTEXT.name);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("Empty tag value at '%s'.", WM_FLUENT_CONTEXT.name);
                 }
                 return OS_INVALID;
             }
@@ -113,22 +113,22 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
         else if (!strcmp(nodes[i]->element, XML_SOCKET_PATH))
         {
             if(strlen(nodes[i]->content) >= PATH_MAX) {
-                if (output) {
+                if (output == NULL) {
+                    merror("Socket path is too long at module '%s'. Max socket path length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Socket path is too long at module '%s'. Max socket path length is %d",
                         WM_FLUENT_CONTEXT.name,PATH_MAX);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("Socket path is too long at module '%s'. Max socket path length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
                 }
                 return OS_INVALID;
             } else if (strlen(nodes[i]->content) == 0) {
-                if (output) {
+                if (output == NULL) {
+                    merror("Empty tag value at '%s'.", WM_FLUENT_CONTEXT.name);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Empty tag value at '%s'.", WM_FLUENT_CONTEXT.name);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("Empty tag value at '%s'.", WM_FLUENT_CONTEXT.name);
                 }
                 return OS_INVALID;
             }
@@ -141,22 +141,22 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
         else if (!strcmp(nodes[i]->element, XML_ADDRESS))
         {
             if(strlen(nodes[i]->content) >= OS_MAXSTR) {
-                if (output) {
+                if (output == NULL) {
+                    merror("Address is too long at module '%s'. Max address length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Address is too long at module '%s'. Max address length is %d",
                         WM_FLUENT_CONTEXT.name,PATH_MAX);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("Address is too long at module '%s'. Max address length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
                 }
                 return OS_INVALID;
             } else if (strlen(nodes[i]->content) == 0) {
-                if (output) {
+                if (output == NULL) {
+                    merror("Empty tag value at '%s'.", WM_FLUENT_CONTEXT.name);;
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Empty tag value at '%s'.", WM_FLUENT_CONTEXT.name);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("Empty tag value at '%s'.", WM_FLUENT_CONTEXT.name);
                 }
                 return OS_INVALID;
             }
@@ -167,25 +167,25 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
         else if (!strcmp(nodes[i]->element, XML_PORT))
         {
             if (!OS_StrIsNum(nodes[i]->content)) {
-                if (output) {
+                if (output == NULL) {
+                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Invalid value for element '%s': %s.",
                         nodes[i]->element, nodes[i]->content);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                 }
                 return (OS_INVALID);
             } else {
                 fluent->port = atoi(nodes[i]->content);
                 if (fluent->port < 1 || fluent->port > 65534) {
-                    if (output) {
+                    if (output == NULL) {
+                        merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);;
+                    } else {
                         snprintf(message, OS_FLSIZE,
                             "Invalid value for element '%s': %s.",
                             nodes[i]->element, nodes[i]->content);
                         wm_strcat(output, message, '\n');
-                    } else {
-                        merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                     }
                     return (OS_INVALID);
                 }
@@ -194,22 +194,22 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
         else if (!strcmp(nodes[i]->element, XML_SHARED_KEY))
         {
             if(strlen(nodes[i]->content) >= OS_MAXSTR) {
-                if (output) {
+                if (output == NULL) {
+                    merror("Shared key is too long at module '%s'. Max shared key length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Shared key is too long at module '%s'. Max shared key length is %d",
                         WM_FLUENT_CONTEXT.name,PATH_MAX);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("Shared key is too long at module '%s'. Max shared key length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
                 }
                 return OS_INVALID;
             } else if (strlen(nodes[i]->content) == 0) {
-                if (output) {
+                if (output == NULL) {
+                    merror("Empty shared key value at '%s'.", WM_FLUENT_CONTEXT.name);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Empty shared key value at '%s'.", WM_FLUENT_CONTEXT.name);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("Empty shared key value at '%s'.", WM_FLUENT_CONTEXT.name);
                 }
                 return OS_INVALID;
             }
@@ -222,22 +222,22 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
         else if (!strcmp(nodes[i]->element, XML_CA_FILE))
         {
             if(strlen(nodes[i]->content) >= PATH_MAX) {
-                if (output) {
+                if (output == NULL) {
+                    merror("CA file path is too long at module '%s'. Max CA file path length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "CA file path is too long at module '%s'. Max CA file path length is %d",
                         WM_FLUENT_CONTEXT.name,PATH_MAX);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("CA file path is too long at module '%s'. Max CA file path length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
                 }
                 return OS_INVALID;
             } else if (strlen(nodes[i]->content) == 0) {
-                if (output) {
+                if (output == NULL) {
+                    merror("Empty CA file value at '%s'.", WM_FLUENT_CONTEXT.name);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Empty CA file value at '%s'.", WM_FLUENT_CONTEXT.name);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("Empty CA file value at '%s'.", WM_FLUENT_CONTEXT.name);
                 }
                 return OS_INVALID;
             }
@@ -250,22 +250,22 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
         else if (!strcmp(nodes[i]->element, XML_USER))
         {
             if(strlen(nodes[i]->content) >= OS_MAXSTR) {
-                if (output) {
+                if (output == NULL) {
+                    merror("User is too long at module '%s'. Max user length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "User is too long at module '%s'. Max user length is %d",
                         WM_FLUENT_CONTEXT.name,PATH_MAX);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("User is too long at module '%s'. Max user length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
                 }
                 return OS_INVALID;
             } else if (strlen(nodes[i]->content) == 0) {
-                if (output) {
+                if (output == NULL) {
+                    merror("Empty user value at '%s'.", WM_FLUENT_CONTEXT.name);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Empty user value at '%s'.", WM_FLUENT_CONTEXT.name);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("Empty user value at '%s'.", WM_FLUENT_CONTEXT.name);
                 }
                 return OS_INVALID;
             }
@@ -278,22 +278,22 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
         else if (!strcmp(nodes[i]->element, XML_PASSWORD))
         {
             if(strlen(nodes[i]->content) >= OS_MAXSTR) {
-                if (output) {
+                if (output == NULL) {
+                    merror("Password is too long at module '%s'. Max password length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Password is too long at module '%s'. Max password length is %d",
                         WM_FLUENT_CONTEXT.name,PATH_MAX);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("Password is too long at module '%s'. Max password length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
                 }
                 return OS_INVALID;
             } else if (strlen(nodes[i]->content) == 0) {
-                if (output) {
+                if (output == NULL) {
+                    merror("Empty user value at '%s'.", WM_FLUENT_CONTEXT.name);
+                } else {
                     snprintf(message, OS_FLSIZE,
                         "Empty user value at '%s'.", WM_FLUENT_CONTEXT.name);
                     wm_strcat(output, message, '\n');
-                } else {
-                    merror("Empty user value at '%s'.", WM_FLUENT_CONTEXT.name);
                 }
                 return OS_INVALID;
             }
@@ -309,12 +309,12 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
 
             while (*pt != '\0') {
                 if (!isdigit((int)*pt)) {
-                    if (output) {
+                    if (output == NULL) {
+                        merror("Invalid timeout at module '%s'", WM_FLUENT_CONTEXT.name);
+                    } else {
                         snprintf(message, OS_FLSIZE,
                             "Invalid timeout at module '%s'", WM_FLUENT_CONTEXT.name);
                         wm_strcat(output, message, '\n');
-                    } else {
-                        merror("Invalid timeout at module '%s'", WM_FLUENT_CONTEXT.name);
                     }
                     return OS_INVALID;
                 }
@@ -324,25 +324,25 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
             fluent->timeout = atoi(nodes[i]->content);
 
             if (fluent->timeout < 0 || fluent->timeout > MAX_TIMEOUT_VALUE) {
-                if (output) {
+                if (output == NULL) {
+                        merror("Invalid timeout at module '%s'", WM_FLUENT_CONTEXT.name);
+                    } else {
                         snprintf(message, OS_FLSIZE,
                             "Invalid timeout at module '%s'", WM_FLUENT_CONTEXT.name);
                         wm_strcat(output, message, '\n');
-                    } else {
-                        merror("Invalid timeout at module '%s'", WM_FLUENT_CONTEXT.name);
                     }
                 return OS_INVALID;
             }
         }
         else
         {
-            if (output) {
+            if (output == NULL) {
+                mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_FLUENT_CONTEXT.name);
+            } else {
                 snprintf(message, OS_FLSIZE,
                     "WARNING: No such tag <%s> at module '%s'.",
                     nodes[i]->element, WM_FLUENT_CONTEXT.name);
                 wm_strcat(output, message, '\n');
-            } else {
-                mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_FLUENT_CONTEXT.name);
             }
         }
     }

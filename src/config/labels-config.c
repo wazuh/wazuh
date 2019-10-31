@@ -73,7 +73,7 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                             flags.system = 1;
                         }
                         key = node[i]->values[j];
-                    } else if (output) {
+                    } else if (output == NULL) {
                         merror("Label with empty key.");
                         goto error;
                     } else {

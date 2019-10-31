@@ -136,20 +136,19 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
             }
             os_strdup(node[i]->content, Config->node_type);
         } else if (!strcmp(node[i]->element, key)) {
-            if (output) {
+            if (output == NULL) {
                 if (strlen(node[i]->content) == 0) {
-                    snprintf(message, OS_FLSIZE, "Unspecified key");
-                    found = 1;
-                } else if (strlen(node[i]->content) !=	32) {
                     snprintf(message, OS_FLSIZE, "Key must be 32 characters long and only have alphanumeric characters");
-                    found = 1;
+                } else if (strlen(node[i]->content) !=	32) {
+                    snprintf(message, OS_FLSIZE, "Unspecified key");
                 }
+                found = 1;
             }
         } else if (!strcmp(node[i]->element, socket_timeout)) {
         } else if (!strcmp(node[i]->element, connection_timeout)) {
         } else if (!strcmp(node[i]->element, disabled)) {
             if (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no")) {
-                if (!output) {
+                if (output == NULL) {
                     merror("Detected a not allowed value for disabled tag '%s'. Valid values are 'yes' and 'no'.", node[i]->content);
                 } else {
                     snprintf(message, OS_FLSIZE,
@@ -184,7 +183,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, interval)) {
-            if (!output){
+            if (output == NULL){
                 mwarn("Detected a deprecated configuration for cluster. Interval option is not longer available.");
             } else {
                 wm_strcat(output, "WARNING: Detected a deprecated configuration for cluster. Interval option is not longer available.", '\n');
