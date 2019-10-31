@@ -14,7 +14,7 @@ from wazuh.results import AffectedItemsWazuhResult
 
 @expose_resources(actions=['syscollector:read'], resources=['agent:id:{agent_id}'])
 def get_item_agent(agent_id, offset=0, limit=common.database_limit, select=None, search=None, sort=None, filters=None,
-                   query='', array=False, nested=True, element_type='os'):
+                   query='', array=True, nested=True, element_type='os'):
     """
     Get info about an agent
     """
@@ -25,8 +25,8 @@ def get_item_agent(agent_id, offset=0, limit=common.database_limit, select=None,
     db_query = WazuhDBQuerySyscollector(agent_id=agent_id[0], offset=offset, limit=limit, select=select, search=search,
                                         sort=sort, filters=filters, fields=valid_select_fields, table=table,
                                         array=array, nested=nested, query=query).run()
-    result.affected_items = [db_query]
-    result.total_affected_items += 1
+    result.affected_items = db_query['items']
+    result.total_affected_items = db_query['totalItems']
 
     return result
 

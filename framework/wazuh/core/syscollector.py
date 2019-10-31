@@ -9,6 +9,8 @@ from wazuh.utils import plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQu
 
 
 class Type(Enum):
+    """Class that enumerates the different types of agent elements
+    """
     OS = 'os'
     HARDWARE = 'hardware'
     PACKAGES = 'packages'
@@ -20,6 +22,12 @@ class Type(Enum):
 
 
 def get_valid_fields(element_type, agent_id=None):
+    """This function provides a data structure for each element
+
+    :param element_type: This is the type of resource we are requesting
+    :param agent_id: This parameter allows us to know if the agent is Windows or Linux.
+    :return Valid fields for requested item
+    """
     windows_fields = {'hostname': 'hostname', 'os.version': 'os_version', 'os.name': 'os_name',
                                   'architecture': 'architecture', 'os.major': 'os_major', 'os.minor': 'os_minor',
                                   'os.build': 'os_build', 'version': 'version', 'scan.time': 'scan_time',
@@ -77,7 +85,8 @@ def get_valid_fields(element_type, agent_id=None):
 
 
 class WazuhDBQuerySyscollector(WazuhDBQuery):
-
+    """Class responsible for obtaining resources from agents
+    """
     def _filter_status(self, status_filter):
         pass
 
