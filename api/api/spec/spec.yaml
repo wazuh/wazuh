@@ -8227,7 +8227,7 @@ paths:
     get:
       tags:
       - rules
-      summary: Get all specified requirement.
+      summary: Get all specified requirements.
       description: Returns all specified requirement names defined in the Wazuh ruleset.
       operationId: api.controllers.rules_controller.get_rules_requirement
       parameters:
@@ -8314,7 +8314,7 @@ paths:
                   failed_items: []
                   total_affected_items: 4
                   total_failed_items: 0
-                  message: All rules files were shown
+                message: All rules files were shown
         default:
           $ref: '#/components/responses/ResponseError'
 

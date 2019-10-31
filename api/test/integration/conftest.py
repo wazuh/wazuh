@@ -232,7 +232,7 @@ def environment_white_rules_rbac():
 
 
 @pytest.fixture(name="rules_black_rbac_tests", scope="session")
-def environment_white_black_rbac():
+def environment_black_rules_rbac():
     values = build_and_up("rules_black_rbac")
     while values['retries'] < values['max_retries']:
         health = check_health()
