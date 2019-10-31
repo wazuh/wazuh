@@ -92,58 +92,48 @@ fail:
 
 void freeMailConfig(MailConfig *mailConfig) {
     if(mailConfig) {
-        int i = 0;
+        int i;
         os_free(mailConfig->reply_to);
         os_free(mailConfig->from);
         os_free(mailConfig->idsname);
         os_free(mailConfig->smtpserver);
         os_free(mailConfig->heloserver);
         if(mailConfig->to) {
-            i = 0;
-            while(mailConfig->to[i]) {
-                os_free(mailConfig->to[i]);
-                i++;
+            for (i = 0; mailConfig->to[i]; i++) {
+                free(mailConfig->to[i]);
             }
-            os_free(mailConfig->to);
+            free(mailConfig->to);
         }
 
         os_free(mailConfig->gran_level);
         os_free(mailConfig->gran_set);
         os_free(mailConfig->gran_format);
         if(mailConfig->gran_id) {
-            i = 0;
-            while(mailConfig->gran_id[i]) {
-                os_free(mailConfig->gran_id[i]);
-                i++;
+            for (i = 0;mailConfig->gran_id[i]; i++) {
+                free(mailConfig->gran_id[i]);
             }
-            os_free(mailConfig->gran_id);
+            free(mailConfig->gran_id);
         }
 
         if(mailConfig->gran_to) {
-            i = 0;
-            while(mailConfig->gran_to[i]) {
-                os_free(mailConfig->gran_to[i]);
-                i++;
+            for (i = 0; mailConfig->gran_to[i]; i++) {
+                free(mailConfig->gran_to[i]);
             }
-            os_free(mailConfig->gran_to);
+            free(mailConfig->gran_to);
         }
 
         if(mailConfig->gran_location) {
-            i = 0;
-            while(mailConfig->gran_location[i]) {
-                os_free(mailConfig->gran_location[i]);
-                i++;
+            for (i = 0; mailConfig->gran_location[i]; i++) {
+                free(mailConfig->gran_location[i]);
             }
-            os_free(mailConfig->gran_location);
+            free(mailConfig->gran_location);
         }
 
         if(mailConfig->gran_group) {
-            i = 0;
-            while(mailConfig->gran_group[i]) {
+            forr (i = 0; mailConfig->gran_group[i]; i++) {
                 os_free(mailConfig->gran_group[i]);
-                i++;
             }
-            os_free(mailConfig->gran_group);
+            free(mailConfig->gran_group);
         }
     }
 }

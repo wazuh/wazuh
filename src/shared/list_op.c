@@ -336,10 +336,9 @@ void *OSList_AddData(OSList *list, void *data)
 }
 
 void Free_OSList(OSList *list) {
-    OSListNode *node = OSList_GetFirstNode(list);
-    while(node) {
+    OSListNode *node;
+    for (node = OSList_GetFirstNode(list); node; node = OSList_GetCurrentlyNode(list)) {
         OSList_DeleteCurrentlyNode(list);
-        node = OSList_GetCurrentlyNode(list);
     }
 
 }

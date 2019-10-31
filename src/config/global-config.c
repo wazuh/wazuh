@@ -1085,14 +1085,8 @@ void config_free(_Config *config) {
     labels_free(config->labels); /* null-ended label set */
 
     // Cluster configuration
-    if (config->cluster_name) {
-        free(config->cluster_name);
-    }
-    if (config->node_name) {
-        free(config->node_name);
-    }
-    if (config->node_type) {
-        free(config->node_type);
-    }
 
+    os_free(config->cluster_name);
+    os_free(config->node_name);
+    os_free(config->node_type);
 }

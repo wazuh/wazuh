@@ -421,17 +421,17 @@ void free_remoted(remoted * rmt) {
         int i;
         if(rmt->allowips) {
             for(i = 0; rmt->allowips[i]; i++) {
-                os_free(rmt->allowips[i]);
+                free(rmt->allowips[i]);
             }
+            free(rmt->allowips);
         }
-        os_free(rmt->allowips);
 
         if(rmt->denyips) {
             for (i = 0; rmt->denyips[i]; i++) {
-                os_free(rmt->denyips[i]);
+                free(rmt->denyips[i]);
             }
+            free(rmt->denyips);
         }
-        os_free(rmt->denyips);
         os_free(rmt);
     }
 }

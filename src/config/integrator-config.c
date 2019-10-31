@@ -96,9 +96,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
         }
         else if(strcmp(node[i]->element, xml_integrator_name) == 0)
         {
-            if (integrator_config[s]->name) {
-                free(integrator_config[s]->name);
-            }
+            os_free(integrator_config[s]->name);
             os_strdup(node[i]->content, integrator_config[s]->name);
         }
         else if(strcmp(node[i]->element, xml_integrator_apikey) == 0)
@@ -107,16 +105,12 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
         }
         else if(strcmp(node[i]->element, xml_integrator_alert_format) == 0)
         {
-            if (integrator_config[s]->alert_format) {
-                free(integrator_config[s]->alert_format);
-            }
+            os_free(integrator_config[s]->alert_format);
             os_strdup(node[i]->content, integrator_config[s]->alert_format);
         }
         else if(strcmp(node[i]->element, xml_integrator_hookurl) == 0)
         {
-            if (integrator_config[s]->hookurl) {
-                free(integrator_config[s]->hookurl);
-            }
+            os_free(integrator_config[s]->hookurl);
             os_strdup(node[i]->content, integrator_config[s]->hookurl);
         }
         else if(strcmp(node[i]->element, xml_integrator_id) == 0)
@@ -200,9 +194,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
         }
         else if(strcmp(node[i]->element, xml_integrator_group) == 0)
         {
-            if (integrator_config[s]->group) {
-                free(integrator_config[s]->group);
-            }
+            os_free(integrator_config[s]->group);
             os_strdup(node[i]->content, integrator_config[s]->group);
         } else if (strcmp(node[i]->element, xml_integrator_max_log) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
@@ -289,8 +281,8 @@ void free_integratord(IntegratorConfig **integrator_config) {
             os_free(integrator_config[i]->alert_format);
             os_free(integrator_config[i]->group);
             os_free(integrator_config[i]->location);
-            os_free(integrator_config[i]);
+            free(integrator_config[i]);
         }
-        os_free(integrator_config);
+        free(integrator_config);
     }
 }

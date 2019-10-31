@@ -2077,9 +2077,9 @@ void wm_sca_destroy(wm_sca_t *data) {
         for (i=0; data->profile[i]; i++){
             os_free(data->profile[i]->profile);
             os_free(data->profile[i]->policy_id);
-            os_free(data->profile[i]);
+            free(data->profile[i]);
         }
-        os_free(data->profile);
+        free(data->profile);
     }
     os_free(data);
 }

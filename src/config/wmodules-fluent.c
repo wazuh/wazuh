@@ -133,9 +133,7 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
                 return OS_INVALID;
             }
 
-            if (fluent->sock_path) {
-                free(fluent->sock_path);
-            }
+            os_free(fluent->sock_path);
             os_strdup(nodes[i]->content,fluent->sock_path);
         }
         else if (!strcmp(nodes[i]->element, XML_ADDRESS))
@@ -214,9 +212,7 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
                 return OS_INVALID;
             }
 
-            if (fluent->shared_key) {
-                free(fluent->shared_key);
-            }
+            os_free(fluent->shared_key);
             os_strdup(nodes[i]->content,fluent->shared_key);
         }
         else if (!strcmp(nodes[i]->element, XML_CA_FILE))
@@ -242,9 +238,7 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
                 return OS_INVALID;
             }
 
-            if (fluent->certificate) {
-                free(fluent->certificate);
-            }
+            os_free(fluent->certificate);
             os_strdup(nodes[i]->content,fluent->certificate);
         }
         else if (!strcmp(nodes[i]->element, XML_USER))
@@ -270,9 +264,8 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
                 return OS_INVALID;
             }
 
-            if (fluent->user_name) {
-                free(fluent->user_name);
-            }
+            os_free(fluent->user_name);
+
             os_strdup(nodes[i]->content,fluent->user_name);
         }
         else if (!strcmp(nodes[i]->element, XML_PASSWORD))
@@ -298,9 +291,7 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
                 return OS_INVALID;
             }
 
-            if (fluent->user_pass) {
-                free(fluent->user_pass);
-            }
+            os_free(fluent->user_pass);
             os_strdup(nodes[i]->content,fluent->user_pass);
         }
         else if (!strcmp(nodes[i]->element, XML_TIMEOUT))

@@ -55,24 +55,16 @@ int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2,
         }
         /* Mail notification */
         else if (strcmp(node[i]->element, xml_dbhost) == 0) {
-            if (db_config->host) {
-                free(db_config->host);
-            }
+            os_free(db_config->host);
             os_strdup(node[i]->content, db_config->host);
         } else if (strcmp(node[i]->element, xml_dbuser) == 0) {
-            if (db_config->user) {
-                free(db_config->user);
-            }
+            os_free(db_config->user);
             os_strdup(node[i]->content, db_config->user);
         } else if (strcmp(node[i]->element, xml_dbpass) == 0) {
-            if (db_config->pass) {
-                free(db_config->pass);
-            }
+            os_free(db_config->pass);
             os_strdup(node[i]->content, db_config->pass);
         } else if (strcmp(node[i]->element, xml_dbdb) == 0) {
-            if (db_config->db) {
-                free(db_config->db);
-            }
+            os_free(db_config->db);
             os_strdup(node[i]->content, db_config->db);
         } else if (strcmp(node[i]->element, xml_dbport) == 0) {
             db_config->port = (unsigned int) atoi(node[i]->content);
@@ -188,13 +180,12 @@ void free_dbdConfig(DBConfig * db_config) {
         os_free(db_config->conn);
         os_free(db_config->location_hash);
         if(db_config->includes) {
-            int i = 0;
-            while(db_config->includes[i]) {
-                os_free(db_config->includes[i]);
-                i++;
+            int i;
+            for (i = 0; db_config->includes[i]; i++) {
+                free(db_config->includes[i]);
             }
-            os_free(db_config->includes);
+            free(db_config->includes);
         }
-        os_free(db_config);
+        free(db_config);
     }
 }

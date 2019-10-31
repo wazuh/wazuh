@@ -300,14 +300,13 @@ int Test_CSyslogd(const char *path, char **output) {
 void free_csyslog_holder(struct SyslogConfig_holder * config) {
     if(config) {
         if(config->data) {
-            int i = 0;
-            while(config->data[i]) {
+            int i;
+            for (i = 0; config->data[i]; i++) {
                 os_free(config->data[i]->server);
                 os_free(config->data[i]->rule_id);
                 os_free(config->data[i]->location);
                 os_free(config->data[i]->group);
-                os_free(config->data[i]);
-                i++;
+                free(config->data[i]);
             }
         }
         os_free(config->data);
