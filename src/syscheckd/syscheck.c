@@ -98,8 +98,9 @@ int fim_initialize() {
     }
     OSHash_SetFreeDataPointer(syscheck.fp, (void (*)(void *))free_syscheck_node_data);
 
+    // Set prefilter to NULL if it's not expressly allowed.
     if (!syscheck.allow_prefilter_cmd) {
-        syscheck.prefilter_cmd = NULL;
+        os_free(syscheck.prefilter_cmd);
     }
 
     return 0;
