@@ -23,6 +23,7 @@
 static long fim_sync_cur_id;
 static w_queue_t * fim_sync_queue;
 
+// LCOV_EXCL_START
 // Starting data synchronization thread
 void * fim_run_integrity(void * args) {
     fim_sync_queue = queue_init(syscheck.sync_queue_size);
@@ -49,6 +50,7 @@ void * fim_run_integrity(void * args) {
 
     return args;
 }
+// LCOV_EXCL_STOP
 
 void fim_sync_checksum() {
     char ** keys;
