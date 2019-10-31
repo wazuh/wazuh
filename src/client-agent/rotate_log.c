@@ -62,7 +62,8 @@ static void read_internal()
     return;
 }
 
-static void rotate_logs(rotation_list *list, char *path, char *new_path, int *day, int interval, int today, int json, time_t *last_rot, time_t now) {
+static void rotate_logs(rotation_list *list, char *path, char *new_path, int *day, int interval, int today,
+                        int json, time_t *last_rot, time_t now) {
     int counter;
     struct tm t;
     time_t last_day;
@@ -79,7 +80,7 @@ static void rotate_logs(rotation_list *list, char *path, char *new_path, int *da
                 t.tm_sec = 0;
                 last_day = mktime(&t);
                 /* If there are no rotated logs from the day before */
-                counter = now - last_day >= 172800 ? -1 : list->last->second_value;
+                counter = now - last_day >= SECONDS_PER_DAY*2 ? -1 : list->last->second_value;
             }
         } else {
             counter = list->last->second_value;
@@ -87,10 +88,10 @@ static void rotate_logs(rotation_list *list, char *path, char *new_path, int *da
     }
 
     if (list && list->last && *day == list->last->first_value) {
-        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, *day != today ? 1 : 0, json, mond.daily_rotations,
+        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, *day != today ? 1 : 0, json,
                                 counter, mond.log_list_plain, mond.log_list_json);
     } else {
-        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, *day != today ? 1 : 0, json, mond.daily_rotations,
+        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, *day != today ? 1 : 0, json,
                                 -1, mond.log_list_plain, mond.log_list_json);
     }
     if (new_path) {
@@ -125,7 +126,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     struct stat buf, buf_json;
     off_t size = 0, size_json = 0;
     time_t n_time, n_time_json, now = time(NULL);
-    struct tm tm, rot;
+    struct tm tm;
     int today_log, today_json;
     char *new_path = NULL;
     int interval_log = 0, interval_json = 0;
@@ -160,7 +161,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     read_internal();
 
     // If module is disabled, exit
-    if (mond.rotation_enabled) {
+    if (mond.enabled && mond.rotation_enabled) {
         mdebug1("Log rotating thread started.");
     } else {
         mdebug1("Log rotating disabled. Exiting.");
@@ -171,7 +172,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
           "Please, use the 'logging' configuration block instead.");
 
     /* Calculate when is the next rotation */
-    n_time = mond.interval ? calc_next_rotation(now, &rot, mond.interval_units, mond.interval) : 0;
+    n_time = mond.interval ? calc_next_rotation(now, mond.interval_units, mond.interval) : 0;
     n_time_json = mond.interval ? n_time : 0;
 
     // Initializes the rotation lists
@@ -207,29 +208,30 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                 check_size_interval(now, n_time, size, &interval_log, &interval_set_log);
                 if (now > n_time && (long) size >= mond.min_size && mond.ossec_log_plain) {
                     rotate_logs(mond.log_list_plain, path, new_path, &today_log, interval_log, tm.tm_mday, 0, &last_rot_log, now);
-                    n_time = calc_next_rotation(now, &rot, mond.interval_units, mond.interval);
+                    n_time = calc_next_rotation(now, mond.interval_units, mond.interval);
                     interval_set_log = 0;
                 }
                 /* Rotate ossec.json by size (min_size) and interval */
                 check_size_interval(now, n_time_json, size_json, &interval_json, &interval_set_json);
                 if (now > n_time_json && (long) size_json >= mond.min_size && mond.ossec_log_json) {
                     rotate_logs(mond.log_list_json, path_json, new_path, &today_json, interval_json, tm.tm_mday, 1, &last_rot_json, now);
-                    n_time_json = calc_next_rotation(now, &rot, mond.interval_units, mond.interval);
+                    n_time_json = calc_next_rotation(now, mond.interval_units, mond.interval);
                     interval_set_json = 0;
                 }
             } else {
                 /* Rotation by size (max_size) */
                 if (mond.max_size > 0) {
                     /* If log file reachs maximum size, rotate ossec.log */
-                    if ( (long) size >= mond.max_size && mond.ossec_log_plain) {
+                    if ((long) size >= mond.max_size && mond.ossec_log_plain) {
                         rotate_logs(mond.log_list_plain, path, new_path, &today_log, 0, tm.tm_mday, 0, &last_rot_log, now);
                     }
                     /* If log file reachs maximum size, rotate ossec.json */
-                    if ( (long) size_json >= mond.max_size && mond.ossec_log_json) {
+                    if ((long) size_json >= mond.max_size && mond.ossec_log_json) {
                         rotate_logs(mond.log_list_json, path_json, new_path, &today_json, 0, tm.tm_mday, 1, &last_rot_json, now);
                     }
                 }
-                if (mond.rotation_enabled && mond.interval > 0 && now > n_time) {
+                /* Rotation by interval */
+                if (mond.interval > 0 && now > n_time) {
                     /* Rotate ossec.log */
                     if (mond.ossec_log_plain) {
                         rotate_logs(mond.log_list_plain, path, new_path, &today_log, 1, tm.tm_mday, 0, &last_rot_log, now);
@@ -238,7 +240,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                     if (mond.ossec_log_json) {
                         rotate_logs(mond.log_list_json, path_json, new_path, &today_json, 1, tm.tm_mday, 1, &last_rot_json, now);
                     }
-                    n_time = calc_next_rotation(now, &rot, mond.interval_units, mond.interval);
+                    n_time = calc_next_rotation(now, mond.interval_units, mond.interval);
                 }
             }
         }

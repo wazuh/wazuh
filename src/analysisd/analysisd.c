@@ -2538,16 +2538,15 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args) {
     int day = 0;
     int year = 0;
     struct tm p;
-    struct tm rot;
     char mon[4] = {0};
 
     /* Get current time before starting */
     time(&current_time);
 
     /* Calculate when is the next rotation */
-    alerts_time = Config.alerts_interval ? calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval) : 0;
+    alerts_time = Config.alerts_interval ? calc_next_rotation(current_time, Config.alerts_interval_units, Config.alerts_interval) : 0;
     alerts_time_json = alerts_time;
-    archive_time = Config.archives_interval ? calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval) : 0;
+    archive_time = Config.archives_interval ? calc_next_rotation(current_time, Config.archives_interval_units, Config.archives_interval) : 0;
     archive_time_json = archive_time;
 
     while (1) {

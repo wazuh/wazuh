@@ -26,11 +26,10 @@ void Monitord(void) __attribute__((noreturn));
 void manage_files(int cday, int cmon, int cyear);
 void generate_reports(int cday, int cmon, int cyear, const struct tm *p);
 void monitor_agents(void);
-void OS_CompressLog(const char *logfile);
-char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int rotate_json, int daily_rotations,
+char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int rotate_json,
                    int last_counter, rotation_list *list_log, rotation_list *list_json);
 int delete_old_agent(const char *agent_id);
-time_t calc_next_rotation(time_t tm, struct tm *rot, const char units, int interval);
+time_t calc_next_rotation(time_t tm, const char units, int interval);
 
 /* Parse read config into JSON format */
 cJSON *getMonitorOptions(void);

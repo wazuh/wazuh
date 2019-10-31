@@ -22,9 +22,6 @@ FILE *_jflog;
 FILE *_ejflog;
 
 /* Global variables */
-static int __crt_day;
-static int __alerts_rsec;
-static int __archives_rsec;
 static int __ecounter;
 static int __acounter;
 static int __fcounter;
@@ -51,7 +48,6 @@ void OS_InitLog()
 {
     OS_InitFwLog();
 
-    __crt_day = 0;
     __ecounter = 0;
     __acounter = 0;
     __fcounter = 0;
@@ -94,7 +90,7 @@ FILE * locate_log(rotation_list *list, int day, int year, char *mon, char *log_f
     log = openlog(log, log_file, folder, year, mon, tag, day, ext, daily, &counter, 0, list);
     if (compress) {
         if (!IsFile(prev_log)) {
-            w_compress_gzfile(prev_log, c_log);
+            w_compress_gzfile(prev_log, c_log, 1);
             /* Remove uncompressed file */
             if (unlink(prev_log) == -1) {
                 merror("Unable to delete '%s' due to '%s'", prev_log, strerror(errno));
@@ -140,11 +136,6 @@ int OS_GetLogLocation(int day,int year,char *mon)
 
     /* For the firewall events */
     _fflog = openlog(_fflog, __flogfile, FWLOGS, year, mon, "firewall", day, "log", FWLOGS_DAILY, &__fcounter, 0, NULL);
-
-    /* Setting the new day */
-    __crt_day = day;
-    __alerts_rsec = c_timespec.tv_sec;
-    __archives_rsec = c_timespec.tv_sec;
 
     return (0);
 }
@@ -221,13 +212,29 @@ FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char
     return fp;
 }
 
-FILE * rotate_logs(rotation_list *list, char *log_file, int today, int counter, int rotate, FILE *_flog, const char *month,
-                 int year, const char *folder, const char *log_daily, int compress, const char *ext, const char *tag, time_t *last_rot) {
+FILE * rotate_logs(rotation_list *list, char *log_file, int today, int counter, FILE *_flog, const char *month,
+                 int year, const char *folder, const char *log_daily, int compress, const char *ext, const char *tag,
+                 time_t *last_rot, int maxage, rotation_list *other_list, int rotate_op) {
     char compress_file[OS_FLSIZE + 1];
+    char path[PATH_MAX];
     char *previous_log = NULL;
-    int last_counter;
+    int last_counter, rotate, remove_tag = 0, json = 0;
     char *logfile;
     struct tm last_day;
+
+    if (strcmp(tag, "alerts") == 0) {
+        snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGALERTS);
+        remove_tag = 0;
+    } else if (strcmp(tag, "archive") == 0) {
+        snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGARCHIVES);
+        remove_tag = 1;
+    }
+
+    if (strcmp(ext, "json") == 0) {
+        json = 1;
+    } else if (strcmp(ext, "log") == 0) {
+        json = 0;
+    }
 
     localtime_r(last_rot, &last_day);
     os_strdup(log_file, logfile);
@@ -267,28 +274,22 @@ FILE * rotate_logs(rotation_list *list, char *log_file, int today, int counter, 
     snprintf(compress_file, OS_FLSIZE, "%s.gz", previous_log);
     if (compress) {
         if (!IsFile(previous_log)) {
-            w_compress_gzfile(previous_log, compress_file);
-            /* Remove uncompressed file */
-            if (unlink(previous_log) == -1) {
-                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
-            }
+            w_compress_gzfile(previous_log, compress_file, 1);
         }
     }
 
     os_free(previous_log);
     os_free(logfile);
+
+    /* Remove old logs if necessary */
+    remove_old_logs(path, maxage, remove_tag ? "archives" : "alerts", json ? other_list : list, json ? list : other_list);
+    /* Add the new rotation node */
+    add_new_rotation_node(list, log_file, rotate_op);
+
     return _flog;
 }
 
 void OS_RotateLogs(int day, int year, char *mon) {
-
-    char path_alerts[PATH_MAX];
-    char path_archives[PATH_MAX];
-    struct tm rot;
-    int rotate = 0;
-
-    snprintf(path_alerts, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGALERTS);
-    snprintf(path_archives, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGARCHIVES);
 
     gettime(&local_timespec);
 
@@ -299,48 +300,42 @@ void OS_RotateLogs(int day, int year, char *mon) {
             // Rotate alerts.log
             if (Config.alerts_log_plain && current_time > alerts_time) {
                 if (Config.alerts_min_size ? (_aflog && !fseek(_aflog, 0, SEEK_END) && ftell(_aflog) > Config.alerts_min_size) : 1) {
-                    _aflog = rotate_logs(Config.log_alerts_plain, __alogfile, day, __acounter, rotate, _aflog, mon, year,
-                                ALERTS, ALERTS_DAILY, Config.alerts_compress_rotation, "log", "alerts", &last_alerts_log);
-                    remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
-                    add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
-                    alerts_time = calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval);
+                    _aflog = rotate_logs(Config.log_alerts_plain, __alogfile, day, __acounter, _aflog, mon, year,
+                                ALERTS, ALERTS_DAILY, Config.alerts_compress_rotation, "log", "alerts", &last_alerts_log,
+                                Config.alerts_maxage, Config.log_alerts_json, Config.alerts_rotate);
+                    alerts_time = calc_next_rotation(current_time, Config.alerts_interval_units, Config.alerts_interval);
                 }
             }
             // Rotate alerts.json
             if (Config.alerts_log_json && current_time > alerts_time_json) {
                 if (Config.alerts_min_size ? (_jflog && !fseek(_jflog, 0, SEEK_END) && ftell(_jflog) > Config.alerts_min_size) : 1) {
-                    _jflog = rotate_logs(Config.log_alerts_json, __jlogfile, day, __jcounter, rotate, _jflog, mon, year,
-                                ALERTS, ALERTSJSON_DAILY, Config.alerts_compress_rotation, "json", "alerts", &last_alerts_json);
-                    remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
-                    add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
-                    alerts_time_json = calc_next_rotation(current_time, &rot, Config.alerts_interval_units, Config.alerts_interval);
+                    _jflog = rotate_logs(Config.log_alerts_json, __jlogfile, day, __jcounter, _jflog, mon, year,
+                                ALERTS, ALERTSJSON_DAILY, Config.alerts_compress_rotation, "json", "alerts", &last_alerts_json,
+                                Config.alerts_maxage, Config.log_alerts_plain, Config.alerts_rotate);
+                    alerts_time_json = calc_next_rotation(current_time, Config.alerts_interval_units, Config.alerts_interval);
                 }
             }
-            __alerts_rsec = local_timespec.tv_sec;
         }
         // If the rotation for archives is enabled
-        if (Config.archives_rotation_enabled && Config.archives_interval >= 0) {
+        if (Config.archives_rotation_enabled && Config.archives_interval > 0) {
             // Rotation for archives.log
             if (Config.archives_log_plain && current_time > archive_time) {
                 if (Config.archives_min_size ? (_eflog && !fseek(_eflog, 0, SEEK_END) && ftell(_eflog) > Config.archives_min_size) : 1) {
-                    _eflog = rotate_logs(Config.log_archives_plain, __elogfile, day, __ecounter, rotate, _eflog, mon, year,
-                                EVENTS, EVENTS_DAILY, Config.archives_compress_rotation, "log", "archive", &last_archive_log);
-                    remove_old_logs(path_archives, Config.archives_maxage, "archives", Config.log_archives_plain, Config.log_archives_json);
-                    add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
-                    archive_time = calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval);
+                    _eflog = rotate_logs(Config.log_archives_plain, __elogfile, day, __ecounter, _eflog, mon, year,
+                                EVENTS, EVENTS_DAILY, Config.archives_compress_rotation, "log", "archive", &last_archive_log,
+                                Config.archives_maxage, Config.log_archives_json, Config.archives_rotate);
+                    archive_time = calc_next_rotation(current_time, Config.archives_interval_units, Config.archives_interval);
                 }
             }
             // Rotation for archives.json
             if (Config.archives_log_json && current_time > archive_time_json) {
                 if (Config.archives_min_size ? (_ejflog && !fseek(_ejflog, 0, SEEK_END) && ftell(_ejflog) > Config.archives_min_size) : 1) {
-                    _ejflog = rotate_logs(Config.log_archives_json, __ejlogfile, day, __ejcounter, rotate, _ejflog, mon, year,
-                                EVENTS, EVENTSJSON_DAILY, Config.archives_compress_rotation, "json", "archive", &last_archive_json);
-                    remove_old_logs(path_archives, Config.archives_maxage, "archive", Config.log_archives_plain, Config.log_archives_json);
-                    add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
-                    archive_time_json = calc_next_rotation(current_time, &rot, Config.archives_interval_units, Config.archives_interval);
+                    _ejflog = rotate_logs(Config.log_archives_json, __ejlogfile, day, __ejcounter, _ejflog, mon, year,
+                                EVENTS, EVENTSJSON_DAILY, Config.archives_compress_rotation, "json", "archive", &last_archive_json,
+                                Config.archives_maxage, Config.log_archives_plain, Config.archives_rotate);
+                    archive_time_json = calc_next_rotation(current_time, Config.archives_interval_units, Config.archives_interval);
                 }
             }
-            __archives_rsec = local_timespec.tv_sec;
         }
     }
 
@@ -349,21 +344,17 @@ void OS_RotateLogs(int day, int year, char *mon) {
         // Rotate alerts.log only if the size of the file is bigger than max_size
         if (Config.alerts_log_plain) {
             if (_aflog && !fseek(_aflog, 0, SEEK_END) && ftell(_aflog) > Config.alerts_max_size) {
-                _aflog = rotate_logs(Config.log_alerts_plain, __alogfile, day, __acounter, rotate, _aflog, mon, year,
-                            ALERTS, ALERTS_DAILY, Config.alerts_compress_rotation, "log", "alerts", &last_alerts_log);
-                remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
-                add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
-                __alerts_rsec = local_timespec.tv_sec;
+                _aflog = rotate_logs(Config.log_alerts_plain, __alogfile, day, __acounter, _aflog, mon, year,
+                            ALERTS, ALERTS_DAILY, Config.alerts_compress_rotation, "log", "alerts", &last_alerts_log,
+                            Config.alerts_maxage, Config.log_alerts_json, Config.alerts_rotate);
             }
         }
         // Rotate alerts.json only if the size of the file is bigger than max_size
         if (Config.alerts_log_json) {
             if (_jflog && !fseek(_jflog, 0, SEEK_END) && ftell(_jflog) > Config.alerts_max_size) {
-                _jflog = rotate_logs(Config.log_alerts_json, __jlogfile, day, __jcounter, rotate, _jflog, mon, year,
-                            ALERTS, ALERTSJSON_DAILY, Config.alerts_compress_rotation, "json", "alerts", &last_alerts_json);
-                remove_old_logs(path_alerts, Config.alerts_maxage, "alerts", Config.log_alerts_plain, Config.log_alerts_json);
-                add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
-                __alerts_rsec = local_timespec.tv_sec;
+                _jflog = rotate_logs(Config.log_alerts_json, __jlogfile, day, __jcounter, _jflog, mon, year,
+                            ALERTS, ALERTSJSON_DAILY, Config.alerts_compress_rotation, "json", "alerts", &last_alerts_json,
+                            Config.alerts_maxage, Config.log_alerts_plain, Config.alerts_rotate);
             }
         }
     }
@@ -373,39 +364,35 @@ void OS_RotateLogs(int day, int year, char *mon) {
         // Rotate archives.log only if the size of the file is bigger than max_size
         if (Config.archives_log_plain) {
             if (_eflog && !fseek(_eflog, 0, SEEK_END) && ftell(_eflog) > Config.archives_max_size) {
-                _eflog = rotate_logs(Config.log_archives_plain, __elogfile, day, __ecounter, rotate, _eflog, mon, year,
-                            EVENTS, EVENTS_DAILY, Config.archives_compress_rotation, "log", "archive", &last_archive_log);
-                remove_old_logs(path_archives, Config.archives_maxage, "archive", Config.log_archives_plain, Config.log_archives_json);
-                add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
-                __archives_rsec = local_timespec.tv_sec;
+                _eflog = rotate_logs(Config.log_archives_plain, __elogfile, day, __ecounter, _eflog, mon, year,
+                            EVENTS, EVENTS_DAILY, Config.archives_compress_rotation, "log", "archive", &last_archive_log,
+                            Config.archives_maxage, Config.log_archives_json, Config.archives_rotate);
             }
         }
         // Rotate archives.json only if the size of the file is bigger than max_size
         if (Config.archives_log_json) {
             if (_ejflog && !fseek(_ejflog, 0, SEEK_END) && ftell(_ejflog) > Config.archives_max_size) {
-                _ejflog = rotate_logs(Config.log_archives_json, __ejlogfile, day, __ejcounter, rotate, _ejflog, mon, year,
-                            EVENTS, EVENTSJSON_DAILY, Config.archives_compress_rotation, "json", "archive", &last_archive_json);
-                remove_old_logs(path_archives, Config.archives_maxage, "archive", Config.log_archives_plain, Config.log_archives_json);
-                add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
-                __archives_rsec = local_timespec.tv_sec;
+                _ejflog = rotate_logs(Config.log_archives_json, __ejlogfile, day, __ejcounter, _ejflog, mon, year,
+                            EVENTS, EVENTSJSON_DAILY, Config.archives_compress_rotation, "json", "archive", &last_archive_json,
+                            Config.archives_maxage, Config.log_archives_plain, Config.archives_rotate);
             }
         }
     }
 
     // If there hasn't been a rotation the day before, change the name of the log
     if (Config.alerts_rotation_enabled) {
-        if (Config.alerts_log_plain && Config.log_alerts_plain->last && Config.log_alerts_plain->last->first_value != day && current_time != alerts_time) {
+        if (Config.alerts_log_plain && Config.log_alerts_plain && Config.log_alerts_plain->last && Config.log_alerts_plain->last->first_value != day && current_time != alerts_time) {
             _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, 2, Config.log_alerts_plain);
         }
-        if (Config.alerts_log_json && Config.log_alerts_json->last && Config.log_alerts_json->last->first_value != day && current_time != alerts_time_json) {
+        if (Config.alerts_log_json && Config.log_alerts_json && Config.log_alerts_json->last && Config.log_alerts_json->last->first_value != day && current_time != alerts_time_json) {
             _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, 2, Config.log_alerts_json);
         }
     }
     if (Config.archives_rotation_enabled) {
-        if (Config.archives_log_plain && Config.log_archives_plain->last && Config.log_archives_plain->last->first_value != day && current_time != archive_time) {
+        if (Config.archives_log_plain && Config.log_archives_plain && Config.log_archives_plain->last && Config.log_archives_plain->last->first_value != day && current_time != archive_time) {
             _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, 2, Config.log_archives_plain);
         }
-        if (Config.archives_log_json && Config.log_archives_json->last && Config.log_archives_json->last->first_value != day && current_time != archive_time_json) {
+        if (Config.archives_log_json  && Config.log_archives_json && Config.log_archives_json->last && Config.log_archives_json->last->first_value != day && current_time != archive_time_json) {
             _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, 2, Config.log_archives_json);
         }
     }

@@ -31,7 +31,8 @@ static const char * MONTHS[] = {
     "Dec"
 };
 
-char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int rotate_json, int daily_rotations, int last_counter, rotation_list *list_log, rotation_list *list_json) {
+char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int rotate_json,
+                   int last_counter, rotation_list *list_log, rotation_list *list_json) {
     char year_dir[PATH_MAX];
     char month_dir[PATH_MAX];
     char new_path[PATH_MAX];
@@ -56,7 +57,7 @@ char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int ro
     now = time(NULL);
 
     if (new_day)
-        now = now - (3600*24);
+        now = now - SECONDS_PER_DAY;
 
     localtime_r(&now, &tm);
 
@@ -121,15 +122,15 @@ char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int ro
             snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
         }
 
-        /* Rotate compressed logs if needed */
-        if (counter == daily_rotations) {
-            mdebug2("The internal_option 'daily_rotations' has been deprecated. It's being ignored in the log rotation.");
-        }
-
         if (!IsFile(old_file)) {
             if (rename_ex(old_file, new_path) == 0) {
                 if (compress) {
-                    OS_CompressLog(new_path);
+                    char compress_file[OS_FLSIZE + 1];
+                    memset(compress_file, '\0', OS_FLSIZE + 1);
+                    snprintf(compress_file, OS_FLSIZE, "%s.gz", new_path);
+                    if (!IsFile(new_path)) {
+                        w_compress_gzfile(new_path, compress_file, 1);
+                    }
                 }
             } else {
                 merror("Couldn't rename '%s' to '%s': %s", old_file, new_path, strerror(errno));
@@ -149,15 +150,15 @@ char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int ro
             snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
         }
 
-        /* Rotate compressed logs if needed */
-        if (counter == daily_rotations) {
-            mdebug2("The internal_option 'daily_rotations' has been deprecated. It's being ignored in the log rotation.");
-        }
-
         if (!IsFile(old_file)) {
             if (rename_ex(old_file, new_path_json) == 0) {
                 if (compress) {
-                    OS_CompressLog(new_path_json);
+                    char compress_file[OS_FLSIZE + 1];
+                    memset(compress_file, '\0', OS_FLSIZE + 1);
+                    snprintf(compress_file, OS_FLSIZE, "%s.gz", new_path_json);
+                    if (!IsFile(new_path_json)) {
+                        w_compress_gzfile(new_path_json, compress_file, 1);
+                    }
                 }
             } else {
                 merror("Couldn't rename '%s' to '%s': %s", old_file, new_path_json, strerror(errno));

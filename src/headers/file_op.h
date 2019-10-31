@@ -37,11 +37,6 @@ typedef struct File {
     FILE *fp;
 } File;
 
-typedef struct RotationNode {
-    char *path;
-    int rotation_index;
-} RotationNode;
-
 /* Set the program name - must be done before *anything* else */
 void OS_SetName(const char *name) __attribute__((nonnull));
 
@@ -140,7 +135,7 @@ FILE * wfopen(const char * pathname, const char * mode);
 int w_remove_line_from_file(char *file, int line);
 
 // To compress an decompress a file in gzip
-int w_compress_gzfile(const char *filesrc, const char *filedst);
+int w_compress_gzfile(const char *filesrc, const char *filedst, int remove);
 int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
 int is_ascii_utf8(const char * file, unsigned int max_lines, unsigned int max_chars_utf8);
 int is_usc2(const char * file);
