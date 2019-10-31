@@ -236,6 +236,13 @@ typedef struct _global_option_t {
     option_t thread_stack_size;
 } global_option_t;
 
+typedef struct _monitor_option_t {
+    option_t monitor_agents;
+    option_t delete_old_agents;
+    option_t thread_stack_size;
+    option_t log_level;
+} monitor_option_t;
+
 /* Options structure */
 typedef struct _option_set_t {
     syscheck_option_t syscheck;
@@ -258,6 +265,7 @@ typedef struct _option_set_t {
     wazuh_db_option_t wazuh_db;
     cluster_option_t cluster;
     global_option_t global;
+    monitor_option_t monitor;
 } option_set_t;
 
 extern const option_set_t options;

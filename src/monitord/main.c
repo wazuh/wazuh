@@ -57,9 +57,10 @@ static void init_conf()
     mond.size_units = mond.min_size_units ='B';
     mond.maxage = 31;
     mond.day_wait = mond.day_wait == -1 ? 10 : mond.day_wait;
-    mond.log_level = 0;
-    mond.monitor_agents = no_agents ? 0 : 1;
-    mond.delete_old_agents = 0;
+    mond.log_level = options.monitor.log_level.def;
+    mond.monitor_agents = no_agents ? 0 : options.monitor.monitor_agents.def;
+    mond.delete_old_agents = options.monitor.delete_old_agents.def;
+    mond.thread_stack_size = options.global.thread_stack_size.def;
 
     return;
 }
@@ -87,6 +88,8 @@ static void read_internal()
         mond.monitor_agents = no_agents ? 0 : aux;
     if ((aux = getDefine_Int("monitord", "delete_old_agents", 0, 9600)) != INT_OPT_NDEF)
         mond.delete_old_agents = aux;
+    if ((aux = getDefine_Int("wazuh", "thread_stack_size", options.global.thread_stack_size.min, options.global.thread_stack_size.max)) != INT_OPT_NDEF )
+        mond.thread_stack_size = aux;
 
     return;
 }

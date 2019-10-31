@@ -33,7 +33,7 @@ const option_set_t options = {
         .log_level = { 0, 0, 2 }                                                // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Syscheck (local, server and Unix agent)
     },
     .rootcheck = {
-        .sleep = { 50, 0, 1000 }                                                // Rootcheck checking/usage speed. The default is to sleep 50 milliseconds per each PID or suspictious port
+        .sleep = { 50, 0, 1000 }                                                // Rootcheck checking/usage speed. The default is to sleep 50 milliseconds per each PID or suspicious port
     },
     .sca = {
         .request_db_interval = { 5, 1, 60 },                                    // Security Configuration Assessment DB request interval in minutes. This option sets the maximum waiting time to resend a scan when the DB integrity check fails
@@ -197,6 +197,11 @@ const option_set_t options = {
         .log_level = { 0, 0, 2 }                                                // Wazuh Cluster debug level+
     },
     .global = { 
-        .thread_stack_size = { 8192, 2048, 65536}                               // Wazuh default stack size for child threads in KiB
+        .thread_stack_size = { 8192, 2048, 65536 }                               // Wazuh default stack size for child threads in KiB
+    },
+    .monitor = {
+        .monitor_agents = { 1, 0, 1},                                            // Check and update agents' status
+        .delete_old_agents = { 0, 0, 256 },                                       // Delete disconnected agents for this value (minutes)
+        .log_level = { 0, 0, 2 }                                                 // Monitord debug level
     }
 };

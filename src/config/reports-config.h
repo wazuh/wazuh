@@ -27,14 +27,16 @@ typedef struct _monitor_config {
     short int day_wait;
     unsigned int compress:1;
     unsigned int sign:1;
-    unsigned int monitor_agents:1;
+    int monitor_agents;
     unsigned int rotate_log:1;
-    unsigned int delete_old_agents;
+    int delete_old_agents;
     int a_queue;
     int maxage;
     int keep_rotated_files;
     unsigned long min_size_rotate;  // This is the value that we put in the configuration (not converted to bytes). We need it to show the configuration.
     unsigned long size_rotate;      // This is the value that we put in the configuration (not converted to bytes). We need it to show the configuration.
+    int daily_rotations;
+    int thread_stack_size;
 
     char *smtpserver;
     char *emailfrom;

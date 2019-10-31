@@ -187,6 +187,7 @@ int Read_Monitor(XML_NODE node, void *config, __attribute__((unused)) void *conf
     /* XML definitions */
     const char *xml_check_agent_status = "check_agent_status";
     const char *xml_delete_old_agents = "delete_old_agents";
+    const char *xml_thread_stack_size = "thread_stack_size";
     const char *xml_log_level = "log_level";
 
     monitor_config *mond_config = (monitor_config *)config;
@@ -200,42 +201,13 @@ int Read_Monitor(XML_NODE node, void *config, __attribute__((unused)) void *conf
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_check_agent_status) == 0) {
-            char *end;
-            int opt = strtol(node[i]->content, &end, 10);
-            if (*end != '\0') {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return OS_INVALID;
-            }
-            if (opt < 0 || opt > 1) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return OS_INVALID;
-            } else {
-                mond_config->monitor_agents = opt;
-            }
+            SetConf(node[i]->content, &mond_config->monitor_agents, options.monitor.monitor_agents, xml_check_agent_status);
         } else if (strcmp(node[i]->element, xml_delete_old_agents) == 0) {
-            char *end;
-            int opt = strtol(node[i]->content, &end, 10);
-            if (*end != '\0') {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return OS_INVALID;
-            }
-            if (opt < 0 || opt > 9600) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return OS_INVALID;
-            } else {
-                mond_config->delete_old_agents = opt;
-            }
+            SetConf(node[i]->content, &mond_config->delete_old_agents, options.monitor.delete_old_agents, xml_delete_old_agents);
         } else if (strcmp(node[i]->element, xml_log_level) == 0) {
-            char *end;
-            mond_config->log_level = strtol(node[i]->content, &end, 10);
-            if (*end != '\0') {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return OS_INVALID;
-            }
-            if (mond_config->log_level < 0 || mond_config->log_level > 2) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return OS_INVALID;
-            }
+            SetConf(node[i]->content, &mond_config->log_level, options.monitor.log_level, xml_log_level);
+        } else if (strcmp(node[i]->element, xml_thread_stack_size) == 0) {
+            SetConf(node[i]->content, &mond_config->thread_stack_size, options.global.thread_stack_size, xml_thread_stack_size);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

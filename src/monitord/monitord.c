@@ -142,7 +142,7 @@ void Monitord()
     }
 
     // Start com request thread
-    w_create_thread(moncom_main, NULL, 8192);
+    w_create_thread(moncom_main, NULL, mond.thread_stack_size);
 
     mwarn("The following internal options will be deprecated in the next version: compress, rotate_log, keep_log_days, day_wait, size_rotate_read and daily_rotations."
           "Please, use the 'logging' configuration block instead.");
@@ -244,6 +244,7 @@ cJSON *getMonitorOptions(void) {
 
     cJSON_AddNumberToObject(monconf, "check_agent_status", mond.monitor_agents);
     cJSON_AddNumberToObject(monconf, "delete_old_agents", mond.delete_old_agents);
+    cJSON_AddNumberToObject(monconf, "thread_stack_size", mond.thread_stack_size);
     cJSON_AddNumberToObject(monconf, "log_level", mond.log_level);
 
     cJSON_AddItemToObject(root, "monitord", monconf);
