@@ -264,10 +264,14 @@ int Read_GCP(const OS_XML *xml, xml_node *node, void *d1) {
 
     //Policy Monitoring Module
     if (!strcmp(node->element, WM_GCP_CONTEXT.name)) {
+#ifndef WIN32
         if (wm_gcp_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
+#else
+        mwarn("The '%s' module is not available on Windows systems. Ignoring.", node->element);
+#endif
     }
 
     OS_ClearNode(children);

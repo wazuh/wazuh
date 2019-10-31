@@ -167,7 +167,7 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
 
-            for(unsigned int j; j < strlen(nodes[i]->content); j++) {
+            for(unsigned int j=0; j < strlen(nodes[i]->content); j++) {
                 if (!isdigit(nodes[i]->content[j])) {
                     merror("Tag '%s' from the '%s' module should not have an alphabetic character.", XML_MAX_MESSAGES, WM_GCP_CONTEXT.name);
                     return OS_INVALID;
