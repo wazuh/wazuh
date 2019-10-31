@@ -22,7 +22,9 @@ def build_and_up(env: str):
 
 
 def down_env():
-    current_process = subprocess.Popen(["docker-compose", "down", "-t {}".format(0)])
+    pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
+    os.chdir(pwd)
+    current_process = subprocess.Popen(["docker-compose", "down", "-t", "0"])
     current_process.wait()
 
 
@@ -35,7 +37,7 @@ def check_health(interval=10, node_type='master', agents=None):
     elif node_type == 'agent':
         for agent in agents:
             health = subprocess.check_output(
-                "docker inspect env_wazuh-agent{}_1 -f '{{json .State.Health.Status}}'".format(agent), shell=True)
+                f"docker inspect env_wazuh-agent{agent}_1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
             if not health.startswith(b'"healthy"'):
                 return False
         return True
@@ -118,7 +120,7 @@ def environment_ciscat():
         master_health = check_health()
         if master_health:
             agents_healthy = check_health(node_type='agent', agents=[1, 2, 3])
-            if agents_healthy is True:
+            if agents_healthy:
                 time.sleep(10)
                 yield
                 break
@@ -178,6 +180,38 @@ def environment_black_security_rbac():
             time.sleep(10)
             yield
             break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="ciscat_white_rbac_tests", scope="session")
+def environment_white_ciscat_rbac():
+    values = build_and_up("ciscat_white_rbac")
+    while values['retries'] < values['max_retries']:
+        master_health = check_health()
+        if master_health:
+            agents_healthy = check_health(node_type='agent', agents=[1, 2, 3])
+            if agents_healthy:
+                time.sleep(10)
+                yield
+                break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="ciscat_black_rbac_tests", scope="session")
+def environment_black_ciscat_rbac():
+    values = build_and_up("ciscat_black_rbac")
+    while values['retries'] < values['max_retries']:
+        master_health = check_health()
+        if master_health:
+            agents_healthy = check_health(node_type='agent', agents=[1, 2, 3])
+            if agents_healthy:
+                time.sleep(10)
+                yield
+                break
         else:
             values['retries'] += 1
     down_env()

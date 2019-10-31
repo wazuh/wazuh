@@ -23,6 +23,6 @@ fi
 
 sleep 1
 
-/var/ossec/bin/ossec-control start
+/var/ossec/bin/ossec-control restart
 
 /usr/bin/supervisord
