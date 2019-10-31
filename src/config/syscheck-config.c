@@ -829,6 +829,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
     const char *xml_audit_hc = "startup_healthcheck";
+    const char *xml_allow_prefilter_cmd = "allow_prefilter_cmd";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -1329,6 +1330,16 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 }
             }
             OS_ClearNode(children);
+        } /* Allow prefilter cmd */
+        else if (strcmp(node[i]->element, xml_allow_prefilter_cmd) == 0) {
+            if(strcmp(node[i]->content, "yes") == 0)
+                syscheck->allow_prefilter_cmd = 1;
+            else if(strcmp(node[i]->content, "no") == 0)
+                syscheck->allow_prefilter_cmd = 0;
+            else {
+                merror(XML_VALUEERR,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
