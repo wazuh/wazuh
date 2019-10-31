@@ -18,6 +18,7 @@ FROM base_agent AS wazuh-env-agent-syscollector
 FROM base_agent AS wazuh-env-agent-security
 FROM base_agent AS wazuh-env-agent-manager
 FROM base_agent AS wazuh-env-agent-cluster
+
 FROM base_agent AS wazuh-env-agent-ciscat
 RUN apt-get update && apt-get install openjdk-8-jdk -y
 COPY configurations/ciscat/wazuh-agent-ciscat/test.keys /var/ossec/etc/test.keys
@@ -32,6 +33,13 @@ FROM base_agent AS wazuh-env-agent-agents_white_rbac
 FROM base_agent AS wazuh-env-agent-agents_black_rbac
 FROM wazuh-env-agent-ciscat AS wazuh-env-agent-ciscat_white_rbac
 FROM wazuh-env-agent-ciscat AS wazuh-env-agent-ciscat_black_rbac
+
+FROM base_agent AS wazuh-env-agent-security_white_rbac
+FROM base_agent AS wazuh-env-agent-security_black_rbac
+FROM base_agent AS wazuh-env-agent-agents_white_rbac
+FROM base_agent AS wazuh-env-agent-agents_black_rbac
+FROM base_agent AS wazuh-env-agent-rules_white_rbac
+FROM base_agent AS wazuh-env-agent-rules_black_rbac
 
 FROM wazuh-env-agent-${ENVIRONMENT}
 
