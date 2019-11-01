@@ -109,10 +109,12 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
     sub_key_name_b[MAX_KEY_LENGTH] = '\0';
     sub_key_name_b[MAX_KEY_LENGTH + 1] = '\0';
 
+    FILETIME file_time = { 0 };
+
     /* We use the class_name, subkey_count and the value count */
     rc = RegQueryInfoKey(hKey, class_name_b, &class_name_s, NULL,
                          &subkey_count, NULL, NULL, &value_count,
-                         NULL, NULL, NULL, NULL);
+                         NULL, NULL, NULL, &file_time);
 
     /* Check return code of QueryInfo */
     if (rc != ERROR_SUCCESS) {
@@ -254,7 +256,8 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
         snprintf(path, OS_SIZE_512, "%s %s", syscheck.registry[pos].arch == ARCH_64BIT ? "[x64]" : "[x32]", full_key_name);
 
         data->last_event = time(NULL);
-        data->options |= CHECK_SHA256SUM;
+        data->options |= CHECK_SHA256SUM | CHECK_MTIME;
+        data->mtime = get_windows_file_time_epoch(file_time);
 
         OS_SHA256_String(buffer, data->hash_sha256);
         data->scanned = 1;
