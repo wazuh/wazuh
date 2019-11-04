@@ -79,8 +79,13 @@ RUN /scripts/configuration_rbac.sh
 COPY configurations/base/wazuh-master/healthcheck/healthcheck_daemons.py /tmp/healthcheck.py
 COPY configurations/base/wazuh-master/healthcheck/daemons_check.txt /tmp/daemons_check.txt
 
-FROM base_agent AS wazuh-env-syscollector_white_rbac
-FROM base_agent AS wazuh-env-syscollector_black_rbac
+FROM base AS wazuh-env-syscollector_white_rbac
+ADD configurations/rbac/syscollector/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base AS wazuh-env-syscollector_black_rbac
+ADD configurations/rbac/syscollector/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
 
 FROM wazuh-env-${ENVIRONMENT}
 
