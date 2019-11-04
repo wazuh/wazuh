@@ -82,7 +82,7 @@ int fim_initialize() {
     syscheck.fim_entry = rbtree_init();
 
     if (!syscheck.fim_entry) {
-        merror_exit(FIM_CRITICAL_DATA_CREATE, "rb-tree init");
+        merror_exit(FIM_CRITICAL_DATA_CREATE, "rb-tree init"); // LCOV_EXCL_LINE
     }
 
 #ifndef WIN32
@@ -90,7 +90,7 @@ int fim_initialize() {
     syscheck.fim_inode = OSHash_Create();
 
     if (!syscheck.fim_inode) {
-        merror_exit(FIM_CRITICAL_DATA_CREATE, "inode hash table");
+        merror_exit(FIM_CRITICAL_DATA_CREATE, "inode hash table"); // LCOV_EXCL_LINE
     }
 
     if (!OSHash_setSize(syscheck.fim_inode, OS_SIZE_4096)) {
