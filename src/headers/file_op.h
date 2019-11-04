@@ -15,6 +15,7 @@
 
 #include <stdint.h>
 #include <time.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 #include <external/cJSON/cJSON.h>
 
@@ -512,5 +513,37 @@ DWORD FileSizeWin(const char * file);
  * @return int number of bytes written in the string. If is greater or equal than n, the string remained truncated.
  */
 int trail_path_separator(char * dest, const char * src, size_t n);
+
+/**
+ * @brief Check if a path is absolute
+ *
+ * A path on UNIX is absolute if it starts with /.
+ *
+ * A path on Windows is absolute if it starts with X:\ , being X any alphabetic character.
+ *
+ * @param path Input path.
+ * @return true if the path is absolute.
+ * @return false if the path is relative.
+ */
+bool isabspath(const char * path);
+
+/**
+ * @brief Unify path separators (slashes) for Windows paths
+ *
+ * Let all path separators be backslashes.
+ *
+ * @param path A string containing a path.
+ */
+void win_path_backslash(char * path);
+
+/**
+ * @brief Get an absolute path
+ *
+ * @param path Input path (absolute or relative).
+ * @param buffer Destination string.
+ * @param size Size of buffer.
+ * @return Pointer to buffer on success, or NULL on error.
+ */
+char * abspath(const char * path, char * buffer, size_t size);
 
 #endif /* FILE_OP_H */

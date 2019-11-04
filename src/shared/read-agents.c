@@ -984,7 +984,7 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
 
     fim_start = scantime_fim(agent_id, "start_scan");
     fim_end = scantime_fim(agent_id, "end_scan");
-    if (fim_start < 0) {
+    if (fim_start <= 0) {
         os_strdup("Unknown", agt_info->syscheck_time);
     } else if (fim_start > fim_end){
         os_strdup(ctime(&fim_start), timestamp);
@@ -1006,7 +1006,7 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
             *tmp_str = '\0';
         }
     }
-    if (fim_end < 0) {
+    if (fim_end <= 0) {
         os_strdup("Unknown", agt_info->syscheck_endtime);
     } else {
         os_strdup(ctime(&fim_end), agt_info->syscheck_endtime);

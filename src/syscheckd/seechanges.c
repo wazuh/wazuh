@@ -29,7 +29,7 @@ static const char *STR_MORE_CHANGES = "More changes...";
 #ifndef WIN32
 #define PATH_OFFSET 1
 #else
-#define PATH_OFFSET 3
+#define PATH_OFFSET 0
 #endif
 
 static char* filter(const char *string) {
@@ -325,12 +325,34 @@ char *seechanges_addfile(const char *filename)
     md5sum_new[0] = '\0';
     md5sum_old[0] = '\0';
 
+    char filename_abs[PATH_MAX];
+
+    if (abspath(filename, filename_abs, sizeof(filename_abs)) == NULL) {
+        merror("Cannot get absolute path of '%s': %s (%d)", filename, strerror(errno), errno);
+        return NULL;
+    }
+
+#ifdef WIN32
+    {
+        char * filename_strip = os_strip_char(filename_abs, ':');
+
+        if (filename_strip == NULL) {
+            merror("Cannot remove heading colon from full path '%s'", filename_abs);
+            return NULL;
+        }
+
+        strncpy(filename_abs, filename_strip, sizeof(filename_abs));
+        filename_abs[sizeof(filename_abs) - 1] = '\0';
+        free(filename_strip);
+    }
+#endif
+
     snprintf(
         old_location,
         PATH_MAX,
         "%s/local/%s/%s",
         DIFF_DIR_PATH,
-        filename + PATH_OFFSET,
+        filename_abs + PATH_OFFSET,
         DIFF_LAST_FILE
     );
 
@@ -339,7 +361,7 @@ char *seechanges_addfile(const char *filename)
         PATH_MAX,
         "%s/local/%s/%s.gz",
         DIFF_DIR_PATH,
-        filename + PATH_OFFSET,
+        filename_abs + PATH_OFFSET,
         DIFF_LAST_FILE
     );
 
@@ -377,7 +399,7 @@ char *seechanges_addfile(const char *filename)
         PATH_MAX,
         "%s/local/%s/state.%d",
         DIFF_DIR_PATH,
-        filename + PATH_OFFSET,
+        filename_abs + PATH_OFFSET,
         (int)old_date_of_change
     );
 
@@ -399,7 +421,7 @@ char *seechanges_addfile(const char *filename)
         PATH_MAX,
         "%s/local/%s/diff.%d",
         DIFF_DIR_PATH,
-        filename + PATH_OFFSET,
+        filename_abs + PATH_OFFSET,
         (int)new_date_of_change
     );
 
