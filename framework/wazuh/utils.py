@@ -364,8 +364,15 @@ def safe_move(source, target, ownership=(common.ossec_uid(), common.ossec_gid())
     tmp_target = path.join(tmp_path, f".{tmp_filename}.tmp")
     shutil.move(source, tmp_target, copy_function=shutil.copyfile)
 
-    # Overwrite the file atomically
-    shutil.move(tmp_target, target, copy_function=shutil.copyfile)
+    try:
+        # Overwrite the file atomically.
+        rename(tmp_target, target)
+    except OSError:
+        # This is the last try when target is still in a different filesystem.
+        # For example, when target is a mounted file in a Docker container
+        # However, this is not an atomic operation and could lead to race conditions
+        # if the file is read/written simultaneously with other processes
+        shutil.move(tmp_target, target, copy_function=shutil.copyfile)
 
     # Set up metadata
     chown(target, *ownership)
