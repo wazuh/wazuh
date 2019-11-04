@@ -98,8 +98,11 @@ int fim_initialize() {
     }
     OSHash_SetFreeDataPointer(syscheck.fp, (void (*)(void *))free_syscheck_node_data);
 
-    // Set prefilter to NULL if it's not expressly allowed.
+    // Set prefilter to NULL if it's not expressly allowed (ossec.conf in agent side).
     if (!syscheck.allow_prefilter_cmd) {
+        if (syscheck.prefilter_cmd != NULL) {
+            mwarn(FIM_WARN_ALLOW_PREFILTER, syscheck.prefilter_cmd);
+        }
         os_free(syscheck.prefilter_cmd);
     }
 
