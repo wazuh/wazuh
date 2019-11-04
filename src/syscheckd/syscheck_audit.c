@@ -269,146 +269,146 @@ int init_regex(void) {
 
     static const char *pattern_uid = " uid=([0-9]*) ";
     if (regcomp(&regexCompiled_uid, pattern_uid, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "uid");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "uid"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
     static const char *pattern_gid = " gid=([0-9]*) ";
     if (regcomp(&regexCompiled_gid, pattern_gid, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "gid");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "gid"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
     static const char *pattern_auid = " auid=([0-9]*) ";
     if (regcomp(&regexCompiled_auid, pattern_auid, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "auid");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "auid"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
     static const char *pattern_euid = " euid=([0-9]*) ";
     if (regcomp(&regexCompiled_euid, pattern_euid, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "euid");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "euid"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
     static const char *pattern_pid = " pid=([0-9]*) ";
     if (regcomp(&regexCompiled_pid, pattern_pid, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "pid");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "pid"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
     static const char *pattern_ppid = " ppid=([0-9]*) ";
     if (regcomp(&regexCompiled_ppid, pattern_ppid, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "ppid");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "ppid"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
     static const char *pattern_inode = " item=[0-9] name=.* inode=([0-9]*)";
     if (regcomp(&regexCompiled_inode, pattern_inode, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "inode");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "inode"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
 
     static const char *pattern_items = " items=([0-9]*) ";
     if (regcomp(&regexCompiled_items, pattern_items, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "items");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "items"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
 
     static const char *pattern_syscall = " syscall=([0-9]*)";
     if (regcomp(&regexCompiled_syscall, pattern_syscall, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "syscall");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "syscall"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
 
     static const char *pattern_pname = " exe=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_pname, pattern_pname, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "pname");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "pname"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
     static const char *pattern_cwd = " cwd=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_cwd, pattern_cwd, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "cwd");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "cwd"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
 
     static const char *pattern_dir = " dir=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_dir, pattern_dir, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dir");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dir"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
 
     static const char *pattern_path0 = " item=0 name=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_path0, pattern_path0, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path0");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path0"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
     static const char *pattern_path1 = " item=1 name=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_path1, pattern_path1, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path1");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path1"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
     static const char *pattern_path2 = " item=2 name=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_path2, pattern_path2, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path2");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path2"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
     static const char *pattern_path3 = " item=3 name=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_path3, pattern_path3, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path3");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path3"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
     static const char *pattern_path4 = " item=4 name=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_path4, pattern_path4, REG_EXTENDED)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path4");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path4"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
 
     static const char *pattern_pname_hex = " exe=([A-F0-9]*)";
     if (regcomp(&regexCompiled_pname_hex, pattern_pname_hex, REG_EXTENDED | REG_ICASE)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "pname_hex");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "pname_hex"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
 
     static const char *pattern_cwd_hex = " cwd=([A-F0-9]*)";
     if (regcomp(&regexCompiled_cwd_hex, pattern_cwd_hex, REG_EXTENDED | REG_ICASE)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "cwd_hex");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "cwd_hex"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
 
     static const char *pattern_dir_hex = " dir=([A-F0-9]*)";
     if (regcomp(&regexCompiled_dir_hex, pattern_dir_hex, REG_EXTENDED | REG_ICASE)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dir_hex");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dir_hex"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
 
     static const char *pattern_path0_hex = " item=0 name=([A-F0-9]*)";
     if (regcomp(&regexCompiled_path0_hex, pattern_path0_hex, REG_EXTENDED | REG_ICASE)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path0_hex");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path0_hex"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
 
     static const char *pattern_path1_hex = " item=1 name=([A-F0-9]*)";
     if (regcomp(&regexCompiled_path1_hex, pattern_path1_hex, REG_EXTENDED | REG_ICASE)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path1_hex");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path1_hex"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
 
     static const char *pattern_path2_hex = " item=2 name=([A-F0-9]*)";
     if (regcomp(&regexCompiled_path2_hex, pattern_path2_hex, REG_EXTENDED | REG_ICASE)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path2_hex");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path2_hex"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
 
     static const char *pattern_path3_hex = " item=3 name=([A-F0-9]*)";
     if (regcomp(&regexCompiled_path3_hex, pattern_path3_hex, REG_EXTENDED | REG_ICASE)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path3_hex");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path3_hex"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
 
     static const char *pattern_path4_hex = " item=4 name=([A-F0-9]*)";
     if (regcomp(&regexCompiled_path4_hex, pattern_path4_hex, REG_EXTENDED | REG_ICASE)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path4_hex");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path4_hex"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
     static const char *pattern_dev = " dev=([A-F0-9]*:[A-F0-9]*)";
     if (regcomp(&regexCompiled_dev, pattern_dev, REG_EXTENDED | REG_ICASE)) {
-        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dev");
-        return -1;
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dev"); // LCOV_EXCL_LINE
+        return -1; // LCOV_EXCL_LINE
     }
     return 0;
 }
@@ -1207,6 +1207,7 @@ void * audit_main(int *audit_sock) {
 // LCOV_EXCL_STOP
 
 
+// LCOV_EXCL_START
 void audit_read_events(int *audit_sock, int mode) {
     size_t byteRead;
     char * cache;
@@ -1343,6 +1344,7 @@ void audit_read_events(int *audit_sock, int mode) {
     free(cache);
     free(buffer);
 }
+// LCOV_EXCL_STOP
 
 
 // LCOV_EXCL_START
