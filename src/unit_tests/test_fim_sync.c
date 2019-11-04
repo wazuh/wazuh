@@ -218,8 +218,56 @@ void test_fim_sync_dispatch_id(void **state)
 void test_fim_sync_dispatch_checksum(void **state)
 {
     (void) state;
+    char ** keys = NULL;
+    keys = os_AddStrArray("test", keys);
 
-    char payload[] = "checksum_fail {\"id\":1,\"begin\":1572521857,\"end\":1572521859}";
+    // In fim_sync_checksum_split
+    will_return(__wrap_rbtree_range, keys);
+
+    fim_entry_data *data = calloc(1, sizeof(fim_entry_data));
+    strcpy(data->checksum, "455c1767e123a76d6af511024d2fc883ae656bef");
+
+    will_return(__wrap_rbtree_get, data);
+
+    char * expected = "{\"component\":\"syscheck\",\"type\":\"state\",\"data\":{\"path\":\"test\",\"timestamp\":0,\"attributes\":{\"checksum\":\"455c1767e123a76d6af511024d2fc883ae656bef\"}}}";
+    expect_string(__wrap_fim_send_sync_msg, msg, expected);
+
+    char payload[] = "checksum_fail {\"id\":1,\"begin\":\"test_begin\",\"end\":\"test_end\"}";
+
+    fim_sync_dispatch(payload);
+}
+
+
+void test_fim_sync_dispatch_no_data(void **state)
+{
+    (void) state;
+    char ** keys = NULL;
+    keys = os_AddStrArray("test", keys);
+
+    // In fim_sync_checksum_split
+    will_return(__wrap_rbtree_range, keys);
+
+    fim_entry_data *data = calloc(1, sizeof(fim_entry_data));
+    strcpy(data->checksum, "455c1767e123a76d6af511024d2fc883ae656bef");
+
+    will_return(__wrap_rbtree_get, data);
+
+    char * expected = "{\"component\":\"syscheck\",\"type\":\"state\",\"data\":{\"path\":\"test\",\"timestamp\":0,\"attributes\":{\"checksum\":\"455c1767e123a76d6af511024d2fc883ae656bef\"}}}";
+    expect_string(__wrap_fim_send_sync_msg, msg, expected);
+
+    char payload[] = "no_data {\"id\":1,\"begin\":\"test_begin\",\"end\":\"test_end\"}";
+
+    fim_sync_dispatch(payload);
+}
+
+
+void test_fim_sync_dispatch_unknown(void **state)
+{
+    (void) state;
+    char ** keys = NULL;
+    keys = os_AddStrArray("test", keys);
+
+    char payload[] = "unknown {\"id\":1,\"begin\":\"test_begin\",\"end\":\"test_end\"}";
 
     fim_sync_dispatch(payload);
 }
@@ -239,6 +287,8 @@ int main(void) {
         cmocka_unit_test(test_fim_sync_dispatch_invalid_id),
         cmocka_unit_test(test_fim_sync_dispatch_id),
         cmocka_unit_test(test_fim_sync_dispatch_checksum),
+        cmocka_unit_test(test_fim_sync_dispatch_no_data),
+        cmocka_unit_test(test_fim_sync_dispatch_unknown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
