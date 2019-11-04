@@ -105,3 +105,4 @@
     <!-- Frequency for ACL checking (seconds) -->
     <windows_audit_interval>300</windows_audit_interval>
   </syscheck>
+  
