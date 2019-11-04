@@ -83,6 +83,11 @@ static int delete_entry_data(void **state)
     return 0;
 }
 
+
+char ** __wrap_rbtree_keys() {
+    return mock_type(char **);
+}
+
 /* tests */
 
 static fim_entry_data *fill_entry_struct(
@@ -1371,6 +1376,12 @@ void test_fim_scan(void **state)
 {
     (void) state;
     int ret;
+    Read_Syscheck_Config("test_syscheck.conf");
+
+    char ** keys = malloc(2 * sizeof(char *));
+    keys[0] = NULL;
+
+    will_return(__wrap_rbtree_keys, keys);
 
     will_return_always(__wrap_lstat, 0);
 
