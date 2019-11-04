@@ -72,6 +72,9 @@
         <Property Id="MAJORVERSION" Value="0">
             <RegistrySearch Id="CurrentMajorVersion" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion" Type="raw" Name="CurrentMajorVersionNumber" />
         </Property>
+        <Property Id="BUILDVERSION" Value="0">
+            <RegistrySearch Id="BuildVersion" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion" Type="raw" Name="CurrentBuild" />
+        </Property>
         <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="no" />
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
 
@@ -371,7 +374,7 @@
                     </Component>
                     <Component Id="W2003_CONF" DiskId="1" Guid="C7630770-517D-4DB8-AF2E-D1728CC591BC">
                         <File Id="W2003.ZIP" Name="2003.zip" Source="..\..\etc\templates\config\windows\2003.zip"/>
-                        <Condition>VersionNT64 = 502 AND MsiNTProductType &gt; 1</Condition>
+                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 ) AND MsiNTProductType &gt; 1</Condition>
                     </Component>
                     <Component Id="WVISTA_CONF" DiskId="1" Guid="F7BE2567-235B-42D5-9B3D-2542959B9782">
                         <File Id="WVISTA.ZIP" Name="vista.zip" Source="..\..\etc\templates\config\windows\Vista.zip"/>
@@ -411,7 +414,11 @@
                     </Component>
                     <Component Id="W2016_CONF" DiskId="1" Guid="AE483236-6535-482F-920E-E5E4FE676BAB">
                         <File Id="W2016.ZIP" Name="2016.zip" Source="..\..\etc\templates\config\windows\2016.zip"/>
-                        <Condition>MAJORVERSION = "#10" AND MsiNTProductType &gt; 1</Condition>
+                        <Condition>BUILDVERSION = "14393" AND MsiNTProductType &gt; 1</Condition>
+                    </Component>
+                    <Component Id="W2019_CONF" DiskId="1" Guid="30193667-01B6-4586-8E4E-66D4EBC1B667">
+                        <File Id="W2019.ZIP" Name="2019.zip" Source="..\..\etc\templates\config\windows\2019.zip"/>
+                        <Condition>BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Condition>
                     </Component>
                     <Directory Id="ACTIVE_RESPONSE" Name="active-response">
                         <Directory Id="BIN" Name="bin">
@@ -660,6 +667,7 @@
             <ComponentRef Id="W2012R2_CONF" />
             <ComponentRef Id="W10_CONF" />
             <ComponentRef Id="W2016_CONF" />
+            <ComponentRef Id="W2019_CONF" />
         </Feature>
         <MajorUpgrade Schedule="afterInstallExecute" AllowDowngrades="yes" />
     </Product>
