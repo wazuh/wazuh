@@ -815,13 +815,15 @@ class AWSBucket(WazuhIntegration):
             print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
             sys.exit(7)
 
-    def check_empty_bucket(self):
-        """
-        Exits if the bucket is empty
-        """
-        if not 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter='/'):
-            print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
-            exit(14)
+    def check_bucket(self):
+        """Check if the bucket is empty or the credentials are wrong."""
+        try:
+            if not 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter='/'):
+                print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
+                exit(14)
+        except botocore.exceptions.ClientError:
+            print("ERROR: Invalid credentials to access S3 Bucket")
+            exit(3)
 
 
 class AWSLogsBucket(AWSBucket):
@@ -881,7 +883,7 @@ class AWSLogsBucket(AWSBucket):
                                                 Delimiter='/')['CommonPrefixes']
                     ]
         except KeyError as err:
-            bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'custom'}
+            bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'waf', 'custom'}
             print("ERROR: Invalid type of bucket. The bucket was set up as '{}' type and this bucket does not contain log files from this type. Try with other type: {}".format(get_script_arguments().type.lower(), bucket_types - {get_script_arguments().type.lower()}))
             sys.exit(12)
 
@@ -1943,6 +1945,28 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             yield event
 
 
+class AWSWAFBucket(AWSCustomBucket):
+
+    def __init__(self, **kwargs):
+        db_table_name = 'waf'
+        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+
+    def load_information_from_file(self, log_key):
+        """Load data from a WAF log file."""
+        content = []
+        with self.decompress_file(log_key=log_key) as f:
+            for line in f.readlines():
+                try:
+                    event = json.loads(line.rstrip())
+                except json.JSONDecodeError:
+                    print("ERROR: Events from {} file could not be loaded.".format(log_key.split('/')[-1]))
+                    sys.exit(9)
+                event['source'] = 'waf'
+                content.append(event)
+
+        return json.loads(json.dumps(content))
+
+
 class AWSService(WazuhIntegration):
     """
     Class for getting AWS Services logs from API calls
@@ -2254,6 +2278,8 @@ def main(argv):
                 bucket_type = AWSCustomBucket
             elif options.type.lower() == 'guardduty':
                 bucket_type = AWSGuardDutyBucket
+            elif options.type.lower() == 'waf':
+                bucket_type = AWSWAFBucket
             else:
                 raise Exception("Invalid type of bucket")
             bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,
@@ -2269,8 +2295,8 @@ def main(argv):
                                  aws_organization_id=options.aws_organization_id,
                                  region=options.regions[0] if options.regions else None
                                  )
-            # check if bucket is empty
-            bucket.check_empty_bucket()
+            # check if bucket is empty or credentials are wrong
+            bucket.check_bucket()
             bucket.iter_bucket(options.aws_account_id, options.regions)
         elif options.service:
             if options.service.lower() == 'inspector':
