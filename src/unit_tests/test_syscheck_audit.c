@@ -140,8 +140,9 @@ int __wrap_W_Vector_insert_unique()
     return mock();
 }
 
-int __wrap_SendMSG()
+int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc)
 {
+    check_expected(message);
     return 1;
 }
 
@@ -486,6 +487,35 @@ void test_add_audit_rules_syscheck_added(void **state)
 }
 
 
+void test_add_audit_rules_syscheck_max(void **state)
+{
+    (void) state;
+
+    char *entry = "/var/test";
+    syscheck.dir = calloc(2, sizeof(char *));
+    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
+    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
+    syscheck.opts = calloc(2, sizeof(int *));
+    syscheck.opts[0] |= WHODATA_ACTIVE;
+    syscheck.max_audit_entries = 3;
+
+    // Read loaded rules in Audit
+    will_return(__wrap_audit_get_rule_list, 5);
+
+    // Audit added rules
+    will_return(__wrap_W_Vector_length, 3);
+
+    int ret;
+    ret = add_audit_rules_syscheck(1);
+
+    free(syscheck.dir[0]);
+    free(syscheck.dir);
+    free(syscheck.opts);
+
+    assert_int_equal(ret, 0);
+}
+
+
 void test_filterkey_audit_events_custom(void **state)
 {
     (void) state;
@@ -675,7 +705,7 @@ void test_audit_parse(void **state)
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->process_name, "74657374C3B1");
-    expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/test");
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test");
     expect_value(__wrap_fim_whodata_event, w_evt->audit_uid, 0);
     expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->inode, "19");
@@ -730,12 +760,64 @@ void test_audit_parse_delete(void **state)
     char * buffer = "type=CONFIG_CHANGE msg=audit(1571920603.069:3004276): auid=0 ses=5 op=remove_rule key=\"wazuh_fim\" list=4 res=1";
 
     // In audit_reload_rules()
+    char *entry = "/var/test";
+    syscheck.dir = calloc (2, sizeof(char *));
+    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
+    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
+    syscheck.opts = calloc (2, sizeof(int *));
+    syscheck.opts[0] |= WHODATA_ACTIVE;
+    syscheck.max_audit_entries = 100;
+
+    // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 5);
+
+    // Audit added rules
     will_return(__wrap_W_Vector_length, 3);
+
+    // Rule already not added
     will_return(__wrap_search_audit_rule, 1);
+
+    // Add rule
     will_return(__wrap_W_Vector_insert_unique, 1);
 
+    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+
     audit_parse(buffer);
+}
+
+
+void test_audit_parse_delete_recursive(void **state)
+{
+    (void) state;
+
+    char * buffer = "type=CONFIG_CHANGE msg=audit(1571920603.069:3004276): auid=0 ses=5 op=remove_rule key=\"wazuh_fim\" list=4 res=1";
+
+    // In audit_reload_rules()
+    char *entry = "/var/test";
+    syscheck.dir = calloc (2, sizeof(char *));
+    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
+    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
+    syscheck.opts = calloc (2, sizeof(int *));
+    syscheck.opts[0] |= WHODATA_ACTIVE;
+    syscheck.max_audit_entries = 100;
+
+    // Read loaded rules in Audit
+    will_return_count(__wrap_audit_get_rule_list, 5, -1);
+
+    // Audit added rules
+    will_return_count(__wrap_W_Vector_length, 3, -1);
+
+    // Rule already not added
+    will_return_count(__wrap_search_audit_rule, 5, -1);
+
+    expect_string_count(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed", 4);
+    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+
+    int i;
+    for (i = 0; i < 4; i++) {
+        audit_parse(buffer);
+    }
+
 }
 
 
@@ -751,6 +833,35 @@ void test_audit_parse_mv(void **state)
         type=PATH msg=audit(1571925844.299:3004308): item=2 name=\"./test\" inode=28 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
         type=PATH msg=audit(1571925844.299:3004308): item=3 name=\"folder/test\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
         type=PATH msg=audit(1571925844.299:3004308): item=4 name=\"folder/test\" inode=28 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=CREATE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PROCTITLE msg=audit(1571925844.299:3004308): proctitle=6D76002E2F7465737400666F6C646572 \
+    ";
+
+    expect_value(__wrap_fim_whodata_event, w_evt->process_id, 52277);
+    expect_string(__wrap_fim_whodata_event, w_evt->user_id, "30");
+    expect_string(__wrap_fim_whodata_event, w_evt->group_id, "40");
+    expect_string(__wrap_fim_whodata_event, w_evt->process_name, "/usr/bin/mv");
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/folder/test");
+    expect_string(__wrap_fim_whodata_event, w_evt->audit_uid, "20");
+    expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "50");
+    expect_string(__wrap_fim_whodata_event, w_evt->inode, "28");
+    expect_value(__wrap_fim_whodata_event, w_evt->ppid, 3210);
+
+    audit_parse(buffer);
+}
+
+
+void test_audit_parse_mv_hex(void **state)
+{
+    (void) state;
+
+    char * buffer = " \
+        type=SYSCALL msg=audit(1571925844.299:3004308): arch=c000003e syscall=82 success=yes exit=0 a0=7ffdbb76377e a1=556c16f6c2e0 a2=0 a3=100 items=5 ppid=3210 pid=52277 auid=20 uid=30 gid=40 euid=50 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"mv\" exe=\"/usr/bin/mv\" key=\"wazuh_fim\" \
+        type=CWD msg=audit(1571925844.299:3004308): cwd=\"/root/test\" \
+        type=PATH msg=audit(1571925844.299:3004308): item=0 name=\"./\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PATH msg=audit(1571925844.299:3004308): item=1 name=\"folder/\" inode=24 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PATH msg=audit(1571925844.299:3004308): item=2 name=\"./test\" inode=28 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PATH msg=audit(1571925844.299:3004308): item=3 name=666F6C6465722F74657374 inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PATH msg=audit(1571925844.299:3004308): item=4 name=666F6C6465722F74657374 inode=28 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=CREATE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
         type=PROCTITLE msg=audit(1571925844.299:3004308): proctitle=6D76002E2F7465737400666F6C646572 \
     ";
 
@@ -820,6 +931,115 @@ void test_audit_parse_chmod(void **state)
 }
 
 
+void test_audit_parse_rm_hc(void **state)
+{
+    (void) state;
+
+    char * buffer = " \
+        type=SYSCALL msg=audit(1571988027.797:3004340): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55578e6d8490 a2=200 a3=7f9cd931bca0 items=3 ppid=3211 pid=56650 auid=2 uid=30 gid=5 euid=2 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"rm\" exe=\"/usr/bin/rm\" key=\"wazuh_hc\" \
+        type=CWD msg=audit(1571988027.797:3004340): cwd=\"/root/test\" \
+        type=PATH msg=audit(1571988027.797:3004340): item=0 name=\"/root/test\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PATH msg=audit(1571988027.797:3004340): item=1 name=(null) inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PATH msg=audit(1571988027.797:3004340): item=2 name=(null) inode=24 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PROCTITLE msg=audit(1571988027.797:3004340): proctitle=726D002D726600666F6C6465722F \
+    ";
+
+    audit_parse(buffer);
+}
+
+
+void test_audit_parse_add_hc(void **state)
+{
+    (void) state;
+
+    char * buffer = " \
+        type=SYSCALL msg=audit(1571988027.797:3004340): arch=c000003e syscall=257 success=yes exit=0 a0=ffffff9c a1=55578e6d8490 a2=200 a3=7f9cd931bca0 items=3 ppid=3211 pid=56650 auid=2 uid=30 gid=5 euid=2 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"touch\" exe=\"/usr/bin/touch\" key=\"wazuh_hc\" \
+        type=CWD msg=audit(1571988027.797:3004340): cwd=\"/root/test\" \
+        type=PATH msg=audit(1571988027.797:3004340): item=0 name=\"/root/test\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PATH msg=audit(1571988027.797:3004340): item=1 name=(null) inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PATH msg=audit(1571988027.797:3004340): item=2 name=(null) inode=24 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PROCTITLE msg=audit(1571988027.797:3004340): proctitle=726D002D726600666F6C6465722F \
+    ";
+
+    audit_parse(buffer);
+}
+
+
+void test_audit_parse_unknown_hc(void **state)
+{
+    (void) state;
+
+    char * buffer = " \
+        type=SYSCALL msg=audit(1571988027.797:3004340): arch=c000003e syscall=90 success=yes exit=0 a0=ffffff9c a1=55578e6d8490 a2=200 a3=7f9cd931bca0 items=3 ppid=3211 pid=56650 auid=2 uid=30 gid=5 euid=2 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"chmod\" exe=\"/usr/bin/chmod\" key=\"wazuh_hc\" \
+        type=CWD msg=audit(1571988027.797:3004340): cwd=\"/root/test\" \
+        type=PATH msg=audit(1571988027.797:3004340): item=0 name=\"/root/test\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PATH msg=audit(1571988027.797:3004340): item=1 name=(null) inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PATH msg=audit(1571988027.797:3004340): item=2 name=(null) inode=24 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PROCTITLE msg=audit(1571988027.797:3004340): proctitle=726D002D726600666F6C6465722F \
+    ";
+
+    audit_parse(buffer);
+}
+
+
+void test_audit_parse_delete_folder(void **state)
+{
+    (void) state;
+
+    char * buffer = " \
+        type=CONFIG_CHANGE msg=audit(1572878838.610:220): op=remove_rule dir=\"/root/test\" key=\"wazuh_fim\" list=4 res=1 \
+        type=SYSCALL msg=audit(1572878838.610:220): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c2b7d7f490 a2=200 a3=7f2b8055bca0 items=2 ppid=4340 pid=62845 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=7 comm=\"rm\" exe=\"/usr/bin/rm\" key=(null) \
+        type=CWD msg=audit(1572878838.610:220): cwd=\"/root\" \
+        type=PATH msg=audit(1572878838.610:220): item=0 name=\"/root\" inode=655362 dev=08:02 mode=040700 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PATH msg=audit(1572878838.610:220): item=1 name=\"test\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PROCTITLE msg=audit(1572878838.610:220): proctitle=726D002D72660074657374 \
+    ";
+
+    expect_value(__wrap_fim_whodata_event, w_evt->process_id, 62845);
+    expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
+    expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
+    expect_string(__wrap_fim_whodata_event, w_evt->process_name, "/usr/bin/rm");
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test");
+    expect_string(__wrap_fim_whodata_event, w_evt->audit_uid, "0");
+    expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "0");
+    expect_string(__wrap_fim_whodata_event, w_evt->inode, "110");
+    expect_value(__wrap_fim_whodata_event, w_evt->ppid, 4340);
+
+    expect_string(__wrap_SendMSG, message, "ossec: Audit: Monitored directory was removed: Audit rule removed");
+
+    audit_parse(buffer);
+}
+
+
+void test_audit_parse_delete_folder_hex(void **state)
+{
+    (void) state;
+
+    char * buffer = " \
+        type=CONFIG_CHANGE msg=audit(1572878838.610:220): op=remove_rule dir=2F726F6F742F746573742F74657374C3B1 key=\"wazuh_fim\" list=4 res=1 \
+        type=SYSCALL msg=audit(1572878838.610:220): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c2b7d7f490 a2=200 a3=7f2b8055bca0 items=2 ppid=4340 pid=62845 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=7 comm=\"rm\" exe=\"/usr/bin/rm\" key=(null) \
+        type=CWD msg=audit(1572878838.610:220): cwd=\"/root\" \
+        type=PATH msg=audit(1572878838.610:220): item=0 name=\"/root\" inode=655362 dev=08:02 mode=040700 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PATH msg=audit(1572878838.610:220): item=1 name=\"test\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
+        type=PROCTITLE msg=audit(1572878838.610:220): proctitle=726D002D72660074657374 \
+    ";
+
+    expect_value(__wrap_fim_whodata_event, w_evt->process_id, 62845);
+    expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
+    expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
+    expect_string(__wrap_fim_whodata_event, w_evt->process_name, "/usr/bin/rm");
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test");
+    expect_string(__wrap_fim_whodata_event, w_evt->audit_uid, "0");
+    expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "0");
+    expect_string(__wrap_fim_whodata_event, w_evt->inode, "110");
+    expect_value(__wrap_fim_whodata_event, w_evt->ppid, 4340);
+
+    expect_string(__wrap_SendMSG, message, "ossec: Audit: Monitored directory was removed: Audit rule removed");
+
+    audit_parse(buffer);
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_check_auditd_enabled),
@@ -835,6 +1055,7 @@ int main(void) {
         cmocka_unit_test(test_init_regex),
         cmocka_unit_test(test_add_audit_rules_syscheck_added),
         cmocka_unit_test(test_add_audit_rules_syscheck_not_added),
+        cmocka_unit_test(test_add_audit_rules_syscheck_max),
         cmocka_unit_test(test_filterkey_audit_events_custom),
         cmocka_unit_test(test_filterkey_audit_events_discard),
         cmocka_unit_test(test_filterkey_audit_events_fim),
@@ -849,9 +1070,16 @@ int main(void) {
         cmocka_unit_test(test_audit_parse),
         cmocka_unit_test(test_audit_parse_hex),
         cmocka_unit_test(test_audit_parse_delete),
+        cmocka_unit_test(test_audit_parse_delete_recursive),
         cmocka_unit_test(test_audit_parse_mv),
+        cmocka_unit_test(test_audit_parse_mv_hex),
         cmocka_unit_test(test_audit_parse_rm),
         cmocka_unit_test(test_audit_parse_chmod),
+        cmocka_unit_test(test_audit_parse_rm_hc),
+        cmocka_unit_test(test_audit_parse_add_hc),
+        cmocka_unit_test(test_audit_parse_unknown_hc),
+        cmocka_unit_test(test_audit_parse_delete_folder),
+        cmocka_unit_test(test_audit_parse_delete_folder_hex),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
