@@ -1333,7 +1333,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         } /* Allow prefilter cmd */
         else if (strcmp(node[i]->element, xml_allow_prefilter_cmd) == 0) {
             if (modules & CAGENT_CONFIG) {
-                mwarn("'%s' option can't be set from the manager.", xml_allow_prefilter_cmd);
+                mwarn("'%s' option can't be changed using centralized configuration (agent.conf).", xml_allow_prefilter_cmd);
                 i++;
                 continue;
             }
