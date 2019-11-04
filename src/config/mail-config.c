@@ -98,18 +98,11 @@ void freeMailConfig(MailConfig *mailConfig) {
         os_free(mailConfig->idsname);
         os_free(mailConfig->smtpserver);
         os_free(mailConfig->heloserver);
-        if(mailConfig->to) {
-            for (i = 0; mailConfig->to[i]; i++) {
-                free(mailConfig->to[i]);
-            }
-            free(mailConfig->to);
-        }
-
         os_free(mailConfig->gran_level);
         os_free(mailConfig->gran_set);
         os_free(mailConfig->gran_format);
         if(mailConfig->gran_id) {
-            for (i = 0;mailConfig->gran_id[i]; i++) {
+            for (i = 0; mailConfig->gran_id[i]; i++) {
                 free(mailConfig->gran_id[i]);
             }
             free(mailConfig->gran_id);

@@ -281,7 +281,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
     if (output) {
         if (Mail){
             if(Mail->to) {
-                for(i = 0; Mail->to[j]; j++) {
+                for(j = 0; Mail->to[j]; j++) {
                     free(Mail->to[j]);
                 }
                 free(Mail->to);
