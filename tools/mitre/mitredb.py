@@ -101,7 +101,7 @@ def create_delete_tables(conn):
     # Create has_platform table
     table_stmt(conn, sql_create_has_platform)
 
-def insert_attack_table(conn, id, json_object):
+def insert_attack_table(conn, id, json_object, database):
     """ 
     Insert to Mitre 'attack' table from Mitre ID technique and its JSON object. 
 
@@ -119,8 +119,12 @@ def insert_attack_table(conn, id, json_object):
         conn.commit()
     except Error as e:
         print(e)
+        print("Deleting "+database)
+        conn.close()
+        os.remove(database)
+        sys.exit(1)
 
-def insert_phase_table(conn, attack_id, phase_name):
+def insert_phase_table(conn, attack_id, phase_name, database):
     """ 
     Insert to Mitre 'phase' table from Mitre ID technique and its phase/tactic. It is posible that one ID has more than one phase/tactic associated.
 
@@ -138,8 +142,12 @@ def insert_phase_table(conn, attack_id, phase_name):
         conn.commit()
     except Error as e:
         print(e)
+        print("Deleting "+database)
+        conn.close()
+        os.remove(database)
+        sys.exit(1)
         
-def insert_platform_table(conn, attack_id, platform_name):
+def insert_platform_table(conn, attack_id, platform_name, database):
     """ 
     Insert to Mitre 'plaftform' table from Mitre ID technique and its platform. It is posible that one ID has more than one platform associated.
 
@@ -157,8 +165,12 @@ def insert_platform_table(conn, attack_id, platform_name):
         conn.commit()
     except Error as e:
         print(e)
+        print("Deleting "+database)
+        conn.close()
+        os.remove(database)
+        sys.exit(1)
 
-def parse_json(pathfile, conn):
+def parse_json(pathfile, conn, database):
     """ 
     Parse enterprise-attack.json and fill mitre.db's tables.
 
@@ -188,23 +200,37 @@ def parse_json(pathfile, conn):
                     string_object = json.dumps(data_object)
 
                     # Fill the attack table 
-                    insert_attack_table(conn, string_id, string_object)
+                    insert_attack_table(conn, string_id, string_object, database)
                     
                     # Fill the phase table
                     n = len(data_object['kill_chain_phases'])
                     for i in range (0,n):
                         string_phase = json.dumps(data_object['kill_chain_phases'][i]['phase_name']).replace('"', '')
-                        insert_phase_table(conn, string_id, string_phase)
+                        insert_phase_table(conn, string_id, string_phase, database)
                     
                     # Fill the platform table
                     for platform in data_object['x_mitre_platforms']:
                         string_platform = json.dumps(platform).replace('"', '')
-                        insert_platform_table(conn,string_id, string_platform)
+                        insert_platform_table(conn,string_id, string_platform, database)
 
-    except TypeError as e:
-        print("Mitre JSON File not found")
-    except KeyError as err:
-        print("JSON Item not found: ")
+    except TypeError as t_e:
+        print(t_e)
+        print("Deleting "+database)
+        conn.close()
+        os.remove(database)
+        sys.exit(1)
+    except KeyError as k_e:
+        print(k_e)
+        print("Deleting "+database)
+        conn.close()
+        os.remove(database)
+        sys.exit(1)
+    except NameError as n_e:
+        print(n_e)
+        print("Deleting "+database)
+        conn.close()
+        os.remove(database)
+        sys.exit(1)
 
 def find(name, path):
     for root, dirs, files in os.walk(path):
@@ -236,7 +262,7 @@ def main(database=None):
         print("Error! Cannot create the database connection.")
     
     # Parse enterprise-attack.json file:
-    parse_json(pathfile, conn)
+    parse_json(pathfile, conn, database)
 
     # User and group permissions        
     os.chmod(database, 0o660)
