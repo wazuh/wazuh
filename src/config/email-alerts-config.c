@@ -16,8 +16,8 @@
 int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void *mailp, char **output)
 {
     int i = 0;
-    unsigned int granto_size = 0;
-    unsigned int granto_email_counter = 0;
+    int granto_size = 0;
+    int granto_email_counter = 0;
     char  message[OS_FLSIZE];
 
     /* XML definitions */
