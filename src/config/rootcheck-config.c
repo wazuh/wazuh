@@ -64,20 +64,13 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
     rootcheck = (rkconfig *)configp;
 
     if (output && rootcheck){
-        if (rootcheck->rootkit_files)
-            free(rootcheck->rootkit_files);
-        if (rootcheck->rootkit_trojans)
-            free(rootcheck->rootkit_trojans);
-        if (rootcheck->winaudit)
-            free(rootcheck->winaudit);
-        if (rootcheck->unixaudit)
-            free(rootcheck->unixaudit);
-        if (rootcheck->winmalware)
-            free(rootcheck->winmalware);
-        if (rootcheck->winapps)
-            free(rootcheck->winapps);
-        if (rootcheck->basedir)
-            free(rootcheck->basedir);
+        os_free(rootcheck->rootkit_files);
+        os_free(rootcheck->rootkit_trojans);
+        os_free(rootcheck->winaudit);
+        os_free(rootcheck->unixaudit);
+        os_free(rootcheck->winmalware);
+        os_free(rootcheck->winapps);
+        os_free(rootcheck->basedir);
     }
 
     /* If rootcheck is defined, enable it by default */
@@ -184,15 +177,11 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
             }
         } else if (strcmp(node[i]->element, xml_rootkit_files) == 0) {
             rootcheck->checks.rc_files = 1;
-            if (rootcheck->rootkit_files) {
-                free(rootcheck->rootkit_files);
-            }
+            os_free(rootcheck->rootkit_files);
             os_strdup(node[i]->content, rootcheck->rootkit_files);
         } else if (strcmp(node[i]->element, xml_rootkit_trojans) == 0) {
             rootcheck->checks.rc_trojans = 1;
-            if (rootcheck->rootkit_trojans) {
-                free(rootcheck->rootkit_trojans);
-            }
+            os_free(rootcheck->rootkit_trojans);
             os_strdup(node[i]->content, rootcheck->rootkit_trojans);
         } else if (strcmp(node[i]->element, xml_winaudit) == 0) {
 #ifdef WIN32

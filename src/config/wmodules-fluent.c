@@ -265,7 +265,6 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
             }
 
             os_free(fluent->user_name);
-
             os_strdup(nodes[i]->content,fluent->user_name);
         }
         else if (!strcmp(nodes[i]->element, XML_PASSWORD))

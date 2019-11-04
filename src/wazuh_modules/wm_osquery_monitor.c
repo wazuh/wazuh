@@ -630,17 +630,17 @@ void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor)
 
     if (osquery_monitor)
     {
-        free(osquery_monitor->bin_path);
-        free(osquery_monitor->log_path);
-        free(osquery_monitor->config_path);
+        os_free(osquery_monitor->bin_path);
+        os_free(osquery_monitor->log_path);
+        os_free(osquery_monitor->config_path);
 
         for (i = 0; osquery_monitor->packs[i]; ++i) {
-            free(osquery_monitor->packs[i]->name);
-            free(osquery_monitor->packs[i]->path);
+            os_free(osquery_monitor->packs[i]->name);
+            os_free(osquery_monitor->packs[i]->path);
             free(osquery_monitor->packs[i]);
         }
 
-        free(osquery_monitor->packs);
+        os_free(osquery_monitor->packs);
         free(osquery_monitor);
     }
 }

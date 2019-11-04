@@ -309,6 +309,6 @@ void free_csyslog_holder(struct SyslogConfig_holder * config) {
                 free(config->data[i]);
             }
         }
-        os_free(config->data);
+        free(config->data);
     }
 }

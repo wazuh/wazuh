@@ -36,7 +36,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
 
     if (output && Config->syscheck_ignore) {
         for(j = 0; Config->syscheck_ignore[j]; j++){
-            os_free(Config->syscheck_ignore[j]);
+            free(Config->syscheck_ignore[j]);
         }
     }
 
@@ -282,34 +282,23 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
         if (Mail){
             if(Mail->to) {
                 for(i = 0; Mail->to[j]; j++) {
-                    os_free(Mail->to[j]);
+                    free(Mail->to[j]);
                 }
-                os_free(Mail->to);
+                free(Mail->to);
             }
-            if (Mail->from)
-                os_free(Mail->from);
-            if (Mail->reply_to)
-                os_free(Mail->reply_to);
-            if (Mail->idsname)
-                os_free(Mail->idsname);
-            if (Mail->smtpserver)
-                os_free (Mail->smtpserver);
-            if (Mail->heloserver)
-                os_free(Mail->heloserver);
+            os_free(Mail->from);
+            os_free(Mail->reply_to);
+            os_free(Mail->idsname);
+            os_free (Mail->smtpserver);
+            os_free(Mail->heloserver);
         }
         if (Config) {
-            if (Config->custom_alert_output_format)
-                os_free(Config->custom_alert_output_format);
-            if (Config->geoipdb_file)
-                os_free(Config->geoipdb_file);
-            if (Config->prelude_profile)
-                os_free(Config->prelude_profile);
-            if (Config->zeromq_output_uri)
-                os_free(Config->zeromq_output_uri);
-            if (Config->zeromq_output_server_cert)
-                os_free(Config->zeromq_output_server_cert);
-            if (Config->zeromq_output_client_cert)
-                os_free(Config->zeromq_output_client_cert);
+            os_free(Config->custom_alert_output_format);
+            os_free(Config->geoipdb_file);
+            os_free(Config->prelude_profile);
+            os_free(Config->zeromq_output_uri);
+            os_free(Config->zeromq_output_server_cert);
+            os_free(Config->zeromq_output_client_cert);
         }
     }
 
@@ -761,9 +750,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
         } else if (strcmp(node[i]->element, xml_smtpserver) == 0) {
 #ifndef WIN32
             if (Mail) {
-                if (Mail->smtpserver) {
-                    free(Mail->smtpserver);
-                }
+                os_free(Mail->smtpserver);
                 os_strdup(node[i]->content, Mail->smtpserver);
             }
 #endif
@@ -1023,38 +1010,34 @@ void config_free(_Config *config) {
     }
 
     if (config->white_list) {
-        int i = 0;
-        while (config->white_list[i]) {
-            free(config->white_list[i]->ip);
+        int i;
+        for (i = 0; config->white_list[i]; i++) {
+            os_free(config->white_list[i]->ip);
             free (config->white_list[i]);
-            i++;
         }
         free(config->white_list);
     }
 
     if (config->includes) {
-        int i = 0;
-        while (config->includes[i]) {
+        int i;
+        for (i = 0; config->includes[i]; i++) {
             free(config->includes[i]);
-            i++;
         }
         free(config->includes);
     }
 
     if (config->lists) {
-        int i = 0;
-        while (config->lists[i]) {
+        int i;
+        for (i = 0; config->lists[i]; i++) {
             free(config->lists[i]);
-            i++;
         }
         free(config->lists);
     }
 
     if (config->decoders) {
-        int i = 0;
-        while (config->decoders[i]) {
+        int i;
+        for (i = 0; config->decoders[i]; i++) {
             free(config->decoders[i]);
-            i++;
         }
         free(config->decoders);
     }
@@ -1064,22 +1047,17 @@ void config_free(_Config *config) {
     }
 
     if (config->hostname_white_list) {
-        int i = 0;
-        while (config->hostname_white_list[i]) {
+        int i;
+        for (i = 0; config->hostname_white_list[i]; i++) {
             OSMatch_FreePattern(config->hostname_white_list[i]);
             free(config->hostname_white_list[i]);
-            i++;
         }
         free(config->hostname_white_list);
     }
 
 #ifdef LIBGEOIP_ENABLED
-    if (config->geoip_db_path) {
-        free(config->geoip_db_path);
-    }
-    if (config->geoip6_db_path) {
-        free(config->geoip6_db_path);
-    }
+        os_free(config->geoip_db_path);
+        os_free(config->geoip6_db_path);
 #endif
 
     labels_free(config->labels); /* null-ended label set */

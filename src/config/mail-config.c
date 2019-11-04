@@ -130,7 +130,7 @@ void freeMailConfig(MailConfig *mailConfig) {
         }
 
         if(mailConfig->gran_group) {
-            forr (i = 0; mailConfig->gran_group[i]; i++) {
+            for (i = 0; mailConfig->gran_group[i]; i++) {
                 os_free(mailConfig->gran_group[i]);
             }
             free(mailConfig->gran_group);
