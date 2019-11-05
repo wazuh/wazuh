@@ -228,7 +228,7 @@ def environment_white_decoders_rbac():
             break
         else:
             values['retries'] += 1
-    # down_env()
+    down_env()
 
 
 @pytest.fixture(name="decoders_black_rbac_tests", scope="session")

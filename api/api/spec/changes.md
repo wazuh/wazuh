@@ -169,18 +169,21 @@ in `dapi_errors` key
 ## Decoders
 ### GET /decoders
 * In response, `regex` key is now an array
-
-### GET /decoders/{decoders_name}
-* In response, `regex` key is now an array
+* The response has been changed to the new RBAC generic response
+* Now this endpoint can receive a list of names as parameter
 
 ### GET /decoders/files
 * Parameter **download** removed
+* Now this endpoint can receive a list of filenames as parameter
+* The response has been changed to the new RBAC generic response
 
 ### GET /decoders/files/{file_id}/download
 * This endpoint provides the functionality of GET /decoders/files with the old removed **download** param 
+* The response has been changed to the new RBAC generic response 
 
 ### GET /decoders/parents
 * In response, `regex` key is now an array
+* The response has been changed to the new RBAC generic response
 
 ## Experimental
 ### General
