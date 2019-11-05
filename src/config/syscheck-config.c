@@ -1582,10 +1582,10 @@ void set_linked_path(syscheck_config *syscheck, const char *entry, int position)
 }
 #endif
 
-int MB_to_B(int value) {
+size_t MB_to_B(size_t value) {
     return value * 1024 * 1024;
 }
 
-int B_to_MB(int value) {
+size_t B_to_MB(size_t value) {
     return value / 1024 / 1024;
 }
