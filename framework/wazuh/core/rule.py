@@ -136,40 +136,46 @@ def _remove_files(tmp_data, parameters):
         for key, value in parameters.items():
             if key == 'status':
                 value and value != Status.S_ALL.value and value != d[key] and data.remove(d)
-            elif value and value != d[key]:
+            elif value and value != d[key] and d in data:
                 data.remove(d)
 
     return data
 
 
-def _create_rule_dir_dict(ruleset_conf, tag, exclude_filenames, data):
+def item_format(data, all_items, exclude_filenames):
+    for item in glob(all_items):
+        item_name = os.path.basename(item)
+        item_dir = os.path.relpath(os.path.dirname(item), start=common.ossec_path)
+        item_status = Status.S_DISABLED.value if item_name in exclude_filenames else Status.S_ENABLED.value
+        data.append({'file': item_name, 'path': item_dir, 'status': item_status})
+
+
+def _create_rule_decoder_dir_dict(ruleset_conf, tag, exclude_filenames, data):
     items = ruleset_conf[tag] if type(ruleset_conf[tag]) is list else [ruleset_conf[tag]]
     for item_dir in items:
         all_rules = f"{common.ossec_path}/{item_dir}/*.xml"
-        for item in glob(all_rules):
-            item_name = os.path.basename(item)
-            item_dir = os.path.relpath(os.path.dirname(item), start=common.ossec_path)
-            item_status = Status.S_DISABLED.value if item_name in exclude_filenames else Status.S_ENABLED.value
-            data.append({'file': item_name, 'path': item_dir, 'status': item_status})
+        item_format(data, all_rules, exclude_filenames)
 
 
-def _create_rule_dict(ruleset_conf, tag, exclude_filenames, data):
-    item_status = Status.S_DISABLED.value if tag == 'rule_exclude' else Status.S_ENABLED.value
+def _create_dict(ruleset_conf, tag, exclude_filenames, data):
+    item_status = Status.S_DISABLED.value if tag == 'rule_exclude' or tag == 'decoder_exclude' \
+        else Status.S_ENABLED.value
     items = ruleset_conf[tag] if type(ruleset_conf[tag]) is list else [ruleset_conf[tag]]
     for item in items:
         item_name = os.path.basename(item)
         full_dir = os.path.dirname(item)
         item_dir = os.path.relpath(full_dir if full_dir else common.ruleset_rules_path, start=common.ossec_path)
-        exclude_filenames.append(item_name) if tag == 'rule_exclude' else \
+        exclude_filenames.append(item_name) if tag == 'rule_exclude' or tag == 'decoder_exclude' else \
             data.append({'file': item_name, 'path': item_dir, 'status': item_status})
 
 
-def format_rule_file(ruleset_conf, parameters):
+def format_rule_decoder_file(ruleset_conf, parameters, tags):
     tmp_data, exclude_filenames = list(), list()
-    tags = ['rule_include', 'rule_exclude', 'rule_dir']
     for tag in tags:
         if tag in ruleset_conf:
-            _create_rule_dir_dict(ruleset_conf, tag, exclude_filenames, tmp_data) if tag == 'rule_dir' else\
-                _create_rule_dict(ruleset_conf, tag, exclude_filenames, tmp_data)
+            if tag == 'rule_dir' or tag == 'decoder_dir':
+                _create_rule_decoder_dir_dict(ruleset_conf, tag, exclude_filenames, tmp_data)
+            else:
+                _create_dict(ruleset_conf, tag, exclude_filenames, tmp_data)
 
     return _remove_files(tmp_data, parameters)

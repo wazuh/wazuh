@@ -40,6 +40,8 @@ FROM base_agent AS wazuh-env-agent-agents_white_rbac
 FROM base_agent AS wazuh-env-agent-agents_black_rbac
 FROM base_agent AS wazuh-env-agent-rules_white_rbac
 FROM base_agent AS wazuh-env-agent-rules_black_rbac
+FROM base_agent AS wazuh-env-agent-decoders_white_rbac
+FROM base_agent AS wazuh-env-agent-decoders_black_rbac
 
 FROM wazuh-env-agent-${ENVIRONMENT}
 
