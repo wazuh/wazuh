@@ -82,12 +82,29 @@ void test_is_nodiff_regex_false(void **state)
 }
 
 
+void test_is_nodiff_no_nodiff(void **state)
+{
+    (void) state;
+    int ret;
+
+    syscheck.nodiff = NULL;
+    syscheck.nodiff_regex = NULL;
+
+    const char * file_name = "test.file";
+
+    ret = is_nodiff(file_name);
+
+    assert_int_equal(ret, 0);
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_is_nodiff_true),
         cmocka_unit_test(test_is_nodiff_false),
         cmocka_unit_test(test_is_nodiff_regex_true),
         cmocka_unit_test(test_is_nodiff_regex_false),
+        cmocka_unit_test(test_is_nodiff_no_nodiff),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
