@@ -398,7 +398,7 @@
                     </Component>
                     <Component Id="W2012_CONF" DiskId="1" Guid="219CDD35-E92D-44C2-83B5-6DC8482F47A6">
                         <File Id="W2012.ZIP" Name="2012.zip" Source="..\..\etc\templates\config\windows\2012.zip"/>
-                        <Condition>VersionNT64 = 602 AND MsiNTProductType = 1</Condition>
+                        <Condition>VersionNT64 = 602 AND MsiNTProductType &gt; 1</Condition>
                     </Component>
                     <Component Id="W8.1_CONF" DiskId="1" Guid="8EEF6A3C-9B13-4A9D-B7D3-16F88CCDAE8C">
                         <File Id="W8.1.ZIP" Name="8.1.zip" Source="..\..\etc\templates\config\windows\8.1.zip"/>
