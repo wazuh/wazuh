@@ -49,6 +49,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.reg_fp         = NULL;
 #endif
     syscheck.prefilter_cmd  = NULL;
+    syscheck.allow_prefilter_cmd  = 0;
 
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
 
@@ -302,6 +303,11 @@ cJSON *getSyscheckConfig(void) {
         if (syscheck.prefilter_cmd) {
             cJSON_AddStringToObject(syscfg,"prefilter_cmd",syscheck.prefilter_cmd);
         }
+        if (syscheck.allow_prefilter_cmd) {
+            cJSON_AddStringToObject(syscfg, "allow_prefilter_cmd", "yes");
+        } else {
+            cJSON_AddStringToObject(syscfg, "allow_prefilter_cmd", "no");
+        }
 
         cJSON_AddNumberToObject(syscfg, "sleep", syscheck.tsleep);
         cJSON_AddNumberToObject(syscfg, "sleep_after", syscheck.sleep_after);
@@ -318,7 +324,6 @@ cJSON *getSyscheckConfig(void) {
         cJSON_AddNumberToObject(syscfg, "thread_stack_size", syscheck.thread_stack_size);
     }
 
-    cJSON_AddItemToObject(root,"syscheck",syscfg);
 
     return root;
 }

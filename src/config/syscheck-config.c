@@ -795,7 +795,7 @@ out_free:
     return ret;
 }
 
-int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
+int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp, int modules)
 {
     int i = 0;
     int j = 0;
@@ -830,6 +830,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
     const char *xml_audit_hc = "startup_healthcheck";
+    const char *xml_allow_prefilter_cmd = "allow_prefilter_cmd";
 
     const char *xml_sleep = "sleep";
     const char *xml_sleep_after = "sleep_after";
@@ -1363,6 +1364,21 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             SetConf(node[i]->content, &syscheck->log_level, options.syscheck.log_level, xml_log_level);
         } else if (strcmp(node[i]->element, xml_thread_stack_size) == 0) {
             SetConf(node[i]->content, &syscheck->thread_stack_size, options.global.thread_stack_size, xml_thread_stack_size);
+        } /* Allow prefilter cmd */
+        else if (strcmp(node[i]->element, xml_allow_prefilter_cmd) == 0) {
+            if (modules & CAGENT_CONFIG) {
+                mwarn("'%s' option can't be changed using centralized configuration (agent.conf).", xml_allow_prefilter_cmd);
+                i++;
+                continue;
+            }
+            if(strcmp(node[i]->content, "yes") == 0)
+                syscheck->allow_prefilter_cmd = 1;
+            else if(strcmp(node[i]->content, "no") == 0)
+                syscheck->allow_prefilter_cmd = 0;
+            else {
+                merror(XML_VALUEERR,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
