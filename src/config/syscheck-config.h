@@ -251,4 +251,7 @@ char* check_ascci_hex (char *input);
 
 void log_realtime_status(int);
 
+int B_to_MB(int value);
+int MB_to_B(int value);
+
 #endif /* SYSCHECKC_H */

@@ -123,9 +123,7 @@ int main(int argc, char **argv)
 
     init_conf();
 
-    if (!OS_ReadIntegratorOptions(cfg, &integrator_options)) {
-
-    }
+    OS_ReadIntegratorOptions(cfg, &integrator_options);
 
     read_internal();
 

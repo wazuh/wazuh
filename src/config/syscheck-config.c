@@ -1358,6 +1358,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             SetConf(node[i]->content, &syscheck->sym_checker_interval, options.syscheck.symlink_scan_interval, xml_symlink_scan_interval);
         } else if (strcmp(node[i]->element, xml_file_max_size) == 0) {
             SetConf(node[i]->content, (int *) &syscheck->file_max_size, options.syscheck.file_max_size, xml_file_max_size);
+            syscheck->file_max_size = MB_to_B(syscheck->file_max_size);
         } else if (strcmp(node[i]->element, xml_log_level) == 0) {
             SetConf(node[i]->content, &syscheck->log_level, options.syscheck.log_level, xml_log_level);
         } else if (strcmp(node[i]->element, xml_thread_stack_size) == 0) {
@@ -1580,3 +1581,11 @@ void set_linked_path(syscheck_config *syscheck, const char *entry, int position)
     syscheck->converted_links[position] = linked_path;
 }
 #endif
+
+int MB_to_B(int value) {
+    return value * 1024 * 1024;
+}
+
+int B_to_MB(int value) {
+    return value / 1024 / 1024;
+}
