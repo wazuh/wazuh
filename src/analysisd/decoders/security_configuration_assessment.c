@@ -1625,7 +1625,7 @@ static void HandleIntegrityCheck(Eventinfo *lf, int *socket, cJSON *event){
                 mdebug1("Scan result integrity failed for policy '%s'. Hash from DB: '%s', hash from summary: '%s'. Requesting DB dump.",
                         policy_id->valuestring, wdb_response, integrity_hash->valuestring);
 
-                PushDumpRequest(lf->agent_id, policy_id->valuestring, 0);
+                PushDumpRequest(lf->agent_id, policy_id->valuestring, 1);
             }
 
             break;
