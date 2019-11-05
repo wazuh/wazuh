@@ -482,6 +482,16 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
         current_files++;
     }
 
+        /* Missing file */
+    if (!logf[pl].file) {
+        if (output == NULL) {
+            merror(MISS_FILE);
+        } else {
+            wm_strcat(output, "Missing 'location' element.", '\n');
+        }
+        return (OS_INVALID);
+    }
+
     /* Deploy glob entries */
     if (!logf[pl].command) {
 #ifdef WIN32
@@ -624,15 +634,12 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2, ch
         }
     }
 
-    /* Missing file */
-    if (!logf[pl].file) {
-        if (output == NULL) {
-            merror(MISS_FILE);
-        } else {
-            wm_strcat(output, "Missing 'location' element.", '\n');
-        }
-        return (OS_INVALID);
+
+    /*
+    if (!logf[pl].labels) {
+        os_calloc(1, sizeof(wlabel_t), logf[pl].labels);
     }
+    */
 
     return (0);
 }

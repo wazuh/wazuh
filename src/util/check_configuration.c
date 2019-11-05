@@ -121,10 +121,13 @@ int main(int argc, char **argv)
         else if(type_flag == CRMOTE_CONFIG) {
             result = test_remote_conf(filepath, type_flag, &output);
         }
-        if (result == 0) {
+        if (output == 0) {
             printf("Configuration validated successfully\n");
         } else {
             printf("%s\n", output);
+            if (result == 0){
+                printf("Configuration validated successfully\n");
+            }
         }
 
         os_free(output);

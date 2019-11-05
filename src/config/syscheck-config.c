@@ -956,11 +956,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
             if (g.gl_pathv[0] == NULL) {
                 if (output == NULL){
-                    merror(GLOB_ERROR, expandedpath);
+                    merror(GLOB_NFOUND, expandedpath);
                 } else {
                     snprintf(message, OS_FLSIZE,
-                        "Glob error. Invalid pattern: '%s'.",
-                        expandedpath);
+                        "No file found by pattern: '%s'.", expandedpath);
                     wm_strcat(output, message, '\n');
                 }
                 ret = 1;
@@ -1834,7 +1833,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
             strncat( buf, check_strings[ i ], left );
             left = buflen - strlen( buf );
         }
-	}
+    }
 
     return buf;
 }

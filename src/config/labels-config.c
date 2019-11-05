@@ -137,12 +137,13 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
     return 0;
 
 error:
-    labels_free(*labels);
+    //labels_free(*labels);
     return OS_INVALID;
 }
 
 int Test_Labels(const char *path, int type, char **output) {
     wlabel_t *test_labels = NULL;
+    int fail = 0;
 
     if (ReadConfig(CLABELS | type, path, &test_labels, NULL, output) < 0) {
         if (output == NULL){
@@ -150,10 +151,9 @@ int Test_Labels(const char *path, int type, char **output) {
         } else {
             wm_strcat(output, "ERROR: Invalid configuration in Labels", '\n');
         }
-        labels_free(test_labels);
-        return OS_INVALID;
+        fail = OS_INVALID;
     }
 
     labels_free(test_labels);
-    return 0;
+    return fail;
 }

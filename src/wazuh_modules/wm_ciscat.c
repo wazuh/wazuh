@@ -1617,13 +1617,8 @@ void wm_ciscat_destroy(wm_ciscat *ciscat) {
         free(cur_eval);
     }
 
-    if (ciscat->ciscat_path){
-        free(ciscat->ciscat_path);
-    }
-
-    if (ciscat->java_path){
-        free(ciscat->java_path);
-    }
+    os_free(ciscat->ciscat_path);
+    os_free(ciscat->java_path);
 
     free(ciscat);
 }

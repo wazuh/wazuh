@@ -610,22 +610,10 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     }
 
     if (output) {
-        if (tmp_command->name) {
-            free (tmp_command->name);
-        }
-        
-        if (tmp_command->executable) {
-            free (tmp_command->executable);
-        }
-
-        if (tmp_command->extra_args) {
-            free (tmp_command->extra_args);
-        }
-
-        if (tmp_command) {
-            free (tmp_command);
-        }
-
+        os_free (tmp_command->name);
+        os_free (tmp_command->executable);
+        os_free (tmp_command->extra_args);
+        os_free (tmp_command);
     }
 
     return (0);

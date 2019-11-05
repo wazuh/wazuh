@@ -144,7 +144,7 @@ void *wm_chk_conf_main() {
                     output = cJSON_PrintUnformatted(temp_obj);
                     os_free(current_message);
                     os_free(output_data);
-                } else {	
+                } else {
                     cJSON_AddStringToObject(temp_obj, "error", "1");	
                     cJSON_AddStringToObject(temp_obj, "data", "failure testing the configuration file");	
                     output = cJSON_PrintUnformatted(temp_obj);	
@@ -266,45 +266,22 @@ fail:
 }
 
 int test_file(const char *filetype, const char *filepath, char **output) {
-
-    int result_code;
     int result;
-    int timeout = 2000; // Change timeout to an option 
-    char *output_msg = NULL;
-    char cmd[OS_SIZE_6144] = {0,};
-    snprintf(cmd, OS_SIZE_6144, "%s/bin/check_configuration -t %s -f %s", DEFAULTDIR, filetype, filepath);
-
-    if (wm_exec(cmd, &output_msg, &result_code, timeout, NULL) < 0) {
-        if (result_code == EXECVE_ERROR) {
-            wm_strcat(output, "WARNING: Path is invalid or file has insufficient permissions:", '\n');
-        } else {
-            wm_strcat(output, "WARNING: Error executing: ", '\n');
-        }
-        wm_strcat(output, cmd, '\n');
-        os_free(output_msg);
-        return OS_INVALID;
-    }
-
-    if (output_msg && *output_msg) {
-        // Remove last newline
-        size_t lastchar = strlen(output_msg) - 1;
-        output_msg[lastchar] = output_msg[lastchar] == '\n' ? '\0' : output_msg[lastchar];
-
-        wm_strcat(output, output_msg, '\n');
-    }
 
     if(strcmp(filetype, "manager") == 0) {
-        result = test_manager_conf(filepath, &output_msg);
+        result = test_manager_conf(filepath, output);
     } else if(strcmp(filetype, "agent") == 0) {
-        result = test_agent_conf(filepath, CAGENT_CGFILE, &output_msg);
+        result = test_agent_conf(filepath, CAGENT_CGFILE, output);
     } else if(strcmp(filetype, "remote") == 0) {
-        result = test_remote_conf(filepath, CRMOTE_CONFIG, &output_msg);
+        result = test_remote_conf(filepath, CRMOTE_CONFIG, output);
     } else {
         wm_strcat(output, "Unknown value for -t option.", '\n');
         return OS_INVALID;
     }
 
-    os_free(output_msg);
+    if (result == 0) {
+        wm_strcat(output, "Configuration validated successfully", '\n');
+    }
 
     return result;
 }
