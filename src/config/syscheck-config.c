@@ -829,7 +829,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
     const char *xml_audit_hc = "startup_healthcheck";
-    const char *xml_allow_prefilter_cmd = "allow_prefilter_cmd";
+    const char *xml_allow_remote_prefilter_cmd = "allow_remote_prefilter_cmd";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -840,6 +840,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     syscheck_config *syscheck;
     syscheck = (syscheck_config *)configp;
     unsigned int nodiff_size = 0;
+    char prefilter_cmd[OS_MAXSTR] = "";
 
     if (syscheck->disabled == SK_CONF_UNPARSED) {
         syscheck->disabled = SK_CONF_UNDEFINED;
@@ -1233,31 +1234,28 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
             /* alert_new_files option is not read here */
         } else if (strcmp(node[i]->element, xml_prefilter_cmd) == 0) {
-            char cmd[OS_MAXSTR];
             struct stat statbuf;
 
 #ifdef WIN32
-            if(!ExpandEnvironmentStrings(node[i]->content, cmd, sizeof(cmd) - 1)){
+            if(!ExpandEnvironmentStrings(node[i]->content, prefilter_cmd, sizeof(prefilter_cmd) - 1)){
                 merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
                 continue;
             }
-            str_lowercase(cmd);
+            str_lowercase(prefilter_cmd);
 #else
-            strncpy(cmd, node[i]->content, sizeof(cmd) - 1);
+            strncpy(prefilter_cmd, node[i]->content, sizeof(prefilter_cmd) - 1);
+            prefilter_cmd[sizeof(prefilter_cmd) - 1] = '\0';
 #endif
 
-            if (strlen(cmd) > 0) {
+            if (strlen(prefilter_cmd) > 0) {
                 char statcmd[OS_MAXSTR];
                 char *ix;
-                strncpy(statcmd, cmd, sizeof(statcmd) - 1);
+                strncpy(statcmd, prefilter_cmd, sizeof(statcmd) - 1);
+                statcmd[sizeof(statcmd) - 1] = '\0';
                 if (NULL != (ix = strchr(statcmd, ' '))) {
                     *ix = '\0';
                 }
-                if (stat(statcmd, &statbuf) == 0) {
-                    /* More checks needed (perms, owner, etc.) */
-                    os_calloc(1, strlen(cmd) + 1, syscheck->prefilter_cmd);
-                    strncpy(syscheck->prefilter_cmd, cmd, strlen(cmd));
-                } else {
+                if (stat(statcmd, &statbuf) != 0) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
@@ -1331,16 +1329,16 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             }
             OS_ClearNode(children);
         } /* Allow prefilter cmd */
-        else if (strcmp(node[i]->element, xml_allow_prefilter_cmd) == 0) {
+        else if (strcmp(node[i]->element, xml_allow_remote_prefilter_cmd) == 0) {
             if (modules & CAGENT_CONFIG) {
-                mwarn("'%s' option can't be changed using centralized configuration (agent.conf).", xml_allow_prefilter_cmd);
+                mwarn("'%s' option can't be changed using centralized configuration (agent.conf).", xml_allow_remote_prefilter_cmd);
                 i++;
                 continue;
             }
             if(strcmp(node[i]->content, "yes") == 0)
-                syscheck->allow_prefilter_cmd = 1;
+                syscheck->allow_remote_prefilter_cmd = 1;
             else if(strcmp(node[i]->content, "no") == 0)
-                syscheck->allow_prefilter_cmd = 0;
+                syscheck->allow_remote_prefilter_cmd = 0;
             else {
                 merror(XML_VALUEERR,node[i]->element,node[i]->content);
                 return(OS_INVALID);
@@ -1350,6 +1348,17 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             return (OS_INVALID);
         }
         i++;
+    }
+
+    // Set prefilter only if it's expressly allowed (ossec.conf in agent side).
+
+    if (prefilter_cmd[0]) {
+        if (!(modules & CAGENT_CONFIG) || syscheck->allow_remote_prefilter_cmd) {
+            free(syscheck->prefilter_cmd);
+            os_strdup(prefilter_cmd, syscheck->prefilter_cmd);
+        } else if (!syscheck->allow_remote_prefilter_cmd) {
+            mwarn(FIM_WARN_ALLOW_PREFILTER, prefilter_cmd, xml_allow_remote_prefilter_cmd);
+        }
     }
 
     return (0);
