@@ -548,20 +548,27 @@ int OS_SetKeepalive(int socket)
     return setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepalive, sizeof(keepalive));
 }
 
-#ifndef CLIENT
+// Set keepalive parameters for a socket
 void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt)
 {
-    if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPCNT, (void *)&cnt, sizeof(cnt)) < 0) {
-        merror("OS_SetKeepalive_Options(TCP_KEEPCNT) failed with error '%s'", strerror(errno));
+    if (cnt > 0) {
+        if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPCNT, (void *)&cnt, sizeof(cnt)) < 0) {
+            merror("OS_SetKeepalive_Options(TCP_KEEPCNT) failed with error '%s'", strerror(errno));
+        }
     }
-    if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&idle, sizeof(idle)) < 0) {
-        merror("OS_SetKeepalive_Options(SO_KEEPIDLE) failed with error '%s'", strerror(errno));
+
+    if (idle > 0) {
+        if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&idle, sizeof(idle)) < 0) {
+            merror("OS_SetKeepalive_Options(SO_KEEPIDLE) failed with error '%s'", strerror(errno));
+        }
     }
-    if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&intvl, sizeof(intvl)) < 0) {
-        merror("OS_SetKeepalive_Options(TCP_KEEPINTVL) failed with error '%s'", strerror(errno));
+
+    if (intvl > 0) {
+        if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&intvl, sizeof(intvl)) < 0) {
+            merror("OS_SetKeepalive_Options(TCP_KEEPINTVL) failed with error '%s'", strerror(errno));
+        }
     }
 }
-#endif
 
 int OS_SetRecvTimeout(int socket, long seconds, long useconds)
 {

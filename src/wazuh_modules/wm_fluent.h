@@ -31,6 +31,13 @@ typedef struct wm_fluent_t {
     SSL_CTX * ctx;
     SSL * ssl;
     BIO * bio;
+
+    struct keepalive {
+        bool enabled;
+        int count;
+        int idle;
+        int interval;
+    } keepalive;
 } wm_fluent_t;
 
 typedef struct wm_fluent_helo_t {
@@ -51,7 +58,7 @@ typedef struct wm_fluent_pong_t {
 extern const wm_context WM_FLUENT_CONTEXT;
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
-int wm_fluent_read(xml_node **nodes, wmodule *module);
+int wm_fluent_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
 
 #endif // WM_FLUENT_H

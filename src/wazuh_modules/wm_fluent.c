@@ -193,6 +193,16 @@ static int wm_fluent_connect(wm_fluent_t * fluent) {
     }
     mdebug2("Connected to '%s'.", fluent->address);
 
+    /* Set keepalive */
+
+    if (fluent->keepalive.enabled) {
+        if (OS_SetKeepalive(fluent->client_sock) == -1) {
+            merror("Cannot enable TCP keepalive on Fluent connection: %s (%d)", strerror(errno), errno);
+        } else {
+            OS_SetKeepalive_Options(fluent->client_sock, fluent->keepalive.idle, fluent->keepalive.interval, fluent->keepalive.count);
+        }
+    }
+
     return 0;
 }
 
@@ -735,6 +745,7 @@ static int wm_fluent_check_config(wm_fluent_t * fluent) {
 cJSON *wm_fluent_dump(const wm_fluent_t *fluent) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
+    cJSON *keepalive = cJSON_CreateObject();
 
     cJSON_AddStringToObject(wm_wd, "enabled", fluent->enabled ? "yes" : "no");
     if (fluent->tag) cJSON_AddStringToObject(wm_wd, "tag", fluent->tag);
@@ -747,6 +758,12 @@ cJSON *wm_fluent_dump(const wm_fluent_t *fluent) {
     cJSON_AddStringToObject(wm_wd, "password", fluent->user_pass);
     cJSON_AddNumberToObject(wm_wd, "timeout", fluent->timeout);
 
+    cJSON_AddStringToObject(keepalive, "enabled", fluent->keepalive.enabled ? "yes" : "no");
+    if (fluent->keepalive.count) cJSON_AddNumberToObject(keepalive, "count", fluent->keepalive.count);
+    if (fluent->keepalive.idle) cJSON_AddNumberToObject(keepalive, "idle", fluent->keepalive.idle);
+    if (fluent->keepalive.interval) cJSON_AddNumberToObject(keepalive, "interval", fluent->keepalive.interval);
+
+    cJSON_AddItemToObject(wm_wd, "keepalive", keepalive);
     cJSON_AddItemToObject(root,"fluent-forward",wm_wd);
 
     return root;
