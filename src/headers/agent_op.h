@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __AGENT_OP_H
-#define __AGENT_OP_H
+#ifndef AGENT_OP_H
+#define AGENT_OP_H
 
 /* Check if syscheck is to be executed/restarted
  * Returns 1 on success or 0 on failure (shouldn't be executed now)
@@ -89,4 +89,4 @@ char * get_agent_id_from_name(const char *agent_name);
 int control_check_connection();
 #endif
 
-#endif /* __AGENT_OP_H */
+#endif /* AGENT_OP_H */

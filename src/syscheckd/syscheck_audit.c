@@ -1277,7 +1277,7 @@ void audit_read_events(int *audit_sock, int mode) {
 
                 // Append to cache
                 len = endline - line;
-                if (cache_i + len + 1 > sizeof(cache)) {
+                if (cache_i + len + 1 <= BUF_SIZE) {
                     strncpy(cache + cache_i, line, len);
                     cache_i += len;
                     cache[cache_i++] = '\n';

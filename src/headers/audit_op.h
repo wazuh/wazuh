@@ -7,8 +7,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef __AUDIT_OP_H
-#define __AUDIT_OP_H
+#ifndef AUDIT_OP_H
+#define AUDIT_OP_H
 
 #ifdef ENABLE_AUDIT
 #include <linux/audit.h>
@@ -72,5 +72,5 @@ int audit_delete_rule(const char *path, const char *key);
 // Check if exists rule '-a task,never'
 int audit_check_lock_output(void);
 
-#endif
-#endif
+#endif /* ENABLE_AUDIT */
+#endif /* AUDIT_OP_H */
