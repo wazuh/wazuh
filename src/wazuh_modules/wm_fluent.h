@@ -31,6 +31,7 @@ typedef struct wm_fluent_t {
     SSL_CTX * ctx;
     SSL * ssl;
     BIO * bio;
+    int poll_interval;
 
     struct keepalive {
         bool enabled;
