@@ -2711,6 +2711,12 @@ components:
           - sha3_256
           - sha3_384
           - sha3_512
+    hotfix:
+      in: query
+      name: hotfix
+      description: Filters by hotfix
+      schema:
+        type: string
     limit:
       in: query
       name: limit
@@ -9659,6 +9665,49 @@ paths:
                     id: 599386135
                     time: "2019-03-08T08:30:53Z"
                   board_serial: "0"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /syscollector/{agent_id}/hotfixes:
+    get:
+      tags:
+        - syscollector
+      summary: "Get hotfixes"
+      description: "Returns all hotfixes installed by Microsoft(R) in Windows(R) systems (KB... fixes)"
+      operationId: api.controllers.syscollector_controller.get_hotfix_info
+      parameters:
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/hotfix'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Return a list of agent's hotfix results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  $ref: '#/components/schemas/SyscollectorProcess'
+              example:
+                data:
+                  totalItems: 120
         default:
           $ref: '#/components/responses/ResponseError'
 

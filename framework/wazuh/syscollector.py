@@ -236,3 +236,24 @@ def get_netproto(offset=0, limit=common.database_limit, select=None, filters={},
 def get_netiface(offset=0, limit=common.database_limit, select=None, filters={}, sort=None, search={}, q=''):
     return _get_agent_items(func=get_netiface_agent, offset=offset, limit=limit, select=select,
                             filters=filters, search=search, sort=sort, array=True, query=q)
+
+
+def get_hotfixes_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, q='',
+                       nested=True):
+    """Get info about an agent's hotfixes
+    :param agent_id: Agent ID
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param select: Select fields to return. Format: {"fields": ["field1", "field2"]}
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
+    :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
+    :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
+    :param nested: Fields to nest
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+    valid_select_fields = {'scan_id': 'scan_id', 'scan_time': 'scan_time', 'hotfix': 'hotfix'}
+
+    return get_item_agent(agent_id=agent_id[0], offset=offset, limit=limit, select=select, search=search, sort=sort,
+                          filters=filters, valid_select_fields=valid_select_fields, table='sys_hotfixes', array=True,
+                          nested=nested, query=q)
