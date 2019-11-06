@@ -39,6 +39,18 @@ def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, sea
                  nested=True):
     """
     Get info about an agent's OS
+
+    :param agent_id: Agent ID
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param select: Select fields to return. Format: {"fields": ["field1", "field2"]}
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
+    :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
+    :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
+    :param nested: Fields to nest
+
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     agent_obj = Agent(agent_id)
     agent_obj.get_basic_information()
@@ -63,6 +75,17 @@ def get_hardware_agent(agent_id, offset=0, limit=common.database_limit, select={
                        nested=True):
     """
     Get info about an agent's OS
+
+    :param agent_id: Agent ID
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param select: Select fields to return. Format: {"fields": ["field1", "field2"]}
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
+    :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
+    :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
+    :param nested: Fields to nest
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     valid_select_fields = {'board_serial': 'board_serial', 'cpu.name': 'cpu_name', 'cpu.cores': 'cpu_cores',
                            'cpu.mhz': 'cpu_mhz', 'ram.total': 'ram_total', 'ram.free': 'ram_free',
@@ -77,6 +100,18 @@ def get_packages_agent(agent_id, offset=0, limit=common.database_limit, select={
                        nested=True):
     """
     Get info about an agent's programs
+
+    :param agent_id: Agent ID
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param select: Select fields to return. Format: {"fields": ["field1", "field2"]}
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
+    :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
+    :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
+    :param nested: Fields to nest
+
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     valid_select_fields = {'scan.id': 'scan_id', 'scan.time': 'scan_time', 'format': 'format', 'name': 'name',
                            'priority': 'priority', 'section': 'section', 'size': 'size', 'vendor': 'vendor',
@@ -93,6 +128,18 @@ def get_processes_agent(agent_id, offset=0, limit=common.database_limit, select=
                         q='', nested=True):
     """
     Get info about an agent's processes
+
+    :param agent_id: Agent ID
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param select: Select fields to return. Format: {"fields": ["field1", "field2"]}
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
+    :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
+    :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
+    :param nested: Fields to nest
+
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     valid_select_fields = {'scan.id': 'scan_id', 'scan.time': 'scan_time', 'pid': 'pid', 'name': 'name',
                            'state': 'state', 'ppid': 'ppid', 'utime': 'utime', 'stime': 'stime', 'cmd': 'cmd',
@@ -111,6 +158,18 @@ def get_ports_agent(agent_id, offset=0, limit=common.database_limit, select={}, 
                     nested=True):
     """
     Get info about an agent's ports
+
+    :param agent_id: Agent ID
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param select: Select fields to return. Format: {"fields": ["field1", "field2"]}
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
+    :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
+    :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
+    :param nested: Fields to nest
+
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     valid_select_fields = {'scan.id': 'scan_id', 'scan.time': 'scan_time', 'protocol': 'protocol',
                            'local.port': 'local_port', 'remote.ip': 'remote_ip', 'remote.port': 'remote_port',
@@ -126,6 +185,18 @@ def get_netaddr_agent(agent_id, offset=0, limit=common.database_limit, select={}
                       nested=True):
     """
     Get info about an agent's network address
+
+    :param agent_id: Agent ID
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param select: Select fields to return. Format: {"fields": ["field1", "field2"]}
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
+    :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
+    :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
+    :param nested: Fields to nest
+
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     valid_select_fields = {'scan.id': 'scan_id', 'iface': 'iface', 'proto': 'proto', 'address': 'address',
                            'netmask': 'netmask', 'broadcast': 'broadcast'}
@@ -139,6 +210,18 @@ def get_netproto_agent(agent_id, offset=0, limit=common.database_limit, select={
                        nested=True):
     """
     Get info about an agent's network protocol
+
+    :param agent_id: Agent ID
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param select: Select fields to return. Format: {"fields": ["field1", "field2"]}
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
+    :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
+    :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
+    :param nested: Fields to nest
+
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     valid_select_fields = {'scan.id': 'scan_id', 'iface': 'iface', 'type': 'type', 'gateway': 'gateway', 'dhcp': 'dhcp'}
 
@@ -151,6 +234,18 @@ def get_netiface_agent(agent_id, offset=0, limit=common.database_limit, select={
                        nested=True):
     """
     Get info about an agent's network interface
+
+    :param agent_id: Agent ID
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param select: Select fields to return. Format: {"fields": ["field1", "field2"]}
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
+    :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
+    :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
+    :param nested: Fields to nest
+
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     valid_select_fields = {'scan.id': 'scan_id', 'scan.time': 'scan_time', 'name': 'name', 'adapter': 'adapter',
                            'type': 'type', 'state': 'state', 'mtu': 'mtu', 'mac': 'mac', 'tx.packets': 'tx_packets',
@@ -161,6 +256,34 @@ def get_netiface_agent(agent_id, offset=0, limit=common.database_limit, select={
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, search=search, sort=sort,
                           filters=filters, valid_select_fields=valid_select_fields, table='sys_netiface', array=True,
                           nested=nested, query=q)
+
+
+def get_hotfixes_agent(agent_id, offset=0, limit=common.database_limit,
+                       select={}, search={}, sort={}, filters={}, q='',
+                       nested=True):
+    """
+    Get info about an agent's hotfixes
+
+    :param agent_id: Agent ID
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param select: Select fields to return. Format: {"fields": ["field1", "field2"]}
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
+    :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
+    :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2","value3"]}
+    :param q: Defines query to filter
+    :param nested: Fields to nest
+
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+    valid_select_fields = {'scan_id': 'scan_id', 'scan_time': 'scan_time',
+                           'hotfix': 'hotfix'}
+
+    return get_item_agent(agent_id=agent_id, offset=offset, limit=limit,
+                          select=select, search=search, sort=sort,
+                          filters=filters, valid_select_fields=valid_select_fields,
+                          table='sys_hotfixes', array=True, nested=nested,
+                          query=q)
 
 
 def _get_agent_items(func, offset, limit, select, filters, search, sort, array=False, query=''):

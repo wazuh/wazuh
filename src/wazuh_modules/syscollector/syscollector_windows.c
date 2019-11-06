@@ -284,30 +284,11 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     // Set random ID for each scan
 
-    unsigned int ID1 = os_random();
-    unsigned int ID2 = os_random();
-
-    char random_id[SERIAL_LENGTH];
-    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
-
-    int ID = atoi(random_id);
-    if (ID < 0)
-        ID = -ID;
+    int ID = wm_sys_get_random_id();
 
     // Set timestamp
 
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
 	HANDLE hdle;
 	int privilege_enabled = 0;
@@ -752,31 +733,11 @@ void sys_programs_windows(const char* LOCATION){
     int usec = 1000000 / wm_max_eps;
 
     // Set timestamp
-
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     // Set random ID for each scan
 
-    unsigned int ID1 = os_random();
-    unsigned int ID2 = os_random();
-
-    char random_id[SERIAL_LENGTH];
-    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
-
-    int ID = atoi(random_id);
-    if (ID < 0)
-        ID = -ID;
+    int ID = wm_sys_get_random_id();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting installed programs inventory.");
 
@@ -850,6 +811,45 @@ void sys_programs_windows(const char* LOCATION){
 
 }
 
+// Get installed hotfixes inventory
+
+void sys_hotfixes(const char* LOCATION){
+    int usec = 1000000 / wm_max_eps;
+    char *timestamp = w_get_timestamp(time(NULL));
+    int ID = wm_sys_get_random_id();
+    HKEY main_key;
+    long unsigned int result;
+    const char *HOTFIXES_REG;
+    cJSON *end_evt;
+    char *end_evt_str;
+
+    HOTFIXES_REG = isVista ? "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages" :
+                    "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix";
+
+    mtdebug1(WM_SYS_LOGTAG, "Starting installed hotfixes inventory.");
+
+    if(result = RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT(HOTFIXES_REG), 0, KEY_READ | KEY_WOW64_64KEY, &main_key), result == ERROR_SUCCESS) {
+        mtdebug2(WM_SYS_LOGTAG, "Reading hotfixes from the registry.");
+        list_hotfixes(main_key,usec, timestamp, ID, LOCATION);
+    } else {
+        mterror(WM_SYS_LOGTAG, "Could not open the registry '%s'. Error: %lu.", HOTFIXES_REG, result);
+    }
+
+    end_evt = cJSON_CreateObject();
+    cJSON_AddStringToObject(end_evt, "type", "hotfix_end");
+    cJSON_AddNumberToObject(end_evt, "ID", ID);
+    cJSON_AddStringToObject(end_evt, "timestamp", timestamp);
+
+    end_evt_str = cJSON_PrintUnformatted(end_evt);
+    mtdebug2(WM_SYS_LOGTAG, "sys_hotfixes() sending '%s'", end_evt_str);
+    wm_sendmsg(usec, 0, end_evt_str, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(end_evt);
+
+    free(end_evt_str);
+    free(timestamp);
+    RegCloseKey(main_key);
+}
+
 // List installed programs from the registry
 void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const char * timestamp, int ID, const char * LOCATION) {
 
@@ -913,6 +913,116 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
             } else {
                 mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, retCode);
             }
+        }
+    }
+}
+
+void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const char *LOCATION) {
+    static OSRegex *hotfix_regex = NULL;
+    // This table is used to discard already reported hotfixes (same key and same timestamp)
+    // It does not need to be released between iterations (static variable)
+    static OSHash *hotfixes_table;
+    char achKey[KEY_LENGTH];   // buffer for subkey name
+    long unsigned int cbName;                   // size of name string
+    char achClass[MAX_PATH] = TEXT("");  // buffer for class name
+    long unsigned int cchClassName = MAX_PATH;  // size of class string
+    long unsigned int cSubKeys=0;               // number of subkeys
+    long unsigned int cbMaxSubKey;              // longest subkey size
+    long unsigned int cchMaxClass;              // longest class string
+    long unsigned int cValues;              // number of values for key
+    long unsigned int cchMaxValue;          // longest value name
+    long unsigned int cbMaxValueData;       // longest value data
+    long unsigned int cbSecurityDescriptor; // size of security descriptor
+    FILETIME ftLastWriteTime;      // last write time
+    long unsigned int i, result;
+
+    // Remove unused variables
+
+    result = RegQueryInfoKey(
+        hKey,                    // key handle
+        achClass,                // buffer for class name
+        &cchClassName,           // size of class string
+        NULL,                    // reserved
+        &cSubKeys,               // number of subkeys
+        &cbMaxSubKey,            // longest subkey size
+        &cchMaxClass,            // longest class string
+        &cValues,                // number of values for this key
+        &cchMaxValue,            // longest value name
+        &cbMaxValueData,         // longest value data
+        &cbSecurityDescriptor,   // security descriptor
+        &ftLastWriteTime);       // last write time
+
+    if (!cSubKeys) {
+        return;
+    }
+
+    char prev_hotfix[50 + 1] = "x";
+
+    if (!hotfix_regex) {
+        const char *hotfix_pattern = "Package_\\d*\\w*for_(\\w+)~";
+
+        os_calloc(1, sizeof(OSRegex), hotfix_regex);
+        if (!OSRegex_Compile(hotfix_pattern, hotfix_regex, OS_RETURN_SUBSTRING)) {
+            merror(REGEX_COMPILE, hotfix_pattern, hotfix_regex->error);
+            os_free(hotfix_regex);
+            return;
+        }
+
+        if (hotfixes_table = OSHash_Create(), !hotfixes_table) {
+            merror_exit(MEM_ERROR, errno, strerror(errno));
+        }
+    }
+
+    for (i = 0; i < cSubKeys; i++) {
+        cbName = KEY_LENGTH;
+        if (result = RegEnumKeyEx(hKey, i, achKey, &cbName, NULL, NULL, NULL, &ftLastWriteTime), result == ERROR_SUCCESS) {
+            if (isVista) {
+                if (!OSRegex_Execute(achKey, hotfix_regex)) {
+                    continue;
+                }
+                char *hotfix = *hotfix_regex->d_sub_strings;
+                char *extension;
+
+                if (extension = strchr(hotfix, '_'), extension) {
+                    *extension = '\0';
+                }
+
+                // Ignore the hotfix if it is the same as the previous one
+                if (!strcmp(hotfix, prev_hotfix)) {
+                    continue;
+                }
+                snprintf(prev_hotfix, 50, hotfix);
+
+                char *saved_timestamp;
+                if (saved_timestamp = OSHash_Get(hotfixes_table, hotfix), !saved_timestamp) {
+                    os_strdup(timestamp, saved_timestamp);
+                    if (OSHash_Add(hotfixes_table, hotfix, saved_timestamp) != 2) {
+                        free(saved_timestamp);
+                        mterror(WM_SYS_LOGTAG, "Could not add '%s' to the hotfixes hash table.", hotfix);
+                        return;
+                    }
+                } else {
+                    if (!strcmp(timestamp, saved_timestamp)) {
+                        // It has been reported with this timestamp
+                        continue;
+                    } else {
+                        free(saved_timestamp);
+                        os_strdup(timestamp, saved_timestamp);
+                        OSHash_Update(hotfixes_table, hotfix, (char *) saved_timestamp);
+                    }
+                }
+
+                send_hotfix(hotfix, usec, timestamp, ID, LOCATION);
+            } else {
+                // Ignore the hotfix if it is the same as the previous one
+                if (!strcmp(achKey, prev_hotfix)) {
+                    continue;
+                }
+                snprintf(prev_hotfix, KEY_LENGTH, achKey);
+                send_hotfix(achKey, usec, timestamp, ID, LOCATION);
+            }
+        } else {
+            mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, result);
         }
     }
 }
@@ -1159,33 +1269,35 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
     RegCloseKey(program_key);
 }
 
+void send_hotfix(const char *hotfix, int usec, const char *timestamp, int ID, const char *LOCATION) {
+    if (!strcmp(hotfix, "RollupFix")) {
+        return;
+    }
+
+    cJSON *event;
+    if (event = cJSON_CreateObject(), !event) {
+        mterror(WM_SYS_LOGTAG, "Could not create the hotfix event.");
+        return;
+    }
+    cJSON_AddStringToObject(event, "type", "hotfix");
+    cJSON_AddNumberToObject(event, "ID", ID);
+    cJSON_AddStringToObject(event, "timestamp", timestamp);
+    cJSON_AddStringToObject(event, "hotfix", hotfix);
+
+    char *str_event = cJSON_PrintUnformatted(event);
+    mtdebug2(WM_SYS_LOGTAG, "sys_hotfixes() sending '%s'", str_event);
+    wm_sendmsg(usec, 0, str_event, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(event);
+    free(str_event);
+}
+
 void sys_hw_windows(const char* LOCATION){
     // Set timestamp
-
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     // Set random ID for each scan
 
-    unsigned int ID1 = os_random();
-    unsigned int ID2 = os_random();
-
-    char random_id[SERIAL_LENGTH];
-    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
-
-    int ID = atoi(random_id);
-    if (ID < 0)
-        ID = -ID;
+    int ID = wm_sys_get_random_id();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting hardware inventory.");
 
@@ -1326,30 +1438,11 @@ void sys_os_windows(const char* LOCATION){
 
     // Set timestamp
 
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     // Set random ID for each scan
 
-    unsigned int ID1 = os_random();
-    unsigned int ID2 = os_random();
-
-    char random_id[SERIAL_LENGTH];
-    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
-
-    int ID = atoi(random_id);
-    if (ID < 0)
-        ID = -ID;
+    int ID = wm_sys_get_random_id();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting Operating System inventory.");
 
@@ -1769,28 +1862,9 @@ void sys_network_windows(const char* LOCATION){
 
     // Set random ID and timestamp
 
-    unsigned int ID1 = os_random();
-    unsigned int ID2 = os_random();
+    int ID = wm_sys_get_random_id();
 
-    char random_id[SERIAL_LENGTH];
-    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
-
-    int ID = atoi(random_id);
-    if (ID < 0)
-        ID = -ID;
-
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     /* Set the flags to pass to GetAdaptersAddresses() */
     ULONG flags = (checkVista() ? (GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS) : 0);
@@ -2081,30 +2155,11 @@ void sys_proc_windows(const char* LOCATION) {
 
     // Set timestamp
 
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     // Set random ID for each scan
 
-    unsigned int ID1 = os_random();
-    unsigned int ID2 = os_random();
-
-    char random_id[SERIAL_LENGTH];
-    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
-
-    int ID = atoi(random_id);
-    if (ID < 0)
-        ID = -ID;
+    int ID = wm_sys_get_random_id();
 
     cJSON *item;
     cJSON *proc_array = cJSON_CreateArray();

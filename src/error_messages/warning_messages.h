@@ -8,8 +8,8 @@
  * Foundation.
  */
 
- #ifndef _WARN_MESSAGES__H
- #define _WARN_MESSAGES__H
+#ifndef WARN_MESSAGES_H
+#define WARN_MESSAGES_H
 
 /* File integrity monitoring warning messages*/
 #define FIM_WARN_ACCESS                         "Accessing to '%s': [(%d) - (%s)]"
@@ -34,6 +34,6 @@
 #define FIM_WARN_WHODATA_AUTOCONF               "Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode."
 #define FIM_WARN_WHODATA_LOCALPOLICIES          "Local audit policies could not be configured."
 #define FIM_WARN_WHODATA_EVENT_OVERFLOW         "Real-time Whodata events queue for Windows has more than %d elements."
+#define FIM_WARN_ALLOW_PREFILTER                "Ignoring prefilter option '%s'. Enable <%s> to use it."
 
-#endif
-
+#endif /* WARN_MESSAGES_H */

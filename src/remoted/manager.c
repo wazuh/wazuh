@@ -284,7 +284,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 file_name = SHAREDCFG_FILENAME;
                 snprintf(destination_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
                 mdebug1("Downloading shared file '%s' from '%s'", merged, file_url);
-                downloaded = wurl_request(file_url,destination_path);
+                downloaded = wurl_request(file_url,destination_path, NULL, NULL);
                 w_download_status(downloaded,file_url,destination_path);
                 r_group->merged_is_downloaded = !downloaded;
 
@@ -318,7 +318,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                         snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, file_name);
                         snprintf(download_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
                         mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
-                        downloaded = wurl_request(file_url,download_path);
+                        downloaded = wurl_request(file_url,download_path, NULL, NULL);
 
                         if (!w_download_status(downloaded, file_url, destination_path)) {
                             OS_MoveFile(download_path, destination_path);
@@ -362,6 +362,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             os_calloc(1, sizeof(file_sum), f_sum[f_size]);
             strncpy(f_sum[f_size]->sum, md5sum, 32);
             os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
+            f_sum[f_size + 1] = NULL;
 
             if (!logr.nocmerged) {
                 MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1);
@@ -1070,7 +1071,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             // Copy sum before unlock mutex
-            if (*f_sum[0]->sum) {
+            if (f_sum[0] && *(f_sum[0]->sum)) {
                 memcpy(tmp_sum, f_sum[0]->sum, sizeof(tmp_sum));
             }
 

@@ -7,9 +7,8 @@
  * Foundation.
  */
 
-#ifndef __VERSION_H
-#define __VERSION_H
-
+#ifndef VERSION_H
+#define VERSION_H
 
 typedef struct os_info {
     char *os_name;
@@ -24,6 +23,7 @@ typedef struct os_info {
     char *release;
     char *version;
     char *machine;
+    char *os_release;
 } os_info;
 
 char *OSX_ReleaseName(const int version);
@@ -38,4 +38,4 @@ void free_osinfo(os_info * osinfo);
 // Returns 1 on error
 int get_nproc();
 
-#endif
+#endif /* VERSION_H */

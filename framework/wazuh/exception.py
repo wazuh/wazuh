@@ -27,8 +27,9 @@ class WazuhException(Exception):
         1004: 'Malformed command output ',
         1005: {'message': 'Error reading file',
                'remediation': 'Please, ensure you have the right file permissions in Wazuh directories'},
-        1006: {'message': 'File/directory does not exist',
-               'remediation': 'Please, check if path to file/directory is correct'},
+        1006: {'message': 'File/directory does not exist or there is a problem with the permissions',
+               'remediation': 'Please, check if path to file/directory is correct and `ossec` '
+                              'has the appropriate permissions'},
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
         1012: {'message': 'Invalid message to queue'},
@@ -244,8 +245,9 @@ class WazuhException(Exception):
         1716: {'message': 'Error upgrading agent',
                'remediation': 'Please check that it is a new version and try again'
                },
-        1717: {'message': 'Cannot upgrade to a version higher than the manager',
-               'remediation': 'The agent cannot have a more recent version than the manager, please update the manager first'
+        1717: {'message': 'Upgrading an agent to a version higher than the manager requires the force flag.',
+               'remediation': 'The agent cannot have a more recent version than the manager, please update the manager '
+                              'first or use force=1 to force the upgrade'
                },
         1718: {'message': 'Version not available',
                'remediation': 'Please check the version again or check our repository at [official repository](https://github.com/wazuh/wazuh)'
@@ -330,6 +332,7 @@ class WazuhException(Exception):
         1752: {'message': 'Could not force single group for the agent'},
         1753: {'message': 'Could not assign group. Agent status is never_connected',
                'remediation': 'Please select another agent or connect your agent before assigning groups'},
+
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
         1801: {'message': 'Wrong \'path\' parameter',
