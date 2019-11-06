@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __SYSCHECKC_H
-#define __SYSCHECKC_H
+#ifndef SYSCHECKC_H
+#define SYSCHECKC_H
 
 #if defined(WIN32) && defined(EVENTCHANNEL_SUPPORT)
 #define WIN_WHODATA 1
@@ -233,6 +233,7 @@ typedef struct _config {
     rtfim *realtime;
 
     char *prefilter_cmd;
+    bool allow_remote_prefilter_cmd;
 
 } syscheck_config;
 
@@ -249,4 +250,4 @@ char* check_ascci_hex (char *input);
 
 void log_realtime_status(int);
 
-#endif /* __SYSCHECKC_H */
+#endif /* SYSCHECKC_H */

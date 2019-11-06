@@ -28,6 +28,7 @@
 #include "analysisd.h"
 #include "fts.h"
 #include "cleanevent.h"
+#include "lists_make.h"
 
 /** Internal Functions **/
 void OS_ReadMSG(char *ut_str);
@@ -288,6 +289,7 @@ int main(int argc, char **argv)
                 free(Config.lists);
                 Config.lists = NULL;
             }
+            Lists_OP_MakeAll(0, 0);
         }
         {
             /* Load Rules */

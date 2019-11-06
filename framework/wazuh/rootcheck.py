@@ -276,13 +276,12 @@ def last_scan(agent_id):
     # end time
     query = "SELECT max(date_last) FROM pm_event WHERE log = 'Ending rootcheck scan.'"
     conn.execute(query)
-    for tup in conn:
-        data['end'] = datetime.utcfromtimestamp(tup[0]).strftime("%Y-%m-%d %H:%M:%S") if tup[0] is not None else "ND"
-
+    time = conn.fetch()
+    data['end'] = datetime.utcfromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S") if time is not None else "ND"
     # start time
     query = "SELECT max(date_last) FROM pm_event WHERE log = 'Starting rootcheck scan.'"
     conn.execute(query)
-    for tup in conn:
-        data['start'] = datetime.utcfromtimestamp(tup[0]).strftime("%Y-%m-%d %H:%M:%S") if tup[0] is not None else "ND"
+    time = conn.fetch()
+    data['start'] = datetime.utcfromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S") if time is not None else "ND"
 
     return data
