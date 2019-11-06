@@ -196,6 +196,58 @@ void test_realtime_process_failure(void **state)
 }
 
 
+void test_run_whodata_scan(void **state)
+{
+    (void) state;
+    int ret;
+
+    ret = run_whodata_scan();
+
+    assert_int_equal(ret, 0);
+}
+
+
+void test_free_syscheck_dirtb_data(void **state)
+{
+    (void) state;
+    char *data = strdup("test");
+
+    free_syscheck_dirtb_data(data);
+
+    assert_null(data);
+}
+
+
+void test_free_syscheck_dirtb_data_null(void **state)
+{
+    (void) state;
+    char *data = NULL;
+
+    free_syscheck_dirtb_data(data);
+
+    assert_null(data);
+}
+
+
+void test_realtime_process(void **state)
+{
+    (void) state;
+    int ret;
+
+    Read_Syscheck_Config("test_syscheck.conf");
+
+    syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
+    syscheck.realtime->fd = 1;
+
+    will_return(__wrap_read, 1); // Use wrap
+    will_return(__wrap_read, 1);
+
+    ret = realtime_process();
+
+    assert_int_equal(ret, 0);
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_realtime_start_success),
@@ -206,6 +258,10 @@ int main(void) {
         cmocka_unit_test(test_realtime_adddir_realtime_update),
         cmocka_unit_test(test_realtime_adddir_realtime_update_failure),
         cmocka_unit_test(test_realtime_process_failure),
+        cmocka_unit_test(test_run_whodata_scan),
+        //cmocka_unit_test(test_free_syscheck_dirtb_data),
+        cmocka_unit_test(test_free_syscheck_dirtb_data_null),
+        cmocka_unit_test(test_realtime_process),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
