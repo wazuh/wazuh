@@ -58,6 +58,7 @@ static int wm_fluent_hs_tls(wm_fluent_t * fluent);
 static int wm_fluent_handshake(wm_fluent_t * fluent);
 static int wm_fluent_send(wm_fluent_t * fluent, const char * str, size_t size);
 static int wm_fluent_check_config(wm_fluent_t * fluent);
+static void wm_fluent_poll_server(wm_fluent_t * fluent);
 
 const wm_context WM_FLUENT_CONTEXT = {
     FLUENT_WM_NAME,
@@ -105,28 +106,41 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
 
     /* Main loop */
     while (1) {
-        recv_b = recv(server_sock, buffer, OS_MAXSTR - 1, 0);
-
-        switch (recv_b) {
+        switch (wnet_select(server_sock, fluent->poll_interval)) {
         case -1:
-            merror("Cannot receive data from '%s': %s (%d)", fluent->sock_path, strerror(errno), errno);
-            continue;
+            merror("Cannot select input socket: %s (%d). Sleeping 10 minutes.", strerror(errno), errno);
+            sleep(600);
+            break;
+
         case 0:
-            merror("Empty string received from '%s'", fluent->sock_path);
-            continue;
-        default:
-            if (wm_fluent_send(fluent, buffer, recv_b) < 0) {
-                mwarn("Cannot send data to '%s': %s (%d). Reconnecting...", fluent->address, strerror(errno), errno);
+            wm_fluent_poll_server(fluent);
+            break;
 
-                while (wm_fluent_handshake(fluent) < 0) {
-                    mdebug2("Handshake failed. Waiting 30 seconds.");
-                    sleep(30);
+        case 1:
+            recv_b = recv(server_sock, buffer, OS_MAXSTR - 1, 0);
+
+            switch (recv_b) {
+            case -1:
+                merror("Cannot receive data from '%s': %s (%d)", fluent->sock_path, strerror(errno), errno);
+                continue;
+            case 0:
+                merror("Empty string received from '%s'", fluent->sock_path);
+                continue;
+            default:
+                if (wm_fluent_send(fluent, buffer, recv_b) < 0) {
+                    mwarn("Cannot send data to '%s': %s (%d). Reconnecting...", fluent->address, strerror(errno), errno);
+
+                    while (wm_fluent_handshake(fluent) < 0) {
+                        mdebug2("Handshake failed. Waiting 30 seconds.");
+                        sleep(30);
+                    }
+
+                    minfo("Connected to %s:%hu", fluent->address, fluent->port);
+                    wm_fluent_send(fluent, buffer, recv_b);
                 }
-
-                minfo("Connected to %s:%hu", fluent->address, fluent->port);
-                wm_fluent_send(fluent, buffer, recv_b);
             }
         }
+
     }
 
     return NULL;
@@ -742,6 +756,48 @@ static int wm_fluent_check_config(wm_fluent_t * fluent) {
     return 0;
 }
 
+// Poll server connection
+void wm_fluent_poll_server(wm_fluent_t * fluent) {
+    char buffer[4];
+    int flags = fcntl(fluent->client_sock, F_GETFL, 0);
+
+    mdebug2("Polling Fluent server.");
+
+    // Set up non-blocking mode
+
+    if (fcntl(fluent->client_sock, F_SETFL, flags | O_NONBLOCK) == -1) {
+        merror("Cannot set up non-blocking mode: %s (%d)", strerror(errno), errno);
+        return;
+    }
+
+    // Peek connection
+
+    switch (SSL_read(fluent->ssl, buffer, sizeof(buffer))) {
+    case -1:
+        // No input data. This is the normal case.
+        break;
+
+    case 0:
+        minfo("Fluent server is down or timed-out. Reconnecting.");
+
+        while (wm_fluent_handshake(fluent) < 0) {
+            mdebug2("Handshake failed. Waiting 30 seconds.");
+            sleep(30);
+        }
+
+        return;
+
+    default:
+        mdebug1("Input data from Fluent server available.");
+    }
+
+    // Disable non-blocking mode back
+
+    if (fcntl(fluent->client_sock, F_SETFL, flags) == -1) {
+        merror("Cannot restore non-blocking mode: %s (%d)", strerror(errno), errno);
+    }
+}
+
 cJSON *wm_fluent_dump(const wm_fluent_t *fluent) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
@@ -757,6 +813,7 @@ cJSON *wm_fluent_dump(const wm_fluent_t *fluent) {
     cJSON_AddStringToObject(wm_wd, "user", fluent->user_name);
     cJSON_AddStringToObject(wm_wd, "password", fluent->user_pass);
     cJSON_AddNumberToObject(wm_wd, "timeout", fluent->timeout);
+    cJSON_AddNumberToObject(wm_wd, "poll_interval", fluent->poll_interval);
 
     cJSON_AddStringToObject(keepalive, "enabled", fluent->keepalive.enabled ? "yes" : "no");
     if (fluent->keepalive.count) cJSON_AddNumberToObject(keepalive, "count", fluent->keepalive.count);

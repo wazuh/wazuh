@@ -22,6 +22,7 @@ static const char *XML_CA_FILE= "ca_file";
 static const char *XML_USER = "user";
 static const char *XML_PASSWORD = "password";
 static const char *XML_TIMEOUT = "timeout";
+static const char *XML_POLL_INTERVAL = "poll_interval";
 static const char *XML_KEEPALIVE = "keepalive";
 static const char *XML_COUNT = "count";
 static const char *XML_IDLE = "idle";
@@ -105,6 +106,7 @@ int wm_fluent_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         fluent->certificate = NULL;
         fluent->user_name = NULL;
         fluent->user_pass = NULL;
+        fluent->poll_interval = 60;
         module->context = &WM_FLUENT_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = fluent;
@@ -245,6 +247,15 @@ int wm_fluent_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             if (fluent->timeout < 0 || fluent->timeout > MAX_TIMEOUT_VALUE) {
                 merror("Invalid timeout at module '%s'", WM_FLUENT_CONTEXT.name);
                 return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_POLL_INTERVAL)) {
+            char * end;
+            int value = strtol(nodes[i]->content, &end, 10);
+
+            if (*end == '\0' && value > 0 && value < 7200) {
+                fluent->poll_interval = value;
+            } else {
+                mwarn("Invalid value '%s' for option '%s' at module '%s", nodes[i]->content, nodes[i]->element, WM_FLUENT_CONTEXT.name);
             }
         } else if (strcmp(nodes[i]->element, XML_KEEPALIVE) == 0) {
             XML_NODE children = OS_GetElementsbyNode(xml, nodes[i]);
