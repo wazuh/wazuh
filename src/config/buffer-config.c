@@ -164,6 +164,7 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2,
 }
 
 int Test_ClientBuffer(const char *path, int type, char **output){
+    int ret = 0;
     agent test_clientBuffer = { .server = 0 };
 
     if (ReadConfig(CBUFFER | type, path, NULL, &test_clientBuffer, output) < 0) {
@@ -172,10 +173,9 @@ int Test_ClientBuffer(const char *path, int type, char **output){
         } else{
             wm_strcat(output, "ERROR: Invalid configuration in ClientBuffer", '\n');
         }
-        Free_Client(&test_clientBuffer);
-        return OS_INVALID;
+        ret = OS_INVALID;
 	}
 
     Free_Client(&test_clientBuffer);
-    return 0;
+    return ret;
 }

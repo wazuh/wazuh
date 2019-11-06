@@ -42,11 +42,9 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char *
     snprintf(manager_cert, OS_SIZE_1024 - 1, "%s/etc/sslmanager.cert", DEFAULTDIR);
     snprintf(manager_key, OS_SIZE_1024 - 1, "%s/etc/sslmanager.key", DEFAULTDIR);
 
-    if (output) {
-        os_free(config->manager_cert);
-        os_free(config->manager_key);
-        os_free(config->ciphers);
-    }
+    os_free(config->manager_cert);
+    os_free(config->manager_key);
+    os_free(config->ciphers);
 
     // config->flags.disabled = AD_CONF_UNPARSED;
     /* If authd is defined, enable it by default */
@@ -283,6 +281,7 @@ short eval_bool(const char *str) {
 }
 
 int Test_Authd(const char *path, char **output) {
+    int fail = 0;
     authd_config_t *test_authd;
     os_calloc(1, sizeof(authd_config_t), test_authd);
 
@@ -292,13 +291,12 @@ int Test_Authd(const char *path, char **output) {
         } else {
             wm_strcat(output, "ERROR: Invalid configuration in Authd", '\n');
         }
-        free_authd_config(test_authd);
-        return OS_INVALID;
+        fail = OS_INVALID;
 	}
 
     /* Frees the LogReader config struct */
     free_authd_config(test_authd);
-    return 0;
+    return fail;
 }
 
 void free_authd_config(authd_config_t *authd) {

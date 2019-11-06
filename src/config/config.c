@@ -514,25 +514,20 @@ int Test_Analysisd(const char *path, char **output) {
             } else {
                 wm_strcat(output, "ERROR: Invalid configuration in Analysisd", '\n');
             }
-            fail = 1;
         }
 
-        if (!fail && test_config->max_output_size && (test_config->max_output_size < 1000000 || test_config->max_output_size > 1099511627776)) {
+        if (test_config->max_output_size && (test_config->max_output_size < 1000000 || test_config->max_output_size > 1099511627776)) {
             if (output == NULL){
                 merror("Maximum output size must be between 1 MiB and 1 TiB.");
             } else {
                 wm_strcat(output, "Maximum output size must be between 1 MiB and 1 TiB.", '\n');
             }
-            fail = 1;
         }
     }
 
     /* Free memory */
     config_free(test_config);
-
-    if (output) {
-        free(test_config);
-    }
+    os_free(test_config);
 
     if(fail) {
         return OS_INVALID;

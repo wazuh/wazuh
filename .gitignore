@@ -50,6 +50,7 @@ src/wazuh-modulesd
 src/wazuh-auth
 src/wazuh-db
 src/check_configuration
+src/config_checker
 
 # Windows agent
 src/win32/*.exe

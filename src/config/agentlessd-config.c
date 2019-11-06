@@ -247,10 +247,11 @@ int Test_Agentlessd(const char *path, char **output) {
 
 void free_AgentlessConfig(agentlessd_config *config) {
     if(config) {
-        int i, j;
         if(config->entries) {
+            int i;
             for(i= 0; config->entries[i]; i++) {
                 if(config->entries[i]->server) {
+                    int j;
                     for (j= 0; config->entries[i]->server[j]; j++) {
                         free(config->entries[i]->server[j]);
                     }

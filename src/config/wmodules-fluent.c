@@ -338,7 +338,7 @@ int wm_fluent_read(xml_node **nodes, wmodule *module, char **output)
     }
     
     if (fluent->address == NULL){
-        fluent->address = "localhost";
+        fluent->address = strdup("localhost");
     }
 
     return 0;

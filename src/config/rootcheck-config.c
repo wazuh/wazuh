@@ -438,6 +438,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
 }
 
 int Test_Rootcheck(const char *path, int type, char **output){
+    int ret = 0;
     rkconfig test_rootcheck = { .workdir = 0 };
 
     if (ReadConfig(CROOTCHECK | type, path, &test_rootcheck, NULL, output) < 0) {
@@ -446,12 +447,11 @@ int Test_Rootcheck(const char *path, int type, char **output){
         } else {
             wm_strcat(output, "ERROR: Invalid configuration in Rootcheck", '\n');
         }
-	    Free_Rootcheck(&test_rootcheck);
-        return OS_INVALID;
+        ret = OS_INVALID;
     }
 
     Free_Rootcheck(&test_rootcheck);
-    return 0;
+    return ret;
 }
 
 void Free_Rootcheck(rkconfig *config){

@@ -129,7 +129,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
             os_free(Config->node_type);
             os_strdup(node[i]->content, Config->node_type);
         } else if (!strcmp(node[i]->element, key)) {
-            if (output == NULL) {
+            if (output) {
                 if (strlen(node[i]->content) == 0) {
                     snprintf(message, OS_FLSIZE, "Key must be 32 characters long and only have alphanumeric characters");
                 } else if (strlen(node[i]->content) !=	32) {
@@ -150,7 +150,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                     wm_strcat(output, message, '\n');
                 }
                 return OS_INVALID;
-            } if (strcmp(node[i]->content, "yes") && output) {
+            } if ((strcmp(node[i]->content, "no") == 0) && output) {
                 if (found) {
                     wm_strcat(output, message, '\n');
                     if (found == 1)
@@ -186,8 +186,9 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 
                 /* Get children */
                 xml_node **children = NULL;
-                    if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
-                return OS_INVALID;
+                if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                    wm_strcat(output, "No tag nodes in cluster configuration.", '\n');
+                    return OS_INVALID;
                 }
 
                 int  j;
@@ -202,7 +203,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                             snprintf(message, OS_FLSIZE,
                                 "WARNING: Found more than one node in configuration. Only master node should be specified. Using as master %s",
                                 children[0]->content);
-                                found = 2;
+                            found = 2;
                         }
                     }
                 }

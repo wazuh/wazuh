@@ -2072,8 +2072,8 @@ static int wm_sca_check_process_is_running(OSList *p_list, char *value, char **r
 // Destroy data
 void wm_sca_destroy(wm_sca_t *data) {
 
-    int i;
     if (data->profile){
+        int i;
         for (i=0; data->profile[i]; i++){
             os_free(data->profile[i]->profile);
             os_free(data->profile[i]->policy_id);
