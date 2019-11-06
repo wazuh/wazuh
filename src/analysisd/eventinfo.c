@@ -31,7 +31,7 @@ time_t current_time = 0;
 Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unused)) regex_matching *rule_match)
 {
     Eventinfo *lf = NULL;
-    Eventinfo *first_lf;
+    Eventinfo *first_matched = NULL;
     OSListNode *lf_node;
     int frequency_count = 0;
     int i;
@@ -62,8 +62,6 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         goto end;
     }
 
-    first_lf = (Eventinfo *)lf_node->data;
-
     do {
         lf = (Eventinfo *)lf_node->data;
 
@@ -74,6 +72,16 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
             goto end;
+        }
+
+        if (!(rule->context_opts & GLOBAL_FREQUENCY)) {
+            if ((!lf->agent_id) || (!my_lf->agent_id)) {
+                continue;
+            }
+
+            if (strcmp(lf->agent_id, my_lf->agent_id) != 0) {
+                continue;
+            }
         }
 
         /* Check for same ID */
@@ -223,13 +231,18 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
 
         if (frequency_count < rule->frequency) {
             frequency_count++;
+            if (!first_matched) {
+               first_matched = lf;
+            }
             continue;
         }
         frequency_count++;
+
         /* If reached here, we matched */
         my_lf->matched = rule->level;
-        lf->matched = rule->level;
-        first_lf->matched = rule->level;
+        if (first_matched) { // To protect from a possible frequency 0
+            first_matched->matched = rule->level;
+        }
         goto end;
     } while ((lf_node = lf_node->prev) != NULL);
 
@@ -248,7 +261,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 {
     Eventinfo *lf = NULL;
     OSListNode *lf_node;
-    Eventinfo *first_lf;
+    Eventinfo *first_matched = NULL;
     int frequency_count = 0;
     int i;
     int found;
@@ -260,7 +273,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 
     /* Check if sid search is valid */
     if (!list) {
-        merror("No group search!");
+        merror("No group search.");
         return NULL;
     }
 
@@ -282,8 +295,6 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         goto end;
     }
 
-    first_lf = (Eventinfo *)lf_node->data;
-
     do {
         lf = (Eventinfo *)lf_node->data;
 
@@ -294,6 +305,16 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
             goto end;
+        }
+
+        if (!(rule->context_opts & GLOBAL_FREQUENCY)) {
+            if ((!lf->agent_id) || (!my_lf->agent_id)) {
+                continue;
+            }
+
+            if (strcmp(lf->agent_id, my_lf->agent_id) != 0) {
+                continue;
+            }
         }
 
         /* Check for same ID */
@@ -428,6 +449,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
                 }
             }
         }
+
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
@@ -438,19 +460,24 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 
 
         /* Check if the number of matches worked */
-        if (frequency_count < rule->frequency) {
-            if (frequency_count <= 10) {
-                add_lastevt(my_lf->last_events, frequency_count, lf->full_log);
-            }
+        if (frequency_count <= 10) {
+            add_lastevt(my_lf->last_events, frequency_count, lf->full_log);
+        }
 
+        if (frequency_count < rule->frequency) {
             frequency_count++;
+            if (!first_matched) {
+               first_matched = lf;
+            }
             continue;
         }
+        frequency_count++;
 
         /* If reached here, we matched */
         my_lf->matched = rule->level;
-        lf->matched = rule->level;
-        first_lf->matched = rule->level;
+        if (first_matched) { // To protect from a possible frequency 0
+            first_matched->matched = rule->level;
+        }
         goto end;
     } while ((lf_node = lf_node->prev) != NULL);
 
@@ -471,6 +498,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
 {
     EventNode *eventnode_pt = NULL;
     EventNode *first_pt;
+    Eventinfo *first_matched = NULL;
     Eventinfo *lf = NULL;
     int frequency_count = 0;
     int i;
@@ -505,8 +533,18 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             goto end;
         }
 
+        if (!(rule->context_opts & GLOBAL_FREQUENCY)) {
+            if ((!lf->agent_id) || (!my_lf->agent_id)) {
+                continue;
+            }
+
+            if (strcmp(lf->agent_id, my_lf->agent_id) != 0) {
+                continue;
+            }
+        }
+
         /* The category must be the same */
-        else if (lf->decoder_info->type != my_lf->decoder_info->type) {
+        if (lf->decoder_info->type != my_lf->decoder_info->type) {
             goto next_it;
         }
 
@@ -631,13 +669,17 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
 
             frequency_count++;
+            if (!first_matched) {
+               first_matched = lf;
+            }
             goto next_it;
         }
 
         /* If reached here, we matched */
         my_lf->matched = rule->level;
-        lf->matched = rule->level;
-
+        if (first_matched) { // To protect from a possible frequency 0
+            first_matched->matched = rule->level;
+        }
         goto end;
 next_it:
         w_mutex_lock(&eventnode_pt->mutex);
@@ -688,6 +730,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->command = NULL;
     lf->url = NULL;
     lf->data = NULL;
+    lf->extra_data = NULL;
     lf->systemname = NULL;
 
     if (lf->fields) {
@@ -905,6 +948,10 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->data);
     }
 
+    if (lf->extra_data) {
+        free(lf->extra_data);
+    }
+
     if (lf->systemname) {
         free(lf->systemname);
     }
@@ -1107,10 +1154,12 @@ char* ParseRuleComment(Eventinfo *lf) {
             field = lf->id;
         } else if (strcmp(var, "url") == 0) {
             field = lf->url;
-        } else if (strcmp(var, "data") == 0 || strcmp(var, "extra_data") == 0) {
+        } else if (strcmp(var, "data") == 0) {
             field = lf->data;
         } else if (strcmp(var, "status") == 0) {
             field = lf->status;
+        } else if (strcmp(var, "extra_data") == 0) {
+            field = lf->extra_data;
         } else if (strcmp(var, "system_name") == 0) {
             field = lf->systemname;
         }
@@ -1232,6 +1281,10 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     if(lf->data){
         os_strdup(lf->data,lf_cpy->data);
+    }
+
+    if(lf->extra_data){
+        os_strdup(lf->extra_data, lf_cpy->extra_data);
     }
 
     if(lf->systemname){

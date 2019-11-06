@@ -98,7 +98,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             }
 
             // Update database
-            snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
+            snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn_escaped(c_sum, ' '), c_sum);
             s_node->checksum = strdup(alert_msg);
 
             alert_msg[OS_MAXSTR] = '\0';

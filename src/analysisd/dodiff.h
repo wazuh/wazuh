@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-#ifndef _DODIFF_H_
-#define _DODIFF_H_
+#ifndef DODIFF_H
+#define DODIFF_H
 
 #include "rules.h"
 #include "eventinfo.h"
@@ -17,4 +17,4 @@
 int doDiff(RuleInfo *rule, Eventinfo *lf);
 
 
-#endif /* _DODIFF_H_ */
+#endif /* DODIFF_H */

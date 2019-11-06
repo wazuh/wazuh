@@ -10,11 +10,10 @@
 
 /* Help Function */
 
-#ifndef __HELP_H
-#define __HELP_H
+#ifndef HELP_H
+#define HELP_H
 
 void print_header(void);
 void print_version(void) __attribute__((noreturn));
 
-#endif
-
+#endif /* HELP_H */

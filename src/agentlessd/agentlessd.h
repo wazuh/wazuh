@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _AGENTLESSD_H
-#define _AGENTLESSD_H
+#ifndef AGENTLESSD_H
+#define AGENTLESSD_H
 
 #include "config/agentlessd-config.h"
 
@@ -31,4 +31,4 @@ void * lessdcom_main(__attribute__((unused)) void * arg);
 /* Global variables */
 extern agentlessd_config lessdc;
 
-#endif
+#endif /* AGENTLESSD_H */

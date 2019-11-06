@@ -129,12 +129,20 @@ void* wm_sys_main(wm_sys_t *sys) {
             #endif
         }
 
+        /* Installed hotfixes inventory */
+        if (sys->flags.hotfixinfo) {
+            #ifdef WIN32
+                sys_hotfixes(WM_SYS_LOCATION);
+            #endif
+        }
         /* Opened ports inventory */
         if (sys->flags.portsinfo){
             #if defined(WIN32)
                 sys_ports_windows(WM_SYS_LOCATION, sys->flags.allports);
             #elif defined(__linux__)
                 sys_ports_linux(queue_fd, WM_SYS_LOCATION, sys->flags.allports);
+            #elif defined(__MACH__)
+                sys_ports_mac(queue_fd, WM_SYS_LOCATION, sys->flags.allports);
             #else
                 sys->flags.portsinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Opened ports inventory is not available for this OS version.");
@@ -147,6 +155,8 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys_proc_linux(queue_fd, WM_SYS_LOCATION);
             #elif defined(WIN32)
                 sys_proc_windows(WM_SYS_LOCATION);
+            #elif defined(__MACH__)
+                sys_proc_mac(queue_fd, WM_SYS_LOCATION);
             #else
                 sys->flags.procinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Running processes inventory is not available for this OS version.");
@@ -273,6 +283,9 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     if (sys->flags.portsinfo) cJSON_AddStringToObject(wm_sys,"ports","yes"); else cJSON_AddStringToObject(wm_sys,"ports","no");
     if (sys->flags.allports) cJSON_AddStringToObject(wm_sys,"ports_all","yes"); else cJSON_AddStringToObject(wm_sys,"ports_all","no");
     if (sys->flags.procinfo) cJSON_AddStringToObject(wm_sys,"processes","yes"); else cJSON_AddStringToObject(wm_sys,"processes","no");
+#ifdef WIN32
+    if (sys->flags.hotfixinfo) cJSON_AddStringToObject(wm_sys,"hotfixes","yes"); else cJSON_AddStringToObject(wm_sys,"hotfixes","no");
+#endif
 
     cJSON_AddItemToObject(root,"syscollector",wm_sys);
 
@@ -294,4 +307,18 @@ void init_hw_info(hw_info *info) {
 
 void wm_sys_destroy(wm_sys_t *sys) {
     free(sys);
+}
+
+int wm_sys_get_random_id() {
+    int ID;
+    char random_id[SERIAL_LENGTH];
+
+    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", os_random(), os_random());
+    ID = atoi(random_id);
+
+    if (ID < 0) {
+        ID = -ID;
+    }
+
+    return ID;
 }
