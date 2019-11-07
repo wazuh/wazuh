@@ -556,21 +556,53 @@ int OS_SetKeepalive(int socket)
 void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt)
 {
     if (cnt > 0) {
+#if !defined(sun) && !defined(WIN32)
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPCNT, (void *)&cnt, sizeof(cnt)) < 0) {
             merror("OS_SetKeepalive_Options(TCP_KEEPCNT) failed with error '%s'", strerror(errno));
         }
+#else
+        mwarn("Cannot set up keepalive count parameter: unsupported platform.");
+#endif
     }
 
     if (idle > 0) {
+#ifdef sun
+#ifdef TCP_KEEPALIVE_THRESHOLD
+        idle *= 1000;
+
+        if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPALIVE_THRESHOLD, (void *)&idle, sizeof(idle)) < 0) {
+            merror("OS_SetKeepalive_Options(TCP_KEEPALIVE_THRESHOLD) failed with error '%s'", strerror(errno));
+        }
+#else
+        mwarn("Cannot set up keepalive idle parameter: unsupported platform.");
+#endif
+#elif !defined(WIN32)
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&idle, sizeof(idle)) < 0) {
             merror("OS_SetKeepalive_Options(SO_KEEPIDLE) failed with error '%s'", strerror(errno));
         }
+#else
+        mwarn("Cannot set up keepalive idle parameter: unsupported platform.");
+#endif
     }
 
     if (intvl > 0) {
+#ifdef sun
+#ifdef TCP_KEEPALIVE_ABORT_THRESHOLD
+        intvl *= 1000;
+
+        if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPALIVE_ABORT_THRESHOLD, (void *)&intvl, sizeof(intvl)) < 0) {
+            merror("OS_SetKeepalive_Options(TCP_KEEPALIVE_ABORT_THRESHOLD) failed with error '%s'", strerror(errno));
+        }
+#else
+        mwarn("Cannot set up keepalive interval parameter: unsupported platform.");
+#endif
+#elif !defined(WIN32)
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&intvl, sizeof(intvl)) < 0) {
             merror("OS_SetKeepalive_Options(TCP_KEEPINTVL) failed with error '%s'", strerror(errno));
         }
+#else
+        mwarn("Cannot set up keepalive interval parameter: unsupported platform.");
+#endif
     }
 }
 
