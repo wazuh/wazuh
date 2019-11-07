@@ -27,14 +27,14 @@ size_t moncom_dispatch(char * command, char ** output) {
         // getconfig section
         if (!rcv_args){
             mdebug1("MONCOM getconfig needs arguments.");
-            *output = strdup("err MONCOM getconfig needs arguments");
+            os_strdup("err MONCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return moncom_getconfig(rcv_args, output);
 
     } else {
         mdebug1("MONCOM Unrecognized command '%s'.", rcv_comm);
-        *output = strdup("err Unrecognized command");
+        os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
 }
@@ -46,7 +46,7 @@ size_t moncom_getconfig(const char * section, char ** output) {
 
     if (strcmp(section, "internal") == 0){
         if (cfg = getMonitorInternalOptions(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -58,7 +58,7 @@ size_t moncom_getconfig(const char * section, char ** output) {
     }
     else if (strcmp(section, "reports") == 0){
         if (cfg = getReportsOptions(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -72,7 +72,7 @@ size_t moncom_getconfig(const char * section, char ** output) {
     }
 error:
     mdebug1("At MONCOM getconfig: Could not get '%s' section", section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
 
