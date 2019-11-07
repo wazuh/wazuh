@@ -1,0 +1,270 @@
+---
+test_name: PUT /active-response/{:agent_id}
+
+#marks:
+#  - usefixtures:
+#    - base_tests
+
+includes:
+  - !include common.yaml
+
+stages:
+
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+  - name: Runs an Active Response command on a specified agent
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+      params:
+        list_agents: '001'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - '001'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: Command sent to all agents
+
+  - name: Send a message to an agent (Status=Active)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+      params:
+        list_agents: '002'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - '002'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: Command sent to all agents
+
+  - name: Send a message to a list of agents (Status=Active)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+      params:
+        list_agents: 002,004,005,007,010
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - '002'
+            - '004'
+            - '007'
+            - '005'
+          failed_items:
+            - error:
+                code: 1651
+                message: Active response - Agent is not active
+                remediation: !anything
+              id:
+                - '010'
+          total_affected_items: 4
+          total_failed_items: 1
+        message: Could not send command to some agents
+
+  - name: Try to send a message to an agent (status=disconnected/never_connected)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+      params:
+        list_agents: '009'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1651
+                message: Active response - Agent is not active
+                remediation: !anything
+              id:
+                - 009
+          total_affected_items: 0
+          total_failed_items: 1
+        message: Could not send command to any agent
+
+  - name: Try to send a message to an unexisting agent
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+      params:
+        list_agents: '251'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+                message: 'Agent does not exist: 251'
+                remediation: Please, use `GET /agents?select=id,name` to find all available
+                  agents
+              id:
+                - '251'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: Could not send command to any agent
+
+  - name: Try to send a message to an agent, without body
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '004'
+    response:
+      status_code: 400
+
+  - name: Try to send a message to an agent, malformed body
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        comMmand: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+      params:
+        list_agents: '005'
+    response:
+      status_code: 400
+
+  - name: Send a message to one agent (Active response disabled)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+      params:
+        list_agents: '003'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1750
+                message: Could not send restart command, active-response is disabled in the
+                  agent
+                remediation: You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`
+              id:
+                - '003'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: Could not send command to any agent
+
+---
+test_name: PUT /active-response
+
+stages:
+
+    # PUT /active-response
+  - name: Runs an Active Response command on all agents
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - '002'
+            - '004'
+            - '001'
+            - '007'
+            - '006'
+            - '008'
+            - '000'
+            - '005'
+          failed_items:
+            - error:
+                code: 1651
+                message: Active response - Agent is not active
+                remediation: !anything
+              id:
+                - '009'
+                - '010'
+                - '011'
+                - '012'
+            - error:
+                code: 1750
+                message: Could not send restart command, active-response is disabled in the
+                  agent
+                remediation: You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`
+              id:
+                - '003'
+          total_affected_items: 8
+          total_failed_items: 5
+        message: Could not send command to some agents
+
+    # PUT /active-response
+  - name: Try to send a message to all agents, malformed body
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        comMmand: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+    response:
+      status_code: 400
+
