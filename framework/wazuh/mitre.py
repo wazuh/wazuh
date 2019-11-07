@@ -9,7 +9,7 @@
 """Framework module for getting information from Wazuh MITRE database."""
 
 import json
-from typing import Dict
+from typing import Dict, Optional
 
 from wazuh.utils import WazuhDBBackend, WazuhDBQuery
 
@@ -35,7 +35,8 @@ class WazuhDBQueryMitre(WazuhDBQuery):
 
     def __init__(self, offset: int = 0, limit: int = 0, query: str = '',
                  count: bool = True, get_data: bool = True,
-                 table: str = 'attack', default_query: str = default_query,
+                 table: str = 'attack', sort: Optional[Dict] = None,
+                 default_query: str = default_query,
                  default_sort_field: str = 'id', fields: Dict = mitre_fields,
                  count_field: str = 'id'):
         """Create an instance of WazuhDBQueryMitre query."""
@@ -43,7 +44,7 @@ class WazuhDBQueryMitre(WazuhDBQuery):
         self.count_field = count_field
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit,
-                              table=table, sort=None, search=None,
+                              table=table, sort=sort, search=None,
                               select=None, fields=fields,
                               default_sort_field=default_sort_field,
                               default_sort_order='ASC', filters=None,
@@ -68,7 +69,7 @@ class WazuhDBQueryMitre(WazuhDBQuery):
 
 
 def get_attack(attack: str = '', phase: str = '', platform: str = '',
-               offset: int = 0, limit: int = 10, sort: bool = False,
+               offset: int = 0, limit: int = 10, sort: Optional[Dict] = None,
                q: str = ''):
     """Get information from Mitre database."""
     # replace field names in q parameter
@@ -85,7 +86,7 @@ def get_attack(attack: str = '', phase: str = '', platform: str = '',
                 f'platform_name={platform}'
 
     db_query = WazuhDBQueryMitre(offset=offset, limit=limit if limit < 10
-                                 else 10, query=query)
+                                 else 10, query=query, sort=sort)
 
     # execute query
     result = db_query.run()
