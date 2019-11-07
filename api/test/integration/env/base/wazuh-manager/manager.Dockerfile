@@ -59,4 +59,7 @@ RUN /scripts/configuration_rbac.sh
 FROM base AS wazuh-env-syscollector_white_rbac
 FROM base AS wazuh-env-syscollector_black_rbac
 
+FROM base AS wazuh-env-active-response_white_rbac
+FROM base AS wazuh-env-active-response_black_rbac
+
 FROM wazuh-env-${ENVIRONMENT}
