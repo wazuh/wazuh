@@ -343,3 +343,13 @@ def test_check_total_items_multiple_filters(mock_wdb, platform, phase):
     total_items = get_attack(platform=platform, phase=phase)['totalItems']
 
     assert expected_total_items == total_items
+
+
+@patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
+        sql_schema_file='schema_mitre_test.sql'))
+def test_sort_mitre(mock_wdb):
+    """Test sort filter."""
+    result_asc = get_attack(sort={"fields": ["id"], "order": "asc"}, limit=1)
+    result_desc = get_attack(sort={"fields": ["id"], "order": "desc"}, limit=1)
+
+    assert result_asc['items'][0]['id'] < result_desc['items'][0]['id']
