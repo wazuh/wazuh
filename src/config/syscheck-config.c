@@ -1630,18 +1630,15 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 if (NULL != (ix = strchr(statcmd, ' '))) {
                     *ix = '\0';
                 }
-                if (stat(statcmd, &statbuf) == 0) {
-                    /* More checks needed (perms, owner, etc.) */
-                    os_calloc(1, strlen(cmd) + 1, syscheck->prefilter_cmd);
-                    strncpy(syscheck->prefilter_cmd, cmd, strlen(cmd));
-                } else if (output == NULL){
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
-                } else {
-                    snprintf(message, OS_FLSIZE,
-                        "Invalid value for element '%s': %s.",
-                        node[i]->element, node[i]->content);
-                    wm_strcat(output, message, '\n');
+                if (stat(statcmd, &statbuf) != 0) {
+                    if (output == NULL){
+                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    } else {
+                        snprintf(message, OS_FLSIZE,
+                            "Invalid value for element '%s': %s.",
+                            node[i]->element, node[i]->content);
+                        wm_strcat(output, message, '\n');
+                    }
                     return(OS_INVALID);
                 }
             }
@@ -1741,7 +1738,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             OS_ClearNode(children);
         } /* Allow prefilter cmd */
         else if (strcmp(node[i]->element, xml_allow_remote_prefilter_cmd) == 0) {
-            if (modules & CAGENT_CONFIG) {
+            if (modules & CRMOTE_CONFIG) {
                 mwarn("'%s' option can't be changed using centralized configuration (agent.conf).", xml_allow_remote_prefilter_cmd);
                 i++;
                 continue;
@@ -1770,7 +1767,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     // Set prefilter only if it's expressly allowed (ossec.conf in agent side).
 
     if (prefilter_cmd[0]) {
-        if (!(modules & CAGENT_CONFIG) || syscheck->allow_remote_prefilter_cmd) {
+        if (!(modules & CRMOTE_CONFIG) || syscheck->allow_remote_prefilter_cmd) {
             free(syscheck->prefilter_cmd);
             os_strdup(prefilter_cmd, syscheck->prefilter_cmd);
         } else if (!syscheck->allow_remote_prefilter_cmd) {

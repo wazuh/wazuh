@@ -405,6 +405,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, char **outp
                     if (is_policy_old(old_policies_filenames, n_old_policies_filenames, children[j]->content)) {
                         /* Silently skip configured but oldly-named policy files */
                         continue;
+                    }
 
                     /* full path resolution */
                     char relative_path[PATH_MAX] = {0};

@@ -135,21 +135,13 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
         } else if (strcmp(node[i]->element, xml_categories) == 0) {
             _filter_arg(node[i]->content);
 
-<<<<<<< HEAD
             if (os_report_configfilter("group", node[i]->content,
                                        &mon_config->reports[s]->r_filter, REPORT_FILTER)) {
-                merror(CONFIG_ERROR, "user argument");
-=======
-            os_strdup(node[i]->content, ncat);
-
-            if (result = os_report_configfilter("group", ncat,
-                                       &mon_config->reports[s]->r_filter, REPORT_FILTER), result < 0) {
                 if (output == NULL) {
                     merror(CONFIG_ERROR, "user argument");
                 } else {
                     wm_strcat(output, "Configuration error at user argument.", '\n');
                 }
->>>>>>> Introduce variable output to ReadConfig
             }
         } else if ((strcmp(node[i]->element, xml_group) == 0) ||
                    (strcmp(node[i]->element, xml_rule) == 0) ||
@@ -192,15 +184,8 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                 }
             }
 
-<<<<<<< HEAD
             if (os_report_configfilter(node[i]->element, node[i]->content,
                                        &mon_config->reports[s]->r_filter, reportf)) {
-                merror("Invalid filter: %s:%s (ignored).", node[i]->element, node[i]->content);
-=======
-            os_strdup(node[i]->content, ncat);
-
-            if (result = os_report_configfilter(node[i]->element, ncat,
-                                       &mon_config->reports[s]->r_filter, reportf), result < 0) {
                 if (output == NULL) {
                     merror("Invalid filter: %s:%s (ignored).", node[i]->element, node[i]->content);
                 } else {
@@ -209,9 +194,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
                 }
->>>>>>> Introduce variable output to ReadConfig
             }
-        } else if (strcmp(node[i]->element, xml_email) == 0) {
             mon_config->reports[s]->emailto = os_AddStrArray(node[i]->content, mon_config->reports[s]->emailto);
         } else if (output == NULL) {
             merror(XML_INVELEM, node[i]->element);

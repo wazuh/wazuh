@@ -48,36 +48,12 @@ typedef enum needed_tags {
 #include "os_xml/os_xml.h"
 
 /* Main function to read the config */
-<<<<<<< HEAD
-int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
-
-int Read_Global(XML_NODE node, void *d1, void *d2);
-int Read_GlobalSK(XML_NODE node, void *configp, void *mailp);
-int Read_Rules(XML_NODE node, void *d1, void *d2);
-int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2, int modules);
-int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
-int Read_Alerts(XML_NODE node, void *d1, void *d2);
-int Read_EmailAlerts(XML_NODE node, void *d1, void *d2);
-int Read_DB(XML_NODE node, void *config1, void *config2);
-int Read_CSyslog(XML_NODE node, void *config1, void *config2);
-int Read_CAgentless(XML_NODE node, void *config1, void *config2);
-int Read_Localfile(XML_NODE node, void *d1, void *d2);
-int Read_Integrator(XML_NODE node, void *config1, void *config2);
-int Read_Remote(XML_NODE node, void *d1, void *d2);
-int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
-int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
-int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
-int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
-int Read_CReports(XML_NODE node, void *config1, void *config2);
-int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_type);
-int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
-=======
 int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **output);
 
 int Read_Global(XML_NODE node, void *d1, void *d2, char **output);
 int Read_GlobalSK(XML_NODE node, void *configp, void *mailp, char **output);
 int Read_Rules(XML_NODE node, void *d1, void *d2, char **output);
-int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2, char **output);
+int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2, int modules, char **output);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2, char **output);
 int Read_Alerts(XML_NODE node, void *d1, void *d2, char **output);
 int Read_EmailAlerts(XML_NODE node, void *d1, void *d2, char **output);
@@ -94,22 +70,14 @@ int ReadActiveCommands(XML_NODE node, void *d1, void *d2, char **output);
 int Read_CReports(XML_NODE node, void *config1, void *config2, char **output);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_type, char **output);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, char **output);
->>>>>>> Introduce variable output to ReadConfig
 #ifndef WIN32
 int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1, char **output);
 #endif
-<<<<<<< HEAD
-int Read_Labels(XML_NODE node, void *d1, void *d2);
-int Read_Authd(XML_NODE node, void *d1, void *d2);
-int Read_Cluster(XML_NODE node, void *d1, void *d2);
-int Read_Socket(XML_NODE node, void *d1, void *d2);
-int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2);
-=======
 int Read_Labels(XML_NODE node, void *d1, void *d2, char **output);
 int Read_Authd(XML_NODE node, void *d1, void *d2, char **output);
 int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, void *d2, char **output);
 int Read_Socket(XML_NODE node, void *d1, void *d2, char **output);
->>>>>>> Introduce variable output to ReadConfig
+int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2);
 
 /* Verifies that the configuration for Syscheck is correct. Return 0 on success or -1 on error.  */
 int Test_Syscheck(const char *path, int type, char **output);
