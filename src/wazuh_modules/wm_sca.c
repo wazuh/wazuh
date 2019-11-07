@@ -3208,7 +3208,6 @@ static int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg)
     sca scan and integrity hash.
  */
 static void *wm_sca_check_integrity_periodically (wm_sca_t * data) {
-    int i;
     unsigned int time_sleep = data->integrity_interval;
 
     while (1) {
@@ -3220,6 +3219,8 @@ static void *wm_sca_check_integrity_periodically (wm_sca_t * data) {
         if (!data->policies) {
             continue;
         }
+
+        int i;
 
         /* Send hash for every policy file */
         for (i = 0; data->policies[i]; i++) {
@@ -3237,7 +3238,7 @@ static void *wm_sca_check_integrity_periodically (wm_sca_t * data) {
 
             /* If there is no hash in the local db, it will send an empty one */
             if (!integrity_hash) {
-                free(integrity_hash);
+                os_free(integrity_hash);
                 os_malloc(sizeof(""), integrity_hash);
                 strncpy(integrity_hash, "", sizeof(""));
             }
