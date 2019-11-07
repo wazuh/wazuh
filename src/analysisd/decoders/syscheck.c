@@ -262,7 +262,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     *(check_sum++) = '\0';
 
     //extract changes and date_alert fields only available from wazuh_db
-    if(sk_decode_extradata(&oldsum, check_sum) > 0) {
+    if(sk_decode_extradata(&oldsum, check_sum) < 0) {
         merror("at fim_db_search(): Error decoding agent: '%s' extradata '%s' from '%s'", lf->agent_id, check_sum, f_name);
     }
 
@@ -1131,7 +1131,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     cJSON *object = NULL;
     char *mode = NULL;
     char *event_type = NULL;
-    time_t event_time;
+    time_t event_time = 0;
 
     cJSON_ArrayForEach(object, event) {
         if (object->string == NULL) {

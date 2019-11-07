@@ -31,19 +31,15 @@ volatile int audit_db_consistency_flag;
 /* Start real time monitoring using inotify */
 int realtime_start()
 {
-    syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
-    if (syscheck.realtime == NULL) {
-        merror_exit(MEM_ERROR, errno, strerror(errno));
-    }
+    os_calloc(1, sizeof(rtfim), syscheck.realtime);
 
     syscheck.realtime->dirtb = OSHash_Create();
     if (syscheck.realtime->dirtb == NULL) {
-        merror_exit(MEM_ERROR, errno, strerror(errno));
+        merror(MEM_ERROR, errno, strerror(errno));
+        return (-1);
     }
 
     OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free_syscheck_dirtb_data);
-
-    syscheck.realtime->fd = -1;
 
     syscheck.realtime->fd = inotify_init();
     if (syscheck.realtime->fd < 0) {
@@ -51,7 +47,7 @@ int realtime_start()
         return (-1);
     }
 
-    return (1);
+    return (0);
 }
 
 /* Add a directory to real time checking */
@@ -115,7 +111,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 }
 
 /* Process events in the real time queue */
-int realtime_process()
+void realtime_process()
 {
     ssize_t len;
     char buf[REALTIME_EVENT_BUFFER + 1];
@@ -179,12 +175,6 @@ int realtime_process()
         free_strarray(paths);
         rbtree_destroy(tree);
     }
-
-    return (0);
-}
-
-int run_whodata_scan(void) {
-    return 0;
 }
 
 void free_syscheck_dirtb_data(char *data) {
@@ -309,7 +299,8 @@ int realtime_start()
 
     syscheck.realtime->dirtb = OSHash_Create();
     if (syscheck.realtime->dirtb == NULL) {
-        merror_exit(MEM_ERROR, errno, strerror(errno));
+        merror(MEM_ERROR, errno, strerror(errno));
+        return(-1);
     }
     OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free_win32rtfim_data);
 
@@ -387,7 +378,9 @@ int realtime_adddir(const char *dir, int whodata)
     }
 
     if (!syscheck.realtime) {
-        realtime_start();
+        if (realtime_start() < 0 ) {
+            return (-1);
+        }
     }
 
     w_mutex_lock(&adddir_mutex);
@@ -443,10 +436,6 @@ int realtime_adddir(const char *dir, int whodata)
 
 #else /* !WIN32 */
 
-int run_whodata_scan() {
-    return 0;
-}
-
 int realtime_start()
 {
     merror(FIM_ERROR_REALTIME_INITIALIZE);
@@ -459,9 +448,9 @@ int realtime_adddir(__attribute__((unused)) const char *dir, __attribute__((unus
     return (0);
 }
 
-int realtime_process()
+void realtime_process()
 {
-    return (0);
+    return;
 }
 
 #endif /* WIN32 */

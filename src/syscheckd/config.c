@@ -110,24 +110,6 @@ int Read_Syscheck_Config(const char *cfgfile)
     return (0);
 }
 
-
-void init_whodata_event(whodata_evt *w_evt) {
-    w_evt->user_id = NULL;
-    w_evt->user_name = NULL;
-    w_evt->group_id = NULL;
-    w_evt->group_name = NULL;
-    w_evt->process_name = NULL;
-    w_evt->path = NULL;
-    w_evt->audit_uid = NULL;
-    w_evt->audit_name = NULL;
-    w_evt->effective_uid = NULL;
-    w_evt->effective_name = NULL;
-    w_evt->ppid = -1;
-    w_evt->process_id = 0;
-    w_evt->dev = NULL;
-}
-
-
 void free_whodata_event(whodata_evt *w_evt) {
     if (w_evt->user_name) free(w_evt->user_name);
     if (w_evt->user_id) {
@@ -149,7 +131,6 @@ void free_whodata_event(whodata_evt *w_evt) {
     if (w_evt->dev) free(w_evt->dev);
     free(w_evt);
 }
-
 
 cJSON *getSyscheckConfig(void) {
 
@@ -332,7 +313,6 @@ cJSON *getSyscheckConfig(void) {
 
     return root;
 }
-
 
 cJSON *getSyscheckInternalOptions(void) {
 

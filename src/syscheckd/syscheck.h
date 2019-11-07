@@ -80,7 +80,7 @@ cJSON *getSyscheckInternalOptions(void);
 void read_internal(int debug_level);
 
 // Create the database
-int fim_scan();
+void fim_scan();
 
 //
 void fim_checker(char * path, fim_element *item, whodata_evt *w_evt);
@@ -130,7 +130,7 @@ int fim_update_inode(char * file, char inode_key[]);
 #endif
 
 //
-int fim_delete (char * file_name);
+void fim_delete(char *file_name);
 
 //
 void fim_print_info();
@@ -187,11 +187,8 @@ int realtime_start(void);
 /* Add a directory to real time monitoring */
 int realtime_adddir(const char *dir, int whodata) __attribute__((nonnull(1)));
 
-/* Initializes the whodata scan mode */
-int run_whodata_scan(void);
-
 /* Process real time queue */
-int realtime_process(void);
+void realtime_process(void);
 
 /* Delete data form dir_tb hash table */
 void free_syscheck_dirtb_data(char *data);
@@ -200,19 +197,11 @@ void free_syscheck_dirtb_data(char *data);
 char *seechanges_addfile(const char *filename) __attribute__((nonnull));
 
 /* Generate the whodata csum */
-void init_whodata_event(whodata_evt *w_evt);
 void free_whodata_event(whodata_evt *w_evt);
 
-int send_syscheck_msg(const char *msg) __attribute__((nonnull));
-int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
+void send_syscheck_msg(const char *msg) __attribute__((nonnull));
 void fim_send_sync_msg(const char * msg);
 int send_log_msg(const char * msg);
-
-/* Return the version with symbolic link */
-void replace_linked_path(const char *file_name, int dir_position, char *linked_file);
-
-/* Returns the real path associated with a position securely */
-char *get_converted_link_path(int position);
 
 #ifdef __linux__
 #define READING_MODE 0
@@ -244,13 +233,15 @@ extern pthread_cond_t audit_thread_started;
 extern pthread_cond_t audit_hc_started;
 extern pthread_cond_t audit_db_consistency;
 #elif WIN32
+/* Initializes the whodata scan mode */
+int run_whodata_scan(void);
 int whodata_audit_start();
 int set_winsacl(const char *dir, int position);
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
 #endif
 
 int is_nodiff(const char *filename);
-int fim_initialize();
+void fim_initialize();
 int fim_whodata_initialize();
 
 /* Check for restricts and ignored files */
@@ -260,12 +251,9 @@ int fim_check_restrict(const char *file_name, OSMatch *restriction);
 #ifndef WIN32
 // Com request thread dispatcher
 void * syscom_main(void * arg);
-// Checking links to follow
-int read_links(const char *dir_name, int dir_position, int max_depth, unsigned int is_link);
 #endif
 size_t syscom_dispatch(char *command, char ** output);
 size_t syscom_getconfig(const char * section, char ** output);
-void symlink_checker_init();
 
 #ifdef WIN_WHODATA
 int w_update_sacl(const char *obj_path);

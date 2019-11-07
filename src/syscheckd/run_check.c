@@ -64,7 +64,7 @@ void fim_send_sync_msg(const char * msg) {
 
 // LCOV_EXCL_START
 // Send a message related to syscheck change/addition
-int send_syscheck_msg(const char *msg)
+void send_syscheck_msg(const char *msg)
 {
 #ifndef WIN32
     mdebug2(FIM_SEND, msg);
@@ -72,7 +72,6 @@ int send_syscheck_msg(const char *msg)
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
     struct timespec timeout = { syscheck.send_delay / 1000000, syscheck.send_delay % 1000000 * 1000 };
     nanosleep(&timeout, NULL);
-    return (0);
 }
 // LCOV_EXCL_STOP
 
@@ -87,16 +86,6 @@ void fim_send_scan_info(fim_scan_event event) {
 
     free(plain);
     cJSON_Delete(json);
-}
-// LCOV_EXCL_STOP
-
-
-// LCOV_EXCL_START
-// Send a message related to rootcheck change/addition
-int send_rootcheck_msg(const char *msg)
-{
-    fim_send_msg(ROOTCHECK_MQ, ROOTCHECK, msg);
-    return (0);
 }
 // LCOV_EXCL_STOP
 
