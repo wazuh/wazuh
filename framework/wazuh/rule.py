@@ -55,7 +55,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr
     for rule_file in get_rules_files(status=status, limit=None).affected_items:
         rules.extend(load_rules_from_file(rule_file['file'], rule_file['path'], rule_file['status']))
 
-    parameters = {'groups': group, 'pci': pci, 'gpg13': gpg13, 'gdpr': gdpr, 'hipaa': hipaa, 'nist-800-53': nist_800_53,
+    parameters = {'groups': group, 'pci': pci, 'gpg13': gpg13, 'gdpr': gdpr, 'hipaa': hipaa, 'nist_800_53': nist_800_53,
                   'path': path, 'file': file, 'id': rule_ids, 'level': levels}
     original_rules = list(rules)
     no_existent_ids = rule_ids[:]
