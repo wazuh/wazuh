@@ -250,6 +250,32 @@ components:
               items:
                 $ref: '#/components/schemas/AgentIdKey'
 
+    AllItemsResponseDecoders:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/Decoder'
+
+    AllItemsResponseDecodersFiles:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/DecoderFile'
+
     AllItemsResponseRoles:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -278,6 +304,19 @@ components:
                   - $ref: '#/components/schemas/PoliciesResponse'
                   - type: integer
 
+    AllItemsResponseRules:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/Rules'
+
     AllItemsResponseRulesFiles:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -290,6 +329,110 @@ components:
               description: Items that successfully applied the API call action.
               items:
                 $ref: '#/components/schemas/RulesFiles'
+
+    AllItemsResponseSyscollectorHardware:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/SyscollectorHardware'
+
+    AllItemsResponseSyscollectorInterface:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/SyscollectorInterface'
+
+    AllItemsResponseSyscollectorOS:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/SyscollectorOS'
+
+    AllItemsResponseSyscollectorPackages:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/SyscollectorPackages'
+
+    AllItemsResponseSyscollectorPorts:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/SyscollectorPorts'
+
+    AllItemsResponseSyscollectorProcess:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/SyscollectorProcess'
+
+    AllItemsResponseSyscollectorProtocol:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/SyscollectorProtocol'
+
+    AllItemsResponseSyscollectorNetwork:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/SyscollectorNetwork'
 
     AllItemsResponseUsers:
       allOf:
@@ -2595,13 +2738,14 @@ components:
         - rootcheck
         - wmodules
     decoder_name:
-      in: path
-      name: decoder_name
+      in: query
+      name: decoder_names
       description: Decoder name.
-      required: true
       schema:
-        type: string
-        format: names
+        type: array
+        items:
+          type: string
+          format: names
     description:
       in: query
       name: description
@@ -8138,7 +8282,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponse'
+                        $ref: '#/components/schemas/AllItemsResponseRules'
               example:
                 data:
                   affected_items:
@@ -8665,6 +8809,7 @@ paths:
       description: "Returns information about all decoders included in ossec.conf. This information include decoder's route, decoder's name, decoder's file among others"
       operationId: api.controllers.decoders_controller.get_decoders
       parameters:
+        - $ref: '#/components/parameters/decoder_name'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
@@ -8682,18 +8827,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/Decoder'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseDecoders'
               example:
                 data:
                   totalItems: 571
@@ -8714,65 +8852,6 @@ paths:
                       regex:
                         - "^ '(\\S+)'."
                       order: level
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-  /decoders/{decoder_name}:
-    get:
-      tags:
-        - decoders
-      summary: 'Get decoders by name'
-      description: "Returns information about decoders with a specified name. This information include decoder's route, decoder's name, decoder's file among others"
-      operationId: api.controllers.decoders_controller.get_decoders_by_name
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/decoder_name'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-      responses:
-        '200':
-          description: 'List of decoders with a specified selected'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/Decoder'
-              example:
-                data:
-                  totalItems: 3
-                  items:
-                  - file: 0025-apache_decoders.xml
-                    name: apache-errorlog
-                    position: 0
-                    status: enabled
-                    details:
-                      program_name: "^apache2|^httpd"
-                  - file: 0025-apache_decoders.xml
-                    name: apache-errorlog
-                    position: 1
-                    status: enabled
-                    details:
-                      prematch: "^[warn] |^[notice] |^[error] "
-                  - file: 0025-apache_decoders.xml
-                    name: apache-errorlog
-                    position: 2
-                    status: enabled
-                    details:
-                      prematch: "^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:warn] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:notice] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S*:error] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:info] "
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8800,18 +8879,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/DecoderFile'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseDecodersFiles'
               example:
                 data:
                   totalItems: 571
@@ -8873,18 +8945,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/Decoder'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
                   totalItems: 153
@@ -9640,25 +9705,32 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/SyscollectorHardware'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorHardware'
               example:
                 data:
-                  cpu:
-                    core: 2
-                    mhz: 1991.999
-                    name: Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz
-                  ram:
-                    free: 55592
-                    total: 492832
-                    usage: 89
-                  scan:
-                    id: 599386135
-                    time: "2019-03-08T08:30:53Z"
-                  board_serial: "0"
+                  affected_items:
+                    - inode: 15952431
+                      local:
+                        ip: 127.0.0.11
+                        port: 45363
+                      protocol: tcp
+                      remote:
+                        ip: 0.0.0.0
+                        port: 0
+                      rx_queue: 0
+                      scan:
+                        id: 1708048540
+                        time: '2019-10-30T16:09:35Z'
+                      state: listening
+                      tx_queue: 0
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: All specified items were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9690,32 +9762,25 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorNetwork'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorNetwork'
               example:
                 data:
-                  totalItems: 4
-                  items:
-                  - proto: "ipv6"
-                    address: "fe80::f9:71ff:fed7:9d11"
-                    iface: "enp0s3"
-                    netmask: "ffff:ffff:ffff:ffff::"
-                    scan_id: 1478544824
-                  - proto: "ipv6"
-                    address: "fe80::a00:27ff:fe78:5d4"
-                    iface: "enp0s8"
-                    netmask: "ffff:ffff:ffff:ffff::"
-                    scan_id: 1478544824
+                  affected_items:
+                    - address: 172.26.0.7
+                      broadcast: 172.26.255.255
+                      iface: eth0
+                      netmask: 255.255.0.0
+                      proto: ipv4
+                      scan:
+                        id: 476539860
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: All specified items were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9755,18 +9820,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorInterface'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorInterface'
               example:
                 data:
                   totalItems: 2
@@ -9837,18 +9895,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorProtocol'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorProtocol'
               example:
                 data:
                   totalItems: 4
@@ -9883,11 +9934,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/SyscollectorOS'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorOS'
               example:
                 data:
                   os:
@@ -9936,18 +9987,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorPackages'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorPackages'
               example:
                 data:
                   totalItems: 535
@@ -10012,18 +10056,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorPorts'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorPorts'
               example:
                 data:
                   totalItems: 18
@@ -10096,18 +10133,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorProcess'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorProcess'
               example:
                 data:
                   totalItems: 120
@@ -10743,7 +10773,7 @@ paths:
     put:
       tags:
         - security
-      summary: 'Modify an user'
+      summary: 'Modify a user'
       description: "Modify a user's password by specifying their name."
       operationId: api.controllers.security_controller.update_user
       parameters:

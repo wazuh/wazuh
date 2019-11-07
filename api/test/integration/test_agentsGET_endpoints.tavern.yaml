@@ -371,7 +371,7 @@ stages:
              os:
                version: "{expected_os_version:s}"
          failed_items: []
-         total_affected_items: 8
+         total_affected_items: 1
          total_failed_items: 0
 
  - name: Try to show agents using a non existing OS Version
@@ -705,7 +705,7 @@ stages:
        <<: *error_spec
 
 #THIS TEST FAILS RIGHT NOW
-#File "/var/ossec/framework/python/lib/python3.7/site-packages/wazuh-3.11.0-py3.7.egg/wazuh/core/core_agent.py", line 124, in _parse_legacy_filters
+#File "/var/ossec/framework/python/lib/python3.7/site-packages/wazuh-3.12.0-py3.7.egg/wazuh/core/core_agent.py", line 124, in _parse_legacy_filters
 #    self.legacy_filters['older_than'])
 #TypeError: unsupported operand type(s) for +=: 'NoneType' and 'str'
 #

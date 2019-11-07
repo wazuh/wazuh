@@ -505,30 +505,6 @@ class Agent:
 
         force = force if type(force) == int else int(force)
 
-        # Checks if the values are added
-        lock_file = open("{}/var/run/.api_lock".format(common.ossec_path), 'a+')
-        fcntl.lockf(lock_file, fcntl.LOCK_EX)
-        with open(common.client_keys) as f_k:
-            try:
-                for line in f_k.readlines():
-                    if not line.strip():  # ignore empty lines
-                        continue
-                    if line[0] in '# ':  # starts with # or ' '
-                        continue
-
-                    line_data = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
-
-                    if id and id == line_data[0]:
-                        raise WazuhError(1708, extra_message=id)
-                    if name == line_data[1]:
-                        if force < 0:
-                            raise WazuhError(1705, extra_message=name)
-                    if ip != 'any' and ip == line_data[2]:
-                        if force < 0:
-                            raise WazuhError(1706, extra_message=ip)
-            except WazuhError as e:
-                raise e
-
         msg = ""
         if name and ip:
             if id and key:
@@ -536,10 +512,19 @@ class Agent:
             else:
                 msg = {"function": "add", "arguments": {"name": name, "ip": ip, "force": force}}
 
-        authd_socket = OssecSocketJSON(common.AUTHD_SOCKET)
-        authd_socket.send(msg)
-        data = authd_socket.receive()
-        authd_socket.close()
+        try:
+            authd_socket = OssecSocketJSON(common.AUTHD_SOCKET)
+            authd_socket.send(msg)
+            data = authd_socket.receive()
+            authd_socket.close()
+        except WazuhError as e:
+            if e.code == 9008:
+                raise WazuhError(1705, extra_message=name)
+            elif e.code == 9007:
+                raise WazuhError(1706, extra_message=ip)
+            elif e.code == 9012:
+                raise WazuhError(1708, extra_message=id)
+            raise e
 
         self.id = data['id']
         self.internal_key = data['key']

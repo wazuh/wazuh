@@ -20,6 +20,9 @@ COPY configurations/base/wazuh-master/config/test.keys /var/ossec/etc/client.key
 COPY configurations/base/wazuh-master/config/agent-groups /var/ossec/queue/agent-groups
 COPY configurations/base/wazuh-master/config/shared /var/ossec/etc/shared
 COPY configurations/base/wazuh-master/config/agent-info /var/ossec/queue/agent-info
+# To keep last_keepalive greater than 1 day
+RUN touch -d "2 days ago" /var/ossec/queue/agent-info/wazuh-agent9-any && \
+    touch -d "2 days ago" /var/ossec/queue/agent-info/wazuh-agent10-any
 COPY configurations/base/wazuh-master/healthcheck/healthcheck.py /tmp/healthcheck.py
 COPY configurations/base/wazuh-master/healthcheck/agent_control_check.txt /tmp/agent_control_check.txt
 ADD base/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
@@ -78,6 +81,26 @@ ADD configurations/rbac/rules/black_configuration_rbac.sh /scripts/configuration
 RUN /scripts/configuration_rbac.sh
 COPY configurations/base/wazuh-master/healthcheck/healthcheck_daemons.py /tmp/healthcheck.py
 COPY configurations/base/wazuh-master/healthcheck/daemons_check.txt /tmp/daemons_check.txt
+
+FROM base as wazuh-env-decoders_white_rbac
+ADD configurations/rbac/decoders/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+COPY configurations/base/wazuh-master/healthcheck/healthcheck_daemons.py /tmp/healthcheck.py
+COPY configurations/base/wazuh-master/healthcheck/daemons_check.txt /tmp/daemons_check.txt
+
+FROM base as wazuh-env-decoders_black_rbac
+ADD configurations/rbac/decoders/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+COPY configurations/base/wazuh-master/healthcheck/healthcheck_daemons.py /tmp/healthcheck.py
+COPY configurations/base/wazuh-master/healthcheck/daemons_check.txt /tmp/daemons_check.txt
+
+FROM base AS wazuh-env-syscollector_white_rbac
+ADD configurations/rbac/syscollector/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base AS wazuh-env-syscollector_black_rbac
+ADD configurations/rbac/syscollector/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
 
 FROM base as wazuh-env-active-response_white_rbac
 ADD configurations/rbac/active-response/white_configuration_rbac.sh /scripts/configuration_rbac.sh
