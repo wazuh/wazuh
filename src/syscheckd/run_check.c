@@ -35,6 +35,7 @@ static void set_priority_windows_thread();
 #endif
 
 // Send a message
+// LCOV_EXCL_START
 static void fim_send_msg(char mq, const char * location, const char * msg) {
     if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
         merror(QUEUE_SEND);
@@ -47,7 +48,10 @@ static void fim_send_msg(char mq, const char * location, const char * msg) {
         SendMSG(syscheck.queue, msg, location, mq);
     }
 }
+// LCOV_EXCL_STOP
 
+
+// LCOV_EXCL_START
 // Send a data synchronization control message
 void fim_send_sync_msg(const char * msg) {
     mdebug2(FIM_DBSYNC_SEND, msg);
@@ -55,7 +59,10 @@ void fim_send_sync_msg(const char * msg) {
     struct timespec timeout = { syscheck.send_delay / 1000000, syscheck.send_delay % 1000000 * 1000 };
     nanosleep(&timeout, NULL);
 }
+// LCOV_EXCL_STOP
 
+
+// LCOV_EXCL_START
 // Send a message related to syscheck change/addition
 int send_syscheck_msg(const char *msg)
 {
@@ -67,7 +74,10 @@ int send_syscheck_msg(const char *msg)
     nanosleep(&timeout, NULL);
     return (0);
 }
+// LCOV_EXCL_STOP
 
+
+// LCOV_EXCL_START
 // Send a scan info event
 void fim_send_scan_info(fim_scan_event event) {
     cJSON * json = fim_scan_info_json(event, time(NULL));
@@ -78,22 +88,30 @@ void fim_send_scan_info(fim_scan_event event) {
     free(plain);
     cJSON_Delete(json);
 }
+// LCOV_EXCL_STOP
 
+
+// LCOV_EXCL_START
 // Send a message related to rootcheck change/addition
 int send_rootcheck_msg(const char *msg)
 {
     fim_send_msg(ROOTCHECK_MQ, ROOTCHECK, msg);
     return (0);
 }
+// LCOV_EXCL_STOP
 
+
+// LCOV_EXCL_START
 // Send a message related to logs
 int send_log_msg(const char * msg)
 {
     fim_send_msg(LOCALFILE_MQ, SYSCHECK, msg);
     return (0);
 }
+// LCOV_EXCL_STOP
 
 
+// LCOV_EXCL_START
 // Periodically run the integrity checker
 void start_daemon()
 {
@@ -259,8 +277,10 @@ void start_daemon()
         sleep(SYSCHECK_WAIT);
     }
 }
+// LCOV_EXCL_STOP
 
 
+// LCOV_EXCL_START
 // Starting Real-time thread
 void * fim_run_realtime(__attribute__((unused)) void * args) {
 
@@ -325,6 +345,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 #endif
 
 }
+// LCOV_EXCL_STOP
 
 
 #ifdef WIN32

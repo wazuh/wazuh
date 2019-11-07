@@ -74,6 +74,9 @@ list(APPEND tests_flags "-Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_setSize")
 list(APPEND tests_names "test_fim_sync")
 list(APPEND tests_flags "-Wl,--wrap,rbtree_keys -Wl,--wrap,rbtree_get -Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,rbtree_range")
 
+list(APPEND tests_names "test_run_check")
+list(APPEND tests_flags "-Wl,--wrap,_minfo")
+
 
 # Config files
 configure_file("test_syscheck.conf" "test_syscheck.conf" COPYONLY)

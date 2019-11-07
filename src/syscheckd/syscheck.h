@@ -251,6 +251,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
 
 int is_nodiff(const char *filename);
 int fim_initialize();
+int fim_whodata_initialize();
 
 /* Check for restricts and ignored files */
 int fim_check_ignore(const char *file_name);
