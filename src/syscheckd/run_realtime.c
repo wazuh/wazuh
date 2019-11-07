@@ -111,7 +111,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 }
 
 /* Process events in the real time queue */
-int realtime_process()
+void realtime_process()
 {
     ssize_t len;
     char buf[REALTIME_EVENT_BUFFER + 1];
@@ -175,12 +175,6 @@ int realtime_process()
         free_strarray(paths);
         rbtree_destroy(tree);
     }
-
-    return (0);
-}
-
-int run_whodata_scan(void) {
-    return 0;
 }
 
 void free_syscheck_dirtb_data(char *data) {
@@ -442,10 +436,6 @@ int realtime_adddir(const char *dir, int whodata)
 
 #else /* !WIN32 */
 
-int run_whodata_scan() {
-    return 0;
-}
-
 int realtime_start()
 {
     merror(FIM_ERROR_REALTIME_INITIALIZE);
@@ -458,9 +448,9 @@ int realtime_adddir(__attribute__((unused)) const char *dir, __attribute__((unus
     return (0);
 }
 
-int realtime_process()
+void realtime_process()
 {
-    return (0);
+    return;
 }
 
 #endif /* WIN32 */

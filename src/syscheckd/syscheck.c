@@ -77,7 +77,7 @@ void read_internal(int debug_level)
 }
 
 // Initialize syscheck data
-int fim_initialize() {
+void fim_initialize() {
     // Create store data
     syscheck.fim_entry = rbtree_init();
 
@@ -100,8 +100,6 @@ int fim_initialize() {
 
     rbtree_set_dispose(syscheck.fim_entry, (void (*)(void *))free_entry_data);
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
-
-    return 0;
 }
 
 

@@ -36,7 +36,7 @@ static const char *fim_entry_type[] = {
 
 int print_hash_table();
 
-int fim_scan() {
+void fim_scan() {
     struct fim_element *item;
     int it = 0;
     struct timespec start;
@@ -81,8 +81,6 @@ int fim_scan() {
     if (isDebug()) {
         fim_print_info();
     }
-
-    return 0;
 }
 
 void fim_checker(char *path, fim_element *item, whodata_evt *w_evt) {
@@ -706,7 +704,7 @@ int fim_insert (char * file, fim_entry_data * data, __attribute__((unused))struc
 // Update an entry in the syscheck hash table structure (inodes and paths)
 int fim_update (char * file, fim_entry_data * data, __attribute__((unused)) fim_entry_data * old_data) {
     if (!file || strcmp(file, "") == 0) {
-        merror(FIM_ERROR_UPDATE_ENTRY, file);
+        merror(FIM_ERROR_UPDATE_ENTRY, "");
         return -1;
     }
 
@@ -763,7 +761,7 @@ int fim_update_inode(char * file, char inode_key[]) {
 
 
 // Deletes a path from the syscheck hash table structure and sends a deletion event
-int fim_delete (char * file_name) {
+void fim_delete(char *file_name) {
     fim_entry_data * data;
 
     if (data = rbtree_get(syscheck.fim_entry, file_name), data) {
@@ -775,8 +773,6 @@ int fim_delete (char * file_name) {
 #endif
         rbtree_delete(syscheck.fim_entry, file_name);
     }
-
-    return 0;
 }
 
 
