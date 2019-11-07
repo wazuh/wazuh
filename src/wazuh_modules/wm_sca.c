@@ -3238,7 +3238,6 @@ static void *wm_sca_check_integrity_periodically (wm_sca_t * data) {
 
             /* If there is no hash in the local db, it will send an empty one */
             if (!integrity_hash) {
-                os_free(integrity_hash);
                 os_malloc(sizeof(""), integrity_hash);
                 strncpy(integrity_hash, "", sizeof(""));
             }
