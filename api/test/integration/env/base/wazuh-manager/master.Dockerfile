@@ -20,6 +20,9 @@ COPY configurations/base/wazuh-master/config/test.keys /var/ossec/etc/client.key
 COPY configurations/base/wazuh-master/config/agent-groups /var/ossec/queue/agent-groups
 COPY configurations/base/wazuh-master/config/shared /var/ossec/etc/shared
 COPY configurations/base/wazuh-master/config/agent-info /var/ossec/queue/agent-info
+# To keep last_keepalive greater than 1 day
+RUN touch -d "2 days ago" /var/ossec/queue/agent-info/wazuh-agent9-any && \
+    touch -d "2 days ago" /var/ossec/queue/agent-info/wazuh-agent10-any
 COPY configurations/base/wazuh-master/healthcheck/healthcheck.py /tmp/healthcheck.py
 COPY configurations/base/wazuh-master/healthcheck/agent_control_check.txt /tmp/agent_control_check.txt
 ADD base/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
