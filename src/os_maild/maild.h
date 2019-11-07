@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-#ifndef _MAILD_H
-#define _MAILD_H
+#ifndef MAILD_H
+#define MAILD_H
 
 #define MAIL_LIST_SIZE      96   /* Max number of emails to be saved */
 #define MAXCHILDPROCESS     6    /* Maximum simultaneous children */
@@ -100,4 +100,4 @@ extern unsigned int   _g_subject_level;
 extern char _g_subject[SUBJECT_SIZE + 2];
 extern MailConfig mail;
 
-#endif
+#endif /* MAILD_H */

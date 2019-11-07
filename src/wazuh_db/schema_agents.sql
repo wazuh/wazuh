@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS sys_osinfo (
     sysname TEXT,
     release TEXT,
     version TEXT,
+    os_release TEXT,
     PRIMARY KEY (scan_id, os_name)
 );
 
@@ -150,10 +151,21 @@ CREATE TABLE IF NOT EXISTS sys_programs (
     description TEXT,
     location TEXT,
     triaged INTEGER(1),
+    cpe TEXT,
+    msu_name TEXT,
     PRIMARY KEY (scan_id, name, version, architecture)
 );
 
 CREATE INDEX IF NOT EXISTS programs_id ON sys_programs (scan_id);
+
+CREATE TABLE IF NOT EXISTS sys_hotfixes (
+    scan_id INTEGER,
+    scan_time TEXT,
+    hotfix TEXT,
+    PRIMARY KEY (scan_id, scan_time, hotfix)
+);
+
+CREATE INDEX IF NOT EXISTS hotfix_id ON sys_hotfixes (scan_id);
 
 CREATE TABLE IF NOT EXISTS sys_processes (
     scan_id INTEGER,
@@ -261,7 +273,8 @@ CREATE TABLE IF NOT EXISTS sca_check (
    `references` TEXT,
    result TEXT,
    `status` TEXT,
-   reason TEXT
+   reason TEXT,
+   condition TEXT
 );
 
 CREATE INDEX IF NOT EXISTS policy_id_index ON sca_check (policy_id);
@@ -283,5 +296,14 @@ CREATE TABLE IF NOT EXISTS sca_check_compliance (
 );
 
 CREATE INDEX IF NOT EXISTS comp_id_check_index ON sca_check_compliance (id_check);
+
+CREATE TABLE IF NOT EXISTS vuln_metadata (
+    LAST_SCAN INTEGER,
+    WAZUH_VERSION TEXT
+);
+INSERT INTO vuln_metadata (LAST_SCAN, WAZUH_VERSION)
+    SELECT '0', '0' WHERE NOT EXISTS (
+        SELECT * FROM vuln_metadata
+    );
 
 PRAGMA journal_mode=WAL;
