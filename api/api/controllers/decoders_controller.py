@@ -5,26 +5,26 @@
 import asyncio
 import logging
 
-from connexion.lifecycle import ConnexionResponse
+import connexion
 
-from api.models.base_model_ import Data
+from api.authentication import get_permissions
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from wazuh.decoder import Decoder
+from wazuh import decoder as decoder_framework
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def get_decoders(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
-                 sort: str = None, search: str = None, file: str = None, path: str = None,
-                 status: str = None):
+def get_decoders(decoder_names: list = None, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+                 limit: int = None, sort: str = None, search: str = None, file: str = None, path: str = None, status: str = None):
     """Get all decoders
 
     Returns information about all decoders included in ossec.conf. This information include decoder's route,
     decoder's name, decoder's file among others
 
+    :param decoder_names: Filters by decoder name.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param offset: First element to return in the collection
@@ -37,68 +37,24 @@ def get_decoders(pretty: bool = False, wait_for_complete: bool = False, offset: 
     :param status: Filters by list status.
     :return: Data object
     """
-    f_kwargs = {'offset': offset,
-                'limit': limit,
+    f_kwargs = {'names': decoder_names, 'offset': offset, 'limit': limit, 'file': file, 'status': status, 'path': path,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['file', 'position'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-                'status': status,
-                'file': file,
-                'path': path}
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None}
 
-    dapi = DistributedAPI(f=Decoder.get_decoders,
+    dapi = DistributedAPI(f=decoder_framework.get_decoders,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
-
-
-@exception_handler
-def get_decoders_by_name(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
-                         sort: str = None, search: str = None, decoder_name: str = None):
-    """Get decoders by name
-
-    Returns information about decoders with a specified name. This information include decoder's route, decoder's name,
-    decoder's file among others.
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param decoder_name: Decoder name.
-    :return: Data object
-    """
-    f_kwargs = {'offset': offset,
-                'limit': limit,
-                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['file', 'position'],
-                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
-                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-                'name': decoder_name}
-
-    dapi = DistributedAPI(f=Decoder.get_decoders,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger
-                          )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
-
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -131,18 +87,18 @@ def get_decoders_files(pretty: bool = False, wait_for_complete: bool = False, of
                 'path': path,
                 'status': status}
 
-    dapi = DistributedAPI(f=Decoder.get_decoders_files,
+    dapi = DistributedAPI(f=decoder_framework.get_decoders_files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -156,18 +112,19 @@ def get_download_file(pretty: bool = False, wait_for_complete: bool = False, fil
     """
     f_kwargs = {'file': file}
 
-    dapi = DistributedAPI(f=Decoder.get_file,
+    dapi = DistributedAPI(f=decoder_framework.get_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = ConnexionResponse(body=data["message"], mimetype='application/xml')
+    response = connexion.lifecycle.ConnexionResponse(body=data["message"], mimetype='application/xml')
 
-    return response
+    return data
 
 
 @exception_handler
@@ -194,15 +151,15 @@ def get_decoders_parents(pretty: bool = False, wait_for_complete: bool = False, 
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'parents': True}
 
-    dapi = DistributedAPI(f=Decoder.get_decoders,
+    dapi = DistributedAPI(f=decoder_framework.get_decoders,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200

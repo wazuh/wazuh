@@ -6,7 +6,7 @@ import os
 
 import wazuh.configuration as configuration
 from wazuh import common
-from wazuh.core.rule import check_status, load_rules_from_file, Status, format_rule_file
+from wazuh.core.rule import check_status, load_rules_from_file, Status, format_rule_decoder_file
 from wazuh.exception import WazuhError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import AffectedItemsWazuhResult
@@ -113,11 +113,13 @@ def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.da
     if not ruleset_conf:
         raise WazuhError(1200)
     rules_files = list()
+    tags = ['rule_include', 'rule_exclude', 'rule_dir']
     if isinstance(file, list):
         for f in file:
-            rules_files.extend(format_rule_file(ruleset_conf, {'status': status, 'path': path, 'file': f}))
+            rules_files.extend(
+                format_rule_decoder_file(ruleset_conf, {'status': status, 'path': path, 'file': f}, tags))
     else:
-        rules_files = format_rule_file(ruleset_conf, {'status': status, 'path': path, 'file': file})
+        rules_files = format_rule_decoder_file(ruleset_conf, {'status': status, 'path': path, 'file': file}, tags)
     result.affected_items = process_array(rules_files, search_text=search_text, search_in_fields=search_in_fields,
                                           complementary_search=complementary_search, sort_by=sort_by,
                                           sort_ascending=sort_ascending, offset=offset, limit=limit)['items']

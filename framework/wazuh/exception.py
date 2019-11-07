@@ -170,6 +170,10 @@ class WazuhException(Exception):
         1503: {'message': 'Decoders file not found',
                'remediation': 'Please, use GET /decoders/files to list all available decoders'
                },
+        1504: {'message': 'The decoder doesn\'t exist or you don\'t have permission to see it',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
+                              ' to get more information about the decoders'
+               },
 
         # Syscheck/Rootcheck/AR: 1600 - 1699
         1600: {'message': 'There is no database for selected agent with id',
