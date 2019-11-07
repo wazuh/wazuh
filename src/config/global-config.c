@@ -289,7 +289,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
             os_free(Mail->from);
             os_free(Mail->reply_to);
             os_free(Mail->idsname);
-            os_free (Mail->smtpserver);
+            os_free(Mail->smtpserver);
             os_free(Mail->heloserver);
         }
         if (Config) {

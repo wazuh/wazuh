@@ -24,7 +24,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
     wmodule *cur_wmodule_exists;
     char message[OS_FLSIZE];
 
-    if (!node->attributes[0]) {
+    if (node->attributes == NULL) {
         if (output == NULL) {
             merror("No such attribute '%s' at module.", XML_NAME);
         } else {

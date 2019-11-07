@@ -194,17 +194,18 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                         node[i]->element, node[i]->content);
                     wm_strcat(output, message, '\n');
                 }
+            } else if (strcmp(node[i]->element, xml_email) == 0) {
+                mon_config->reports[s]->emailto = os_AddStrArray(node[i]->content, mon_config->reports[s]->emailto);
+            } else if (output == NULL) {
+                merror(XML_INVELEM, node[i]->element);
+                return (OS_INVALID);
+            } else {
+                snprintf(message, OS_FLSIZE,
+                    "Invalid element in the configuration: '%s'.",
+                    node[i]->element);
+                wm_strcat(output, message, '\n');
+                return (OS_INVALID);
             }
-            mon_config->reports[s]->emailto = os_AddStrArray(node[i]->content, mon_config->reports[s]->emailto);
-        } else if (output == NULL) {
-            merror(XML_INVELEM, node[i]->element);
-            return (OS_INVALID);
-        } else {
-            snprintf(message, OS_FLSIZE,
-                "Invalid element in the configuration: '%s'.",
-                node[i]->element);
-            wm_strcat(output, message, '\n');
-            return (OS_INVALID);
         }
         i++;
     }

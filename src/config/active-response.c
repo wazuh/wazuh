@@ -629,7 +629,7 @@ int Test_ActiveResponse(const char *path, int type, char **output) {
 
     if (!test_activecmd || !test_activeresp) {
         if (output == NULL) {
-            merror(LIST_ERROR, "Attempting to check Active-Response");
+            merror(LIST_ERROR);
         } else {
             wm_strcat(output, "Active-Response: Unable to create a new list", '\n');
         }      

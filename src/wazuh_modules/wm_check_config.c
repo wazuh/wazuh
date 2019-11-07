@@ -110,7 +110,7 @@ void *wm_chk_conf_main() {
                     }
 
                     char *current_message;
-                    char *output_data;
+                    char *output_data = NULL;
                     for (current_message = strtok(output, "\n"); current_message; current_message = strtok(NULL, "\n")) {
                         int i;
                         int size = (int) strlen(current_message);
