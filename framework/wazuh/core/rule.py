@@ -136,7 +136,7 @@ def _remove_files(tmp_data, parameters):
         for key, value in parameters.items():
             if key == 'status':
                 value and value != Status.S_ALL.value and value != d[key] and data.remove(d)
-            elif value and value != d[key]:
+            elif value and value != d[key] and d in data:
                 data.remove(d)
 
     return data

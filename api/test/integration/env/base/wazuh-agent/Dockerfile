@@ -25,7 +25,7 @@ COPY configurations/ciscat/wazuh-agent-ciscat/test.keys /var/ossec/etc/test.keys
 COPY configurations/ciscat/wazuh-agent-ciscat/ossec.conf /var/ossec/etc/ossec.conf
 COPY configurations/ciscat/wazuh-agent-ciscat/healthcheck/healthcheck.py /tmp/healthcheck.py
 COPY configurations/ciscat/wazuh-agent-ciscat/ciscat /var/ossec/wodles/ciscat
-RUN cd /var/ossec/wodles/ciscat && chmod +x CIS-CAT.sh
+# RUN cd /var/ossec/wodles/ciscat && chmod +x CIS-CAT.sh
 
 FROM base_agent AS wazuh-env-agent-security_white_rbac
 FROM base_agent AS wazuh-env-agent-security_black_rbac
@@ -33,11 +33,6 @@ FROM base_agent AS wazuh-env-agent-agents_white_rbac
 FROM base_agent AS wazuh-env-agent-agents_black_rbac
 FROM wazuh-env-agent-ciscat AS wazuh-env-agent-ciscat_white_rbac
 FROM wazuh-env-agent-ciscat AS wazuh-env-agent-ciscat_black_rbac
-
-FROM base_agent AS wazuh-env-agent-security_white_rbac
-FROM base_agent AS wazuh-env-agent-security_black_rbac
-FROM base_agent AS wazuh-env-agent-agents_white_rbac
-FROM base_agent AS wazuh-env-agent-agents_black_rbac
 FROM base_agent AS wazuh-env-agent-rules_white_rbac
 FROM base_agent AS wazuh-env-agent-rules_black_rbac
 FROM base_agent AS wazuh-env-agent-syscollector_white_rbac
