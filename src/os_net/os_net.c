@@ -17,6 +17,10 @@
 #include "os_net.h"
 #include "wazuh_modules/wmodules.h"
 
+#ifdef __MACH__
+#define TCP_KEEPIDLE TCP_KEEPALIVE
+#endif
+
 /* Prototypes */
 static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, int ipv6);
 static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, int ipv6);
