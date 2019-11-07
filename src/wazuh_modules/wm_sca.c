@@ -3208,6 +3208,7 @@ static int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg)
     sca scan and integrity hash.
  */
 static void *wm_sca_check_integrity_periodically (wm_sca_t * data) {
+    int i;
     unsigned int time_sleep = data->integrity_interval;
 
     while (1) {
@@ -3215,45 +3216,49 @@ static void *wm_sca_check_integrity_periodically (wm_sca_t * data) {
         mdebug2("Sleeping for %d seconds.", (int)time_sleep);
         wm_delay(1000 * time_sleep);
 
+        /* It doesn't send anything if there are no policies */
+        if (!data->policies) {
+            continue;
+        }
+
         /* Send hash for every policy file */
-        if (data->policies) {
-            int i;
-
-            for (i = 0; data->policies[i]; i++) {
-                if (!data->policies[i]->enabled) {
-                    continue;
-                }
-
-                cJSON *json_integrity = cJSON_CreateObject();
-                int cis_db_index = i;
-
-                cJSON_AddStringToObject(json_integrity, "type", "integrity_check");
-                
-                mdebug1("Calculating hash for scanned results.");
-                char *integrity_hash = wm_sca_hash_integrity(cis_db_index);
-
-                /* If there is no hash in the local db, it will send an empty one */
-                if (!integrity_hash) {
-                    integrity_hash = "";
-                }
-                
-                cJSON_AddStringToObject(json_integrity, "hash", integrity_hash);
-
-                /* If there is no policy id in the local db, it will send an empty one */
-                if(!data->policies[cis_db_index]->policy_id){
-                    cJSON_AddStringToObject(json_integrity, "policy_id", "");
-                }
-                else{
-                    cJSON_AddStringToObject(json_integrity, "policy_id", data->policies[cis_db_index]->policy_id);
-                }
-
-                /* Send integrity hash to the manager */
-                mdebug2("Sending integrity hash: %s", integrity_hash);
-                wm_sca_send_alert(data, json_integrity);
-
-                /* Free memory */
-                cJSON_Delete(json_integrity);
+        for (i = 0; data->policies[i]; i++) {
+            if (!data->policies[i]->enabled) {
+                continue;
             }
+
+            cJSON *json_integrity = cJSON_CreateObject();
+            int cis_db_index = i;
+
+            cJSON_AddStringToObject(json_integrity, "type", "integrity_check");
+            
+            mdebug1("Calculating hash for scanned results.");
+            char *integrity_hash = wm_sca_hash_integrity(cis_db_index);
+
+            /* If there is no hash in the local db, it will send an empty one */
+            if (!integrity_hash) {
+                free(integrity_hash);
+                os_malloc(sizeof(""), integrity_hash);
+                strncpy(integrity_hash, "", sizeof(""));
+            }
+            
+            cJSON_AddStringToObject(json_integrity, "hash", integrity_hash);
+
+            /* If there is no policy id in the local db, it will send an empty one */
+            if(!data->policies[cis_db_index]->policy_id){
+                cJSON_AddStringToObject(json_integrity, "policy_id", "");
+            }
+            else{
+                cJSON_AddStringToObject(json_integrity, "policy_id", data->policies[cis_db_index]->policy_id);
+            }
+
+            /* Send integrity hash to the manager */
+            mdebug2("Sending integrity hash: %s", integrity_hash);
+            wm_sca_send_alert(data, json_integrity);
+
+            /* Free memory */
+            os_free(integrity_hash);
+            cJSON_Delete(json_integrity);
         }
     }
 

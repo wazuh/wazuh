@@ -243,7 +243,7 @@ int DecodeSCA(Eventinfo *lf, int *socket)
                 os_free(msg_unformatted);
             }
 
-            HandleIntegrityCheck(lf,socket,json_event);
+            HandleIntegrityCheck(lf, socket, json_event);
 
             lf->decoder_info = sca_json_dec;
 
@@ -251,7 +251,7 @@ int DecodeSCA(Eventinfo *lf, int *socket)
             ret_val = 1;
             return ret_val;
         }
-        else if (strcmp(type->valuestring,"dump_end") == 0) {
+        else if (strcmp(type->valuestring, "dump_end") == 0) {
             char *msg_unformatted = cJSON_PrintUnformatted(json_event);
 
             if (msg_unformatted) {
