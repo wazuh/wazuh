@@ -31,12 +31,21 @@ int __wrap_OSHash_Get_ex() {
     return mock();
 }
 
+char *__wrap_OSHash_Get() {
+    static char * file = "test";
+    return file;
+}
+
 int __wrap_OSHash_Add_ex() {
     return mock();
 }
 
 int __wrap_OSHash_Update_ex() {
     return mock();
+}
+
+void * __wrap_rbtree_insert() {
+    return NULL;
 }
 
 OSHash * __real_OSHash_Create();
@@ -49,9 +58,16 @@ OSHash * __wrap_OSHash_Create() {
 
 ssize_t __real_read(int fildes, void *buf, size_t nbyte);
 ssize_t __wrap_read(int fildes, void *buf, size_t nbyte) {
-    if (mock_type(int) == 0) {
+    static char event[] = {1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 't', 'e', 's', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    switch(mock_type(int)){
+        case 0:
         return __real_read(fildes, buf, nbyte);
-    } else {
+
+        case 1:
+        return mock_type(ssize_t);
+
+        case 2:
+        memcpy(buf, event, 32);
         return mock_type(ssize_t);
     }
 }
@@ -250,11 +266,25 @@ void test_realtime_process(void **state)
     syscheck.realtime->fd = 1;
 
     will_return(__wrap_read, 1); // Use wrap
-    will_return(__wrap_read, 1);
+    will_return(__wrap_read, 0);
 
     realtime_process();
 }
 
+void test_realtime_process_len(void **state)
+{
+    (void) state;
+
+    Read_Syscheck_Config("test_syscheck.conf");
+
+    syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
+    syscheck.realtime->fd = 1;
+
+    will_return(__wrap_read, 2); // Use wrap
+    will_return(__wrap_read, 16);
+
+    realtime_process();
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -270,6 +300,7 @@ int main(void) {
         //cmocka_unit_test(test_free_syscheck_dirtb_data),
         cmocka_unit_test(test_free_syscheck_dirtb_data_null),
         cmocka_unit_test(test_realtime_process),
+        cmocka_unit_test(test_realtime_process_len),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
