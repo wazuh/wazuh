@@ -82,9 +82,7 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items:
-            - '007'
-            - '004'
+          affected_items: !anything
           failed_items:
             - error:
                 code: 1651
@@ -183,10 +181,7 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items:
-            - '007'
-            - '001'
-            - '004'
+          affected_items: !anything
           failed_items:
             - error:
                 code: 1651
