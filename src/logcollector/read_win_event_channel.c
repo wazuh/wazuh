@@ -504,6 +504,7 @@ DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_chann
     if (action == EvtSubscribeActionDeliver) {
         send_channel_event(evt, channel);
     } else {
+        mwarn("The eventlog service is down. Unable to collect logs from '%s' channel.", channel->evt_log);
         while(1) {
             /* Try to restart EventChannel */
             if (win_start_event_channel(channel->evt_log, !channel->bookmark_enabled, channel->query, channel->reconnect_time) == -1) {
@@ -529,7 +530,6 @@ int win_start_event_channel(char *evt_log, char future, char *query, int reconne
     EVT_HANDLE bookmark = NULL;
     EVT_HANDLE result = NULL;
     int status = 0;
-    static int counter = 0;
 
     if ((channel = calloc(1, sizeof(os_channel))) == NULL) {
         merror(
@@ -626,19 +626,12 @@ int win_start_event_channel(char *evt_log, char future, char *query, int reconne
                 "Could not EvtSubscribe() for (%s) which returned (%lu)",
                 channel->evt_log,
                 id);
-        } else {
-            /* Prevent message flooding when EventLog is stopped */
-            if (counter == 0) {
-                mwarn("The eventlog service is down. Unable to collect logs from its channels.");
-                counter = 1;
-            }
         }
         goto cleanup;
     }
 
     /* Success */
     status = 1;
-    counter = 0;
 
 cleanup:
     free(wchannel);
