@@ -28,14 +28,14 @@ size_t agcom_dispatch(char * command, char ** output){
         // getconfig section
         if (!rcv_args){
             mdebug1("AGCOM getconfig needs arguments.");
-            *output = strdup("err AGCOM getconfig needs arguments");
+            os_strdup("err AGCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return agcom_getconfig(rcv_args, output);
 
     } else {
         mdebug1("AGCOM Unrecognized command '%s'.", rcv_comm);
-        *output = strdup("err Unrecognized command");
+        os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
 }
@@ -94,6 +94,6 @@ size_t agcom_getconfig(const char * section, char ** output) {
     }
 error:
     mdebug1("At AGCOM getconfig: Could not get '%s' section", section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
