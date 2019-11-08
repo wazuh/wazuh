@@ -63,9 +63,10 @@ def get_hotfix_info(agent_id, pretty=False, wait_for_complete=False, offset=0, l
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'filters': filters}
+                'filters': filters,
+                'element_type': 'hotfixes'}
 
-    dapi = DistributedAPI(f=syscollector.get_hotfixes_agent,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -74,9 +75,8 @@ def get_hotfix_info(agent_id, pretty=False, wait_for_complete=False, offset=0, l
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler

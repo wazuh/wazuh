@@ -24,10 +24,9 @@ stages:
     response:
       status_code: 200
       body:
-        # We get totalItems number of arrays in items, using !anything to check items key is in the response
         data:
-          items: !anything
-          totalItems: !anyint
+          affected_items: !anything
+          total_affected_items: !anyint
 
     # GET /decoders?limit=1
   - name: Try to get decoders using limit parameter
@@ -39,21 +38,23 @@ stages:
       status_code: 200
       body:
         data:
-          items: &full_items_array
+          affected_items: &full_items_array
             - details: !anything
               file: !anystr
               name: !anystr
               path: !anystr
               position: !anyint
               status: !anystr
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
       # Save some data for future use in the test
       save:
         body:
-          returned_file: data.items.0.file
-          returned_path: data.items.0.path
-          returned_status: data.items.0.status
-          returned_name: data.items.0.name
+          returned_file: data.affected_items.0.file
+          returned_path: data.affected_items.0.path
+          returned_status: data.affected_items.0.status
+          returned_name: data.affected_items.0.name
 
     # We implement a dual stage to check offset parameter behaviour
     # GET /decoders?limit=2&offset=0
@@ -67,14 +68,16 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *full_items_array
             - <<: *full_items_array
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
       # Save second item to check offset in next stage
       save:
         body:
-          offset_item: data.items.1
+          offset_item: data.affected_items.1
 
     # GET /decoders?limit=1&offset=1
   - name: Try to get decoders using limit and offset parameter
@@ -87,7 +90,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
               # Check offset matches with previous request
             - details: !anything
               file: "{offset_item.file}"
@@ -95,7 +98,9 @@ stages:
               path: "{offset_item.path}"
               position: !int "{offset_item.position}"
               status: "{offset_item.status}"
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
     # GET /decoders?limit=1&search=a
   - name: Try to get decoders using limit and search parameter
@@ -108,9 +113,11 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *full_items_array
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
     # GET /decoders?limit=1&file={returned_file}
   - name: Try to get decoders using limit and file parameter
@@ -123,9 +130,11 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - file: "{tavern.request_vars.params.file}"
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
     # GET /decoders?limit=1&path={returned_path}
   - name: Try to get decoders using limit and path parameter
@@ -138,9 +147,11 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - path: "{tavern.request_vars.params.path}"
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
     # GET /decoders?limit=1&status={returned_status}
   - name: Try to get decoders using limit and status parameter
@@ -153,9 +164,11 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - status: "{tavern.request_vars.params.status}"
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
     # We perform a dual stage to test request using a wrong parameter and a wrong parameter value
     # GET /decoders?limit=1&wrongparam=wrong
@@ -206,8 +219,10 @@ stages:
       status_code: 200
       body:
         data:
-          items: *full_items_array
-          totalItems: !anyint
+          affected_items: *full_items_array
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
     # GET /decoders?limit=1&sort=-{field}
   - name: Try to get decoders using an descendent sorted field answer
@@ -220,8 +235,10 @@ stages:
       status_code: 200
       body:
         data:
-          items: *full_items_array
-          totalItems: !anyint
+          affected_items: *full_items_array
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
 ---
 test_name: GET /decoders/{decoder_name}
@@ -233,35 +250,27 @@ stages:
   - name: Try to get all decoders with specified decoder_name
     request: &get_decoders_with_name
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/auditd-selinux_macstatus"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      body:
-        # We get totalItems number of arrays in items, using !anything to check items key is in the response
-        data:
-          items: !anything
-          totalItems: !anyint
-
-    # GET /decoders/auditd-selinux_macstatus?limit=1
-  - name: Try to get all decoders with specified decoder_name and limit parameter
-    request:
-      <<: *get_decoders_with_name
       params:
+        decoder_names: auditd-selinux_macstatus
         limit: 1
     response:
       status_code: 200
       body:
-        data:
-          items:
+        # We get totalItems number of arrays in items, using !anything to check items key is in the response
+        data: &decoder_name_response
+          affected_items:
             - details: !anything
               file: !anystr
               name: "auditd-selinux_macstatus"
               path: !anystr
               position: !anyint
               status: !anystr
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
     # We implement a dual stage to check offset parameter behaviour
     # GET /decoders/auditd-selinux_macstatus?limit=2&offset=0
@@ -275,14 +284,16 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *full_items_array
             - <<: *full_items_array
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
       # Save second item to check offset in next stage
       save:
         body:
-          offset_item: data.items.1
+          offset_item: data.affected_items.1
 
     # GET /decoders/auditd-selinux_macstatus?limit=1&offset=1
   - name: Try to get all decoders with specified decoder_name using limit and offset parameter
@@ -295,15 +306,17 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
               # Check offset matches with previous request
             - details: !anything
               file: "{offset_item.file}"
-              name: "auditd-selinux_macstatus"
+              name: "{offset_item.name}"
               path: "{offset_item.path}"
               position: !int "{offset_item.position}"
               status: "{offset_item.status}"
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
     # GET /decoders/auditd-selinux_macstatus?limit=1&search=a
   - name: Try to get all decoders with specified decoder_name using limit and search parameter
@@ -316,9 +329,11 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *full_items_array
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
     # We perform a dual stage to test request using a wrong parameter and a wrong parameter value
     # GET /decoders/auditd-selinux_macstatus?limit=1&wrongparam=wrong
@@ -357,33 +372,38 @@ marks:
         - status
 
 stages:
-    # GET /decoders/auditd-selinux_macstatus?limit=1&sort={field}
+    # GET /decoders/auditd-selinux_macstatus?sort={field}
   - name: Try to get all decoders with specified decoder_name using an ascendent sorted field answer
     request:
       <<: *get_decoders_with_name
       params:
-        limit: 1
         sort: "{field}"
     response:
       status_code: 200
       body:
         data:
-          items: *full_items_array
-          totalItems: !anyint
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+      save:
+        body:
+          total_items: data.total_affected_items
 
-    # GET /decoders/auditd-selinux_macstatus?limit=1&sort=-{field}
+    # GET /decoders/auditd-selinux_macstatus?sort=-{field}
   - name: Try to get all decoders with specified decoder_name using an descendent sorted field answer
     request:
       <<: *get_decoders_with_name
       params:
-        limit: 1
         sort: "-{field}"
     response:
       status_code: 200
       body:
         data:
-          items: *full_items_array
-          totalItems: !anyint
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !int "{total_items}"
+          total_failed_items: !anyint
 
 ---
 test_name: GET /decoders/files
@@ -402,8 +422,10 @@ stages:
       body:
         # We get totalItems number of arrays in items, using !anything to check items key is in the response
         data:
-          items: !anything
-          totalItems: !anyint
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
     # GET /decoders/files?limit=1
   - name: Try to get information about all decoders files using limit parameter
@@ -415,17 +437,19 @@ stages:
       status_code: 200
       body:
         data:
-          items: &full_items_array_files
+          affected_items: &full_items_array_files
             - file: !anystr
               path: !anystr
               status: !anystr
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
       # Save some data for future use in the test
       save:
         body:
-          returned_files_file: data.items.0.file
-          returned_files_path: data.items.0.path
-          returned_files_status: data.items.0.status
+          returned_files_file: data.affected_items.0.file
+          returned_files_path: data.affected_items.0.path
+          returned_files_status: data.affected_items.0.status
 
 # We implement a dual stage to check offset parameter behaviour
     # GET /decoders/files?limit=2&offset=0
@@ -439,14 +463,16 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *full_items_array_files
             - <<: *full_items_array_files
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
       # Save second item to check offset in next stage
       save:
         body:
-          offset_item: data.items.1
+          offset_item: data.affected_items.1
 
     # GET /decoders/files?limit=1&offset=1
   - name: Try to get information about all decoders files using limit and offset parameter
@@ -459,12 +485,14 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
               # Check offset matches with previous request
             - file: "{offset_item.file}"
               path: "{offset_item.path}"
               status: "{offset_item.status}"
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
     # GET /decoders/files?limit=1&search=a
   - name: Try to get information about all decoders files using limit and search parameter
@@ -477,9 +505,11 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *full_items_array_files
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
     # GET /decoders/files?limit=1&file={returned_files_file}
   - name: Try to get information about all decoders files using limit and file parameter
@@ -492,9 +522,11 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - file: "{tavern.request_vars.params.file}"
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
     # GET /decoders/files?limit=1&path={returned_files_path}
   - name: Try to get information about all decoders files using limit and path parameter
@@ -507,11 +539,13 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - path: "{tavern.request_vars.params.path}"
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
-    # GET /decoders/files?limit=1&status={returned_files_status}
+  # GET /decoders/files?limit=1&status={returned_files_status}
   - name: Try to get information about all decoders files using limit and status parameter
     request:
       <<: *get_decoders_files
@@ -522,12 +556,14 @@ stages:
       status_code: 200
       body:
         data:
-          items:
-            - status: "{tavern.request_vars.params.status}"
-          totalItems: !anyint
+          affected_items:
+            - status: "{returned_files_status:s}"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
-    # We perform a dual stage to test request using a wrong parameter and a wrong parameter value
-    # GET /decoders/files?limit=1&wrongparam=wrong
+  # We perform a dual stage to test request using a wrong parameter and a wrong parameter value
+  # GET /decoders/files?limit=1&wrongparam=wrong
   - name: Try to get information about all decoders using limit and a wrong parameter
     request:
       <<: *get_decoders_files
@@ -537,7 +573,7 @@ stages:
     response:
       status_code: 400
 
-    # GET /decoders/files?limit=1&sort=wrong
+  # GET /decoders/files?limit=1&sort=wrong
   - name: Try to get information about all decoders using limit and a wrong parameter's value
     request:
       <<: *get_decoders_files
@@ -572,8 +608,10 @@ stages:
       status_code: 200
       body:
         data:
-          items: *full_items_array_files
-          totalItems: !anyint
+          affected_items: *full_items_array_files
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
     # GET /decoders/files?limit=1&sort=-{field}
   - name: Try to get information about all decoders files using a descendent sorted field answer
@@ -586,8 +624,10 @@ stages:
       status_code: 200
       body:
         data:
-          items: *full_items_array_files
-          totalItems: !anyint
+          affected_items: *full_items_array_files
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
 ---
 test_name: GET /decoders/parents
@@ -606,10 +646,12 @@ stages:
       body:
         # We get totalItems number of arrays in items, using !anything to check items key is in the response
         data:
-          items: !anything
-          totalItems: !anyint
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
 
-    # GET /decoders/parents?limit=1
+  # GET /decoders/parents?limit=1
   - name: Try to get information about all decoders parents using limit parameter
     request:
       <<: *get_decoders_parents
@@ -619,14 +661,14 @@ stages:
       status_code: 200
       body:
         data:
-          items: &full_items_array_parents
+          affected_items: &full_items_array_parents
             - details: !anything
               file: !anystr
               name: !anystr
               path: !anystr
               position: !anyint
               status: !anystr
-          totalItems: !anyint
+          total_affected_items: !anyint
 
 # We implement a dual stage to check offset parameter behaviour
     # GET /decoders/parents?limit=2&offset=0
@@ -640,14 +682,14 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *full_items_array_parents
             - <<: *full_items_array_parents
-          totalItems: !anyint
+          total_affected_items: !anyint
       # Save second item to check offset in next stage
       save:
         body:
-          offset_item: data.items.1
+          offset_item: data.affected_items.1
 
     # GET /decoders/parents?limit=1&offset=1
   - name: Try to get information about all decoders parents using limit and offset parameter
@@ -660,7 +702,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
               # Check offset matches with previous request
             - details: !anything
               file: "{offset_item.file}"
@@ -668,9 +710,9 @@ stages:
               path: "{offset_item.path}"
               position: !int "{offset_item.position}"
               status: "{offset_item.status}"
-          totalItems: !anyint
+          total_affected_items: !anyint
 
-    # GET /decoders/parents?limit=1&search=a
+  # GET /decoders/parents?limit=1&search=a
   - name: Try to get information about all decoders parents using limit and search parameter
     request:
       <<: *get_decoders_parents
@@ -681,9 +723,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *full_items_array_parents
-          totalItems: !anyint
+          total_affected_items: !anyint
 
     # We perform a dual stage to test request using a wrong parameter and a wrong parameter value
     # GET /decoders/parents?limit=1&wrongparam=wrong
@@ -722,7 +764,7 @@ marks:
         - status
 
 stages:
-    # GET /decoders/parents?limit=1&sort={field}
+  # GET /decoders/parents?limit=1&sort={field}
   - name: Try to get information about all decoders parents using an ascendent sorted field answer
     request:
       <<: *get_decoders_parents
@@ -733,10 +775,10 @@ stages:
       status_code: 200
       body:
         data:
-          items: *full_items_array_parents
-          totalItems: !anyint
+          affected_items: *full_items_array_parents
+          total_affected_items: !anyint
 
-    # GET /decoders/parents?limit=1&sort=-{field}
+  # GET /decoders/parents?limit=1&sort=-{field}
   - name: Try to get information about all decoders parents using a descendent sorted field answer
     request:
       <<: *get_decoders_parents
@@ -747,8 +789,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: *full_items_array_parents
-          totalItems: !anyint
+          affected_items: *full_items_array_parents
+          total_affected_items: !anyint
 
 ---
 test_name: GET /decoders/files/{file}/download

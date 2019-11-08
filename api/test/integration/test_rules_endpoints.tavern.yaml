@@ -313,6 +313,17 @@ stages:
         data:
           total_affected_items: !anyint
 
+  - name: Filter levels without limit
+    request:
+      <<: *general_rules_request
+      params:
+        level: 2-3
+    response:
+      status_code: 200
+      body:
+        data:
+          total_affected_items: !anyint
+
   - name: Try to show the rules by levels (invalid interval)
     request:
       <<: *general_rules_request
@@ -1270,6 +1281,22 @@ stages:
           total_affected_items: 1
           total_failed_items: 1
         message: Some rules could not be shown
+
+  - name: Try to show a rule with a existent id but with a wrong file in file filter
+    request:
+      <<: *id_rules_request
+      params:
+        rule_ids: 200
+        file: 0025-sendmail_rules.xml
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: No rule was shown
 
   - name: Try to show a rule with a existent id, limit = 0
     request:
