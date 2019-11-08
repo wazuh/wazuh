@@ -526,13 +526,17 @@ fim_entry_data * fim_get_data (const char *file, fim_element *item) {
                 os_realloc(data->perm, size + 1, data->perm);
             }
         }
-
-        os_calloc(OS_SIZE_256, sizeof(char), data->attributes);
-        decode_win_attributes(data->attributes, w_get_file_attrs(file));
 #else
         data->perm = agent_file_perm(item->statbuf->st_mode);
 #endif
     }
+
+#ifdef WIN32
+    if (item->configuration & CHECK_ATTRS) {
+        os_calloc(OS_SIZE_256, sizeof(char), data->attributes);
+        decode_win_attributes(data->attributes, w_get_file_attrs(file));
+    }
+#endif
 
     if (item->configuration & CHECK_MTIME) {
         data->mtime = item->statbuf->st_mtime;
