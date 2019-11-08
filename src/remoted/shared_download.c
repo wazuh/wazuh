@@ -347,7 +347,7 @@ int sd_parse(sd_config_t **config) {
     }
 
     if (root_node = yaml_document_get_root_node(&document), !root_node) {
-        merror("No YAML document defined in %s: ", (*config)->file_name);
+        mwarn("No YAML document defined in: %s ", (*config)->file_name);
         goto end;
     }
 
@@ -431,7 +431,6 @@ int sd_load(sd_config_t **config) {
         }
     } else {
         mdebug1("Shared configuration file not found.");
-        sd_destroy_content(config);
         return 0;
     }
 }
