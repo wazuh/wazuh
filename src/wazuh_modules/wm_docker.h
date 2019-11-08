@@ -32,7 +32,7 @@ typedef struct wm_docker_t {
 extern const wm_context WM_DOCKER_CONTEXT;   // Context
 
 // Parse XML configuration
-int wm_docker_read(xml_node **nodes, wmodule *module);
+int wm_docker_read(xml_node **nodes, wmodule *module, char **output);
 
 #endif
 #endif

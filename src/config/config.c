@@ -157,7 +157,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (strcmp(node[i]->element, osvulndet) == 0) {
 #if !defined(WIN32) && !defined(CLIENT)
-            if ((modules & CWMODULE) && (Read_Vuln(xml, chld_node, d1, 1) < 0)) {
+            if ((modules & CWMODULE) && (Read_Vuln(xml, chld_node, d1, 1, output) < 0)) {
                 goto fail;
             }
 #else

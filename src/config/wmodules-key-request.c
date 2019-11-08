@@ -24,10 +24,11 @@ static short eval_bool(const char *str)
 }
 
 // Reading function
-int wm_key_request_read(xml_node **nodes, wmodule *module)
+int wm_key_request_read(xml_node **nodes, wmodule *module, char **output)
 {
     unsigned int i;
     wm_krequest_t *key_request;
+    char message[OS_FLSIZE];
 
     os_calloc(1, sizeof(wm_krequest_t), key_request);
     key_request->enabled = 1;
@@ -46,13 +47,23 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
     {
         if(!nodes[i]->element)
         {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return OS_INVALID;
         }
         else if (!strcmp(nodes[i]->element, XML_ENABLED))
         {
             if (key_request->enabled = eval_bool(nodes[i]->content), key_request->enabled == OS_INVALID) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_KEY_REQUEST_CONTEXT.name);
+                if (output == NULL) {
+                    merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_KEY_REQUEST_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_KEY_REQUEST_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         }
@@ -63,7 +74,13 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
             }
 
             if(strlen(nodes[i]->content) >= PATH_MAX) {
-                merror("Exec path is too long at module '%s'. Max path length is %d", WM_KEY_REQUEST_CONTEXT.name,PATH_MAX);
+                if (output == NULL) {
+                    merror("Exec path is too long at module '%s'. Max path length is %d", WM_KEY_REQUEST_CONTEXT.name,PATH_MAX);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "Exec path is too long at module '%s'. Max path length is %d", WM_KEY_REQUEST_CONTEXT.name,PATH_MAX);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
             key_request->exec_path = strdup(nodes[i]->content);
@@ -75,7 +92,13 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
             }
 
             if(strlen(nodes[i]->content) >= PATH_MAX) {
-                merror("Socket path is too long at module '%s'. Max path length is %d", WM_KEY_REQUEST_CONTEXT.name,PATH_MAX);
+                if (output == NULL) {
+                    merror("Socket path is too long at module '%s'. Max path length is %d", WM_KEY_REQUEST_CONTEXT.name,PATH_MAX);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "Socket path is too long at module '%s'. Max path length is %d", WM_KEY_REQUEST_CONTEXT.name,PATH_MAX);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
             key_request->socket = strdup(nodes[i]->content);
@@ -85,18 +108,30 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
             key_request->timeout = atol(nodes[i]->content);
 
             if (key_request->timeout < 1 || key_request->timeout >= UINT_MAX) {
-                merror("Invalid interval at module '%s'", WM_KEY_REQUEST_CONTEXT.name);
+                if (output == NULL) {
+                    merror("Invalid interval at module '%s'", WM_KEY_REQUEST_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE, "Invalid interval at module '%s'", WM_KEY_REQUEST_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
-            mdebug2("Timeout read: %d", key_request->timeout);
+            if (output == NULL) {
+                mdebug2("Timeout read: %d", key_request->timeout);
+            }
         }
         else if (!strcmp(nodes[i]->element, XML_THREADS))
         {
             key_request->threads = atol(nodes[i]->content);
 
             if (key_request->threads < 1 || key_request->threads > 32) {
-                merror("Invalid number of threads at module '%s'", WM_KEY_REQUEST_CONTEXT.name);
+                if (output == NULL) {
+                    merror("Invalid number of threads at module '%s'", WM_KEY_REQUEST_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE, "Invalid number of threads at module '%s'", WM_KEY_REQUEST_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         }
@@ -105,7 +140,12 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
             key_request->queue_size = atol(nodes[i]->content);
 
             if (key_request->queue_size < 1 || key_request->queue_size > 220000) {
-                merror("Invalid queue size at module '%s'", WM_KEY_REQUEST_CONTEXT.name);
+                if (output == NULL) {
+                    merror("Invalid queue size at module '%s'", WM_KEY_REQUEST_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE, "Invalid queue size at module '%s'", WM_KEY_REQUEST_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         }
@@ -113,13 +153,24 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
         {
             if (key_request->force_insert = eval_bool(nodes[i]->content), key_request->force_insert == OS_INVALID)
             {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_FORCE_INSERT, WM_KEY_REQUEST_CONTEXT.name);
+                if (output == NULL) {
+                    merror("Invalid content for tag '%s' at module '%s'.", XML_FORCE_INSERT, WM_KEY_REQUEST_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE, "Invalid content for tag '%s' at module '%s'.", XML_FORCE_INSERT, WM_KEY_REQUEST_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         }
         else
         {
-            mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_KEY_REQUEST_CONTEXT.name);
+            if (output == NULL) {
+                    mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_KEY_REQUEST_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE, "WARNING: No such tag <%s> at module '%s'.",
+                        nodes[i]->element, WM_KEY_REQUEST_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
         }
 
     }

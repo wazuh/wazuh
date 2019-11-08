@@ -1460,7 +1460,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             arch = ARCH_64BIT;
                         else if (strcmp(node[i]->values[j], xml_both) == 0)
                             arch = ARCH_BOTH;
-                        else if (output = NULL) {
+                        else if (output == NULL) {
                             merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
                             return OS_INVALID;
                         } else {

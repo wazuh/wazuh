@@ -72,6 +72,6 @@ typedef struct wm_aws {
 extern const wm_context WM_AWS_CONTEXT;   // Context
 
 // Parse XML
-int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
+int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **output);
 
 #endif // WM_AWS_H

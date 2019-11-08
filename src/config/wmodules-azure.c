@@ -43,10 +43,10 @@ static const char *XML_REQUEST_QUERY = "query";
 static const char *XML_TIME_OFFSET = "time_offset";
 static const char *XML_WORKSPACE = "workspace";
 
-static int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_config);
-static int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned int type);
-static int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t * storage);
-static int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container);
+static int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_config, char **output);
+static int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned int type, char **output);
+static int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t * storage, char **output);
+static int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container, char **output);
 
 static void wm_clean_api(wm_azure_api_t * api_config);
 static void wm_clean_request(wm_azure_request_t * request);
@@ -55,7 +55,7 @@ static void wm_clean_container(wm_azure_container_t * container);
 
 // Parse XML
 
-int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
+int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **output)
 {
     int i = 0;
     wm_azure_t *azure;
@@ -64,6 +64,7 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     wm_azure_storage_t *storage = NULL;
     wm_azure_storage_t *storage_prev = NULL;
     int month_interval = 0;
+    char message[OS_FLSIZE];
 
     // Create module
 
@@ -78,7 +79,12 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     module->data = azure;
 
     if (!nodes) {
-        mwarn("Empty configuration at module '%s'.", WM_AZURE_CONTEXT.name);
+        if (output == NULL) {
+            mwarn("Empty configuration at module '%s'.", WM_AZURE_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE, "Empty configuration at module '%s'.", WM_AZURE_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     }
 
@@ -88,13 +94,22 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         XML_NODE children = NULL;
 
         if (!nodes[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return OS_INVALID;
         } else if (!strcmp(nodes[i]->element, XML_TIMEOUT)) {
             azure->timeout = atol(nodes[i]->content);
 
             if (azure->timeout <= 0 || azure->timeout >= UINT_MAX) {
-                merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE, "At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
@@ -102,7 +117,12 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             azure->interval = strtoul(nodes[i]->content, &endptr, 0);
 
             if (azure->interval <= 0 || azure->interval >= UINT_MAX) {
-                merror("At module '%s': Invalid interval.", WM_AZURE_CONTEXT.name);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid interval.", WM_AZURE_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE, "At module '%s': Invalid interval.", WM_AZURE_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -127,35 +147,70 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             case '\0':
                 break;
             default:
-                merror("At module '%s': Invalid interval.", WM_AZURE_CONTEXT.name);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid interval.", WM_AZURE_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE, "At module '%s': Invalid interval.", WM_AZURE_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
             if (azure->interval < 60) {
-                merror("At module '%s': Interval must be greater than 60 seconds. New interval value: 60s.", WM_AZURE_CONTEXT.name);
+                if (output == NULL) {
+                    merror("At module '%s': Interval must be greater than 60 seconds. New interval value: 60s.", WM_AZURE_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "At module '%s': Interval must be greater than 60 seconds. New interval value: 60s.", WM_AZURE_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 azure->interval = 60;
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_DAY)) {
             if (!OS_StrIsNum(nodes[i]->content)) {
-                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "Invalid value for element '%s': %s.", nodes[i]->element, nodes[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             } else {
                 azure->scan_day = atoi(nodes[i]->content);
                 if (azure->scan_day < 1 || azure->scan_day > 31) {
-                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                    if (output == NULL) {
+                        merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                    } else {
+                        snprintf(message, OS_FLSIZE,
+                            "Invalid value for element '%s': %s.", nodes[i]->element, nodes[i]->content);
+                        wm_strcat(output, message, '\n');
+                    }
                     return OS_INVALID;
                 }
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_WDAY)) {
             azure->scan_wday = w_validate_wday(nodes[i]->content);
             if (azure->scan_wday < 0 || azure->scan_wday > 6) {
-                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "Invalid value for element '%s': %s.", nodes[i]->element, nodes[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_TIME)) {
             azure->scan_time = w_validate_time(nodes[i]->content);
             if (!azure->scan_time) {
-                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                if (output == NULL) {
+                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "Invalid value for element '%s': %s.", nodes[i]->element, nodes[i]->content);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
@@ -164,7 +219,13 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             else if (!strcmp(nodes[i]->content, "no"))
                 azure->flags.run_on_start = 0;
             else {
-                merror("At module '%s': Invalid content for tag '%s'.", WM_AZURE_CONTEXT.name, XML_RUN_ON_START);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid content for tag '%s'.", WM_AZURE_CONTEXT.name, XML_RUN_ON_START);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "At module '%s': Invalid content for tag '%s'.", WM_AZURE_CONTEXT.name, XML_RUN_ON_START);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_DISABLED)) {
@@ -173,7 +234,13 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             else if (!strcmp(nodes[i]->content, "no"))
                 azure->flags.enabled = 1;
             else {
-                merror("At module '%s': Invalid content for tag '%s'.", WM_AZURE_CONTEXT.name, XML_DISABLED);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid content for tag '%s'.", WM_AZURE_CONTEXT.name, XML_DISABLED);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "At module '%s': Invalid content for tag '%s'.", WM_AZURE_CONTEXT.name, XML_DISABLED);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_LOG_ANALYTICS)) {
@@ -189,12 +256,17 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             }
 
             if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
-                merror(XML_INVELEM, nodes[i]->element);
+                if (output == NULL) {
+                    merror(XML_INVELEM, nodes[i]->element);
+                } else {
+                    snprintf(message, OS_FLSIZE, "Invalid element in the configuration: '%s'.", nodes[i]->element);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
             api_config->type = LOG_ANALYTICS;
-            if (wm_azure_api_read(xml, children, api_config) < 0) {
+            if (wm_azure_api_read(xml, children, api_config, output) < 0) {
                 wm_clean_api(api_config);
                 if (api_config_prev) {
                     api_config = api_config_prev;
@@ -219,12 +291,17 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             }
 
             if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
-                merror(XML_INVELEM, nodes[i]->element);
+                if (output == NULL) {
+                    merror(XML_INVELEM, nodes[i]->element);
+                } else {
+                    snprintf(message, OS_FLSIZE, "Invalid element in the configuration: '%s'.", nodes[i]->element);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
             api_config->type = GRAPHS;
-            if (wm_azure_api_read(xml, children, api_config) < 0) {
+            if (wm_azure_api_read(xml, children, api_config, output) < 0) {
                 wm_clean_api(api_config);
                 if (api_config_prev) {
                     api_config = api_config_prev;
@@ -249,11 +326,16 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             }
 
             if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
-                merror(XML_INVELEM, nodes[i]->element);
+                if (output == NULL) {
+                    merror(XML_INVELEM, nodes[i]->element);
+                } else {
+                    snprintf(message, OS_FLSIZE, "Invalid element in the configuration: '%s'.", nodes[i]->element);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
-            if (wm_azure_storage_read(xml, children, storage) < 0) {
+            if (wm_azure_storage_read(xml, children, storage, output) < 0) {
                 wm_clean_storage(storage);
                 if (storage_prev) {
                     storage = storage_prev;
@@ -266,7 +348,13 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             OS_ClearNode(children);
 
         } else {
-            merror("At module '%s': No such tag '%s'.", WM_AZURE_CONTEXT.name, nodes[i]->element);
+            if (output == NULL) {
+                merror("At module '%s': No such tag '%s'.", WM_AZURE_CONTEXT.name, nodes[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE, "At module '%s': No such tag '%s'.",
+                    WM_AZURE_CONTEXT.name, nodes[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return OS_INVALID;
         }
     }
@@ -274,11 +362,24 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     // Validate scheduled scan parameters and interval value
 
     if (azure->scan_day && (azure->scan_wday >= 0)) {
-        merror("At module '%s': 'day' is not compatible with 'wday'.", WM_AZURE_CONTEXT.name);
+        if (output == NULL) {
+            merror("At module '%s': 'day' is not compatible with 'wday'.", WM_AZURE_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE,
+                "At module '%s': 'day' is not compatible with 'wday'.", WM_AZURE_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     } else if (azure->scan_day) {
         if (!month_interval) {
-            mwarn("At module '%s': Interval must be a multiple of one month. New interval value: 1M.", WM_AZURE_CONTEXT.name);
+            if (output == NULL) {
+                mwarn("At module '%s': Interval must be a multiple of one month. New interval value: 1M.", WM_AZURE_CONTEXT.name);
+            } else {
+                snprintf(message, OS_FLSIZE,
+                    "WARNING: At module '%s': Interval must be a multiple of one month. New interval value: 1M.",
+                    WM_AZURE_CONTEXT.name);
+                wm_strcat(output, message, '\n');
+            }
             azure->interval = 60; // 1 month
         }
         if (!azure->scan_time)
@@ -286,7 +387,14 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     } else if (azure->scan_wday >= 0) {
         if (w_validate_interval(azure->interval, 1) != 0) {
             azure->interval = 604800;  // 1 week
-            mwarn("At module '%s': Interval must be a multiple of one week. New interval value: 1w.", WM_AZURE_CONTEXT.name);
+            if (output == NULL) {
+                mwarn("At module '%s': Interval must be a multiple of one week. New interval value: 1w.", WM_AZURE_CONTEXT.name);
+            } else {
+                snprintf(message, OS_FLSIZE,
+                    "WARNING: At module '%s': Interval must be a multiple of one week. New interval value: 1w.",
+                    WM_AZURE_CONTEXT.name);
+                wm_strcat(output, message, '\n');
+            }
         }
         if (azure->interval == 0)
             azure->interval = 604800;
@@ -295,7 +403,14 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     } else if (azure->scan_time) {
         if (w_validate_interval(azure->interval, 0) != 0) {
             azure->interval = WM_DEF_INTERVAL;  // 1 day
-            mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_AZURE_CONTEXT.name);
+            if (output == NULL) {
+                mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_AZURE_CONTEXT.name);
+            } else {
+                snprintf(message, OS_FLSIZE,
+                    "WARNING: At module '%s': Interval must be a multiple of one day. New interval value: 1d.",
+                    WM_AZURE_CONTEXT.name);
+                wm_strcat(output, message, '\n');
+            }
         }
     }
     if (!azure->interval)
@@ -304,11 +419,12 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     return 0;
 }
 
-int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_config) {
+int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_config, char **output) {
 
     int i = 0;
     wm_azure_request_t *request = NULL;
     wm_azure_request_t *request_prev = NULL;
+    char message[OS_FLSIZE];
 
     api_config->application_id = NULL;
     api_config->application_key = NULL;
@@ -319,11 +435,20 @@ int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_co
         XML_NODE children = NULL;
 
         if (!nodes[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return OS_INVALID;
 
         } else if (!nodes[i]->content) {
-            merror(XML_VALUENULL, nodes[i]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, nodes[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE, "Invalid NULL content for element: %s.", nodes[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return OS_INVALID;
 
         } else if (!strcmp(nodes[i]->element, XML_APP_ID)) {
@@ -351,11 +476,16 @@ int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_co
             }
 
             if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
-                merror(XML_INVELEM, nodes[i]->element);
+                if (output == NULL) {
+                    merror(XML_INVELEM, nodes[i]->element);
+                } else {
+                    snprintf(message, OS_FLSIZE, "Invalid element in the configuration: '%s'.", nodes[i]->element);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
-            if (wm_azure_request_read(children, request, api_config->type) < 0) {
+            if (wm_azure_request_read(children, request, api_config->type, output) < 0) {
                 wm_clean_request(request);
                 if (request_prev) {
                     request = request_prev;
@@ -368,7 +498,12 @@ int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_co
             OS_ClearNode(children);
 
         } else {
-            merror(XML_INVELEM, nodes[i]->element);
+            if (output == NULL) {
+                merror(XML_INVELEM, nodes[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE, "Invalid element in the configuration: '%s'.", nodes[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return OS_INVALID;
         }
     }
@@ -376,27 +511,46 @@ int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_co
     /* Validation process */
     if (!api_config->auth_path) {
         if (!api_config->application_id || !api_config->application_key) {
-            merror("At module '%s': No authentication method provided. Skipping block...", WM_AZURE_CONTEXT.name);
+            if (output == NULL) {
+                merror("At module '%s': No authentication method provided. Skipping block...", WM_AZURE_CONTEXT.name);
+            } else {
+                snprintf(message, OS_FLSIZE,
+                    "At module '%s': No authentication method provided. Skipping block...", WM_AZURE_CONTEXT.name);
+                wm_strcat(output, message, '\n');
+            }
             return OS_INVALID;
         }
     }
 
     if (!api_config->tenantdomain) {
-        merror("At module '%s': No tenant domain defined. Skipping block...", WM_AZURE_CONTEXT.name);
+        if (output == NULL) {
+            merror("At module '%s': No tenant domain defined. Skipping block...", WM_AZURE_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE,
+                "At module '%s': No tenant domain defined. Skipping block...", WM_AZURE_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     }
 
     if (!api_config->request) {
-        merror("At module '%s': No request defined. Skipping block...", WM_AZURE_CONTEXT.name);
+        if (output == NULL) {
+            merror("At module '%s': No request defined. Skipping block...", WM_AZURE_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE,
+                "At module '%s': No request defined. Skipping block...", WM_AZURE_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     }
 
     return 0;
 }
 
-int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned int type) {
+int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned int type, char **output) {
 
     int i = 0;
+    char message[OS_FLSIZE];
 
     request->tag = NULL;
     request->query = NULL;
@@ -406,11 +560,20 @@ int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned
     for (i = 0; nodes[i]; i++) {
 
         if (!nodes[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return OS_INVALID;
 
         } else if (!nodes[i]->content) {
-            merror(XML_VALUENULL, nodes[i]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, nodes[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE, "Invalid NULL content for element: %s.", nodes[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return OS_INVALID;
 
         } else if (!strcmp(nodes[i]->element, XML_TAG)) {
@@ -424,12 +587,23 @@ int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned
             unsigned int offset = strtoul(nodes[i]->content, &endptr, 0);
 
             if (offset <= 0 || offset >= UINT_MAX) {
-                merror("At module '%s': Invalid time offset.", WM_AZURE_CONTEXT.name);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid time offset.", WM_AZURE_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE, "At module '%s': Invalid time offset.", WM_AZURE_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
             if (*endptr != 'm' && *endptr != 'h' && *endptr != 'd') {
-                merror("At module '%s': Invalid time offset: It should be specified minutes, hours or days.", WM_AZURE_CONTEXT.name);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid time offset: It should be specified minutes, hours or days.", WM_AZURE_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "At module '%s': Invalid time offset: It should be specified minutes, hours or days.", WM_AZURE_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -440,24 +614,46 @@ int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned
                 if (*nodes[i]->content != '\0')
                     os_strdup(nodes[i]->content, request->workspace);
             } else {
-                minfo("At module '%s': Workspace ID only available for Log Analytics API. Skipping it...", WM_AZURE_CONTEXT.name);
+                if (output == NULL) {
+                    minfo("At module '%s': Workspace ID only available for Log Analytics API. Skipping it...", WM_AZURE_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "INFO: At module '%s': Workspace ID only available for Log Analytics API. Skipping it...", WM_AZURE_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
             }
         } else if (!strcmp(nodes[i]->element, XML_TIMEOUT)) {
             request->timeout = atol(nodes[i]->content);
 
             if (request->timeout <= 0 || request->timeout >= UINT_MAX) {
-                merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE, "At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         } else {
-            merror(XML_INVELEM, nodes[i]->element);
+            if (output == NULL) {
+                merror(XML_INVELEM, nodes[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE, "Invalid element in the configuration: '%s'.", nodes[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return OS_INVALID;
         }
     }
 
     /* Validation process */
     if (!request->tag) {
-        minfo("At module '%s': No request tag defined. Setting it randomly...", WM_AZURE_CONTEXT.name);
+        if (output == NULL) {
+            minfo("At module '%s': No request tag defined. Setting it randomly...", WM_AZURE_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE,
+                "INFO: At module '%s': No request tag defined. Setting it randomly...", WM_AZURE_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         int random_id = os_random();
         char * rtag;
 
@@ -472,28 +668,47 @@ int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned
     }
 
     if (!request->query) {
-        merror("At module '%s': No query defined. Skipping request block...", WM_AZURE_CONTEXT.name);
+        if (output == NULL) {
+            merror("At module '%s': No query defined. Skipping request block...", WM_AZURE_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE,
+                "At module '%s': No query defined. Skipping request block...", WM_AZURE_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     }
 
     if (!request->time_offset) {
-        merror("At module '%s': No time offset defined. Skipping request block...", WM_AZURE_CONTEXT.name);
+        if (output == NULL) {
+            merror("At module '%s': No time offset defined. Skipping request block...", WM_AZURE_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE,
+                "At module '%s': No time offset defined. Skipping request block...", WM_AZURE_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     }
 
     if (!request->workspace && type == LOG_ANALYTICS) {
-        merror("At module '%s': No Workspace ID defined. Skipping request block...", WM_AZURE_CONTEXT.name);
+        if (output == NULL) {
+            merror("At module '%s': No Workspace ID defined. Skipping request block...", WM_AZURE_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE,
+                "At module '%s': No Workspace ID defined. Skipping request block...", WM_AZURE_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     }
 
     return 0;
 }
 
-int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t * storage) {
+int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t * storage, char **output) {
 
     int i = 0;
     wm_azure_container_t *container = NULL;
     wm_azure_container_t *container_prev = NULL;
+    char message[OS_FLSIZE];
 
     storage->account_name = NULL;
     storage->account_key = NULL;
@@ -504,11 +719,20 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
         XML_NODE children = NULL;
 
         if (!nodes[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return OS_INVALID;
 
         } else if (!nodes[i]->content) {
-            merror(XML_VALUENULL, nodes[i]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, nodes[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE, "Invalid NULL content for element: %s.", nodes[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return OS_INVALID;
 
         } else if (!strcmp(nodes[i]->element, XML_ACCOUNT_NAME)) {
@@ -536,7 +760,12 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
             }
 
             if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
-                merror(XML_INVELEM, nodes[i]->element);
+                if (output == NULL) {
+                    merror(XML_INVELEM, nodes[i]->element);
+                } else {
+                    snprintf(message, OS_FLSIZE, "Invalid element in the configuration: '%s'.", nodes[i]->element);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -545,7 +774,13 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                 if (!strcmp(nodes[i]->attributes[0], XML_CONTAINER_NAME) && *nodes[i]->values[0] != '\0') {
                     os_strdup(nodes[i]->values[0], container->name);
                 } else {
-                    minfo("At module '%s': Invalid container name. Skipping container...", WM_AZURE_CONTEXT.name);
+                    if (output == NULL) {
+                        minfo("At module '%s': Invalid container name. Skipping container...", WM_AZURE_CONTEXT.name);
+                    } else {
+                        snprintf(message, OS_FLSIZE,
+                            "INFO: At module '%s': Invalid container name. Skipping container...", WM_AZURE_CONTEXT.name);
+                        wm_strcat(output, message, '\n');
+                    }
                     wm_clean_container(container);
                     if (container_prev) {
                         container = container_prev;
@@ -557,7 +792,13 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                     continue;
                 }
             } else {
-                minfo("At module '%s': Container name not found. Skipping container...", WM_AZURE_CONTEXT.name);
+                if (output == NULL) {
+                    minfo("At module '%s': Container name not found. Skipping container...", WM_AZURE_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "INFO: At module '%s': Container name not found. Skipping container...", WM_AZURE_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 wm_clean_container(container);
                 if (container_prev) {
                     container = container_prev;
@@ -569,7 +810,7 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                 continue;
             }
 
-            if (wm_azure_container_read(children, container) < 0) {
+            if (wm_azure_container_read(children, container, output) < 0) {
                 wm_clean_container(container);
                 if (container_prev) {
                     container = container_prev;
@@ -582,7 +823,12 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
             OS_ClearNode(children);
 
         } else {
-            merror(XML_INVELEM, nodes[i]->element);
+            if (output == NULL) {
+                merror(XML_INVELEM, nodes[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE, "Invalid element in the configuration: '%s'.", nodes[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return OS_INVALID;
         }
     }
@@ -590,13 +836,25 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
     /* Validation process */
     if (!storage->auth_path) {
         if (!storage->account_name || !storage->account_key) {
-            merror("At module '%s': No authentication method provided. Skipping block...", WM_AZURE_CONTEXT.name);
+            if (output == NULL) {
+                merror("At module '%s': No authentication method provided. Skipping block...", WM_AZURE_CONTEXT.name);
+            } else {
+                snprintf(message, OS_FLSIZE,
+                    "At module '%s': No authentication method provided. Skipping block...", WM_AZURE_CONTEXT.name);
+                wm_strcat(output, message, '\n');
+            }
             return OS_INVALID;
         }
     }
 
     if (!storage->tag) {
-        minfo("At module '%s': No storage tag defined. Setting it randomly...", WM_AZURE_CONTEXT.name);
+        if (output == NULL) {
+            minfo("At module '%s': No storage tag defined. Setting it randomly...", WM_AZURE_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE,
+                "At module '%s': No storage tag defined. Setting it randomly...", WM_AZURE_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         int random_id = os_random();
         char * rtag;
 
@@ -611,16 +869,23 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
     }
 
     if (!storage->container) {
-        merror("At module '%s': No container defined. Skipping block...", WM_AZURE_CONTEXT.name);
+        if (output == NULL) {
+            merror("At module '%s': No container defined. Skipping block...", WM_AZURE_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE,
+                "At module '%s': No container defined. Skipping block...", WM_AZURE_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     }
 
     return 0;
 }
 
-int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
+int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container, char **output) {
 
     int i = 0;
+    char message[OS_FLSIZE];
 
     container->blobs = NULL;
     container->time_offset = NULL;
@@ -629,11 +894,20 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
     for (i = 0; nodes[i]; i++) {
 
         if (!nodes[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return OS_INVALID;
 
         } else if (!nodes[i]->content) {
-            merror(XML_VALUENULL, nodes[i]->element);
+            if (output == NULL) {
+                merror(XML_VALUENULL, nodes[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE, "Invalid NULL content for element: %s.", nodes[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return OS_INVALID;
 
         } else if (!strcmp(nodes[i]->element, XML_CONTAINER_BLOBS)) {
@@ -641,7 +915,13 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
                 os_strdup(nodes[i]->content, container->blobs);
         } else if (!strcmp(nodes[i]->element, XML_CONTAINER_TYPE)) {
             if (strncmp(nodes[i]->content, "json_file", 9) && strncmp(nodes[i]->content, "json_inline", 11) && strncmp(nodes[i]->content, "text", 4)) {
-                merror("At module '%s': Invalid content type. It should be 'json_file', 'json_inline' or 'text'.", WM_AZURE_CONTEXT.name);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid content type. It should be 'json_file', 'json_inline' or 'text'.", WM_AZURE_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "At module '%s': Invalid content type. It should be 'json_file', 'json_inline' or 'text'.", WM_AZURE_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
             os_strdup(nodes[i]->content, container->content_type);
@@ -650,12 +930,23 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
             unsigned int offset = strtoul(nodes[i]->content, &endptr, 0);
 
             if (offset <= 0 || offset >= UINT_MAX) {
-                merror("At module '%s': Invalid time offset.", WM_AZURE_CONTEXT.name);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid time offset.", WM_AZURE_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE, "At module '%s': Invalid time offset.", WM_AZURE_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
             if (*endptr != 'm' && *endptr != 'h' && *endptr != 'd') {
-                merror("At module '%s': Invalid time offset: It should be specified minutes, hours or days.", WM_AZURE_CONTEXT.name);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid time offset: It should be specified minutes, hours or days.", WM_AZURE_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "At module '%s': Invalid time offset: It should be specified minutes, hours or days.", WM_AZURE_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -665,28 +956,57 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
             container->timeout = atol(nodes[i]->content);
 
             if (container->timeout <= 0 || container->timeout >= UINT_MAX) {
-                merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         } else {
-            merror(XML_INVELEM, nodes[i]->element);
+            if (output == NULL) {
+                merror(XML_INVELEM, nodes[i]->element);
+            } else {
+                snprintf(message, OS_FLSIZE, "Invalid element in the configuration: '%s'.", nodes[i]->element);
+                wm_strcat(output, message, '\n');
+            }
             return OS_INVALID;
         }
     }
 
     /* Validation process */
     if (!container->blobs) {
-        merror("At module '%s': No blobs defined. Skipping container block...", WM_AZURE_CONTEXT.name);
+        if (output == NULL) {
+            merror("At module '%s': No blobs defined. Skipping container block...", WM_AZURE_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE,
+                "At module '%s': No blobs defined. Skipping container block...", WM_AZURE_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     }
 
     if (!container->time_offset) {
-        merror("At module '%s': No time offset defined. Skipping container block...", WM_AZURE_CONTEXT.name);
+        if (output == NULL) {
+            merror("At module '%s': No time offset defined. Skipping container block...", WM_AZURE_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE,
+                "At module '%s': No time offset defined. Skipping container block...", WM_AZURE_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     }
 
     if (!container->content_type) {
-        merror("At module '%s': No content type defined. Skipping container block...", WM_AZURE_CONTEXT.name);
+        if (output == NULL) {
+            merror("At module '%s': No content type defined. Skipping container block...", WM_AZURE_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE,
+                "At module '%s': No content type defined. Skipping container block...", WM_AZURE_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     }
 

@@ -43,17 +43,24 @@ static const char *INSPECTOR_SERVICE_TYPE = "inspector";
 
 // Parse XML
 
-int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
+int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **output)
 {
     int i = 0;
     int j = 0;
+    char message[OS_FLSIZE];
     xml_node **children = NULL;
     wm_aws *aws_config;
     wm_aws_bucket *cur_bucket = NULL;
     wm_aws_service *cur_service = NULL;
 
     if (!nodes) {
-        mwarn("Tag <%s> not found at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+        if (output == NULL) {
+            mwarn("Tag <%s> not found at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE,
+                "WARNING: Tag <%s> not found at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     }
 
@@ -79,8 +86,13 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 aws_config->enabled = 0;
             else if (!strcmp(nodes[i]->content, "no"))
                 aws_config->enabled = 1;
-            else {
+            else if (output == NULL) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_AWS_CONTEXT.name);
+                return OS_INVALID;
+            } else {
+                snprintf(message, OS_FLSIZE,
+                    "Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_AWS_CONTEXT.name);
+                wm_strcat(output, message, '\n');
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
@@ -88,7 +100,13 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             aws_config->interval = strtoul(nodes[i]->content, &endptr, 0);
 
             if ((aws_config->interval == 0 && endptr == nodes[i]->content) || aws_config->interval == ULONG_MAX) {
-                merror("Invalid interval at module '%s'", WM_AWS_CONTEXT.name);
+                if (output == NULL) {
+                    merror("Invalid interval at module '%s'", WM_AWS_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "Invalid interval at module '%s'", WM_AWS_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -106,7 +124,13 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             case '\0':
                 break;
             default:
-                merror("Invalid interval at module '%s'", WM_AWS_CONTEXT.name);
+                if (output == NULL) {
+                    merror("Invalid interval at module '%s'", WM_AWS_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "Invalid interval at module '%s'", WM_AWS_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
@@ -114,8 +138,13 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 aws_config->run_on_start = 1;
             else if (!strcmp(nodes[i]->content, "no"))
                 aws_config->run_on_start = 0;
-            else {
+            else if (output == NULL) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_ON_START, WM_AWS_CONTEXT.name);
+                return OS_INVALID;
+            } else {
+                snprintf(message, OS_FLSIZE,
+                        "Invalid content for tag '%s' at module '%s'.", XML_RUN_ON_START, WM_AWS_CONTEXT.name);
+                wm_strcat(output, message, '\n');
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_SKIP_ON_ERROR)) {
@@ -123,8 +152,13 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 aws_config->skip_on_error = 1;
             else if (!strcmp(nodes[i]->content, "no"))
                 aws_config->skip_on_error = 0;
-            else {
+            else if (output == NULL) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_ON_ERROR, WM_AWS_CONTEXT.name);
+                return OS_INVALID;
+            } else {
+                snprintf(message, OS_FLSIZE,
+                        "Invalid content for tag '%s' at module '%s'.", XML_SKIP_ON_ERROR, WM_AWS_CONTEXT.name);
+                wm_strcat(output, message, '\n');
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_REMOVE_FORM_BUCKET)) {
@@ -132,8 +166,13 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 aws_config->remove_from_bucket = 1;
             else if (!strcmp(nodes[i]->content, "no"))
                 aws_config->remove_from_bucket = 0;
-            else {
+            else if (output == NULL) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_REMOVE_FORM_BUCKET, WM_AWS_CONTEXT.name);
+                return OS_INVALID;
+            } else {
+                snprintf(message, OS_FLSIZE,
+                        "Invalid content for tag '%s' at module '%s'.", XML_REMOVE_FORM_BUCKET, WM_AWS_CONTEXT.name);
+                wm_strcat(output, message, '\n');
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_ACCESS_KEY)) {
@@ -149,24 +188,36 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         } else if (!strcmp(nodes[i]->element, XML_BUCKET)) {
             if (!nodes[i]->attributes) { // Legacy
                 if (strlen(nodes[i]->content) == 0) {
-                    merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+                    if (output == NULL) {
+                        merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+                    } else {
+                        snprintf(message, OS_FLSIZE,
+                            "Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+                        wm_strcat(output, message, '\n');
+                    }
                     return OS_INVALID;
                 }
 
                 free(aws_config->bucket);
                 os_strdup(nodes[i]->content, aws_config->bucket);
             } else {
-                mtdebug2(WM_AWS_LOGTAG, "Found a bucket tag");
+                if (output == NULL) {
+                    mtdebug2(WM_AWS_LOGTAG, "Found a bucket tag");
+                }
                 // Create bucket node
                 if (cur_bucket) {
                     os_calloc(1, sizeof(wm_aws_bucket), cur_bucket->next);
                     cur_bucket = cur_bucket->next;
-                    mtdebug2(WM_AWS_LOGTAG, "Creating another bucket structure");
+                    if (output == NULL) {
+                        mtdebug2(WM_AWS_LOGTAG, "Creating another bucket structure");
+                    }
                 } else {
                     // First bucket
                     os_calloc(1, sizeof(wm_aws_bucket), cur_bucket);
                     aws_config->buckets = cur_bucket;
-                    mtdebug2(WM_AWS_LOGTAG, "Creating first bucket structure");
+                    if (output == NULL) {
+                        mtdebug2(WM_AWS_LOGTAG, "Creating first bucket structure");
+                    }
                 }
 
                 // Expand bucket Child Nodes
@@ -182,24 +233,46 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         || !strcmp(*nodes[i]->values, VPCFLOW_BUCKET_TYPE)) {
                         os_strdup(*nodes[i]->values, cur_bucket->type);
                     } else {
-                        mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s', '%s' or '%s'", *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE,
-                            CONFIG_BUCKET_TYPE, CUSTOM_BUCKET_TYPE, GUARDDUTY_BUCKET_TYPE, VPCFLOW_BUCKET_TYPE);
+                        if (output == NULL) {
+                            mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s', '%s' or '%s'", *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE,
+                                CONFIG_BUCKET_TYPE, CUSTOM_BUCKET_TYPE, GUARDDUTY_BUCKET_TYPE, VPCFLOW_BUCKET_TYPE);
+                        } else {
+                            snprintf(message, OS_FLSIZE,
+                                "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s', '%s' or '%s'", *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE,
+                                CONFIG_BUCKET_TYPE, CUSTOM_BUCKET_TYPE, GUARDDUTY_BUCKET_TYPE, VPCFLOW_BUCKET_TYPE);
+                            wm_strcat(output, message, '\n');
+                        }
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
                 } else {
-                    mterror(WM_AWS_LOGTAG, "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_BUCKET_TYPE);
+                    if (output == NULL) {
+                        mterror(WM_AWS_LOGTAG, "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_BUCKET_TYPE);
+                    } else {
+                        snprintf(message, OS_FLSIZE,
+                            "Attribute name '%s' is not valid. The valid one is '%s'.",
+                            *nodes[i]->attributes, XML_BUCKET_TYPE);
+                        wm_strcat(output, message, '\n');
+                    }
                     OS_ClearNode(children);
                     return OS_INVALID;
                 }
 
-                mtdebug2(WM_AWS_LOGTAG, "Loop thru child nodes");
+                if (output == NULL) {
+                    mtdebug2(WM_AWS_LOGTAG, "Loop thru child nodes");
+                }
                 for (j = 0; children[j]; j++) {
-
-                    mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
+                    
+                    if (output == NULL) {
+                        mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
+                    }
 
                     if (!children[j]->element) {
-                        merror(XML_ELEMNULL);
+                        if (output == NULL) {
+                            merror(XML_ELEMNULL);
+                        } else {
+                            wm_strcat(output, "Invalid NULL element in the configuration", '\n');
+                        }
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
@@ -207,7 +280,13 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     // Start
                     if (!strcmp(children[j]->element, XML_BUCKET_NAME)) {
                         if (strlen(children[j]->content) == 0) {
-                            merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET_NAME, WM_AWS_CONTEXT.name);
+                            if (output == NULL) {
+                                merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET_NAME, WM_AWS_CONTEXT.name);
+                            } else {
+                                snprintf(message, OS_FLSIZE,
+                                    "Empty content for tag '%s' at module '%s'.", XML_BUCKET_NAME, WM_AWS_CONTEXT.name);
+                                wm_strcat(output, message, '\n');
+                            }
                             OS_ClearNode(children);
                             return OS_INVALID;
                         }
@@ -215,7 +294,13 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         os_strdup(children[j]->content, cur_bucket->bucket);
                     } else if (!strcmp(children[j]->element, XML_AWS_ORGANIZATION_ID)) {
                         if (strlen(children[j]->content) == 0) {
-                            merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+                            if (output == NULL) {
+                                merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+                            } else {
+                                snprintf(message, OS_FLSIZE,
+                                    "Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+                                wm_strcat(output, message, '\n');
+                            }
                             OS_ClearNode(children);
                             return OS_INVALID;
                         }
@@ -223,7 +308,13 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         os_strdup(children[j]->content, cur_bucket->aws_organization_id);
                     } else if (!strcmp(children[j]->element, XML_AWS_ACCOUNT_ID)) {
                         if (strlen(children[j]->content) == 0) {
-                            merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+                            if (output == NULL) {
+                                merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+                            } else {
+                                snprintf(message, OS_FLSIZE,
+                                    "Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+                                wm_strcat(output, message, '\n');
+                            }
                             OS_ClearNode(children);
                             return OS_INVALID;
                         }
@@ -235,7 +326,13 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         } else if (!strcmp(children[j]->content, "no")) {
                             cur_bucket->remove_from_bucket = 0;
                         } else {
-                            merror("Invalid content for tag '%s' at module '%s'.", XML_REMOVE_FORM_BUCKET, WM_AWS_CONTEXT.name);
+                            if (output == NULL) {
+                                merror("Invalid content for tag '%s' at module '%s'.", XML_REMOVE_FORM_BUCKET, WM_AWS_CONTEXT.name);
+                            } else {
+                                snprintf(message, OS_FLSIZE,
+                                    "Invalid content for tag '%s' at module '%s'.", XML_REMOVE_FORM_BUCKET, WM_AWS_CONTEXT.name);;
+                                wm_strcat(output, message, '\n');
+                            }
                             OS_ClearNode(children);
                             return OS_INVALID;
                         }
@@ -280,7 +377,14 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             os_strdup(children[j]->content, cur_bucket->regions);
                         }
                     } else {
-                        merror("No such child tag '%s' of bucket at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);
+                        if (output == NULL) {
+                            merror("No such child tag '%s' of bucket at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);
+                        } else {
+                            snprintf(message, OS_FLSIZE,
+                                "No such child tag '%s' of bucket at module '%s'.",
+                                children[j]->element, WM_AWS_CONTEXT.name);
+                            wm_strcat(output, message, '\n');
+                        }
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
@@ -289,38 +393,67 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             }
         // for services
         } else if (!strcmp(nodes[i]->element, XML_SERVICE)) {
-
-            mtdebug2(WM_AWS_LOGTAG, "Found a service tag");
+            if (output == NULL) {
+                mtdebug2(WM_AWS_LOGTAG, "Found a service tag");
+            }
 
             if (!nodes[i]->attributes) {
-                mterror(WM_AWS_LOGTAG, "Undefined type for service.");
+                if (output == NULL) {
+                    mterror(WM_AWS_LOGTAG, "Undefined type for service.");
+                } else {
+                    wm_strcat(output, "Undefined type for service.", '\n');
+                }
                 return OS_INVALID;
             }
             // Create service node
             if (cur_service) {
                 os_calloc(1, sizeof(wm_aws_service), cur_service->next);
                 cur_service = cur_service->next;
-                mtdebug2(WM_AWS_LOGTAG, "Creating another service structure");
+                if (output == NULL) {
+                    mtdebug2(WM_AWS_LOGTAG, "Creating another service structure");
+                }
             } else {
                 // First service
                 os_calloc(1, sizeof(wm_aws_service), cur_service);
                 aws_config->services = cur_service;
-                mtdebug2(WM_AWS_LOGTAG, "Creating first service structure");
+                if (output == NULL) {
+                    mtdebug2(WM_AWS_LOGTAG, "Creating first service structure");
+                }
             }
 
             // type is an attribute of the service tag
             if (!strcmp(*nodes[i]->attributes, XML_SERVICE_TYPE)) {
                 if (!nodes[i]->values) {
-                    mterror(WM_AWS_LOGTAG, "Empty service type. Valid one is '%s'", INSPECTOR_SERVICE_TYPE);
+                    if (output == NULL) {
+                        mterror(WM_AWS_LOGTAG, "Empty service type. Valid one is '%s'", INSPECTOR_SERVICE_TYPE);
+                    } else {
+                        snprintf(message, OS_FLSIZE,
+                            "Empty service type. Valid one is '%s'", INSPECTOR_SERVICE_TYPE);
+                        wm_strcat(output, message, '\n');
+                    }
                     return OS_INVALID;
                 } else if (!strcmp(*nodes[i]->values, INSPECTOR_SERVICE_TYPE)) {
                     os_strdup(*nodes[i]->values, cur_service->type);
                 } else {
-                    mterror(WM_AWS_LOGTAG, "Invalid service type '%s'. Valid one is '%s'", *nodes[i]->values, INSPECTOR_SERVICE_TYPE);
+                    if (output == NULL) {
+                        mterror(WM_AWS_LOGTAG, "Invalid service type '%s'. Valid one is '%s'", *nodes[i]->values, INSPECTOR_SERVICE_TYPE);
+                    } else {
+                        snprintf(message, OS_FLSIZE,
+                            "Invalid service type '%s'. Valid one is '%s'",
+                            *nodes[i]->values, INSPECTOR_SERVICE_TYPE);
+                        wm_strcat(output, message, '\n');
+                    }
                     return OS_INVALID;
                 }
             } else {
-                mterror(WM_AWS_LOGTAG, "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_SERVICE_TYPE);
+                if (output == NULL) {
+                    mterror(WM_AWS_LOGTAG, "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_SERVICE_TYPE);         
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "Attribute name '%s' is not valid. The valid one is '%s'.",
+                        *nodes[i]->attributes, XML_SERVICE_TYPE);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -330,13 +463,20 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 continue;
             }
 
-            mtdebug2(WM_AWS_LOGTAG, "Loop thru child nodes");
+            if (output == NULL) {
+                mtdebug2(WM_AWS_LOGTAG, "Loop thru child nodes");
+            }
             for (j = 0; children[j]; j++) {
-
-                mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
+                if (output == NULL) {
+                    mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
+                }
 
                 if (!children[j]->element) {
-                    merror(XML_ELEMNULL);
+                    if (output == NULL) {
+                        merror(XML_ELEMNULL);
+                    } else {
+                        wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+                    }
                     OS_ClearNode(children);
                     return OS_INVALID;
                 }
@@ -344,7 +484,14 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 // Start
                 if (!strcmp(children[j]->element, XML_AWS_ACCOUNT_ID)) {
                     if (strlen(children[j]->content) == 0) {
-                        merror("Empty content for tag '%s' at module '%s'.", XML_SERVICE, WM_AWS_CONTEXT.name);
+                        if (output == NULL) {
+                            merror("Empty content for tag '%s' at module '%s'.", XML_SERVICE, WM_AWS_CONTEXT.name);
+                        } else {
+                            snprintf(message, OS_FLSIZE,
+                                "Empty content for tag '%s' at module '%s'.",
+                                XML_SERVICE, WM_AWS_CONTEXT.name);
+                            wm_strcat(output, message, '\n');
+                        }
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
@@ -386,7 +533,14 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         os_strdup(children[j]->content, cur_service->regions);
                     }
                 } else {
-                    merror("No such child tag '%s' of service at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);
+                    if (output == NULL) {
+                        merror("No such child tag '%s' of service at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);
+                    } else {
+                        snprintf(message, OS_FLSIZE,
+                            "No such child tag '%s' of service at module '%s'.",
+                            children[j]->element, WM_AWS_CONTEXT.name);
+                        wm_strcat(output, message, '\n');
+                    }
                     OS_ClearNode(children);
                     return OS_INVALID;
                 }
@@ -395,14 +549,27 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             OS_ClearNode(children);
 
         } else {
-            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_AWS_CONTEXT.name);
+            if (output == NULL) {
+                merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_AWS_CONTEXT.name);
+            } else {
+                snprintf(message, OS_FLSIZE,
+                    "No such tag '%s' at module '%s'.", nodes[i]->element, WM_AWS_CONTEXT.name);
+                wm_strcat(output, message, '\n');
+            }
             return OS_INVALID;
         }
     }
 
     // Support legacy config
     if (aws_config->bucket) {
-        mtwarn(WM_AWS_LOGTAG, "Deprecated config defined; please use current config definition at module '%s'.", WM_AWS_CONTEXT.name);
+        if (output == NULL) {
+            mtwarn(WM_AWS_LOGTAG, "Deprecated config defined; please use current config definition at module '%s'.", WM_AWS_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE,
+                "WARNING: Deprecated config defined; please use current config definition at module '%s'.",
+                WM_AWS_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
 
         // Create bucket node
         if (cur_bucket) {
@@ -441,7 +608,13 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     }
 
     if (!aws_config->buckets && !aws_config->services) {
-        mtwarn(WM_AWS_LOGTAG, "No buckets or services definitions found at module '%s'.", WM_AWS_CONTEXT.name);
+        if (output == NULL) {
+            mtwarn(WM_AWS_LOGTAG, "No buckets or services definitions found at module '%s'.", WM_AWS_CONTEXT.name);
+        } else {
+            snprintf(message, OS_FLSIZE,
+                "WARNING: No buckets or services definitions found at module '%s'.", WM_AWS_CONTEXT.name);
+            wm_strcat(output, message, '\n');
+        }
         return OS_INVALID;
     }
 

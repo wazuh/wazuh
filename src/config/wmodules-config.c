@@ -148,7 +148,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
                     wm_strcat(output, message, '\n');
                 }
             }
-            if (wm_aws_read(xml, children, cur_wmodule) < 0) {
+            if (wm_aws_read(xml, children, cur_wmodule, output) < 0) {
                 OS_ClearNode(children);
                 return OS_INVALID;
             }
@@ -164,7 +164,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
 #endif
     } else if ( (cfg_type != CRMOTE_CONFIG) && (!strcmp(node->values[0], "docker-listener")) ) {
 #ifndef WIN32
-            if (wm_docker_read(children, cur_wmodule) < 0) {
+            if (wm_docker_read(children, cur_wmodule, output) < 0) {
                 OS_ClearNode(children);
                 return OS_INVALID;
             }
@@ -182,18 +182,22 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2, int cfg_
 #ifndef WIN32
 #ifndef CLIENT
     else if (!strcmp(node->values[0], WM_VULNDETECTOR_CONTEXT.name) && (cfg_type != CAGENT_CGFILE) && (cfg_type != CRMOTE_CONFIG)) {
-        mwarn("This vulnerability-detector declaration is deprecated. Use <vulnerability-detector> instead.");
-        if (Read_Vuln(xml, children, cur_wmodule, 0) < 0) {
+        if (output == NULL) {
+            mwarn("This vulnerability-detector declaration is deprecated. Use <vulnerability-detector> instead.");
+        } else {
+            wm_strcat(output, "This vulnerability-detector declaration is deprecated. Use <vulnerability-detector> instead.", '\n');
+        }
+        if (Read_Vuln(xml, children, cur_wmodule, 0, output) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
     } else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name) && (cfg_type != CAGENT_CGFILE) && (cfg_type != CRMOTE_CONFIG)) {
-        if (wm_azure_read(xml, children, cur_wmodule) < 0) {
+        if (wm_azure_read(xml, children, cur_wmodule, output) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
     } else if (!strcmp(node->values[0], WM_KEY_REQUEST_CONTEXT.name) && (cfg_type != CAGENT_CGFILE) && (cfg_type != CRMOTE_CONFIG)) {
-        if (wm_key_request_read(children, cur_wmodule) < 0) {
+        if (wm_key_request_read(children, cur_wmodule, output) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }

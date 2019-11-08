@@ -83,7 +83,7 @@ typedef struct wm_azure_t {
 extern const wm_context WM_AZURE_CONTEXT;   // Context
 
 // Parse XML configuration
-int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
+int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **output);
 
 #endif
 #endif

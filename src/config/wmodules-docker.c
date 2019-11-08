@@ -19,10 +19,11 @@ static const char *XML_DISABLED = "disabled";
 
 // Parse XML
 
-int wm_docker_read(xml_node **nodes, wmodule *module)
+int wm_docker_read(xml_node **nodes, wmodule *module, char **output)
 {
     int i = 0;
     wm_docker_t *docker;
+    char message[OS_FLSIZE];
 
     // Create module
 
@@ -44,14 +45,24 @@ int wm_docker_read(xml_node **nodes, wmodule *module)
     for (i = 0; nodes[i]; i++){
 
         if (!nodes[i]->element) {
-            merror(XML_ELEMNULL);
+            if (output == NULL) {
+                merror(XML_ELEMNULL);
+            } else {
+                wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
+            }
             return OS_INVALID;
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
             char *endptr;
             docker->interval = strtoul(nodes[i]->content, &endptr, 0);
 
             if (docker->interval <= 0 || docker->interval >= UINT_MAX) {
-                merror("At module '%s': Invalid interval.", WM_DOCKER_CONTEXT.name);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid interval.", WM_DOCKER_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "At module '%s': Invalid interval.", WM_DOCKER_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
@@ -72,19 +83,37 @@ int wm_docker_read(xml_node **nodes, wmodule *module)
             case '\0':
                 break;
             default:
-                merror("At module '%s': Invalid interval.", WM_DOCKER_CONTEXT.name);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid interval.", WM_DOCKER_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "At module '%s': Invalid interval.", WM_DOCKER_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
 
             if (docker->interval < 1) {
-                merror("At module '%s': Interval must be a positive number.", WM_DOCKER_CONTEXT.name);
+                if (output == NULL) {
+                    merror("At module '%s': Interval must be a positive number.", WM_DOCKER_CONTEXT.name);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "At module '%s': Interval must be a positive number.", WM_DOCKER_CONTEXT.name);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_ATTEMPTS)) {
             docker->attempts = atol(nodes[i]->content);
 
             if (docker->attempts <= 0 || docker->attempts >= INT_MAX) {
-                merror("At module '%s': Invalid content for tag '%s'.", WM_DOCKER_CONTEXT.name, XML_ATTEMPTS);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid content for tag '%s'.", WM_DOCKER_CONTEXT.name, XML_ATTEMPTS);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "At module '%s': Invalid content for tag '%s'.", WM_DOCKER_CONTEXT.name, XML_ATTEMPTS);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
@@ -93,7 +122,13 @@ int wm_docker_read(xml_node **nodes, wmodule *module)
             else if (!strcmp(nodes[i]->content, "no"))
                 docker->flags.run_on_start = 0;
             else {
-                merror("At module '%s': Invalid content for tag '%s'.", WM_DOCKER_CONTEXT.name, XML_RUN_ON_START);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid content for tag '%s'.", WM_DOCKER_CONTEXT.name, XML_RUN_ON_START);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "At module '%s': Invalid content for tag '%s'.", WM_DOCKER_CONTEXT.name, XML_RUN_ON_START);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_DISABLED)) {
@@ -102,11 +137,23 @@ int wm_docker_read(xml_node **nodes, wmodule *module)
             else if (!strcmp(nodes[i]->content, "no"))
                 docker->flags.enabled = 1;
             else {
-                merror("At module '%s': Invalid content for tag '%s'.", WM_DOCKER_CONTEXT.name, XML_DISABLED);
+                if (output == NULL) {
+                    merror("At module '%s': Invalid content for tag '%s'.", WM_DOCKER_CONTEXT.name, XML_DISABLED);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "At module '%s': Invalid content for tag '%s'.", WM_DOCKER_CONTEXT.name, XML_DISABLED);
+                    wm_strcat(output, message, '\n');
+                }
                 return OS_INVALID;
             }
         } else {
-            merror("At module '%s': No such tag '%s'.", WM_DOCKER_CONTEXT.name, nodes[i]->element);
+            if (output == NULL) {
+                    merror("At module '%s': No such tag '%s'.", WM_DOCKER_CONTEXT.name, nodes[i]->element);
+                } else {
+                    snprintf(message, OS_FLSIZE,
+                        "At module '%s': No such tag '%s'.", WM_DOCKER_CONTEXT.name, nodes[i]->element);
+                    wm_strcat(output, message, '\n');
+                }
             return OS_INVALID;
         }
     }
