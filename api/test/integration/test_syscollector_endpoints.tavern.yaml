@@ -22,26 +22,31 @@ stages:
       status_code: 200
       body:
         data:
-          architecture: !anystr
-          hostname: !anystr
-          os:
-            codename: !anystr
-            major: !anystr
-            minor: !anystr
-            name: !anystr
-            platform: !anystr
-            version: !anystr
-          release: !anystr
-          scan:
-            id: !anyint
-            time: !anystr
-          sysname: !anystr
-          version: !anystr
+          affected_items:
+            - architecture: !anystr
+              hostname: !anystr
+              os:
+                codename: !anystr
+                major: !anystr
+                minor: !anystr
+                name: !anystr
+                platform: !anystr
+                version: !anystr
+              release: !anystr
+              scan:
+                id: !anyint
+                time: !anystr
+              sysname: !anystr
+              version: !anystr
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: All specified items were shown
       save:
         body:
-          os.version: data.os.version
-          release: data.release
-          sysname: data.sysname
+          os.version: data.affected_items.0.os.version
+          release: data.affected_items.0.release
+          sysname: data.affected_items.0.sysname
 
   - name: Invalid selector
     request:
@@ -92,7 +97,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_no_items
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
 
@@ -111,23 +116,28 @@ stages:
       status_code: 200
       body:
         data:
-          board_serial: !anything
-          cpu:
-            cores: !anything
-            mhz: !anything
-            name: !anything
-          ram:
-            free: !anything
-            total: !anything
-            usage: !anything
-          scan:
-            id: !anything
-            time: !anything
+          affected_items:
+            - board_serial: !anything
+              cpu:
+                cores: !anything
+                mhz: !anything
+                name: !anything
+              ram:
+                free: !anything
+                total: !anything
+                usage: !anything
+              scan:
+                id: !anything
+                time: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: All specified items were shown
       save:
         body:
-          board_serial: data.board_serial
-          cpu_name: data.cpu.name
-          ram_total: data.ram.total
+          board_serial: data.affected_items.0.board_serial
+          cpu_name: data.affected_items.0.cpu.name
+          ram_total: data.affected_items.0.ram.total
 
   - name: Not allowed selector
     request:
@@ -166,7 +176,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_no_items
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
 
@@ -175,30 +185,20 @@ test_name: GET /syscollector/{agent_id}/packages
 
 stages:
 
-  - name: Packages of an agent, no limit
+  - name: Packages of and agent
     request: &packages_request_000
       url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
-    response:
-      status_code: 200
-      body:
-        data:
-          totalItems: !anyint
-
-  - name: Packages of and agent
-    request:
-      <<: *packages_request_000
       params:
         limit: 1
     response:
       status_code: 200
       body:
         data:
-          items: &packages_response
-            -
-              architecture: !anystr
+          affected_items: &packages_response
+            - architecture: !anystr
               description: !anystr
               format: !anystr
               name: !anystr
@@ -210,23 +210,16 @@ stages:
               size: !anyint
               vendor: !anystr
               version: !anystr
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: All specified items were shown
       save:
         body:
-          expected_scan_id: data.items.0.scan.id
-          expected_description: data.items.0.description
-          expected_architecture: data.items.0.architecture
-          expected_version: data.items.0.version
-
-  - name: Multiple selectors
-    request:
-      <<: *packages_request_000
-      params:
-        select: scan.id,description,architecture
-    response:
-      status_code: 200
-      body:
-        data:
-          totalItems: !anyint
+          expected_scan_id: data.affected_items.0.scan.id
+          expected_description: data.affected_items.0.description
+          expected_architecture: data.affected_items.0.architecture
+          expected_version: data.affected_items.0.version
 
   - name: Multiple selectors with limit
     request:
@@ -238,12 +231,15 @@ stages:
       status_code: 200
       body:
         data:
-          items:
-            -
-              architecture: "{expected_architecture}"
+          affected_items:
+            - architecture: "{expected_architecture}"
               description: "{expected_description}"
               scan:
                 id: !int "{expected_scan_id}"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: All specified items were shown
 
   - name: Not allowed selector
     request:
@@ -263,22 +259,22 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *packages_response
             - <<: *packages_response
       save:
         body:
-          offset_test_architecture: data.items.1.architecture
-          offset_test_description: data.items.1.description
-          offset_test_format: data.items.1.format
-          offset_test_name: data.items.1.name
-          offset_test_priority: data.items.1.priority
-          offset_test_scan_id: data.items.1.scan.id
-          offset_test_scan_time: data.items.1.scan.time
-          offset_test_section: data.items.1.section
-          offset_test_size: data.items.1.size
-          offset_test_vendor: data.items.1.vendor
-          offset_test_version: data.items.1.version
+          offset_test_architecture: data.affected_items.1.architecture
+          offset_test_description: data.affected_items.1.description
+          offset_test_format: data.affected_items.1.format
+          offset_test_name: data.affected_items.1.name
+          offset_test_priority: data.affected_items.1.priority
+          offset_test_scan_id: data.affected_items.1.scan.id
+          offset_test_scan_time: data.affected_items.1.scan.time
+          offset_test_section: data.affected_items.1.section
+          offset_test_size: data.affected_items.1.size
+          offset_test_vendor: data.affected_items.1.vendor
+          offset_test_version: data.affected_items.1.version
 
   - name: Limit and offset test
     request:
@@ -290,7 +286,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - architecture: "{offset_test_architecture}"
               description: "{offset_test_description}"
               format: "{offset_test_format}"
@@ -306,8 +302,8 @@ stages:
             - <<: *packages_response
       save:
         body:
-          expected_name: data.items.0.name
-          expected_vendor: data.items.0.vendor
+          expected_name: data.affected_items.0.name
+          expected_vendor: data.affected_items.0.vendor
 
   - name: Wrong limit
     request:
@@ -344,7 +340,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *packages_response
             - <<: *packages_response
 
@@ -358,7 +354,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *packages_response
             - <<: *packages_response
 
@@ -378,18 +374,6 @@ stages:
         title: !anystr
         type: !anystr
 
-  - name: Get with limit
-    request:
-      <<: *packages_request_000
-      params:
-        limit: 1
-    response:
-      status_code: 200
-      body:
-        data:
-          items:
-            - <<: *packages_response
-
   - name: Search an expected name
     request:
       <<: *packages_request_000
@@ -399,7 +383,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *packages_response
 
   - name: Search an expected vendor
@@ -412,7 +396,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *packages_response
 
   - name: Filter by vendor
@@ -425,11 +409,10 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *packages_response
 
   - name: Search an expected name
-
     request:
       <<: *packages_request_000
       params:
@@ -439,11 +422,11 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *packages_response
       save:
         body:
-          name: data.items.0.name
+          name: data.affected_items.0.name
 
   - name: Filter by name
     request:
@@ -455,11 +438,11 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *packages_response
       save:
         body:
-          architecture: data.items.0.architecture
+          architecture: data.affected_items.0.architecture
 
   - name: Filter by architecture
     request:
@@ -471,12 +454,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *packages_response
       save:
         body:
-          expected_format: data.items.0.format
-          expected_vendor: data.items.0.vendor
+          expected_format: data.affected_items.0.format
+          expected_vendor: data.affected_items.0.vendor
 
   - name: Filter by format
     request:
@@ -488,7 +471,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *packages_response
 
   - name: Filter by version
@@ -501,7 +484,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *packages_response
 
   - name: Filter by format
@@ -514,7 +497,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *packages_response
 
 ---
@@ -548,7 +531,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
 
@@ -557,30 +540,20 @@ test_name: GET /syscollector/{agent_id}/processes
 
 stages:
 
-  - name: Processes of an agent, no limit
+  - name: Processes of an agent with limit = 1
     request: &processes_request_000
       url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/processes"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
-    response:
-      status_code: 200
-      body:
-        data:
-          totalItems: !anyint
-
-  - name: Processes of an agent with limit = 1
-    request:
-      <<: *processes_request_000
       params:
         limit: 1
     response:
       status_code: 200
       body:
         data:
-          items: &processes_response_000
-            -
-              cmd: !anystr
+          affected_items: &processes_response_000
+            - cmd: !anystr
               egroup: !anystr
               euser: !anystr
               fgroup: !anystr
@@ -610,37 +583,42 @@ stages:
               tty: !anyint
               utime: !anyint
               vm_size: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: All specified items were shown
       save:
         body:
-          expected_tty: data.items.0.tty
-          expected_sgroup: data.items.0.sgroup
-          expected_share: data.items.0.share
-          expected_session: data.items.0.session
-          expected_scan_id: data.items.0.scan.id
-          expected_pid: data.items.0.pid
-          expected_ppid: data.items.0.ppid
-          expected_state: data.items.0.state
-          expected_egroup: data.items.0.egroup
-          expected_euser: data.items.0.euser
-          expected_ruser: data.items.0.ruser
-          expected_suser: data.items.0.suser
-          expected_fgroup: data.items.0.fgroup
-          expected_rgroup: data.items.0.rgroup
-          expected_name: data.items.0.name
-          expected_nlwp: data.items.0.nlwp
-          expected_pgrp: data.items.0.pgrp
-          expected_priority: data.items.0.priority
+          expected_tty: data.affected_items.0.tty
+          expected_sgroup: data.affected_items.0.sgroup
+          expected_share: data.affected_items.0.share
+          expected_session: data.affected_items.0.session
+          expected_scan_id: data.affected_items.0.scan.id
+          expected_pid: data.affected_items.0.pid
+          expected_ppid: data.affected_items.0.ppid
+          expected_state: data.affected_items.0.state
+          expected_egroup: data.affected_items.0.egroup
+          expected_euser: data.affected_items.0.euser
+          expected_ruser: data.affected_items.0.ruser
+          expected_suser: data.affected_items.0.suser
+          expected_fgroup: data.affected_items.0.fgroup
+          expected_rgroup: data.affected_items.0.rgroup
+          expected_name: data.affected_items.0.name
+          expected_nlwp: data.affected_items.0.nlwp
+          expected_pgrp: data.affected_items.0.pgrp
+          expected_priority: data.affected_items.0.priority
 
   - name: Filter by pid
     request:
       <<: *processes_request_000
       params:
         pid: "{expected_pid}"
+        limit: 1
     response:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - pid: "{expected_pid}"
 
   - name: Filter by ppid
@@ -653,7 +631,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - ppid: !int "{expected_ppid}"
 
   - name: Filter by state
@@ -666,7 +644,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - state: "{expected_state}"
 
   - name: Filter by egroup
@@ -679,7 +657,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - egroup: "{expected_egroup}"
 
   - name: Filter by fgroup
@@ -692,7 +670,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - fgroup: "{expected_fgroup}"
 
   - name: Filter by sgroup
@@ -705,7 +683,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - sgroup: "{expected_sgroup}"
 
   - name: Filter by rgroup
@@ -718,7 +696,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - rgroup: "{expected_rgroup}"
 
   - name: Filter by euser
@@ -731,7 +709,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - euser: "{expected_euser}"
 
   - name: Filter by ruser
@@ -744,7 +722,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - ruser: "{expected_ruser}"
 
   - name: Filter by suser
@@ -757,7 +735,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - suser: "{expected_suser}"
 
   - name: Filter by nlwp
@@ -770,7 +748,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - nlwp: !int "{expected_nlwp}"
 
   - name: Filter by pgrp
@@ -783,7 +761,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - pgrp: !int "{expected_pgrp}"
 
   - name: Filter by priority
@@ -796,7 +774,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - priority: !int "{expected_priority}"
 
   - name: Filter by name
@@ -809,7 +787,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - name: "{expected_name}"
 
   - name: Select by
@@ -822,9 +800,8 @@ stages:
       status_code: 200
       body:
         data:
-          items:
-            -
-              scan:
+          affected_items:
+            - scan:
                 id: !int "{expected_scan_id}"
               session: !int "{expected_session}"
               sgroup: "{expected_sgroup}"
@@ -851,40 +828,40 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *processes_response_000
             - <<: *processes_response_000
       save:
         body:
-          offset_test_cmd: data.items.1.cmd
-          offset_test_egroup: data.items.1.egroup
-          offset_test_euser: data.items.1.euser
-          offset_test_fgroup: data.items.1.fgroup
-          offset_test_name: data.items.1.name
-          offset_test_nice: data.items.1.nice
-          offset_test_nlwp: data.items.1.nlwp
-          offset_test_pgrp: data.items.1.pgrp
-          offset_test_pid: data.items.1.pid
-          offset_test_ppid: data.items.1.ppid
-          offset_test_priority: data.items.1.priority
-          offset_test_processor: data.items.1.processor
-          offset_test_resident: data.items.1.resident
-          offset_test_rgroup: data.items.1.rgroup
-          offset_test_ruser: data.items.1.ruser
-          offset_test_scan_id: data.items.1.scan.id
-          offset_test_scan_time: data.items.1.scan.time
-          offset_test_session: data.items.1.session
-          offset_test_sgroup: data.items.1.sgroup
-          offset_test_share: data.items.1.share
-          offset_test_size: data.items.1.size
-          offset_test_start_time: data.items.1.start_time
-          offset_test_state: data.items.1.state
-          offset_test_stime: data.items.1.stime
-          offset_test_suser: data.items.1.suser
-          offset_test_tgid: data.items.1.tgid
-          offset_test_tty: data.items.1.tty
-          offset_test_utime: data.items.1.utime
-          offset_test_vm_size: data.items.1.vm_size
+          offset_test_cmd: data.affected_items.1.cmd
+          offset_test_egroup: data.affected_items.1.egroup
+          offset_test_euser: data.affected_items.1.euser
+          offset_test_fgroup: data.affected_items.1.fgroup
+          offset_test_name: data.affected_items.1.name
+          offset_test_nice: data.affected_items.1.nice
+          offset_test_nlwp: data.affected_items.1.nlwp
+          offset_test_pgrp: data.affected_items.1.pgrp
+          offset_test_pid: data.affected_items.1.pid
+          offset_test_ppid: data.affected_items.1.ppid
+          offset_test_priority: data.affected_items.1.priority
+          offset_test_processor: data.affected_items.1.processor
+          offset_test_resident: data.affected_items.1.resident
+          offset_test_rgroup: data.affected_items.1.rgroup
+          offset_test_ruser: data.affected_items.1.ruser
+          offset_test_scan_id: data.affected_items.1.scan.id
+          offset_test_scan_time: data.affected_items.1.scan.time
+          offset_test_session: data.affected_items.1.session
+          offset_test_sgroup: data.affected_items.1.sgroup
+          offset_test_share: data.affected_items.1.share
+          offset_test_size: data.affected_items.1.size
+          offset_test_start_time: data.affected_items.1.start_time
+          offset_test_state: data.affected_items.1.state
+          offset_test_stime: data.affected_items.1.stime
+          offset_test_suser: data.affected_items.1.suser
+          offset_test_tgid: data.affected_items.1.tgid
+          offset_test_tty: data.affected_items.1.tty
+          offset_test_utime: data.affected_items.1.utime
+          offset_test_vm_size: data.affected_items.1.vm_size
 
   - name: offset and limit check
     request:
@@ -897,7 +874,7 @@ stages:
       strict: false
       body:
         data:
-          items:
+          affected_items:
             - cmd: "{offset_test_cmd}"
               egroup: "{offset_test_egroup}"
               euser: "{offset_test_euser}"
@@ -990,7 +967,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Processes of an agent, select
     request:
@@ -1003,11 +980,9 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
-        data:
-          totalItems: !anyint
 
 ---
 test_name: GET /syscollector/{agent_id}/ports
@@ -1024,7 +999,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Ports of an agent, limit
     request:
@@ -1035,7 +1010,7 @@ stages:
       status_code: 200
       body:
         data:
-          items: &port_response
+          affected_items: &port_response
             - inode: !anyint
               local:
                 ip: !anystr
@@ -1052,12 +1027,12 @@ stages:
               tx_queue: !anyint
       save:
         body:
-          expected_protocol: data.items.0.protocol
-          expected_local_ip: data.items.0.local.ip
-          expected_local_port: data.items.0.local.port
-          expected_remote_ip: data.items.0.remote.ip
-          expected_tx_queue: data.items.0.tx_queue
-          expected_state: data.items.0.state
+          expected_protocol: data.affected_items.0.protocol
+          expected_local_ip: data.affected_items.0.local.ip
+          expected_local_port: data.affected_items.0.local.port
+          expected_remote_ip: data.affected_items.0.remote.ip
+          expected_tx_queue: data.affected_items.0.tx_queue
+          expected_state: data.affected_items.0.state
 
   - name: Filter protocol
     request:
@@ -1069,7 +1044,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *port_response
 
   - name: Filter local.ip
@@ -1082,7 +1057,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *port_response
 
   - name: Filter local.port
@@ -1095,7 +1070,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *port_response
 
   - name: Filter remote.ip
@@ -1108,7 +1083,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *port_response
 
   - name: Filter tx_queue
@@ -1121,7 +1096,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *port_response
 
   - name: Filter status
@@ -1134,7 +1109,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *port_response
 
   - name: Filter pid
@@ -1212,11 +1187,11 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Port of an agent, sort
     request:
@@ -1228,7 +1203,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr
@@ -1247,7 +1222,7 @@ stages:
       status_code: 200
       body:
         data:
-          items: &netaddr_response
+          affected_items: &netaddr_response
             - address: !anystr
               broadcast: !anystr
               iface: !anystr
@@ -1255,14 +1230,14 @@ stages:
               proto: !anystr
               scan:
                 id: !anyint
-          totalItems: !anyint
+          total_affected_items: !anyint
       save:
         body:
-          expected_broadcast: data.items.0.broadcast
-          expected_proto: data.items.0.proto
-          expected_address: data.items.0.address
-          expected_netmask: data.items.0.netmask
-          expected_iface: data.items.0.iface
+          expected_broadcast: data.affected_items.0.broadcast
+          expected_proto: data.affected_items.0.proto
+          expected_address: data.affected_items.0.address
+          expected_netmask: data.affected_items.0.netmask
+          expected_iface: data.affected_items.0.iface
 
   - name: Filter by iface
     request:
@@ -1273,7 +1248,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netaddr_response
 
   - name: Filter by iface (incorrect)
@@ -1285,7 +1260,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Filter by netmask
     request:
@@ -1296,7 +1271,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netaddr_response
 
   - name: Filter by netmask (incorrect)
@@ -1308,7 +1283,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Filter by address
     request:
@@ -1319,7 +1294,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netaddr_response
 
   - name: Filter by address (incorrect)
@@ -1331,7 +1306,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Filter by proto
     request:
@@ -1342,7 +1317,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netaddr_response
 
   - name: Filter by proto (incorrect)
@@ -1354,7 +1329,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Filter by broadcast
     request:
@@ -1365,7 +1340,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netaddr_response
 
   - name: Filter by broadcast (incorrect)
@@ -1377,7 +1352,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Search broadcast
     request:
@@ -1389,7 +1364,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - broadcast: "{expected_broadcast}"
 
   - name: Search protocol
@@ -1402,7 +1377,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - proto: "{expected_proto}"
 
   - name: Search address
@@ -1415,7 +1390,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - address: "{expected_address}"
 
   - name: Search netmask
@@ -1428,7 +1403,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - netmask: "{expected_netmask}"
 
   - name: Search iface
@@ -1441,7 +1416,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - iface: "{expected_iface}"
 
   - name: Select proto, netmask, broadcast
@@ -1453,7 +1428,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - proto: !anystr
               netmask: !anystr
               broadcast: !anystr
@@ -1478,8 +1453,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 1
+          affected_items: []
+          total_affected_items: 1
 
   - name: Wrong limit
     request:
@@ -1509,7 +1484,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netaddr_response
 
   - name: Invalid sort
@@ -1548,11 +1523,11 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Netaddress of an agent, sort
     request:
@@ -1564,7 +1539,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
 ---
 test_name: GET /syscollector/{agent_id}/netproto
@@ -1583,21 +1558,21 @@ stages:
       status_code: 200
       body:
         data:
-          items: &netproto_response_000
+          affected_items: &netproto_response_000
             - dhcp: !anystr
               gateway: !anystr
               iface: !anystr
               type: !anystr
               scan:
                 id: !anyint
-          totalItems: !anyint
+          total_affected_items: !anyint
       save:
         body:
-          expected_dhcp: data.items.0.dhcp
-          expected_gateway: data.items.0.gateway
-          expected_type: data.items.0.type
-          expected_scan_id: data.items.0.scan.id
-          expected_iface: data.items.0.iface
+          expected_dhcp: data.affected_items.0.dhcp
+          expected_gateway: data.affected_items.0.gateway
+          expected_type: data.affected_items.0.type
+          expected_scan_id: data.affected_items.0.scan.id
+          expected_iface: data.affected_items.0.iface
 
   - name: Filter by iface
     request:
@@ -1608,7 +1583,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netproto_response_000
 
   - name: Filter by iface (incorrect)
@@ -1620,7 +1595,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Filter by type
     request:
@@ -1631,7 +1606,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netproto_response_000
 
   - name: Filter by type (incorrect)
@@ -1643,7 +1618,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Filter by gateway
     request:
@@ -1654,7 +1629,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netproto_response_000
 
   - name: Filter by gateway (incorrect)
@@ -1666,7 +1641,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Filter by dhcp
     request:
@@ -1677,7 +1652,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netproto_response_000
 
   - name: Filter by dhcp (incorrect)
@@ -1697,7 +1672,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - iface: !anystr
               gateway: !anystr
               dhcp: !anystr
@@ -1712,7 +1687,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - dhcp: "{expected_dhcp}"
 
   - name: Search gateway
@@ -1725,7 +1700,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - gateway: "{expected_gateway}"
 
   - name: Search type
@@ -1738,7 +1713,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - type: "{expected_type}"
 
   - name: Search scan.id
@@ -1751,7 +1726,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - scan:
                 id: !int "{expected_scan_id}"
 
@@ -1765,7 +1740,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - iface: "{expected_iface}"
 
   - name: Not allowed selector
@@ -1806,7 +1781,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netproto_response_000
 
   - name: Invalid sort
@@ -1843,11 +1818,11 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Netprotocol of an agent, sort
 
@@ -1860,7 +1835,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface
@@ -1879,7 +1854,7 @@ stages:
       status_code: 200
       body:
         data:
-          items: &netiface_response_000
+          affected_items: &netiface_response_000
             - mac: !anystr
               mtu: !anyint
               name: !anystr
@@ -1898,22 +1873,22 @@ stages:
                 errors: !anyint
                 packets: !anyint
               type: !anystr
-          totalItems: !anyint
+          total_affected_items: !anyint
       save:
         body:
-          expected_mac: data.items.0.mac
-          expected_rx_bytes: data.items.0.rx.bytes
-          expected_tx_bytes: data.items.0.tx.bytes
-          expected_tx_errors: data.items.0.tx.errors
-          expected_rx_errors: data.items.0.rx.errors
-          expected_rx_packets: data.items.0.rx.packets
-          expected_tx_dropped: data.items.0.tx.dropped
-          expected_rx_dropped: data.items.0.rx.dropped
-          expected_tx_packets: data.items.0.tx.packets
-          expected_type: data.items.0.type
-          expected_mtu: data.items.0.mtu
-          expected_name: data.items.0.name
-          expected_state: data.items.0.state
+          expected_mac: data.affected_items.0.mac
+          expected_rx_bytes: data.affected_items.0.rx.bytes
+          expected_tx_bytes: data.affected_items.0.tx.bytes
+          expected_tx_errors: data.affected_items.0.tx.errors
+          expected_rx_errors: data.affected_items.0.rx.errors
+          expected_rx_packets: data.affected_items.0.rx.packets
+          expected_tx_dropped: data.affected_items.0.tx.dropped
+          expected_rx_dropped: data.affected_items.0.rx.dropped
+          expected_tx_packets: data.affected_items.0.tx.packets
+          expected_type: data.affected_items.0.type
+          expected_mtu: data.affected_items.0.mtu
+          expected_name: data.affected_items.0.name
+          expected_state: data.affected_items.0.state
 
   - name: Select type, rx.bytes, tx.errors, tx.dropped, mac
     request:
@@ -1924,7 +1899,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - type: !anystr
               rx:
                 bytes: !anyint
@@ -1943,7 +1918,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - mac: "{expected_mac}"
 
   - name: Search rx.bytes
@@ -1956,7 +1931,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - rx:
                 bytes: !int "{expected_rx_bytes}"
 
@@ -1971,7 +1946,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - tx:
                 errors: !int "{expected_tx_errors}"
 
@@ -1985,7 +1960,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - tx:
                 dropped: !int "{expected_tx_dropped}"
 
@@ -2027,7 +2002,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response_000
 
   - name: Invalid sort
@@ -2048,9 +2023,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response_000
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Offset = 1 and limit = 1
     request:
@@ -2062,8 +2037,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: !anyint
+          affected_items: []
+          total_affected_items: !anyint
 
   - name: Filter mtu
     request:
@@ -2074,9 +2049,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response_000
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter adapter
     skip: True # This test cannot be performed as usual because the column adapter exists in the database but the field is always empty
@@ -2096,9 +2071,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response_000
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter type
     request:
@@ -2109,9 +2084,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response_000
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter state
     request:
@@ -2122,9 +2097,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response_000
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter tx.packets
     request:
@@ -2135,9 +2110,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response_000
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter rx.packets
     request:
@@ -2148,9 +2123,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response_000
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter tx.dropped
     request:
@@ -2161,9 +2136,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response_000
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter rx.dropped
     request:
@@ -2174,9 +2149,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response_000
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter tx.bytes
     request:
@@ -2187,9 +2162,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response_000
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter rx.bytes
     request:
@@ -2200,9 +2175,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response_000
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter tx.errors
     request:
@@ -2213,9 +2188,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response_000
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter rx.errors
     request:
@@ -2226,9 +2201,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response_000
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter invalid tx.packets
     request:
@@ -2249,8 +2224,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 0
+          affected_items: []
+          total_affected_items: 0
 
   - name: Filter invalid rx.packets
     request:
@@ -2271,8 +2246,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 0
+          affected_items: []
+          total_affected_items: 0
 
   - name: Filter invalid tx.dropped
     request:
@@ -2293,8 +2268,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 0
+          affected_items: []
+          total_affected_items: 0
 
   - name: Filter invalid rx.dropped
     request:
@@ -2315,8 +2290,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 0
+          affected_items: []
+          total_affected_items: 0
 
   - name: Filter invalid tx.bytes
     request:
@@ -2337,8 +2312,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 0
+          affected_items: []
+          total_affected_items: 0
 
   - name: Filter invalid rx.bytes
     request:
@@ -2359,8 +2334,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 0
+          affected_items: []
+          total_affected_items: 0
 
   - name: Filter invalid tx.errors
     request:
@@ -2381,8 +2356,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 0
+          affected_items: []
+          total_affected_items: 0
 
   - name: Filter invalid rx.errors
     request:
@@ -2403,8 +2378,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 0
+          affected_items: []
+          total_affected_items: 0
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
@@ -2442,11 +2417,11 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Netiface of an agent, sort
     request:
@@ -2458,7 +2433,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
 ---
 test_name: GET /syscollector/{agent_id}/os
@@ -2475,26 +2450,27 @@ stages:
       status_code: 200
       body:
         data:
-          architecture: !anystr
-          hostname: !anystr
-          os:
-            codename: !anystr
-            major: !anystr
-            minor: !anystr
-            name: !anystr
-            platform: !anystr
-            version: !anystr
-          release: !anystr
-          scan:
-            id: !anyint
-            time: !anystr
-          sysname: !anystr
-          version: !anystr
+          affected_items:
+            - architecture: !anystr
+              hostname: !anystr
+              os:
+                codename: !anystr
+                major: !anystr
+                minor: !anystr
+                name: !anystr
+                platform: !anystr
+                version: !anystr
+              release: !anystr
+              scan:
+                id: !anyint
+                time: !anystr
+              sysname: !anystr
+              version: !anystr
       save:
         body:
-          os_version: data.os.version
-          release: data.release
-          sysname: data.sysname
+          os_version: data.affected_items.0.os.version
+          release: data.affected_items.0.release
+          sysname: data.affected_items.0.sysname
 
   - name: Invalid selector
     request:
@@ -2539,7 +2515,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_no_items
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
 
@@ -2558,23 +2534,24 @@ stages:
       status_code: 200
       body:
         data:
-          board_serial: !anything
-          cpu:
-            cores: !anything
-            mhz: !anything
-            name: !anything
-          ram:
-            free: !anything
-            total: !anything
-            usage: !anything
-          scan:
-            id: !anything
-            time: !anything
+          affected_items:
+            - board_serial: !anything
+              cpu:
+                cores: !anything
+                mhz: !anything
+                name: !anything
+              ram:
+                free: !anything
+                total: !anything
+                usage: !anything
+              scan:
+                id: !anything
+                time: !anything
       save:
         body:
-          board_serial: data.board_serial
-          cpu_name: data.cpu.name
-          ram_total: data.ram.total
+          board_serial: data.affected_items.0.board_serial
+          cpu_name: data.affected_items.0.cpu.name
+          ram_total: data.affected_items.0.ram.total
 
   - name: Not allowed selector
     request:
@@ -2613,7 +2590,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_no_items
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
 
@@ -2634,16 +2611,16 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netaddr_response
-          totalItems: !anyint
+          total_affected_items: !anyint
       save:
         body:
-          expected_broadcast: data.items.0.broadcast
-          expected_proto: data.items.0.proto
-          expected_address: data.items.0.address
-          expected_netmask: data.items.0.netmask
-          expected_iface: data.items.0.iface
+          expected_broadcast: data.affected_items.0.broadcast
+          expected_proto: data.affected_items.0.proto
+          expected_address: data.affected_items.0.address
+          expected_netmask: data.affected_items.0.netmask
+          expected_iface: data.affected_items.0.iface
 
   - name: Filter by iface
     request:
@@ -2654,7 +2631,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netaddr_response
 
   - name: Filter by iface (incorrect)
@@ -2666,7 +2643,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Filter by netmask
     request:
@@ -2677,7 +2654,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netaddr_response
 
   - name: Filter by netmask (incorrect)
@@ -2689,7 +2666,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Filter by address
     request:
@@ -2700,7 +2677,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netaddr_response
 
   - name: Filter by address (incorrect)
@@ -2712,7 +2689,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Filter by proto
     request:
@@ -2723,7 +2700,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netaddr_response
 
   - name: Filter by proto (incorrect)
@@ -2735,7 +2712,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Filter by broadcast
     request:
@@ -2746,7 +2723,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netaddr_response
 
   - name: Filter by broadcast (incorrect)
@@ -2758,7 +2735,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Search broadcast
     request:
@@ -2770,7 +2747,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - broadcast: "{expected_broadcast}"
 
   - name: Search protocol
@@ -2783,7 +2760,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - proto: "{expected_proto}"
 
   - name: Search address
@@ -2796,7 +2773,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - address: "{expected_address}"
 
   - name: Search netmask
@@ -2809,7 +2786,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - netmask: "{expected_netmask}"
 
   - name: Search iface
@@ -2822,7 +2799,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - iface: "{expected_iface}"
 
   - name: Select proto, netmask, broadcast
@@ -2834,7 +2811,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - proto: !anystr
               netmask: !anystr
               broadcast: !anystr
@@ -2859,8 +2836,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 1
+          affected_items: []
+          total_affected_items: 1
 
   - name: Wrong limit
     request:
@@ -2890,7 +2867,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netaddr_response
 
   - name: Invalid sort
@@ -2928,11 +2905,11 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Netaddress of an agent, sort
     request:
@@ -2944,7 +2921,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
 ---
 test_name: GET /syscollector/{agent_id}/netproto
@@ -2963,21 +2940,21 @@ stages:
       status_code: 200
       body:
         data:
-          items: &netproto_response
+          affected_items: &netproto_response
             - dhcp: !anystr
               gateway: !anystr
               iface: !anystr
               scan:
                 id: !anyint
               type: !anystr
-          totalItems: !anyint
+          total_affected_items: !anyint
       save:
         body:
-          expected_dhcp: data.items.0.dhcp
-          expected_gateway: data.items.0.gateway
-          expected_type: data.items.0.type
-          expected_scan_id: data.items.0.scan.id
-          expected_iface: data.items.0.iface
+          expected_dhcp: data.affected_items.0.dhcp
+          expected_gateway: data.affected_items.0.gateway
+          expected_type: data.affected_items.0.type
+          expected_scan_id: data.affected_items.0.scan.id
+          expected_iface: data.affected_items.0.iface
 
   - name: Filter by iface
     request:
@@ -2988,7 +2965,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netproto_response
 
   - name: Filter by iface (incorrect)
@@ -3000,7 +2977,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Filter by type
     request:
@@ -3011,7 +2988,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netproto_response
 
   - name: Filter by type (incorrect)
@@ -3023,7 +3000,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Filter by gateway
     request:
@@ -3034,7 +3011,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netproto_response
 
   - name: Filter by gateway (incorrect)
@@ -3046,7 +3023,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 0
+          total_affected_items: 0
 
   - name: Filter by dhcp
     request:
@@ -3057,7 +3034,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netproto_response
 
   - name: Filter by dhcp (incorrect)
@@ -3077,7 +3054,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - iface: !anystr
               gateway: !anystr
               dhcp: !anystr
@@ -3092,7 +3069,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - dhcp: "{expected_dhcp}"
 
   - name: Search gateway
@@ -3105,7 +3082,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - gateway: "{expected_gateway}"
 
   - name: Search type
@@ -3118,7 +3095,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - type: "{expected_type}"
 
   - name: Search scan.id
@@ -3131,7 +3108,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - scan:
                 id: !int "{expected_scan_id}"
 
@@ -3145,7 +3122,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - iface: "{expected_iface}"
 
   - name: Not allowed selector
@@ -3186,7 +3163,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netproto_response
 
   - name: Invalid sort
@@ -3223,11 +3200,11 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Netprotocol of an agent, sort
     request:
@@ -3239,7 +3216,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface
@@ -3258,7 +3235,7 @@ stages:
       status_code: 200
       body:
         data:
-          items: &netiface_response
+          affected_items: &netiface_response
             - mac: !anystr
               mtu: !anyint
               name: !anystr
@@ -3277,22 +3254,22 @@ stages:
                 errors: !anyint
                 packets: !anyint
               type: !anystr
-          totalItems: !anyint
+          total_affected_items: !anyint
       save:
         body:
-          expected_mac: data.items.0.mac
-          expected_rx_bytes: data.items.0.rx.bytes
-          expected_tx_bytes: data.items.0.tx.bytes
-          expected_tx_errors: data.items.0.tx.errors
-          expected_rx_errors: data.items.0.rx.errors
-          expected_rx_packets: data.items.0.rx.packets
-          expected_tx_dropped: data.items.0.tx.dropped
-          expected_rx_dropped: data.items.0.rx.dropped
-          expected_tx_packets: data.items.0.tx.packets
-          expected_type: data.items.0.type
-          expected_mtu: data.items.0.mtu
-          expected_name: data.items.0.name
-          expected_state: data.items.0.state
+          expected_mac: data.affected_items.0.mac
+          expected_rx_bytes: data.affected_items.0.rx.bytes
+          expected_tx_bytes: data.affected_items.0.tx.bytes
+          expected_tx_errors: data.affected_items.0.tx.errors
+          expected_rx_errors: data.affected_items.0.rx.errors
+          expected_rx_packets: data.affected_items.0.rx.packets
+          expected_tx_dropped: data.affected_items.0.tx.dropped
+          expected_rx_dropped: data.affected_items.0.rx.dropped
+          expected_tx_packets: data.affected_items.0.tx.packets
+          expected_type: data.affected_items.0.type
+          expected_mtu: data.affected_items.0.mtu
+          expected_name: data.affected_items.0.name
+          expected_state: data.affected_items.0.state
 
   - name: Select type, rx.bytes, tx.errors, tx.dropped, mac
     request:
@@ -3303,7 +3280,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - type: !anystr
               rx:
                 bytes: !anyint
@@ -3322,7 +3299,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - mac: "{expected_mac}"
 
   - name: Search rx.bytes
@@ -3335,7 +3312,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - rx:
                 bytes: !int "{expected_rx_bytes}"
 
@@ -3349,7 +3326,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - tx:
                 errors: !int "{expected_tx_errors}"
 
@@ -3363,7 +3340,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - tx:
                 dropped: !int "{expected_tx_dropped}"
 
@@ -3405,7 +3382,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response
 
   - name: Invalid sort
@@ -3426,9 +3403,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Offset = 1 and limit = 1
     request:
@@ -3440,8 +3417,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: !anyint
+          affected_items: []
+          total_affected_items: !anyint
 
   - name: Filter mtu
     request:
@@ -3452,9 +3429,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response
-          totalItems: !anyint
+          total_affected_items: !anyint
 
 #  - name: Filter adapter
 #    skip: True # This test cannot be performed as usual because the column adapter exists in the database but the field is always empty
@@ -3474,9 +3451,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter type
     request:
@@ -3487,9 +3464,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter state
     request:
@@ -3500,9 +3477,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter tx.packets
     request:
@@ -3513,9 +3490,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter rx_packets
     request:
@@ -3526,9 +3503,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter tx.dropped
     request:
@@ -3539,9 +3516,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter rx.dropped
     request:
@@ -3552,9 +3529,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter tx.bytes
     request:
@@ -3565,9 +3542,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter rx.bytes
     request:
@@ -3578,9 +3555,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter tx.errors
     request:
@@ -3591,9 +3568,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter rx.errors
     request:
@@ -3604,9 +3581,9 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *netiface_response
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Filter invalid tx.packets
     request:
@@ -3627,8 +3604,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 0
+          affected_items: []
+          total_affected_items: 0
 
   - name: Filter invalid rx.packets
     request:
@@ -3649,8 +3626,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 0
+          affected_items: []
+          total_affected_items: 0
 
   - name: Filter invalid tx.dropped
     request:
@@ -3671,8 +3648,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 0
+          affected_items: []
+          total_affected_items: 0
 
   - name: Filter invalid rx.dropped
     request:
@@ -3693,8 +3670,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 0
+          affected_items: []
+          total_affected_items: 0
 
   - name: Filter invalid tx.bytes
     request:
@@ -3715,8 +3692,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 0
+          affected_items: []
+          total_affected_items: 0
 
   - name: Filter invalid rx.bytes
     request:
@@ -3737,8 +3714,8 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 0
+          affected_items: []
+          total_affected_items: 0
 
   - name: Filter invalid tx.errors
     request:
@@ -3759,30 +3736,30 @@ stages:
       status_code: 200
       body:
         data:
-          items: []
-          totalItems: 0
+          affected_items: []
+          total_affected_items: 0
 
-  - name: Filter invalid rx.errors
-    request:
-      <<: *netiface_request
-      params:
-        rx.errors: -1
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
-
-  - name: Filter invalid rx.errors
-    request:
-      <<: *netiface_request
-      params:
-        rx.errors: 999999
-    response:
-      status_code: 200
-      body:
-        data:
-          items: []
-          totalItems: 0
+#  - name: Filter invalid rx.errors
+#    request:
+#      <<: *netiface_request
+#      params:
+#        rx.errors: -1
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter invalid rx.errors
+#    request:
+#      <<: *netiface_request
+#      params:
+#        rx.errors: 999999
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          affected_affected_items: []
+#          total_affected_items: 0
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
@@ -3820,11 +3797,11 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
         data:
-          totalItems: !anyint
+          total_affected_items: !anyint
 
   - name: Netiface of an agent, sort
     request:
@@ -3836,45 +3813,42 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
----
-test_name: GET /syscollector/{agent_id}/hotfixes
-
-stages:
-
-  - type: ref
-      id: login_get_token
-
-  - name: Get all hotfixes from agent
-      request: &hotfix_request_000
-        method: GET
-        url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/hotfixes"
-        headers:
-          Authorization: "Bearer {test_login_token}"
-      response:
-        status_code: 200
-        body:
-          data:
-            items:
-              - hotfix: !anystr
-                scan_id: !anyint
-                scan_time: !anystr
-            totalItems: !anyint
-        save:
-          body:
-            hotfix_filter: data.items.hotfix
-
-    - name: Filter hotfix
-      request:
-        <<: *hotfix_request_000
-      params:
-        hotfix: "{hotfix_filter}"
-      response:
-        status_code: 200
-        body:
-          data:
-            items:
-              - hotfix: "{hotfix_filter}"
-                scan_id: !anyint
-                scan_time: !anystr
-            totalItems: !anyint
+          total_affected_items: !anyint
+#---
+#test_name: GET /syscollector/{agent_id}/hotfixes
+#
+#stages:
+#
+#  - name: Get all hotfixes from agent
+#    request: &hotfix_request_000
+#      method: GET
+#      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/hotfixes"
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          affected_items:
+#            - hotfix: !anystr
+#              scan_id: !anyint
+#              scan_time: !anystr
+#          total_affected_items: !anyint
+#      save:
+#        body:
+#          hotfix_filter: data.affected_items.0.hotfix
+#
+#  - name: Filter hotfix
+#    request:
+#      <<: *hotfix_request_000
+#    params:
+#      hotfix: "{hotfix_filter}"
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          affected_items:
+#            - hotfix: "{hotfix_filter}"
+#              scan_id: !anyint
+#              scan_time: !anystr
+#          total_affected_items: !anyint

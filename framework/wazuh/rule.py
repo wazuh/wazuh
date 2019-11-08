@@ -55,28 +55,26 @@ def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr
     for rule_file in get_rules_files(status=status, limit=None).affected_items:
         rules.extend(load_rules_from_file(rule_file['file'], rule_file['path'], rule_file['status']))
 
-    parameters = {'groups': group, 'pci': pci, 'gpg13': gpg13, 'gdpr': gdpr, 'hipaa': hipaa, 'nist-800-53': nist_800_53,
+    parameters = {'groups': group, 'pci': pci, 'gpg13': gpg13, 'gdpr': gdpr, 'hipaa': hipaa, 'nist_800_53': nist_800_53,
                   'path': path, 'file': file, 'id': rule_ids, 'level': levels}
     original_rules = list(rules)
     no_existent_ids = rule_ids[:]
     for r in original_rules:
         for key, value in parameters.items():
-            if key == 'level' and value:
-                if len(value) == 1:
-                    if int(value[0]) != r['level']:
+            if value:
+                if key == 'level' and r in rules:
+                    if len(value) == 1 and int(value[0]) != r['level'] or len(value) == 2 and \
+                            not (int(value[0]) <= r['level'] <= int(value[1])):
                         rules.remove(r)
-                elif not (int(value[0]) <= r['level'] <= int(value[1])):
+                elif key == 'id':
+                    if r[key] not in value and r in rules:
+                        rules.remove(r)
+                    elif r[key] in no_existent_ids:
+                        no_existent_ids.remove(r[key])
+                elif key == 'file' and r[key] not in file and r in rules:
                     rules.remove(r)
-            elif key == 'id' and value:
-                if r[key] not in value:
-                    try:
-                        rules.remove(r)
-                    except ValueError:
-                        pass
-                else:
-                    no_existent_ids.remove(r[key])
-            elif value and value not in r[key]:
-                rules.remove(r)
+                elif not isinstance(value, list) and value not in r[key]:
+                    rules.remove(r)
     for rule_id in no_existent_ids:
         result.add_failed_item(id_=rule_id, error=WazuhError(1208))
 

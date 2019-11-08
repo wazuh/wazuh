@@ -8,7 +8,7 @@ import logging
 import connexion
 
 import wazuh.syscollector as syscollector
-from api.models.base_model_ import Data
+from api.authentication import get_permissions
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh.cluster.dapi.dapi import DistributedAPI
 
@@ -27,20 +27,20 @@ def get_hardware_info(agent_id, pretty=False, wait_for_complete=False, select=No
     :return: Data
     """
     f_kwargs = {'agent_id': agent_id,
-                'select': select}
-
-    dapi = DistributedAPI(f=syscollector.get_hardware_agent,
+                'select': select,
+                'element_type': 'hardware'}
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -113,20 +113,21 @@ def get_network_address_info(agent_id, pretty=False, wait_for_complete=False, of
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'filters': filters}
+                'filters': filters,
+                'element_type': 'netaddr'}
 
-    dapi = DistributedAPI(f=syscollector.get_netaddr_agent,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -165,20 +166,21 @@ def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False, 
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'filters': filters}
+                'filters': filters,
+                'element_type': 'netiface'}
 
-    dapi = DistributedAPI(f=syscollector.get_netiface_agent,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -211,20 +213,21 @@ def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=False, o
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'filters': filters}
+                'filters': filters,
+                'element_type': 'netproto'}
 
-    dapi = DistributedAPI(f=syscollector.get_netproto_agent,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -238,20 +241,21 @@ def get_os_info(agent_id, pretty=False, wait_for_complete=False, select=None):
     :return: Data
     """
     f_kwargs = {'agent_id': agent_id,
-                'select': select}
+                'select': select,
+                'element_type': 'os'}
 
-    dapi = DistributedAPI(f=syscollector.get_os_agent,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -286,20 +290,21 @@ def get_packages_info(agent_id, pretty=False, wait_for_complete=False, offset=0,
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'filters': filters}
+                'filters': filters,
+                'element_type': 'packages'}
 
-    dapi = DistributedAPI(f=syscollector.get_packages_agent,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -338,20 +343,21 @@ def get_ports_info(agent_id, pretty=False, wait_for_complete=False, offset=0, li
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'filters': filters}
+                'filters': filters,
+                'element_type': 'ports'}
 
-    dapi = DistributedAPI(f=syscollector.get_ports_agent,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -406,17 +412,18 @@ def get_processes_info(agent_id, pretty=False, wait_for_complete=False, offset=0
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'filters': filters}
+                'filters': filters,
+                'element_type': 'processes'}
 
-    dapi = DistributedAPI(f=syscollector.get_processes_agent,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
