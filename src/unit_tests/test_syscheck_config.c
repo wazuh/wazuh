@@ -59,31 +59,6 @@ void test_Read_Syscheck_Config_invalid(void **state)
 }
 
 
-void test_init_whodata_event(void **state)
-{
-    (void) state;
-    whodata_evt *w_evt = calloc(1, sizeof(whodata_evt));
-
-    init_whodata_event(w_evt);
-    *state = w_evt;
-
-    assert_null(w_evt->user_id);
-    assert_null(w_evt->user_id);
-    assert_null(w_evt->user_name);
-    assert_null(w_evt->group_id);
-    assert_null(w_evt->group_name);
-    assert_null(w_evt->process_name);
-    assert_null(w_evt->path);
-    assert_null(w_evt->audit_uid);
-    assert_null(w_evt->audit_name);
-    assert_null(w_evt->effective_uid);
-    assert_null(w_evt->effective_name);
-    assert_int_equal(w_evt->ppid, -1);
-    assert_int_equal(w_evt->process_id, 0);
-    assert_null(w_evt->dev);
-}
-
-
 void test_getSyscheckConfig(void **state)
 {
     (void) state;
@@ -128,7 +103,6 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_Read_Syscheck_Config_success),
         cmocka_unit_test(test_Read_Syscheck_Config_invalid),
-        cmocka_unit_test_teardown(test_init_whodata_event, delete_whodata_event),
         cmocka_unit_test_teardown(test_getSyscheckConfig, delete_json),
         cmocka_unit_test_teardown(test_getSyscheckInternalOptions, delete_json),
     };

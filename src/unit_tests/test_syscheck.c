@@ -36,9 +36,7 @@ void test_fim_initialize(void **state)
 
     will_return(__wrap_OSHash_setSize, 1);
 
-    ret = fim_initialize();
-
-    assert_int_equal(ret, 0);
+    fim_initialize();
 }
 
 
@@ -49,9 +47,7 @@ void test_fim_initialize_warn(void **state)
 
     will_return(__wrap_OSHash_setSize, 0);
 
-    ret = fim_initialize();
-
-    assert_int_equal(ret, 0);
+    fim_initialize();
 }
 
 

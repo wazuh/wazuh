@@ -1060,9 +1060,7 @@ void test_fim_delete_no_data(void **state)
     char * file_name = "test-file.tst";
     will_return(__wrap_rbtree_get, NULL);
 
-    ret = fim_delete(file_name);
-
-    assert_int_equal(ret, 0);
+    fim_delete(file_name);
 }
 
 
@@ -1385,9 +1383,7 @@ void test_fim_scan(void **state)
 
     will_return_always(__wrap_lstat, 0);
 
-    ret = fim_scan();
-
-    assert_int_equal(ret, 0);
+    fim_scan();
 }
 
 

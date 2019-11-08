@@ -39,6 +39,14 @@ int __wrap_OSHash_Update_ex() {
     return mock();
 }
 
+OSHash * __real_OSHash_Create();
+OSHash * __wrap_OSHash_Create() {
+    if (mock_type(int)) {
+        return __real_OSHash_Create();
+    }
+    return NULL;
+}
+
 ssize_t __real_read(int fildes, void *buf, size_t nbyte);
 ssize_t __wrap_read(int fildes, void *buf, size_t nbyte) {
     if (mock_type(int) == 0) {
@@ -58,23 +66,40 @@ void test_realtime_start_success(void **state)
 
     Read_Syscheck_Config("test_syscheck.conf");
 
+    will_return(__wrap_OSHash_Create, 1);
     will_return(__wrap_inotify_init, 0);
     will_return(__wrap_read, 0); // Use real
     will_return(__wrap_read, 0);
 
     ret = realtime_start();
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, 0);
 }
 
 
-void test_realtime_start_failure(void **state)
+void test_realtime_start_failure_hash(void **state)
 {
     (void) state;
     int ret;
 
     Read_Syscheck_Config("test_syscheck.conf");
 
+    will_return(__wrap_OSHash_Create, 0);
+
+    ret = realtime_start();
+
+    assert_int_equal(ret, -1);
+}
+
+
+void test_realtime_start_failure_inotify(void **state)
+{
+    (void) state;
+    int ret;
+
+    Read_Syscheck_Config("test_syscheck.conf");
+
+    will_return(__wrap_OSHash_Create, 1);
     will_return(__wrap_inotify_init, -1);
     will_return(__wrap_read, 0); // Use real
     will_return(__wrap_read, 0);
@@ -180,7 +205,6 @@ void test_realtime_adddir_realtime_update_failure(void **state)
 void test_realtime_process_failure(void **state)
 {
     (void) state;
-    int ret;
 
     Read_Syscheck_Config("test_syscheck.conf");
 
@@ -190,20 +214,7 @@ void test_realtime_process_failure(void **state)
     will_return(__wrap_read, 1); // Use wrap
     will_return(__wrap_read, -1);
 
-    ret = realtime_process();
-
-    assert_int_equal(ret, 0);
-}
-
-
-void test_run_whodata_scan(void **state)
-{
-    (void) state;
-    int ret;
-
-    ret = run_whodata_scan();
-
-    assert_int_equal(ret, 0);
+    realtime_process();
 }
 
 
@@ -232,7 +243,6 @@ void test_free_syscheck_dirtb_data_null(void **state)
 void test_realtime_process(void **state)
 {
     (void) state;
-    int ret;
 
     Read_Syscheck_Config("test_syscheck.conf");
 
@@ -242,23 +252,21 @@ void test_realtime_process(void **state)
     will_return(__wrap_read, 1); // Use wrap
     will_return(__wrap_read, 1);
 
-    ret = realtime_process();
-
-    assert_int_equal(ret, 0);
+    realtime_process();
 }
 
 
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_realtime_start_success),
-        cmocka_unit_test(test_realtime_start_failure),
+        cmocka_unit_test(test_realtime_start_failure_hash),
+        cmocka_unit_test(test_realtime_start_failure_inotify),
         cmocka_unit_test(test_realtime_adddir_whodata),
         cmocka_unit_test(test_realtime_adddir_realtime_failure),
         cmocka_unit_test(test_realtime_adddir_realtime_add),
         cmocka_unit_test(test_realtime_adddir_realtime_update),
         cmocka_unit_test(test_realtime_adddir_realtime_update_failure),
         cmocka_unit_test(test_realtime_process_failure),
-        cmocka_unit_test(test_run_whodata_scan),
         //cmocka_unit_test(test_free_syscheck_dirtb_data),
         cmocka_unit_test(test_free_syscheck_dirtb_data_null),
         cmocka_unit_test(test_realtime_process),
