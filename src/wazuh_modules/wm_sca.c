@@ -2016,7 +2016,7 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
 
         if (S_ISDIR(statbuf_local.st_mode)) {
             result = wm_sca_check_dir(f_name, file, pattern, reason);
-        } else if (((strncasecmp(file, "r:", 2) == 0) && OS_Regex(file + 2, entry->d_name))
+        } else if (((file && strncasecmp(file, "r:", 2) == 0) && OS_Regex(file + 2, entry->d_name))
                 || OS_Match2(file, entry->d_name))
         {
             result = wm_sca_check_file_list(f_name, pattern, reason);
