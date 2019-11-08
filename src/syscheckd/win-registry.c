@@ -286,7 +286,6 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int pos)
     return;
 }
 
-/* Main function to read the registry */
 void os_winreg_check()
 {
     int i = 0;

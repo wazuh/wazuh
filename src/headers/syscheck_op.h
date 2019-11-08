@@ -179,28 +179,80 @@ typedef struct sk_sum_t {
     long date_alert;
 } sk_sum_t;
 
-/* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
-   or -1 on failure. */
+/**
+ * @brief Parse c_sum string
+ *
+ * @param [out] sum
+ * @param [in] c_sum
+ * @param [in] w_sum
+ * @return 0 if success, 1 when c_sum denotes a deleted file, -1 on failure
+ */
 int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum);
 
-// Parse fields changes and date_alert only provide for wazuh_db
+/**
+ * @brief Parse fields changes and date_alert only provide for wazuh_db
+ *
+ * @param [out] sum
+ * @param [in] c_sum
+ * @return 0 if success, -1 on failure
+ */
 int sk_decode_extradata(sk_sum_t *sum, char *c_sum);
 
+/**
+ * @brief Fill an event with specific data
+ *
+ * @param [out] lf Event to be filled
+ * @param [in] f_name File name for the event
+ * @param [in] sum File sum used to fill the event
+ */
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum);
 
-int sk_build_sum(const sk_sum_t * sum, char * output, size_t size);
+/**
+ * @brief Fills a buffer with a specific file sum
+ *
+ * @param [in] sum File sum used to fill the buffer
+ * @param [out] output The output buffer to be written
+ * @param [in] size Size in bytes to be written into output
+ * @return 0 on success, -1 on failure
+ */
+int sk_build_sum(const sk_sum_t *sum, char *output, size_t size);
 
-/* Delete from path to parent all empty folders */
+/**
+ * @brief Delete from path to parent all empty folders
+ *
+ * @param path The path from which to delete
+ * @return 0 on success, -1 on failure
+ */
 int remove_empty_folders(const char *path);
 
-/* Delete path file and all empty folders above */
+/**
+ * @brief Delete path file and all empty folders above
+ *
+ * @param path The path from which to delete
+ * @return 0 on success, -1 on failure
+ */
 int delete_target_file(const char *path);
 
-void sk_sum_clean(sk_sum_t * sum);
+/**
+ * @brief Frees from memory a sk_sum_t structure
+ *
+ * @param [out] sum The sk_sum_t object to be freed
+ */
+void sk_sum_clean(sk_sum_t *sum);
 
-//Change in Windows paths all slashes for backslashes for compatibility agent<3.4 with manager>=3.4
+/**
+ * @brief Change in Windows paths all slashes for backslashes for compatibility
+ *
+ * @param [out] path The path of the file to be normalized
+ */
 void normalize_path(char *path);
 
+/**
+ * @brief Escape characteres '!', ':', ' ' from incomming string
+ *
+ * @param field Syscheck checksum string
+ * @return A string with escaped characters
+ */
 char *escape_syscheck_field(char *field);
 #ifndef CLIENT
 char *unescape_syscheck_field(char *sum);
@@ -208,24 +260,112 @@ char *unescape_syscheck_field(char *sum);
 
 #ifndef WIN32
 
+/**
+ * @brief Retrieves the user name from a user ID in UNIX
+ *
+ * @param uid The user ID
+ * @return The user name on success, NULL on failure
+ */
 char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
+
+/**
+ * @brief Retrieves the group name from a group ID in UNIX
+ *
+ * @param gid The group ID
+ * @return The group name on success, an empty string on failure
+ */
 const char *get_group(int gid);
 
 #else
 
+/**
+ * @brief Retrieves the user name of the owner of a file in Windows
+ * Also sets the user ID associated to that user
+ *
+ * @param [in] path File path to check the owner of
+ * @param [out] sid The user ID associated to the user
+ * @return The user name on success, NULL on failure
+ */
 char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
+
+/**
+ * @brief Retrieves the attributes of a specific file (Windows)
+ *
+ * @param file_path The path of the file to check the attributes of
+ * @return The bit mask of the file attributes on success, 0 on failure
+ */
 unsigned int w_get_file_attrs(const char *file_path);
+
+/**
+ * @brief Retrieves the permissions of a specific file (Windows)
+ *
+ * @param [in] file_path The path of the file from which to check permissions
+ * @param [out] permissions Buffer in which to write the permissions
+ * @param [in] perm_size The size of the permissions buffer
+ * @return 0 on success, the error code on failure, -2 if ACE could not be obtained
+ */
 int w_get_file_permissions(const char *file_path, char *permissions, int perm_size);
+
+/**
+ * @brief Retrieves the group name from a group ID in windows
+ *
+ * @return The group name on success, an empty string on failure
+ */
 const char *get_group(__attribute__((unused)) int gid);
+
+/**
+ * @brief Copy ACE information into buffer
+ *
+ * @param [in] ace ACE structure
+ * @param [out] perm Buffer in which to write the ACE information
+ * @param [in] perm_size The size of the buffer
+ * @return 0 on failure, the number of bytes written into perm on success
+ */
 int copy_ace_info(void *ace, char *perm, int perm_size);
+
+/**
+ * @brief Retrieves the account information (name and domain) from SID
+ *
+ * @param [in] sid SID from which retrieve the information
+ * @param [out] account_name Buffer in which the account name is written
+ * @param [out] account_domain Buffer in which the account domain is written
+ * @return 0 on success, error code on failure
+ */
 int w_get_account_info(SID *sid, char **account_name, char **account_domain);
 
 #endif
 
+/**
+ * @brief Converts a bit mask into a human readable format
+ *
+ * @param [out] str Buffer to be written
+ * @param [in] attrs Bit mask to be converted
+ */
 void decode_win_attributes(char *str, unsigned int attrs);
+
+/**
+ * @brief Decodes a permission string and converts it to a human readable format
+ *
+ * @param [in] raw_perm A raw string with the permissions
+ * @return A string in human readable format with the Windows permission
+ */
 char *decode_win_permissions(char *raw_perm);
+
+/**
+ * @brief Transforms a bit mask of attributes into a human readable cJSON
+ *
+ * @param attributes A string with the Windows attributes
+ * @return A cJSON with the attributes
+ */
 cJSON *attrs_to_json(const char *attributes);
-cJSON *win_perm_to_json(char *perms);
+
+/**
+ * @brief Transforms a string of permissions into a human readable cJSON
+ *
+ * @param permissions Permissions string
+ * @return A cJSON with the permissions
+ */
+cJSON *win_perm_to_json(char *permissions);
 
 /**
  * @brief Send a one-way message to Syscheck

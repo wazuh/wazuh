@@ -1506,10 +1506,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     return (0);
 }
 
-
-/* return a text version of the directory check option bits,
- * in a provided string buffer
- */
 char *syscheck_opts2str(char *buf, int buflen, int opts) {
     int left = buflen;
     int i;

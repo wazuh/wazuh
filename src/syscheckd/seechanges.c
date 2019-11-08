@@ -124,8 +124,6 @@ int symlink_to_dir (const char *filename) {
 // LCOV_EXCL_STOP
 #endif
 
-/* Return TRUE if the file name match one of the ``nodiff`` entries.
-   Return FALSE otherwise */
 int is_nodiff(const char *filename){
     if (syscheck.nodiff){
         int i;

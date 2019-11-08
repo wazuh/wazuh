@@ -28,7 +28,6 @@ volatile int audit_db_consistency_flag;
 #define REALTIME_EVENT_SIZE     (sizeof (struct inotify_event))
 #define REALTIME_EVENT_BUFFER   (2048 * (REALTIME_EVENT_SIZE + 16))
 
-/* Start real time monitoring using inotify */
 int realtime_start()
 {
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
@@ -51,7 +50,6 @@ int realtime_start()
 }
 
 /* Add a directory to real time checking */
-// TODO: develop and test whodata mode
 int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 {
     if (whodata && audit_thread_active) {
@@ -198,7 +196,6 @@ void realtime_process()
 void free_syscheck_dirtb_data(char *data) {
     free(data);
 }
-
 
 #elif defined(WIN32)
 

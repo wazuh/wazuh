@@ -80,7 +80,6 @@ void read_internal(int debug_level)
 // LCOV_EXCL_STOP
 
 
-// Initialize syscheck data
 void fim_initialize() {
     // Create store data
     syscheck.fim_entry = rbtree_init();

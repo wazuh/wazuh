@@ -101,8 +101,6 @@ int remove_empty_folders(const char *path) {
 
 #ifndef WIN32
 #ifndef CLIENT
-/* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
-   or -1 on failure. */
 int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     char *c_perm;
     char *c_mtime;
@@ -297,7 +295,6 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     return retval;
 }
 
-// Only decoded by manager
 int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
     char *changes;
     char *date_alert;

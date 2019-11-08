@@ -278,15 +278,49 @@ typedef struct _config {
     bool allow_remote_prefilter_cmd;
 } syscheck_config;
 
-
+/**
+ * @brief Adds (or overwrite if exists) an entry to the syscheck configuration structure
+ *
+ * @param syscheck Syscheck configuration structure
+ * @param entry Entry to be dumped
+ * @param vals Indicates the system arch for registries and the attributes for folders to be set
+ * @param reg 1 if it's a registry, 0 if not
+ * @param restrictfile The restrict regex to be set
+ * @param recursion_level The recursion level to be set
+ * @param tag The tag to be set
+ * @param link If the added entry is pointed by a symbolic link
+ */
 void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag, const char *link) __attribute__((nonnull(1, 2)));
 
+/**
+ * @brief Converts a bit mask with syscheck options to a human readable format
+ *
+ * @param [out] buf The buffer to write the check options in
+ * @param [in] buflen The size of the buffer
+ * @param [in] opts The bit mask of the options
+ * @return A text version of the directory check option bits
+ */
 char *syscheck_opts2str(char *buf, int buflen, int opts);
 
-/* Frees the Syscheck struct  */
-void Free_Syscheck(syscheck_config * config);
-char* check_ascci_hex (char *input);
+/**
+ * @brief Frees the memory of a syscheck configuration structure
+ *
+ * @param [out] config The syscheck configuration to free
+ */
+void Free_Syscheck(syscheck_config *config);
 
+/**
+ * @brief Transforms an ASCII text to HEX
+ *
+ * @param input The input text to transform
+ * @return The HEX string on success, the original string on failure
+ */
+char *check_ascci_hex(char *input);
+
+/**
+ * @brief Logs the real time engine status
+ *
+ */
 void log_realtime_status(int);
 
 #endif /* SYSCHECKC_H */
