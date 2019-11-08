@@ -3244,9 +3244,12 @@ static void *wm_sca_check_integrity_periodically (wm_sca_t * data) {
             
             cJSON_AddStringToObject(json_integrity, "hash", integrity_hash);
 
-            /* If there is no policy id in the local db, it will send an empty one */
+            /* If there is no policy id in the local db, it will send nothing */
             if(!data->policies[cis_db_index]->policy_id){
-                cJSON_AddStringToObject(json_integrity, "policy_id", "");
+                os_free(integrity_hash);
+                cJSON_Delete(json_integrity);
+                
+                continue;
             }
             else{
                 cJSON_AddStringToObject(json_integrity, "policy_id", data->policies[cis_db_index]->policy_id);
