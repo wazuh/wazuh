@@ -70,8 +70,19 @@ class WazuhDBQueryMitre(WazuhDBQuery):
 
 def get_attack(attack: str = '', phase: str = '', platform: str = '',
                offset: int = 0, limit: int = 10, sort: Optional[Dict] = None,
-               q: str = ''):
-    """Get information from Mitre database."""
+               q: str = '') -> Dict:
+    """Get information from Mitre database.
+
+    :param attack: Filters by attack ID
+    :param phase: Filters by phase
+    :param platform: Filters by platform
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param sort: Sort the items. Format: {'fields': ['field1', 'field2'],
+        'order': 'asc|desc'}
+    :param q: Query to filter by
+    :return: Dictionary with the data of the query from Mitre database
+    """
     # replace field names in q parameter
     query = q.replace('attack', 'id').replace('phase', 'phase_name').replace(
         'platform', 'platform_name')
@@ -87,7 +98,6 @@ def get_attack(attack: str = '', phase: str = '', platform: str = '',
 
     db_query = WazuhDBQueryMitre(offset=offset, limit=limit if limit < 10
                                  else 10, query=query, sort=sort)
-
     # execute query
     result = db_query.run()
 
