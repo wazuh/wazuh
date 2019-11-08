@@ -20,18 +20,18 @@
 #include "rootcheck/rootcheck.h"
 
 // Prototypes
-//static void send_sk_db(int first_scan);
 void * fim_run_realtime(__attribute__((unused)) void * args);
 int fim_whodata_initialize();
-
 
 #ifdef WIN32
 static void set_priority_windows_thread();
 #elif defined INOTIFY_ENABLED
-//static void *symlink_checker_thread(__attribute__((unused)) void * data);
-//static void update_link_monitoring(int pos, char *old_path, char *new_path);
-//static void unlink_files(OSHashNode **row, OSHashNode **node, void *data);
-//static void send_silent_del(char *path);
+static void *symlink_checker_thread(__attribute__((unused)) void * data);
+static void fim_link_update(int pos, char *new_path);
+static void fim_link_check_delete(int pos);
+static void fim_link_delete_range(int pos);
+static void fim_link_silent_scan(char *path, int pos);
+static void fim_link_reload_broken_link(char *path, int index);
 #endif
 
 // Send a message
@@ -149,6 +149,9 @@ void start_daemon()
     if (syscheck.enable_inventory) {
         w_create_thread(fim_run_integrity, &syscheck);
     }
+
+    // Launch symbolic links checker thread
+    w_create_thread(symlink_checker_thread, NULL);
 
 #else
     if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fim_run_integrity,
@@ -400,3 +403,149 @@ void log_realtime_status(int next) {
         }
     }
 }
+
+
+#ifdef INOTIFY_ENABLED
+static void *symlink_checker_thread(__attribute__((unused)) void * data) {
+    char *real_path;
+    int i;
+
+    syscheck.sym_checker_interval = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
+    mdebug1(FIM_LINKCHECK_START, syscheck.sym_checker_interval);
+
+    while (1) {
+        sleep(syscheck.sym_checker_interval);
+        mdebug1(FIM_LINKCHECK_START, syscheck.sym_checker_interval);
+
+        w_mutex_lock(&syscheck.fim_scan_mutex);
+        for (i = 0; syscheck.dir[i]; i++) {
+            if (!syscheck.symbolic_links[i]) {
+                continue;
+            }
+
+            real_path = realpath(syscheck.symbolic_links[i], NULL);
+
+            if (*syscheck.dir[i]) {
+                if (real_path) {
+                    // Check if link has changed
+                    if (strcmp(real_path, syscheck.dir[i])) {
+                        minfo(FIM_LINKCHECK_CHANGED, syscheck.dir[i], syscheck.symbolic_links[i], real_path);
+                        fim_link_update(i, real_path);
+                    } else {
+                        mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.dir[i]);
+                    }
+                } else {
+                    // Broken link
+                    char path[PATH_MAX];
+
+                    snprintf(path, PATH_MAX, "%s", syscheck.dir[i]);
+                    fim_link_check_delete(i);
+
+                    int config = fim_configuration_directory(path, "file");
+
+                    if (config >= 0) {
+                        fim_link_silent_scan(path, config);
+                    }
+                }
+            } else {
+                // Check real_path to reload broken link.
+                if (real_path) {
+                    fim_link_reload_broken_link(real_path, i);
+                }
+            }
+            os_free(real_path);
+        }
+        w_mutex_unlock(&syscheck.fim_scan_mutex);
+        mdebug1(FIM_LINKCHECK_FINALIZE);
+    }
+
+    return NULL;
+}
+
+
+static void fim_link_update(int pos, char *new_path) {
+    if (*syscheck.dir[pos]) {
+        fim_link_check_delete(pos);
+    }
+
+    os_free(syscheck.dir[pos]);
+    os_calloc(strlen(new_path) + 1, sizeof(char), syscheck.dir[pos]);
+    snprintf(syscheck.dir[pos], strlen(new_path) + 1, "%s", new_path);
+
+    //Add new entries without alert.
+    fim_link_silent_scan(new_path, pos);
+}
+
+
+static void fim_link_check_delete(int pos) {
+    struct stat statbuf;
+
+    if (w_stat(syscheck.symbolic_links[pos], &statbuf) < 0) {
+        if(errno == ENOENT) {
+            fim_link_delete_range(pos);
+            *syscheck.dir[pos] = '\0';
+            return;
+        }
+        mdebug1(FIM_STAT_FAILED, syscheck.symbolic_links[pos], errno, strerror(errno));
+    }
+}
+
+static void fim_link_delete_range(int pos) {
+    char **paths;
+    char first_entry[PATH_MAX];
+    char last_entry[PATH_MAX];
+    int i;
+
+    snprintf(first_entry, PATH_MAX, "%s/", syscheck.dir[pos]);
+    snprintf(last_entry, PATH_MAX, "%s0", syscheck.dir[pos]);
+
+    paths = rbtree_range(syscheck.fim_entry, first_entry, last_entry);
+
+    // If link pointing to a file
+    fim_delete(syscheck.dir[pos]);
+
+    for(i = 0; paths[i] != NULL; i++) {
+        int config = fim_configuration_directory(paths[i], "file");
+        if (config == pos) {
+            minfo("deleting file '%s'", paths[i]);
+            fim_delete (paths[i]);
+        }
+    }
+    os_free(paths);
+}
+
+static void fim_link_silent_scan(char *path, int pos) {
+    struct fim_element *item;
+
+    os_calloc(1, sizeof(fim_element), item);
+    item->index = pos;
+    item->mode = FIM_SCHEDULED;
+
+#ifndef WIN32
+    if (syscheck.opts[pos] & REALTIME_ACTIVE) {
+        realtime_adddir(path, 0);
+    }
+#endif
+
+    fim_checker(path, item, NULL, 0);
+    os_free(item);
+}
+
+static void fim_link_reload_broken_link(char *path, int index) {
+    int element;
+    int found = 0;
+
+    for (element = 0; syscheck.dir[element]; element++) {
+        if (strcmp(path, syscheck.dir[element]) == 0) {
+            // If a configuration directory exsists dont reload
+            mwarn("Directory '%s' already monitoried, ignoring link '%s'",
+                  syscheck.dir[element], syscheck.symbolic_links[index]);
+            found = 1;
+        }
+    }
+    // Reload broken link
+    if (!found) {
+        fim_link_update(index, path);
+    }
+}
+#endif

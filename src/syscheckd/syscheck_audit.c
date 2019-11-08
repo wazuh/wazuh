@@ -218,7 +218,8 @@ int add_audit_rules_syscheck(bool first_time) {
     }
 
     while (syscheck.dir[i] != NULL) {
-        if (syscheck.opts[i] & WHODATA_ACTIVE) {
+        // Check if dir[i] is set in whodata mode and isn't a broken link (syscheck.dir[i] = '\0')
+        if (syscheck.opts[i] & WHODATA_ACTIVE && *syscheck.dir[i]) {
             int retval;
             if (W_Vector_length(audit_added_rules) < syscheck.max_audit_entries) {
                 int found = search_audit_rule(syscheck.dir[i], "wa", AUDIT_KEY);
@@ -1189,10 +1190,12 @@ void * audit_main(int *audit_sock) {
             os_strdup(W_Vector_get(audit_added_dirs, i), path);
             int pos = fim_configuration_directory(path, "file");
 
-            syscheck.opts[pos] &= ~ WHODATA_ACTIVE;
-            syscheck.opts[pos] |= REALTIME_ACTIVE;
+            if (pos >= 0) {
+                syscheck.opts[pos] &= ~ WHODATA_ACTIVE;
+                syscheck.opts[pos] |= REALTIME_ACTIVE;
 
-            realtime_adddir(path, 0);
+                realtime_adddir(path, 0);
+            }
             os_free(path);
         }
         W_Vector_free(audit_added_dirs);

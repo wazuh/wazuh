@@ -100,6 +100,7 @@ void fim_initialize() {
 
     rbtree_set_dispose(syscheck.fim_entry, (void (*)(void *))free_entry_data);
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
+    w_mutex_init(&syscheck.fim_scan_mutex, NULL);
 }
 
 
@@ -127,7 +128,7 @@ int Start_win32_Syscheck()
         /* Disabled */
         if (!syscheck.dir) {
             minfo(FIM_DIRECTORY_NOPROVIDED);
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, NULL);
         } else if (!syscheck.dir[0]) {
             minfo(FIM_DIRECTORY_NOPROVIDED);
         }
@@ -141,7 +142,7 @@ int Start_win32_Syscheck()
         }
 
         if (!syscheck.registry) {
-            dump_syscheck_entry(&syscheck, "", 0, 1, NULL, 0, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 1, NULL, 0, NULL, NULL);
         }
         syscheck.registry[0].entry = NULL;
 

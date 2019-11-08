@@ -176,7 +176,7 @@ int OSHash_setSize_ex(OSHash *self, unsigned int new_size)
 
 /** int OSHash_Update(OSHash *self, char *key, void *data)
  * Returns 0 on error (not found).
- * Returns 1 on successduplicated key (not added)
+ * Returns 1 on success. Data updated
  * Key must not be NULL.
  */
 int OSHash_Update(OSHash *self, const char *key, void *data)
@@ -207,9 +207,9 @@ int OSHash_Update(OSHash *self, const char *key, void *data)
     return (0);
 }
 
-/** int OSHash_Update(OSHash *self, char *key, void *data)
+/** int OSHash_Update_ex(OSHash *self, char *key, void *data)
  * Returns 0 on error (not found).
- * Returns 1 on successduplicated key (not added)
+ * Returns 1 on success. Data updated
  * Key must not be NULL.
  */
 int OSHash_Update_ex(OSHash *self, const char *key, void *data)

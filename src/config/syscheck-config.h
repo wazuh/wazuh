@@ -238,7 +238,7 @@ typedef struct _config {
     OSMatch **nodiff_regex;         /* regex of files/dirs to never output diff */
 
     char **dir;                     /* array of directories to be scanned */
-    char **converted_links;                       /* array of converted links directories */
+    char **symbolic_links;         /* array of converted links directories */
     OSMatch **filerestrict;
     int *recursion_level;
 
@@ -268,6 +268,7 @@ typedef struct _config {
     rb_tree * fim_entry;
     OSHash * fim_inode;
     pthread_mutex_t fim_entry_mutex;
+    pthread_mutex_t fim_scan_mutex;
 
     rtfim *realtime;
 
@@ -277,9 +278,7 @@ typedef struct _config {
 } syscheck_config;
 
 
-int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag) __attribute__((nonnull(1, 2)));
-
-void set_linked_path(syscheck_config *syscheck, const char *entry, int position);
+void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag, const char *link) __attribute__((nonnull(1, 2)));
 
 char *syscheck_opts2str(char *buf, int buflen, int opts);
 

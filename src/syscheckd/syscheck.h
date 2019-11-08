@@ -47,7 +47,7 @@ typedef enum fim_scan_event {
 } fim_scan_event;
 
 typedef struct fim_element {
-    struct stat *statbuf;
+    struct stat statbuf;
     int index;
     int configuration;
     int mode;
@@ -83,13 +83,13 @@ void read_internal(int debug_level);
 void fim_scan();
 
 //
-void fim_checker(char * path, fim_element *item, whodata_evt *w_evt);
+void fim_checker(char * path, fim_element *item, whodata_evt *w_evt, int report);
 
 //
-int fim_directory (char * dir, fim_element *item, whodata_evt * w_evt);
+int fim_directory (char * dir, fim_element *item, whodata_evt * w_evt, int report);
 
 //
-int fim_file (char * file, fim_element *item, whodata_evt * w_evt);
+int fim_file (char * file, fim_element *item, whodata_evt * w_evt, int report);
 
 //
 void fim_realtime_event(char *file);
@@ -104,7 +104,7 @@ void fim_audit_inode_event(char *file, const char *inode_key, fim_event_mode mod
 int fim_registry_event (char * key, fim_entry_data * data, int pos);
 
 //
-int fim_configuration_directory(const char * path, const char entry[]);
+int fim_configuration_directory(const char *path, const char *entry);
 
 //
 int fim_check_depth(char * path, int dir_position);
@@ -119,7 +119,7 @@ void init_fim_data_entry(fim_entry_data *data);
 void fim_get_checksum (fim_entry_data * data);
 
 //
-int fim_insert (char *file_name, fim_entry_data * data, struct stat *file_stat);
+int fim_insert (char *file_name, fim_entry_data * data, struct stat file_stat);
 
 //
 int fim_update (char * file, fim_entry_data * data, fim_entry_data * old_data);

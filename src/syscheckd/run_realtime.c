@@ -28,6 +28,26 @@ volatile int audit_db_consistency_flag;
 #define REALTIME_EVENT_SIZE     (sizeof (struct inotify_event))
 #define REALTIME_EVENT_BUFFER   (2048 * (REALTIME_EVENT_SIZE + 16))
 
+void print_dirtb() {
+    OSHashNode *hash_node;
+    char *data;
+    unsigned int *inode_it;
+    int i = 0;
+
+    os_calloc(1, sizeof(unsigned int), inode_it);
+
+    hash_node = OSHash_Begin(syscheck.realtime->dirtb, inode_it);
+    while(hash_node) {
+        data = hash_node->data;
+        minfo("dirtb(%d) => (%s)'%s'", i, hash_node->key, (char*)data);
+        hash_node = OSHash_Next(syscheck.realtime->dirtb, inode_it, hash_node);
+        i++;
+    }
+    os_free(inode_it);
+
+    return;
+}
+
 /* Start real time monitoring using inotify */
 int realtime_start()
 {
@@ -39,7 +59,7 @@ int realtime_start()
         return (-1);
     }
 
-    OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free_syscheck_dirtb_data);
+    OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free);
 
     syscheck.realtime->fd = inotify_init();
     if (syscheck.realtime->fd < 0) {
@@ -88,22 +108,28 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                 }
             } else {
                 char wdchar[33];
+                char *data;
+                int retval;
                 snprintf(wdchar, 33, "%d", wd);
-                // TODO: refactor the following code. Consider to move the char* above but careful with memleaks and invalid reads/writes
-                char *ndir;
-                os_strdup(dir, ndir);
+                os_strdup(dir, data);
+
                 if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
-                    if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, ndir)) {
+                    if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
                         merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
+                    } else if (retval == 1) {
+                        mdebug2(FIM_REALTIME_HASH_DUP, data);
+                        os_free(data);
                     }
-                    mdebug1(FIM_REALTIME_NEWDIRECTORY, ndir);
+                    mdebug1(FIM_REALTIME_NEWDIRECTORY, data);
                 } else {
-                    if (OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, ndir) == 0) {
-                        merror("Unable to update 'dirtb'. Directory not found: '%s'", ndir);
+                    if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
+                        merror("Unable to update 'dirtb'. Directory not found: '%s'", data);
+                        os_free(data);
                         return (-1);
                     }
                 }
             }
+            print_dirtb();
         }
     }
 
@@ -131,7 +157,7 @@ void realtime_process()
             if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
                 mwarn("Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
                 send_log_msg("ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
-            } else if (event->len) {
+            } else {
                 char wdchar[33];
                 char final_name[MAX_LINE + 1];
                 char *entry;
@@ -143,7 +169,7 @@ void realtime_process()
                 //The configured paths can end at / or not, we must check it.
                 entry = (char *)OSHash_Get(syscheck.realtime->dirtb, wdchar);
                 if (entry) {
-                    if (entry[strlen(entry) - 1] == PATH_SEP) {
+                    if (entry[strlen(entry) - 1] == PATH_SEP || strcmp(event->name, "") == 0) {
                         snprintf(final_name, MAX_LINE, "%s%s",
                                 entry,
                                 event->name);
@@ -155,6 +181,12 @@ void realtime_process()
 
                     if (rbtree_insert(tree, final_name, (void *)1) == NULL) {
                         mdebug2("Duplicate event in real-time buffer: %s", final_name);
+                    }
+
+                    switch(event->mask) {
+                    case(IN_DELETE_SELF):
+                        OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
+                        break;
                     }
                 }
             }
@@ -174,14 +206,12 @@ void realtime_process()
 
         free_strarray(paths);
         rbtree_destroy(tree);
+        print_dirtb();
     }
 }
 
 void free_syscheck_dirtb_data(char *data) {
-    if (!data) {
-        return;
-    }
-    os_free(data);
+    free(data);
 }
 
 
@@ -241,7 +271,6 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     if (dwBytes) {
         fim_element *item;
         os_calloc(1, sizeof(fim_element), item);
-        os_calloc(1, sizeof(struct stat), item->statbuf);
 
         do {
             pinfo = (PFILE_NOTIFY_INFORMATION) &rtlocald->buffer[offset];
@@ -265,17 +294,20 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
                             finalfile);
                 }
             }
+            str_lowercase(final_path);
+
+            int index = fim_configuration_directory(wdchar, "file");
+            int file_index = fim_configuration_directory(final_path, "file");
 
             Sleep(syscheck.rt_delay);
 
-            str_lowercase(final_path);
-            item->mode = FIM_REALTIME;
 
-            /* Check the change */
-            fim_checker(final_path, item, NULL);
+            if (index == file_index) {
+                item->mode = FIM_REALTIME;
+                /* Check the change */
+                fim_checker(final_path, item, NULL, 1);
+            }
         } while (pinfo->NextEntryOffset != 0);
-
-        os_free(item->statbuf);
         os_free(item);
     }
 

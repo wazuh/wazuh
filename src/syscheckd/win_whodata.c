@@ -750,7 +750,7 @@ add_whodata_evt:
             // Close fd
             case 4658:
                 os_calloc(1, sizeof(fim_element), item);
-                os_calloc(1, sizeof(struct stat), item->statbuf);
+                item->mode = FIM_WHODATA;
 
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
                     unsigned int mask = w_evt->mask;
@@ -766,14 +766,14 @@ add_whodata_evt:
                         } else {
                             // At this point the file can be created
                         }
-                        fim_checker(w_evt->path, item, w_evt);
+                        fim_checker(w_evt->path, item, w_evt, 1);
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         if (mask & DELETE) {
-                            fim_checker(w_evt->path, item, w_evt);
+                            fim_checker(w_evt->path, item, w_evt, 1);
                         } else if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             // Check that a new file has been added
                             GetSystemTime(&w_dir->timestamp);
-                            fim_checker(w_evt->path, item, w_evt);
+                            fim_checker(w_evt->path, item, w_evt, 1);
 
                             mdebug1(FIM_WHODATA_SCAN, w_evt->path);
                         } else {
@@ -784,8 +784,6 @@ add_whodata_evt:
                     }
                     free_win_whodata_evt(w_evt);
                 } // In else section: The file was opened before Wazuh started Syscheck.
-
-                os_free(item->statbuf);
                 os_free(item);
             break;
 
