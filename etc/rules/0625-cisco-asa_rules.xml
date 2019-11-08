@@ -145,6 +145,9 @@
     <if_sid>64005</if_sid>
     <id>^6-113006</id>
     <description>ASA: AAA (VPN) user locked out.</description>
+    <mitre>
+      <id>T1133</id>
+    </mitre>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
@@ -152,6 +155,9 @@
     <if_sid>64003</if_sid>
     <id>^3-201008</id>
     <description>ASA: The ASA is disallowing new connections.</description>
+    <mitre>
+      <id>T1063</id>
+    </mitre>
     <group>service_availability,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,</group>
   </rule>
 
@@ -160,6 +166,9 @@
     <id>^1-105005|^1-105009|^1-105043</id>
     <match>Failed|Lost Failover</match>
     <description>ASA: Firewall failover pair communication problem.</description>
+    <mitre>
+      <id>T1063</id>
+    </mitre>
     <group>service_availability,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,</group>
   </rule>
 
@@ -167,6 +176,9 @@
     <if_sid>64005</if_sid>
     <id>^5-111003</id>
     <description>ASA: Firewall configuration deleted.</description>
+    <mitre>
+      <id>T1063</id>
+    </mitre>
     <group>config_changed,pci_dss_1.1.1,pci_dss_10.4,gpg13_4.13,gdpr_IV_35.7.d,</group>
   </rule>
 
@@ -174,6 +186,9 @@
     <if_sid>64005</if_sid>
     <id>^5-111005|^5-111004|^5-111002|^5-111007</id>
     <description>ASA: Firewall configuration changed.</description>
+    <mitre>
+      <id>T1063</id>
+    </mitre>
     <group>config_changed,pci_dss_1.1.1,pci_dss_10.4,gpg13_4.13,gdpr_IV_35.7.d,</group>
   </rule>
 
@@ -193,6 +208,9 @@
     <if_sid>64005</if_sid>
     <id>^5-502101|^5-502102</id>
     <description>ASA: User created or modified on the Firewall.</description>
+    <mitre>
+      <id>T1063</id>
+    </mitre>
     <group>adduser,account_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
@@ -230,6 +248,10 @@
   <rule id="64033" level="10" frequency="10" timeframe="240">
     <if_matched_sid>64018</if_matched_sid>
     <description>ASA: Multiple AAA (VPN) authentication failures.</description>
+    <mitre>
+      <id>T1110</id>
+      <id>T1133</id>
+    </mitre>
     <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <same_source_ip />
   </rule>

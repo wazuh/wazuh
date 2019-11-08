@@ -44,6 +44,9 @@
     <if_matched_group>authentication_failed</if_matched_group>
     <same_source_ip />
     <description>Dropbear: dropbear brute force attempt.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,nist_800_53_AC.2,</group>
   </rule>
 
@@ -65,6 +68,9 @@
     <if_matched_sid>51000</if_matched_sid>
     <same_source_ip />
     <description>Dropbear: brute force attempt.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,nist_800_53_AC.2,</group>
   </rule>
 

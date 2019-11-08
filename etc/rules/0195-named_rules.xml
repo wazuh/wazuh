@@ -329,6 +329,9 @@
     <if_matched_sid>12108</if_matched_sid>
     <same_source_ip />
     <description> Multiple query (cache) failures.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
     <group>connection_attempt,</group>
   </rule>
 

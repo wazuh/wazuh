@@ -55,6 +55,9 @@
     <field name="win.system.eventID">^41$</field>
     <field name="win.system.providerName">^Microsoft-Windows-Kernel-Power$</field>
     <description>The system stopped responding, crashed or lost power unexpectedly</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 

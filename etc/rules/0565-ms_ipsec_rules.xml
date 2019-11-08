@@ -123,6 +123,9 @@
     <if_sid>18104</if_sid>
     <id>^4710$</id>
     <description>IPsec Services was disabled</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     <group>windows,</group>
   </rule>
 
