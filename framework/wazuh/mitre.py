@@ -33,7 +33,7 @@ default_query = f"SELECT {select_fields} FROM {from_fields} {group_by_fields}"
 class WazuhDBQueryMitre(WazuhDBQuery):
     """Create a WazuhDB query for getting data from Mitre database."""
 
-    def __init__(self, offset: int = 0, limit: int = 0, query: str = '',
+    def __init__(self, offset: int = 0, limit: int = 10, query: str = '',
                  count: bool = True, get_data: bool = True,
                  table: str = 'attack', sort: Optional[Dict] = None,
                  default_query: str = default_query,
