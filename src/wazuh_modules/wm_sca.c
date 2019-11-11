@@ -3224,7 +3224,7 @@ static void *wm_sca_check_integrity_periodically (wm_sca_t * data) {
 
         /* Send hash for every policy file */
         for (i = 0; data->policies[i]; i++) {
-            if (!data->policies[i]->enabled) {
+            if (!data->policies[i]->enabled || !data->policies[i]->policy_id) {
                 continue;
             }
 
@@ -3243,17 +3243,7 @@ static void *wm_sca_check_integrity_periodically (wm_sca_t * data) {
             }
             
             cJSON_AddStringToObject(json_integrity, "hash", integrity_hash);
-
-            /* If there is no policy id in the local db, it will send nothing */
-            if(!data->policies[cis_db_index]->policy_id){
-                os_free(integrity_hash);
-                cJSON_Delete(json_integrity);
-                
-                continue;
-            }
-            else{
-                cJSON_AddStringToObject(json_integrity, "policy_id", data->policies[cis_db_index]->policy_id);
-            }
+            cJSON_AddStringToObject(json_integrity, "policy_id", data->policies[cis_db_index]->policy_id);
 
             /* Send integrity hash to the manager */
             mdebug2("Sending integrity hash: %s", integrity_hash);
