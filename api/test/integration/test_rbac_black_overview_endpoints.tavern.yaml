@@ -22,90 +22,83 @@ stages:
      status_code: 200
      body:
        data:
-         affected_items:
-           - agent_os:
-             - count: 3
-               os:
-                 name: !anystr
-                 platform: !anystr
-                 version: !anystr
-             - count: 6
-               os:
-                 name: !anystr
-                 platform: !anystr
-                 version: !anystr
-             - count: 2
-               os:
-                 name: !anystr
-                 platform: !anystr
-                 version: !anystr
-             - count: 2
-             agent_status:
-               active: 4
-               disconnected: 7
-               never_connected: 2
-               pending: 0
-               total: 13
-             agent_version:
-               - count: 1
-                 version: !anystr
-               - count: 8
-                 version: !anystr
-               - count: 2
-                 version: !anystr
-               - count: 2
-             groups:
-               - configSum: !anystr
-                 count: 4
-                 mergedSum: !anystr
-                 name: group3
-               - configSum: !anystr
-                 count: 10
-                 mergedSum: !anystr
-                 name: default
-               - configSum: !anystr
-                 count: 5
-                 mergedSum: !anystr
-                 name: group1
-               - configSum: !anystr
-                 count: 5
-                 mergedSum: !anystr
-                 name: group2
-             last_registered_agent:
-               - configSum: !anystr
-                 dateAdd: !anystr
-                 group:
-                   - default
-                   - group1
-                 id: '001'
-                 ip: !anystr
-                 lastKeepAlive: !anystr
-                 manager: wazuh-master
-                 mergedSum: !anystr
-                 name: wazuh-agent1
-                 node_name: master-node
-                 os:
-                   arch: !anystr
-                   codename: !anystr
-                   major: !anystr
-                   minor: !anystr
-                   name: !anystr
-                   platform: !anystr
-                   uname: !anystr
-                   version: !anystr
-                 registerIP: !anystr
-                 status: !anystr
-                 version: !anystr
-             nodes:
-               - count: 3
-                 node_name: worker2
-               - count: 2
-                 node_name: worker1
-               - count: 6
-                 node_name: master-node
-               - count: 2
-                 node_name: unknown
-         failed_items: []
-         total_affected_items: 1
-         total_failed_items: 0
-       message: Overview shown correctly.
+         agent_os:
+           - count: 3
+             os:
+               name: !anystr
+               platform: !anystr
+               version: !anystr
+           - count: 6
+             os:
+               name: !anystr
+               platform: !anystr
+               version: !anystr
+           - count: 2
+             os:
+               name: !anystr
+               platform: !anystr
+               version: !anystr
+           - count: 2
+         agent_status:
+           active: 9
+           disconnected: 2
+           never_connected: 2
+           pending: 0
+           total: 13
+         agent_version:
+           - count: 1
+             version: !anystr
+           - count: 8
+             version: !anystr
+           - count: 2
+             version: !anystr
+           - count: 2
+         groups:
+           - configSum: !anystr
+             count: !anyint
+             mergedSum: !anystr
+             name: !anystr
+           - configSum: !anystr
+             count: !anyint
+             mergedSum: !anystr
+             name: !anystr
+           - configSum: !anystr
+             count: !anyint
+             mergedSum: !anystr
+             name: !anystr
+           - configSum: !anystr
+             count: !anyint
+             mergedSum: !anystr
+             name: !anystr
+         last_registered_agent:
+           - configSum: !anystr
+             dateAdd: !anystr
+             group: !anything
+             id: !anystr
+             ip: !anystr
+             lastKeepAlive: !anystr
+             manager: !anystr
+             mergedSum: !anystr
+             name: !anystr
+             node_name: !anystr
+             os:
+               arch: !anystr
+               codename: !anystr
+               major: !anystr
+               minor: !anystr
+               name: !anystr
+               platform: !anystr
+               uname: !anystr
+               version: !anystr
+             registerIP: any
+             status: active
+             version: !anystr
+         nodes:
+           - count: !anyint
+             node_name: !anything
+           - count: !anyint
+             node_name: !anything
+           - count: !anyint
+             node_name: !anything
+           - count: !anyint
+             node_name: !anything

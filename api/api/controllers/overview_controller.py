@@ -5,6 +5,9 @@
 import asyncio
 import logging
 
+import connexion
+
+from api.authentication import get_permissions
 from api.models.base_model_ import Data
 from api.util import exception_handler, raise_if_exc, remove_nones_to_dict
 from wazuh.agent import get_full_overview
@@ -30,7 +33,8 @@ def get_overview_agents(pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
