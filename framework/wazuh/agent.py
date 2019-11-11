@@ -835,3 +835,28 @@ def upload_group_file(group_list=None, file_data=None, file_name='agent.conf'):
     group_id = group_list[0]
 
     return WazuhResult({'message': configuration.upload_group_file(group_id, file_data, file_name=file_name)})
+
+
+def get_full_overview() -> WazuhResult:
+    """Get information about agents.
+
+    :return: Dictionary with information about agents
+    """
+    # get information from different methods of Agent class
+    stats_distinct_node = get_distinct_agents(fields=['node_name']).affected_items
+    groups = get_agent_groups().affected_items
+    stats_distinct_os = get_distinct_agents(fields=['os.name',
+                                                    'os.platform', 'os.version']).affected_items
+    stats_version = get_distinct_agents(fields=['version']).affected_items
+    summary = get_agents_summary_status()
+    try:
+        last_registered_agent = [get_agents(limit=1,
+                                            sort={'fields': ['dateAdd'], 'order': 'desc'},
+                                            q='id!=000').affected_items[0]]
+    except IndexError:  # an IndexError could happen if there are not registered agents
+        last_registered_agent = []
+    # combine results in an unique dictionary
+    result = {'nodes': stats_distinct_node, 'groups': groups, 'agent_os': stats_distinct_os, 'agent_status': summary,
+              'agent_version': stats_version, 'last_registered_agent': last_registered_agent}
+
+    return WazuhResult(result)

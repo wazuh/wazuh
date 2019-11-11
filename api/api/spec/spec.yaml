@@ -2399,89 +2399,68 @@ components:
     OverviewAgents:
       type: object
       required:
-        - nodes
-        - groups
         - agent_os
         - agent_status
         - agent_version
+        - groups
         - last_registered_agent
+        - nodes
       properties:
         nodes:
-          type: object
+          type: array
           description: Active nodes in the cluster.
-          properties:
-            items:
-              type: array
-              items:
-                type: object
-                properties:
-                  node_name:
-                    type: string
-                  count:
-                    type: integer
-            totalItems:
-              type: integer
-              format: int32
+          items:
+            type: object
+            properties:
+              count:
+                type: integer
+                format: int32
+              node_name:
+                type: string
         groups:
-          type: object
+          type: array
           description: Recount of the number of Wazuh agents group by Wazuh groups.
-          properties:
-            items:
-              type: array
-              items:
-                $ref: '#/components/schemas/AgentGroup'
-            totalItems:
-              type: integer
-              format: int32
+          items:
+            $ref: '#/components/schemas/AgentGroup'
         agent_os:
-          type: object
+          type: array
           description: Recount of the number of Wazuh agents group by OS.
-          properties:
-            items:
-              type: array
-              items:
+          items:
+            type: object
+            properties:
+              count:
+                type: integer
+                format: int32
+              os:
                 type: object
                 properties:
-                  count:
-                    type: integer
-                    format: int32
-                  os:
-                    type: object
-                    properties:
-                      name:
-                        type: string
-                        format: alphanumeric
-                      platform:
-                        type: string
-                        format: alphanumeric
-                      version:
-                        type: string
-                        format: alphanumeric
-            totalItems:
-              type: integer
-              format: int32
-        agent_status:
-          $ref: '#/components/schemas/AgentsSummaryStatus'
-        agent_version:
-          type: object
-          description: Recount of the number of Wazuh agents group by version.
-          properties:
-            items:
-              type: array
-              items:
-                type: object
-                properties:
-                  count:
-                    type: integer
-                    format: int32
+                  name:
+                    type: string
+                    format: alphanumeric
+                  platform:
+                    type: string
+                    format: alphanumeric
                   version:
                     type: string
                     format: alphanumeric
-            totalItems:
-              type: integer
-              format: int32
+        agent_status:
+          $ref: '#/components/schemas/AgentsSummaryStatus'
+        agent_version:
+          type: array
+          description: Recount of the number of Wazuh agents group by version.
+          items:
+            type: object
+            properties:
+              count:
+                type: integer
+                format: int32
+              version:
+                type: string
+                format: alphanumeric
         last_registered_agent:
-          $ref: '#/components/schemas/Agent'
+          type: array
+          items:
+            $ref: '#/components/schemas/Agent'
 
   securitySchemes:
     basicAuth:

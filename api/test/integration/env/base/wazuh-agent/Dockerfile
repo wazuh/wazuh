@@ -39,6 +39,8 @@ FROM base_agent AS wazuh-env-agent-decoders_white_rbac
 FROM base_agent AS wazuh-env-agent-decoders_black_rbac
 FROM base_agent AS wazuh-env-agent-syscollector_white_rbac
 FROM base_agent AS wazuh-env-agent-syscollector_black_rbac
+FROM base_agent AS wazuh-env-agent-overview_white_rbac
+FROM base_agent AS wazuh-env-agent-overview_black_rbac
 FROM wazuh-env-agent-${ENVIRONMENT}
 
 ADD base/wazuh-agent/entrypoint.sh /scripts/entrypoint.sh
