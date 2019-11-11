@@ -23,22 +23,22 @@ stages:
      body:
        data:
          agent_os:
-           - count: 3
+           - count: !anyint
              os:
                name: !anystr
                platform: !anystr
                version: !anystr
-           - count: 6
+           - count: !anyint
              os:
                name: !anystr
                platform: !anystr
                version: !anystr
-           - count: 2
+           - count: !anyint
              os:
                name: !anystr
                platform: !anystr
                version: !anystr
-           - count: 2
+           - count: !anyint
          agent_status:
            active: 9
            disconnected: 2
@@ -46,13 +46,13 @@ stages:
            pending: 0
            total: 13
          agent_version:
-           - count: 1
+           - count: !anyint
              version: !anystr
-           - count: 8
+           - count: !anyint
              version: !anystr
-           - count: 2
+           - count: !anyint
              version: !anystr
-           - count: 2
+           - count: !anyint
          groups:
            - configSum: !anystr
              count: !anyint
