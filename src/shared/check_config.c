@@ -10,7 +10,11 @@
 
 /* Unified function to read the configuration */
 
+#include "shared.h"
+#include "config/config.h"
 #include "check_config.h"
+
+int validate_target(const char *path, int type, char **output);
 
 int test_manager_conf(const char *path, char **output) {
     int type = CLOCAL_CONFIG;

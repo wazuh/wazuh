@@ -350,7 +350,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
                             }
                         } else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE) {
                             int attrlen = strlen(node[i]->values[attrs]);
-                            if (output = NULL){
+                            if (output == NULL){
                                 mwarn("Agent OS filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
                             } else {
                                 snprintf(message, OS_FLSIZE,
@@ -469,7 +469,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
                 merror(XML_INVELEM, node[i]->element);
             } else {
                 snprintf(message, OS_FLSIZE,
-                    "Invalid elemente in the configuration: '%s'.",
+                    "Invalid element in the configuration: '%s'.",
                     node[i]->element);
                 wm_strcat(output, message, '\n');
             } 

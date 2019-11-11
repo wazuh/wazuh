@@ -235,7 +235,7 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag, char
     int j;
     char **entry;
     char *tmp_str;
-    char message[OS_FLSIZE]
+    char message[OS_FLSIZE];
 
     /* Get each entry separately */
     entry = OS_StrBreak(',', entries, MAX_DIR_SIZE); /* Max number */
@@ -1470,7 +1470,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             wm_strcat(output, message, '\n');
                             return OS_INVALID;
                         }
-                    } else if (output = NULL){
+                    } else if (output == NULL){
                         merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
                         return OS_INVALID;
                     } else {
