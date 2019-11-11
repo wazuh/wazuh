@@ -44,6 +44,42 @@ def get_hardware_info(agent_id, pretty=False, wait_for_complete=False, select=No
 
 
 @exception_handler
+def get_hotfix_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
+                    select=None, hotfix=None):
+    """ Get info about an agent's hotfixes
+
+    :param agent_id: Agent ID
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param select: Select which fields to return (separated by comma)
+    :return: Data
+    """
+
+    filters = {'hotfix': hotfix}
+
+    f_kwargs = {'agent_id': agent_id,
+                'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': filters,
+                'element_type': 'hotfixes'}
+
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+
+    return data, 200
+
+
+@exception_handler
 def get_network_address_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
                              sort=None, search=None, iface=None, proto=None, address=None, broadcast=None,
                              netmask=None):

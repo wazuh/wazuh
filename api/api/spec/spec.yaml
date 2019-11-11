@@ -343,6 +343,19 @@ components:
               items:
                 $ref: '#/components/schemas/SyscollectorHardware'
 
+    AllItemsResponseSyscollectorHotfixes:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/SyscollectorHardware'
+
     AllItemsResponseSyscollectorInterface:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -1948,6 +1961,15 @@ components:
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
+    SyscollectorHotfixes:
+      type: object
+      properties:
+        scan:
+          $ref: '#/components/schemas/ScanIdTime'
+        hotfix:
+          type: string
+          description: Hotfix filter for Windows Agents.
+
     SyscollectorNetwork:
       type: object
       properties:
@@ -2834,6 +2856,12 @@ components:
           - sha3_256
           - sha3_384
           - sha3_512
+    hotfix:
+      in: query
+      name: hotfix
+      description: Filters by hotfix
+      schema:
+        type: string
     limit:
       in: query
       name: limit
@@ -9710,6 +9738,42 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                 message: All specified items were shown
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /syscollector/{agent_id}/hotfixes:
+    get:
+      tags:
+        - syscollector
+      summary: "Get hotfixes"
+      description: "Returns all hotfixes installed by Microsoft(R) in Windows(R) systems (KB... fixes)"
+      operationId: api.controllers.syscollector_controller.get_hotfix_info
+      parameters:
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/hotfix'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Return a list of agent's hotfix results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorHardware'
+              example:
+                data:
+                  totalItems: 120
         default:
           $ref: '#/components/responses/ResponseError'
 

@@ -19,6 +19,7 @@ class Type(Enum):
     NETADDR = 'netaddr'
     NETPROTO = 'netproto'
     NETIFACE = 'netiface'
+    HOTFIXES = 'hotfixes'
 
 
 def get_valid_fields(element_type, agent_id=None):
@@ -67,7 +68,8 @@ def get_valid_fields(element_type, agent_id=None):
                                          'mac': 'mac', 'tx.packets': 'tx_packets', 'rx.packets': 'rx_packets',
                                          'tx.bytes': 'tx_bytes', 'rx.bytes': 'rx_bytes', 'tx.errors': 'tx_errors',
                                          'rx.errors': 'rx_errors', 'tx.dropped': 'tx_dropped',
-                                         'rx.dropped': 'rx_dropped'})
+                                         'rx.dropped': 'rx_dropped'}),
+        Type.HOTFIXES: ('sys_hotfixes', {'scan_id': 'scan_id', 'scan_time': 'scan_time', 'hotfix': 'hotfix'})
     }
     
     if element_type == Type.OS:
