@@ -514,7 +514,7 @@ class Rule:
                                 if tag == "group":
                                     groups.extend(value.split(","))
                                 if tag == "mitre":
-                                    for mitre_attack in xml_rule_tags.getchildren():
+                                    for mitre_attack in list(xml_rule_tags):
                                         mitre.append(mitre_attack.text)
                                 elif tag == "description":
                                     rule.description += value
