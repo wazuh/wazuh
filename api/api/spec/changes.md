@@ -241,8 +241,8 @@ in `dapi_errors` key
 
 ## Manager
 
-### GET /manager/files
-* The output of this endpoint had changed
+### GET /overview/agent
+* The output of this endpoint has changed
 
 ## Rootcheck
 ### PUT /rootcheck
