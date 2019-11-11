@@ -29,7 +29,7 @@ ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
 endif
-MAXAGENTS?=14000
+MAXAGENTS?=100000
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
 PG_CONFIG?=pg_config
@@ -53,6 +53,10 @@ USE_AUDIT=no
 USE_FRAMEWORK_LIB=no
 MINGW_HOST=unknown
 USE_MSGPACK_OPT=yes
+
+DISABLE_SHARED?=no
+DISABLE_SYSC?=no
+DISABLE_CISCAT?=no
 
 ifneq ($(HAS_CHECKMODULE),)
 ifneq ($(HAS_SEMODULE_PACKAGE),)
@@ -504,6 +508,9 @@ settings:
 	@echo "    USE_SELINUX:        ${USE_SELINUX}"
 	@echo "    USE_AUDIT:          ${USE_AUDIT}"
 	@echo "    USE_FRAMEWORK_LIB:  ${USE_FRAMEWORK_LIB}"
+	@echo "    DISABLE_SHARED:     ${DISABLE_SHARED}"
+	@echo "    DISABLE_SYSC:       ${DISABLE_SYSC}"
+	@echo "    DISABLE_CISCAT:     ${DISABLE_CISCAT}"
 	@echo "Mysql settings:"
 	@echo "    includes:           ${MI}"
 	@echo "    libs:               ${ML}"
@@ -880,10 +887,9 @@ external/%.tar.gz:
 #### OSSEC Libs ####
 ####################
 
-ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
+ifneq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 BUILD_LIBS = libwazuh.a $(EXTERNAL_LIBS)
-endif
-ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
+else
 WAZUHEXT_LIB = libwazuhext.$(SHARED)
 BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
 endif

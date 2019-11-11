@@ -120,6 +120,9 @@ ID: 87900 - 87999
         <if_sid>87912</if_sid>
         <field name="docker.Action">^destroy$</field>
         <description>Docker: Volume destroyed in $(docker.Actor.Attributes.driver)</description>
+        <mitre>
+          <id>T1107</id>
+        </mitre>
         <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.14,nist_800_53_SI.7,</group>
         <options>no_full_log</options>
     </rule>
@@ -174,6 +177,9 @@ ID: 87900 - 87999
         <if_sid>87900</if_sid>
         <field name="docker.status">^delete$</field>
         <description>Docker: Container $(docker.Actor.Attributes.name) deleted</description>
+        <mitre>
+          <id>T1107</id>
+        </mitre>
         <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.14,nist_800_53_SI.7,</group>
         <options>no_full_log</options>
     </rule>

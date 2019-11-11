@@ -501,6 +501,9 @@
     <if_sid>60648</if_sid>
     <field name="win.system.eventID">^7068$</field>
     <description>Cannot read registry, registry keys missing</description>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 

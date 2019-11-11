@@ -128,6 +128,9 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">svchost.exe</field>
         <description>Sysmon - Suspicious Process - svchost.exe</description>
+        <mitre>
+          <id>T1093</id>
+        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
     </rule>
 
@@ -142,6 +145,9 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">lsm.exe</field>
         <description>Sysmon - Suspicious Process - lsm.exe</description>
+        <mitre>
+          <id>T1093</id>
+        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
     </rule>
 
@@ -155,6 +161,9 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.parentImage">lsm.exe</field>
         <description>Sysmon - Suspicious Process - lsm.exe is a Parent Image</description>
+        <mitre>
+          <id>T1093</id>
+        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
     </rule>
 
@@ -163,6 +172,9 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">csrss.exe</field>
         <description>Sysmon - Suspicious Process - csrss.exe</description>
+        <mitre>
+          <id>T1093</id>
+        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
     </rule>
 
@@ -177,6 +189,9 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">lsass.exe</field>
         <description>Sysmon - Suspicious Process - lsass</description>
+        <mitre>
+          <id>T1093</id>
+        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
     </rule>
 
@@ -190,6 +205,9 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.parentImage">lsass.exe</field>
         <description>Sysmon - Suspicious Process - lsass.exe is a Parent Image</description>
+        <mitre>
+          <id>T1093</id>
+        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
     </rule>
 
@@ -198,6 +216,9 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">winlogon.exe</field>
         <description>Sysmon - Suspicious Process - winlogon.exe</description>
+        <mitre>
+          <id>T1093</id>
+        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
     </rule>
 
@@ -212,6 +233,9 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">wininit.exe</field>
         <description>Sysmon - Suspicious Process - wininit</description>
+        <mitre>
+          <id>T1093</id>
+        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
     </rule>
 
@@ -226,6 +250,9 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">smss.exe</field>
         <description>Sysmon - Suspicious Process - smss.exe</description>
+        <mitre>
+          <id>T1093</id>
+        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
     </rule>
 
@@ -240,6 +267,9 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">taskhost.exe</field>
         <description>Sysmon - Suspicious Process - taskhost.exe</description>
+        <mitre>
+          <id>T1093</id>
+        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
     </rule>
 
@@ -254,6 +284,9 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">/services.exe</field>
         <description>Sysmon - Suspicious Process - services.exe</description>
+        <mitre>
+          <id>T1093</id>
+        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
     </rule>
 
@@ -268,6 +301,9 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">dllhost.exe</field>
         <description>Sysmon - Suspicious Process - dllhost.exe</description>
+        <mitre>
+          <id>T1093</id>
+        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
     </rule>
 
@@ -282,6 +318,9 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">\\explorer.exe</field>
         <description>Sysmon - Suspicious Process - explorer.exe</description>
+        <mitre>
+          <id>T1093</id>
+        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
     </rule>
 

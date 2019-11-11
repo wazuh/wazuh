@@ -362,6 +362,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             os_calloc(1, sizeof(file_sum), f_sum[f_size]);
             strncpy(f_sum[f_size]->sum, md5sum, 32);
             os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
+            f_sum[f_size + 1] = NULL;
 
             if (!logr.nocmerged) {
                 MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1);
@@ -1070,7 +1071,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             // Copy sum before unlock mutex
-            if (f_sum[0]->sum && *(f_sum[0]->sum)) {
+            if (f_sum[0] && *(f_sum[0]->sum)) {
                 memcpy(tmp_sum, f_sum[0]->sum, sizeof(tmp_sum));
             }
 

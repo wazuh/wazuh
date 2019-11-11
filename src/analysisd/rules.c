@@ -965,7 +965,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                         config_ruleinfo->context_opts &= NOT_SAME_AGENT;
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_global_frequency) == 0) {
-                        config_ruleinfo->context_opts &= GLOBAL_FREQUENCY;
+                        config_ruleinfo->context_opts |= GLOBAL_FREQUENCY;
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_field) == 0) {
 
@@ -991,7 +991,6 @@ int Rules_OP_ReadRules(const char *rulefile)
                                           xml_notsame_field) == 0) {
 
                         if (config_ruleinfo->context_opts & NOT_SAME_FIELD) {
-
                             int size;
                             for (size = 0; config_ruleinfo->not_same_fields[size] != NULL; size++);
 
@@ -1155,12 +1154,12 @@ int Rules_OP_ReadRules(const char *rulefile)
                             goto cleanup;
                         }
 
-                        for (i=0; mitre_opt[i] != NULL; i++) {
+                        for (i = 0; mitre_opt[i] != NULL; i++) {
                             if ((!mitre_opt[i]->element) || (!mitre_opt[i]->content)) {
                                 break;
                             } else if (strcasecmp(mitre_opt[i]->element, xml_mitre_id) == 0) {
                                 int inarray = 0;
-                                for (l=0; l<mitre_size; l++) {
+                                for (l = 0; l < mitre_size; l++) {
                                     if (strcmp(config_ruleinfo->mitre_id[l],mitre_opt[i]->content)== 0) {
                                         inarray = 1;
                                     }

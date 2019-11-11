@@ -141,7 +141,10 @@
 
   <rule id="2502" level="10">
     <match>more authentication failures;|REPEATED login failures</match>
-    <description>syslog: User missed the password more than one time.</description>
+    <description>syslog: User missed the password more than one time</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
   </rule>
 
@@ -156,6 +159,9 @@
   <rule id="2504" level="9">
     <match>ILLEGAL ROOT LOGIN|ROOT LOGIN REFUSED</match>
     <description>syslog: Illegal root login.</description>
+    <mitre>
+      <id>T1169</id>
+    </mitre>
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.6,</group>
   </rule>
 
@@ -283,6 +289,9 @@
     <regex>Promiscuous mode enabled|</regex>
     <regex>device \S+ entered promiscuous mode</regex>
     <description>Interface entered in promiscuous(sniffing) mode.</description>
+    <mitre>
+      <id>T1040</id>
+    </mitre>
     <group>promisc,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
   </rule>
 
@@ -360,12 +369,18 @@
     <if_sid>5100</if_sid>
     <match>module verification failed</match>
     <description>Unsigned kernel module was loaded</description>
+    <mitre>
+      <id>T1215</id>
+    </mitre>
   </rule>
 
   <rule id="5133" level="11">
     <if_sid>5100</if_sid>
     <match>PKCS#7 signature not signed with a trusted key</match>
     <description>Signed but untrusted kernel module was loaded</description>
+    <mitre>
+      <id>T1215</id>
+    </mitre>
   </rule>
 
   <rule id="5134" level="7">
@@ -530,12 +545,18 @@
   <rule id="5901" level="8">
     <match>^new group</match>
     <description>New group added to the system.</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
     <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,</group>
   </rule>
 
   <rule id="5902" level="8">
     <match>^new user|^new account added</match>
     <description>New user added to the system.</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
     <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,</group>
   </rule>
 
@@ -548,6 +569,9 @@
   <rule id="5904" level="8">
     <match>^changed user</match>
     <description>Information from the user was changed.</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
     <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,</group>
   </rule>
 
@@ -598,7 +622,10 @@
   <rule id="5404" level="10">
     <if_sid>5401</if_sid>
     <match>3 incorrect password attempts</match>
-    <description>Three failed attempts to run sudo.</description>
+    <description>Three failed attempts to run sudo</description>
+    <mitre>
+      <id>T1169</id>
+   </mitre>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
   </rule>
 
@@ -606,6 +633,9 @@
     <if_sid>5400</if_sid>
     <match>user NOT in sudoers</match>
     <description>Unauthorized user attempted to use sudo.</description>
+    <mitre>
+      <id>T1169</id>
+   </mitre>
     <group>pci_dss_10.2.2,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.6,nist_800_53_AC.7,</group>
   </rule>
 
@@ -844,6 +874,9 @@
     <if_matched_sid>2963</if_matched_sid>
     <same_source_ip />
     <description>perdition: Multiple connection attempts from same source.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
     <group>recon,pci_dss_11.4,</group>
   </rule>
 
