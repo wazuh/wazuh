@@ -7,7 +7,7 @@ import logging
 
 from api.models.base_model_ import Data
 from api.util import exception_handler, raise_if_exc, remove_nones_to_dict
-from wazuh.core.core_agent import Agent
+from wazuh.agent import get_full_overview
 from wazuh.cluster.dapi.dapi import DistributedAPI
 
 loop = asyncio.get_event_loop()
@@ -24,7 +24,7 @@ def get_overview_agents(pretty=False, wait_for_complete=False):
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=Agent.get_full_overview,
+    dapi = DistributedAPI(f=get_full_overview,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
