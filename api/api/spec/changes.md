@@ -239,6 +239,11 @@ in `dapi_errors` key
 ### GET /manager/configuration
 * Output now always follow the same structure. See spec schema response carefully.
 
+## Manager
+
+### GET /manager/files
+* The output of this endpoint had changed
+
 ## Rootcheck
 ### PUT /rootcheck
 * In response, `data` key is now moved to new `message` key
