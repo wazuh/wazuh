@@ -111,6 +111,11 @@ functions = {
         'type': 'local_master',
         'is_async': False
     },
+    'PUT/agents/configuration/validation': {
+        'function': Agent.validate_configuration,
+        'type': 'local_master',
+        'is_async': False
+    },
     'POST/agents/restart': {
         'function': Agent.restart_agents,
         'type': 'distributed_master',
