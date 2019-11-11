@@ -56,6 +56,11 @@ OSHash * __wrap_OSHash_Create() {
     return NULL;
 }
 
+int __wrap__merror()
+{
+    return 0;
+}
+
 ssize_t __real_read(int fildes, void *buf, size_t nbyte);
 ssize_t __wrap_read(int fildes, void *buf, size_t nbyte) {
     static char event[] = {1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 't', 'e', 's', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -241,7 +246,7 @@ void test_free_syscheck_dirtb_data(void **state)
 
     free_syscheck_dirtb_data(data);
 
-    assert_null(data);
+    assert_non_null(data);
 }
 
 
@@ -297,7 +302,7 @@ int main(void) {
         cmocka_unit_test(test_realtime_adddir_realtime_update),
         cmocka_unit_test(test_realtime_adddir_realtime_update_failure),
         cmocka_unit_test(test_realtime_process_failure),
-        //cmocka_unit_test(test_free_syscheck_dirtb_data),
+        cmocka_unit_test(test_free_syscheck_dirtb_data),
         cmocka_unit_test(test_free_syscheck_dirtb_data_null),
         cmocka_unit_test(test_realtime_process),
         cmocka_unit_test(test_realtime_process_len),

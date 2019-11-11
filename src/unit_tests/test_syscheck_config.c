@@ -19,10 +19,8 @@
 
 /* redefinitons/wrapping */
 
-static int delete_whodata_event(void **state)
+int __wrap__merror()
 {
-    whodata_evt *data = *state;
-    free_whodata_event(data);
     return 0;
 }
 

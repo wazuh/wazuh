@@ -44,6 +44,10 @@ int __wrap_time(){
     return 1572521857;
 }
 
+int __wrap__mwarn()
+{
+    return 0;
+}
 
 /* tests */
 

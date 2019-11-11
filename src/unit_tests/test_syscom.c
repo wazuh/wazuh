@@ -56,6 +56,10 @@ cJSON * __wrap_getSyscheckInternalOptions() {
     }
 }
 
+int __wrap__mwarn()
+{
+    return 0;
+}
 
 static int delete_string(void **state)
 {

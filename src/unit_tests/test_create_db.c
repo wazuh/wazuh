@@ -19,6 +19,21 @@
 
 /* redefinitons/wrapping */
 
+int __wrap__minfo()
+{
+    return 0;
+}
+
+int __wrap__merror()
+{
+    return 0;
+}
+
+int __wrap__mwarn()
+{
+    return 0;
+}
+
 int __wrap_rbtree_insert() {
     return mock();
 }
@@ -141,7 +156,7 @@ void test_fim_json_event(void **state)
     cJSON *ret;
 
     // Load syscheck default values
-    read_internal(1);
+    //read_internal(1);
     Read_Syscheck_Config("test_syscheck.conf");
 
     fim_entry_data *old_data = fill_entry_struct(

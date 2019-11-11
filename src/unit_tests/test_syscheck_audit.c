@@ -705,7 +705,7 @@ void test_audit_parse(void **state)
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->process_name, "74657374C3B1");
-    expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test");
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/test");
     expect_value(__wrap_fim_whodata_event, w_evt->audit_uid, 0);
     expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->inode, "19");

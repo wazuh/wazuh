@@ -27,6 +27,12 @@ int __wrap_OSHash_setSize() {
     return mock();
 }
 
+int __wrap__mwarn()
+{
+    return 0;
+}
+
+
 /* tests */
 
 void test_fim_initialize(void **state)
@@ -63,7 +69,6 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_fim_initialize),
         cmocka_unit_test(test_fim_initialize_warn),
-        cmocka_unit_test(test_read_internal),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

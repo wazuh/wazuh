@@ -35,7 +35,7 @@ enable_testing()
 
 # Tests list and flags
 list(APPEND tests_names "test_file_op")
-list(APPEND tests_flags "-Wl,--wrap,isChroot -Wl,--wrap,mferror -Wl,--wrap,stat -Wl,--wrap,chmod -Wl,--wrap,File_DateofChange -Wl,--wrap,getpid -Wl,--wrap,unlink")
+list(APPEND tests_flags "-Wl,--wrap,isChroot -Wl,--wrap,mferror -Wl,--wrap,stat -Wl,--wrap,chmod -Wl,--wrap,File_DateofChange -Wl,--wrap,getpid -Wl,--wrap,unlink -Wl,--wrap,_merror -Wl,--wrap,_minfo -Wl,--wrap,_mwarn")
 
 list(APPEND tests_names "test_integrity_op")
 list(APPEND tests_flags " ")
@@ -47,7 +47,7 @@ list(APPEND tests_names "test_version_op")
 list(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
 list(APPEND tests_names "test_create_db")
-list(APPEND tests_flags "-Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_replace -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Get_ex \
+list(APPEND tests_flags "-Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_replace -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn \
                          -Wl,--wrap,OSHash_Add -Wl,--wrap,lstat -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg -Wl,--wrap,rbtree_keys")
 
 list(APPEND tests_names "test_syscheck_audit")
@@ -60,20 +60,20 @@ list(APPEND tests_names "test_seechanges")
 list(APPEND tests_flags " ")
 
 list(APPEND tests_names "test_syscom")
-list(APPEND tests_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig -Wl,--wrap,getSyscheckInternalOptions")
+list(APPEND tests_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap,_mwarn")
 
 list(APPEND tests_names "test_run_realtime")
 list(APPEND tests_flags "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,read \
-                        -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Get -Wl,--wrap,rbtree_insert")
+                        -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Get -Wl,--wrap,rbtree_insert -Wl,--wrap,_merror")
 
 list(APPEND tests_names "test_syscheck_config")
-list(APPEND tests_flags " ")
+list(APPEND tests_flags "-Wl,--wrap,_merror")
 
 list(APPEND tests_names "test_syscheck")
-list(APPEND tests_flags "-Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_setSize")
+list(APPEND tests_flags "-Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_setSize -Wl,--wrap,_mwarn")
 
 list(APPEND tests_names "test_fim_sync")
-list(APPEND tests_flags "-Wl,--wrap,rbtree_keys -Wl,--wrap,rbtree_get -Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,rbtree_range")
+list(APPEND tests_flags "-Wl,--wrap,rbtree_keys -Wl,--wrap,rbtree_get -Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,rbtree_range -Wl,--wrap,_mwarn")
 
 list(APPEND tests_names "test_run_check")
 list(APPEND tests_flags "-Wl,--wrap,_minfo")
