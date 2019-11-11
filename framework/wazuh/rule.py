@@ -260,7 +260,7 @@ class Rule:
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
         :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}.
-            This filter is used for filtering by 'status', 'group', 'pci', 'gpg13', 'gdpr', 'hipaa', 'nist_800_53',
+            This filter is used for filtering by 'status', 'group', 'pci', 'gpg13', 'gdpr', 'hipaa', 'nist-800-53',
             'mitre', 'file', 'path', 'id' and 'level'.
         :param q: Defines query to filter.
 
@@ -273,7 +273,7 @@ class Rule:
         gpg13 = filters.get('gpg13', None)
         gdpr = filters.get('gdpr', None)
         hipaa = filters.get('hipaa', None)
-        nist_800_53 = filters.get('nist_800_53', None)
+        nist_800_53 = filters.get('nist-800-53', None)
         mitre = filters.get('mitre', None)
         path = filters.get('path', None)
         file_ = filters.get('file', None)
