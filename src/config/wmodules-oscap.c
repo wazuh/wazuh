@@ -250,11 +250,11 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **o
 
                     if (!strlen(children[j]->content)) {
                         if (output == NULL){
-                            merror("Invalid content for tag '%s' at module '%s'.", XML_XCCDF_ID, WM_OSCAP_CONTEXT.name);
+                            merror("Invalid content for tag '%s' at module '%s'.", XML_OVAL_ID, WM_OSCAP_CONTEXT.name);
                         } else {
                             snprintf(message, OS_FLSIZE,
                                 "Invalid content for tag '%s' at module '%s'.",
-                                XML_XCCDF_ID, WM_OSCAP_CONTEXT.name);
+                                XML_OVAL_ID, WM_OSCAP_CONTEXT.name);
                             wm_strcat(output, message, '\n');
                         }
                         OS_ClearNode(children);
