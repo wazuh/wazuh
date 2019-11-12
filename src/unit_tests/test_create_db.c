@@ -156,7 +156,6 @@ void test_fim_json_event(void **state)
     cJSON *ret;
 
     // Load syscheck default values
-    //read_internal(1);
     Read_Syscheck_Config("test_syscheck.conf");
 
     fim_entry_data *old_data = fill_entry_struct(
@@ -796,7 +795,7 @@ void test_fim_insert_success_new(void **state)
     // Added
     will_return(__wrap_OSHash_Add, 2);
 
-    ret = fim_insert(file, data, &file_stat);
+    ret = fim_insert(file, data, file_stat);
     free_entry_data(data);
 
     assert_int_equal(ret, 0);
@@ -845,7 +844,7 @@ void test_fim_insert_success_add(void **state)
     inode_data->paths = os_AddStrArray(file, inode_data->paths);
     will_return(__wrap_OSHash_Get, inode_data);
 
-    ret = fim_insert(file, data, &file_stat);
+    ret = fim_insert(file, data, file_stat);
     free_entry_data(data);
 
     assert_int_equal(ret, 0);
@@ -892,7 +891,7 @@ void test_fim_insert_failure_new(void **state)
     // Errod adding
     will_return(__wrap_OSHash_Add, 1);
 
-    ret = fim_insert(file, data, &file_stat);
+    ret = fim_insert(file, data, file_stat);
     free_entry_data(data);
 
     assert_int_equal(ret, -1);
@@ -935,7 +934,7 @@ void test_fim_insert_failure_duplicated(void **state)
     // Duplicated
     will_return(__wrap_rbtree_insert, 0);
 
-    ret = fim_insert(file, data, &file_stat);
+    ret = fim_insert(file, data, file_stat);
     free_entry_data(data);
 
     assert_int_equal(ret, -1);
@@ -1299,10 +1298,10 @@ void test_fim_checker_file(void **state)
     fim_element *item = calloc(1, sizeof(fim_element));
     struct stat buf;
     buf.st_mode = S_IFREG;
-    item->statbuf = &buf;
+    item->statbuf = buf;
     will_return(__wrap_lstat, 0);
 
-    fim_checker(path, item, w_evt);
+    fim_checker(path, item, w_evt, 1);
 }
 
 
@@ -1318,10 +1317,10 @@ void test_fim_checker_directory(void **state)
     fim_element *item = calloc(1, sizeof(fim_element));
     struct stat buf;
     buf.st_mode = S_IFDIR;
-    item->statbuf = &buf;
+    item->statbuf = buf;
     will_return(__wrap_lstat, 0);
 
-    fim_checker(path, item, NULL);
+    fim_checker(path, item, NULL, 1);
 }
 
 
@@ -1339,7 +1338,7 @@ void test_fim_checker_deleted(void **state)
     will_return(__wrap_lstat, -1);
     errno = 1;
 
-    fim_checker(path, item, NULL);
+    fim_checker(path, item, NULL, 1);
 }
 
 
@@ -1381,7 +1380,7 @@ void test_fim_checker_deleted_enoent(void **state)
     will_return(__wrap_rbtree_get, data);
     will_return(__wrap_rbtree_get, NULL);
 
-    fim_checker(path, item, NULL);
+    fim_checker(path, item, NULL, 1);
 }
 
 
@@ -1407,7 +1406,7 @@ void test_fim_directory_nodir(void **state)
     (void) state;
     int ret;
 
-    ret = fim_directory(NULL, NULL, NULL);
+    ret = fim_directory(NULL, NULL, NULL, 1);
 
     assert_int_equal(ret, -1);
 }
