@@ -94,7 +94,6 @@
 #define FIM_IGNORE_ENTRY                    "(6204): Ignoring '%s' '%s' due to '%s'"
 #define FIM_IGNORE_SREGEX                   "(6205): Ignoring '%s' '%s' due to sregex '%s'"
 #define FIM_TAG_ADDED                       "(6206): Adding tag '%s' to directory '%s'."
-
 #define FIM_READING_REGISTRY                "(6207): Attempt to read: '%s%s'"
 #define FIM_CLIENT_CONFIGURATION            "(6208): Reading Client Configuration [%s]"
 #define FIM_LOCALDIFF_DELETE                "(6209): Deleting '%s' from local hash table."
@@ -112,13 +111,11 @@
 #define FIM_FREQUENCY_DIRECTORY             "(6221): Directory loaded from syscheck db: '%s'"
 #define FIM_STAT_FAILED                     "(6222): Stat() function failed on: '%s' due to [(%d)-(%s)]"
 #define FIM_SKIP_NFS                        "(6223): FIM skip_nfs=%d, '%s'::is_nfs=%d"
-
 #define FIM_REALTIME_HASH_DUP               "(6224): Entry '%s' already exists in the RT hash table."
 #define FIM_REALTIME_MONITORING             "(6225): The '%s' directory starts to be monitored in real-time mode"
 #define FIM_REALTIME_NEWPATH                "(6226): Scanning new file '%s' with options for directory '%s'."
 #define FIM_REALTIME_NEWDIRECTORY           "(6227): Directory added for real time monitoring: '%s'."
 #define FIM_REALTIME_DISCARD_EVENT          "(6228): Real-time event with same checksum for file: '%s'. Ignoring it."
-
 #define FIM_WHODATA_HANDLE_UPDATE           "(6229): The handler ('%s') will be updated."
 #define FIM_WHODATA_NEWDIRECTORY            "(6230): Monitoring with Audit: '%s'."
 #define FIM_WHODATA_SCAN                    "(6231): The '%s' directory has been scanned after detecting event of new files."
@@ -152,7 +149,6 @@
 #define FIM_HEALTHCHECK_DELETE_RECEIVE      "(6260): Whodata health-check: Deletion event received."
 #define FIM_HEALTHCHECK_SUCCESS             "(6261): Whodata health-check: Success."
 #define FIM_HEALTHCHECK_CHECK_RULE          "(6262): Couldn't delete audit health check rule."
-
 #define FIM_SACL_CHECK_CONFIGURE            "(6263): Setting up SACL for '%s'."
 #define FIM_SCAL_NOCONFIGURE                "(6264): It is not necessary to configure the SACL of '%s'."
 #define FIM_SACL_RESTORED                   "(6265): The SACL of '%s' has been restored correctly."
@@ -160,10 +156,9 @@
 #define FIM_SACL_NOT_FOUND                  "(6267): No SACL found on target. A new one will be created."
 #define FIM_ELEVATE_PRIVILEGE               "(6268): The '%s' privilege has been added."
 #define FIM_REDUCE_PRIVILEGE                "(6269): The '%s' privilege has been removed."
-
 #define FIM_AUDIT_NEWRULE                   "(6270): Added audit rule for monitoring directory: '%s'."
 #define FIM_AUDIT_RULEDUP                   "(6271): Audit rule for monitoring directory '%s' already added."
-
+#define FIM_INOTIFY_ADD_WATCH               "(6272): Unable to add inotify watch to real time monitoring: '%s'. '%d' '%d':'%s'"
 #define FIM_AUDIT_NOCONF                    "(6273): Cannot apply Audit config."
 #define FIM_AUDIT_NORULES                   "(6274): No rules added. Audit events reader thread will not start."
 #define FIM_AUDIT_RELOADING_RULES           "(6275): Reloading Audit rules..."
@@ -172,20 +167,17 @@
 #define FIM_AUDIT_HEALTHCHECK_RULE          "(6278): Couldn't add audit health check rule."
 #define FIM_AUDIT_HEALTHCHECK_START         "(6279): Whodata health-check: Starting..."
 #define FIM_AUDIT_HEALTHCHECK_FILE          "(6280): Couldn't create audit health check file."
-
 #define FIM_SYSCOM_ARGUMENTS                "(6281): SYSCOM %s needs arguments."
 #define FIM_SYSCOM_UNRECOGNIZED_COMMAND     "(6282): SYSCOM Unrecognized command '%s'."
 #define FIM_SYSCOM_FAIL_GETCONFIG           "(6283): At SYSCOM getconfig: Could not get '%s' section"
 #define FIM_SYSCOM_REQUEST_READY            "(6284): Local requests thread ready."
 #define FIM_SYSCOM_EMPTY_MESSAGE            "(6285): Empty message from local client."
 #define FIM_SYSCOM_THREAD_FINISED           "(6286): Local server thread finished."
-
 #define FIM_CONFIGURATION_FILE              "(6287): Reading configuration file: '%s'."
 #define FIM_SCAL_NOREFRESH                  "(6288): Could not refresh the SACL of '%s'. Its event will not be reported."
 #define FIM_DISCARD_RECYCLEBIN              "(6289): File '%s' is in the recycle bin. It will be discarded."
-
+#define FIM_REALTIME_ADD                    "(6290): Unable to add directory to real time monitoring: '%s'."
 #define FIM_WHODATA_REPLACELINK             "(6291): Replacing the symbolic link: '%s' -> '%s'."
-
 #define FIM_WHODATA_FILENOEXIST             "(6292): The '%s' file does not exist, but this will be notified when the corresponding event is received."
 #define FIM_LINKCHECK_TIME                  "(6293): Configured symbolic links will be checked every %d seconds."
 #define FIM_LINKCHECK_CHANGE                "(6294): Configured symbolic links will be checked every %d seconds."
@@ -206,18 +198,14 @@
 #define FIM_WHODATA_IGNORE_FILEEVENT        "(6309): Ignoring remove event for file '%s' because it has already been reported."
 #define FIM_CHECKSUM_MSG                    "(6310): Sending msg to the server: '%s'."
 #define FIM_PATH_EXEED_MAX                  "(6311): The path exeed maximum permited (%d): '%s'."
-
 #define FIM_DBSYNC_NO_ARGUMENT              "(6312): Data synchronization command '%s' with no argument."
 #define FIM_DBSYNC_UNKNOWN_CMD              "(6313): Unknown data synchronization command: %s."
 #define FIM_DBSYNC_INVALID_ARGUMENT         "(6314): Invalid data synchronization argument: %s."
 #define FIM_DBSYNC_DEC_ID                   "(6315): Setting global ID back to lower message ID (%ld)."
 #define FIM_DBSYNC_DROP_MESSAGE             "(6316): Dropping message with id (%ld) greater than global id (%ld)."
 #define FIM_DBSYNC_SEND                     "(6317): Sending integrity control message: %s"
-
 #define FIM_MONITORING_FILES_COUNT          "(6318): Number of indexed files %s scanning: %u."
-
 #define FIM_CONFIGURATION_NOTFOUND          "(6319): No configuration found for (%s):'%s'"
-
 #define FIM_PROCESS_PRIORITY                "(6320): Setting process priority to: '%d'"
 #define FIM_SEND                            "(6321): Sending event: %s"
 #define FIM_AUDIT_RELOADED                  "(6322): Reloaded audit rule for monitoring directory: '%s'."
@@ -230,7 +218,6 @@
 #define FIM_REGISTRY_EVENT_FAIL             "(6329): Unable to save registry key: '%s'"
 #define FIM_RUNNING_SCAN                    "(6330): The scan has been running during: %.3f sec (%.3f clock sec)"
 #define FIM_GET_ATTRIBUTES                  "(6331): Couldn't get attributes for file: '%s'"
-
 #define FIM_WARN_REALTIME_UNSUPPORTED       "(6332): The realtime monitoring request on unsupported system."
 #define FIM_WARN_WHODATA_UNSUPPORTED        "(6333): The who-data monitoring request on unsupported system."
 

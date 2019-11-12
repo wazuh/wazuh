@@ -36,49 +36,6 @@ static const char *fim_entry_type[] = {
 
 int print_hash_table();
 
-#ifndef WIN32
-void print_inodes() {
-    OSHashNode *hash_node;
-    fim_inode_data *node;
-    unsigned int *inode_it;
-    int i = 0;
-    int it = 0;
-
-    os_calloc(1, sizeof(unsigned int), inode_it);
-
-    hash_node = OSHash_Begin(syscheck.fim_inode, inode_it);
-    while(hash_node) {
-        node = hash_node->data;
-        minfo("inodes(%d) => (%d)'%s'", i, node->items, (char*)hash_node->key);
-        for(it = 0; it < node->items; it++) {
-            minfo("  -> '%s'", (char*)node->paths[it]);
-        }
-        hash_node = OSHash_Next(syscheck.fim_inode, inode_it, hash_node);
-        i++;
-    }
-    os_free(inode_it);
-
-    return;
-}
-#endif
-
-void print_rbtree() {
-    char **keys;
-    fim_entry_data *node;
-    int i = 0;
-
-    keys = rbtree_keys(syscheck.fim_entry);
-
-    while(keys[i]) {
-        node = (fim_entry_data *) rbtree_get(syscheck.fim_entry, keys[i]);
-        minfo("entry(%d) => (%s)'%ld:%ld'", i, keys[i], node->dev, node->inode);
-        i++;
-    }
-    free_strarray(keys);
-
-    return;
-}
-
 void fim_scan() {
     int it = 0;
     struct timespec start;
@@ -128,11 +85,6 @@ void fim_scan() {
 
     mdebug1(FIM_RUNNING_SCAN, time_diff(&start, &end),
             (double)(clock() - cputime_start) / CLOCKS_PER_SEC);
-
-#ifndef WIN32
-    print_inodes();
-#endif
-    print_rbtree();
 
     if (isDebug()) {
         fim_print_info();
