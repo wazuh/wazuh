@@ -420,7 +420,13 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, char **outp
                         } else {
                             const int path_length = GetFullPathName(relative_path, PATH_MAX, realpath_buffer, NULL);
                             if (!path_length) {
-                                mwarn("File '%s' not found.", children[j]->content);
+                                if (output == NULL) {
+                                    mwarn("File '%s' not found.", children[j]->content);
+                                } else {
+                                    snprintf(message, OS_FLSIZE,
+                                        "WARNING: File '%s' not found.", children[j]->content);
+                                    wm_strcat(output, message, '\n');
+                                }
                                 continue;
                             }
                         }
@@ -431,7 +437,13 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, char **outp
                     } else {
                         const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
                         if (!realpath_buffer_ref) {
-                            mwarn("File '%s' not found.", children[j]->content);
+                            if (output == NULL) {
+                                mwarn("File '%s' not found.", children[j]->content);
+                            } else {
+                                snprintf(message, OS_FLSIZE,
+                                    "WARNING: File '%s' not found.", children[j]->content);
+                                wm_strcat(output, message, '\n');
+                            }
                             continue;
                         }
                     }
@@ -450,7 +462,13 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, char **outp
 
                     //beware of IsFile inverted, twisted logic.
                     if (IsFile(realpath_buffer)) {
-                        mwarn("Policy file '%s' not found. Check your configuration.", realpath_buffer);
+                        if (output == NULL) {
+                            mwarn("Policy file '%s' not found. Check your configuration.", realpath_buffer);
+                        } else {
+                            snprintf(message, OS_FLSIZE,
+                                "WARNING: Policy file '%s' not found. Check your configuration.", realpath_buffer);
+                            wm_strcat(output, message, '\n');
+                        }
                         continue;
                     }
 

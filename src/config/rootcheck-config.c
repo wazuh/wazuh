@@ -473,6 +473,13 @@ void Free_Rootcheck(rkconfig *config){
             }
             free(config->ignore);
         }
+        if (config->ignore_sregex) {
+            for (i=0; config->ignore_sregex[i] != NULL; i++) {
+                OSMatch_FreePattern(config->ignore_sregex[i]);
+                free(config->ignore_sregex[i]);
+            }
+            free(config->ignore_sregex);
+        }
         free(config->winaudit);
         free(config->winmalware);
         free(config->winapps);

@@ -410,17 +410,24 @@ int Test_Remoted(const char *path, char **output) {
     return 0;
 }
 
-void free_remoted(remoted * rmt) {
+void free_remoted(remoted *rmt) {
     if(rmt) {
         os_free(rmt->proto);
         os_free(rmt->port);
         os_free(rmt->conn);
         os_free(rmt->ipv6);
-        os_free(rmt->lip);
-
+                
         int i;
+        if(rmt->lip) {
+            for(i = 0; rmt->lip[i]; i++) {
+                free(rmt->lip[i]);
+            }
+            free(rmt->lip);
+        }
+
         if(rmt->allowips) {
             for(i = 0; rmt->allowips[i]; i++) {
+                os_free(rmt->allowips[i]->ip);
                 free(rmt->allowips[i]);
             }
             free(rmt->allowips);
@@ -428,10 +435,11 @@ void free_remoted(remoted * rmt) {
 
         if(rmt->denyips) {
             for (i = 0; rmt->denyips[i]; i++) {
+                os_free(rmt->denyips[i]->ip);
                 free(rmt->denyips[i]);
             }
             free(rmt->denyips);
         }
-        os_free(rmt);
+        free(rmt);
     }
 }

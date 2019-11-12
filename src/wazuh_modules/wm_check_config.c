@@ -153,7 +153,7 @@ void *wm_chk_conf_main() {
                 mwarn("%s", output);
 
                 /* Send the test result to API socket */
-                /* send_message(output); */
+                send_message(output);
 
                 os_free(output);
                 cJSON_Delete(temp_obj);

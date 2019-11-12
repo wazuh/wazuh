@@ -273,5 +273,8 @@ void wm_command_destroy(wm_command_t * command) {
     free(command->tag);
     free(command->command);
     free(command->full_command);
+    free(command->md5_hash);
+    free(command->sha1_hash);
+    free(command->sha256_hash);
     free(command);
 }

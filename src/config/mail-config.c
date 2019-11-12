@@ -112,16 +112,25 @@ void freeMailConfig(MailConfig *mailConfig) {
             free(mailConfig->gran_to);
         }
 
+        if(mailConfig->to) {
+            for (i = 0; mailConfig->to[i]; i++) {
+                free(mailConfig->to[i]);
+            }
+            free(mailConfig->to);
+        }
+
         if(mailConfig->gran_location) {
-            for (i = 0; mailConfig->gran_location[i]; i++) {
-                free(mailConfig->gran_location[i]);
+            for (i = 1; mailConfig->gran_location[i]; i++) {
+                OSMatch_FreePattern(mailConfig->gran_location[i - 1]);
+                free(mailConfig->gran_location[i - 1]);
             }
             free(mailConfig->gran_location);
         }
 
         if(mailConfig->gran_group) {
-            for (i = 0; mailConfig->gran_group[i]; i++) {
-                free(mailConfig->gran_group[i]);
+            for (i = 1; mailConfig->gran_group[i]; i++) {
+                OSMatch_FreePattern(mailConfig->gran_group[i -1]);
+                free(mailConfig->gran_group[i - 1]);
             }
             free(mailConfig->gran_group);
         }

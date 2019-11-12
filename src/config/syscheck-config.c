@@ -1897,7 +1897,9 @@ void Free_Syscheck(syscheck_config *config) {
         if (config->nodiff_regex) {
             for (i=0; config->nodiff_regex[i] != NULL; i++) {
                 OSMatch_FreePattern(config->nodiff_regex[i]);
+                free(config->nodiff_regex[i]);
             }
+            free(config->nodiff_regex);
         }
         if (config->dir) {
             for (i=0; config->dir[i] != NULL; i++) {

@@ -250,6 +250,9 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
 // Destroy data
 
 void wm_aws_destroy(wm_aws *aws_config) {
+    os_free(aws_config->bucket);
+    os_free(aws_config->access_key);
+    os_free(aws_config->secret_key);
     free(aws_config);
 }
 
