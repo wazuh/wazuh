@@ -15,4 +15,12 @@ void os_setwait(void);
 void os_delwait(void);
 void os_wait(void);
 
+/**
+ * @brief Check whether the agent wait mark is on (manager is disconnected)
+ *
+ * @retval true The agent is blocked.
+ * @retval false The agent is not blocked.
+ */
+bool os_iswait();
+
 #endif /* WAIT_OP_H */
