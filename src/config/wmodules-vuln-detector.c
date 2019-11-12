@@ -1013,8 +1013,8 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
         } else if (!strcmp(node[i]->element, XML_ALLOW)) {
             if (multi_provider) {
                 if (!node[i]->attributes || !*node[i]->attributes || strcmp(*node[i]->attributes, XML_REPLACED_OS) ||
-                    !node[i]->values || !*node[i]->values) {
-                    merror("Invalid use of '%s' option: It need to be used with the '%s' attribute.", node[i]->element, XML_REPLACED_OS);
+                    !node[i]->values || !*node[i]->values || !**node[i]->values) {
+                    merror("Invalid use of '%s' option: It need to be used with a valid '%s' value.", node[i]->element, XML_REPLACED_OS);
                     return OS_INVALID;
                 }
                 for (elements = 0; options->multi_allowed_os_name && options->multi_allowed_os_name[elements]; elements++);
