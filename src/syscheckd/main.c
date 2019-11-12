@@ -112,7 +112,7 @@ int main(int argc, char **argv)
             if (!test_config) {
                 minfo(FIM_DIRECTORY_NOPROVIDED);
             }
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, NULL);
         } else if (!syscheck.dir[0]) {
             if (!test_config) {
                 minfo(FIM_DIRECTORY_NOPROVIDED);
@@ -198,10 +198,10 @@ int main(int argc, char **argv)
         while (syscheck.dir[r] != NULL) {
             char optstr[ 1024 ];
 
-            if (!syscheck.converted_links[r]) {
+            if (!syscheck.symbolic_links[r]) {
                 minfo(FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
             } else {
-                minfo(FIM_MONITORING_LDIRECTORY, syscheck.dir[r], syscheck.converted_links[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+                minfo(FIM_MONITORING_LDIRECTORY, syscheck.dir[r], syscheck.symbolic_links[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
             }
 
             if (syscheck.tag && syscheck.tag[r] != NULL)
@@ -233,20 +233,7 @@ int main(int argc, char **argv)
         while (syscheck.dir[r] != NULL) {
             if (syscheck.opts[r] & REALTIME_ACTIVE) {
 #if defined (INOTIFY_ENABLED) || defined (WIN32)
-                struct stat file_stat;
-                if (w_stat(syscheck.dir[r], &file_stat) >= 0) {
-                    switch(file_stat.st_mode & S_IFMT) {
-                    case FIM_REGULAR:
-                        mwarn(FIM_WARN_FILE_REALTIME, syscheck.dir[r]);
-                        break;
-
-                    case FIM_DIRECTORY:
-                        minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
-                        break;
-                    }
-                } else {
-                    mdebug2(FIM_STAT_FAILED, syscheck.dir[r], errno, strerror(errno));
-                }
+                minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
 #else
                 mwarn(FIM_WARN_REALTIME_DISABLED, syscheck.dir[r]);
 #endif

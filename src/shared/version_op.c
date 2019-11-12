@@ -435,7 +435,7 @@ os_info *get_unix_version()
             int match_size;
             if (version_release = fopen("/etc/centos-release","r"), version_release){
                 os_free(info->os_version);
-                static const char *pattern = "([0-9][0-9]*\\.?[0-9]*.*)";
+                static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
                 if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
                     merror_exit("Cannot compile regular expression.");
                 }
@@ -459,7 +459,7 @@ os_info *get_unix_version()
         if (version_release = fopen("/etc/centos-release","r"), version_release){
             info->os_name = strdup("CentOS Linux");
             info->os_platform = strdup("centos");
-            static const char *pattern = "([0-9][0-9]*\\.?[0-9]*.*)";
+            static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
                 merror_exit("Can not compile regular expression.");
             }
@@ -477,7 +477,7 @@ os_info *get_unix_version()
         } else if (version_release = fopen("/etc/fedora-release","r"), version_release){
             info->os_name = strdup("Fedora");
             info->os_platform = strdup("fedora");
-            static const char *pattern = " ([0-9][0-9]*.*)";
+            static const char *pattern = " ([0-9][0-9]*) ";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
                 merror_exit("Can not compile regular expression.");
             }
@@ -766,12 +766,6 @@ os_info *get_unix_version()
             match_size = match[1].rm_eo - match[1].rm_so;
             info->os_minor = malloc(match_size +1);
             snprintf(info->os_minor, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
-        }
-        // Get os_build
-        if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)*", info->os_version, 2, match)) {
-            match_size = match[1].rm_eo - match[1].rm_so;
-            info->os_build = malloc(match_size + 1);
-            snprintf(info->os_build, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
         }
         // Get OSX codename
         if (info->os_platform && strcmp(info->os_platform,"darwin") == 0) {
