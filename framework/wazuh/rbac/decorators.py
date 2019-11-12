@@ -15,6 +15,7 @@ from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import AffectedItemsWazuhResult
 from wazuh.configuration import get_ossec_conf
 from wazuh.core.rule import format_rule_decoder_file, Status
+from wazuh.core.cdb_list import iterate_lists
 
 mode = configuration.read_api_config()['rbac']['mode']
 
@@ -72,6 +73,8 @@ def _expand_resource(resource):
             format_decoders = format_rule_decoder_file(get_ossec_conf(section='ruleset')['ruleset'],
                                                        {'status': Status.S_ALL.value, 'path': None, 'file': None}, tags)
             return {decoder['file'] for decoder in format_decoders}
+        elif resource_type == 'list:path':
+            return [cdb_list['path'] for cdb_list in iterate_lists(only_names=True)]
         return set()
     # We return the value casted to set
     else:

@@ -7059,49 +7059,6 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /list:
-    get:
-      tags:
-      - lists
-      summary: 'Get CBD list from a specific file path'
-      description: 'Returns the contents of specified CDB list.'
-      operationId: api.controllers.lists_controller.get_list
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_filepath'
-
-      responses:
-        '200':
-          description: 'Successfully got CDB list'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/CDBListPair'
-
-              example:
-                data:
-                  items:
-                    - key: AttachLoadBalancers
-                      value: Autoscaling
-                    - key: TerminateInstanceInAutoScalingGroup
-                      value: Autoscaling
-                    - key: CreateStack
-                      value: Cloudformation
-        default:
-          $ref: '#/components/responses/ResponseError'
-
   /lists/files:
     get:
       tags:
