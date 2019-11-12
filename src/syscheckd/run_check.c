@@ -127,11 +127,9 @@ void start_daemon()
     }
 
     // Deleting content local/diff directory
-    char *diff_dir;
+    char diff_dir[PATH_MAX];
 
-    os_calloc(PATH_MAX, sizeof(char), diff_dir);
     snprintf(diff_dir, PATH_MAX, "%s/local/", DIFF_DIR_PATH);
-
     cldir_ex(diff_dir);
 
     if (syscheck.disabled) {
