@@ -141,7 +141,29 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             os_strdup(node[i]->content, logf[pl].out_format[n]->format);
             logf[pl].out_format[n + 1] = NULL;
         } else if (strcmp(node[i]->element, xml_localfile_reconnect_time) == 0) {
-            int time = atoi(node[i]->content);
+            char *c;
+            int time = strtoul(node[i]->content, &c, 0);
+            if(time) {
+                switch (c[0]) {
+                case 'w':
+                    time *= 604800;
+                    break;
+                case 'd':
+                    time *= 86400;
+                    break;
+                case 'h':
+                    time *= 3600;
+                    break;
+                case 'm':
+                    time *= 60;
+                    break;
+                case 's':
+                    break;
+                default:
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                }
+            }
             if(time < MIN_EVENTCHANNEL_REC_TIME){
                 mwarn("Reconnection time too low. Changed to %d seconds.", MIN_EVENTCHANNEL_REC_TIME);
                 time = MIN_EVENTCHANNEL_REC_TIME;
