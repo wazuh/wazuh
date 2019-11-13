@@ -516,6 +516,11 @@ functions = {
         'type': 'local_any',
         'is_async': False
     },
+    '/rules/mitre': {
+        'function': Rule.get_mitre,
+        'type': 'local_any',
+        'is_async': False
+    },
     '/rules/files': {
         'function': Rule.get_rules_files,
         'type': 'local_any',
