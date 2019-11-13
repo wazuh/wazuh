@@ -139,13 +139,22 @@ start()
     for i in ${SDAEMONS}; do
         pstatus ${i};
         if [ $? = 0 ]; then
+            failed=false
             ${DIR}/bin/${i};
             if [ $? != 0 ]; then
+                failed=true
+            else
+                sleep 1;
+                pstatus ${i};
+                if [ $? = 0 ]; then
+                    failed=true
+                fi
+            fi
+            if [ $failed = true ]; then
                 echo "${i} did not start";
                 unlock;
                 exit 1;
             fi
-
             echo "Started ${i}..."
         else
             echo "${i} already running..."
