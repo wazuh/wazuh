@@ -563,7 +563,7 @@ void test_fim_check_ignore_strncasecmp(void **state)
     syscheck_set_internals();
     Read_Syscheck_Config("test_syscheck.conf");
 
-    ret = fim_check_ignore("/DEV/corE");
+    ret = fim_check_ignore("/EtC/dumPDateS");
 
     assert_int_equal(ret, 1);
 }
@@ -1149,12 +1149,12 @@ void test_fim_configuration_directory_file(void **state)
     (void) state;
     int ret;
 
-    const char * path = "/sbin";
+    const char * path = "/media";
     const char * entry = "file";
 
     ret = fim_configuration_directory(path, entry);
 
-    assert_int_equal(ret, 4);
+    assert_int_equal(ret, 3);
 }
 
 
@@ -1294,10 +1294,11 @@ void test_fim_checker_file(void **state)
     w_evt->ppid = 1000;
     w_evt->process_id = 1001;
 
-    char * path = "/bin/test.file";
+    char * path = "/media/test.file";
     fim_element *item = calloc(1, sizeof(fim_element));
     struct stat buf;
     buf.st_mode = S_IFREG;
+    item->index = 3;
     item->statbuf = buf;
     will_return(__wrap_lstat, 0);
 
@@ -1313,10 +1314,11 @@ void test_fim_checker_directory(void **state)
     syscheck_set_internals();
     Read_Syscheck_Config("test_syscheck.conf");
 
-    char * path = "/bin/test.file";
+    char * path = "/media/test.file";
     fim_element *item = calloc(1, sizeof(fim_element));
     struct stat buf;
     buf.st_mode = S_IFDIR;
+    item->index = 3;
     item->statbuf = buf;
     will_return(__wrap_lstat, 0);
 
@@ -1332,8 +1334,12 @@ void test_fim_checker_deleted(void **state)
     syscheck_set_internals();
     Read_Syscheck_Config("test_syscheck.conf");
 
-    char * path = "/bin/test.file";
+    char * path = "/media/test.file";
     fim_element *item = calloc(1, sizeof(fim_element));
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    item->index = 3;
+    item->statbuf = buf;
 
     will_return(__wrap_lstat, -1);
     errno = 1;
@@ -1372,8 +1378,13 @@ void test_fim_checker_deleted_enoent(void **state)
         "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
     );
     *state = data;
-    char * path = "/bin/test.file";
+
+    char * path = "/media/test.file";
     fim_element *item = calloc(1, sizeof(fim_element));
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    item->index = 3;
+    item->statbuf = buf;
 
     will_return(__wrap_lstat, -1);
     errno = ENOENT;
@@ -1396,6 +1407,8 @@ void test_fim_scan(void **state)
     will_return(__wrap_rbtree_keys, keys);
 
     will_return_always(__wrap_lstat, 0);
+
+    will_return_always(__wrap_OSHash_Get_ex, NULL);
 
     fim_scan();
 }

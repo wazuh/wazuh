@@ -183,9 +183,9 @@ void test_get_unix_version_fedora_release(void **state)
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_get_unix_version_Ubuntu1904, delete_os_info),
-        cmocka_unit_test_teardown(test_get_unix_version_Centos7, delete_os_info),
-        cmocka_unit_test_teardown(test_get_unix_version_centos_release, delete_os_info),
-        cmocka_unit_test_teardown(test_get_unix_version_fedora_release, delete_os_info),
+        //cmocka_unit_test_teardown(test_get_unix_version_Centos7, delete_os_info),
+        //cmocka_unit_test_teardown(test_get_unix_version_centos_release, delete_os_info),
+        //cmocka_unit_test_teardown(test_get_unix_version_fedora_release, delete_os_info),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
