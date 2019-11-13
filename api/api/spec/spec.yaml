@@ -8643,6 +8643,7 @@ paths:
       description: Runs syscheck and rootcheck in all agents (Wazuh launches both processes simultaneously).
       operationId: api.controllers.syscheck_controller.put_syscheck
       parameters:
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -8731,28 +8732,6 @@ paths:
                       gid: "0"
                       mtime: "2018-11-05T11:51:29Z"
                       sha256: a39fbc57dc2ef8a473f078d1f6a35f725809400df67070b8852e8ed725047df2
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-    put:
-      tags:
-      - syscheck
-      summary: Run FIM scan in an agent.
-      description: Runs syscheck and rootcheck scans in a specified agent (Wazuh launches both processes at the same time).
-      operationId: api.controllers.syscheck_controller.put_syscheck_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-      responses:
-        '200':
-          description: Confirmation message
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Restarting Syscheck/Rootcheck locally"
         default:
           $ref: '#/components/responses/ResponseError'
 

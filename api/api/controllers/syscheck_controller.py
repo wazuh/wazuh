@@ -6,9 +6,9 @@ import asyncio
 import logging
 
 import connexion
-import dateutil.parser
 
-import wazuh.syscheck as syscheck
+from wazuh.syscheck import run, clear, files, last_scan
+from api.authentication import get_permissions
 from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh.cluster.dapi.dapi import DistributedAPI
@@ -18,23 +18,25 @@ logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def put_syscheck(pretty=False, wait_for_complete=False):
-    """
+def put_syscheck(list_agents=None, pretty=False, wait_for_complete=False):
+    """Run a syscheck scan over the agent_ids
 
+    :type list_agents: List of agent ids
     :param pretty: Show results in human-readable format 
     :type pretty: bool
     :param wait_for_complete: Disable timeout response 
     :type wait_for_complete: bool
     """
-    f_kwargs = {'all_agents': True}
+    f_kwargs = {'agent_list': list_agents}
 
-    dapi = DistributedAPI(f=syscheck.run,
+    dapi = DistributedAPI(f=run,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -86,44 +88,19 @@ def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0
                 'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
                 'summary': summary, 'filters': filters}
 
-    dapi = DistributedAPI(f=syscheck.files,
+    dapi = DistributedAPI(f=files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
 
     return response, 200
-
-
-@exception_handler
-def put_syscheck_agent(agent_id, pretty=False, wait_for_complete=False):
-    """
-
-    :param pretty: Show results in human-readable format 
-    :type pretty: bool
-    :param wait_for_complete: Disable timeout response 
-    :type wait_for_complete: bool
-    :param agent_id: Agent ID
-    :type agent_id: str
-    """
-    f_kwargs = {'agent_id': agent_id}
-
-    dapi = DistributedAPI(f=syscheck.run,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger
-                          )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-
-    return data, 200
 
 
 @exception_handler
@@ -139,13 +116,14 @@ def delete_syscheck_agent(agent_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'agent_id': agent_id}
 
-    dapi = DistributedAPI(f=syscheck.clear,
+    dapi = DistributedAPI(f=clear,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -165,13 +143,14 @@ def get_last_scan_agent(agent_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'agent_id': agent_id}
 
-    dapi = DistributedAPI(f=syscheck.last_scan,
+    dapi = DistributedAPI(f=last_scan,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
