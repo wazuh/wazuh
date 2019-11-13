@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import common
-from wazuh.core.cdb_list import check_path, iterate_lists
+from wazuh.core.cdb_list import iterate_lists, get_list_from_file
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import AffectedItemsWazuhResult
 from wazuh.utils import process_array
@@ -27,15 +27,14 @@ def get_lists(path=None, offset=0, limit=common.database_limit, sort_by=None, so
     result = AffectedItemsWazuhResult(none_msg='No list was shown',
                                       some_msg='Some lists could not be shown',
                                       all_msg='All specified lists were shown')
-    lists = iterate_lists()
-    for l in list(lists):
-        if l['path'] not in path:
-            lists.remove(l)
+    lists = list()
+    for p in path:
+        lists.append({'items': get_list_from_file(p), 'path': p})
 
-    result.affected_items = process_array(
-        lists, search_text=search_text, search_in_fields=search_in_fields, complementary_search=complementary_search,
-        sort_by=sort_by, sort_ascending=sort_ascending, allowed_sort_fields=['path'], offset=offset, limit=limit
-    )['items']
+    result.affected_items = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
+                                          complementary_search=complementary_search, sort_by=sort_by,
+                                          sort_ascending=sort_ascending, allowed_sort_fields=['path'], offset=offset,
+                                          limit=limit)['items']
     result.total_affected_items += len(result.affected_items)
 
     return result

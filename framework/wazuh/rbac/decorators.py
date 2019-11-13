@@ -74,7 +74,7 @@ def _expand_resource(resource):
                                                        {'status': Status.S_ALL.value, 'path': None, 'file': None}, tags)
             return {decoder['file'] for decoder in format_decoders}
         elif resource_type == 'list:path':
-            return [cdb_list['path'] for cdb_list in iterate_lists(only_names=True)]
+            return {cdb_list['path'] for cdb_list in iterate_lists(only_names=True)}
         return set()
     # We return the value casted to set
     else:

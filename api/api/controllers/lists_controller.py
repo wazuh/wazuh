@@ -8,7 +8,6 @@ import logging
 import connexion
 
 from api.authentication import get_permissions
-from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh import cdb_list
 from wazuh.cluster.dapi.dapi import DistributedAPI
@@ -86,6 +85,5 @@ def get_lists_files(pretty: bool = False, wait_for_complete: bool = False, offse
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200

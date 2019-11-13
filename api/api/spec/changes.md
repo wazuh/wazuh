@@ -127,16 +127,10 @@ of endpoints
 
 ## Lists
 ### GET /lists
-* Parameter **status** removed (It was not implemented)
-* Changed parameter **path** functionality to a filter
+* The output of this endpoint has changed
 
-### GET /list
-* This endpoint provides the old functionality of GET /lists?**path**
-* Parameter **path** is required
-
-### GET /list/files
-* This endpoint now returns **folder** substituting old **path**
-* **path** parameter now returns folder/file 
+### GET /lists/files 
+* The output of this endpoint has changed
 
 ## Cluster
 ### GET /cluster/{node_id}/stats
