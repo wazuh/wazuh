@@ -66,12 +66,12 @@ stages:
         code: 4000
         dapi_errors:
           master-node:
-            error: Permission denied
-        detail: Permission denied
+            error: !anystr
+        detail: !anystr
         remediation: !anystr
         status: 400
-        title: Wazuh Error
-        type: about:blank
+        title: !anystr
+        type: !anystr
 
 ---
 test_name: GET LISTS FILES RBAC
