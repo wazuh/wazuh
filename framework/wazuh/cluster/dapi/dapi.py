@@ -16,6 +16,7 @@ import logging
 import os
 import time
 import copy
+from wazuh.exception import WazuhException
 
 class DistributedAPI:
     """
@@ -274,7 +275,16 @@ class DistributedAPI:
             node_id = self.input_json['arguments']['node_id']
             del self.input_json['arguments']['node_id']
             return {node_id: []}
+        elif 'group_id' in self.input_json['arguments']:
+            agents = agent.Agent.get_agents_overview(
+                select=select_node, filters={'group': self.input_json['arguments']['group_id']})['items']
+            if len(agents) == 0:
+                raise WazuhException(1750)
+            del self.input_json['arguments']['group_id']
+            node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
+                         itertools.groupby(agents, key=operator.itemgetter('node_name'))}
 
+            return node_name
         else:
             if 'cluster' in self.input_json['function']:
                 node_name = {'fw_all_nodes': [], self.node_info['node']: []}
