@@ -5,7 +5,9 @@
 import asyncio
 import logging
 
-from api.models.base_model_ import Data
+import connexion
+
+from api.authentication import get_permissions
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh import cdb_list
 from wazuh.cluster.dapi.dapi import DistributedAPI
@@ -43,38 +45,12 @@ def get_lists(pretty: bool = False, wait_for_complete: bool = False, offset: int
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
-
-
-@exception_handler
-def get_list(pretty: bool = False, wait_for_complete: bool = False, path: str = None):
-    """ Get CBD list from a specific file path
-
-    :param pretty: Show results in human-readable format.
-    :param wait_for_complete: Disable timeout response.
-    :param path: File path to load list from
-    :return: Data object
-    """
-    f_kwargs = {'file_path': path}
-
-    dapi = DistributedAPI(f=cdb_list.get_list,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger
-                          )
-
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
-
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -105,9 +81,9 @@ def get_lists_files(pretty: bool = False, wait_for_complete: bool = False, offse
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200

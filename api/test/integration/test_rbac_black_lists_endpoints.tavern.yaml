@@ -1,0 +1,100 @@
+---
+test_name: GET LISTS RBAC
+
+marks:
+  - usefixtures:
+    - lists_black_rbac_tests
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+
+  - name: Try to show the lists of the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - items: !anything
+              path: etc/lists/amazon/aws-sources
+            - items: !anything
+              path: etc/lists/security-eventchannel
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: All specified lists were shown
+
+  - name: Try to show an specified path (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        path: etc/lists/amazon/aws-sources
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - items: !anything
+              path: etc/lists/amazon/aws-sources
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: All specified lists were shown
+
+  - name: Try to show an specified path (Deny)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        path: etc/lists/audit-keys
+    response:
+      status_code: 400
+      body:
+        code: 4000
+        dapi_errors:
+          master-node:
+            error: !anystr
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+---
+test_name: GET LISTS FILES RBAC
+
+stages:
+  - name: Try to show the lists files of the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - folder: etc/lists/amazon
+              name: aws-sources
+              path: etc/lists/amazon/aws-sources
+            - folder: etc/lists
+              name: security-eventchannel
+              path: etc/lists/security-eventchannel
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: All specified paths were shown
