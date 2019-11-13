@@ -34,6 +34,75 @@ static const char *fim_entry_type[] = {
     "registry"
 };
 
+// FIM data
+#ifndef WIN32
+void print_inodes() {
+    OSHashNode *hash_node;
+    fim_inode_data *node;
+    unsigned int *inode_it;
+    int i = 0;
+    int it = 0;
+
+    os_calloc(1, sizeof(unsigned int), inode_it);
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    hash_node = OSHash_Begin(syscheck.fim_inode, inode_it);
+    while(hash_node) {
+        node = hash_node->data;
+        minfo("inodes(%d) => (%d)'%s'", i, node->items, (char*)hash_node->key);
+        for(it = 0; it < node->items; it++) {
+            minfo("  -> '%s'", (char*)node->paths[it]);
+        }
+        hash_node = OSHash_Next(syscheck.fim_inode, inode_it, hash_node);
+        i++;
+    }
+    os_free(inode_it);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    return;
+}
+#endif
+
+void print_rbtree() {
+    char **keys;
+    fim_entry_data *node;
+    int i = 0;
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    keys = rbtree_keys(syscheck.fim_entry);
+
+    while(keys[i]) {
+        node = (fim_entry_data *) rbtree_get(syscheck.fim_entry, keys[i]);
+        minfo("entry(%d) => (%s)'%ld:%ld'", i, keys[i], node->dev, node->inode);
+        i++;
+    }
+    free_strarray(keys);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    return;
+}
+
+void print_dirtb() {
+    OSHashNode *hash_node;
+    char *data;
+    unsigned int inode_it = 0;
+    int i = 0;
+
+    if(syscheck.realtime && syscheck.realtime->dirtb) {
+        w_mutex_lock(&syscheck.fim_entry_mutex);
+        hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
+        while(hash_node) {
+            data = hash_node->data;
+            minfo("dirtb(%d)(%d) => (%s)'%s'", i, inode_it, (char*)hash_node->key, (char*)data);
+            hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
+            i++;
+        }
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
+    }
+
+    return;
+}
+
 int print_hash_table();
 
 void fim_scan() {
@@ -82,6 +151,11 @@ void fim_scan() {
 
     minfo(FIM_FREQUENCY_ENDED);
     fim_send_scan_info(FIM_SCAN_END);
+    print_rbtree();
+#ifndef WIN32
+    print_inodes();
+#endif
+    print_dirtb();
 
     mdebug1(FIM_RUNNING_SCAN, time_diff(&start, &end),
             (double)(clock() - cputime_start) / CLOCKS_PER_SEC);
@@ -249,8 +323,6 @@ int fim_file (char *file, fim_element *item, whodata_evt *w_evt, int report) {
     fim_entry_data * entry_data = NULL;
     fim_entry_data * saved_data = NULL;
     char * json_formated;
-
-    minfo("fim_file: %s", file);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
