@@ -279,7 +279,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
     }
 
     if (output) {
-        if (Mail){
+        if (Mail && Config){
             if(Mail->to) {
                 for(j = 0; Mail->to[j]; j++) {
                     free(Mail->to[j]);
@@ -291,8 +291,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
             os_free(Mail->idsname);
             os_free(Mail->smtpserver);
             os_free(Mail->heloserver);
-        }
-        if (Config) {
             os_free(Config->custom_alert_output_format);
             os_free(Config->geoipdb_file);
             os_free(Config->prelude_profile);

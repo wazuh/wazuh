@@ -250,6 +250,40 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
 // Destroy data
 
 void wm_aws_destroy(wm_aws *aws_config) {
+    wm_aws_bucket *cur_bucket;
+    wm_aws_bucket *next_bucket;
+    wm_aws_service *cur_service;
+    wm_aws_service *next_service;
+
+    for (cur_bucket = aws_config->buckets; cur_bucket; cur_bucket = next_bucket) {
+        next_bucket = cur_bucket->next;
+        os_free(cur_bucket->bucket);
+        os_free(cur_bucket->access_key);
+        os_free(cur_bucket->secret_key);
+        os_free(cur_bucket->aws_profile);
+        os_free(cur_bucket->iam_role_arn);
+        os_free(cur_bucket->aws_organization_id);
+        os_free(cur_bucket->aws_account_id);
+        os_free(cur_bucket->aws_account_alias);
+        os_free(cur_bucket->trail_prefix);
+        os_free(cur_bucket->only_logs_after);
+        os_free(cur_bucket->regions);
+        os_free(cur_bucket->type);
+        free(cur_bucket);
+    }
+    for (cur_service = aws_config->services; cur_service; cur_service = next_service) {
+        next_service = cur_service->next;
+        os_free(cur_service->type);
+        os_free(cur_service->access_key);
+        os_free(cur_service->secret_key);
+        os_free(cur_service->aws_profile);
+        os_free(cur_service->iam_role_arn);
+        os_free(cur_service->aws_account_id);
+        os_free(cur_service->aws_account_alias);
+        os_free(cur_service->only_logs_after);
+        os_free(cur_service->regions);
+        free(cur_service);
+    }
     os_free(aws_config->bucket);
     os_free(aws_config->access_key);
     os_free(aws_config->secret_key);

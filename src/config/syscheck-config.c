@@ -1858,7 +1858,7 @@ void Free_Syscheck(syscheck_config *config) {
         int pl = 0;
         free(config->opts);
         free(config->remote_db);
-        free(config->db);
+        free(config->db);        
         free(config->scan_day);
         free(config->scan_time);
         

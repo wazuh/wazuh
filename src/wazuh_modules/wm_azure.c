@@ -480,6 +480,8 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
     wm_azure_storage_t *curr_storage = NULL;
     wm_azure_storage_t *next_storage = NULL;
 
+    os_free(azure_config->scan_time);
+
     for (curr_api = azure_config->api_config; curr_api; curr_api = next_api) {
 
         next_api = curr_api->next;
