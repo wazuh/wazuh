@@ -357,6 +357,7 @@ void set_priority_windows_thread() {
 #endif
 
 
+// LCOV_EXCL_START
 int fim_whodata_initialize() {
 #if defined INOTIFY_ENABLED || defined WIN32
 
@@ -389,6 +390,8 @@ int fim_whodata_initialize() {
 
     return 0;
 }
+// LCOV_EXCL_STOP
+
 
 void log_realtime_status(int next) {
     /*
@@ -421,6 +424,7 @@ void log_realtime_status(int next) {
 }
 
 
+// LCOV_EXCL_START
 #ifdef INOTIFY_ENABLED
 static void *symlink_checker_thread(__attribute__((unused)) void * data) {
     char *real_path;
@@ -477,8 +481,9 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
 
     return NULL;
 }
+// LCOV_EXCL_STOP
 
-
+// LCOV_EXCL_START
 static void fim_link_update(int pos, char *new_path) {
     if (*syscheck.dir[pos]) {
         fim_link_check_delete(pos);
@@ -491,8 +496,9 @@ static void fim_link_update(int pos, char *new_path) {
     //Add new entries without alert.
     fim_link_silent_scan(new_path, pos);
 }
+// LCOV_EXCL_STOP
 
-
+// LCOV_EXCL_START
 static void fim_link_check_delete(int pos) {
     struct stat statbuf;
 
@@ -505,7 +511,9 @@ static void fim_link_check_delete(int pos) {
         mdebug1(FIM_STAT_FAILED, syscheck.symbolic_links[pos], errno, strerror(errno));
     }
 }
+// LCOV_EXCL_STOP
 
+// LCOV_EXCL_START
 static void fim_link_delete_range(int pos) {
     char **paths;
     char first_entry[PATH_MAX];
@@ -529,7 +537,9 @@ static void fim_link_delete_range(int pos) {
     }
     os_free(paths);
 }
+// LCOV_EXCL_STOP
 
+// LCOV_EXCL_START
 static void fim_link_silent_scan(char *path, int pos) {
     struct fim_element *item;
 
@@ -546,7 +556,9 @@ static void fim_link_silent_scan(char *path, int pos) {
     fim_checker(path, item, NULL, 0);
     os_free(item);
 }
+// LCOV_EXCL_STOP
 
+// LCOV_EXCL_START
 static void fim_link_reload_broken_link(char *path, int index) {
     int element;
     int found = 0;
@@ -564,4 +576,5 @@ static void fim_link_reload_broken_link(char *path, int index) {
         fim_link_update(index, path);
     }
 }
+// LCOV_EXCL_STOP
 #endif

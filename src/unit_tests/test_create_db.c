@@ -42,6 +42,10 @@ int __wrap_rbtree_replace() {
     return mock();
 }
 
+int __wrap_rbtree_delete() {
+    return 1;
+}
+
 int __wrap_OSHash_Add() {
     return mock();
 }
@@ -71,6 +75,18 @@ fim_inode_data *__wrap_OSHash_Get() {
 fim_inode_data *__wrap_OSHash_Get_ex() {
     fim_inode_data *data = mock_type(fim_inode_data *);
     return data;
+}
+
+struct dirent * __wrap_readdir() {
+    return mock_type(struct dirent *);
+}
+
+int __wrap_opendir() {
+    return mock();
+}
+
+int __wrap_closedir() {
+    return 1;
 }
 
 void syscheck_set_internals()
@@ -1321,6 +1337,7 @@ void test_fim_checker_directory(void **state)
     item->index = 3;
     item->statbuf = buf;
     will_return(__wrap_lstat, 0);
+    will_return(__wrap_opendir, 0);
 
     fim_checker(path, item, NULL, 1);
 }
@@ -1425,6 +1442,318 @@ void test_fim_directory_nodir(void **state)
 }
 
 
+void test_fim_directory(void **state)
+{
+    (void) state;
+    int ret;
+
+    struct dirent *entry = calloc(1, sizeof(struct dirent));
+    strcpy(entry->d_name, "test");
+
+    will_return(__wrap_opendir, 1);
+    will_return(__wrap_readdir, entry);
+    will_return(__wrap_readdir, NULL);
+
+    fim_element *item = calloc(1, sizeof(fim_element));
+    item->index = 1;
+
+    ret = fim_directory("test", item, NULL, 1);
+
+    assert_int_equal(ret, 0);
+}
+
+
+void test_fim_get_data(void **state)
+{
+    (void) state;
+
+    fim_entry_data *data;
+
+    fim_element *item = calloc(1, sizeof(fim_element));
+    item->index = 1;
+    item->configuration = CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_MTIME | \
+                          CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP;
+    struct stat buf;
+    buf.st_mode = S_IFREG | 00444 ;
+    buf.st_size = 1500;
+    buf.st_uid = 0;
+    buf.st_gid = 0;
+    item->statbuf = buf;
+
+    data = fim_get_data("test", item);
+    *state = data;
+
+    assert_string_equal(data->perm, "r--r--r--");
+    assert_string_equal(data->hash_md5, "d41d8cd98f00b204e9800998ecf8427e");
+    assert_string_equal(data->hash_sha1, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    assert_string_equal(data->hash_sha256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+}
+
+
+void test_fim_delete(void **state)
+{
+    (void) state;
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        12345678,
+        123456,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+    *state = data;
+
+    will_return(__wrap_rbtree_get, data);
+    will_return(__wrap_OSHash_Get, NULL);
+
+    fim_delete("test");
+
+}
+
+
+void test_fim_realtime_event_add(void **state)
+{
+    (void) state;
+
+    will_return(__wrap_lstat, 1);
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    fim_realtime_event("test");
+}
+
+
+void test_fim_realtime_event_deleted(void **state)
+{
+    (void) state;
+
+    will_return(__wrap_lstat, -1);
+    will_return(__wrap_rbtree_get, NULL);
+
+    fim_realtime_event("test");
+}
+
+
+void test_fim_realtime_event_deleted_saved(void **state)
+{
+    (void) state;
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        12345678,
+        123456,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+    *state = data;
+
+    will_return(__wrap_lstat, -1);
+    will_return(__wrap_rbtree_get, data);
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    fim_realtime_event("test");
+}
+
+
+void test_fim_registry_event(void **state)
+{
+    (void) state;
+    int ret;
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        12345678,
+        123456,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+    *state = data;
+
+    will_return(__wrap_rbtree_get, data);
+
+    ret = fim_registry_event ("key", data, 1);
+
+    assert_int_equal(ret, 0);
+}
+
+
+void test_fim_registry_event_insert(void **state)
+{
+    (void) state;
+    int ret;
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        12345678,
+        1234,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+    *state = data;
+
+    will_return(__wrap_rbtree_get, NULL);
+    // On fim_insert
+    // Not duplicated
+    will_return(__wrap_rbtree_insert, 1);
+    // Not in hash table
+    will_return(__wrap_OSHash_Get, NULL);
+    // Added
+    will_return(__wrap_OSHash_Add, 2);
+
+    ret = fim_registry_event ("key", data, 1);
+
+    assert_int_equal(ret, 1);
+}
+
+
+void test_check_deleted_files(void **state)
+{
+    (void) state;
+
+    char ** keys = NULL;
+    keys = os_AddStrArray("test", keys);
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        12345678,
+        12345,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+    *state = data;
+
+    will_return(__wrap_rbtree_keys, keys);
+    will_return(__wrap_rbtree_get, data);
+
+    check_deleted_files();
+}
+
+void test_check_deleted_files_scanned(void **state)
+{
+    (void) state;
+
+    char ** keys = NULL;
+    keys = os_AddStrArray("test", keys);
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        12345678,
+        0,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+    *state = data;
+
+    will_return(__wrap_rbtree_keys, keys);
+    will_return(__wrap_rbtree_get, data);
+
+    check_deleted_files();
+}
+
+
+void test_fim_file_new(void **state)
+{
+    (void) state;
+    int ret;
+
+    fim_element *item = calloc(1, sizeof(fim_element));
+    item->index = 1;
+
+    will_return(__wrap_rbtree_get, NULL);
+
+    will_return(__wrap_rbtree_insert, 1);
+    will_return(__wrap_OSHash_Get, NULL);
+    will_return(__wrap_OSHash_Add, 2);
+
+    ret = fim_file("file", item, NULL, 1);
+
+    assert_int_equal(ret, 0);
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_fim_json_event, delete_json),
@@ -1468,6 +1797,17 @@ int main(void) {
         cmocka_unit_test(test_fim_checker_deleted),
         cmocka_unit_test_teardown(test_fim_checker_deleted_enoent, delete_entry_data),
         cmocka_unit_test(test_fim_directory_nodir),
+        cmocka_unit_test(test_fim_directory),
+        cmocka_unit_test_teardown(test_fim_get_data, delete_entry_data),
+        cmocka_unit_test_teardown(test_fim_delete, delete_entry_data),
+        cmocka_unit_test(test_fim_realtime_event_add),
+        cmocka_unit_test(test_fim_realtime_event_deleted),
+        cmocka_unit_test_teardown(test_fim_realtime_event_deleted_saved, delete_entry_data),
+        cmocka_unit_test_teardown(test_fim_registry_event, delete_entry_data),
+        cmocka_unit_test_teardown(test_fim_registry_event_insert, delete_entry_data),
+        cmocka_unit_test_teardown(test_check_deleted_files, delete_entry_data),
+        cmocka_unit_test_teardown(test_check_deleted_files_scanned, delete_entry_data),
+        cmocka_unit_test(test_fim_file_new),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
