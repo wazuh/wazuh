@@ -157,15 +157,35 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     char path[PATH_MAX + 1];
     char buf[OS_MAXSTR + 1];
     char compressed_file[PATH_MAX + 1];
+    char filename_abs[PATH_MAX];
 
     path[PATH_MAX] = '\0';
+    if (abspath(filename, filename_abs, sizeof(filename_abs)) == NULL) {
+        merror("Cannot get absolute path of '%s': %s (%d)", filename, strerror(errno), errno);
+        return NULL;
+    }
+
+#ifdef WIN32
+    {
+        char * filename_strip = os_strip_char(filename_abs, ':');
+
+        if (filename_strip == NULL) {
+            merror("Cannot remove heading colon from full path '%s'", filename_abs);
+            return NULL;
+        }
+
+        strncpy(filename_abs, filename_strip, sizeof(filename_abs));
+        filename_abs[sizeof(filename_abs) - 1] = '\0';
+        free(filename_strip);
+    }
+#endif
 
     snprintf(path, PATH_MAX, "%s/local/%s/diff.%d",
-             DIFF_DIR_PATH, filename + PATH_OFFSET, (int)alert_diff_time);
+             DIFF_DIR_PATH, filename_abs + PATH_OFFSET, (int)alert_diff_time);
 
     fp = fopen(path, "rb");
     if (!fp) {
-        merror(FIM_ERROR_GENDIFF_OPEN);
+        merror(FIM_ERROR_GENDIFF_OPEN, path);
         return (NULL);
     }
 
@@ -204,7 +224,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
         PATH_MAX,
         "%s/local/%s/%s.gz",
         DIFF_DIR_PATH,
-        filename + PATH_OFFSET,
+        filename_abs + PATH_OFFSET,
         DIFF_LAST_FILE
     );
 

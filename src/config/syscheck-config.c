@@ -387,6 +387,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         opts |= CHECK_OWNER;
         opts |= CHECK_GROUP;
         opts |= CHECK_SHA256SUM;
+        opts |= CHECK_MD5SUM;
+        opts |= CHECK_SHA1SUM;
         opts |= CHECK_MTIME;
         opts |= CHECK_INODE;
 #ifdef WIN32
@@ -411,7 +413,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 #endif
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM | CHECK_SIZE
-                            | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_ATTRS);
+                            | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE);
 #ifdef WIN32
                     opts &= ~ CHECK_ATTRS;
 #endif

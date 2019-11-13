@@ -28,26 +28,6 @@ volatile int audit_db_consistency_flag;
 #define REALTIME_EVENT_SIZE     (sizeof (struct inotify_event))
 #define REALTIME_EVENT_BUFFER   (2048 * (REALTIME_EVENT_SIZE + 16))
 
-void print_dirtb() {
-    OSHashNode *hash_node;
-    char *data;
-    unsigned int *inode_it;
-    int i = 0;
-
-    os_calloc(1, sizeof(unsigned int), inode_it);
-
-    hash_node = OSHash_Begin(syscheck.realtime->dirtb, inode_it);
-    while(hash_node) {
-        data = hash_node->data;
-        minfo("dirtb(%d) => (%s)'%s'", i, hash_node->key, (char*)data);
-        hash_node = OSHash_Next(syscheck.realtime->dirtb, inode_it, hash_node);
-        i++;
-    }
-    os_free(inode_it);
-
-    return;
-}
-
 /* Start real time monitoring using inotify */
 int realtime_start()
 {
@@ -104,7 +84,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                 if (errno == 28) {
                     merror(FIM_ERROR_INOTIFY_ADD_MAX_REACHED, dir, wd, errno);
                 } else {
-                    merror(FIM_ERROR_INOTIFY_ADD_WATCH, dir, wd, errno, strerror(errno));
+                    mdebug1(FIM_INOTIFY_ADD_WATCH, dir, wd, errno, strerror(errno));
                 }
             } else {
                 char wdchar[33];
@@ -129,7 +109,6 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                     }
                 }
             }
-            print_dirtb();
         }
     }
 
@@ -206,7 +185,6 @@ void realtime_process()
 
         free_strarray(paths);
         rbtree_destroy(tree);
-        print_dirtb();
     }
 }
 
@@ -446,7 +424,7 @@ int realtime_adddir(const char *dir, int whodata)
         if (rtlocald->h == INVALID_HANDLE_VALUE || rtlocald->h == NULL) {
             free(rtlocald);
             rtlocald = NULL;
-            merror(FIM_ERROR_REALTIME_ADD, dir);
+            mdebug1(FIM_REALTIME_ADD, dir);
             w_mutex_unlock(&adddir_mutex);
             return (0);
         }

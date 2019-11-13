@@ -377,10 +377,9 @@
 #define FIM_ERROR_NOTHING_TOCKECK                   "(6604): No directories to check."
 #define FIM_ERROR_CHECK_THREAD                      "(6605): Could not create the Whodata check thread."
 #define FIM_ERROR_SELECT                            "(6606): Select failed (for real time file integrity monitoring)."
-
 #define FIM_ERROR_INOTIFY_INITIALIZE                "(6607): Unable to initialize inotify."
 #define FIM_ERROR_NFS_INOTIFY                       "(6608): '%s' NFS Directories do not support iNotify."
-#define FIM_ERROR_INOTIFY_ADD_WATCH                 "(6609): Unable to add inotify watch to real time monitoring: '%s'. '%d' '%d':'%s'"
+#define FIM_ERROR_GENDIFF_COMMAND                   "(6609): Unable to run diff command '%s'"
 #define FIM_ERROR_REALTIME_WAITSINGLE_OBJECT        "(6610): WaitForSingleObjectEx failed (for real time file integrity monitoring)."
 #define FIM_ERROR_REALTIME_ADDDIR_FAILED            "(6611): 'realtime_adddir' failed, the directory '%s'could't be added to real time mode."
 #define FIM_ERROR_REALTIME_READ_BUFFER              "(6612): Unable to read from real time buffer."
@@ -388,9 +387,8 @@
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY   "(6614): Real time call back called, but hash is empty."
 #define FIM_ERROR_UPDATE_ENTRY                      "(6615): Can't update entry invalid file '%s'."
 #define FIM_ERROR_REALTIME_MAXNUM_WATCHES           "(6616): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
-#define FIM_ERROR_REALTIME_ADD                      "(6617): Unable to add directory to real time monitoring: '%s'."
-#define FIM_ERROR_REALTIME_INITIALIZE               "(6618): Unable to initialize real time file monitoring."
 
+#define FIM_ERROR_REALTIME_INITIALIZE               "(6618): Unable to initialize real time file monitoring."
 #define FIM_ERROR_WHODATA_ADD_DIRECTORY             "(6619): Unable to add directory to whodata real time monitoring: '%s'."
 #define FIM_ERROR_WHODATA_AUDIT_SUPPORT             "(6620): Audit support not built. Whodata is not available."
 #define FIM_ERROR_WHODATA_EVENTCHANNEL              "(6621): Event Channel subscription could not be made. Whodata scan is disabled."
@@ -401,6 +399,7 @@
 #define FIM_ERROR_WHODATA_HANDLER_REMOVE            "(6626): The handler '%s' could not be removed from the whodata hash table."
 #define FIM_ERROR_WHODATA_HANDLER_EVENT             "(6627): Could not get the time of the event whose handler is '%llu'."
 #define FIM_ERROR_WHODATA_EVENTID                   "(6628): Invalid EventID. The whodata cannot be extracted."
+
 #define FIM_ERROR_WHODATA_EVENTADD_DUP              "(6630): The event could not be added to the '%s' hash table because it is duplicated. Target: '%s'."
 #define FIM_ERROR_WHODATA_EVENTADD                  "(6631): The event could not be added to the '%s' hash table. Target: '%s'."
 #define FIM_ERROR_WHODATA_GET_SID                   "(6632): Could not obtain the sid of Everyone. Error '%lu'."
@@ -417,7 +416,6 @@
 #define FIM_ERROR_WHODATA_EVENT_TOOLONG             "(6643): Caching Audit message: event too long."
 #define FIM_ERROR_WHODATA_GETID                     "(6644): Couldn't get event ID from Audit message. Line: '%s'."
 #define FIM_ERROR_WHODATA_CONTEXT                   "(6645): Error creating the whodata context. Error %lu."
-
 #define FIM_ERROR_SACL_ACE_DELETE                   "(6646): DeleteAce() failed restoring the SACLs. Error '%ld'"
 #define FIM_ERROR_SACL_FIND_PRIVILEGE               "(6647): Could not find the '%s' privilege. Error: %lu"
 #define FIM_ERROR_SACL_OPENPROCESSTOKEN             "(6648): OpenProcessToken() failed. Error '%lu'."
@@ -434,25 +432,21 @@
 #define FIM_ERROR_SACL_ELEVATE_PRIVILEGE            "(6659): The privilege could not be activated. Error: '%ld'."
 #define FIM_ERROR_WPOL_BACKUP_FILE_REMOVE           "(6660): '%s' could not be removed: '%s' (%d)."
 #define FIM_ERROR_WPOL_BACKUP_FILE_OPEN             "(6661): '%s' could not be opened: '%s' (%d)."
-
 #define FIM_ERROR_LIBMAGIC_START                    "(6662): Can't init libmagic: '%s'"
 #define FIM_ERROR_LIBMAGIC_LOAD                     "(6663): Can't load magic file: '%s'"
 #define FIM_ERROR_LIBMAGIC_BUFFER                   "(6664): magic_buffer: '%s'"
-#define FIM_ERROR_GENDIFF_OPEN                      "(6665): Unable to generate diff alert (fopen)."
+#define FIM_ERROR_GENDIFF_OPEN                      "(6665): Unable to generate diff alert (fopen)'%s'."
 #define FIM_ERROR_GENDIFF_READ                      "(6666): Unable to generate diff alert (fread)."
 #define FIM_ERROR_GENDIFF_SECONDLINE_MISSING        "(6667): Unable to find second line of alert string."
 #define FIM_ERROR_GENDIFF_WRITING_DATA              "(6668): Unable to write data on file '%s'"
 #define FIM_ERROR_GENDIFF_INVALID_PATH              "(6669): Invalid path name: '%s'"
 #define FIM_ERROR_GENDIFF_CREATE_SNAPSHOT           "(6670): Unable to create snapshot for '%s'"
 #define FIM_ERROR_GENDIFF_OPEN_FILE                 "(6671): Unable to open file for writing '%s'"
-#define FIM_ERROR_GENDIFF_COMMAND                   "(6672): Unable to run diff command '%s'"
-
 #define FIM_ERROR_SYSCOM_BIND_SOCKET                "(6672): Unable to bind to socket '%s': (%d) '%s'."
 #define FIM_ERROR_SYSCOM_ACCEPT                     "(6673): In accept(): '%s'"
 #define FIM_ERROR_SYSCOM_RECV                       "(6674): In OS_RecvSecureTCP(): '%s'"
 #define FIM_ERROR_SYSCOM_RECV_TOOLONG               "(6675): In OS_RecvSecureTCP(): response size is bigger than expected"
 #define FIM_ERROR_SYSCOM_RECV_MAXLEN                "(6676): The received message exeed maximum permited > '%i'"
-
 #define FIM_NO_OPTIONS                              "(6677): No option provided for directories: '%s', ignoring it."
 #define FIM_DIRECTORY_NOPROVIDED                    "(6678): No directory provided for syscheck to monitor."
 #define FIM_INVALID_ATTRIBUTE                       "(6679): Invalid attribute '%s' for '%s' option."
@@ -472,15 +466,13 @@
 #define FIM_ERROR_WHODATA_ACE_NUMBER                "(6693): The ACE number %i of '%s' could not be copied to the new ACL."
 #define FIM_ERROR_WHODATA_ACE_NOADDED               "(6694): The new ACE could not be added to '%s'. Error: '%ld'."
 #define FIM_ERROR_WHODATA_SETNAMEDSECURITY          "(6695): SetNamedSecurityInfo() failed. Error: '%lu'"
-
 #define FIM_CRITICAL_ERROR_DB                       "(6696): Unable to create syscheck database. Exiting."
 #define FIM_CRITICAL_ERROR_OUT_MEM                  "(6697): Out of memory. Exiting."
 #define FIM_CRITICAL_DATA_CREATE                    "(6698): Creating Data Structure: %s. Exiting."
 #define FIM_CRITICAL_ERROR_SELECT                   "(6699): At '%s': select(): %s. Exiting."
-
 #define FIM_ERROR_INOTIFY_ADD_MAX_REACHED           "(6700): Unable to add inotify watch to real time monitoring: '%s'. '%d' '%d': The maximum limit of inotify watches has been reached."
 #define FIM_UNKNOWN_ATTRIBUTE                       "(6701): Unknown attribute '%s' for directory option."
-#define FIM_ERROR_INSERT_INODE_HASH                  "(6702): Unable to add inode to db: '%s' => '%s'"
+#define FIM_ERROR_INSERT_INODE_HASH                 "(6702): Unable to add inode to db: '%s' => '%s'"
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
