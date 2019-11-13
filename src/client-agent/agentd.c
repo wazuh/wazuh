@@ -68,8 +68,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     os_setwait();
 
     /* Create the queue and read from it. Exit if fails. */
-    if ((agt->m_queue = StartMQ(DEFAULTQUEUE_PATH, READ)) < 0) {
-        merror_exit(QUEUE_ERROR, DEFAULTQUEUE_PATH, strerror(errno));
+    if ((agt->m_queue = StartMQ(DEFAULTQPATH, READ)) < 0) {
+        merror_exit(QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
     }
 
 #ifdef HPUX

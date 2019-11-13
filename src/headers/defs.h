@@ -119,7 +119,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Default queue */
 #define DEFAULTQUEUE    "/queue/ossec/queue"
-#define DEFAULTQUEUE_PATH DEFAULTDIR DEFAULTQUEUE
 
 // Authd local socket
 #define AUTH_LOCAL_SOCK "/queue/ossec/auth"
