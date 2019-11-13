@@ -114,6 +114,8 @@ ifeq (${uname_S},SunOS)
 		DEFINES+=-D_REENTRANT
 ifneq (${uname_P},sparc)
 		OSSEC_LDFLAGS+=-z relax=secadj
+else
+		OSSEC_CFLAGS+=-DMSGPACK_ZONE_ALIGN=8
 endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		OSSEC_LIBS+=-lsocket -lnsl -lresolv -lrt -lpthread
