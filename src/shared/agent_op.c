@@ -228,9 +228,9 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
 {
     FILE *fp;
 
-    fp = fopen(AGENT_INFO_FILE, "w");
+    fp = fopen(isChroot() ? AGENT_INFO_FILE : AGENT_INFO_FILEP, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
+        merror(FOPEN_ERROR, isChroot() ? AGENT_INFO_FILE : AGENT_INFO_FILEP, errno, strerror(errno));
         return (0);
     }
 
@@ -769,7 +769,7 @@ char * get_agent_id_from_name(const char *agent_name) {
 /* Connect to the control socket if available */
 #if defined (__linux__) || defined (__MACH__)
 int control_check_connection() {
-    int sock = OS_ConnectUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_SIZE_128);
+    int sock = OS_ConnectUnixDomain(CONTROL_SOCK_PATH, SOCK_STREAM, OS_SIZE_128);
 
     if (sock < 0) {
         return -1;

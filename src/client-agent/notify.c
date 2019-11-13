@@ -69,7 +69,7 @@ char *get_agent_ip()
     }
 
     if(sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
+        merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK_PATH, errno, strerror(errno));
     }
 #endif
     return agent_ip;

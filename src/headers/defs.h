@@ -119,6 +119,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Default queue */
 #define DEFAULTQUEUE    "/queue/ossec/queue"
+#define DEFAULTQUEUE_PATH DEFAULTDIR DEFAULTQUEUE
 
 // Authd local socket
 #define AUTH_LOCAL_SOCK "/queue/ossec/auth"
@@ -140,6 +141,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define MON_LOCAL_SOCK  "/queue/ossec/monitor"
 #define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
 #define CONTROL_SOCK "/queue/ossec/control"
+
+// Absolute path local requests socket
+#define CONTROL_SOCK_PATH DEFAULTDIR CONTROL_SOCK
 
 // Attempts to check sockets availability
 #define SOCK_ATTEMPTS   10
