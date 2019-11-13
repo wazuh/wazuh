@@ -1,12 +1,12 @@
 ---
 test_name: GET /sca/000
 
+includes:
+  - !include common.yaml
+
 marks:
   - usefixtures:
     - base_tests
-
-includes:
-  - !include common.yaml
 
 stages:
 
@@ -37,13 +37,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          affected_items:
             - &sca_agent_result_000
               name: !anystr
               pass: !anyint
               score: !anyint
-              #references: !anystr THIS FIELD IS NOT INCLUDED IN ALL ANSWERS
+              references: !anystr #THIS FIELD IS NOT INCLUDED IN ALL ANSWERS
               fail: !anyint
               description: !anystr
               policy_id: !anystr
@@ -53,8 +52,11 @@ stages:
               total_checks: !anyint
               invalid: !anyint
             - <<: *sca_agent_result_000
+          total_affected_items: 2
+          failed_items: []
+          total_failed_items: 0
 
-  - name: Parameters -> offset=2,limit=1
+  - name: Parameters -> offset=1,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/000"
       method: GET
@@ -67,9 +69,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_000
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> sort=-score,limit=2
     request:
@@ -84,10 +88,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_000
             - <<: *sca_agent_result_000
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> sort=+score,limit=1
     request:
@@ -102,9 +108,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_000
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> search=cis,limit=1
     request:
@@ -119,9 +127,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_000
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> q=score>50,limit=1
     request:
@@ -136,9 +146,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_000
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> limit=2500
     request:
@@ -171,10 +183,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_000
               name: CIS benchmark for Debian/Linux 9 L2
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/,limit=1
     request:
@@ -189,10 +203,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_000
               references: https://www.cisecurity.org/cis-benchmarks/
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> description=This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.,limit=1
     request:
@@ -207,10 +223,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_000
               description: !anystr
+          failed_items: []
+          total_failed_items: 0
 
 ---
 test_name: GET /sca/000/checks/cis_debian9_L1
@@ -240,8 +258,8 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - &sca_check_result_000
               remediation: !anystr
               rationale: !anystr
@@ -253,7 +271,8 @@ stages:
               result: !anystr
               compliance: !anything
               rules: !anything
-#              references: !anystr
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> limit=4
     request:
@@ -262,42 +281,17 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 1
+        limit: 4
     response:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_000
-              rules:
-                - &rule_object_000
-                  rule: !anystr
-                  type: !anystr
-                - <<: *rule_object_000
-                - <<: *rule_object_000
-                - <<: *rule_object_000
-
-  - name: Parameters -> offset=5,limit=3
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        offset: 5
-        limit: 3
-    response:
-      status_code: 200
-      body:
-        data:
-          totalItems: !anyint
-          items:
             - <<: *sca_check_result_000
-              rules:
-                - <<: *rule_object_000
-                - <<: *rule_object_000
-                - <<: *rule_object_000
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> sort=-id,limit=2
     request:
@@ -312,12 +306,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_000
-              rules:
-                - <<: *rule_object_000
-                - <<: *rule_object_000
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> search=passwd,limit=1
     request:
@@ -332,8 +325,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          - <<: *sca_check_result_000
+          total_affected_items: !anyint
+          affected_items:
+            - <<: *sca_check_result_000
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> q=id=3098
     request:
@@ -347,9 +343,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_000
+              id: 3098
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> result=failed,limit=1
     request:
@@ -364,9 +363,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
-            - result: failed
+          total_affected_items: !anyint
+          affected_items:
+            - <<: *sca_check_result_000
+              result: failed
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> file=/etc/shadow,limit=1
     request:
@@ -381,9 +383,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
-            - file: /etc/shadow
+          total_affected_items: !anyint
+          affected_items:
+            - <<: *sca_check_result_000
+              file: /etc/shadow
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> limit=2500
     request:
@@ -416,10 +421,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_000
               title: Ensure shadow group is empty
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
     request:
@@ -434,12 +441,14 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_000
               remediation: Remove any legacy + entries from /etc/group if they exist.
----
+          failed_items: []
+          total_failed_items: 0
 
+---
 test_name: GET /sca/001
 
 stages:
@@ -467,13 +476,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          affected_items:
             - &sca_agent_result_001
               name: !anystr
               pass: !anyint
               score: !anyint
-              #references: !anystr THIS FIELD IS NOT INCLUDED IN ALL ANSWERS
+              references: !anystr #THIS FIELD IS NOT INCLUDED IN ALL ANSWERS
               fail: !anyint
               description: !anystr
               policy_id: !anystr
@@ -483,8 +491,11 @@ stages:
               total_checks: !anyint
               invalid: !anyint
             - <<: *sca_agent_result_001
+          total_affected_items: 2
+          failed_items: []
+          total_failed_items: 0
 
-  - name: Parameters -> offset=2,limit=1
+  - name: Parameters -> offset=1,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/001"
       method: GET
@@ -497,9 +508,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_001
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> sort=-score,limit=2
     request:
@@ -514,10 +527,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_001
             - <<: *sca_agent_result_001
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> sort=+score,limit=1
     request:
@@ -532,9 +547,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_001
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> search=cis,limit=1
     request:
@@ -549,9 +566,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_001
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> q=score>50,limit=1
     request:
@@ -566,9 +585,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_001
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> limit=2500
     request:
@@ -601,10 +622,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_001
               name: CIS benchmark for Debian/Linux 9 L2
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/,limit=1
     request:
@@ -619,10 +642,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_001
               references: https://www.cisecurity.org/cis-benchmarks/
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> description=This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.,limit=1
     request:
@@ -637,10 +662,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_001
               description: !anystr
+          failed_items: []
+          total_failed_items: 0
 
 ---
 test_name: GET /sca/001/checks/cis_debian9_L1
@@ -670,8 +697,8 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - &sca_check_result_001
               remediation: !anystr
               rationale: !anystr
@@ -683,7 +710,8 @@ stages:
               result: !anystr
               compliance: !anything
               rules: !anything
-#              references: !anystr
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> limit=4
     request:
@@ -692,42 +720,17 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 1
+        limit: 4
     response:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_001
-              rules:
-                - &rule_object_001
-                  rule: !anystr
-                  type: !anystr
-                - <<: *rule_object_001
-                - <<: *rule_object_001
-                - <<: *rule_object_001
-
-  - name: Parameters -> offset=5,limit=3
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        offset: 5
-        limit: 3
-    response:
-      status_code: 200
-      body:
-        data:
-          totalItems: !anyint
-          items:
             - <<: *sca_check_result_001
-              rules:
-                - <<: *rule_object_001
-                - <<: *rule_object_001
-                - <<: *rule_object_001
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> sort=-id,limit=2
     request:
@@ -742,12 +745,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_001
-              rules:
-                - <<: *rule_object_001
-                - <<: *rule_object_001
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> search=passwd,limit=1
     request:
@@ -762,8 +764,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          - <<: *sca_check_result_001
+          total_affected_items: !anyint
+          affected_items:
+            - <<: *sca_check_result_001
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> q=id=3098
     request:
@@ -777,9 +782,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_001
+              id: 3098
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> result=failed,limit=1
     request:
@@ -794,9 +802,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
-            - result: failed
+          total_affected_items: !anyint
+          affected_items:
+            - <<: *sca_check_result_001
+              result: failed
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> file=/etc/shadow,limit=1
     request:
@@ -811,9 +822,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
-            - file: /etc/shadow
+          total_affected_items: !anyint
+          affected_items:
+            - <<: *sca_check_result_001
+              file: /etc/shadow
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> limit=2500
     request:
@@ -846,10 +860,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_001
               title: Ensure shadow group is empty
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
     request:
@@ -864,10 +880,13 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_001
               remediation: Remove any legacy + entries from /etc/group if they exist.
+          failed_items: []
+          total_failed_items: 0
+
 ---
 test_name: GET /sca/002
 
@@ -896,13 +915,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          affected_items:
             - &sca_agent_result_002
               name: !anystr
               pass: !anyint
               score: !anyint
-              #references: !anystr THIS FIELD IS NOT INCLUDED IN ALL ANSWERS
+              references: !anystr #THIS FIELD IS NOT INCLUDED IN ALL ANSWERS
               fail: !anyint
               description: !anystr
               policy_id: !anystr
@@ -912,8 +930,11 @@ stages:
               total_checks: !anyint
               invalid: !anyint
             - <<: *sca_agent_result_002
+          total_affected_items: 2
+          failed_items: []
+          total_failed_items: 0
 
-  - name: Parameters -> offset=2,limit=1
+  - name: Parameters -> offset=1,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/002"
       method: GET
@@ -926,9 +947,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_002
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> sort=-score,limit=2
     request:
@@ -943,10 +966,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_002
             - <<: *sca_agent_result_002
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> sort=+score,limit=1
     request:
@@ -961,9 +986,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_002
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> search=cis,limit=1
     request:
@@ -978,9 +1005,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_002
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> q=score>50,limit=1
     request:
@@ -995,9 +1024,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_002
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> limit=2500
     request:
@@ -1030,10 +1061,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_002
               name: CIS benchmark for Debian/Linux 9 L2
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/,limit=1
     request:
@@ -1048,10 +1081,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_002
               references: https://www.cisecurity.org/cis-benchmarks/
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> description=This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.,limit=1
     request:
@@ -1066,10 +1101,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_002
               description: !anystr
+          failed_items: []
+          total_failed_items: 0
 
 ---
 test_name: GET /sca/002/checks/cis_debian9_L1
@@ -1099,8 +1136,8 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - &sca_check_result_002
               remediation: !anystr
               rationale: !anystr
@@ -1112,7 +1149,8 @@ stages:
               result: !anystr
               compliance: !anything
               rules: !anything
-#              references: !anystr
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> limit=4
     request:
@@ -1121,42 +1159,17 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 1
+        limit: 4
     response:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_002
-              rules:
-                - &rule_object_002
-                  rule: !anystr
-                  type: !anystr
-                - <<: *rule_object_002
-                - <<: *rule_object_002
-                - <<: *rule_object_002
-
-  - name: Parameters -> offset=5,limit=3
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        offset: 5
-        limit: 3
-    response:
-      status_code: 200
-      body:
-        data:
-          totalItems: !anyint
-          items:
             - <<: *sca_check_result_002
-              rules:
-                - <<: *rule_object_002
-                - <<: *rule_object_002
-                - <<: *rule_object_002
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> sort=-id,limit=2
     request:
@@ -1171,12 +1184,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_002
-              rules:
-                - <<: *rule_object_002
-                - <<: *rule_object_002
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> search=passwd,limit=1
     request:
@@ -1191,8 +1203,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          - <<: *sca_check_result_002
+          total_affected_items: !anyint
+          affected_items:
+            - <<: *sca_check_result_002
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> q=id=3098
     request:
@@ -1206,9 +1221,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_002
+              id: 3098
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> result=failed,limit=1
     request:
@@ -1223,9 +1241,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
-            - result: failed
+          total_affected_items: !anyint
+          affected_items:
+            - <<: *sca_check_result_002
+              result: failed
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> file=/etc/shadow,limit=1
     request:
@@ -1240,9 +1261,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
-            - file: /etc/shadow
+          total_affected_items: !anyint
+          affected_items:
+            - <<: *sca_check_result_002
+              file: /etc/shadow
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> limit=2500
     request:
@@ -1275,10 +1299,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_002
               title: Ensure shadow group is empty
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
     request:
@@ -1293,10 +1319,13 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_002
               remediation: Remove any legacy + entries from /etc/group if they exist.
+          failed_items: []
+          total_failed_items: 0
+
 ---
 test_name: GET /sca/003
 
@@ -1325,13 +1354,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          affected_items:
             - &sca_agent_result_003
               name: !anystr
               pass: !anyint
               score: !anyint
-              #references: !anystr THIS FIELD IS NOT INCLUDED IN ALL ANSWERS
+              references: !anystr #THIS FIELD IS NOT INCLUDED IN ALL ANSWERS
               fail: !anyint
               description: !anystr
               policy_id: !anystr
@@ -1341,8 +1369,11 @@ stages:
               total_checks: !anyint
               invalid: !anyint
             - <<: *sca_agent_result_003
+          total_affected_items: 2
+          failed_items: []
+          total_failed_items: 0
 
-  - name: Parameters -> offset=2,limit=1
+  - name: Parameters -> offset=1,limit=1
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/003"
       method: GET
@@ -1355,9 +1386,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_003
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> sort=-score,limit=2
     request:
@@ -1372,10 +1405,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_003
             - <<: *sca_agent_result_003
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> sort=+score,limit=1
     request:
@@ -1390,9 +1425,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_003
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> search=cis,limit=1
     request:
@@ -1407,9 +1444,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_003
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> q=score>50,limit=1
     request:
@@ -1424,9 +1463,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_003
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> limit=2500
     request:
@@ -1459,10 +1500,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_003
               name: CIS benchmark for Debian/Linux 9 L2
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/,limit=1
     request:
@@ -1477,10 +1520,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_003
               references: https://www.cisecurity.org/cis-benchmarks/
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> description=This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.,limit=1
     request:
@@ -1495,10 +1540,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_agent_result_003
               description: !anystr
+          failed_items: []
+          total_failed_items: 0
 
 ---
 test_name: GET /sca/003/checks/cis_debian9_L1
@@ -1528,8 +1575,8 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - &sca_check_result_003
               remediation: !anystr
               rationale: !anystr
@@ -1541,7 +1588,8 @@ stages:
               result: !anystr
               compliance: !anything
               rules: !anything
-#              references: !anystr
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> limit=4
     request:
@@ -1550,42 +1598,17 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 1
+        limit: 4
     response:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_003
-              rules:
-                - &rule_object_003
-                  rule: !anystr
-                  type: !anystr
-                - <<: *rule_object_003
-                - <<: *rule_object_003
-                - <<: *rule_object_003
-
-  - name: Parameters -> offset=5,limit=3
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        offset: 5
-        limit: 3
-    response:
-      status_code: 200
-      body:
-        data:
-          totalItems: !anyint
-          items:
             - <<: *sca_check_result_003
-              rules:
-                - <<: *rule_object_003
-                - <<: *rule_object_003
-                - <<: *rule_object_003
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> sort=-id,limit=2
     request:
@@ -1600,12 +1623,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_003
-              rules:
-                - <<: *rule_object_003
-                - <<: *rule_object_003
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> search=passwd,limit=1
     request:
@@ -1620,8 +1642,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          - <<: *sca_check_result_003
+          total_affected_items: !anyint
+          affected_items:
+            - <<: *sca_check_result_003
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> q=id=3098
     request:
@@ -1635,9 +1660,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_003
+              id: 3098
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> result=failed,limit=1
     request:
@@ -1652,9 +1680,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
-            - result: failed
+          total_affected_items: !anyint
+          affected_items:
+            - <<: *sca_check_result_003
+              result: failed
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> file=/etc/shadow,limit=1
     request:
@@ -1669,9 +1700,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
-            - file: /etc/shadow
+          total_affected_items: !anyint
+          affected_items:
+            - <<: *sca_check_result_003
+              file: /etc/shadow
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> limit=2500
     request:
@@ -1704,10 +1738,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_003
               title: Ensure shadow group is empty
+          failed_items: []
+          total_failed_items: 0
 
   - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
     request:
@@ -1722,8 +1758,9 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          total_affected_items: !anyint
+          affected_items:
             - <<: *sca_check_result_003
               remediation: Remove any legacy + entries from /etc/group if they exist.
----
+          failed_items: []
+          total_failed_items: 0

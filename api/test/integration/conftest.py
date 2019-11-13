@@ -327,3 +327,31 @@ def environment_black_overview_rbac():
         else:
             values['retries'] += 1
     down_env()
+
+
+@pytest.fixture(name="sca_white_rbac_tests", scope="session")
+def environment_white_sca_rbac():
+    values = build_and_up("sca_white_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="sca_black_rbac_tests", scope="session")
+def environment_black_sca_rbac():
+    values = build_and_up("sca_black_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
