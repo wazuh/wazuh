@@ -2970,6 +2970,8 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
 
+        wdb_set_hotfix_metadata(wdb, scan_id);
+
         return result;
 
     } else {

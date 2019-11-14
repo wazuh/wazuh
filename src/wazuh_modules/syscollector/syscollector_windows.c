@@ -141,17 +141,12 @@ char* get_process_name(DWORD pid){
                         {
                             mterror(WM_SYS_LOGTAG, "'WideCharToMultiByte' failed (%lu).", GetLastError());
                         } else {
-                            string = (char*)malloc(size_needed + 1);
-                            if (string == NULL)
+                            os_malloc(size_needed + 1, string);
+                            if (WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, string, size_needed, NULL, NULL) != size_needed)
                             {
-                                mterror(WM_SYS_LOGTAG, "Unable to allocate memory for UTF-16 -> UTF-8 conversion.");
-                            } else {
-                                if (WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, string, size_needed, NULL, NULL) != size_needed)
-                                {
-                                    mterror(WM_SYS_LOGTAG, "'WideCharToMultiByte' failed (%lu).", GetLastError());
-                                    free(string);
-                                    string = NULL;
-                                }
+                                mterror(WM_SYS_LOGTAG, "'WideCharToMultiByte' failed (%lu).", GetLastError());
+                                free(string);
+                                string = NULL;
                             }
                         }
                     }
@@ -1131,7 +1126,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
         // Get name of program
 
-        program_name = (char *)malloc(TOTALBYTES);
+        os_calloc(TOTALBYTES, 1, program_name);
         cbData = buffer_size;
 
         ret = RegQueryValueEx(program_key, "DisplayName", NULL, NULL, (LPBYTE)program_name, &cbData);
@@ -1166,7 +1161,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
             // Get version
 
-            version = (char *)malloc(TOTALBYTES);
+            os_calloc(TOTALBYTES, 1, version);
             cbData = buffer_size;
 
             ret = RegQueryValueEx(program_key, "DisplayVersion", NULL, NULL, (LPBYTE)version, &cbData);
@@ -1188,7 +1183,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
             // Get vendor
 
-            vendor = (char *)malloc(TOTALBYTES);
+            os_calloc(TOTALBYTES, 1, vendor);
             cbData = buffer_size;
 
             ret = RegQueryValueEx(program_key, "Publisher", NULL, NULL, (LPBYTE)vendor, &cbData);
@@ -1210,7 +1205,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
             // Get install date
 
-            date = (char *)malloc(TOTALBYTES);
+            os_calloc(TOTALBYTES, 1, date);
             cbData = buffer_size;
 
             ret = RegQueryValueEx(program_key, "InstallDate", NULL, NULL, (LPBYTE)date, &cbData);
@@ -1232,7 +1227,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
             // Get install location
 
-            location = (char *)malloc(TOTALBYTES);
+            os_calloc(TOTALBYTES, 1, location);
             cbData = buffer_size;
 
             ret = RegQueryValueEx(program_key, "InstallLocation", NULL, NULL, (LPBYTE)location, &cbData);
@@ -2122,15 +2117,11 @@ int ntpath_to_win32path(char *ntpath, char **outbuf)
 				len = (strlen(ntpath) - strlen(read_buff) + 3);
 
 				/* Allocate memory */
-				*outbuf = (char*)malloc(len);
-				if (*outbuf)
-				{
-					/* Copy the new filepath */
-					snprintf(*outbuf, len, "%s%s", msdos_drive, ntpath + strlen(read_buff));
-					success = 1;
-				} else {
-					mtwarn(WM_SYS_LOGTAG, "Unable to allocate %lu bytes to hold the full Win32 converted filepath.", len);
-				}
+                os_calloc(len, 1, *outbuf);
+
+                /* Copy the new filepath */
+                snprintf(*outbuf, len, "%s%s", msdos_drive, ntpath + strlen(read_buff));
+                success = 1;
 
 				break;
 			}
