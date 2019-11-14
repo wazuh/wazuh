@@ -278,6 +278,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef WIN32
 #define OSSEC_DEFINES   "/etc/internal_options.conf"
 #define OSSEC_LDEFINES   "/etc/local_internal_options.conf"
+#define OSSEC_DEFINES_PATH DEFAULTDIR OSSEC_DEFINES
 #else
 #define OSSEC_DEFINES   "internal_options.conf"
 #define OSSEC_LDEFINES   "local_internal_options.conf"

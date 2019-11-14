@@ -175,8 +175,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     sigaction(SIGPIPE, &act, NULL);
 
     /* Send integrity message for agent configs */
-    intcheck_file(OSSECCONF, dir);
-    intcheck_file(OSSEC_DEFINES, dir);
+    intcheck_file(DEFAULTCPATH, dir);
+    intcheck_file(OSSEC_DEFINES_PATH, dir);
 
     // Start request module
     req_init();
