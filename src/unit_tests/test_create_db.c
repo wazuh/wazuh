@@ -50,6 +50,10 @@ int __wrap_OSHash_Add() {
     return mock();
 }
 
+int __wrap_OSHash_Delete() {
+    return mock();
+}
+
 int __wrap_lstat() {
     return mock();
 }
@@ -1343,6 +1347,28 @@ void test_fim_checker_directory(void **state)
 }
 
 
+void test_fim_checker_link(void **state)
+{
+    (void) state;
+
+    // Load syscheck default values
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
+
+    char * path = "/media/test.file";
+    fim_element *item = calloc(1, sizeof(fim_element));
+    struct stat buf;
+    buf.st_mode = S_IFLNK;
+    item->index = 3;
+    item->statbuf = buf;
+    will_return(__wrap_lstat, 0);
+    will_return(__wrap_rbtree_get, NULL);
+    will_return(__wrap_rbtree_insert, 0);
+
+    fim_checker(path, item, NULL, 1);
+}
+
+
 void test_fim_checker_deleted(void **state)
 {
     (void) state;
@@ -1754,6 +1780,98 @@ void test_fim_file_new(void **state)
 }
 
 
+void test_fim_file_check(void **state)
+{
+    (void) state;
+    int ret;
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        12345678,
+        0,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+
+    fim_element *item = calloc(1, sizeof(fim_element));
+    item->index = 1;
+    item->configuration = 511;
+
+    will_return(__wrap_rbtree_get, data);
+
+    will_return_count(__wrap_OSHash_Get, NULL, 2);
+    will_return(__wrap_rbtree_replace, 1);
+    will_return(__wrap_OSHash_Add, 2);
+
+    ret = fim_file("file", item, NULL, 1);
+
+    assert_int_equal(ret, 0);
+}
+
+
+void test_free_inode_data(void **state)
+{
+    (void) state;
+
+    fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));
+    inode_data->items = 1;
+    inode_data->paths = os_AddStrArray("test.file", inode_data->paths);
+
+    free_inode_data(&inode_data);
+
+    assert_null(inode_data);
+}
+
+
+void test_delete_inode_item(void **state)
+{
+    (void) state;
+
+    char * file = "test-file.tst";
+    char * inode_key = "1212:9090";
+
+    fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));
+    inode_data->items = 1;
+    inode_data->paths = os_AddStrArray(file, inode_data->paths);
+    will_return(__wrap_OSHash_Get, inode_data);
+
+    will_return(__wrap_OSHash_Delete, 0);
+
+    delete_inode_item(inode_key, file);
+}
+
+
+void test_delete_inode_item_paths(void **state)
+{
+    (void) state;
+
+    char * file = "test-file.tst";
+    char * inode_key = "1212:9090";
+
+    fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));
+    inode_data->items = 2;
+    inode_data->paths = os_AddStrArray(file, inode_data->paths);
+    inode_data->paths = os_AddStrArray(file, inode_data->paths);
+    will_return(__wrap_OSHash_Get, inode_data);
+
+    delete_inode_item(inode_key, file);
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_fim_json_event, delete_json),
@@ -1795,6 +1913,7 @@ int main(void) {
         cmocka_unit_test(test_fim_checker_file),
         cmocka_unit_test(test_fim_checker_directory),
         cmocka_unit_test(test_fim_checker_deleted),
+        cmocka_unit_test(test_fim_checker_link),
         cmocka_unit_test_teardown(test_fim_checker_deleted_enoent, delete_entry_data),
         cmocka_unit_test(test_fim_directory_nodir),
         cmocka_unit_test(test_fim_directory),
@@ -1808,6 +1927,10 @@ int main(void) {
         cmocka_unit_test_teardown(test_check_deleted_files, delete_entry_data),
         cmocka_unit_test_teardown(test_check_deleted_files_scanned, delete_entry_data),
         cmocka_unit_test(test_fim_file_new),
+        cmocka_unit_test(test_fim_file_check),
+        cmocka_unit_test(test_free_inode_data),
+        cmocka_unit_test(test_delete_inode_item),
+        cmocka_unit_test(test_delete_inode_item_paths),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
