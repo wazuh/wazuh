@@ -83,6 +83,10 @@ static char *rand_keepalive_str(char *dst, int size)
 /* Handle file management */
 void LogCollectorStart()
 {
+    // Memory leak
+    int * q = new int;
+    // no delete
+
     int i = 0, j = -1, tg;
     int f_check = 0;
     int f_reload = 0;
