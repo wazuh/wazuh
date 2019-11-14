@@ -378,11 +378,18 @@ start()
             else
                 is_optional ${i};
                 if [ $? = 0 ]; then
-                    sleep 1;
-                    pstatus ${i};
-                    if [ $? = 0 ]; then
-                        failed=true
-                    fi
+                    j=0;
+                    while [ $failed = false ]; do
+                        pstatus ${i};
+                        if [ $? = 1 ]; then
+                            break;
+                        fi
+                        sleep 0.5;
+                        j=`expr $j + 1`;
+                        if [ "$j" = "${MAX_ITERATION}" ]; then
+                            failed=true
+                        fi
+                    done
                 fi
             fi
             if [ $failed = true ]; then
