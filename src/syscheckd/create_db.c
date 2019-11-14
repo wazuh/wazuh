@@ -328,12 +328,14 @@ void fim_realtime_event(char *file) {
 }
 
 
+// LCOV_EXCL_START
 void fim_whodata_event(whodata_evt * w_evt) {
     char inode_key[OS_SIZE_128];
 
     snprintf(inode_key, OS_SIZE_128, "%s:%s", w_evt->dev, w_evt->inode);
     fim_audit_inode_event(w_evt->path, inode_key, FIM_WHODATA, w_evt);
 }
+// LCOV_EXCL_STOP
 
 
 void fim_audit_inode_event(char *file, const char *inode_key, fim_event_mode mode, whodata_evt * w_evt) {
@@ -863,7 +865,7 @@ void delete_inode_item(char *inode_key, char *file_name) {
         // If it's the last path we can delete safely the hash node
         if(inode_data->items == 1) {
             if(inode_data = OSHash_Delete(syscheck.fim_inode, inode_key), inode_data) {
-                free_inode_data(inode_data);
+                free_inode_data(&inode_data);
             }
         }
         // We must delete only file_name from paths
@@ -1155,6 +1157,8 @@ int fim_check_ignore (const char *file_name) {
     return 0;
 }
 
+
+// LCOV_EXCL_START
 int fim_check_restrict (const char *file_name, OSMatch *restriction) {
     // Restrict file types
     if (restriction) {
@@ -1166,6 +1170,7 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
 
     return 0;
 }
+// LCOV_EXCL_STOP
 
 
 void free_entry_data(fim_entry_data * data) {
@@ -1199,21 +1204,22 @@ void free_entry_data(fim_entry_data * data) {
 }
 
 
-void free_inode_data(fim_inode_data * data) {
+void free_inode_data(fim_inode_data ** data) {
     int i;
 
-    if (!data) {
+    if (*data == NULL) {
         return;
     }
 
-    for (i = 0; i < data->items; i++) {
-        os_free(data->paths[i]);
+    for (i = 0; i < (*data)->items; i++) {
+        os_free((*data)->paths[i]);
     }
-    os_free(data->paths);
-    os_free(data);
+    os_free((*data)->paths);
+    os_free(*data);
 }
 
 
+// LCOV_EXCL_START
 void fim_print_info() {
 #ifndef WIN32
     OSHashNode * hash_node;
@@ -1232,3 +1238,4 @@ void fim_print_info() {
 
     return;
 }
+// LCOV_EXCL_STOP

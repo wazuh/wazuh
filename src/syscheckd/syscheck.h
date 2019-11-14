@@ -176,7 +176,7 @@ cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data 
 void free_entry_data(fim_entry_data * data);
 
 //
-void free_inode_data(fim_inode_data * data);
+void free_inode_data(fim_inode_data ** data);
 
 /* Check the registry for changes */
 void os_winreg_check(void);
