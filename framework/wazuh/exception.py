@@ -151,6 +151,7 @@ class WazuhException(Exception):
         1748: "Could not remove agent files",
         1749: "Downgrading an agent requires the force flag. Use force=1 parameter to force the downgrade",
         1750: "Could not restart selected agent, active-response is disabled in the agent",
+        1751: 'The group does not exist or it is empty',
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',
