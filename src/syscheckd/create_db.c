@@ -388,6 +388,7 @@ void fim_audit_inode_event(char *file, const char *inode_key, fim_event_mode mod
     return;
 }
 
+#ifdef WIN32
 int fim_registry_event (char * key, fim_entry_data * data, int pos) {
     cJSON * json_event = NULL;
     fim_entry_data *saved_data;
@@ -432,7 +433,7 @@ int fim_registry_event (char * key, fim_entry_data * data, int pos) {
 
     return result;
 }
-
+#endif
 
 // Returns the position of the path into directories array
 int fim_configuration_directory(const char *path, const char *entry) {

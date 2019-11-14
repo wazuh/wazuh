@@ -159,6 +159,8 @@ void test_realtime_adddir_realtime_failure(void **state)
 
     ret = realtime_adddir(path, 0);
 
+    free(syscheck.realtime);
+
     assert_int_equal(ret, -1);
 }
 
@@ -178,6 +180,8 @@ void test_realtime_adddir_realtime_add(void **state)
     will_return(__wrap_OSHash_Add_ex, 1);
 
     ret = realtime_adddir(path, 0);
+
+    free(syscheck.realtime);
 
     assert_int_equal(ret, 1);
 }
@@ -199,6 +203,8 @@ void test_realtime_adddir_realtime_update(void **state)
 
     ret = realtime_adddir(path, 0);
 
+    free(syscheck.realtime);
+
     assert_int_equal(ret, 1);
 }
 
@@ -219,6 +225,8 @@ void test_realtime_adddir_realtime_update_failure(void **state)
 
     ret = realtime_adddir(path, 0);
 
+    free(syscheck.realtime);
+
     assert_int_equal(ret, -1);
 }
 
@@ -236,6 +244,8 @@ void test_realtime_process_failure(void **state)
     will_return(__wrap_read, -1);
 
     realtime_process();
+
+    free(syscheck.realtime);
 }
 
 
@@ -274,6 +284,8 @@ void test_realtime_process(void **state)
     will_return(__wrap_read, 0);
 
     realtime_process();
+
+    free(syscheck.realtime);
 }
 
 void test_realtime_process_len(void **state)
@@ -289,6 +301,8 @@ void test_realtime_process_len(void **state)
     will_return(__wrap_read, 16);
 
     realtime_process();
+
+    free(syscheck.realtime);
 }
 
 int main(void) {

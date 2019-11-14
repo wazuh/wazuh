@@ -54,7 +54,9 @@ int __wrap_OSHash_Delete() {
     return mock();
 }
 
-int __wrap_lstat() {
+int __wrap_lstat(const char *path, struct stat *buf) {
+    buf->st_dev = 1;
+    buf->st_ino = 2;
     return mock();
 }
 
@@ -629,6 +631,7 @@ void test_fim_check_restrict_success(void **state)
     OSMatch_Compile("test$", restriction, 0);
 
     ret = fim_check_restrict("my_test", restriction);
+    OSMatch_FreePattern(restriction);
 
     assert_int_equal(ret, 0);
 }
@@ -644,6 +647,7 @@ void test_fim_check_restrict_failure(void **state)
     OSMatch_Compile("test$", restriction, 0);
 
     ret = fim_check_restrict("my_test_", restriction);
+    OSMatch_FreePattern(restriction);
 
     assert_int_equal(ret, 1);
 }
@@ -807,6 +811,7 @@ void test_fim_insert_success_new(void **state)
         511,
         "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
     );
+    *state = data;
 
     // Not duplicated
     will_return(__wrap_rbtree_insert, 1);
@@ -816,7 +821,6 @@ void test_fim_insert_success_new(void **state)
     will_return(__wrap_OSHash_Add, 2);
 
     ret = fim_insert(file, data, file_stat);
-    free_entry_data(data);
 
     assert_int_equal(ret, 0);
 
@@ -855,6 +859,7 @@ void test_fim_insert_success_add(void **state)
         511,
         "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
     );
+    *state = data;
 
     // Not duplicated
     will_return(__wrap_rbtree_insert, 1);
@@ -865,7 +870,6 @@ void test_fim_insert_success_add(void **state)
     will_return(__wrap_OSHash_Get, inode_data);
 
     ret = fim_insert(file, data, file_stat);
-    free_entry_data(data);
 
     assert_int_equal(ret, 0);
 }
@@ -903,6 +907,7 @@ void test_fim_insert_failure_new(void **state)
         511,
         "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
     );
+    *state = data;
 
     // Not duplicated
     will_return(__wrap_rbtree_insert, 1);
@@ -912,7 +917,6 @@ void test_fim_insert_failure_new(void **state)
     will_return(__wrap_OSHash_Add, 1);
 
     ret = fim_insert(file, data, file_stat);
-    free_entry_data(data);
 
     assert_int_equal(ret, -1);
 }
@@ -950,15 +954,14 @@ void test_fim_insert_failure_duplicated(void **state)
         511,
         "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
     );
+    *state = data;
 
     // Duplicated
     will_return(__wrap_rbtree_insert, 0);
 
     ret = fim_insert(file, data, file_stat);
-    free_entry_data(data);
 
     assert_int_equal(ret, -1);
-
 }
 
 
@@ -990,6 +993,7 @@ void test_fim_update_success(void **state)
         511,
         "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
     );
+    *state = data;
 
     // (fim_update_inode) In hash table
     fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));
@@ -1000,7 +1004,6 @@ void test_fim_update_success(void **state)
     will_return(__wrap_rbtree_replace, 1);
 
     ret = fim_update(file, data, data);
-    free_entry_data(data);
 
     assert_int_equal(ret, 0);
 }
@@ -1034,9 +1037,9 @@ void test_fim_update_failure_nofile(void **state)
         511,
         "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
     );
+    *state = data;
 
     ret = fim_update(NULL, data, data);
-    free_entry_data(data);
 
     assert_int_equal(ret, -1);
 }
@@ -1070,6 +1073,7 @@ void test_fim_update_failure_rbtree(void **state)
         511,
         "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
     );
+    *state = data;
 
     // (fim_update_inode) In hash table
     fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));
@@ -1080,7 +1084,6 @@ void test_fim_update_failure_rbtree(void **state)
     will_return(__wrap_rbtree_replace, 0);
 
     ret = fim_update(file, data, data);
-    free_entry_data(data);
 
     assert_int_equal(ret, -1);
 }
@@ -1112,6 +1115,8 @@ void test_fim_update_inode_in_hash(void **state)
     will_return(__wrap_OSHash_Get, inode_data);
 
     ret = fim_update_inode(file, inode_key);
+
+    free(inode_data);
 
     assert_int_equal(ret, 0);
 }
@@ -1251,6 +1256,8 @@ void test_fim_audit_inode_event_modify(void **state)
     will_return(__wrap_OSHash_Get_ex, inode_data);
 
     fim_audit_inode_event(file, inode_key, FIM_WHODATA, w_evt);
+
+    free_whodata_event(w_evt);
 }
 
 
@@ -1286,6 +1293,8 @@ void test_fim_audit_inode_event_add(void **state)
     will_return(__wrap_OSHash_Get_ex, NULL);
 
     fim_audit_inode_event(file, inode_key, FIM_WHODATA, w_evt);
+
+    free_whodata_event(w_evt);
 }
 
 
@@ -1323,6 +1332,9 @@ void test_fim_checker_file(void **state)
     will_return(__wrap_lstat, 0);
 
     fim_checker(path, item, w_evt, 1);
+
+    free(item);
+    free_whodata_event(w_evt);
 }
 
 
@@ -1344,6 +1356,8 @@ void test_fim_checker_directory(void **state)
     will_return(__wrap_opendir, 0);
 
     fim_checker(path, item, NULL, 1);
+
+    free(item);
 }
 
 
@@ -1359,13 +1373,18 @@ void test_fim_checker_link(void **state)
     fim_element *item = calloc(1, sizeof(fim_element));
     struct stat buf;
     buf.st_mode = S_IFLNK;
+    buf.st_uid = 0;
+    buf.st_gid = 0;
     item->index = 3;
     item->statbuf = buf;
+
     will_return(__wrap_lstat, 0);
     will_return(__wrap_rbtree_get, NULL);
     will_return(__wrap_rbtree_insert, 0);
 
     fim_checker(path, item, NULL, 1);
+
+    free(item);
 }
 
 
@@ -1388,6 +1407,8 @@ void test_fim_checker_deleted(void **state)
     errno = 1;
 
     fim_checker(path, item, NULL, 1);
+
+    free(item);
 }
 
 
@@ -1435,6 +1456,8 @@ void test_fim_checker_deleted_enoent(void **state)
     will_return(__wrap_rbtree_get, NULL);
 
     fim_checker(path, item, NULL, 1);
+
+    free(item);
 }
 
 
@@ -1484,6 +1507,8 @@ void test_fim_directory(void **state)
     item->index = 1;
 
     ret = fim_directory("test", item, NULL, 1);
+    free(entry);
+    free(item);
 
     assert_int_equal(ret, 0);
 }
@@ -1508,6 +1533,7 @@ void test_fim_get_data(void **state)
 
     data = fim_get_data("test", item);
     *state = data;
+    free(item);
 
     assert_string_equal(data->perm, "r--r--r--");
     assert_string_equal(data->hash_md5, "d41d8cd98f00b204e9800998ecf8427e");
@@ -1608,85 +1634,6 @@ void test_fim_realtime_event_deleted_saved(void **state)
 }
 
 
-void test_fim_registry_event(void **state)
-{
-    (void) state;
-    int ret;
-
-    fim_entry_data *data = fill_entry_struct(
-        1500,
-        "0664",
-        "r--r--r--",
-        "100",
-        "1000",
-        "test",
-        "testing",
-        1570184223,
-        606060,
-        "3691689a513ace7e508297b583d7050d",
-        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
-        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
-        FIM_REALTIME,
-        1570184220,
-        "file",
-        12345678,
-        123456,
-        511,
-        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
-    );
-    *state = data;
-
-    will_return(__wrap_rbtree_get, data);
-
-    ret = fim_registry_event ("key", data, 1);
-
-    assert_int_equal(ret, 0);
-}
-
-
-void test_fim_registry_event_insert(void **state)
-{
-    (void) state;
-    int ret;
-
-    fim_entry_data *data = fill_entry_struct(
-        1500,
-        "0664",
-        "r--r--r--",
-        "100",
-        "1000",
-        "test",
-        "testing",
-        1570184223,
-        606060,
-        "3691689a513ace7e508297b583d7050d",
-        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
-        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
-        FIM_REALTIME,
-        1570184220,
-        "file",
-        12345678,
-        1234,
-        511,
-        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
-    );
-    *state = data;
-
-    will_return(__wrap_rbtree_get, NULL);
-    // On fim_insert
-    // Not duplicated
-    will_return(__wrap_rbtree_insert, 1);
-    // Not in hash table
-    will_return(__wrap_OSHash_Get, NULL);
-    // Added
-    will_return(__wrap_OSHash_Add, 2);
-
-    ret = fim_registry_event ("key", data, 1);
-
-    assert_int_equal(ret, 1);
-}
-
-
 void test_check_deleted_files(void **state)
 {
     (void) state;
@@ -1776,6 +1723,8 @@ void test_fim_file_new(void **state)
 
     ret = fim_file("file", item, NULL, 1);
 
+    free(item);
+
     assert_int_equal(ret, 0);
 }
 
@@ -1806,6 +1755,7 @@ void test_fim_file_check(void **state)
         511,
         "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
     );
+    *state = data;
 
     fim_element *item = calloc(1, sizeof(fim_element));
     item->index = 1;
@@ -1818,6 +1768,8 @@ void test_fim_file_check(void **state)
     will_return(__wrap_OSHash_Add, 2);
 
     ret = fim_file("file", item, NULL, 1);
+
+    free(item);
 
     assert_int_equal(ret, 0);
 }
@@ -1852,6 +1804,8 @@ void test_delete_inode_item(void **state)
     will_return(__wrap_OSHash_Delete, 0);
 
     delete_inode_item(inode_key, file);
+
+    free_inode_data(&inode_data);
 }
 
 
@@ -1869,6 +1823,8 @@ void test_delete_inode_item_paths(void **state)
     will_return(__wrap_OSHash_Get, inode_data);
 
     delete_inode_item(inode_key, file);
+
+    free_inode_data(&inode_data);
 }
 
 
@@ -1892,13 +1848,13 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_get_checksum_wrong_size, delete_entry_data),
         cmocka_unit_test(test_fim_check_depth_success),
         cmocka_unit_test(test_fim_check_depth_failure_strlen),
-        cmocka_unit_test(test_fim_insert_success_new),
-        cmocka_unit_test(test_fim_insert_success_add),
-        cmocka_unit_test(test_fim_insert_failure_duplicated),
-        cmocka_unit_test(test_fim_insert_failure_new),
-        cmocka_unit_test(test_fim_update_success),
-        cmocka_unit_test(test_fim_update_failure_nofile),
-        cmocka_unit_test(test_fim_update_failure_rbtree),
+        cmocka_unit_test_teardown(test_fim_insert_success_new, delete_entry_data),
+        cmocka_unit_test_teardown(test_fim_insert_success_add, delete_entry_data),
+        cmocka_unit_test_teardown(test_fim_insert_failure_duplicated, delete_entry_data),
+        cmocka_unit_test_teardown(test_fim_insert_failure_new, delete_entry_data),
+        cmocka_unit_test_teardown(test_fim_update_success, delete_entry_data),
+        cmocka_unit_test_teardown(test_fim_update_failure_nofile, delete_entry_data),
+        cmocka_unit_test_teardown(test_fim_update_failure_rbtree, delete_entry_data),
         cmocka_unit_test(test_fim_delete_no_data),
         cmocka_unit_test(test_fim_update_inode_in_hash),
         cmocka_unit_test(test_fim_update_inode_not_in_hash),
@@ -1922,12 +1878,10 @@ int main(void) {
         cmocka_unit_test(test_fim_realtime_event_add),
         cmocka_unit_test(test_fim_realtime_event_deleted),
         cmocka_unit_test_teardown(test_fim_realtime_event_deleted_saved, delete_entry_data),
-        cmocka_unit_test_teardown(test_fim_registry_event, delete_entry_data),
-        cmocka_unit_test_teardown(test_fim_registry_event_insert, delete_entry_data),
         cmocka_unit_test_teardown(test_check_deleted_files, delete_entry_data),
         cmocka_unit_test_teardown(test_check_deleted_files_scanned, delete_entry_data),
         cmocka_unit_test(test_fim_file_new),
-        cmocka_unit_test(test_fim_file_check),
+        cmocka_unit_test_teardown(test_fim_file_check, delete_entry_data),
         cmocka_unit_test(test_free_inode_data),
         cmocka_unit_test(test_delete_inode_item),
         cmocka_unit_test(test_delete_inode_item_paths),

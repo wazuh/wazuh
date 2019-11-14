@@ -448,6 +448,10 @@ void test_add_audit_rules_syscheck_not_added(void **state)
     int ret;
     ret = add_audit_rules_syscheck(0);
 
+    free(syscheck.opts);
+    free(syscheck.dir[0]);
+    free(syscheck.dir);
+
     assert_int_equal(ret, 1);
 }
 
@@ -783,6 +787,10 @@ void test_audit_parse_delete(void **state)
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
 
     audit_parse(buffer);
+
+    free(syscheck.opts);
+    free(syscheck.dir[0]);
+    free(syscheck.dir);
 }
 
 

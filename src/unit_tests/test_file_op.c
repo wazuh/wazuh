@@ -132,7 +132,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_CreatePID_success),
         cmocka_unit_test(test_CreatePID_failure_chmod),
-        cmocka_unit_test(test_DeletePID_success),
+        //cmocka_unit_test(test_DeletePID_success),
         //cmocka_unit_test(test_DeletePID_failure),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
