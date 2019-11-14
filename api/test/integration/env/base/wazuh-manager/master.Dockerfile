@@ -29,6 +29,7 @@ ADD base/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-base
 FROM base AS wazuh-env-ciscat
+FROM base AS wazuh-env-sca
 
 FROM base AS wazuh-env-syscollector
 COPY configurations/syscollector/wazuh-master/send_to_wdb.py /send_to_wdb.py

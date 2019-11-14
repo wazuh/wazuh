@@ -17,6 +17,7 @@ RUN sed -i 's,"mode": \("white"\|"black"\),"mode": "black",g' /var/ossec/framewo
 ADD base/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-base
+FROM base AS wazuh-env-sca
 FROM base AS wazuh-env-ciscat
 FROM base AS wazuh-env-syscollector
 FROM base AS wazuh-env-security
@@ -29,45 +30,45 @@ FROM base AS wazuh-env-syscollector_white_rbac
 FROM base AS wazuh-env-syscollector_black_rbac
 FROM base AS wazuh-env-overview_white_rbac
 FROM base AS wazuh-env-overview_black_rbac
-FROM base AS wazuh-env-sca_white_rbac
-FROM base AS wazuh-env-sca_black_rbac
 FROM base as wazuh-env-lists_white_rbac
 FROM base as wazuh-env-lists_black_rbac
-FROM base as wazuh-env-security_white_rbac
-FROM base as wazuh-env-security_black_rbac
-FROM base as wazuh-env-agents_white_rbac
-FROM base as wazuh-env-agents_black_rbac
-FROM base as wazuh-env-ciscat_white_rbac
-FROM base as wazuh-env-ciscat_black_rbac
 
 FROM base AS wazuh-env-cluster
 COPY configurations/cluster/wazuh-manager/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
 ADD configurations/cluster/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
 
-# FROM base as wazuh-env-security_white_rbac
-# COPY configurations/rbac/security/rbac.db /var/ossec/api/configuration/security/rbac.db
-# ADD configurations/rbac/security/white_configuration_rbac.sh /scripts/configuration_rbac.sh
-# RUN /scripts/configuration_rbac.sh
-#
-# FROM base as wazuh-env-security_black_rbac
-# COPY configurations/rbac/security/rbac.db /var/ossec/api/configuration/security/rbac.db
-# ADD configurations/rbac/security/black_configuration_rbac.sh /scripts/configuration_rbac.sh
-# RUN /scripts/configuration_rbac.sh
-#
-# FROM base as wazuh-env-agents_white_rbac
-# ADD configurations/rbac/agents/white_configuration_rbac.sh /scripts/configuration_rbac.sh
-# RUN /scripts/configuration_rbac.sh
-#
-# FROM base as wazuh-env-agents_black_rbac
-# ADD configurations/rbac/agents/black_configuration_rbac.sh /scripts/configuration_rbac.sh
-# RUN /scripts/configuration_rbac.sh
-#
-# FROM base as wazuh-env-ciscat_white_rbac
-# ADD configurations/rbac/ciscat/white_configuration_rbac.sh /scripts/configuration_rbac.sh
-# RUN /scripts/configuration_rbac.sh
-#
-# FROM base as wazuh-env-ciscat_black_rbac
-# ADD configurations/rbac/ciscat/black_configuration_rbac.sh /scripts/configuration_rbac.sh
-# RUN /scripts/configuration_rbac.sh
+FROM base as wazuh-env-security_white_rbac
+COPY configurations/rbac/security/rbac.db /var/ossec/api/configuration/security/rbac.db
+ADD configurations/rbac/security/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base as wazuh-env-security_black_rbac
+COPY configurations/rbac/security/rbac.db /var/ossec/api/configuration/security/rbac.db
+ADD configurations/rbac/security/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base as wazuh-env-agents_white_rbac
+ADD configurations/rbac/agents/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base as wazuh-env-agents_black_rbac
+ADD configurations/rbac/agents/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base as wazuh-env-ciscat_white_rbac
+ADD configurations/rbac/ciscat/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base as wazuh-env-ciscat_black_rbac
+ADD configurations/rbac/ciscat/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base as wazuh-env-sca_white_rbac
+ADD configurations/rbac/sca/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base as wazuh-env-sca_black_rbac
+ADD configurations/rbac/sca/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
 
 FROM wazuh-env-${ENVIRONMENT}
