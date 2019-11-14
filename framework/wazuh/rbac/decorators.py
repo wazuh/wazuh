@@ -204,7 +204,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
     target_params = dict()
     add_denied = True
     for resource in resources:
-        m = re.search(r'^([a-z*]+:[a-z*]+):(\w+|\*|{(\w+)})$', resource)
+        m = re.search(r'^([a-z*]+:[a-z*]+):([^\{\}]+|\*|{(\w+)})$', resource)
         res_base = m.group(1)
         # If we find a '{' in the regex we obtain the dynamic resource/s
         if '{' in m.group(2):
@@ -230,7 +230,10 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                 res_list.append("{0}:{1}".format(res_base, params))
         # If we don't find a regex match we obtain the static resource/s
         else:
-            target_params[m.group(1)] = m.group(2)
+            if m.group(2) == '*':  # If resourceless
+                target_params[m.group(1)] = m.group(2)
+            else:  # Static resource
+                target_params[m.group(1)] = '*'
             res_list.append(resource)
     # Create dict of required policies with action: list(resources) pairs
     req_permissions = dict()
