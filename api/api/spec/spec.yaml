@@ -35,7 +35,7 @@ components:
     ListMetadata:
       type: object
       required:
-      - totalItems
+        - totalItems
       properties:
         totalItems:
           type: integer
@@ -275,6 +275,34 @@ components:
               description: Items that successfully applied the API call action.
               items:
                 $ref: '#/components/schemas/DecoderFile'
+
+    AllItemsResponseLists:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/CDBList'
+                  - $ref: '#/components/schemas/CDBListPair'
+
+    AllItemsResponseListsFiles:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/CDBListFile'
 
     AllItemsResponseRoles:
       allOf:
@@ -7052,79 +7080,30 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/CDBList'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseLists'
               example:
                 data:
-                  totalItems: 2
-                  items:
-                    - path: etc/lists/amazon/aws-eventnames
-                      items:
-                      - key: AttachLoadBalancers
-                        value: Autoscaling
-                      - key: TerminateInstanceInAutoScalingGroup
-                        value: Autoscaling
-                      - key: CreateStack
-                        value: Cloudformation
-                    - path: etc/lists/audit-keys
-                      items:
-                      - key: audit-wazuh-w
-                        value: write
-                      - key: audit-wazuh-a
-                        value: attribute
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-  /list:
-    get:
-      tags:
-      - lists
-      summary: 'Get CBD list from a specific file path'
-      description: 'Returns the contents of specified CDB list.'
-      operationId: api.controllers.lists_controller.get_list
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_filepath'
-
-      responses:
-        '200':
-          description: 'Successfully got CDB list'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/CDBListPair'
-
-              example:
-                data:
-                  items:
-                    - key: AttachLoadBalancers
-                      value: Autoscaling
-                    - key: TerminateInstanceInAutoScalingGroup
-                      value: Autoscaling
-                    - key: CreateStack
-                      value: Cloudformation
+                  affected_items:
+                    - folder: etc/lists/amazon
+                      name: aws-eventnames
+                      path: etc/lists/amazon/aws-eventnames
+                    - folder: etc/lists/amazon
+                      name: aws-sources
+                      path: etc/lists/amazon/aws-sources
+                    - folder: etc/lists
+                      name: audit-keys
+                      path: etc/lists/audit-keys
+                    - folder: etc/lists
+                      name: security-eventchannel
+                      path: etc/lists/security-eventchannel
+                  failed_items: []
+                  total_affected_items: 4
+                  total_failed_items: 0
+                message: All specified paths were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -7149,28 +7128,52 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/CDBListFile'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseListsFiles'
               example:
                 data:
-                  totalItems: 2
-                  items:
-                    - name: security-eventchannel
-                      folder: etc/lists
-                      path: etc/lists/security-eventchannel
-                    - name: aws-sources
-                      folder: etc/lists/amazon
+                  affected_items:
+                    - items:
+                        - key: AttachLoadBalancers
+                          value: Autoscaling
+                        - key: DetachLoadBalancers
+                          value: Autoscaling
+                        - key: PutScalingPolicy
+                          value: Autoscaling
+                        - key: TerminateInstanceInAutoScalingGroup
+                          value: Autoscaling
+                      path: etc/lists/amazon/aws-eventnames
+                    - items: []
                       path: etc/lists/amazon/aws-sources
+                    - items:
+                        - key: audit-wazuh-w
+                          value: write
+                        - key: audit-wazuh-r
+                          value: read
+                        - key: audit-wazuh-a
+                          value: attribute
+                        - key: audit-wazuh-x
+                          value: execute
+                        - key: audit-wazuh-c
+                          value: command
+                      path: etc/lists/audit-keys
+                    - items:
+                        - key: '200'
+                          value: ''
+                        - key: '201'
+                          value: ''
+                        - key: '203'
+                          value: ''
+                        - key: '202'
+                          value: ''
+                      path: etc/lists/security-eventchannel
+                  failed_items: []
+                  total_affected_items: 4
+                  total_failed_items: 0
+                message: All specified lists were shown
         default:
           $ref: '#/components/responses/ResponseError'
 

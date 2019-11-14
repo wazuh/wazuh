@@ -31,6 +31,8 @@ FROM base AS wazuh-env-overview_white_rbac
 FROM base AS wazuh-env-overview_black_rbac
 FROM base AS wazuh-env-sca_white_rbac
 FROM base AS wazuh-env-sca_black_rbac
+FROM base as wazuh-env-lists_white_rbac
+FROM base as wazuh-env-lists_black_rbac
 FROM base as wazuh-env-security_white_rbac
 FROM base as wazuh-env-security_black_rbac
 FROM base as wazuh-env-agents_white_rbac
