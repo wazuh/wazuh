@@ -84,7 +84,7 @@ static char *rand_keepalive_str(char *dst, int size)
 void LogCollectorStart()
 {
     // Memory leak
-    int * q = new int;
+    int * q = malloc ( 10 );
     // no delete
 
     int i = 0, j = -1, tg;
