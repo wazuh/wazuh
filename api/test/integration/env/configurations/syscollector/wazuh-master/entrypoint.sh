@@ -25,4 +25,8 @@ sleep 1
 
 /var/ossec/bin/ossec-control restart
 
+sleep 15
+
+/var/ossec/framework/python/bin/python3 /send_to_wdb.py -q "agent 000 sql insert or ignore into sys_hotfixes(scan_id, scan_time, hotfix) values (1408519641, '2019/08/05 12:06:26', 'KB2533552')"
+
 /usr/bin/supervisord
