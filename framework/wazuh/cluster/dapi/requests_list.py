@@ -102,8 +102,8 @@ functions = {
         'is_async': False
     },
     'PUT/agents/groups/:group_id/restart': {
-        'function': Agent.restart_agents_by_group,
-        'type': 'local_master',
+        'function': Agent.restart_agents,
+        'type': 'distributed_master',
         'is_async': False
     },
     'PUT/agents/:agent_name': {

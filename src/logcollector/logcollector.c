@@ -47,6 +47,7 @@ static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
 int OUTPUT_QUEUE_SIZE = OUTPUT_MIN_QUEUE_SIZE;
 logsocket default_agent = { .name = "agent" };
+logtarget default_target[2] = { { .log_socket = &default_agent } };
 
 /* Output thread variables */
 static pthread_mutex_t mutex;
@@ -558,8 +559,7 @@ void LogCollectorStart()
                                  current->file);
 
                         /* Send message about log rotated */
-                        SendMSG(logr_queue, msg_alert,
-                                "ossec-logcollector", LOCALFILE_MQ);
+                        w_msg_hash_queues_push(msg_alert, "ossec-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
 
                         mdebug1("File inode changed. %s",
                                current->file);
@@ -589,8 +589,7 @@ void LogCollectorStart()
                                  current->file);
 
                         /* Send message about log rotated */
-                        SendMSG(logr_queue, msg_alert,
-                                "ossec-logcollector", LOCALFILE_MQ);
+                        w_msg_hash_queues_push(msg_alert, "ossec-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
 
                         mdebug1("File size reduced. %s",
                                 current->file);
@@ -738,8 +737,11 @@ void LogCollectorStart()
             f_check = 0;
         }
 
-        rand_keepalive_str(keepalive, KEEPALIVE_SIZE);
-        SendMSG(logr_queue, keepalive, "ossec-keepalive", LOCALFILE_MQ);
+        if (!os_iswait()) {
+            rand_keepalive_str(keepalive, KEEPALIVE_SIZE);
+            w_msg_hash_queues_push(keepalive, "ossec-keepalive", strlen(keepalive) + 1, default_target, LOCALFILE_MQ);
+        }
+
         sleep(1);
 
         f_check++;
