@@ -661,43 +661,38 @@ void fim_get_checksum (fim_entry_data * data) {
     char *checksum = NULL;
     int size;
 
-    os_calloc(OS_SIZE_128, sizeof(char), checksum);
-
-    size = snprintf(checksum,
-            OS_SIZE_128,
-            "%d:%s:%s:%s:%s:%s:%s:%d:%lu:%s:%s:%s",
+    size = snprintf(0,
+            0,
+            "%d:%s:%s:%s:%s:%s:%s:%u:%lu:%s:%s:%s",
             data->size,
-            data->perm,
-            data->attributes,
-            data->uid,
-            data->gid,
-            data->user_name,
-            data->group_name,
+            data->perm ? data->perm : "",
+            data->attributes ? data->attributes : "",
+            data->uid ? data->uid : "",
+            data->gid ? data->gid : "",
+            data->user_name ? data->user_name : "",
+            data->group_name ? data->group_name : "",
             data->mtime,
             data->inode,
             data->hash_md5,
             data->hash_sha1,
             data->hash_sha256);
 
-    if (size >= OS_SIZE_128) {
-        // Needs more space
-        os_realloc(checksum, (size + 1) * sizeof(char), checksum);
-        snprintf(checksum,
-                size + 1,
-                "%d:%s:%s:%s:%s:%s:%s:%d:%lu:%s:%s:%s",
-                data->size,
-                data->perm,
-                data->attributes,
-                data->uid,
-                data->gid,
-                data->user_name,
-                data->group_name,
-                data->mtime,
-                data->inode,
-                data->hash_md5,
-                data->hash_sha1,
-                data->hash_sha256);
-    }
+    os_calloc(size + 1, sizeof(char), checksum);
+    snprintf(checksum,
+            size + 1,
+            "%d:%s:%s:%s:%s:%s:%s:%u:%lu:%s:%s:%s",
+            data->size,
+            data->perm ? data->perm : "",
+            data->attributes ? data->attributes : "",
+            data->uid ? data->uid : "",
+            data->gid ? data->gid : "",
+            data->user_name ? data->user_name : "",
+            data->group_name ? data->group_name : "",
+            data->mtime,
+            data->inode,
+            data->hash_md5,
+            data->hash_sha1,
+            data->hash_sha256);
 
     OS_SHA1_Str(checksum, -1, data->checksum);
     free(checksum);

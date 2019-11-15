@@ -56,7 +56,10 @@ int __wrap_OSHash_Delete() {
 
 int __wrap_lstat(const char *path, struct stat *buf) {
     buf->st_dev = 1;
-    buf->st_ino = 2;
+    buf->st_ino = 999;
+    buf->st_uid = 0;
+    buf->st_gid = 0;
+    buf->st_mtime = 1433395216;
     return mock();
 }
 
@@ -1373,10 +1376,11 @@ void test_fim_checker_link(void **state)
     fim_element *item = calloc(1, sizeof(fim_element));
     struct stat buf;
     buf.st_mode = S_IFLNK;
-    buf.st_uid = 0;
-    buf.st_gid = 0;
+
     item->index = 3;
     item->statbuf = buf;
+    item->configuration = 511;
+    item->mode = 1;
 
     will_return(__wrap_lstat, 0);
     will_return(__wrap_rbtree_get, NULL);
