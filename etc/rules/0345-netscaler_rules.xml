@@ -31,9 +31,6 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_matched_sid>80101</if_matched_sid>
         <same_source_ip />
         <description>Netscaler: Multiple AAA failed to login the user</description>
-        <mitre>
-          <id>T1110</id>
-        </mitre>
         <group>authentication_failures,netscaler-aaa,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gpg13_3.3,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
     </rule>
 
@@ -132,10 +129,6 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_matched_sid>80111</if_matched_sid>
         <same_source_ip />
         <description>Netscaler: Multiple non-http resource access denied</description>
-        <mitre>
-          <id>T1133</id>
-          <id>T1083</id>
-        </mitre>
         <group>netscaler-sslvpn,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
     </rule>
 
@@ -147,20 +140,12 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_sid>80100</if_sid>
         <match>SSLVPN HTTP_RESOURCEACCESS_DENIED</match>
         <description>Netscaler: A http resource access is denied by policy engine</description>
-        <mitre>
-          <id>T1133</id>
-          <id>T1083</id>
-        </mitre>
         <group>netscaler-sslvpn,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
     </rule>
 
     <rule id="80114" level="10" frequency="10" timeframe="120">
         <if_matched_sid>80113</if_matched_sid>
         <description>Netscaler: Multiple http resource access denied</description>
-        <mitre>
-          <id>T1133</id>
-          <id>T1083</id>
-        </mitre>
         <group>netscaler-sslvpn,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
     </rule>
 
@@ -452,9 +437,6 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_matched_sid>80139</if_matched_sid>
         <same_source_ip />
         <description>Netscaler: Multiple UI/API login failed</description>
-        <mitre>
-          <id>T1110</id>
-        </mitre>
         <group>authentication_failures,netscaler-cmd,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_3.3,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
     </rule>
 

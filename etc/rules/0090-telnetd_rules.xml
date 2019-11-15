@@ -47,9 +47,6 @@
     <same_source_ip />
     <description>telnetd: Multiple connection attempts from same source </description>
     <description>(possible scan).</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
     <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 

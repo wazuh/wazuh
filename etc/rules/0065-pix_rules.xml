@@ -147,9 +147,6 @@
     <if_sid>4314</if_sid>
     <id>^6-113006</id>
     <description>PIX: AAA (VPN) user locked out.</description>
-    <mitre>
-      <id>T1133</id>
-    </mitre>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
   </rule>
 
@@ -157,9 +154,6 @@
     <if_sid>4312</if_sid>
     <id>^3-201008</id>
     <description>PIX: The PIX is disallowing new connections.</description>
-    <mitre>
-      <id>T1133</id>
-    </mitre>
     <group>service_availability,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
@@ -175,9 +169,6 @@
     <if_sid>4314</if_sid>
     <id>^5-111003</id>
     <description>PIX: Firewall configuration deleted.</description>
-    <mitre>
-      <id>T1089</id>
-    </mitre>
     <group>config_changed,pci_dss_1.1.1,pci_dss_10.4,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.a.1,hipaa_164.312.b,nist_800_53_CM.3,nist_800_53_CM.5,nist_800_53_AU.8,</group>
   </rule>
 
@@ -185,9 +176,6 @@
     <if_sid>4314</if_sid>
     <id>^5-111005|^5-111004|^5-111002|^5-111007</id>
     <description>PIX: Firewall configuration changed.</description>
-    <mitre>
-      <id>T1089</id>
-    </mitre>
     <group>config_changed,pci_dss_1.1.1,pci_dss_10.4,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.a.1,hipaa_164.312.b,nist_800_53_CM.3,nist_800_53_CM.5,nist_800_53_AU.8,</group>
   </rule>
 
@@ -201,9 +189,6 @@
     <if_sid>4314</if_sid>
     <id>^5-502101|^5-502102</id>
     <description>PIX: User created or modified on the Firewall.</description>
-    <mitre>
-      <id>T1133</id>
-    </mitre>
     <group>adduser,account_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_IA.4,nist_800_53_AU.14,nist_800_53_AC.7,</group>
   </rule>
 
@@ -235,19 +220,12 @@
     <if_matched_sid>4333</if_matched_sid>
     <same_source_ip />
     <description>PIX: Multiple attack in progress messages.</description>
-    <mitre>
-      <id>T1133</id>
-    </mitre>
     <group>pci_dss_10.6.1,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
   </rule>
 
   <rule id="4386" level="10" frequency="10" timeframe="240">
     <if_matched_sid>4334</if_matched_sid>
     <description>PIX: Multiple AAA (VPN) authentication failures.</description>
-    <mitre>
-      <id>T1110</id>
-      <id>T1133</id>
-    </mitre>
     <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,</group>
     <same_source_ip />
   </rule>

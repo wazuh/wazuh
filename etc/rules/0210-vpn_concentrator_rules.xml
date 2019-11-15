@@ -39,10 +39,6 @@
     <if_matched_sid>14202</if_matched_sid>
     <same_source_ip />
     <description>CiscoVPN: Multiple VPN authentication failures.</description>
-    <mitre>
-      <id>T1110</id>
-      <id>T1133</id>
-    </mitre>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
   </rule>
 </group>

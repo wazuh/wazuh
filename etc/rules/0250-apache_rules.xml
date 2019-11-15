@@ -130,9 +130,6 @@
     <if_matched_sid>30118</if_matched_sid>
     <same_source_ip />
     <description>ModSecurity: Multiple attempts blocked.</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
     <group>modsecurity,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
   </rule>
 
@@ -159,9 +156,6 @@
   <rule id="30202" level="10" frequency="10" timeframe="120">
     <if_matched_sid>30201</if_matched_sid>
     <description>ModSecurity: Multiple attempts blocked.</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
     <group>modsecurity,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
   </rule>
 
@@ -233,9 +227,6 @@
     <if_matched_sid>30309</if_matched_sid>
     <same_source_ip/>
     <description>Apache: Multiple authentication failures with invalid user.</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
   </rule>
 
@@ -301,9 +292,6 @@
     <if_sid>30402</if_sid>
     <match>with code 403</match>
     <description>ModSecurity rejected a query</description>
-    <mitre>
-      <id>T1089</id>
-    </mitre>
     <group>modsecurity,gpg13_10.1,</group>
   </rule>
 

@@ -73,9 +73,6 @@
     <match>Refused PORT </match>
     <description>proftpd: Attempt to bypass firewall that can't adequately</description>
     <description> keep state of FTP traffic.</description>
-    <mitre>
-      <id>T1089</id>
-    </mitre>
     <info type="link">http://www.kb.cert.org/vuls/id/328867</info>
     <info type="text">US-Cert Note VU#328867: Multiple vendors' firewalls do not adequately keep state of FTP traffic</info>
     <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
@@ -85,9 +82,6 @@
     <if_sid>11200</if_sid>
     <match>Maximum login attempts </match>
     <description>proftpd: Multiple failed login attempts.</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
   </rule>
 
@@ -176,9 +170,6 @@
     <if_matched_sid>11204</if_matched_sid>
     <same_source_ip />
     <description>proftpd: FTP brute force (multiple failed logins).</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
   </rule>
 
@@ -186,9 +177,6 @@
     <if_matched_sid>11201</if_matched_sid>
     <same_source_ip />
     <description>proftpd: Multiple connection attempts from same source.</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
     <group>recon,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
   </rule>
 
@@ -196,9 +184,6 @@
     <if_matched_sid>11215</if_matched_sid>
     <same_source_ip />
     <description>proftpd: Multiple timed out logins from same source.</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
     <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 

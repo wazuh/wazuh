@@ -39,9 +39,6 @@
     <url>=select%20|select+|insert%20|%20from%20|%20where%20|union%20|</url>
     <url>union+|where+|null,null|xp_cmdshell</url>
     <description>SQL injection attempt.</description>
-    <mitre>
-      <id>T1055</id>
-    </mitre>
     <group>attack,sql_injection,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,</group>
   </rule>
 
@@ -85,9 +82,6 @@
     <url>+as+varchar</url>
     <regex>%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)</regex>
     <description>MSSQL Injection attempt (/ur.php, urchin.js)</description>
-    <mitre>
-      <id>T1055</id>
-    </mitre>
     <group>attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,</group>
   </rule>
 
@@ -168,9 +162,6 @@
     <same_source_ip />
     <description>Multiple SQL injection attempts from same </description>
     <description>source ip.</description>
-    <mitre>
-      <id>T1055</id>
-    </mitre>
     <group>attack,sql_injection,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,</group>
   </rule>
 
@@ -245,9 +236,6 @@
     <if_sid>31101,31108</if_sid>
     <regex>"\(\)\s*{\s*:;\s*}\s*;|"\(\)\s*{\s*foo:;\s*}\s*;|"\(\)\s*{\s*ignored;\s*}\s*|"\(\)\s*{\s*gry;\s*}\s*;</regex>
     <description>Shellshock attack attempt</description>
-    <mitre>
-      <id>T1100</id>
-    </mitre>
     <info type="cve">CVE-2014-6271</info>
     <info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6271</info>
     <group>attack,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
@@ -257,9 +245,6 @@
     <if_sid>31101,31108</if_sid>
     <regex>"\(\)\s*{\s*_;\.*}\s*>_[\$\(\$\(\)\)]\s*{</regex>
     <description>Shellshock attack attempt</description>
-    <mitre>
-      <id>T1100</id>
-    </mitre>
     <info type="cve">CVE-2014-6278</info>
     <info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6278</info>
     <group>attack,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
