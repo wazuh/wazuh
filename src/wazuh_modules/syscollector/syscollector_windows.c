@@ -1332,16 +1332,16 @@ void sys_hw_windows(const char* LOCATION){
                 switch(ret)
                 {
                     case 1:
-                        mterror(WM_SYS_LOGTAG, "Unable to get raw SMBIOS firmware table size.");
+                        mtwarn(WM_SYS_LOGTAG, "Unable to get raw SMBIOS firmware table size.");
                         break;
                     case 2:
-                        mterror(WM_SYS_LOGTAG, "Unable to allocate memory for the SMBIOS firmware table.");
+                        mtwarn(WM_SYS_LOGTAG, "Unable to allocate memory for the SMBIOS firmware table.");
                         break;
                     case 3:
-                        mterror(WM_SYS_LOGTAG, "Unable to get the SMBIOS firmware table.");
+                        mtwarn(WM_SYS_LOGTAG, "Unable to get the SMBIOS firmware table.");
                         break;
                     case 4:
-                        mterror(WM_SYS_LOGTAG, "Serial Number not available in SMBIOS firmware table.");
+                        mtdebug1(WM_SYS_LOGTAG, "Serial Number not available in SMBIOS firmware table.");
                         break;
                     default:
                         break;
@@ -1390,11 +1390,10 @@ void sys_hw_windows(const char* LOCATION){
         }
     }
 
-    if (!serial)
-        os_strdup("unknown", serial);
-
-    cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
-    free(serial);
+    if (serial) {
+        cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+        free(serial);
+    }
 
     /* Get CPU and memory information */
     hw_info *sys_info;
