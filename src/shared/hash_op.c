@@ -573,12 +573,14 @@ OSHashNode *OSHash_Begin(const OSHash *self, unsigned int *i){
     OSHashNode *curr_node;
     *i = 0;
 
-    while (*i <= self->rows) {
-        curr_node = self->table[*i];
-        if (curr_node && curr_node->key) {
-            return curr_node;
+    if (self) {
+        while (*i <= self->rows) {
+            curr_node = self->table[*i];
+            if (curr_node && curr_node->key) {
+                return curr_node;
+            }
+            (*i)++;
         }
-        (*i)++;
     }
 
     return NULL;

@@ -467,15 +467,26 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
 
 
 static void fim_link_update(int pos, char *new_path) {
+    int i;
+
     if (*syscheck.dir[pos]) {
-        fim_link_check_delete(pos);
+        fim_link_delete_range(pos);
+    }
+
+    // Check if the updated path of the link is already in the configuration
+    for (i = 0; syscheck.dir[i] != NULL; i++) {
+        if (strcmp(new_path, syscheck.dir[i]) == 0) {
+            mdebug1(FIM_LINK_ALREADY_ADDED, syscheck.dir[i], syscheck.symbolic_links[pos]);
+            *syscheck.dir[pos] = '\0';
+            return;
+        }
     }
 
     os_free(syscheck.dir[pos]);
     os_calloc(strlen(new_path) + 1, sizeof(char), syscheck.dir[pos]);
     snprintf(syscheck.dir[pos], strlen(new_path) + 1, "%s", new_path);
 
-    //Add new entries without alert.
+    // Add new entries without alert.
     fim_link_silent_scan(new_path, pos);
 }
 
@@ -483,15 +494,19 @@ static void fim_link_update(int pos, char *new_path) {
 static void fim_link_check_delete(int pos) {
     struct stat statbuf;
 
-    fim_link_delete_range(pos);
-    fim_delete_realtime_watches(pos);
-
-    if (w_stat(syscheck.symbolic_links[pos], &statbuf) < 0) {
-        if(errno == ENOENT) {
+    if (w_stat(syscheck.dir[pos], &statbuf) < 0) {
+        if (errno == ENOENT) {
             *syscheck.dir[pos] = '\0';
             return;
         }
-        mdebug1(FIM_STAT_FAILED, syscheck.symbolic_links[pos], errno, strerror(errno));
+        mdebug1(FIM_STAT_FAILED, syscheck.dir[pos], errno, strerror(errno));
+    } else {
+        fim_link_delete_range(pos);
+        *syscheck.dir[pos] = '\0';
+
+        if (syscheck.realtime && syscheck.realtime->dirtb) {
+            fim_delete_realtime_watches(pos);
+        }
     }
 }
 
@@ -572,15 +587,19 @@ static void fim_link_reload_broken_link(char *path, int index) {
 
     for (element = 0; syscheck.dir[element]; element++) {
         if (strcmp(path, syscheck.dir[element]) == 0) {
-            // If a configuration directory exsists dont reload
-            mwarn("Directory '%s' already monitoried, ignoring link '%s'",
+            // If a configuration directory exists don't reload
+            mdebug1(FIM_LINK_ALREADY_ADDED,
                   syscheck.dir[element], syscheck.symbolic_links[index]);
             found = 1;
         }
     }
     // Reload broken link
     if (!found) {
-        fim_link_update(index, path);
+        os_free(syscheck.dir[index]);
+        os_calloc(strlen(path) + 1, sizeof(char), syscheck.dir[index]);
+        snprintf(syscheck.dir[index], strlen(path) + 1, "%s", path);
+        // Add new entries without alert.
+        fim_link_silent_scan(path, index);
     }
 }
 #endif
