@@ -19,6 +19,9 @@ FROM base_agent AS wazuh-env-agent-security
 FROM base_agent AS wazuh-env-agent-manager
 FROM base_agent AS wazuh-env-agent-cluster
 
+FROM base_agent AS wazuh-env-agent-sca
+COPY configurations/sca/wazuh-agent-sca/healthcheck/healthcheck.py /tmp/healthcheck.py
+
 FROM base_agent AS wazuh-env-agent-ciscat
 RUN apt-get update && apt-get install openjdk-8-jdk -y
 COPY configurations/ciscat/wazuh-agent-ciscat/test.keys /var/ossec/etc/test.keys
@@ -43,6 +46,9 @@ FROM base_agent AS wazuh-env-agent-overview_white_rbac
 FROM base_agent AS wazuh-env-agent-overview_black_rbac
 FROM base_agent AS wazuh-env-agent-lists_white_rbac
 FROM base_agent AS wazuh-env-agent-lists_black_rbac
+FROM wazuh-env-agent-sca AS wazuh-env-agent-sca_white_rbac
+FROM wazuh-env-agent-sca AS wazuh-env-agent-sca_black_rbac
+
 
 FROM wazuh-env-agent-${ENVIRONMENT}
 

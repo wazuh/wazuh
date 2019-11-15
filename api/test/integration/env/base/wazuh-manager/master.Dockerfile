@@ -29,9 +29,11 @@ ADD base/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-base
 FROM base AS wazuh-env-ciscat
+FROM base AS wazuh-env-sca
 
 FROM base AS wazuh-env-syscollector
 COPY configurations/syscollector/wazuh-master/send_to_wdb.py /send_to_wdb.py
+ADD configurations/syscollector/wazuh-master/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-security
 COPY configurations/security/wazuh-master/rbac.db /var/ossec/api/configuration/security/rbac.db
@@ -110,6 +112,14 @@ RUN /scripts/configuration_rbac.sh
 
 FROM base AS wazuh-env-overview_black_rbac
 ADD configurations/rbac/overview/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base AS wazuh-env-sca_white_rbac
+ADD configurations/rbac/sca/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base AS wazuh-env-sca_black_rbac
+ADD configurations/rbac/sca/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
 FROM base as wazuh-env-lists_white_rbac

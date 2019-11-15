@@ -501,6 +501,32 @@ components:
               items:
                   $ref: '#/components/schemas/CiscatResults'
 
+    AllItemsResponseSCADatabase:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                  $ref: '#/components/schemas/SCADatabase'
+
+    AllItemsResponseSCAChecks:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                  $ref: '#/components/schemas/SCAChecks'
+
     BasicInfo:
       type: object
       properties:
@@ -8523,36 +8549,40 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SCADatabase'
+                      $ref: '#/components/schemas/AllItemsResponseSCADatabase'
               example:
-               data:
-                totalItems: 2
-                items:
-                - name: "System audit for SSH hardening"
-                  pass: 3
-                  score: 33
-                  references: "https://www.ssh.com/ssh/"
-                  fail: 6
-                  description: "Guidance for establishing a secure configuration for SSH service vulnerabilities."
-                  policy_id: "system_audit_ssh"
-                  end_scan: "2019-03-06T10:12:02Z"
-                  start_scan: "2019-03-06T10:12:02Z"
-                - name: "CIS benchmark for Debian/Linux"
-                  pass: 36
-                  score: 87
-                  references: "https://www.cisecurity.org/cis-benchmarks/"
-                  fail: 5
-                  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux systems running on x86 and x64 platforms. Many lists are included including filesystem types, services, clients, and network protocols. Not all items in these lists are guaranteed to exist on all distributions and additional similar items may exist which should be considered in addition to those explicitly mentioned."
-                  policy_id: "cis_debian"
-                  end_scan: "2019-03-06T10:11:53Z"
-                  start_scan: "2019-03-06T10:11:53Z"
+                data:
+                  affected_items:
+                    - description: This document provides prescriptive guidance for establishing a secure
+                        configuration posture for Debian Linux 9.
+                      end_scan: '2019-11-13T10:57:09Z'
+                      fail: 26
+                      hash_file: c5ada687e0c2ae9504be13b965074cc262e62be4e68fe550d464018def4af61c
+                      invalid: 1
+                      name: CIS benchmark for Debian/Linux 9 L2
+                      pass: 2
+                      policy_id: cis_debian9_L2
+                      references: https://www.cisecurity.org/cis-benchmarks/
+                      score: 7
+                      start_scan: '2019-11-13T10:57:09Z'
+                      total_checks: 29
+                    - description: This document provides prescriptive guidance for establishing a secure
+                        configuration posture for Debian Linux 9.
+                      end_scan: '2019-11-13T10:57:06Z'
+                      fail: 48
+                      hash_file: b44ecda10d854ecad25476ed99b5dfd9481e8a846c8d8a7684a1cc3b29f12993
+                      invalid: 16
+                      name: CIS benchmark for Debian/Linux 9 L1
+                      pass: 35
+                      policy_id: cis_debian9_L1
+                      references: https://www.cisecurity.org/cis-benchmarks/
+                      score: 42
+                      start_scan: '2019-11-13T10:57:06Z'
+                      total_checks: 99
+                  failed_items: []
+                  total_affected_items: 2
+                  total_failed_items: 0
+                message: All selected sca information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8590,22 +8620,14 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SCAChecks'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSCAChecks'
               example:
                 data:
-                  totalItems: 2
-                  items:
+                  affected_items:
                   - remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
                     rationale: "Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion if it is not bound to a separate partition."
                     title: "Ensure separate partition exists for /var"
@@ -8614,6 +8636,7 @@ paths:
                     description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
                     id: 5003
                     result: failed
+                    condition: all
                     references: "https://tldp.org/HOWTO/LVM-HOWTO/"
                     compliance:
                     - key: cis
@@ -8628,6 +8651,7 @@ paths:
                     description: exim is an open source IMAP and POP3 server for Linux based systems.
                     id: 5022
                     result: passed
+                    condition: all
                     compliance:
                     - key: cis
                       value: "2.2.11"
@@ -8635,6 +8659,10 @@ paths:
                       value: "9"
                     - key: pci_dss
                       value: "2.2.2"
+                  failed_items: []
+                  total_affected_items: 2
+                  total_failed_items: 0
+                message: All selected sca/policy information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 

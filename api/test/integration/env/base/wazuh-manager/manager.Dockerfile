@@ -17,6 +17,7 @@ RUN sed -i 's,"mode": \("white"\|"black"\),"mode": "black",g' /var/ossec/framewo
 ADD base/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-base
+FROM base AS wazuh-env-sca
 FROM base AS wazuh-env-ciscat
 FROM base AS wazuh-env-syscollector
 FROM base AS wazuh-env-security
@@ -60,6 +61,14 @@ RUN /scripts/configuration_rbac.sh
 
 FROM base as wazuh-env-ciscat_black_rbac
 ADD configurations/rbac/ciscat/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base as wazuh-env-sca_white_rbac
+ADD configurations/rbac/sca/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base as wazuh-env-sca_black_rbac
+ADD configurations/rbac/sca/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
 FROM wazuh-env-${ENVIRONMENT}
