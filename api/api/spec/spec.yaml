@@ -1816,7 +1816,13 @@ components:
         title:
           type: string
           description: A brief description of what is being checked.
-
+        condition:
+          type: string
+          description: Specifies how rule results are aggregated in order to calculate the final value of a check.
+          enum:
+            - all
+            - any
+            - none
     SCADatabase:
       type: object
       properties:
@@ -3119,6 +3125,12 @@ components:
       schema:
         type: string
         format: alphanumeric
+    condition:
+      in: query
+      name: condition
+      description: Filters by condition.
+      schema:
+        type: string
     role_id:
       in: path
       name: role_id
@@ -8608,6 +8620,7 @@ paths:
         - $ref: '#/components/parameters/registry'
         - $ref: '#/components/parameters/references'
         - $ref: '#/components/parameters/result'
+        - $ref: '#/components/parameters/condition'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
