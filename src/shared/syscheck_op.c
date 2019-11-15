@@ -288,12 +288,12 @@ int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
     char *sym_path;
 
     if (changes = strchr(c_sum, '!'), !changes) {
-        return -1;
+        return 0;
     }
     *changes++ = '\0';
 
     if (date_alert = strchr(changes, ':'), !date_alert) {
-        return -1;
+        return 0;
     }
     *(date_alert++) = '\0';
 
@@ -305,7 +305,7 @@ int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
     sum->changes = atoi(changes);
     sum->date_alert = atol(date_alert);
 
-    return 0;
+    return 1;
 }
 
 char *unescape_syscheck_field(char *sum) {
