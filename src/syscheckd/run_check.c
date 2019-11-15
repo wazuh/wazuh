@@ -520,6 +520,7 @@ static void fim_link_check_delete(int pos) {
 }
 // LCOV_EXCL_STOP
 
+// LCOV_EXCL_START
 static void fim_delete_realtime_watches(int pos) {
     OSHashNode *hash_node;
     char *data;
@@ -555,6 +556,7 @@ static void fim_delete_realtime_watches(int pos) {
 
     return;
 }
+// LCOV_EXCL_STOP
 
 // LCOV_EXCL_START
 static void fim_link_delete_range(int pos) {

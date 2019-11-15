@@ -35,6 +35,7 @@ static const char *fim_entry_type[] = {
 };
 
 // FIM data
+// LCOV_EXCL_START
 #ifndef WIN32
 void print_inodes() {
     OSHashNode *hash_node;
@@ -62,7 +63,10 @@ void print_inodes() {
     return;
 }
 #endif
+// LCOV_EXCL_STOP
 
+
+// LCOV_EXCL_START
 void print_rbtree() {
     char **keys;
     fim_entry_data *node;
@@ -81,7 +85,10 @@ void print_rbtree() {
 
     return;
 }
+// LCOV_EXCL_STOP
 
+
+// LCOV_EXCL_START
 void print_dirtb() {
     OSHashNode *hash_node;
     char *data;
@@ -104,6 +111,8 @@ void print_dirtb() {
 }
 
 int print_hash_table();
+// LCOV_EXCL_STOP
+
 
 void fim_scan() {
     int it = 0;
