@@ -24,10 +24,11 @@ stages:
     response:
       status_code: 200
       body:
-        # We get totalItems number of arrays in items, using !anything to check items key is in the response
         data:
-          items: !anything
-          totalItems: !anyint
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
 
     # GET /lists?limit=0
   - name: Try to get lists using wrong limit parameter
@@ -48,14 +49,16 @@ stages:
       status_code: 200
       body:
         data:
-          items: &full_items_array
+          affected_items:
             - items: !anything
               path: !anystr
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
       # Save some data for future use in the test
       save:
         body:
-          returned_path: data.items.0.path
+          returned_path: data.affected_items.0.path
 
     # We implement a dual stage to check offset parameter behaviour
     # GET /lists?limit=2&offset=0
@@ -69,14 +72,18 @@ stages:
       status_code: 200
       body:
         data:
-          items:
-            - <<: *full_items_array
-            - <<: *full_items_array
-          totalItems: !anyint
+          affected_items:
+            - items: !anything
+              path: !anystr
+            - items: !anything
+              path: !anystr
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
       # Save second item to check offset in next stage
       save:
         body:
-          offset_item_path: data.items.1.path
+          offset_item_path: data.affected_items.1.path
 
     # GET /lists?limit=1&offset=1
   - name: Try to get lists using limit and offset parameter
@@ -89,11 +96,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
-              # Check offset matches with previous request
+          affected_items:
             - items: !anything
               path: "{offset_item_path}"
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
 
     # GET /lists?limit=1&search={returned_path:s}
   - name: Try to get lists using limit and search parameter
@@ -106,9 +114,11 @@ stages:
       status_code: 200
       body:
         data:
-          items:
-            - <<: *full_items_array
-          totalItems: !anyint
+          affected_items:
+            - items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
 
     # GET /lists?limit=1&search=-{returned_path:s}
   - name: Try to get lists using limit and search parameter
@@ -121,9 +131,11 @@ stages:
       status_code: 200
       body:
         data:
-          items:
-            - <<: *full_items_array
-          totalItems: !anyint
+          affected_items:
+            - items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
 
     # GET /lists?limit=1&search=empty_search
   - name: Try to get lists using limit and an empty search parameter
@@ -136,8 +148,10 @@ stages:
       status_code: 200
       body:
         data:
-          items: !anything
-          totalItems: 0
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
 
     # GET /lists?limit=1&path={returned_path}
   - name: Try to get lists using limit and path parameter
@@ -150,10 +164,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - items: !anything
               path: "{tavern.request_vars.params.path}"
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
 
     # GET /lists?limit=1&path=wrong_path
   - name: Try to get lists using limit and a wrong path parameter
@@ -165,45 +181,11 @@ stages:
     response:
       status_code: 400
 
-
----
-test_name: GET /list?path=list_filepath
-
-stages:
-
-    # GET /list?path={returned_path}
-  - name: Try to get a CBD list from a specific file path
-    request:
-      method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/list"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: "{returned_path:s}"
-    response:
-      status_code: 200
-      body:
-        # We get n number of key,value pairs in items, using !anything to check items key is in the response
-        data:
-          items: !anything
-
-    # GET /list?path=wrong_filepath
-  - name: Try to get a CBD list from a wrong file path
-    request:
-      method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/list"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: "wrong_filepath"
-    response:
-      status_code: 400
-
-    # GET /list?path=etc/files/audit-keys.cdb
+    # GET /lists?path=etc/files/audit-keys.cdb
   - name: Try to get a CBD list from a bad format etc file path
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/list"
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -213,11 +195,11 @@ stages:
       body:
         code: 1800
 
-    # GET /list?path=wrong_filepath
+    # GET /lists?path=wrong_filepath
   - name: Try to get a CBD list from a non existing etc file path
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/list"
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -227,11 +209,11 @@ stages:
       body:
         code: 1802
 
-    # GET /list?path=etc/lists/amazon
+    # GET /lists?path=etc/lists/amazon
   - name: Try to get a CBD list from a directory instead of a file
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/list"
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -258,8 +240,10 @@ stages:
       body:
         data:
            # We get totalItems number of arrays in items, using !anything to check items key is in the response
-          items: !anything
-          totalItems: !anyint
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
 
     # GET /lists/files?limit=0
   - name: Try to get paths from all CDB lists using wrong limit parameter
@@ -280,17 +264,19 @@ stages:
       status_code: 200
       body:
         data:
-          items: &full_items_array_files
+          affected_items: &full_items_array_files
             - folder: !anystr
               name: !anystr
               path: !anystr
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
       # Save some data for future use in the test
       save:
         body:
-          returned_folder: data.items.0.folder
-          returned_name: data.items.0.name
-          returned_path: data.items.0.path
+          returned_folder: data.affected_items.0.folder
+          returned_name: data.affected_items.0.name
+          returned_path: data.affected_items.0.path
 
     # We implement a dual stage to check offset parameter behaviour
     # GET /lists/files?limit=2&offset=0
@@ -304,16 +290,18 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *full_items_array_files
             - <<: *full_items_array_files
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
       # Save second item to check offset in next stage
       save:
         body:
-          offset_item_folder: data.items.1.folder
-          offset_item_name: data.items.1.name
-          offset_item_path: data.items.1.path
+          offset_item_folder: data.affected_items.1.folder
+          offset_item_name: data.affected_items.1.name
+          offset_item_path: data.affected_items.1.path
 
     # GET /lists/files?limit=1&offset=1
   - name: Try to get paths from all CDB lists using limit and offset parameter
@@ -326,12 +314,14 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
               # Check offset matches with previous request
             - folder: "{offset_item_folder}"
               name: "{offset_item_name}"
               path: "{offset_item_path}"
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
 
     # GET /lists/files?limit=1&search={returned_path:s}
   - name: Try to get paths from all CDB lists using limit and search parameter
@@ -344,9 +334,11 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *full_items_array_files
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
 
     # GET /lists/files?limit=1&search=-{returned_path:s}
   - name: Try to get paths from all CDB lists using limit and search parameter
@@ -359,9 +351,11 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *full_items_array_files
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
 
     # GET /lists/files?limit=1&search=empty_search
   - name: Try to get paths from all CDB lists using limit and an empty search parameter
@@ -374,5 +368,7 @@ stages:
       status_code: 200
       body:
         data:
-          items: !anything
-          totalItems: 0
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0

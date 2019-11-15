@@ -112,6 +112,18 @@ FROM base AS wazuh-env-overview_black_rbac
 ADD configurations/rbac/overview/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
+FROM base as wazuh-env-lists_white_rbac
+ADD configurations/rbac/lists/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+COPY configurations/base/wazuh-master/healthcheck/healthcheck_daemons.py /tmp/healthcheck.py
+COPY configurations/base/wazuh-master/healthcheck/daemons_check.txt /tmp/daemons_check.txt
+
+FROM base as wazuh-env-lists_black_rbac
+ADD configurations/rbac/lists/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+COPY configurations/base/wazuh-master/healthcheck/healthcheck_daemons.py /tmp/healthcheck.py
+COPY configurations/base/wazuh-master/healthcheck/daemons_check.txt /tmp/daemons_check.txt
+
 FROM base AS wazuh-env-syscheck_white_rbac
 ADD configurations/rbac/syscheck/white_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh

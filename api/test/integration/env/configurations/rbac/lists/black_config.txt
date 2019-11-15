@@ -1,0 +1,8 @@
+| Resource  | List                                                         |
+|-----------|--------------------------------------------------------------|
+| list:path | etc/lists/amazon/aws-eventnames etc/lists/amazon/aws-sources |
+|           | etc/lists/audit-keys etc/lists/security-eventchannel         |
+
+| Actions    | Resources | Allow | Deny                                                 |
+|------------|-----------|-------|------------------------------------------------------|
+| lists:read | list:path |       | etc/lists/amazon/aws-eventnames etc/lists/audit-keys |

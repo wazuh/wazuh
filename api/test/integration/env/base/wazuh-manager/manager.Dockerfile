@@ -29,6 +29,8 @@ FROM base AS wazuh-env-syscollector_white_rbac
 FROM base AS wazuh-env-syscollector_black_rbac
 FROM base AS wazuh-env-overview_white_rbac
 FROM base AS wazuh-env-overview_black_rbac
+FROM base as wazuh-env-lists_white_rbac
+FROM base as wazuh-env-lists_black_rbac
 FROM base AS wazuh-env-syscheck_white_rbac
 FROM base AS wazuh-env-syscheck_black_rbac
 
