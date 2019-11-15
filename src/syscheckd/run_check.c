@@ -14,6 +14,10 @@
 #include <sched.h>
 #endif
 
+#ifdef INOTIFY_ENABLED
+#include <sys/inotify.h>
+#endif
+
 #include "shared.h"
 #include "syscheck.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
@@ -32,6 +36,7 @@ static void fim_link_check_delete(int pos);
 static void fim_link_delete_range(int pos);
 static void fim_link_silent_scan(char *path, int pos);
 static void fim_link_reload_broken_link(char *path, int index);
+static void fim_delete_realtime_watches(int pos);
 #endif
 
 // Send a message
@@ -502,9 +507,11 @@ static void fim_link_update(int pos, char *new_path) {
 static void fim_link_check_delete(int pos) {
     struct stat statbuf;
 
+    fim_link_delete_range(pos);
+    fim_delete_realtime_watches(pos);
+
     if (w_stat(syscheck.symbolic_links[pos], &statbuf) < 0) {
         if(errno == ENOENT) {
-            fim_link_delete_range(pos);
             *syscheck.dir[pos] = '\0';
             return;
         }
@@ -512,6 +519,42 @@ static void fim_link_check_delete(int pos) {
     }
 }
 // LCOV_EXCL_STOP
+
+static void fim_delete_realtime_watches(int pos) {
+    OSHashNode *hash_node;
+    char *data;
+    char watch_to_delete[OS_SIZE_20480][OS_SIZE_32];
+    unsigned int inode_it = 0;
+    int deletion_it = 0;
+    int dir_conf;
+    int watch_conf;
+
+    dir_conf = fim_configuration_directory(syscheck.dir[pos], "file");
+
+    hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
+    while(hash_node) {
+        data = hash_node->data;
+
+        if (data) {
+            watch_conf = fim_configuration_directory(data, "file");
+
+            if (dir_conf == watch_conf) {
+                memcpy(watch_to_delete[deletion_it], hash_node->key, strlen(hash_node->key));
+                deletion_it++;
+            }
+        }
+        hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
+    }
+
+    deletion_it--;
+    while(deletion_it >= 0) {
+        inotify_rm_watch(syscheck.realtime->fd, atoi(watch_to_delete[deletion_it]));
+        OSHash_Delete_ex(syscheck.realtime->dirtb, watch_to_delete[deletion_it]);
+        deletion_it--;
+    }
+
+    return;
+}
 
 // LCOV_EXCL_START
 static void fim_link_delete_range(int pos) {
@@ -525,17 +568,18 @@ static void fim_link_delete_range(int pos) {
 
     paths = rbtree_range(syscheck.fim_entry, first_entry, last_entry);
 
+    w_mutex_lock(&syscheck.fim_entry_mutex);
     // If link pointing to a file
     fim_delete(syscheck.dir[pos]);
 
     for(i = 0; paths[i] != NULL; i++) {
         int config = fim_configuration_directory(paths[i], "file");
         if (config == pos) {
-            minfo("deleting file '%s'", paths[i]);
             fim_delete (paths[i]);
         }
     }
     os_free(paths);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 }
 // LCOV_EXCL_STOP
 

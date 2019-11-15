@@ -67,11 +67,17 @@ static void fim_process_scan_info(_sdb * sdb, const char * agent_id, fim_scan_ev
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+static int decode_event_add;
+static int decode_event_delete;
+static int decode_event_modify;
 
 // Initialize the necessary information to process the syscheck information
 int fim_init(void) {
     //Create hash table for agent information
     fim_agentinfo = OSHash_Create();
+    decode_event_add = getDecoderfromlist(SYSCHECK_NEW);
+    decode_event_modify = getDecoderfromlist(SYSCHECK_MOD);
+    decode_event_delete = getDecoderfromlist(SYSCHECK_DEL);
     if (fim_agentinfo == NULL) return 0;
     return 1;
 }
@@ -447,21 +453,21 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     switch (lf->event_type) {
         case FIM_DELETED:
             snprintf(msg_type, sizeof(msg_type), "was deleted.");
-            lf->decoder_info->id = getDecoderfromlist(SYSCHECK_DEL);
+            lf->decoder_info->id = decode_event_delete;
             lf->decoder_syscheck_id = lf->decoder_info->id;
             lf->decoder_info->name = SYSCHECK_MOD;
             changes=1;
             break;
         case FIM_ADDED:
             snprintf(msg_type, sizeof(msg_type), "was added.");
-            lf->decoder_info->id = getDecoderfromlist(SYSCHECK_NEW);
+            lf->decoder_info->id = decode_event_add;
             lf->decoder_syscheck_id = lf->decoder_info->id;
             lf->decoder_info->name = SYSCHECK_NEW;
             changes=1;
             break;
         case FIM_MODIFIED:
             snprintf(msg_type, sizeof(msg_type), "checksum changed.");
-            lf->decoder_info->id = getDecoderfromlist(SYSCHECK_MOD);
+            lf->decoder_info->id = decode_event_modify;
             lf->decoder_syscheck_id = lf->decoder_info->id;
             lf->decoder_info->name = SYSCHECK_MOD;
             if (oldsum->size && newsum->size) {
@@ -1196,18 +1202,20 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     if (strcmp("added", event_type) == 0) {
         lf->event_type = FIM_ADDED;
         lf->decoder_info->name = SYSCHECK_NEW;
+        lf->decoder_info->id = decode_event_add;
     } else if (strcmp("modified", event_type) == 0) {
         lf->event_type = FIM_MODIFIED;
         lf->decoder_info->name = SYSCHECK_MOD;
+        lf->decoder_info->id = decode_event_modify;
     } else if (strcmp("deleted", event_type) == 0) {
         lf->event_type = FIM_DELETED;
         lf->decoder_info->name = SYSCHECK_DEL;
+        lf->decoder_info->id = decode_event_delete;
     } else {
         mdebug1("Invalid 'type' value '%s' in JSON payload.", event_type);
         return -1;
     }
 
-    lf->decoder_info->id = getDecoderfromlist(lf->decoder_info->name);
     lf->decoder_syscheck_id = lf->decoder_info->id;
 
     fim_generate_alert(lf, mode, event_type, event_time, attributes, old_attributes, audit);

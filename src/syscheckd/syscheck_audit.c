@@ -687,7 +687,7 @@ void audit_parse(char *buffer) {
                 snprintf (auid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
                 if (strcmp(auid, "4294967295") == 0) { // Invalid auid (-1)
                     if (!auid_err_reported) {
-                        minfo(FIM_AUDIT_INVALID_AUID);
+                        mdebug1(FIM_AUDIT_INVALID_AUID);
                         auid_err_reported = 1;
                     }
                     w_evt->audit_name = NULL;

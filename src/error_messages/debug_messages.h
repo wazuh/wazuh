@@ -220,5 +220,6 @@
 #define FIM_GET_ATTRIBUTES                  "(6331): Couldn't get attributes for file: '%s'"
 #define FIM_WARN_REALTIME_UNSUPPORTED       "(6332): The realtime monitoring request on unsupported system."
 #define FIM_WARN_WHODATA_UNSUPPORTED        "(6333): The who-data monitoring request on unsupported system."
+#define FIM_AUDIT_INVALID_AUID              "(6334): Audit: Invalid 'auid' value read. Check Audit configuration (PAM)."
 
 #endif /* DEBUG_MESSAGES_H */

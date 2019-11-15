@@ -75,8 +75,6 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
         } else {
             int wd = 0;
 
-            //minfo("Adding inotify_add_watch to '%s'", dir);
-
             wd = inotify_add_watch(syscheck.realtime->fd,
                                    dir,
                                    REALTIME_MONITOR_FLAGS);
@@ -148,14 +146,20 @@ void realtime_process()
                 //The configured paths can end at / or not, we must check it.
                 entry = (char *)OSHash_Get(syscheck.realtime->dirtb, wdchar);
                 if (entry) {
-                    if (entry[strlen(entry) - 1] == PATH_SEP || strcmp(event->name, "") == 0) {
-                        snprintf(final_name, MAX_LINE, "%s%s",
-                                entry,
-                                event->name);
+                    // Check file entries with realtime
+                    if (event->len == 0) {
+                        snprintf(final_name, MAX_LINE, "%s", entry);
                     } else {
-                        snprintf(final_name, MAX_LINE, "%s/%s",
-                                entry,
-                                event->name);
+                        // Check directories entries with realtime
+                        if (entry[strlen(entry) - 1] == PATH_SEP) {
+                            snprintf(final_name, MAX_LINE, "%s%s",
+                                    entry,
+                                    event->name);
+                        } else {
+                            snprintf(final_name, MAX_LINE, "%s/%s",
+                                    entry,
+                                    event->name);
+                        }
                     }
 
                     if (rbtree_insert(tree, final_name, (void *)1) == NULL) {
