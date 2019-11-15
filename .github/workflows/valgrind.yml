@@ -1,5 +1,7 @@
 name: Valgrind check
-on: [watch]
+on:
+  pull_request:
+    types: [assigned, opened, synchronize, reopened]
 
 jobs:
   build:
