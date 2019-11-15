@@ -499,7 +499,33 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                  $ref: '#/components/schemas/CiscatResults'
+                $ref: '#/components/schemas/CiscatResults'
+
+    AllItemsResponseSyscheckResult:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/SyscheckDatabase'
+
+    AllItemsResponseSyscheckLastScan:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/LastScan'
 
     BasicInfo:
       type: object
@@ -8655,9 +8681,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Restarting Syscheck/Rootcheck on all agents"
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8669,9 +8698,9 @@ paths:
       description: Returns FIM findings in the specified agent.
       operationId: api.controllers.syscheck_controller.get_syscheck_agent
       parameters:
+        - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -8691,18 +8720,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscheckDatabase'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscheckResult'
               example:
                 data:
                   totalItems: 2
@@ -8740,21 +8762,23 @@ paths:
 
     delete:
       tags:
-      - syscheck
+        - syscheck
       summary: Clear FIM scan results for a specified agent.
       description: Clear file integrity monitoring scan results for a specified agent.
       operationId: api.controllers.syscheck_controller.delete_syscheck_agent
       parameters:
+        - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
       responses:
         '200':
           description: Confirmation message
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
               example:
                 message: "Syscheck database deleted"
         default:
@@ -8778,11 +8802,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/LastScan'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscheckLastScan'
               example:
                 data:
                   end: "2019-03-08T10:35:21Z"

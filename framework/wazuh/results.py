@@ -9,7 +9,7 @@ from numbers import Number
 
 import wazuh.exception as wexception
 from wazuh import utils
-from wazuh.common import database_limit
+from wazuh.common import database_limit, broadcast
 
 current_module = sys.modules[__name__]
 
@@ -350,18 +350,26 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         self._recalculate_failed_items()
 
     def __or__(self, other):
-        result = super().__or__(other)
-        if isinstance(result, wexception.WazuhException):
-            return result
+
+        if isinstance(other, wexception.WazuhInternalError):
+            return other
+        elif isinstance(other, wexception.WazuhError):
+            if len(other.ids) > 0:
+                for id_ in other.ids:
+                    self.add_failed_item(id_=id_, error=other)
+                return self
+            else:
+                return other
         elif not isinstance(other, AffectedItemsWazuhResult):
             raise wexception.WazuhInternalError(1000, extra_message=f"Cannot be merged with {type(other)} object")
+        else:
+            result = super().__or__(other)
+            result.add_failed_items_from(other)
+            result.affected_items = result.affected_items + other.affected_items
+            result.sortable_fields = result.sortable_fields | other.sortable_fields
+            result.total_affected_items = result.total_affected_items + other.total_affected_items
 
-        result.add_failed_items_from(other)
-        result.affected_items = result.affected_items + other.affected_items
-        result.sortable_fields = result.sortable_fields | other.sortable_fields
-        result.total_affected_items = result.total_affected_items + other.total_affected_items
-
-        return result
+            return result
 
     def to_dict(self):
         return {
