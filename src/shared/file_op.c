@@ -2914,7 +2914,7 @@ int64_t w_ftell (FILE *x) {
 #ifndef WIN32
     int64_t z = ftell(x);
 #else
-    int64_t z = _ftelli64(x);
+    int64_t z = ftello64(x);
 #endif
 
     if (z < 0)  {
