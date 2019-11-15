@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - Make Analysisd compile the CDB list upon start. ([#3488](https://github.com/wazuh/wazuh/pull/3488))
 - New rules option `global_frequency` to make frequency rules independent from the event source. ([#3931](https://github.com/wazuh/wazuh/pull/3931))
 - Add a validation for avoiding agents to keep trying to connect to an invalid address indefinitely. ([#3951](https://github.com/wazuh/wazuh/pull/3951))
+- Add the condition field of SCA checks to the agent databases. ([#3631](https://github.com/wazuh/wazuh/pull/3631))
 
 ### Changed
 
