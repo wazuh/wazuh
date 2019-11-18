@@ -52,8 +52,14 @@ int connect_server(int initial_id)
             // Resolve hostname
             if (!isChroot()) {
                 resolveHostname(&agt->server[rc].rip, 5);
+
+                tmp_str = strchr(agt->server[rc].rip, '/');
+                if(tmp_str) {
+                    tmp_str++;
+                }
+            } else {
+                tmp_str++;
             }
-            tmp_str++;
         } else {
             tmp_str = agt->server[rc].rip;
         }
