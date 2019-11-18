@@ -31,4 +31,10 @@ cJSON * jqueue_next(file_queue * queue);
 // Close queue
 void jqueue_close(file_queue * queue);
 
+/* Return alert data for the next file in the queue */
+alert_data *GetAlertJSONData(file_queue *fileq);
+
+/* Read from monitored file in JSON format */
+alert_data *Read_JSON_Mon(file_queue *fileq, const struct tm *p, unsigned int timeout);
+
 #endif
