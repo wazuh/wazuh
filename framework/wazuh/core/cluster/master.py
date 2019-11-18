@@ -14,10 +14,10 @@ import os
 from typing import Tuple, Dict, Callable
 import fcntl
 from wazuh.core.core_agent import Agent
-from wazuh.cluster import server, cluster, common as c_common
-from wazuh import cluster as metadata
-from wazuh import common, utils, exception
-from wazuh.cluster.dapi import dapi
+from wazuh.core.cluster import server, common as c_common
+from wazuh.core import cluster as metadata
+from wazuh import common, utils, exception, cluster
+from wazuh.core.cluster.dapi import dapi
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):

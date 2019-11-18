@@ -14,13 +14,12 @@ from os import chown, chmod, path, makedirs, urandom, stat, remove
 from platform import platform
 from shutil import copyfile, rmtree
 from time import time, sleep
-from typing import Dict
 
 import requests
 
 from wazuh import common, configuration
 from wazuh.InputValidator import InputValidator
-from wazuh.cluster.utils import get_manager_status
+from wazuh.core.cluster.utils import get_manager_status
 from wazuh.database import Connection
 from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.ossec_queue import OssecQueue

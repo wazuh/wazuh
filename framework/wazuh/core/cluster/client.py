@@ -4,7 +4,8 @@ import asyncio
 import ssl
 from typing import Tuple, Dict, List
 import uvloop
-from wazuh.cluster import common, cluster
+from wazuh.core.cluster import common
+from wazuh import cluster
 import logging
 import time
 import itertools

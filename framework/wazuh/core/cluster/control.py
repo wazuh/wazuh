@@ -5,8 +5,8 @@ import json
 
 from wazuh import common
 from wazuh.core.core_agent import Agent
-from wazuh.cluster import local_client
-from wazuh.cluster.common import as_wazuh_object, WazuhJSONEncoder
+from wazuh.core.cluster import local_client
+from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
 from wazuh.utils import filter_array_by_query
 
 
@@ -14,11 +14,11 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
                     sort=None, search=None, select=None, filter_type='all', q=''):
     if q:
         # if exists q parameter, apply limit and offset after filtering by q
-       arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.database_limit, 'sort': sort, 'search': search,
-                 'select': select, 'filter_type': filter_type}
+        arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.database_limit, 'sort': sort,
+                     'search': search, 'select': select, 'filter_type': filter_type}
     else:
         arguments = {'filter_node': filter_node, 'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
-                 'select': select, 'filter_type': filter_type}
+                     'select': select, 'filter_type': filter_type}
     result = json.loads(await lc.execute(command=b'get_nodes',
                                          data=json.dumps(arguments).encode(),
                                          wait_for_complete=False),
@@ -60,6 +60,12 @@ async def get_health(lc: local_client.LocalClient, filter_node=None):
         raise result
 
     return result
+
+
+# @expose_resources(actions=['cluster:read'], resources=['node:id:{node_list}'])
+# async def get_health_wrapper(node_list=None):
+
+
 
 
 async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_status=None):

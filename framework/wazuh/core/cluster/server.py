@@ -5,8 +5,8 @@ import itertools
 import ssl
 import uvloop
 import time
-from wazuh.cluster import common as c_common, cluster
-from wazuh import common, exception, utils
+from wazuh.core.cluster import common as c_common
+from wazuh import common, exception, utils, cluster
 import logging
 from typing import Tuple, Dict
 import random

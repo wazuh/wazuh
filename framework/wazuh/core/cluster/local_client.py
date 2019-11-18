@@ -6,8 +6,8 @@ from typing import Tuple
 
 import uvloop
 
-from wazuh import common, exception
-from wazuh.cluster import client, cluster
+from wazuh import common, exception, cluster
+from wazuh.core.cluster import client
 
 
 class LocalClientHandler(client.AbstractClient):

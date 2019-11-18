@@ -9,8 +9,8 @@ import logging
 import os
 import sys
 
-from wazuh import common, configuration, pyDaemonModule
-from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__, master, local_server, worker
+from wazuh import common, configuration, pyDaemonModule, cluster
+from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__, master, local_server, worker
 
 
 #

@@ -9,7 +9,8 @@ import logging
 import argparse
 import operator
 import sys
-from wazuh.cluster import control, cluster, local_client
+from wazuh.core.cluster import control, local_client
+from wazuh import cluster
 
 
 def __print_table(data, headers, show_header=False):

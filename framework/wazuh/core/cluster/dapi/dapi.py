@@ -14,9 +14,9 @@ from operator import or_
 from typing import Callable, Dict, Tuple
 
 import wazuh.results as wresults
-from wazuh import exception, agent, common
+from wazuh import exception, agent, common, cluster
 from wazuh import manager
-from wazuh.cluster import local_client, cluster, common as c_common
+from wazuh.core.cluster import local_client, common as c_common
 from wazuh.exception import WazuhException
 
 
@@ -393,13 +393,15 @@ class DistributedAPI:
 
             return node_name
 
-        elif 'node_id' in self.f_kwargs:
-            node_id = self.f_kwargs['node_id']
-            del self.f_kwargs['node_id']
-            return {node_id: []}
+        elif 'node_id' in self.f_kwargs or ('node_list' in self.f_kwargs and self.f_kwargs['node_list'] != '*'):
+            requested_nodes = self.f_kwargs.get('node_list', None) or [self.f_kwargs['node_id']]
+            del self.f_kwargs['node_id' if 'node_id' in self.f_kwargs else 'node_list']
+            return {node_id: [] for node_id in requested_nodes}
 
         else:
             if self.broadcasting:
+                if 'node_list' in self.f_kwargs:
+                    del self.f_kwargs['node_list']
                 client = self.get_client()
                 nodes = json.loads(await client.execute(command=b'get_nodes',
                                                         data=json.dumps({}).encode(),

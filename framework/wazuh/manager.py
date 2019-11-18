@@ -22,14 +22,18 @@ from wazuh import Wazuh
 from wazuh import common
 from wazuh import configuration
 from wazuh.core.core_agent import Agent
-from wazuh.cluster.utils import get_manager_status, get_cluster_status, manager_restart, read_cluster_config
+from wazuh.core.cluster.utils import get_manager_status, get_cluster_status, manager_restart, read_cluster_config
 from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult
 from wazuh.utils import previous_month, tail, load_wazuh_xml, safe_move
 from wazuh.utils import process_array
+from wazuh.core.cluster.control import get_node
+from wazuh.rbac.decorators import expose_resources
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")
+cluster_enabled = not read_cluster_config()['disabled']
+node_id = get_node().get('node') if cluster_enabled else None
 
 
 def status() -> Dict:
@@ -397,6 +401,7 @@ def _check_wazuh_xml(files):
             raise WazuhError(1743, str(e))
 
 
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def validation():
     """
     Check if Wazuh configuration is OK.

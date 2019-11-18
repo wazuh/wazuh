@@ -1,13 +1,11 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-from wazuh import Wazuh
-from wazuh import common
 from wazuh.agent import Agent
 from wazuh.rule import Rule
 from wazuh.decoder import Decoder
-import wazuh.cluster.cluster as cluster
-import wazuh.cluster.control as cluster_control
+import wazuh.cluster as cluster
+import wazuh.core.cluster.control as cluster_control
 import wazuh.configuration as configuration
 import wazuh.security_configuration_assessment as sca
 import wazuh.manager as manager

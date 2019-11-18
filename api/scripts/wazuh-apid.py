@@ -14,7 +14,7 @@ import yaml
 from api import api
 from api.constants import UWSGI_CONFIG_PATH, UWSGI_EXE
 from wazuh import pyDaemonModule, common
-from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
+from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
 
 
 def print_version():

@@ -4,7 +4,7 @@
 import ast
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import itertools
-from wazuh.cluster.utils import get_cluster_status, manager_restart, read_cluster_config
+from wazuh.core.cluster.utils import get_cluster_status, manager_restart, read_cluster_config
 import json
 import logging
 import os
@@ -24,6 +24,7 @@ from wazuh.core.core_agent import Agent
 from wazuh.exception import WazuhException
 from wazuh.utils import md5, mkdir_with_mode
 from wazuh.wlogging import WazuhLogger
+from wazuh.rbac.decorators import expose_resources
 
 logger = logging.getLogger('wazuh')
 
@@ -100,11 +101,20 @@ def get_node():
     data = {}
     config_cluster = read_config()
 
-    data["node"]    = config_cluster["node_name"]
+    data["node"] = config_cluster["node_name"]
     data["cluster"] = config_cluster["name"]
-    data["type"]    = config_cluster["node_type"]
+    data["type"] = config_cluster["node_type"]
 
     return data
+
+
+cluster_enabled = not read_cluster_config()['disabled']
+node_id = get_node().get('node') if cluster_enabled else None
+
+
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
+def read_config_wrapper():
+    return read_config()
 
 
 def check_cluster_status():

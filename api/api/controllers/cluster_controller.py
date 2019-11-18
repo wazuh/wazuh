@@ -9,15 +9,15 @@ import logging
 
 from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
-import wazuh.cluster.cluster as cluster
-import wazuh.cluster.control as cluster_control
+import wazuh.cluster as cluster
+import wazuh.core.cluster.control as cluster_control
 import wazuh.configuration as configuration
 from wazuh import Wazuh
-from wazuh import common
-from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
 import wazuh.manager as manager
 import wazuh.stats as stats
+from api.authentication import get_permissions
 
 
 loop = asyncio.get_event_loop()
@@ -55,7 +55,7 @@ def get_cluster_node(pretty=False, wait_for_complete=False):
 @exception_handler
 def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                       search=None, select=None):
-    """Get information about all nodes in the cluster. 
+    """Get information about all nodes in the cluster or a list of them
 
     Returns a list containing all connected nodes in the cluster.
 
@@ -127,14 +127,15 @@ def get_cluster_node_info(node_id, pretty=False, wait_for_complete=False, select
 
 @exception_handler
 def get_healthcheck(pretty=False, wait_for_complete=False):
-    """Show cluster healthcheck 
+    """Get cluster healthcheck
 
-    Returns cluster healthcheck information such as last keep alive, last synchronization time and number of agents reporting on each node.
+    Returns cluster healthcheck information for all nodes or a list of them. Such information includes last keep alive,
+    last synchronization time and number of agents reporting on each node.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {}
+    f_kwargs = {'filter_node': ['master-node', 'worker1', 'worker2']}
 
     dapi = DistributedAPI(f=cluster_control.get_health,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -205,22 +206,21 @@ def get_status(pretty=False, wait_for_complete=False):
 
 @exception_handler
 def get_config(pretty=False, wait_for_complete=False):
-    """Get cluster configuration 
-
-    Returns the current cluster configuration
+    """Get the current node cluster configuration
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=cluster.read_config,
+    dapi = DistributedAPI(f=cluster.read_config_wrapper,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -674,15 +674,14 @@ def put_restart_node(node_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_conf_validation(pretty=False, wait_for_complete=False):
-    """Check Wazuh configuration in all cluster nodes.
-
-    Returns wether the Wazuh configuration in all cluster nodes is correct.
+def get_conf_validation(pretty=False, wait_for_complete=False, list_nodes='*'):
+    """Check whether the Wazuh configuration in a list of cluster nodes is correct or not.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param list_nodes: List of node_id to check Wazuh configuration on
     """
-    f_kwargs = {}
+    f_kwargs = {'node_list': list_nodes}
 
     dapi = DistributedAPI(f=manager.validation,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -691,32 +690,8 @@ def get_conf_validation(pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          broadcasting=True
-                          )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-
-    return data, 200
-
-
-@exception_handler
-def get_conf_validation_node(node_id, pretty=False, wait_for_complete=False):
-    """Check Wazuh configuration in a cluster node
-
-    Returns wether the Wazuh configuration in node {node_id} is correct.
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param node_id: Cluster node name.
-    """
-    f_kwargs = {'node_id': node_id}
-
-    dapi = DistributedAPI(f=manager.validation,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger
+                          broadcasting=list_nodes == '*',
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 

@@ -9,8 +9,7 @@ from unittest.mock import patch, mock_open
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         from wazuh.exception import WazuhException
-        from wazuh.cluster import cluster
-        from wazuh import common
+        from wazuh import common, cluster
 
 import pytest
 

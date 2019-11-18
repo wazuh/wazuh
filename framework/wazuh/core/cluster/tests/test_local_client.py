@@ -6,7 +6,7 @@ from unittest.mock import patch
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         from wazuh.exception import WazuhException
-        from wazuh.cluster.local_client import LocalClient
+        from wazuh.core.cluster import LocalClient
 import pytest
 import asyncio
 import uvloop

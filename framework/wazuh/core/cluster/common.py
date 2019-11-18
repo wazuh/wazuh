@@ -16,8 +16,7 @@ from typing import Tuple, Dict, Callable
 import cryptography.fernet
 
 import wazuh.results as wresults
-from wazuh import exception, common, Wazuh
-from wazuh.cluster import cluster
+from wazuh import exception, common, Wazuh, cluster
 
 
 class Response:
