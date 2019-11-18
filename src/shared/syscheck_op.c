@@ -14,13 +14,17 @@
 static char *unescape_syscheck_field(char *sum);
 #endif
 
-
 int delete_target_file(const char *path) {
     char full_path[PATH_MAX] = "\0";
     snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
 
 #ifdef WIN32
+    char drive[3];
+    drive[0] = PATH_SEP;
+    drive[1] = path[0];
+
     char *windows_path = strchr(path, ':');
+    strncat(full_path, drive,2);
     strncat(full_path, (windows_path + 1), PATH_MAX - strlen(full_path) - 1);
 #else
     strncat(full_path, path, PATH_MAX - strlen(full_path) - 1);
