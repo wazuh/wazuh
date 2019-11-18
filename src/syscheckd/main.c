@@ -247,7 +247,7 @@ int main(int argc, char **argv)
     fim_initialize();
 
     // Audit events thread
-    if (syscheck.enable_whodata) {
+    if (!syscheck.disabled && syscheck.enable_whodata) {
 #ifdef ENABLE_AUDIT
         int out = audit_init();
         if (out < 0) {
