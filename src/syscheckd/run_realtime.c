@@ -169,7 +169,8 @@ void realtime_process()
                     switch(event->mask) {
                     case(IN_DELETE_SELF):
                         w_mutex_lock(&syscheck.fim_realtime_mutex);
-                        OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
+                        char * data = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
+                        os_free(data);
                         w_mutex_unlock(&syscheck.fim_realtime_mutex);
                         break;
                     }

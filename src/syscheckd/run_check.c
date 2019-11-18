@@ -526,11 +526,11 @@ static void fim_link_check_delete(int pos) {
         mdebug1(FIM_STAT_FAILED, syscheck.dir[pos], errno, strerror(errno));
     } else {
         fim_link_delete_range(pos);
-        *syscheck.dir[pos] = '\0';
 
         if (syscheck.realtime && syscheck.realtime->dirtb) {
             fim_delete_realtime_watches(pos);
         }
+        *syscheck.dir[pos] = '\0';
     }
 }
 // LCOV_EXCL_STOP
@@ -539,28 +539,38 @@ static void fim_link_check_delete(int pos) {
 static void fim_delete_realtime_watches(int pos) {
     OSHashNode *hash_node;
     char *data;
+    char watch_to_delete[OS_SIZE_20480][OS_SIZE_32];
     unsigned int inode_it = 0;
+    int deletion_it = 0;
     int dir_conf;
     int watch_conf;
 
     dir_conf = fim_configuration_directory(syscheck.dir[pos], "file");
 
-    w_mutex_lock(&syscheck.fim_realtime_mutex);
-    hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
-    while(hash_node) {
-        data = hash_node->data;
+    if (dir_conf > -1) {
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
+        hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
+        while(hash_node) {
+            data = hash_node->data;
+            if (data) {
+                watch_conf = fim_configuration_directory(data, "file");
 
-        if (data) {
-            watch_conf = fim_configuration_directory(data, "file");
-
-            if (dir_conf == watch_conf) {
-                inotify_rm_watch(syscheck.realtime->fd, atol(hash_node->key));
-                OSHash_Delete_ex(syscheck.realtime->dirtb, hash_node->key);
+                if (dir_conf == watch_conf) {
+                    memcpy(watch_to_delete[deletion_it], hash_node->key, strlen(hash_node->key));
+                    deletion_it++;
+                }
             }
+            hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
         }
-        hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
+
+        deletion_it--;
+        while(deletion_it >= 0) {
+            inotify_rm_watch(syscheck.realtime->fd, atol(watch_to_delete[deletion_it]));
+            OSHash_Delete_ex(syscheck.realtime->dirtb, watch_to_delete[deletion_it]);
+            deletion_it--;
+        }
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
     }
-    w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
     return;
 }
