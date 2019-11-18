@@ -268,9 +268,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     *(check_sum++) = '\0';
 
     //extract changes and date_alert fields only available from wazuh_db
-    if(sk_decode_extradata(&oldsum, check_sum) < 0) {
-        merror("at fim_db_search(): Error decoding agent: '%s' extradata '%s' from '%s'", lf->agent_id, check_sum, f_name);
-    }
+    sk_decode_extradata(&oldsum, check_sum);
 
     os_strdup(check_sum, old_check_sum);
     mdebug2("Agent '%s' File '%s'", lf->agent_id, f_name);

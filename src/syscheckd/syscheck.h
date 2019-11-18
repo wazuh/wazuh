@@ -133,7 +133,16 @@ int fim_update_inode(char * file, char inode_key[]);
 void fim_delete(char *file_name);
 
 //
-void fim_print_info();
+void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_start);
+
+//
+void print_rbtree();
+
+//
+void print_inodes();
+
+//
+void print_dirtb();
 
 //
 void check_deleted_files();

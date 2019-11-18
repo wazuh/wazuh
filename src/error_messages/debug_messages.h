@@ -221,5 +221,7 @@
 #define FIM_WARN_REALTIME_UNSUPPORTED       "(6332): The realtime monitoring request on unsupported system."
 #define FIM_WARN_WHODATA_UNSUPPORTED        "(6333): The who-data monitoring request on unsupported system."
 #define FIM_AUDIT_INVALID_AUID              "(6334): Audit: Invalid 'auid' value read. Check Audit configuration (PAM)."
+#define FIM_ENTRIES_INFO                    "(6335): Fim entries: %d"
+#define FIM_INODES_INFO                     "(6336): Fim inode entries: %d, path count: %d"
 
 #endif /* DEBUG_MESSAGES_H */
