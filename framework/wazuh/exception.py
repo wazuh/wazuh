@@ -571,9 +571,11 @@ class WazuhException(Exception):
         return hash((self._code, self._extra_message, self._extra_remediation, self._cmd_error))
 
     def __or__(self, other):
-        result = self.__class__(**self.to_dict())
         if isinstance(other, WazuhException):
+            result = self.__class__(**self.to_dict())
             result.dapi_errors = {**self._dapi_errors, **other.dapi_errors}
+        else:
+            result = other | self
         return result
 
     def __deepcopy__(self, memodict=None):

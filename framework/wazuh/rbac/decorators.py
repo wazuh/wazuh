@@ -1,7 +1,7 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-import copy
+
 import re
 from collections import defaultdict
 from functools import wraps
@@ -310,7 +310,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
             target_params, req_permissions, add_denied = \
                 _get_required_permissions(actions=actions, resources=resources, **kwargs)
             allow = _match_permissions(req_permissions=req_permissions)
-            original_kwargs = copy.deepcopy(kwargs)
+            original_kwargs = dict(kwargs)
 
             for res_id, target_param in target_params.items():
                 try:
