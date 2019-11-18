@@ -270,6 +270,7 @@ stages:
               result: !anystr
               compliance: !anything
               rules: !anything
+              condition: !anything
           failed_items: []
           total_failed_items: 0
 
@@ -709,6 +710,7 @@ stages:
               result: !anystr
               compliance: !anything
               rules: !anything
+              condition: !anything
           failed_items: []
           total_failed_items: 0
 
@@ -1148,6 +1150,7 @@ stages:
               result: !anystr
               compliance: !anything
               rules: !anything
+              condition: !anything
           failed_items: []
           total_failed_items: 0
 
