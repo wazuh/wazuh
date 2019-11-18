@@ -400,6 +400,8 @@
       "rule.id",
       "rule.info",
       "rule.pci_dss",
+      "rule.hipaa",
+      "rule.nist_800_53",
       "syscheck.audit.effective_user.id",
       "syscheck.audit.effective_user.name",
       "syscheck.audit.group.id",
