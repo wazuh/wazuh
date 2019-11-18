@@ -39,12 +39,6 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
 
     Config->hide_cluster_info = 0;
 
-    if (output){
-        os_free(Config->cluster_name);
-        os_free(Config->node_name);
-        os_free(Config->node_type);
-    }
-
     for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
             if (output == NULL) {
@@ -150,12 +144,9 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                     wm_strcat(output, message, '\n');
                 }
                 return OS_INVALID;
-            } if ((strcmp(node[i]->content, "no") == 0) && output) {
-                if (found) {
-                    wm_strcat(output, message, '\n');
-                    if (found == 1)
-                        return OS_INVALID;
-                }
+            } if ((strcmp(node[i]->content, "no") == 0) && (output == NULL) && found) {
+                wm_strcat(output, message, '\n');
+                return OS_INVALID;
             }
             if (strcmp(node[i]->content, "yes") == 0) {
                 disable_cluster_info = 1;

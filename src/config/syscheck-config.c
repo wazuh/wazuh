@@ -1271,7 +1271,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
         /* Get scan day */
         else if (strcmp(node[i]->element, xml_scanday) == 0) {
-            syscheck->scan_day = OS_IsValidDay(node[i]->content);
+            syscheck->scan_day = OS_IsValidDay(node[i]->content, output);
             if (!syscheck->scan_day) {
                 if (output == NULL) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);

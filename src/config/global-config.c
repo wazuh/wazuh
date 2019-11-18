@@ -34,12 +34,6 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
         return (0);
     }
 
-    if (output && Config->syscheck_ignore) {
-        for(j = 0; Config->syscheck_ignore[j]; j++){
-            free(Config->syscheck_ignore[j]);
-        }
-    }
-
     /* Get right white_size */
     if (Config && Config->syscheck_ignore) {
         char **ww;

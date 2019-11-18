@@ -383,7 +383,13 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
         return OS_INVALID;
     } else if (ciscat->scan_day) {
         if (!month_interval) {
-            mwarn("At module '%s': Interval must be a multiple of one month. New interval value: 1M.", WM_CISCAT_CONTEXT.name);
+            if (output == NULL) {
+                mwarn("At module '%s': Interval must be a multiple of one month. New interval value: 1M.", WM_CISCAT_CONTEXT.name);
+            } else {
+                snprintf(message, OS_FLSIZE,
+                    "WARNING: At module '%s': Interval must be a multiple of one month. New interval value: 1M.", WM_CISCAT_CONTEXT.name);
+                wm_strcat(output, message, '\n');
+            }
             ciscat->interval = 60; // 1 month
         }
         if (!ciscat->scan_time)
@@ -391,7 +397,13 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
     } else if (ciscat->scan_wday >= 0) {
         if (w_validate_interval(ciscat->interval, 1) != 0) {
             ciscat->interval = 604800;  // 1 week
-            mwarn("At module '%s': Interval must be a multiple of one week. New interval value: 1w.", WM_CISCAT_CONTEXT.name);
+            if (output == NULL) {
+                mwarn("At module '%s': Interval must be a multiple of one week. New interval value: 1w.", WM_CISCAT_CONTEXT.name);
+            } else {
+                snprintf(message, OS_FLSIZE,
+                    "WARNING: At module '%s': Interval must be a multiple of one week. New interval value: 1w.", WM_CISCAT_CONTEXT.name);
+                wm_strcat(output, message, '\n');
+            }
         }
         if (ciscat->interval == 0)
             ciscat->interval = 604800;
@@ -400,7 +412,13 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module, char **
     } else if (ciscat->scan_time) {
         if (w_validate_interval(ciscat->interval, 0) != 0) {
             ciscat->interval = WM_DEF_INTERVAL;  // 1 day
-            mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_CISCAT_CONTEXT.name);
+            if (output == NULL) {
+                mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_CISCAT_CONTEXT.name);
+            } else {
+                snprintf(message, OS_FLSIZE,
+                    "WARNING: At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_CISCAT_CONTEXT.name);
+                wm_strcat(output, message, '\n');
+            }
         }
     }
     if (!ciscat->interval)
