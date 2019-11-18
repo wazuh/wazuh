@@ -7,7 +7,7 @@ ARG wazuhbranch
 RUN apt-get update && apt-get install -y supervisor
 ADD base/wazuh-manager/supervisord.conf /etc/supervisor/conf.d/
 
-RUN apt-get update && apt-get install python git gnupg2 gcc make vim libc6-dev curl policycoreutils automake autoconf libtool apt-transport-https lsb-release python-cryptography -y && curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | apt-key add - && echo "deb https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/staging/apt/ unstable main" | tee -a /etc/apt/sources.list.d/wazuh.list
+RUN apt-get update && apt-get install python python3 git gnupg2 gcc make vim libc6-dev curl policycoreutils automake autoconf libtool apt-transport-https lsb-release python-cryptography -y && curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | apt-key add - && echo "deb https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/staging/apt/ unstable main" | tee -a /etc/apt/sources.list.d/wazuh.list
 
 RUN git clone https://github.com/wazuh/wazuh && cd /wazuh && git checkout $wazuhbranch
 COPY base/wazuh-manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
@@ -29,7 +29,11 @@ ADD base/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-base
 FROM base AS wazuh-env-ciscat
+FROM base AS wazuh-env-sca
+
 FROM base AS wazuh-env-syscollector
+COPY configurations/syscollector/wazuh-master/send_to_wdb.py /send_to_wdb.py
+ADD configurations/syscollector/wazuh-master/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-security
 COPY configurations/security/wazuh-master/rbac.db /var/ossec/api/configuration/security/rbac.db
@@ -109,6 +113,34 @@ RUN /scripts/configuration_rbac.sh
 FROM base as wazuh-env-active-response_black_rbac
 ADD configurations/rbac/active-response/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
+
+FROM base AS wazuh-env-overview_white_rbac
+ADD configurations/rbac/overview/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base AS wazuh-env-overview_black_rbac
+ADD configurations/rbac/overview/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base AS wazuh-env-sca_white_rbac
+ADD configurations/rbac/sca/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base AS wazuh-env-sca_black_rbac
+ADD configurations/rbac/sca/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base as wazuh-env-lists_white_rbac
+ADD configurations/rbac/lists/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+COPY configurations/base/wazuh-master/healthcheck/healthcheck_daemons.py /tmp/healthcheck.py
+COPY configurations/base/wazuh-master/healthcheck/daemons_check.txt /tmp/daemons_check.txt
+
+FROM base as wazuh-env-lists_black_rbac
+ADD configurations/rbac/lists/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+COPY configurations/base/wazuh-master/healthcheck/healthcheck_daemons.py /tmp/healthcheck.py
+COPY configurations/base/wazuh-master/healthcheck/daemons_check.txt /tmp/daemons_check.txt
 
 FROM wazuh-env-${ENVIRONMENT}
 

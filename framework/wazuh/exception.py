@@ -336,6 +336,8 @@ class WazuhException(Exception):
         1752: {'message': 'Could not force single group for the agent'},
         1753: {'message': 'Could not assign group. Agent status is never_connected',
                'remediation': 'Please select another agent or connect your agent before assigning groups'},
+        1754: {'message': 'Agent does not exist or you do not have permissions to access it',
+               'remediation': 'Try listing all agents with GET /agents endpoint'},
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},

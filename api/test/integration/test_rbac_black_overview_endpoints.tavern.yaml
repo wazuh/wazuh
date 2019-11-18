@@ -2,7 +2,7 @@ test_name: GET /overview/agents
 
 marks:
   - usefixtures:
-    - base_tests
+    - overview_black_rbac_tests
 
 includes:
  - !include common.yaml
@@ -34,20 +34,13 @@ stages:
                platform: !anystr
                version: !anystr
            - count: !anyint
-             os:
-               name: !anystr
-               platform: !anystr
-               version: !anystr
-           - count: !anyint
          agent_status:
-           active: 9
-           disconnected: 2
-           never_connected: 2
+           active: 4
+           disconnected: 1
+           never_connected: 1
            pending: 0
-           total: 13
+           total: 6
          agent_version:
-           - count: !anyint
-             version: !anystr
            - count: !anyint
              version: !anystr
            - count: !anyint
@@ -94,8 +87,6 @@ stages:
              status: active
              version: !anystr
          nodes:
-           - count: !anyint
-             node_name: !anything
            - count: !anyint
              node_name: !anything
            - count: !anyint

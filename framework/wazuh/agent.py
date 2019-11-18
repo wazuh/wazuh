@@ -59,15 +59,16 @@ def get_agents_summary_status(agent_list=None):
     :param agent_list: List of agents ID's.
     :return: WazuhResult.
     """
-    db_query = WazuhDBQueryAgents(limit=None, select=['status'], filters={'id': agent_list})
-    data = db_query.run()
+    result = WazuhResult({'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0})
+    if len(agent_list) != 0:
+        db_query = WazuhDBQueryAgents(limit=None, select=['status'], filters={'id': agent_list})
+        data = db_query.run()
 
-    result = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
-    for agent in data['items']:
-        result[agent['status']] += 1
-        result['total'] += 1
+        for agent in data['items']:
+            result[agent['status']] += 1
+            result['total'] += 1
 
-    return WazuhResult(result)
+    return result
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -77,10 +78,12 @@ def get_agents_summary_os(agent_list=None):
     :param agent_list: List of agents ID's.
     :return: WazuhResult.
     """
-    db_query = WazuhDBQueryDistinctAgents(select=['os.platform'], filters={'id': agent_list},
-                                          default_sort_field='os_platform', min_select_fields=set())
-
-    return WazuhResult(db_query.run())
+    result = WazuhResult({})
+    if len(agent_list) != 0:
+        db_query = WazuhDBQueryDistinctAgents(select=['os.platform'], filters={'id': agent_list},
+                                              default_sort_field='os_platform', min_select_fields=set())
+        result.dikt = db_query.run()
+    return result
 
 
 @expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
@@ -165,7 +168,11 @@ def get_agent_by_name(name=None, select=None):
         agent = data['items'][0]['id']
         return get_agents(agent_list=[agent], select=select)
     except IndexError:
-        raise WazuhError(1701)
+        raise WazuhError(1754)
+    except WazuhError as e:
+        if e.code == 4000:
+            raise WazuhError(1754)
+        raise e
 
 
 def get_agents_in_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
@@ -835,3 +842,28 @@ def upload_group_file(group_list=None, file_data=None, file_name='agent.conf'):
     group_id = group_list[0]
 
     return WazuhResult({'message': configuration.upload_group_file(group_id, file_data, file_name=file_name)})
+
+
+def get_full_overview() -> WazuhResult:
+    """Get information about agents.
+
+    :return: Dictionary with information about agents
+    """
+    # get information from different methods of Agent class
+    stats_distinct_node = get_distinct_agents(fields=['node_name']).affected_items
+    groups = get_agent_groups().affected_items
+    stats_distinct_os = get_distinct_agents(fields=['os.name',
+                                                    'os.platform', 'os.version']).affected_items
+    stats_version = get_distinct_agents(fields=['version']).affected_items
+    summary = get_agents_summary_status()
+    try:
+        last_registered_agent = [get_agents(limit=1,
+                                            sort={'fields': ['dateAdd'], 'order': 'desc'},
+                                            q='id!=000').affected_items[0]]
+    except IndexError:  # an IndexError could happen if there are not registered agents
+        last_registered_agent = []
+    # combine results in an unique dictionary
+    result = {'nodes': stats_distinct_node, 'groups': groups, 'agent_os': stats_distinct_os, 'agent_status': summary,
+              'agent_version': stats_version, 'last_registered_agent': last_registered_agent}
+
+    return WazuhResult(result)

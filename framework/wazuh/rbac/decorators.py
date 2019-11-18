@@ -15,6 +15,7 @@ from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import AffectedItemsWazuhResult
 from wazuh.configuration import get_ossec_conf
 from wazuh.core.rule import format_rule_decoder_file, Status
+from wazuh.core.cdb_list import iterate_lists
 
 mode = configuration.read_api_config()['rbac']['mode']
 
@@ -72,6 +73,8 @@ def _expand_resource(resource):
             format_decoders = format_rule_decoder_file(get_ossec_conf(section='ruleset')['ruleset'],
                                                        {'status': Status.S_ALL.value, 'path': None, 'file': None}, tags)
             return {decoder['file'] for decoder in format_decoders}
+        elif resource_type == 'list:path':
+            return {cdb_list['path'] for cdb_list in iterate_lists(only_names=True)}
         return set()
     # We return the value casted to set
     else:
@@ -202,7 +205,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
     target_params = dict()
     add_denied = True
     for resource in resources:
-        m = re.search(r'^([a-z*]+:[a-z*]+):(\w+|\*|{(\w+)})$', resource)
+        m = re.search(r'^([a-z*]+:[a-z*]+):([^\{\}]+|\*|{(\w+)})$', resource)
         res_base = m.group(1)
         # If we find a '{' in the regex we obtain the dynamic resource/s
         if '{' in m.group(2):
@@ -228,7 +231,10 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                 res_list.append("{0}:{1}".format(res_base, params))
         # If we don't find a regex match we obtain the static resource/s
         else:
-            target_params[m.group(1)] = m.group(2)
+            if m.group(2) == '*':  # If resourceless
+                target_params[m.group(1)] = m.group(2)
+            else:  # Static resource
+                target_params[m.group(1)] = '*'
             res_list.append(resource)
     # Create dict of required policies with action: list(resources) pairs
     req_permissions = dict()

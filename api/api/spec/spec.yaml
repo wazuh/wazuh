@@ -35,7 +35,7 @@ components:
     ListMetadata:
       type: object
       required:
-      - totalItems
+        - totalItems
       properties:
         totalItems:
           type: integer
@@ -276,6 +276,34 @@ components:
               items:
                 $ref: '#/components/schemas/DecoderFile'
 
+    AllItemsResponseLists:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/CDBList'
+                  - $ref: '#/components/schemas/CDBListPair'
+
+    AllItemsResponseListsFiles:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/CDBListFile'
+
     AllItemsResponseRoles:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -331,6 +359,19 @@ components:
                 $ref: '#/components/schemas/RulesFiles'
 
     AllItemsResponseSyscollectorHardware:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/SyscollectorHardware'
+
+    AllItemsResponseSyscollectorHotfixes:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
         - type: object
@@ -459,6 +500,32 @@ components:
               description: Items that successfully applied the API call action.
               items:
                   $ref: '#/components/schemas/CiscatResults'
+
+    AllItemsResponseSCADatabase:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                  $ref: '#/components/schemas/SCADatabase'
+
+    AllItemsResponseSCAChecks:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                  $ref: '#/components/schemas/SCAChecks'
 
     BasicInfo:
       type: object
@@ -1749,7 +1816,13 @@ components:
         title:
           type: string
           description: A brief description of what is being checked.
-
+        condition:
+          type: string
+          description: Specifies how rule results are aggregated in order to calculate the final value of a check.
+          enum:
+            - all
+            - any
+            - none
     SCADatabase:
       type: object
       properties:
@@ -1947,6 +2020,15 @@ components:
           $ref: '#/components/schemas/ScanIdTime'
         agent_id:
           $ref: '#/components/schemas/AgentID'
+
+    SyscollectorHotfixes:
+      type: object
+      properties:
+        scan:
+          $ref: '#/components/schemas/ScanIdTime'
+        hotfix:
+          type: string
+          description: Hotfix filter for Windows Agents.
 
     SyscollectorNetwork:
       type: object
@@ -2399,89 +2481,68 @@ components:
     OverviewAgents:
       type: object
       required:
-        - nodes
-        - groups
         - agent_os
         - agent_status
         - agent_version
+        - groups
         - last_registered_agent
+        - nodes
       properties:
         nodes:
-          type: object
+          type: array
           description: Active nodes in the cluster.
-          properties:
-            items:
-              type: array
-              items:
-                type: object
-                properties:
-                  node_name:
-                    type: string
-                  count:
-                    type: integer
-            totalItems:
-              type: integer
-              format: int32
+          items:
+            type: object
+            properties:
+              count:
+                type: integer
+                format: int32
+              node_name:
+                type: string
         groups:
-          type: object
+          type: array
           description: Recount of the number of Wazuh agents group by Wazuh groups.
-          properties:
-            items:
-              type: array
-              items:
-                $ref: '#/components/schemas/AgentGroup'
-            totalItems:
-              type: integer
-              format: int32
+          items:
+            $ref: '#/components/schemas/AgentGroup'
         agent_os:
-          type: object
+          type: array
           description: Recount of the number of Wazuh agents group by OS.
-          properties:
-            items:
-              type: array
-              items:
+          items:
+            type: object
+            properties:
+              count:
+                type: integer
+                format: int32
+              os:
                 type: object
                 properties:
-                  count:
-                    type: integer
-                    format: int32
-                  os:
-                    type: object
-                    properties:
-                      name:
-                        type: string
-                        format: alphanumeric
-                      platform:
-                        type: string
-                        format: alphanumeric
-                      version:
-                        type: string
-                        format: alphanumeric
-            totalItems:
-              type: integer
-              format: int32
-        agent_status:
-          $ref: '#/components/schemas/AgentsSummaryStatus'
-        agent_version:
-          type: object
-          description: Recount of the number of Wazuh agents group by version.
-          properties:
-            items:
-              type: array
-              items:
-                type: object
-                properties:
-                  count:
-                    type: integer
-                    format: int32
+                  name:
+                    type: string
+                    format: alphanumeric
+                  platform:
+                    type: string
+                    format: alphanumeric
                   version:
                     type: string
                     format: alphanumeric
-            totalItems:
-              type: integer
-              format: int32
+        agent_status:
+          $ref: '#/components/schemas/AgentsSummaryStatus'
+        agent_version:
+          type: array
+          description: Recount of the number of Wazuh agents group by version.
+          items:
+            type: object
+            properties:
+              count:
+                type: integer
+                format: int32
+              version:
+                type: string
+                format: alphanumeric
         last_registered_agent:
-          $ref: '#/components/schemas/Agent'
+          type: array
+          items:
+            $ref: '#/components/schemas/Agent'
 
   securitySchemes:
     basicAuth:
@@ -2855,6 +2916,12 @@ components:
           - sha3_256
           - sha3_384
           - sha3_512
+    hotfix:
+      in: query
+      name: hotfix
+      description: Filters by hotfix
+      schema:
+        type: string
     limit:
       in: query
       name: limit
@@ -3058,6 +3125,12 @@ components:
       schema:
         type: string
         format: alphanumeric
+    condition:
+      in: query
+      name: condition
+      description: Filters by condition.
+      schema:
+        type: string
     role_id:
       in: path
       name: role_id
@@ -7019,79 +7092,30 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/CDBList'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseLists'
               example:
                 data:
-                  totalItems: 2
-                  items:
-                    - path: etc/lists/amazon/aws-eventnames
-                      items:
-                      - key: AttachLoadBalancers
-                        value: Autoscaling
-                      - key: TerminateInstanceInAutoScalingGroup
-                        value: Autoscaling
-                      - key: CreateStack
-                        value: Cloudformation
-                    - path: etc/lists/audit-keys
-                      items:
-                      - key: audit-wazuh-w
-                        value: write
-                      - key: audit-wazuh-a
-                        value: attribute
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-  /list:
-    get:
-      tags:
-      - lists
-      summary: 'Get CBD list from a specific file path'
-      description: 'Returns the contents of specified CDB list.'
-      operationId: api.controllers.lists_controller.get_list
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_filepath'
-
-      responses:
-        '200':
-          description: 'Successfully got CDB list'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/CDBListPair'
-
-              example:
-                data:
-                  items:
-                    - key: AttachLoadBalancers
-                      value: Autoscaling
-                    - key: TerminateInstanceInAutoScalingGroup
-                      value: Autoscaling
-                    - key: CreateStack
-                      value: Cloudformation
+                  affected_items:
+                    - folder: etc/lists/amazon
+                      name: aws-eventnames
+                      path: etc/lists/amazon/aws-eventnames
+                    - folder: etc/lists/amazon
+                      name: aws-sources
+                      path: etc/lists/amazon/aws-sources
+                    - folder: etc/lists
+                      name: audit-keys
+                      path: etc/lists/audit-keys
+                    - folder: etc/lists
+                      name: security-eventchannel
+                      path: etc/lists/security-eventchannel
+                  failed_items: []
+                  total_affected_items: 4
+                  total_failed_items: 0
+                message: All specified paths were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -7116,28 +7140,52 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/CDBListFile'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseListsFiles'
               example:
                 data:
-                  totalItems: 2
-                  items:
-                    - name: security-eventchannel
-                      folder: etc/lists
-                      path: etc/lists/security-eventchannel
-                    - name: aws-sources
-                      folder: etc/lists/amazon
+                  affected_items:
+                    - items:
+                        - key: AttachLoadBalancers
+                          value: Autoscaling
+                        - key: DetachLoadBalancers
+                          value: Autoscaling
+                        - key: PutScalingPolicy
+                          value: Autoscaling
+                        - key: TerminateInstanceInAutoScalingGroup
+                          value: Autoscaling
+                      path: etc/lists/amazon/aws-eventnames
+                    - items: []
                       path: etc/lists/amazon/aws-sources
+                    - items:
+                        - key: audit-wazuh-w
+                          value: write
+                        - key: audit-wazuh-r
+                          value: read
+                        - key: audit-wazuh-a
+                          value: attribute
+                        - key: audit-wazuh-x
+                          value: execute
+                        - key: audit-wazuh-c
+                          value: command
+                      path: etc/lists/audit-keys
+                    - items:
+                        - key: '200'
+                          value: ''
+                        - key: '201'
+                          value: ''
+                        - key: '203'
+                          value: ''
+                        - key: '202'
+                          value: ''
+                      path: etc/lists/security-eventchannel
+                  failed_items: []
+                  total_affected_items: 4
+                  total_failed_items: 0
+                message: All specified lists were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8513,36 +8561,40 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SCADatabase'
+                      $ref: '#/components/schemas/AllItemsResponseSCADatabase'
               example:
-               data:
-                totalItems: 2
-                items:
-                - name: "System audit for SSH hardening"
-                  pass: 3
-                  score: 33
-                  references: "https://www.ssh.com/ssh/"
-                  fail: 6
-                  description: "Guidance for establishing a secure configuration for SSH service vulnerabilities."
-                  policy_id: "system_audit_ssh"
-                  end_scan: "2019-03-06T10:12:02Z"
-                  start_scan: "2019-03-06T10:12:02Z"
-                - name: "CIS benchmark for Debian/Linux"
-                  pass: 36
-                  score: 87
-                  references: "https://www.cisecurity.org/cis-benchmarks/"
-                  fail: 5
-                  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux systems running on x86 and x64 platforms. Many lists are included including filesystem types, services, clients, and network protocols. Not all items in these lists are guaranteed to exist on all distributions and additional similar items may exist which should be considered in addition to those explicitly mentioned."
-                  policy_id: "cis_debian"
-                  end_scan: "2019-03-06T10:11:53Z"
-                  start_scan: "2019-03-06T10:11:53Z"
+                data:
+                  affected_items:
+                    - description: This document provides prescriptive guidance for establishing a secure
+                        configuration posture for Debian Linux 9.
+                      end_scan: '2019-11-13T10:57:09Z'
+                      fail: 26
+                      hash_file: c5ada687e0c2ae9504be13b965074cc262e62be4e68fe550d464018def4af61c
+                      invalid: 1
+                      name: CIS benchmark for Debian/Linux 9 L2
+                      pass: 2
+                      policy_id: cis_debian9_L2
+                      references: https://www.cisecurity.org/cis-benchmarks/
+                      score: 7
+                      start_scan: '2019-11-13T10:57:09Z'
+                      total_checks: 29
+                    - description: This document provides prescriptive guidance for establishing a secure
+                        configuration posture for Debian Linux 9.
+                      end_scan: '2019-11-13T10:57:06Z'
+                      fail: 48
+                      hash_file: b44ecda10d854ecad25476ed99b5dfd9481e8a846c8d8a7684a1cc3b29f12993
+                      invalid: 16
+                      name: CIS benchmark for Debian/Linux 9 L1
+                      pass: 35
+                      policy_id: cis_debian9_L1
+                      references: https://www.cisecurity.org/cis-benchmarks/
+                      score: 42
+                      start_scan: '2019-11-13T10:57:06Z'
+                      total_checks: 99
+                  failed_items: []
+                  total_affected_items: 2
+                  total_failed_items: 0
+                message: All selected sca information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8568,6 +8620,7 @@ paths:
         - $ref: '#/components/parameters/registry'
         - $ref: '#/components/parameters/references'
         - $ref: '#/components/parameters/result'
+        - $ref: '#/components/parameters/condition'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -8580,22 +8633,14 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SCAChecks'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSCAChecks'
               example:
                 data:
-                  totalItems: 2
-                  items:
+                  affected_items:
                   - remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
                     rationale: "Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion if it is not bound to a separate partition."
                     title: "Ensure separate partition exists for /var"
@@ -8604,6 +8649,7 @@ paths:
                     description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
                     id: 5003
                     result: failed
+                    condition: all
                     references: "https://tldp.org/HOWTO/LVM-HOWTO/"
                     compliance:
                     - key: cis
@@ -8618,6 +8664,7 @@ paths:
                     description: exim is an open source IMAP and POP3 server for Linux based systems.
                     id: 5022
                     result: passed
+                    condition: all
                     compliance:
                     - key: cis
                       value: "2.2.11"
@@ -8625,6 +8672,10 @@ paths:
                       value: "9"
                     - key: pci_dss
                       value: "2.2.2"
+                  failed_items: []
+                  total_affected_items: 2
+                  total_failed_items: 0
+                message: All selected sca/policy information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9731,6 +9782,42 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                 message: All specified items were shown
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /syscollector/{agent_id}/hotfixes:
+    get:
+      tags:
+        - syscollector
+      summary: "Get hotfixes"
+      description: "Returns all hotfixes installed by Microsoft(R) in Windows(R) systems (KB... fixes)"
+      operationId: api.controllers.syscollector_controller.get_hotfix_info
+      parameters:
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/hotfix'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Return a list of agent's hotfix results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorHardware'
+              example:
+                data:
+                  totalItems: 120
         default:
           $ref: '#/components/responses/ResponseError'
 

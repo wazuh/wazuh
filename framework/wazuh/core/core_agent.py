@@ -1460,33 +1460,6 @@ class Agent:
 
         return configuration.get_active_configuration(self.id, component, config)
 
-    @staticmethod
-    def get_full_overview() -> Dict:
-        """Get information about agents.
-
-        :return: Dictionary with information about agents
-        """
-        # get information from different methods of Agent class
-        stats_distinct_node = Agent.get_distinct_agents(fields=['node_name'])
-        groups = Agent.get_all_groups()
-        stats_distinct_os = Agent.get_distinct_agents(fields=['os.name',
-                                                      'os.platform', 'os.version'])
-        stats_version = Agent.get_distinct_agents(fields=['version'])
-        summary = Agent.get_agents_summary_status()
-        try:
-            last_registered_agent = Agent.get_agents_overview(limit=1,
-                                                              sort={'fields': ['dateAdd'], 'order': 'desc'},
-                                                              q='id!=000').get('items')[0]
-        except IndexError:  # an IndexError could happen if there are not registered agents
-            last_registered_agent = {}
-        # combine results in an unique dictionary
-        result = {'nodes': stats_distinct_node, 'groups': groups,
-                  'agent_os': stats_distinct_os, 'agent_status': summary,
-                  'agent_version': stats_version,
-                  'last_registered_agent': last_registered_agent}
-
-        return result
-
 
 def calculate_status(last_keep_alive, pending, today=datetime.utcnow()):
     """Calculates state based on last keep alive

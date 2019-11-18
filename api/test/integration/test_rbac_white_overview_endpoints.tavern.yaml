@@ -2,7 +2,7 @@ test_name: GET /overview/agents
 
 marks:
   - usefixtures:
-    - base_tests
+    - overview_white_rbac_tests
 
 includes:
  - !include common.yaml
@@ -40,11 +40,11 @@ stages:
                version: !anystr
            - count: !anyint
          agent_status:
-           active: 9
-           disconnected: 2
-           never_connected: 2
+           active: 5
+           disconnected: 1
+           never_connected: 1
            pending: 0
-           total: 13
+           total: 7
          agent_version:
            - count: !anyint
              version: !anystr
@@ -53,23 +53,7 @@ stages:
            - count: !anyint
              version: !anystr
            - count: !anyint
-         groups:
-           - configSum: !anystr
-             count: !anyint
-             mergedSum: !anystr
-             name: !anystr
-           - configSum: !anystr
-             count: !anyint
-             mergedSum: !anystr
-             name: !anystr
-           - configSum: !anystr
-             count: !anyint
-             mergedSum: !anystr
-             name: !anystr
-           - configSum: !anystr
-             count: !anyint
-             mergedSum: !anystr
-             name: !anystr
+         groups: []
          last_registered_agent:
            - configSum: !anystr
              dateAdd: !anystr

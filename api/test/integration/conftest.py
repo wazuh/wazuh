@@ -129,6 +129,22 @@ def environment_ciscat():
     down_env()
 
 
+@pytest.fixture(name="sca_tests", scope="session")
+def environment_sca():
+    values = build_and_up("sca")
+    while values['retries'] < values['max_retries']:
+        master_health = check_health()
+        if master_health:
+            agents_healthy = check_health(node_type='agent', agents=[1, 2, 3])
+            if agents_healthy:
+                time.sleep(10)
+                yield
+                break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
 @pytest.fixture(name="security_white_rbac_tests", scope="session")
 def environment_white_security_rbac():
     values = build_and_up("security_white_rbac")
@@ -318,6 +334,90 @@ def environment_white_active_response_rbac():
 @pytest.fixture(name="active-response_black_rbac_tests", scope="session")
 def environment_black_active_response_rbac():
     values = build_and_up("active-response_black_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="overview_white_rbac_tests", scope="session")
+def environment_white_overview_rbac():
+    values = build_and_up("overview_white_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="overview_black_rbac_tests", scope="session")
+def environment_black_overview_rbac():
+    values = build_and_up("overview_black_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="lists_white_rbac_tests", scope="session")
+def environment_white_lists_rbac():
+    values = build_and_up("lists_white_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="lists_black_rbac_tests", scope="session")
+def environment_black_lists_rbac():
+    values = build_and_up("lists_black_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="sca_white_rbac_tests", scope="session")
+def environment_white_sca_rbac():
+    values = build_and_up("sca_white_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="sca_black_rbac_tests", scope="session")
+def environment_black_sca_rbac():
+    values = build_and_up("sca_black_rbac")
     while values['retries'] < values['max_retries']:
         health = check_health()
         if health:
