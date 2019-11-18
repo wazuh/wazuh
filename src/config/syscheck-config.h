@@ -269,6 +269,7 @@ typedef struct _config {
     OSHash * fim_inode;
     pthread_mutex_t fim_entry_mutex;
     pthread_mutex_t fim_scan_mutex;
+    pthread_mutex_t fim_realtime_mutex;
 
     rtfim *realtime;
 

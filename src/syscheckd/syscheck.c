@@ -101,6 +101,7 @@ void fim_initialize() {
     rbtree_set_dispose(syscheck.fim_entry, (void (*)(void *))free_entry_data);
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
+    w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
 }
 
 
