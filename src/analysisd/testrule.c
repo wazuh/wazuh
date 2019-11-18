@@ -29,9 +29,17 @@
 #include "fts.h"
 #include "cleanevent.h"
 #include "lists_make.h"
+#include "decoders/security_configuration_assessment.h"
 
-/** Internal Functions **/
-void OS_ReadMSG(char *ut_str);
+
+/** Values possible for event_t (event type) */
+typedef enum  event_type { SYSLOG_T, EVENTCHANNEL_T, SYSCHECK_T, SCA_T, SYSCOLLECTOR_T, CISCAT_T, ROOTCHECK_T, HOSTINFO_T} EventType;
+
+/** Internal functions to proccess logs**/
+void OS_ReadMSG(char *ut_str, EventType event_t);
+
+/** Internal function to decode SCA events */
+int DecodeSCATestRule(Eventinfo *lf);
 
 /* Analysisd function */
 RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match);
@@ -50,16 +58,19 @@ static void help_logtest(void)
 {
     print_header();
     print_out("  %s: -[Vhdtva] [-c config] [-D dir] [-U rule:alert:decoder]", ARGV0);
-    print_out("    -V          Version and license message");
-    print_out("    -h          This help message");
-    print_out("    -d          Execute in debug mode. This parameter");
-    print_out("                can be specified multiple times");
-    print_out("                to increase the debug level.");
-    print_out("    -t          Test configuration");
-    print_out("    -a          Alerts output");
-    print_out("    -v          Verbose (full) output/rule debugging");
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -V                Version and license message");
+    print_out("    -h                This help message");
+    print_out("    -e <event_type>   Specify the type of event to test");
+    print_out("                      Values: syslog, syscheck, eventchannel, sca, syscollector,");
+    print_out("                              ciscat, rootcheck and hostinfo.");
+    print_out("    -d                Execute in debug mode. This parameter");
+    print_out("                      can be specified multiple times");
+    print_out("                      to increase the debug level.");
+    print_out("    -t                Test configuration");
+    print_out("    -a                Alerts output");
+    print_out("    -v                Verbose (full) output/rule debugging");
+    print_out("    -c <config>       Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -D <dir>          Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out("    -U <rule:alert:decoder>  Unit test. Refer to contrib/ossec-testing/runtests.py");
     print_out(" ");
     exit(1);
@@ -74,6 +85,7 @@ int main(int argc, char **argv)
     const char *cfg = DEFAULTCPATH;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
+    EventType event_t = SYSLOG_T;
     uid_t uid;
     gid_t gid;
     struct sigaction action = { .sa_handler = onsignal };
@@ -97,7 +109,7 @@ int main(int argc, char **argv)
     geoipdb = NULL;
 #endif
 
-    while ((c = getopt(argc, argv, "VatvdhU:D:c:q")) != -1) {
+    while ((c = getopt(argc, argv, "VatvdhU:D:c:e:q")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -137,6 +149,19 @@ int main(int argc, char **argv)
                 break;
             case 'v':
                 full_output = 1;
+                break;
+            case 'e':
+                if (!optarg) {
+                    merror_exit("-e needs an argument");
+                }
+                if (strcmp(optarg, "eventchannel") == 0) {event_t = EVENTCHANNEL_T; }
+                else if (strcmp(optarg, "sca") == 0) {event_t = SCA_T; }
+                else if (strcmp(optarg, "syscheck") == 0) {event_t = SYSCHECK_T;}
+                else if (strcmp(optarg, "syscollector") == 0) {event_t = SYSCOLLECTOR_T;}
+                else if (strcmp(optarg, "ciscat") == 0) {event_t = CISCAT_T;}
+                else if (strcmp(optarg, "rootcheck") == 0) {event_t = ROOTCHECK_T;}
+                else if (strcmp(optarg, "hostinfo") == 0) {event_t = HOSTINFO_T;}
+                else {event_t = SYSLOG_T;}
                 break;
             default:
                 help_logtest();
@@ -269,6 +294,13 @@ int main(int argc, char **argv)
 
             /* Load decoders */
             SetDecodeXML();
+
+            /** Load C decoders*/
+            switch (event_t) {
+            case SCA_T: SecurityConfigurationAssessmentInit(); break;
+            default:
+                break;
+            }
         }
         {
             /* Load Lists */
@@ -364,14 +396,14 @@ int main(int argc, char **argv)
     minfo(STARTUP_MSG, (int)getpid());
 
     /* Going to main loop */
-    OS_ReadMSG(ut_str);
+    OS_ReadMSG(ut_str, event_t);
 
     exit(0);
 }
 
 /* Receive the messages (events) and analyze them */
 __attribute__((noreturn))
-void OS_ReadMSG(char *ut_str)
+void OS_ReadMSG(char *ut_str, EventType event_t)
 {
     char msg[OS_MAXSTR + 1];
     int exit_code = 0;
@@ -484,7 +516,18 @@ void OS_ReadMSG(char *ut_str)
             lf->size = strlen(lf->log);
 
             /* Decode event */
-            DecodeEvent(lf, &decoder_match);
+            switch (event_t)
+            {
+            case SCA_T:
+                if(DecodeSCATestRule(lf)) {
+                    print_out("SCA event decoding failed");
+                }
+                break;
+            default:
+                DecodeEvent(lf, &decoder_match);
+                break;
+            }
+
 
             /* Run accumulator */
             if ( lf->decoder_info->accumulate == 1 ) {
@@ -670,4 +713,112 @@ void onexit() {
 // Signal handler
 void onsignal(__attribute__((unused)) int signum) {
     exit(EXIT_SUCCESS);
+}
+
+
+// Decoding events
+
+int DecodeSCATestRule(Eventinfo *lf)
+{
+    cJSON *json_event = NULL;
+    cJSON *type = NULL;
+
+    const char *jsonErrPtr;
+    int result = 1;
+    char *wdb_response = NULL;
+
+    /** Obtain event */
+    if (json_event = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0), !json_event)
+    { merror("Malformed configuration assessment JSON event."); return result; }
+
+    /** Assign SCA decoder and print event */
+    lf->decoder_info = sca_json_dec;
+
+    print_out("\n**Phase 2: Completed decoding.\n");
+    print_out("       decoder: 'sca'");
+
+    if(type = cJSON_GetObjectItem(json_event, "type"), type)
+    {
+        if (strcmp(type->valuestring,"check") == 0)
+        {
+            cJSON *scan_id = NULL, *id = NULL, *name = NULL, *title = NULL, *description = NULL,
+                *rationale = NULL, *remediation = NULL, *condition = NULL, *check = NULL,
+                *compliance = NULL, *reference = NULL, *file = NULL, *directory = NULL, *process = NULL,
+                *registry = NULL, *command = NULL, *result = NULL, *status = NULL, *reason = NULL,
+                *policy_id = NULL, *rules = NULL;
+
+            if ( !CheckEventJSON(json_event, &scan_id, &id, &name, &title, &description, &rationale,
+                &remediation, &compliance, &condition, &check, &reference, &file, &directory, &process,
+                &registry, &result, &status, &reason, &policy_id, &command, &rules) )
+            {
+                FillCheckEventInfo(lf, scan_id, id,name, title, description, rationale, remediation, compliance,
+                    reference, file, directory, process, registry, result, status, reason, wdb_response, command);
+            }
+        }
+        else if (strcmp(type->valuestring,"summary") == 0)
+        {
+            cJSON *pm_scan_id = NULL, *pm_scan_start = NULL, *pm_scan_end = NULL, *policy_id = NULL,
+                *description = NULL, *references = NULL, *passed = NULL, *failed = NULL, *invalid = NULL,
+                *total_checks = NULL, *score = NULL, *hash = NULL, *hash_file = NULL, *file = NULL,
+                *policy = NULL;
+
+            if(description = cJSON_GetObjectItem(json_event,"description"), !description)
+            { merror("Malformed JSON: field 'description' not found."); return result; }
+
+            if(references = cJSON_GetObjectItem(json_event,"references"), !references)
+            { merror("Malformed JSON: field 'references' not found."); return result; }
+
+            if(policy_id =  cJSON_GetObjectItem(json_event, "policy_id"), !policy_id)
+            { merror("Malformed JSON: field 'policy_id' not found."); return result; }
+
+            if(pm_scan_id = cJSON_GetObjectItem(json_event, "scan_id"), !pm_scan_id)
+            { merror("Malformed JSON: field 'scan_id' not found."); return result; }
+
+            if(pm_scan_start = cJSON_GetObjectItem(json_event,"start_time"), !pm_scan_start)
+            { merror("Malformed JSON: field 'start_time' not found."); return result; }
+
+            if(pm_scan_end = cJSON_GetObjectItem(json_event,"end_time"), !pm_scan_end)
+            { merror("Malformed JSON: field 'end_time' not found."); return result; }
+
+            if(passed = cJSON_GetObjectItem(json_event,"passed"), !passed)
+            { merror("Malformed JSON: field 'passed' not found."); return result; }
+
+            if(failed = cJSON_GetObjectItem(json_event,"failed"), !failed)
+            { merror("Malformed JSON: field 'failed' not found."); return result; }
+
+            if(invalid = cJSON_GetObjectItem(json_event,"invalid"), !invalid)
+            { merror("Malformed JSON: field 'invalid' not found."); return result; }
+
+            if(total_checks = cJSON_GetObjectItem(json_event,"total_checks"), !total_checks)
+            { merror("Malformed JSON: field 'total_checks' not found."); return result; }
+
+            if(score = cJSON_GetObjectItem(json_event,"score"), !score)
+            { merror("Malformed JSON: field 'score' not found."); return result; }
+
+            if(hash = cJSON_GetObjectItem(json_event,"hash"), !hash)
+            { merror("Malformed JSON: field 'hash' not found."); return result; }
+
+            if(hash_file = cJSON_GetObjectItem(json_event, "hash_file"), !hash_file)
+            { merror("Malformed JSON: field 'hash_file' not found."); return result; }
+
+            if(file = cJSON_GetObjectItem(json_event,"file"), !file)
+            { merror("Malformed JSON: field 'file' not found."); return result; }
+
+            if(policy = cJSON_GetObjectItem(json_event,"name"), !policy)
+            { merror("Malformed JSON: field 'policy' not found."); return result; }
+
+            FillScanInfo(lf, pm_scan_id, policy, description, passed, failed, invalid, total_checks, score, file, policy_id);
+        }
+
+        cJSON_Delete(json_event);
+        result = 0;
+
+        return result;
+    }
+
+    else {
+        cJSON_Delete(json_event);
+        return result;
+    }
+
 }
