@@ -52,6 +52,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
     const char *xml_user = "user";
     const char *xml_frequency = "frequency";
     const char *xml_email = "email_to";
+    const char *xml_report_log_source = "report_log_source";
 
     monitor_config *mon_config = (monitor_config *)config;
 
@@ -89,6 +90,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
     mon_config->reports[s]->r_filter.related_user = 0;
     mon_config->reports[s]->r_filter.report_name = NULL;
     mon_config->reports[s]->r_filter.show_alerts = 0;
+    mon_config->reports[s]->r_filter.report_log_source = 0;
 
     /* Reading the XML */
     while (node[i]) {
@@ -155,10 +157,28 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
             }
         } else if (strcmp(node[i]->element, xml_email) == 0) {
             mon_config->reports[s]->emailto = os_AddStrArray(node[i]->content, mon_config->reports[s]->emailto);
-        } else {
+        }
+        else if (strcmp(node[i]-> element, xml_report_log_source) == 0) {
+            if (OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+
+            if (strncmp(node[i]->content, "alerts.log", 10) == 0) {
+                mon_config->reports[s]->r_filter.report_log_source = REPORT_SOURCE_LOG;
+            }
+            else if (strncmp(node[i]->content, "alerts.json", 11) == 0) {
+                mon_config->reports[s]->r_filter.report_log_source = REPORT_SOURCE_JSON;
+            }
+            else {
+                mon_config->reports[s]->r_filter.report_log_source = REPORT_SOURCE_LOG;
+            }
+        }
+        else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }
+
         i++;
     }
 
@@ -176,6 +196,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
     if (!mon_config->reports[s]->title) {
         os_strdup("OSSEC Report (unnamed)", mon_config->reports[s]->title);
     }
+    
     mon_config->reports[s]->r_filter.report_name = mon_config->reports[s]->title;
 
     return (0);

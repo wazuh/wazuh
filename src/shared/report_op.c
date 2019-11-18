@@ -379,8 +379,7 @@ void os_report_printtop(void *topstore_pt, const char *hname, int print_related)
     return;
 }
 
-void os_ReportdStart(report_filter *r_filter)
-{
+void os_ReportdStart(report_filter *r_filter){
     int alerts_processed = 0;
     int alerts_filtered = 0;
     char *first_alert = NULL;
@@ -409,7 +408,8 @@ void os_ReportdStart(report_filter *r_filter)
         if (r_filter->fp) {
             __g_rtype = r_filter->fp;
         }
-    } else {
+    }
+    else {
         fileq->fp = stdin;
     }
 
@@ -451,14 +451,39 @@ void os_ReportdStart(report_filter *r_filter)
         goto cleanup;
     }
 
+    /* Initialize file queue */
+    switch (r_filter->report_log_source) {
+        case REPORT_SOURCE_LOG:
+            minfo("Getting alerts in log format.");
+            Init_FileQueue(fileq, p, CRALERT_READ_ALL | CRALERT_FP_SET);
+            break;
 
+        case REPORT_SOURCE_JSON:
+            minfo("Getting alerts in JSON format.");
+            jqueue_init(fileq);
 
-    Init_FileQueue(fileq, p, CRALERT_READ_ALL | CRALERT_FP_SET);
+            if (jqueue_open(fileq, 1) < 0) {
+                merror("Could not open JSON alerts file.");
+            }
+
+            break;
+
+        default:
+            merror_exit("At OS_Run(): invalid source.");
+    }
 
     /* Read the alerts */
     while (1) {
         /* Get message if available */
-        al_data = Read_FileMon(fileq, p, 1);
+        switch (r_filter->report_log_source) {
+            case REPORT_SOURCE_LOG:
+                al_data = Read_FileMon(fileq, p, 1);
+                break;
+            case REPORT_SOURCE_JSON:
+                al_data = Read_JSON_Mon(fileq, p, 1);
+                break;
+        }
+        
         if (!al_data) {
             break;
         }
@@ -552,8 +577,6 @@ void os_ReportdStart(report_filter *r_filter)
                                    al_data);
         }
     }
-
-
 
     /* No report available */
     if (alerts_filtered == 0) {

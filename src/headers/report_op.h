@@ -23,6 +23,9 @@
 #define REPORT_TYPE_DAILY        0x100
 #define REPORT_REL_FILE          0x200
 
+#define REPORT_SOURCE_LOG   0
+#define REPORT_SOURCE_JSON  1
+
 typedef struct _report_filter {
     const char *report_name;
 
@@ -50,6 +53,7 @@ typedef struct _report_filter {
     int related_rule;
     int related_group;
     int related_location;
+    int report_log_source;
 
     int report_type;
     int show_alerts;
