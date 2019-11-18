@@ -1997,7 +1997,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             w_inc_syscheck_decoded_events();
             lf->decoder_info = fim_decoder;
 
-            // If the event comes in JSON format agent version is >= 3.10. Therefore we decode, alert and update DB entry.
+            // If the event comes in JSON format agent version is >= 3.11. Therefore we decode, alert and update DB entry.
             if (*lf->log == '{') {
                 res = decode_fim_event(&sdb, lf);
             } else {

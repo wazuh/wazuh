@@ -202,11 +202,11 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     normalize_path(f_name);
 
     // Get diff
-    lf->data = strchr(f_name, '\n');
-    if (lf->data) {
-        *(lf->data++) = '\0';
-        os_strdup(lf->data, lf->diff);
-        os_strdup(lf->data, lf->fields[FIM_DIFF].value);
+    char *diff = strchr(f_name, '\n');
+    if (diff) {
+        *(diff++) = '\0';
+        os_strdup(diff, lf->diff);
+        os_strdup(diff, lf->fields[FIM_DIFF].value);
     }
 
     // Checksum is at the beginning of the log

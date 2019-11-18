@@ -309,10 +309,11 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if (lf->inode_after) {
             cJSON_AddNumberToObject(file_diff, "inode_after", lf->inode_after);
         }
-        if(lf->diff) {
-            if (strcmp(lf->diff, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "diff", lf->diff);
-            }
+
+        if(Config.decoder_order_size > FIM_DIFF && lf->fields[FIM_DIFF].value && strcmp(lf->fields[FIM_DIFF].value, "0")) {
+            cJSON_AddStringToObject(file_diff, "diff", lf->fields[FIM_DIFF].value);
+        } else if(lf->diff && strcmp(lf->diff, "")) {
+            cJSON_AddStringToObject(file_diff, "diff", lf->diff);
         }
         if(lf->sk_tag) {
             if (strcmp(lf->sk_tag, "") != 0) {
