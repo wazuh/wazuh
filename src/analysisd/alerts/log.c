@@ -483,7 +483,7 @@ void OS_Log(Eventinfo *lf)
         }
 
         if (lf->fields[FIM_DIFF].value) {
-            fprintf(_aflog, "\nWhat changed:\n%s", lf->fields[FIM_DIFF].value);
+            fprintf(_aflog, "\nWhat changed:\n%s\n", lf->fields[FIM_DIFF].value);
         }
 
         if (lf->sk_tag) {
