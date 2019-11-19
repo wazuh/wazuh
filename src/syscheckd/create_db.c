@@ -822,8 +822,6 @@ void check_deleted_files() {
         // File doesn't exist so we have to delete it from the
         // hash tables and send a deletion event.
         if (!data->scanned) {
-            mdebug2(FIM_FILE_MSG_DELETE, keys[i]);
-
             if (pos = fim_configuration_directory(keys[i], data->entry_type), pos < 0) {
                 w_mutex_unlock(&syscheck.fim_entry_mutex);
                 continue;
@@ -832,7 +830,12 @@ void check_deleted_files() {
             json_event = fim_json_event (keys[i], NULL, data, pos, FIM_DELETE, FIM_SCHEDULED, NULL);
             fim_delete(keys[i]);
 
+            if (syscheck.opts[pos] & CHECK_SEECHANGES) {
+                delete_target_file(keys[i]);
+            }
+
             if (json_event && _base_line) {
+                mdebug2(FIM_FILE_MSG_DELETE, keys[i]);
                 json_formated = cJSON_PrintUnformatted(json_event);
                 send_syscheck_msg(json_formated);
                 os_free(json_formated);
