@@ -64,6 +64,12 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
     ReadConfig(CREPORTS, DEFAULTCPATH, &mon_config, NULL);
+
+    /* Get any configured entry */
+    if (!mon_config.reports) {
+        os_calloc(1, 2 * sizeof(report_config *), mon_config.reports);
+        os_calloc(1, sizeof(report_config), mon_config.reports[s]);
+    }
     
     while ((c = getopt(argc, argv, "Vdhstu:g:D:f:v:n:r:")) != -1) {
         switch (c) {
