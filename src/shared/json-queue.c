@@ -10,7 +10,7 @@
 #include "shared.h"
 
 static void file_sleep(void);
-static int Handle_JQueue(file_queue *fileq, int flags);
+static int Handle_JQueue(file_queue *fileq, int flags) __attribute__((nonnull));
 
 /* To translate between month (int) to month (char) */
 static const char *(s_month[]) = {
@@ -186,6 +186,11 @@ void jqueue_close(file_queue * queue) {
     queue->fp = NULL;
 }
 
+/* Set queue flags */
+void jqueue_flags(file_queue *fileq, int flags){
+    fileq->flags = flags;
+}
+
 /* Return alert data for the next file in the queue */
 alert_data *GetAlertJSONData(file_queue *fileq){
     alert_data *al_data;
@@ -194,6 +199,7 @@ alert_data *GetAlertJSONData(file_queue *fileq){
     int i = 0;
 
     cJSON *json_object;
+    cJSON *timestamp;
     cJSON *rule;
     cJSON *syscheck;
     cJSON *location;
@@ -204,13 +210,17 @@ alert_data *GetAlertJSONData(file_queue *fileq){
     /* Get message if available */
     al_json = jqueue_next(fileq);
     
-    if (!al_json) {
-        minfo("Poh no hay na");
+    if (!al_json || !fileq->fp) {
+        cJSON_free(al_json);
+        FreeAlertData(al_data);
         return NULL;
     }
 
-    if (!fileq->fp) {
-        return NULL;
+    /* Date */
+    timestamp = cJSON_GetObjectItem(al_json, "timestamp");
+
+    if (timestamp) {
+        os_strdup(timestamp->valuestring, al_data->date);
     }
 
     /* Rule */
@@ -225,7 +235,14 @@ alert_data *GetAlertJSONData(file_queue *fileq){
     json_object = cJSON_GetObjectItem(rule, "id");
 
     if (json_object) {
-        al_data->alertid = strdup(json_object->valuestring);
+        al_data->rule = atoi(json_object->valuestring);
+    }
+
+    // Rule description
+    json_object = cJSON_GetObjectItem(rule, "description");
+
+    if (json_object) {
+        os_strdup(json_object->valuestring, al_data->comment);
     }
     
     // Groups
@@ -237,16 +254,16 @@ alert_data *GetAlertJSONData(file_queue *fileq){
             First, we copy the first item in groups, then the rest,
             in case there is more than one
         */
-        os_calloc(1, strlen(cJSON_GetArrayItem(json_object, 0)->valuestring), groups);
+        os_calloc(1, strlen(cJSON_GetArrayItem(json_object, 0)->valuestring) + 1, groups);
         strcpy(groups, cJSON_GetArrayItem(json_object, 0)->valuestring);
 
         for (i = 1; i < cJSON_GetArraySize(json_object); i++){
-            os_realloc(groups, strlen(groups) + strlen(cJSON_GetArrayItem(json_object, i)->valuestring) + 1, groups);    // +1 because of the comma
+            os_realloc(groups, strlen(groups) + strlen(cJSON_GetArrayItem(json_object, i)->valuestring) + 2, groups);
             strcat(groups, ",");
             strcat(groups, cJSON_GetArrayItem(json_object, i)->valuestring);
         }
 
-        al_data->group = strdup(groups);
+        os_strdup(groups, al_data->group);
 
         os_free(groups);
     }
@@ -266,14 +283,14 @@ alert_data *GetAlertJSONData(file_queue *fileq){
         json_object = cJSON_GetObjectItem(syscheck, "path");
 
         if (json_object) {
-            al_data->filename = strdup(json_object->valuestring);
+            os_strdup(json_object->valuestring, al_data->filename);
         }
         
         // User
         json_object = cJSON_GetObjectItem(syscheck, "uname_after");
 
         if (json_object) {
-            al_data->user = strdup(json_object->valuestring);
+            os_strdup(json_object->valuestring, al_data->user);
         }
     }
 
@@ -281,15 +298,25 @@ alert_data *GetAlertJSONData(file_queue *fileq){
     srcip = cJSON_GetObjectItem(al_json, "srcip");
 
     if (srcip) {
-        al_data->srcip = strdup(json_object->valuestring);
+        os_strdup(json_object->valuestring, al_data->srcip);
     }
 
     /* Location */
     location = cJSON_GetObjectItem(al_json, "location");
 
     if (location) {
-        al_data->location = strdup(location->valuestring);
+        os_strdup(location->valuestring, al_data->location);
     }
+
+    /* Free memory */
+    cJSON_free(al_json);
+    cJSON_free(json_object);
+    cJSON_free(timestamp);
+    cJSON_free(rule);
+    cJSON_free(syscheck);
+    cJSON_free(location);
+    cJSON_free(srcip);
+    os_free(groups);
 
     return al_data;
 }

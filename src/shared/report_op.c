@@ -461,10 +461,13 @@ void os_ReportdStart(report_filter *r_filter){
         case REPORT_SOURCE_JSON:
             minfo("Getting alerts in JSON format.");
             jqueue_init(fileq);
-
+            jqueue_flags(fileq, CRALERT_READ_ALL | CRALERT_FP_SET);
+            
             if (jqueue_open(fileq, 1) < 0) {
                 merror("Could not open JSON alerts file.");
             }
+
+            fileq->fp = stdin;
 
             break;
 

@@ -31,6 +31,9 @@ cJSON * jqueue_next(file_queue * queue);
 // Close queue
 void jqueue_close(file_queue * queue);
 
+/* Set queue flags */
+void jqueue_flags(file_queue *fileq, int flags);
+
 /* Return alert data for the next file in the queue */
 alert_data *GetAlertJSONData(file_queue *fileq);
 
