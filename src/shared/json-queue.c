@@ -228,6 +228,7 @@ alert_data *GetAlertJSONData(file_queue *fileq){
     
     if (!rule) {
         cJSON_free(al_json);
+        FreeAlertData(al_data);
         return NULL;
     }
 
@@ -298,7 +299,7 @@ alert_data *GetAlertJSONData(file_queue *fileq){
     srcip = cJSON_GetObjectItem(al_json, "srcip");
 
     if (srcip) {
-        os_strdup(json_object->valuestring, al_data->srcip);
+        os_strdup(srcip->valuestring, al_data->srcip);
     }
 
     /* Location */
@@ -316,7 +317,6 @@ alert_data *GetAlertJSONData(file_queue *fileq){
     cJSON_free(syscheck);
     cJSON_free(location);
     cJSON_free(srcip);
-    os_free(groups);
 
     return al_data;
 }
