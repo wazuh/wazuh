@@ -1,9 +1,9 @@
 ---
 test_name: PUT /active-response/{:agent_id}
 
-#marks:
-#  - usefixtures:
-#    - base_tests
+marks:
+  - usefixtures:
+    - base_tests
 
 includes:
   - !include common.yaml
@@ -76,11 +76,7 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items:
-            - '002'
-            - '004'
-            - '007'
-            - '005'
+          affected_items: !anything
           failed_items:
             - error:
                 code: 1651
@@ -224,15 +220,7 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items:
-            - '002'
-            - '004'
-            - '001'
-            - '007'
-            - '006'
-            - '008'
-            - '000'
-            - '005'
+          affected_items: !anything
           failed_items:
             - error:
                 code: 1651
