@@ -1,6 +1,6 @@
 server.host: "KIBANA_IP"
 elasticsearch.hosts: ["https://YOUR_ELASTIC_SERVER_IP:9200"]
-elasticsearch.password: "<ELASTIC_GENERATED_PASSWORD>"
+elasticsearch.password: "ELASTIC_GENERATED_PASSWORD"
 
 # Elasticsearch from/to Kibana
 
