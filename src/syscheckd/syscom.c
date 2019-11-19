@@ -166,8 +166,9 @@ void * syscom_main(__attribute__((unused)) void * arg) {
 
             if (length > 0) {
                 OS_SendSecureTCP(peer, length, response);
-                free(response);
+
             }
+            os_free(response);
 
             close(peer);
         }
