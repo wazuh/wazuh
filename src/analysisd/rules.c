@@ -1162,7 +1162,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                                         inarray = 1;
                                     }
                                 }
-                                if (!inarray && mitre_opt[ind]->content != NULL) {
+                                if (!inarray) {
                                     os_realloc(config_ruleinfo->mitre_id, (mitre_size + 2) * sizeof(char *), config_ruleinfo->mitre_id);
                                     os_strdup(mitre_opt[ind]->content, config_ruleinfo->mitre_id[mitre_size]);
                                     config_ruleinfo->mitre_id[mitre_size + 1] = NULL;
