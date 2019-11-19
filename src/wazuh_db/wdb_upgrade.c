@@ -19,7 +19,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
     int result = 0;
     wdb_t *new_wdb = NULL;
 
-    if(strcmp(wdb->id, "global") == 0 || strcmp(wdb->id, "mitre") == 0) {
+    if(strcmp(wdb->id, "mitre") == 0) {
         return wdb;
     }
 

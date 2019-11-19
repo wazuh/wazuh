@@ -340,7 +340,7 @@ int wdb_parse(char * input, char * output) {
         query = next;
 
         if (wdb = wdb_open_mitre(), !wdb) {
-            mdebug2("Couldn't open DB mitre");
+            mdebug2("Couldn't open DB mitre: %s/%s.db", WDB_DIR, WDB_MITRE_NAME);
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB mitre");
             return -1;
         }

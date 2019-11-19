@@ -135,7 +135,6 @@ typedef struct wdb_config {
 
 /* Global SQLite database */
 extern sqlite3 *wdb_global;
-extern wdb_t * db_global;
 
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
@@ -151,14 +150,6 @@ extern OSHash * open_dbs;
 
 /* Open global database. Returns 0 on success or -1 on failure. */
 int wdb_open_global();
-
-/**
- * @brief Open global database.
- *  
- * @pre Must be called once at start up.
- * @return It returns a locked database or NULL on failure.
- */
-wdb_t * wdb_t_open_global();
 
 /**
  * @brief Open mitre database and store in DB poll.

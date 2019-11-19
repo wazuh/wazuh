@@ -32,7 +32,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_DELETE] = "DELETE FROM fim_entry WHERE file = ?;",
     [WDB_STMT_FIM_UPDATE_DATE] = "UPDATE fim_entry SET date = strftime('%s', 'now') WHERE file = ?;",
     [WDB_STMT_FIM_FIND_DATE_ENTRIES] = "SELECT file, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE date < ?;",
-    [WDB_STMT_OSINFO_INSERT] = "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [WDB_STMT_OSINFO_INSERT] = "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version, os_release) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_OSINFO_DEL] = "DELETE FROM sys_osinfo;",
     [WDB_STMT_PROGRAM_INSERT] = "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_PROGRAM_DEL] = "DELETE FROM sys_programs WHERE scan_id != ?;",
@@ -96,12 +96,10 @@ static const char *SQL_STMT[] = {
 sqlite3 *wdb_global = NULL;
 wdb_config config;
 pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
 wdb_t * db_pool_begin;
 wdb_t * db_pool_last;
 int db_pool_size;
 OSHash * open_dbs;
-wdb_t * db_global;
 
 /* Open global database. Returns 0 on success or -1 on failure. */
 int wdb_open_global() {
@@ -139,46 +137,6 @@ int wdb_open_global() {
     return 0;
 }
 
-wdb_t * wdb_t_open_global() {
-    char path[PATH_MAX + 1];
-    char s_global[64] = "global";
-    wdb_t * wdb = NULL;
-    wdb_t * new_wdb = NULL;
-
-    // Try to open DB
-    snprintf(path, sizeof(path), "%s/global.db", WDB2_DIR);
-    
-    if (sqlite3_open_v2(path, &wdb_global, SQLITE_OPEN_READWRITE, NULL)) {
-        mdebug1("No SQLite global database found, creating.");
-        sqlite3_close_v2(wdb_global);
-
-        if (wdb_create_global(path) < 0) {
-            merror("Couldn't create SQLite database '%s'.", path);
-            goto end;
-        }
-
-        // Retry to open
-        if (sqlite3_open_v2(path, &wdb_global, SQLITE_OPEN_READWRITE, NULL)) {
-            merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(wdb_global));
-            sqlite3_close_v2(wdb_global);
-            goto end;
-        }
-        
-        wdb = wdb_init(wdb_global, s_global);
-    }
-    else {
-        wdb = wdb_init(wdb_global, s_global);
-
-        if (new_wdb = wdb_upgrade(wdb), new_wdb != wdb) {
-            // If I had to generate backup and change DB
-            wdb = new_wdb;
-        }
-    }
-
-end:
-    return wdb;
-}
-
 wdb_t * wdb_open_mitre() {
     char path[PATH_MAX + 1];
     sqlite3 *db;
@@ -207,8 +165,8 @@ wdb_t * wdb_open_mitre() {
         wdb_pool_append(wdb);
 
         if (new_wdb = wdb_upgrade(wdb), new_wdb != wdb) {
-        // If I had to generate backup and change DB
-        wdb = new_wdb;
+            // If I had to generate backup and change DB
+            wdb = new_wdb;
         }
     }
 
@@ -736,20 +694,6 @@ void wdb_commit_old() {
     }
 
     w_mutex_unlock(&pool_mutex);
-
-    /* Global */
-    w_mutex_lock(&global_mutex);
-    
-    if (wdb_global != NULL) { 
-        w_mutex_lock(&db_global->mutex);
-        if (db_global->transaction && time(NULL) - db_global->last > config.commit_time) {
-            mdebug2("Committing database for %s", db_global->id);
-            wdb_commit2(db_global);
-        }
-        w_mutex_unlock(&db_global->mutex);
-    }
-    
-    w_mutex_unlock(&global_mutex);
 }
 
 void wdb_close_old() {
