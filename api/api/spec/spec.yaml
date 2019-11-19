@@ -198,6 +198,19 @@ components:
                 $ref: '#/components/schemas/AgentID'
         - $ref: '#/components/schemas/AllItemsResponse'
 
+    AllItemsResponseNodeIDs:
+      allOf:
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/NodeID'
+        - $ref: '#/components/schemas/AllItemsResponse'
+
     AllItemsResponseGroupIDs:
       allOf:
         - type: object
@@ -745,6 +758,11 @@ components:
       minLength: 3
       description: Agent ID.
       format: numbers
+
+    NodeID:
+      type: string
+      description: Node ID.
+      format: string
 
     GroupID:
       type: string
@@ -2952,6 +2970,14 @@ components:
           minLength: 1
           minimum: 2
           description: Policy ID.
+    list_nodes:
+      in: query
+      name: list_nodes
+      description: List of node IDs (separated by comma)
+      schema:
+        type: array
+        items:
+          type: string
     manager_host:
       in: query
       name: manager
@@ -5938,12 +5964,13 @@ paths:
     get:
       tags:
       - cluster
-      summary: Show cluster healthcheck
-      description: Returns cluster healthcheck information such as last keep alive, last synchronization time and number of agents reporting on each node.
+      summary: Get cluster healthcheck
+      description: Returns cluster healthcheck information for all nodes or a list of them. Such information includes last keep alive, last synchronization time and number of agents reporting on each node.
       operationId: api.controllers.cluster_controller.get_healthcheck
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_nodes'
       responses:
         '200':
           description: Health information
@@ -6097,8 +6124,8 @@ paths:
     get:
       tags:
       - cluster
-      summary: Get cluster configuration
-      description: Returns the current cluster configuration
+      summary: Get current node cluster configuration
+      description: Returns the current node cluster configuration
       operationId: api.controllers.cluster_controller.get_config
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -6940,82 +6967,55 @@ paths:
     put:
       tags:
       - cluster
-      summary: Restarts all nodes in cluster.
-      description: Restarts all nodes in cluster.
+      summary: Restart cluster nodes.
+      description: Restarts all nodes in the cluster or a list of them.
       operationId: api.controllers.cluster_controller.put_restart
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_nodes'
       responses:
         '200':
-          description: 'Confirmation message'
+          description: 'List of affected nodes'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: Restarting cluster.
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseNodeIDs'
+                example:
+                  message: Restart command sent to all shown nodes
+                  data:
+                    affected_items:
+                      - 'master-node'
+                      - 'worker1'
+                    total_affected_items: 2
+                    failed_items: []
+                    total_failed_items: 0
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /cluster/{node_id}/restart:
-    put:
-      tags:
-      - cluster
-      summary: Restarts a specific node in cluster.
-      description: Restarts a specific node in cluster.
-      operationId: api.controllers.cluster_controller.put_restart_node
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/node_id'
-      responses:
-        '200':
-          description: 'Confirmation message'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: Restart request sent.
-        default:
-          $ref: '#/components/responses/ResponseError'
 
   /cluster/configuration/validation:
     get:
       tags:
       - cluster
-      summary: Check Wazuh configuration in all cluster nodes.
-      description: Returns wether the Wazuh configuration in all cluster nodes is correct.
+      summary: Check Wazuh configuration.
+      description: Returns whether the Wazuh configuration is correct in all cluster nodes or a list of them.
       operationId: api.controllers.cluster_controller.get_conf_validation
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_nodes'
       responses:
         '200':
           description: 'Configuration is OK'
-
         default:
           $ref: '#/components/responses/ResponseError'
 
-
-  /cluster/{node_id}/configuration/validation:
-    get:
-      tags:
-      - cluster
-      summary: Check Wazuh configuration in a cluster node
-      description: Returns wether the Wazuh configuration in node {node_id} is correct.
-      operationId: api.controllers.cluster_controller.get_conf_validation_node
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/node_id'
-      responses:
-        '200':
-          description: 'Configuration is OK'
-
-        default:
-          $ref: '#/components/responses/ResponseError'
 
   /cluster/{node_id}/configuration/{component}/{configuration}:
     get:

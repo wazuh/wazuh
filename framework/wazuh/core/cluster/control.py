@@ -62,12 +62,6 @@ async def get_health(lc: local_client.LocalClient, filter_node=None):
     return result
 
 
-# @expose_resources(actions=['cluster:read'], resources=['node:id:{node_list}'])
-# async def get_health_wrapper(node_list=None):
-
-
-
-
 async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_status=None):
     filter_status = ["all"] if not filter_status else filter_status
     filter_node = ["all"] if not filter_node else filter_node

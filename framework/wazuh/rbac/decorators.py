@@ -1,7 +1,7 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-import copy
+
 import re
 from collections import defaultdict
 from functools import wraps
@@ -9,13 +9,13 @@ from functools import wraps
 from api import configuration
 from api.authentication import AuthenticationManager
 from wazuh.common import rbac, broadcast
+from wazuh.configuration import get_ossec_conf
+from wazuh.core.cdb_list import iterate_lists
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
+from wazuh.core.rule import format_rule_decoder_file, Status
 from wazuh.exception import WazuhError
 from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import AffectedItemsWazuhResult
-from wazuh.configuration import get_ossec_conf
-from wazuh.core.rule import format_rule_decoder_file, Status
-from wazuh.core.cdb_list import iterate_lists
 
 mode = configuration.read_api_config()['rbac']['mode']
 
@@ -75,6 +75,12 @@ def _expand_resource(resource):
             return {decoder['file'] for decoder in format_decoders}
         elif resource_type == 'list:path':
             return {cdb_list['path'] for cdb_list in iterate_lists(only_names=True)}
+        elif resource_type == 'node:id':
+            # import pydevd_pycharm
+            # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+            # lc = local_client.LocalClient()
+            # return set(get_nodes(lc)['items'])
+            return {'master-node', 'worker1', 'worker2'}
         return set()
     # We return the value casted to set
     else:
@@ -305,8 +311,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
             target_params, req_permissions, add_denied = \
                 _get_required_permissions(actions=actions, resources=resources, **kwargs)
             allow = _match_permissions(req_permissions=req_permissions)
-            original_kwargs = copy.deepcopy(kwargs)
-
+            original_kwargs = dict(kwargs)
             for res_id, target_param in target_params.items():
                 try:
                     # We don't have any permissions over the required resources

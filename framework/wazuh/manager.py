@@ -24,11 +24,12 @@ from wazuh import configuration
 from wazuh.core.core_agent import Agent
 from wazuh.core.cluster.utils import get_manager_status, get_cluster_status, manager_restart, read_cluster_config
 from wazuh.exception import WazuhError, WazuhInternalError
-from wazuh.results import WazuhResult
+from wazuh.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.utils import previous_month, tail, load_wazuh_xml, safe_move
 from wazuh.utils import process_array
-from wazuh.core.cluster.control import get_node
+from wazuh.cluster import get_node
 from wazuh.rbac.decorators import expose_resources
+from wazuh.configuration import get_ossec_conf
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")
@@ -347,15 +348,18 @@ def validate_cdb_list(path):
     return True
 
 
+@expose_resources(actions=['cluster:delete'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*',
+                                                         'file:path:{path}'])
 def delete_file(path):
-    """
-    Deletes a file.
-    Returns a confirmation message if success, otherwise it raises
-    a WazuhException
+    """Deletes a file.
+
+    Returns a confirmation message if success, otherwise it raises a WazuhException
     :param path: Relative path of the file to be deleted
     :return: string Confirmation message
     """
-    full_path = join(common.ossec_path, path)
+    # Remove starting / in case it exists
+    file_path = path[0][1:] if path[0][0] == '/' else path[0]
+    full_path = join(common.ossec_path, file_path)
 
     if exists(full_path):
         try:
@@ -368,18 +372,30 @@ def delete_file(path):
     return WazuhResult({'message': 'File was deleted'})
 
 
+@expose_resources(actions=['cluster:restart'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def restart():
-    """
-    Wrapper for 'restart_manager' function due to interdependencies with cluster module
+    """Wrapper for 'restart_manager' function due to interdependencies with cluster module and permission access.
 
     :return: Confirmation message.
     """
-    return manager_restart()
+    result = AffectedItemsWazuhResult(all_msg='Restart request sent to all shown managers',
+                                      some_msg='Could not send restart request to some managers',
+                                      none_msg='No restart request sent'
+                                      )
+
+    try:
+        manager_restart()
+        result.affected_items.append(node_id)
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
 
 
 def _check_wazuh_xml(files):
-    """
-    Check Wazuh XML format from a list of files.
+    """Check Wazuh XML format from a list of files.
+
     :param files: List of files to check.
     :return: None
     """
@@ -403,8 +419,8 @@ def _check_wazuh_xml(files):
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def validation():
-    """
-    Check if Wazuh configuration is OK.
+    """Check if Wazuh configuration is OK.
+
     :return: Confirmation message.
     """
     lock_file = open(execq_lockfile, 'a+')
@@ -503,7 +519,8 @@ def _parse_execd_output(output: str) -> Dict:
     return response
 
 
-def get_config(component, config):
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def get_config(component=None, config=None):
     """
     Returns active configuration loaded in manager
     """
@@ -534,3 +551,14 @@ def get_info() -> Dict:
                     **{'name': manager.name, 'cluster': cluster_info}}
 
     return manager_info
+
+
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def read_ossec_conf(section=None, field=None):
+    """ Wrapper for get_ossec_conf
+
+    :param section: Filters by section (i.e. rules).
+    :param field: Filters by field in section (i.e. included).
+    :return:
+    """
+    return get_ossec_conf(section=section, field=field)

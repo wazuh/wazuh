@@ -25,6 +25,9 @@ from wazuh.exception import WazuhException
 from wazuh.utils import md5, mkdir_with_mode
 from wazuh.wlogging import WazuhLogger
 from wazuh.rbac.decorators import expose_resources
+from wazuh.core.cluster.control import get_health
+from wazuh.core.cluster import local_client
+from wazuh.results import WazuhResult, AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh')
 
@@ -117,6 +120,11 @@ def read_config_wrapper():
     return read_config()
 
 
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
+def get_node_wrapper():
+    return get_node()
+
+
 def check_cluster_status():
     """
     Function to check if cluster is enabled
@@ -124,6 +132,7 @@ def check_cluster_status():
     return read_config()['disabled']
 
 
+@expose_resources(actions=['cluster:status'], resources=['*:*:*'], post_proc_func=None)
 def get_status_json():
     """
     Returns the cluster status
@@ -424,6 +433,19 @@ def unmerge_agent_info(merge_type, path_file, filename):
             bytes_read += st_size
 
             yield dst_agent_info_path + '/' + name, data, st_mtime
+
+
+# @expose_resources(actions=['cluster:read'], resources=['node:id:{filter_node}'])
+# def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
+#     import pydevd_pycharm
+#     pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+#     result = AffectedItemsWazuhResult(all_msg='All selected nodes healthcheck information is shown',
+#                                       some_msg='Some nodes healthcheck information not shown',
+#                                       none_msg='No healthcheck information is shown'
+#                                       )
+#
+#     data = loop.run_until_complete(get_health(lc, filter_node=filter_node))
+#     return data
 
 
 class ClusterFilter(logging.Filter):
