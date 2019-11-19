@@ -80,4 +80,7 @@ int sc_send_db(char * msg,int *sock);
 void SecurityConfigurationAssessmentInit(void);
 int ReadDecodeXML(const char *file);
 
+/** C decoders */
+OSDecoderInfo *winevt_decoder;
+
 #endif /* DECODER_H */

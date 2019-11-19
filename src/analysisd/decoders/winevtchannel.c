@@ -33,7 +33,7 @@
 #define AUDIT_FAILURE 0x10000000000000LL
 #define AUDIT_SUCCESS 0x20000000000000LL
 
-static OSDecoderInfo *winevt_decoder = NULL;
+
 static int first_time = 0;
 
 void WinevtInit(){
