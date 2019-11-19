@@ -4,14 +4,14 @@ elasticsearch.password: "ELASTIC_GENERATED_PASSWORD"
 
 # Elasticsearch from/to Kibana
 
-elasticsearch.ssl.certificateAuthorities: ["/etc/elasticsearch/certs/ca/ca.crt"]
-elasticsearch.ssl.certificate: "/etc/elasticsearch/certs/elasticsearch.crt"
-elasticsearch.ssl.key: "/etc/elasticsearch/certs/elasticsearch.key"
+elasticsearch.ssl.certificateAuthorities: ["/etc/filebeat/certs/ca/ca.crt"]
+elasticsearch.ssl.certificate: "/etc/filebeat/certs/elasticsearch.crt"
+elasticsearch.ssl.key: "/etc/filebeat/certs/elasticsearch.key"
 
 # Browser from/to Kibana
 server.ssl.enabled: true
-server.ssl.certificate: "/etc/elasticsearch/certs/elasticsearch.crt"
-server.ssl.key: "/etc/elasticsearch/certs/elasticsearch.key"
+server.ssl.certificate: "/etc/filebeat/certs/elasticsearch.crt"
+server.ssl.key: "/etc/filebeat/certs/elasticsearch.key"
 
 # Elasticsearch authentication
 xpack.security.enabled: true
