@@ -1062,7 +1062,7 @@ cJSON *perm_to_json(char *permissions) {
     return perm_array;
 }
 
-cJSON *attrs_to_json(unsigned int attributes) {
+cJSON *old_attrs_to_json(unsigned int attributes) {
     cJSON *ab_array;
 
     if (ab_array = cJSON_CreateArray(), !ab_array) {
@@ -1127,4 +1127,29 @@ cJSON *attrs_to_json(unsigned int attributes) {
         cJSON_AddItemToArray(ab_array, cJSON_CreateString("VIRTUAL"));
     }
     return ab_array;
+}
+
+cJSON *attrs_to_json(const char *attributes) {
+    cJSON *attrs_array;
+
+    if (attrs_array = cJSON_CreateArray(), !attrs_array) {
+        return NULL;
+    }
+
+    char *attrs_cpy;
+    os_strdup(attributes, attrs_cpy);
+    char *attr = attrs_cpy;
+
+    while (attr) {
+        char *sep = strchr(attr, ',');
+        if (sep) {
+            *(sep++) = '\0';
+        }
+        while (*attr == ' ') attr++;
+        cJSON_AddItemToArray(attrs_array, cJSON_CreateString(attr));
+        attr = sep;
+    }
+
+    free(attrs_cpy);
+    return attrs_array;
 }

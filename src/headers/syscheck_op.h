@@ -220,7 +220,8 @@ int w_get_account_info(SID *sid, char **account_name, char **account_domain);
 
 void decode_win_attributes(char *str, unsigned int attrs);
 int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array);
-cJSON *attrs_to_json(unsigned int attributes);
+cJSON *old_attrs_to_json(unsigned int attributes);
+cJSON *attrs_to_json(const char *attributes);
 cJSON *perm_to_json(char *permissions);
 
 /**

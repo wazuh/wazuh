@@ -17,6 +17,8 @@
 #include "config.h"
 #include "wazuh_modules/wmodules.h"
 
+void add_json_attrs(unsigned old_format, const char *new_format, cJSON *file_diff, char after);
+
 /* Convert Eventinfo to json */
 char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 {
@@ -247,31 +249,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                 cJSON_AddStringToObject(file_diff, "sha256_after", lf->sha256_after);
             }
         }
-        if(lf->attrs_before) {
-            if (lf->attrs_before != 0) {
-                cJSON *old_attrs;
-                if (old_attrs = attrs_to_json(lf->attrs_before), old_attrs) {
-                    cJSON_AddItemToObject(file_diff, "attrs_before", old_attrs);
-                } else {
-                    merror("The old attributes could not be added to the JSON alert.");
-                }
-            }
-        } else if (lf->attributes_before) {
-            cJSON_AddStringToObject(file_diff, "attrs_before", lf->attributes_before);
-        }
 
-        if(lf->attrs_after) {
-            if (lf->attrs_after != 0) {
-                cJSON *new_attrs;
-                if (new_attrs = attrs_to_json(lf->attrs_after), new_attrs) {
-                    cJSON_AddItemToObject(file_diff, "attrs_after", new_attrs);
-                } else {
-                    merror("The new attributes could not be added to the JSON alert.");
-                }
-            }
-        } else if (lf->attributes_after) {
-            cJSON_AddStringToObject(file_diff, "attrs_after", lf->attributes_after);
-        }
+        add_json_attrs(lf->attrs_before, lf->attributes_before, file_diff, 0);
+        add_json_attrs(lf->attrs_after, lf->attributes_after, file_diff, 1);
 
         if(lf->uname_before) {
             if (strcmp(lf->uname_before, "") != 0) {
@@ -491,4 +471,19 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     out = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return out;
+}
+
+void add_json_attrs(unsigned old_format, const char *new_format, cJSON *file_diff, char after) {
+    if(old_format ||new_format) {
+        cJSON *attrs = old_format ? old_attrs_to_json(old_format) :
+                        attrs_to_json(new_format);
+        if (attrs) {
+            cJSON_AddItemToObject(file_diff,
+                                    after ? "attrs_after" : "attrs_before",
+                                    attrs);
+        } else {
+            merror("The %s file attributes could not be added to the JSON alert.",
+                    after ? "new" : "before");
+        }
+    }
 }
