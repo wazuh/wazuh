@@ -758,9 +758,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             char *resolved_path = NULL;
 
             if (resolved_path = realpath(real_path, NULL), resolved_path) {
-                if (!resolved_path && errno == ENOENT) {
-                    dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
-                } else if (!strcmp(resolved_path, real_path)) {
+                if (!strcmp(resolved_path, real_path)) {
                     dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
                 } else {
                     dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag, real_path);
