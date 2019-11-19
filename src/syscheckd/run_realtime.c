@@ -98,7 +98,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                         mdebug2(FIM_REALTIME_HASH_DUP, data);
                         os_free(data);
                     }
-                    mdebug1(FIM_REALTIME_NEWDIRECTORY, data);
+                    mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
                 } else {
                     if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
                         merror("Unable to update 'dirtb'. Directory not found: '%s'", data);

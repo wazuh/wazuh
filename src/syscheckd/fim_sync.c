@@ -226,7 +226,7 @@ void fim_sync_dispatch(char * payload) {
     if (id->valuedouble < fim_sync_cur_id) {
         fim_sync_cur_id = id->valuedouble;
         mdebug1(FIM_DBSYNC_DEC_ID, fim_sync_cur_id);
-    } else if (id->valuedouble < fim_sync_cur_id) {
+    } else if (id->valuedouble > fim_sync_cur_id) {
         mdebug1(FIM_DBSYNC_DROP_MESSAGE, (long)id->valuedouble, fim_sync_cur_id);
         return;
     }

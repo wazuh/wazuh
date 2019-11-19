@@ -558,7 +558,7 @@ static void fim_delete_realtime_watches(int pos) {
 
                 if (dir_conf == watch_conf) {
                     // We use sizeof in this case because it is not dynamic memory
-                    strncpy(watch_to_delete[deletion_it], hash_node->key, sizeof(watch_to_delete[deletion_it]));
+                    strncpy(watch_to_delete[deletion_it], hash_node->key, sizeof(watch_to_delete[deletion_it]) - 1);
                     deletion_it++;
                 }
             }
