@@ -743,6 +743,7 @@ void Free_Logreader(logreader * logf) {
         free(logf->alias);
         free(logf->query);
         free(logf->exclude);
+        free(logf->age_str);
 
         if (logf->target) {
             for (i = 0; logf->target[i]; i++) {

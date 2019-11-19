@@ -2081,6 +2081,7 @@ void wm_sca_destroy(wm_sca_t *data) {
         }
         free(data->policies);
     }
+    os_free(data->scan_time);
     os_free(data);
 }
 

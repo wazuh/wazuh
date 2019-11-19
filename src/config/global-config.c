@@ -34,12 +34,6 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
         return (0);
     }
 
-    if (output && Config->syscheck_ignore) {
-        for(j = 0; Config->syscheck_ignore[j]; j++){
-            free(Config->syscheck_ignore[j]);
-        }
-    }
-
     /* Get right white_size */
     if (Config && Config->syscheck_ignore) {
         char **ww;
@@ -279,7 +273,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
     }
 
     if (output) {
-        if (Mail){
+        if (Mail && Config){
             if(Mail->to) {
                 for(j = 0; Mail->to[j]; j++) {
                     free(Mail->to[j]);
@@ -291,8 +285,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
             os_free(Mail->idsname);
             os_free(Mail->smtpserver);
             os_free(Mail->heloserver);
-        }
-        if (Config) {
             os_free(Config->custom_alert_output_format);
             os_free(Config->geoipdb_file);
             os_free(Config->prelude_profile);

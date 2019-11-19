@@ -20,8 +20,6 @@ int Test_Maild(const char *path, char **output) {
     os_calloc(1, sizeof(MailConfig), mail_config);
     os_calloc(1, sizeof(_Config), global_config);
 
-    mail_config->source = -1;
-
     if(ReadConfig(CMAIL, path, NULL, mail_config, output) < 0) {
         if (output == NULL){
             merror(CONF_READ_ERROR, "Mail options");
@@ -98,6 +96,14 @@ void freeMailConfig(MailConfig *mailConfig) {
         os_free(mailConfig->gran_level);
         os_free(mailConfig->gran_set);
         os_free(mailConfig->gran_format);
+
+        if(mailConfig->to) {
+            for (i = 0; mailConfig->to[i]; i++) {
+                free(mailConfig->to[i]);
+            }
+            free(mailConfig->to);
+        }
+
         if(mailConfig->gran_id) {
             for (i = 0; mailConfig->gran_id[i]; i++) {
                 free(mailConfig->gran_id[i]);
@@ -114,6 +120,10 @@ void freeMailConfig(MailConfig *mailConfig) {
 
         if(mailConfig->gran_location) {
             for (i = 0; mailConfig->gran_location[i]; i++) {
+                if (mailConfig->gran_location[i] == mailConfig->gran_location[i+1]){
+                    i++;
+                }
+                OSMatch_FreePattern(mailConfig->gran_location[i]);
                 free(mailConfig->gran_location[i]);
             }
             free(mailConfig->gran_location);
@@ -121,6 +131,10 @@ void freeMailConfig(MailConfig *mailConfig) {
 
         if(mailConfig->gran_group) {
             for (i = 0; mailConfig->gran_group[i]; i++) {
+                if (mailConfig->gran_group[i] == mailConfig->gran_group[i +1]){
+                    i++;
+                }
+                OSMatch_FreePattern(mailConfig->gran_group[i]);
                 free(mailConfig->gran_group[i]);
             }
             free(mailConfig->gran_group);

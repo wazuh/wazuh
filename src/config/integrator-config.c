@@ -280,7 +280,10 @@ void free_integratord(IntegratorConfig **integrator_config) {
             os_free(integrator_config[i]->path);
             os_free(integrator_config[i]->alert_format);
             os_free(integrator_config[i]->group);
-            os_free(integrator_config[i]->location);
+            if (integrator_config[i]->location) {
+                OSMatch_FreePattern(integrator_config[i]->location);
+                free(integrator_config[i]->location);
+            }
             free(integrator_config[i]);
         }
         free(integrator_config);

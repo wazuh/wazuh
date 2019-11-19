@@ -1271,7 +1271,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
         /* Get scan day */
         else if (strcmp(node[i]->element, xml_scanday) == 0) {
-            syscheck->scan_day = OS_IsValidDay(node[i]->content);
+            syscheck->scan_day = OS_IsValidDay(node[i]->content, output);
             if (!syscheck->scan_day) {
                 if (output == NULL) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
@@ -1858,7 +1858,7 @@ void Free_Syscheck(syscheck_config *config) {
         int pl = 0;
         free(config->opts);
         free(config->remote_db);
-        free(config->db);
+        free(config->db);        
         free(config->scan_day);
         free(config->scan_time);
         
@@ -1897,7 +1897,9 @@ void Free_Syscheck(syscheck_config *config) {
         if (config->nodiff_regex) {
             for (i=0; config->nodiff_regex[i] != NULL; i++) {
                 OSMatch_FreePattern(config->nodiff_regex[i]);
+                free(config->nodiff_regex[i]);
             }
+            free(config->nodiff_regex);
         }
         if (config->dir) {
             for (i=0; config->dir[i] != NULL; i++) {

@@ -457,7 +457,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                         }
                     } else if (strcasecmp(rule_opt[k]->element, xml_week_day) == 0) {
                         config_ruleinfo->week_day =
-                            OS_IsValidDay(rule_opt[k]->content);
+                            OS_IsValidDay(rule_opt[k]->content, NULL);
 
                         if (!config_ruleinfo->week_day) {
                             merror(INVALID_CONFIG,

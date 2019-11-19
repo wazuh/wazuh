@@ -687,10 +687,11 @@ int OS_IsonDay(int week_day, const char *ossec_day)
 
 #define IS_SEP(x) (*x == ' ' || *x == ',')
 
-char *OS_IsValidDay(const char *day_str)
+char *OS_IsValidDay(const char *day_str, char **output)
 {
     int i = 0, ng = 0;
     char *ret;
+    char message[OS_FLSIZE];
     char day_ret[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
     const char *(days[]) = {
         "sunday", "sun", "monday", "mon", "tuesday", "tue",
@@ -737,7 +738,12 @@ char *OS_IsValidDay(const char *day_str)
         }
 
         if (!days[i]) {
-            merror(INVALID_DAY, day_str);
+            if (output == NULL) {
+                merror(INVALID_DAY, day_str);
+            } else {
+                snprintf(message, OS_FLSIZE, "Invalid day format: '%s'", day_str);
+                wm_strcat(output, message, '\n');
+            }
             return (NULL);
         }
 
@@ -749,7 +755,12 @@ char *OS_IsValidDay(const char *day_str)
         } else if (*day_str == '\0') {
             break;
         } else {
-            merror(INVALID_DAY, day_str);
+            if (output == NULL) {
+                merror(INVALID_DAY, day_str);
+            } else {
+                snprintf(message, OS_FLSIZE, "Invalid day format: '%s'", day_str);
+                wm_strcat(output, message, '\n');
+            }
             return (NULL);
         }
     }
@@ -773,7 +784,12 @@ char *OS_IsValidDay(const char *day_str)
     /* At least one day must be checked */
     if (ng == 0) {
         free(ret);
-        merror(INVALID_DAY, day_str);
+        if (output == NULL) {
+            merror(INVALID_DAY, day_str);
+        } else {
+            snprintf(message, OS_FLSIZE, "Invalid day format: '%s'", day_str);
+            wm_strcat(output, message, '\n');
+        }
         return (NULL);
     }
 

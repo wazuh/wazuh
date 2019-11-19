@@ -393,7 +393,9 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
 }
 
 // Destroy data
-void wm_key_request_destroy(wm_krequest_t * data) {
+void wm_key_request_destroy(wm_krequest_t *data) {
+    os_free(data->exec_path);
+    os_free(data->socket);
     os_free(data);
 }
 
