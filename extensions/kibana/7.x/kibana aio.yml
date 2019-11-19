@@ -4,9 +4,9 @@ elasticsearch.password: "<ELASTIC_GENERATED_PASSWORD>"
 
 # Elasticsearch from/to Kibana
 
-elasticsearch.ssl.certificateAuthorities: ["/etc/kibana/certs/ca/ca.crt"]
-elasticsearch.ssl.certificate: "/etc/kibana/certs/kibana.crt"
-elasticsearch.ssl.key: "/etc/kibana/certs/kibana.key"
+elasticsearch.ssl.certificateAuthorities: ["/etc/elasticsearch/certs/ca/ca.crt"]
+elasticsearch.ssl.certificate: "/etc/elasticsearch/certs/elasticsearch.crt"
+elasticsearch.ssl.key: "/etc/elasticsearch/certs/elasticsearch.key"
 
 # Browser from/to Kibana
 server.ssl.enabled: true
