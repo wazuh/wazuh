@@ -684,7 +684,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
         }
 
-        char real_path[PATH_MAX + 1];
+        char real_path[PATH_MAX + 1] = "";
 #ifdef WIN32
         char expandedpath[PATH_MAX + 1];
 
@@ -710,7 +710,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
         str_lowercase(real_path);
 #else
-        strncpy(real_path, tmp_dir, PATH_MAX + 1);
+        strncpy(real_path, tmp_dir, PATH_MAX);
 #endif
         /* Check for glob */
         /* The mingw32 builder used by travis.ci can't find glob.h
