@@ -599,7 +599,7 @@ static void fim_link_delete_range(int pos) {
             fim_delete (paths[i]);
         }
     }
-    os_free(paths);
+    free_strarray(paths);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 }
 // LCOV_EXCL_STOP
