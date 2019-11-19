@@ -567,7 +567,7 @@ static void fim_delete_realtime_watches(int pos) {
         deletion_it--;
         while(deletion_it >= 0) {
             inotify_rm_watch(syscheck.realtime->fd, atol(watch_to_delete[deletion_it]));
-            OSHash_Delete_ex(syscheck.realtime->dirtb, watch_to_delete[deletion_it]);
+            free(OSHash_Delete_ex(syscheck.realtime->dirtb, watch_to_delete[deletion_it]));
             deletion_it--;
         }
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
