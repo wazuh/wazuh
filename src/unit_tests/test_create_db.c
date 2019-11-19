@@ -823,7 +823,7 @@ void test_fim_insert_success_new(void **state)
     // Added
     will_return(__wrap_OSHash_Add, 2);
 
-    ret = fim_insert(file, data, file_stat);
+    ret = fim_insert(file, data, &file_stat);
 
     assert_int_equal(ret, 0);
 
@@ -872,7 +872,7 @@ void test_fim_insert_success_add(void **state)
     inode_data->paths = os_AddStrArray(file, inode_data->paths);
     will_return(__wrap_OSHash_Get, inode_data);
 
-    ret = fim_insert(file, data, file_stat);
+    ret = fim_insert(file, data, &file_stat);
 
     assert_int_equal(ret, 0);
 }
@@ -919,7 +919,7 @@ void test_fim_insert_failure_new(void **state)
     // Errod adding
     will_return(__wrap_OSHash_Add, 1);
 
-    ret = fim_insert(file, data, file_stat);
+    ret = fim_insert(file, data, &file_stat);
 
     assert_int_equal(ret, -1);
 }
@@ -962,7 +962,7 @@ void test_fim_insert_failure_duplicated(void **state)
     // Duplicated
     will_return(__wrap_rbtree_insert, 0);
 
-    ret = fim_insert(file, data, file_stat);
+    ret = fim_insert(file, data, &file_stat);
 
     assert_int_equal(ret, -1);
 }

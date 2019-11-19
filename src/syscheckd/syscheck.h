@@ -119,7 +119,7 @@ void init_fim_data_entry(fim_entry_data *data);
 void fim_get_checksum (fim_entry_data * data);
 
 //
-int fim_insert (char *file_name, fim_entry_data * data, struct stat file_stat);
+int fim_insert(char *file_name, fim_entry_data * data, struct stat *file_stat);
 
 //
 int fim_update (char * file, fim_entry_data * data, fim_entry_data * old_data);

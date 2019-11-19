@@ -264,7 +264,7 @@ int fim_file (char *file, fim_element *item, whodata_evt *w_evt, int report) {
 
     if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file), !saved_data) {
         // New entry. Insert into hash table
-        if (fim_insert(file, entry_data, item->statbuf) == -1) {
+        if (fim_insert(file, entry_data, &item->statbuf) == -1) {
             free_entry_data(entry_data);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
@@ -400,7 +400,7 @@ int fim_registry_event (char * key, fim_entry_data * data, int pos) {
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
     if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, key), !saved_data) {
-        if (fim_insert (key, data, file_stat) < 0) {
+        if (fim_insert (key, data, &file_stat) < 0) {
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
@@ -701,7 +701,7 @@ void fim_get_checksum (fim_entry_data * data) {
 
 
 // Inserts a file in the syscheck hash table structure (inodes and paths)
-int fim_insert (char * file, fim_entry_data * data, __attribute__((unused))struct stat file_stat) {
+int fim_insert(char * file, fim_entry_data * data, __attribute__((unused))struct stat *file_stat) {
     if (rbtree_insert(syscheck.fim_entry, file, data) == NULL) {
         mdebug1(FIM_RBTREE_DUPLICATE_INSERT, file);
         return -1;
@@ -710,7 +710,7 @@ int fim_insert (char * file, fim_entry_data * data, __attribute__((unused))struc
 #ifndef WIN32
     char inode_key[OS_SIZE_128];
     // Function OSHash_Add_ex doesn't alloc memory for the data of the hash table
-    snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)file_stat.st_dev, (unsigned long)file_stat.st_ino);
+    snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)file_stat->st_dev, (unsigned long)file_stat->st_ino);
 
     if (fim_update_inode(file, inode_key) == -1) {
         return -1;
