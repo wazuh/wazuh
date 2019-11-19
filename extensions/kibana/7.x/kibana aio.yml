@@ -10,8 +10,8 @@ elasticsearch.ssl.key: "/etc/elasticsearch/certs/elasticsearch.key"
 
 # Browser from/to Kibana
 server.ssl.enabled: true
-server.ssl.certificate: "/etc/kibana/certs/kibana.crt"
-server.ssl.key: "/etc/kibana/certs/kibana.key"
+server.ssl.certificate: "/etc/elasticsearch/certs/elasticsearch.crt"
+server.ssl.key: "/etc/elasticsearch/certs/elasticsearch.key"
 
 # Elasticsearch authentication
 xpack.security.enabled: true
