@@ -447,13 +447,13 @@ int audit_init(void) {
     static int audit_socket;
     audit_socket = init_auditd_socket();
     if (audit_socket < 0) {
-        merror("Cann't init auditd socket in 'init_auditd_socket()'");
+        merror("Can't init auditd socket in 'init_auditd_socket()'");
         return -1;
     }
 
     int regex_comp = init_regex();
     if (regex_comp < 0) {
-        merror("Cann't init regex in 'init_regex()'");
+        merror("Can't init regex in 'init_regex()'");
         return -1;
     }
 
