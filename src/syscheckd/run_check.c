@@ -540,12 +540,13 @@ static void fim_link_check_delete(int pos) {
 static void fim_delete_realtime_watches(int pos) {
     OSHashNode *hash_node;
     char *data;
-    char watch_to_delete[OS_SIZE_20480][OS_SIZE_32];
+    W_Vector * watch_to_delete = W_Vector_init(1024);
     unsigned int inode_it = 0;
     int deletion_it = 0;
     int dir_conf;
     int watch_conf;
 
+    assert(watch_to_delete != NULL);
     dir_conf = fim_configuration_directory(syscheck.dir[pos], "file");
 
     if (dir_conf > -1) {
@@ -557,8 +558,7 @@ static void fim_delete_realtime_watches(int pos) {
                 watch_conf = fim_configuration_directory(data, "file");
 
                 if (dir_conf == watch_conf) {
-                    // We use sizeof in this case because it is not dynamic memory
-                    strncpy(watch_to_delete[deletion_it], hash_node->key, sizeof(watch_to_delete[deletion_it]) - 1);
+                    W_Vector_insert(watch_to_delete, hash_node->key);
                     deletion_it++;
                 }
             }
@@ -567,13 +567,17 @@ static void fim_delete_realtime_watches(int pos) {
 
         deletion_it--;
         while(deletion_it >= 0) {
-            inotify_rm_watch(syscheck.realtime->fd, atol(watch_to_delete[deletion_it]));
-            free(OSHash_Delete_ex(syscheck.realtime->dirtb, watch_to_delete[deletion_it]));
+            const char * wd_str = W_Vector_get(watch_to_delete, deletion_it);
+            assert(wd_str != NULL);
+
+            inotify_rm_watch(syscheck.realtime->fd, atol(wd_str));
+            free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd_str));
             deletion_it--;
         }
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
     }
 
+    W_Vector_free(watch_to_delete);
     return;
 }
 // LCOV_EXCL_STOP
