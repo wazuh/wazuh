@@ -557,7 +557,8 @@ static void fim_delete_realtime_watches(int pos) {
                 watch_conf = fim_configuration_directory(data, "file");
 
                 if (dir_conf == watch_conf) {
-                    memcpy(watch_to_delete[deletion_it], hash_node->key, strlen(hash_node->key));
+                    // We use sizeof in this case because it is not dynamic memory
+                    strncpy(watch_to_delete[deletion_it], hash_node->key, sizeof(watch_to_delete[deletion_it]));
                     deletion_it++;
                 }
             }
