@@ -1141,38 +1141,36 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         free(s_norder);
                     } else if (strcasecmp(rule_opt[k]->element, xml_mitre) == 0) {
-                        int i;
+                        int ind;
                         int l;
                         XML_NODE mitre_opt = NULL;
                         mitre_opt = OS_GetElementsbyNode(&xml, rule_opt[k]);
 
                         if (mitre_opt == NULL) {
-                            merror("Rule '%d' without any option. "
-                                "It may lead to false positives and some "
-                                "other problems for the system. Exiting.",
+                            merror("Empty Mitre information for rule '%d'",
                                 config_ruleinfo->sigid);
                             goto cleanup;
                         }
 
-                        for (i = 0; mitre_opt[i] != NULL; i++) {
-                            if ((!mitre_opt[i]->element) || (!mitre_opt[i]->content)) {
+                        for (ind = 0; mitre_opt[ind] != NULL; ind++) {
+                            if ((!mitre_opt[ind]->element) || (!mitre_opt[ind]->content)) {
                                 break;
-                            } else if (strcasecmp(mitre_opt[i]->element, xml_mitre_id) == 0) {
+                            } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_id) == 0) {
                                 int inarray = 0;
                                 for (l = 0; l < mitre_size; l++) {
-                                    if (strcmp(config_ruleinfo->mitre_id[l],mitre_opt[i]->content)== 0) {
+                                    if (strcmp(config_ruleinfo->mitre_id[l],mitre_opt[ind]->content)== 0) {
                                         inarray = 1;
                                     }
                                 }
-                                if (!inarray) {
+                                if (!inarray && mitre_opt[ind]->content != NULL) {
                                     os_realloc(config_ruleinfo->mitre_id, (mitre_size + 2) * sizeof(char *), config_ruleinfo->mitre_id);
-                                    os_strdup(mitre_opt[i]->content, config_ruleinfo->mitre_id[mitre_size]);
+                                    os_strdup(mitre_opt[ind]->content, config_ruleinfo->mitre_id[mitre_size]);
                                     config_ruleinfo->mitre_id[mitre_size + 1] = NULL;
                                     mitre_size++;
                                 }
                             } else {
                                 merror("Invalid option '%s' for "
-                                "rule '%d'.", mitre_opt[i]->element,
+                                "rule '%d'.", mitre_opt[ind]->element,
                                 config_ruleinfo->sigid);
                                 goto cleanup;
                             }

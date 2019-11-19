@@ -22,13 +22,13 @@ int mitre_load(char * mode){
     char *wazuhdb_query = NULL;
     char *response = NULL;
     char *ext_id = NULL;
-    cJSON *root;
-    cJSON *ids;
-    cJSON *id;
-    cJSON *tactics_array;
-    cJSON *tactics_json;
-    cJSON *tactics;
-    cJSON *tactic;
+    cJSON *root = NULL;
+    cJSON *ids = NULL;
+    cJSON *id = NULL;
+    cJSON *tactics_array = NULL;
+    cJSON *tactics_json = NULL;
+    cJSON *tactics = NULL;
+    cJSON *tactic = NULL;
 
     snprintf(path_db, sizeof(path_db), "%s/%s.db", WDB_DIR, WDB_MITRE_NAME);
 
@@ -39,24 +39,19 @@ int mitre_load(char * mode){
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
     snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT id from attack;");
     if (result = wdb_send_query(wazuhdb_query, &response), result == -2) {
-        mdebug1("Mitre info loading failed. Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
-        merror("Mitre matrix information could not be loaded.");
+        merror("Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
         goto end;
     }
 
     if (result == -1) {
-        mdebug1("Mitre info loading failed. No response or bad response from wazuh-db: %s", response);
-        merror("Mitre matrix information could not be loaded.");
-        os_free(response);
+        merror("No response or bad response from wazuh-db: %s", response);
         goto end;
     }
 
     /* Parse IDs string */
-    if (root = cJSON_Parse(response+3), !root) {
-        mdebug1("Mitre info loading failed. Query response cannot be parsered: %s", response);
-        merror("Mitre matrix information could not be loaded.");
-        os_free(response);
-        cJSON_Delete(root);
+    const char *jsonErrPtr;
+    if (root = cJSON_ParseWithOpts(response+3, &jsonErrPtr, 0), !root) {
+        merror("Response from the Mitre database cannot be parsed: %s", response);
         result = -1;
         goto end;
     }
@@ -66,20 +61,16 @@ int mitre_load(char * mode){
 
     /* Getting array size */
     if (size_ids = cJSON_GetArraySize(root), size_ids == 0) {
-        mdebug1("Mitre info loading failed. Query response has 0 elements.");
-        merror("Mitre matrix information could not be loaded.");
-        cJSON_Delete(root);
+        merror("Response from the Mitre database has 0 elements.");
         result = -1;
         goto end;
     }
-    
+
     for (i = 0; i < size_ids; i++){
         /* Getting Mitre attack ID from Mitre's database in Wazuh-DB  */
         ids = cJSON_GetArrayItem(root, i);
         if (id = cJSON_GetObjectItem(ids,"id"), id == NULL) {
-            mdebug1("Mitre info loading failed. It was not possible to get cJSON item from IDs array.");
-            merror("Mitre matrix information could not be loaded.");
-            cJSON_Delete(root);
+            merror("It was not possible to get Mitre techniques information.");
             result = -1;
             goto end; 
         }
@@ -88,81 +79,73 @@ int mitre_load(char * mode){
         /* Consulting Mitre's database to get Tactics */
         snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT phase_name FROM has_phase WHERE attack_id = '%s';", ext_id);
         if (result = wdb_send_query(wazuhdb_query, &response), result == -2) {
-            mdebug1("Mitre info loading failed. Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
-            merror("Mitre matrix information could not be loaded.");
-            cJSON_Delete(root);
+            merror("Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
             goto end;
         }
 
         if (result == -1) {
-            mdebug1("Mitre info loading failed. No response or bad response from wazuh-db: %s", response);
-            merror("Mitre matrix information could not be loaded.");
-            cJSON_Delete(root);
-            os_free(response);
+            merror("No response or bad response from wazuh-db: %s", response);
             goto end;
         }
 
         /* Getting tactics from Mitre's database in Wazuh-DB */
         tactics_array = cJSON_CreateArray();
-        if (tactics_json = cJSON_Parse(response+3), !tactics_json) {
-            mdebug1("Mitre info loading failed. Query response cannot be parsered: %s", response);
-            merror("Mitre matrix information could not be loaded.");
-            cJSON_Delete(tactics_json);
-            cJSON_Delete(root);
-            cJSON_Delete(tactics_array);
-            os_free(response);
+        if (tactics_json = cJSON_ParseWithOpts(response+3, &jsonErrPtr, 0), !tactics_json) {
+            merror("Response from the Mitre database cannot be parsed: %s", response);
             result = -1;
             goto end;
         }
+        os_free(response);
         if (size_tactics = cJSON_GetArraySize(tactics_json), size_tactics == 0) {
-            mdebug1("Mitre info loading failed. Query response has 0 elements. Response: %s", response);
-            merror("Mitre matrix information could not be loaded.");
-            cJSON_Delete(tactics_json);
-            cJSON_Delete(root);
-            cJSON_Delete(tactics_array);
-            os_free(response);
+            merror("Response from the Mitre database has 0 elements.");
             result = -1;
             goto end;
         }
         for (j = 0; j < size_tactics; j++) {
             tactics = cJSON_GetArrayItem(tactics_json, j);
             if (tactic = cJSON_GetObjectItem(tactics,"phase_name"), tactic == NULL) {
-                mdebug1("Mitre info loading failed. It was not possible to get cJSON item from tactics array.");
-                merror("Mitre matrix information could not be loaded.");
-                cJSON_Delete(tactics_json);
-                cJSON_Delete(root);
-                cJSON_Delete(tactics_array);
-                os_free(response);
+                merror("It was not possible to get MITRE tactics information.");
                 result = -1;
                 goto end;
             }
             cJSON_AddItemToArray(tactics_array, cJSON_Duplicate(tactic,1));
         }
+        cJSON_Delete(tactics_json);
+        tactics_json = NULL;
 
         /* Filling Hash table with Mitre's information */
         if (hashcheck = OSHash_Add(mitre_table, ext_id, tactics_array), hashcheck == 0) {
-            mdebug1("Mitre Hash table adding failed. Mitre information cannot be stored. Response: %s", response);
-            merror("Mitre matrix information could not be loaded.");
-            cJSON_Delete(tactics_json);
-            cJSON_Delete(root);
-            cJSON_Delete(tactics_array);
-            os_free(response);
+            merror("Mitre Hash table adding failed. Mitre Technique ID '%s' cannot be stored.", ext_id);
             result = -1;
             goto end;
         }
+
         if (mode != NULL && !strcmp(mode,"test")) {
             cJSON_Delete(tactics_array);
+            tactics_array = NULL;
         }
-        cJSON_Delete(tactics_json);
-        os_free(response);
     }
-    cJSON_Delete(root);
 
 end:
     if (mode != NULL && !strcmp(mode,"test")) {
         OSHash_Free(mitre_table);
     }
     os_free(wazuhdb_query);
+    if (response != NULL) {
+        os_free(response);    
+    }
+    if (root != NULL) {
+        cJSON_Delete(root);
+    }
+    if (tactics_json && tactics_json != NULL) {
+        cJSON_Delete(tactics_json);
+    }
+    if (tactics_array && tactics_array != NULL && result != 0) {
+        cJSON_Delete(tactics_array);
+    }
+    if (result != 0) {
+         merror("Mitre matrix information could not be loaded.");
+    }
     return result;
 }
 

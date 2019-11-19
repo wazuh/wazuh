@@ -157,6 +157,7 @@ typedef struct _RuleInfo {
     char ** same_fields;
     char ** not_same_fields;
 
+    char ** mitre_id;
 } RuleInfo;
 
 int OS_ReadXMLRules(const char *rulefile,
