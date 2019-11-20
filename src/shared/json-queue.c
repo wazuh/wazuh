@@ -211,7 +211,7 @@ alert_data *GetAlertJSONData(file_queue *fileq){
     al_json = jqueue_next(fileq);
     
     if (!al_json || !fileq->fp) {
-        cJSON_free(al_json);
+        cJSON_Delete(al_json);
         FreeAlertData(al_data);
         return NULL;
     }
@@ -227,7 +227,7 @@ alert_data *GetAlertJSONData(file_queue *fileq){
     rule = cJSON_GetObjectItem(al_json, "rule");
     
     if (!rule) {
-        cJSON_free(al_json);
+        cJSON_Delete(al_json);
         FreeAlertData(al_data);
         return NULL;
     }
@@ -310,13 +310,8 @@ alert_data *GetAlertJSONData(file_queue *fileq){
     }
 
     /* Free memory */
-    cJSON_free(al_json);
-    cJSON_free(json_object);
-    cJSON_free(timestamp);
-    cJSON_free(rule);
-    cJSON_free(syscheck);
-    cJSON_free(location);
-    cJSON_free(srcip);
+    cJSON_Delete(al_json);
+    al_json = NULL;
 
     return al_data;
 }
