@@ -12,6 +12,7 @@ import time
 from functools import reduce
 from operator import or_
 from typing import Callable, Dict, Tuple
+from concurrent.futures import ThreadPoolExecutor
 
 import wazuh.results as wresults
 from wazuh import exception, agent, common
@@ -64,6 +65,7 @@ class DistributedAPI:
 
         self.local_clients = []
         self.local_client_arg = local_client_arg
+        self.threadpool = ThreadPoolExecutor(max_workers=1)
 
     async def distribute_function(self) -> [Dict, exception.WazuhException]:
         """
