@@ -174,6 +174,7 @@ cJSON *getSyscheckConfig(void) {
             if (syscheck.opts[i] & CHECK_FOLLOW) cJSON_AddItemToArray(opts, cJSON_CreateString("follow_symbolic_link"));
             cJSON_AddItemToObject(pair,"opts",opts);
             cJSON_AddStringToObject(pair,"dir",syscheck.dir[i]);
+            if (syscheck.symbolic_links[i]) cJSON_AddStringToObject(pair,"symbolic_link",syscheck.symbolic_links[i]);
             cJSON_AddNumberToObject(pair,"recursion_level",syscheck.recursion_level[i]);
             if (syscheck.filerestrict && syscheck.filerestrict[i]) {
                 cJSON_AddStringToObject(pair,"restrict",syscheck.filerestrict[i]->raw);
