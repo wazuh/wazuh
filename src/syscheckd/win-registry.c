@@ -264,7 +264,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
 
         OS_SHA1_Str(data->hash_sha256, sizeof(data->hash_sha256), data->checksum);
 
-        if (fim_registry_event(path, data, pos) <= 0) {
+        if (fim_registry_event(path, data, pos) < 0) {
             mdebug1(FIM_REGISTRY_EVENT_FAIL, path);
             free_entry_data(data);
         }

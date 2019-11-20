@@ -24,6 +24,10 @@ int delete_target_file(const char *path) {
     drive[1] = path[0];
 
     char *windows_path = strchr(path, ':');
+    if (windows_path == NULL) {
+        mdebug1("Incorrect path. This does not contain ':' ");
+        return 0;
+    }
     strncat(full_path, drive,2);
     strncat(full_path, (windows_path + 1), PATH_MAX - strlen(full_path) - 1);
 #else

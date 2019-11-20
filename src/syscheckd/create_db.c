@@ -467,7 +467,7 @@ int fim_configuration_directory(const char *path, const char *entry) {
     else if (strcmp("registry", entry) == 0) {
         while(syscheck.registry[it].entry) {
             snprintf(full_entry, OS_SIZE_4096 + 1, "%s %s%c",
-                    syscheck.registry[it].arch == ARCH_64BIT ? "[x64]" : "",
+                    syscheck.registry[it].arch == ARCH_64BIT ? "[x64]" : "[x32]",
                     syscheck.registry[it].entry,
                     PATH_SEP);
             match = w_compare_str(full_entry, full_path);
@@ -830,7 +830,7 @@ void check_deleted_files() {
             json_event = fim_json_event (keys[i], NULL, data, pos, FIM_DELETE, FIM_SCHEDULED, NULL);
             fim_delete(keys[i]);
 
-            if (syscheck.opts[pos] & CHECK_SEECHANGES) {
+            if (!strcmp(data->entry_type, "file") && syscheck.opts[pos] & CHECK_SEECHANGES) {
                 delete_target_file(keys[i]);
             }
 
