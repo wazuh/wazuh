@@ -57,7 +57,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.prefilter_cmd  = NULL;
     syscheck.sync_interval  = 300;
     syscheck.sync_response_timeout = 30;
-    syscheck.sync_queue_size = 64;
+    syscheck.sync_queue_size = 16384;
     syscheck.max_eps        = 200;
     syscheck.send_delay     = 5000; /* 1000000 / max_eps */
 
