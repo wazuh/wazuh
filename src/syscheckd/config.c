@@ -308,6 +308,7 @@ cJSON *getSyscheckConfig(void) {
     cJSON_AddItemToObject(syscfg, "inventory", inventory);
 
     cJSON_AddNumberToObject(syscfg, "max_eps", syscheck.max_eps);
+    cJSON_AddNumberToObject(syscfg, "process_priority", syscheck.process_priority);
 
     cJSON_AddItemToObject(root,"syscheck",syscfg);
 
