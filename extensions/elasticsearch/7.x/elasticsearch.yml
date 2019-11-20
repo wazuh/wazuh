@@ -1,5 +1,3 @@
-path.data: /var/lib/elasticsearch
-path.logs: /var/log/elasticsearch
 network.host: <elasticsearch_ip>
 node.name: <node_name>
 cluster.initial_master_nodes: ["node_name"]
@@ -20,3 +18,6 @@ xpack.security.http.ssl.certificate_authorities: [ "/etc/elasticsearch/certs/ca/
 
 # Elasticsearch authentication
 xpack.security.enabled: true
+
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
