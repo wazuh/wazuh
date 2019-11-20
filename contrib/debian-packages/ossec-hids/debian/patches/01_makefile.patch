@@ -66,7 +66,7 @@ Index: ossec-hids-2.8.2/Makefile
 +	chmod -x $(DIR)/etc/internal_options.conf
 +	cp -pr etc/ossec-server.conf $(DIR)/etc/ossec.conf
 +	chmod -x $(DIR)/etc/ossec.conf
-+	cp -pr src/rootcheck/db/*.txt $(DIR)/etc/shared/
++	cp -pr etc/rootcheck/*.txt $(DIR)/etc/shared/
 +	chmod -x $(DIR)/etc/shared/*.txt
 +	cp -p active-response/*.sh $(DIR)/active-response/bin/
 +	cp -p active-response/firewalls/*.sh $(DIR)/active-response/bin/
