@@ -58,17 +58,19 @@ int main(int argc, char **argv)
 
     const char *related_of = NULL;
     const char *related_values = NULL;
-    monitor_config mon_config;
+    monitor_config *mon_config;
 
     /* Set the name */
     OS_SetName(ARGV0);
 
-    ReadConfig(CREPORTS, DEFAULTCPATH, &mon_config, NULL);
+    os_calloc(1, sizeof(monitor_config), mon_config);
+
+    ReadConfig(CREPORTS, DEFAULTCPATH, mon_config, NULL);
 
     /* Get any configured entry */
-    if (!mon_config.reports) {
-        os_calloc(1, 2 * sizeof(report_config *), mon_config.reports);
-        os_calloc(1, sizeof(report_config), mon_config.reports[s]);
+    if (!mon_config->reports) {
+        os_calloc(1, 2 * sizeof(report_config *), mon_config->reports);
+        os_calloc(1, sizeof(report_config), mon_config->reports[s]);
     }
     
     while ((c = getopt(argc, argv, "Vdhstu:g:D:f:v:n:r:")) != -1) {
@@ -86,7 +88,7 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-n needs an argument");
                 }
-                mon_config.reports[s]->r_filter.report_name = optarg;
+                mon_config->reports[s]->r_filter.report_name = optarg;
                 break;
             case 'r':
                 if (!optarg || !argv[optind]) {
@@ -96,7 +98,7 @@ int main(int argc, char **argv)
                 related_values = argv[optind];
 
                 if (os_report_configfilter(related_of, related_values,
-                                           &(mon_config.reports[s]->r_filter), REPORT_RELATED)) {
+                                           &(mon_config->reports[s]->r_filter), REPORT_RELATED)) {
                     merror_exit(CONFIG_ERROR, "user argument");
                 }
                 optind++;
@@ -109,7 +111,7 @@ int main(int argc, char **argv)
                 filter_value = argv[optind];
 
                 if (os_report_configfilter(filter_by, filter_value,
-                                           &(mon_config.reports[s]->r_filter), REPORT_FILTER)) {
+                                           &(mon_config->reports[s]->r_filter), REPORT_FILTER)) {
                     merror_exit(CONFIG_ERROR, "user argument");
                 }
                 optind++;
@@ -136,7 +138,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             case 's':
-                mon_config.reports[s]->r_filter.show_alerts = 1;
+                mon_config->reports[s]->r_filter.show_alerts = 1;
                 break;
             default:
                 help_reportd();
@@ -189,7 +191,7 @@ int main(int argc, char **argv)
     minfo(STARTUP_MSG, (int)getpid());
 
     /* The real stuff now */
-    os_ReportdStart(&(mon_config.reports[s]->r_filter));
+    os_ReportdStart(&(mon_config->reports[s]->r_filter));
 
     exit(0);
 }
