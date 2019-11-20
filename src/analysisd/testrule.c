@@ -32,20 +32,21 @@
 
 
 
-/** Values possible for event_t (event type) */
-typedef enum  event_type { SYSLOG_T, EVENTCHANNEL_T, SYSCHECK_T, SCA_T, SYSCOLLECTOR_T, CISCAT_T, ROOTCHECK_T, HOSTINFO_T} EventType;
+/* Values possible for event_t (event type) */
+typedef enum  event_type { SYSLOG_T, EVENTCHANNEL_T} EventType;
 
-/** Internal functions to proccess logs**/
+/* Internal functions to proccess logs**/
 void OS_ReadMSG(char *ut_str, EventType event_t);
 
-/** Internal function to decode events */
-int DecodeEventchannelTestRule(Eventinfo *lf);
+/* Internal function to decode events */
+void DecodeEventchannelTestRule(Eventinfo *lf);
 static int printArrayEvent (Eventinfo *lf, cJSON *event, char *name);
 
-/* Analysisd function */
+/* Analysisd functions */
 RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match);
 
 void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match);
+int DecodeWinevt(Eventinfo *lf);
 
 // Cleanup at exit
 static void onexit();
@@ -61,9 +62,7 @@ static void help_logtest(void)
     print_out("  %s: -[Vhdtva] [-c config] [-D dir] [-U rule:alert:decoder]", ARGV0);
     print_out("    -V                Version and license message");
     print_out("    -h                This help message");
-    print_out("    -e <event_type>   Specify the type of event to test");
-    print_out("                      Values: syslog, syscheck, eventchannel, sca, syscollector,");
-    print_out("                              ciscat, rootcheck and hostinfo.");
+    print_out("    -e                Allow to test eventchannel events");
     print_out("    -d                Execute in debug mode. This parameter");
     print_out("                      can be specified multiple times");
     print_out("                      to increase the debug level.");
@@ -110,7 +109,7 @@ int main(int argc, char **argv)
     geoipdb = NULL;
 #endif
 
-    while ((c = getopt(argc, argv, "VatvdhU:D:c:e:q")) != -1) {
+    while ((c = getopt(argc, argv, "VatvdheU:D:c:q")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -152,17 +151,7 @@ int main(int argc, char **argv)
                 full_output = 1;
                 break;
             case 'e':
-                if (!optarg) {
-                    merror_exit("-e needs an argument");
-                }
-                if (strcmp(optarg, "eventchannel") == 0) {event_t = EVENTCHANNEL_T; }
-                else if (strcmp(optarg, "sca") == 0) {event_t = SCA_T; }
-                else if (strcmp(optarg, "syscheck") == 0) {event_t = SYSCHECK_T;}
-                else if (strcmp(optarg, "syscollector") == 0) {event_t = SYSCOLLECTOR_T;}
-                else if (strcmp(optarg, "ciscat") == 0) {event_t = CISCAT_T;}
-                else if (strcmp(optarg, "rootcheck") == 0) {event_t = ROOTCHECK_T;}
-                else if (strcmp(optarg, "hostinfo") == 0) {event_t = HOSTINFO_T;}
-                else {event_t = SYSLOG_T;}
+                event_t = EVENTCHANNEL_T;
                 break;
             default:
                 help_logtest();
@@ -297,12 +286,8 @@ int main(int argc, char **argv)
             SetDecodeXML();
 
 
-            /** Load C decoders*/
-            switch (event_t) {
-            case SCA_T: SecurityConfigurationAssessmentInit(); break;
-            case EVENTCHANNEL_T: WinevtInit(); break;
-            default: break;
-            }
+            /* Load C decoders */
+            if(event_t == EVENTCHANNEL_T){ WinevtInit(); }
         }
         {
             /* Load Lists */
@@ -520,19 +505,8 @@ void OS_ReadMSG(char *ut_str, EventType event_t)
             /* Decode event */
             switch (event_t)
             {
-            case SCA_T:
-
-
-
-                break;
-            case EVENTCHANNEL_T:
-                if(DecodeEventchannelTestRule(lf)) {
-                    print_out("Eventchannel event decoding failed");
-                }
-                break;
-            default:
-                DecodeEvent(lf, &decoder_match);
-                break;
+                case EVENTCHANNEL_T: DecodeEventchannelTestRule(lf); break;
+                default: DecodeEvent(lf, &decoder_match); break;
             }
 
 
@@ -723,32 +697,43 @@ void onsignal(__attribute__((unused)) int signum) {
 }
 
 
-int DecodeEventchannelTestRule(Eventinfo *lf)
+void DecodeEventchannelTestRule(Eventinfo *lf)
 {
     cJSON *event = NULL;
     cJSON *json_event = NULL;
     const char *jsonErrPtr;
-    int result = 1;
-
-    /** Obtain event */
-    if (event = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0), !event)
-    { merror("Malformed eventchannel JSON event."); return result; }
-
-    if (json_event = cJSON_GetObjectItem(event, "win"), !json_event)
-    { merror("Malformed eventchannel JSON event."); return result; }
-
-    /** Assign decoder and print event */
-    lf->decoder_info = winevt_decoder;
+    OS_XML xml;
 
     print_out("\n**Phase 2: Completed decoding.\n");
     print_out("       decoder: 'windows_eventchannel'");
-    printArrayEvent(lf, json_event, "system");
-    printArrayEvent(lf, json_event, "eventdata");
 
-    cJSON_Delete(event);
-    result = 0;
+    /* Obtain event in JSON format */
+    if (!strncmp(lf->log, "{\"win\":", 7))
+    {
+        if (event = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0), !event)
+        { print_out("\nMalformed eventchannel JSON event.\n"); }
 
-    return result;
+        if (json_event = cJSON_GetObjectItem(event, "win"), !json_event)
+        { print_out("\nMalformed eventchannel JSON event.\n"); }
+
+        if(printArrayEvent(lf, json_event, "system"))
+        { print_out("\nMalformed JSON: field 'system' not found.\n"); }
+
+        if(printArrayEvent(lf, json_event, "eventdata"))
+        { print_out("\nMalformed JSON: field 'eventdata' not found.\n"); }
+
+        cJSON_Delete(event);
+    }
+    /* Obtain event in XML format */
+    else if (!strncmp(lf->log, "<Event", 6))
+    {
+        if (OS_ReadXMLString(lf->log, &xml) < 0 || DecodeWinevt(lf))
+        { print_out("\nMalformed eventchannel XML event.\n"); }
+    }
+    else
+    { print_out("\nMalformed eventchannel event.\n"); }
+
+    lf->decoder_info = winevt_decoder;
 }
 
 static int printArrayEvent (Eventinfo *lf, cJSON *event, char *name)
@@ -757,16 +742,19 @@ static int printArrayEvent (Eventinfo *lf, cJSON *event, char *name)
     int json_size, i;
     cJSON *item = NULL;
     cJSON *obj = NULL;
-    char name_item[60000];
+    size_t array_size = 300;
+    char name_item[array_size];
 
     if(obj = cJSON_GetObjectItem(event, name), !obj)
-    { merror("Malformed JSON: field '%s' not found.", name); return result; }
+    { return result; }
 
     json_size = cJSON_GetArraySize(obj);
 
     for (i = 0; i < json_size; i++)
     {
-        if(item = cJSON_GetArrayItem(obj, i), item)
+        item = cJSON_GetArrayItem(obj, i);
+
+        if(item && strlen(item->string) + strlen(name) + 6 <= array_size)
         {
             snprintf(name_item, strlen(item->string) + strlen(name) + 6, "win.%s.%s", name, item->string);
             fillData(lf, name_item, item->valuestring);

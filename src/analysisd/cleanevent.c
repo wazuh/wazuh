@@ -571,7 +571,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
 #ifdef TESTRULE
     if (!alert_only) {
-        print_out("**Phase 1: Completed pre-decoding.");
+        print_out("\n**Phase 1: Completed pre-decoding.");
         print_out("       full event: '%s'", lf->full_log);
         print_out("       timestamp: '%s'", lf->dec_timestamp);
         print_out("       hostname: '%s'", lf->hostname);

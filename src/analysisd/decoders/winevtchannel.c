@@ -149,9 +149,13 @@ int DecodeWinevt(Eventinfo *lf){
     cJSON *json_system_in = cJSON_CreateObject();
     cJSON *json_eventdata_in = cJSON_CreateObject();
     cJSON *json_extra_in = cJSON_CreateObject();
-    cJSON *json_received_event = NULL;
     cJSON *json_find_msg = NULL;
     cJSON *received_event = NULL;
+
+#ifndef TESTRULE
+    cJSON *json_received_event = NULL;
+#endif
+
     int level_n;
     unsigned long long int keywords_n;
     XML_NODE node, child;
@@ -170,6 +174,13 @@ int DecodeWinevt(Eventinfo *lf){
 
     os_calloc(OS_MAXSTR, sizeof(char), msg_from_prov);
     os_calloc(OS_MAXSTR, sizeof(char), join_data);
+
+
+#ifdef TESTRULE
+
+    event = lf->log;
+
+#else
 
     const char *jsonErrPtr;
 
@@ -196,6 +207,8 @@ int DecodeWinevt(Eventinfo *lf){
     }
 
     event = cJSON_PrintUnformatted(json_received_event);
+
+#endif
 
     if(event){
         if (OS_ReadXMLString(event, &xml) < 0){
@@ -789,9 +802,11 @@ int DecodeWinevt(Eventinfo *lf){
 
     JSON_Decoder_Exec(lf, NULL);
 
+#ifndef TESTRULE
 cleanup:
-    os_free(level);
     os_free(event);
+#endif
+    os_free(level);
     os_free(extra);
     os_free(join_data);
     os_free(join_data2);
