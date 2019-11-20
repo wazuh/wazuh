@@ -1,5 +1,5 @@
 ---
-test_name: GET /cluster/config
+test_name: GET /cluster/local/config
 
 marks:
   - usefixtures:
@@ -16,7 +16,7 @@ stages:
 
   - name: Get cluster config
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/config"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -118,13 +118,13 @@ stages:
         message: !anystr
 
 ---
-test_name: GET /cluster/node
+test_name: GET /cluster/local/info
 
 stages:
 
   - name: Get cluster node
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/node"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -636,16 +636,21 @@ stages:
       status_code: 200
       body:
         data:
-          syscheck:
-            alert_new_files: !anystr
-            auto_ignore: !anything
-            directories: !anything
-            disabled: !anystr
-            frequency: !anystr
-            ignore: !anything
-            nodiff: !anything
-            scan_on_start: !anystr
-            skip_nfs: !anystr
+          affected_items:
+            - syscheck:
+                alert_new_files: !anystr
+                auto_ignore: !anything
+                directories: !anything
+                disabled: !anystr
+                frequency: !anystr
+                ignore: !anything
+                nodiff: !anything
+                scan_on_start: !anystr
+                skip_nfs: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> section=syscollector (worker1)
     request:
@@ -659,16 +664,21 @@ stages:
       status_code: 200
       body:
         data:
-          syscollector:
-            disabled: !anystr
-            hardware: !anystr
-            interval: !anystr
-            network: !anystr
-            os: !anystr
-            packages: !anystr
-            ports : !anything
-            processes: !anystr
-            scan_on_start: !anystr
+          affected_items:
+            - syscollector:
+                disabled: !anystr
+                hardware: !anystr
+                interval: !anystr
+                network: !anystr
+                os: !anystr
+                packages: !anystr
+                ports : !anything
+                processes: !anystr
+                scan_on_start: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /cluster/configuration/validation
@@ -808,22 +818,27 @@ stages:
       status_code: 200
       body: &config_response
         data:
-          global:
-            alerts_log: !anystr
-            email_notification: !anystr
-            host_information: !anyint
-            integrity_checking: !anyint
-            jsonout_output: !anystr
-            logall: !anystr
-            logall_json: !anystr
-            max_output_size: !anyint
-            memory_size: !anyint
-            prelude_output: !anystr
-            rootkit_detection: !anyint
-            rotate_interval: !anyint
-            stats: !anyint
-            white_list: !anything
-            zeromq_output: !anystr
+          affected_items:
+            - global:
+                alerts_log: !anystr
+                email_notification: !anystr
+                host_information: !anyint
+                integrity_checking: !anyint
+                jsonout_output: !anystr
+                logall: !anystr
+                logall_json: !anystr
+                max_output_size: !anyint
+                memory_size: !anyint
+                prelude_output: !anystr
+                rootkit_detection: !anyint
+                rotate_interval: !anyint
+                stats: !anyint
+                white_list: !anything
+                zeromq_output: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of analysis/active_response through a worker
     request:
@@ -835,7 +850,12 @@ stages:
       status_code: 200
       body:
         data:
-          active-response: !anything
+          affected_items:
+            - active-response: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of analysis/alerts through a worker
     request:
@@ -847,7 +867,12 @@ stages:
       status_code: 200
       body:
         data:
-          alerts: !anything
+          affected_items:
+            - alerts: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show analysis/command through a worker
 
@@ -860,7 +885,12 @@ stages:
       status_code: 200
       body:
         data:
-          command: !anything
+          affected_items:
+            - command: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of authd/authd in the manager through a worker
     request:
@@ -872,19 +902,24 @@ stages:
       status_code: 200
       body:
         data:
-          auth: &auth_response
-            ciphers: !anystr
-            disabled: !anystr
-            force_insert: !anystr
-            force_time: !anystr
-            limit_maxagents: !anystr
-            port: !anyint
-            purge: !anystr
-            ssl_auto_negotiate: !anystr
-            ssl_manager_cert: !anystr
-            ssl_manager_key: !anystr
-            use_password: !anystr
-            use_source_ip: !anystr
+          affected_items:
+            - auth: &auth_response
+                ciphers: !anystr
+                disabled: !anystr
+                force_insert: !anystr
+                force_time: !anystr
+                limit_maxagents: !anystr
+                port: !anyint
+                purge: !anystr
+                ssl_auto_negotiate: !anystr
+                ssl_manager_cert: !anystr
+                ssl_manager_key: !anystr
+                use_password: !anystr
+                use_source_ip: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of com/internal in the manager through a worker
     request:
@@ -896,10 +931,15 @@ stages:
       status_code: 200
       body:
         data:
-          internal: &internal_response
-            execd:
-              max_restart_lock: !anyint
-              request_timeout: !anyint
+          affected_items:
+            - internal: &internal_response
+                execd:
+                  max_restart_lock: !anyint
+                  request_timeout: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of csyslog/csyslog in the manager through a worker
     request:
@@ -911,12 +951,17 @@ stages:
       status_code: 200
       body:
         data:
-          syslog_output: &csyslog_response
-            - format: !anystr
-              level: !anyint
-              port: !anyint
-              server: !anystr
-              use_fqdn: !anystr
+          affected_items:
+            - syslog_output: &csyslog_response
+              - format: !anystr
+                level: !anyint
+                port: !anyint
+                server: !anystr
+                use_fqdn: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of integrator/integration in the manager through a worker
     request:
@@ -928,7 +973,12 @@ stages:
       status_code: 200
       body:
         data:
-          integration: !anything
+          affected_items:
+            - integration: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of analysis/internal through a worker
     request:
@@ -940,21 +990,26 @@ stages:
       status_code: 200
       body: &analysisd_response
         data:
-          internal:
-            analysisd:
-              debug: !anyint
-              decoder_order_size: !anyint
-              default_timeframe: !anyint
-              fts_list_size: !anyint
-              fts_min_size_for_str: !anyint
-              label_cache_maxage: !anyint
-              log_fw: !anyint
-              min_rotate_interval: !anyint
-              rlimit_nofile: !anyint
-              show_hidden_labels: !anyint
-              stats_maxdiff: !anyint
-              stats_mindiff: !anyint
-              stats_percent_diff: !anyint
+          affected_items:
+            - internal:
+                analysisd:
+                  debug: !anyint
+                  decoder_order_size: !anyint
+                  default_timeframe: !anyint
+                  fts_list_size: !anyint
+                  fts_min_size_for_str: !anyint
+                  label_cache_maxage: !anyint
+                  log_fw: !anyint
+                  min_rotate_interval: !anyint
+                  rlimit_nofile: !anyint
+                  show_hidden_labels: !anyint
+                  stats_maxdiff: !anyint
+                  stats_mindiff: !anyint
+                  stats_percent_diff: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of logcollector/localfile in the manager trough a worker
     request:
