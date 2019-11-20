@@ -160,6 +160,10 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
     }
 
     switch(item->statbuf.st_mode & S_IFMT) {
+#ifndef WIN32
+    case FIM_LINK:
+        // Fallthrough
+#endif
     case FIM_REGULAR:
         if (fim_check_ignore(path) == 1) {
             return;
@@ -180,17 +184,8 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
             realtime_adddir(path, 0);
         }
 #endif
-
         fim_directory(path, item, w_evt, report);
         break;
-
-#ifndef WIN32
-    case FIM_LINK:
-        if (fim_file(path, item, w_evt, report) < 0) {
-            mwarn(FIM_WARN_SKIP_EVENT, path);
-        }
-        break;
-#endif
     }
 }
 
