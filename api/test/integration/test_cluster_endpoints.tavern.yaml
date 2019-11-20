@@ -24,15 +24,20 @@ stages:
       status_code: 200
       body:
         data:
-          name: !anystr
-          node_name: !anystr
-          node_type: !anystr
-          key: !anystr
-          port: !anyint
-          bind_addr: !anystr
-          nodes: !anything
-          hidden: !anystr
-          disabled: false
+          affected_items:
+            - name: !anystr
+              node_name: !anystr
+              node_type: !anystr
+              key: !anystr
+              port: !anyint
+              bind_addr: !anystr
+              nodes: !anything
+              hidden: !anystr
+              disabled: false
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /cluster/healthcheck
@@ -45,35 +50,72 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_nodes: 'worker1,worker2'
     response:
       status_code: 200
       body:
         data:
-          n_connected_nodes: !anyint
-          nodes:
-            master-node:
-              info:
-                name: !anystr
-                ip: !anystr
-                version: !anystr
-                type: !anystr
-                n_active_agents: !anyint
-            worker1:
-              info:
-                name: !anystr
-                ip: !anystr
-                version: !anystr
-                type: !anystr
-                n_active_agents: !anyint
-              status: !anything
-            worker2:
-              info:
-                name: !anystr
-                ip: !anystr
-                version: !anystr
-                type: !anystr
-                n_active_agents: !anyint
-              status: !anything
+          affected_items:
+            - worker1:
+                info:
+                  name: !anystr
+                  ip: !anystr
+                  version: !anystr
+                  type: !anystr
+                  n_active_agents: !anyint
+                status: !anything
+            - worker2:
+                info:
+                  name: !anystr
+                  ip: !anystr
+                  version: !anystr
+                  type: !anystr
+                  n_active_agents: !anyint
+                status: !anything
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Get cluster healtcheck
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/healthcheck"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - master-node:
+                info:
+                  name: !anystr
+                  ip: !anystr
+                  version: !anystr
+                  type: !anystr
+                  n_active_agents: !anyint
+            - worker1:
+                info:
+                  name: !anystr
+                  ip: !anystr
+                  version: !anystr
+                  type: !anystr
+                  n_active_agents: !anyint
+                status: !anything
+            - worker2:
+                info:
+                  name: !anystr
+                  ip: !anystr
+                  version: !anystr
+                  type: !anystr
+                  n_active_agents: !anyint
+                status: !anything
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /cluster/node
@@ -90,9 +132,14 @@ stages:
       status_code: 200
       body:
         data:
-          cluster: wazuh
-          node: master-node
-          type: master
+          affected_items:
+            - cluster: wazuh
+              node: master-node
+              type: master
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /cluster/nodes
@@ -111,12 +158,14 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 3
-          items: &cluster_nodes_response
-            - ip: !anystr
-              version: !anystr
-              type: !anystr
-              name: !anystr
+          affected_items: &cluster_nodes_response
+            - cluster: wazuh
+              node: master-node
+              type: master
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Get cluster nodes
     request:
@@ -127,11 +176,14 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 3
-          items:
+          affected_items:
             - <<: *cluster_nodes_response
             - <<: *cluster_nodes_response
             - <<: *cluster_nodes_response
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
 
   - name: Retrieve all elements with limit=0
     request:
@@ -155,7 +207,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *cluster_nodes_response
               type: master
               name: master-node
@@ -165,6 +217,10 @@ stages:
             - <<: *cluster_nodes_response
               type: worker
               name: worker2
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
 
   - name: Sort nodes by name in descending order
     request:
@@ -175,7 +231,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *cluster_nodes_response
               type: worker
               name: worker2
@@ -185,6 +241,10 @@ stages:
             - <<: *cluster_nodes_response
               type: master
               name: master-node
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
 
   - name: Search master
     request:
@@ -195,11 +255,14 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 1
-          items:
+          affected_items:
             - <<: *cluster_nodes_response
               type: master
               name: master-node
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Search worker1
     request:
@@ -210,10 +273,13 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 1
-          items:
+          affected_items:
             - <<: *cluster_nodes_response
               name: worker1
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters (type) -> master
     request:
@@ -224,10 +290,13 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 1
-          items:
+          affected_items:
             - <<: *cluster_nodes_response
               type: master
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters (type) -> worker
     request:
@@ -239,10 +308,13 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 2
-          items:
+          affected_items:
             - <<: *cluster_nodes_response
               type: worker
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: !anystr
 
 
   - name: Filters -> invalid type
@@ -262,14 +334,17 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 3
-          items:
+          affected_items:
             - name: !anystr
               version: !anystr
             - name: !anystr
               version: !anystr
             - name: !anystr
               version: !anystr
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
 
   - name: Select type
     request:
@@ -280,11 +355,14 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 3
-          items:
+          affected_items:
             - type: !anystr
             - type: !anystr
             - type: !anystr
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
 
   - name: Select wrong_field
     request:
@@ -317,10 +395,15 @@ stages:
       status_code: 200
       body:
         data:
-          ip: !anystr
-          name: !anystr
-          type: !anystr
-          version: !anystr
+          affected_items:
+            - ip: !anystr
+              name: !anystr
+              type: !anystr
+              version: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /cluster/nodes/{node_id} select
@@ -349,9 +432,9 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_no_items
+          function: tavern_utils:test_affected_items_response
           extra_kwargs:
-            select_key: "{field:s}"
+            affected_items: "{field:s}"
 
 ---
 test_name: GET /cluster/status
@@ -386,26 +469,31 @@ stages:
       status_code: 200
       body:
         data:
-          agentless: !anything
-          alerts: !anything
-          auth: !anything
-          cis-cat: !anything
-          cluster: !anything
-          command: !anything
-          email_alerts: !anything
-          global: !anything
-          integration: !anything
-          localfile: !anything
-          open-scap: !anything
-          osquery: !anything
-          remote: !anything
-          rootcheck: !anything
-          ruleset: !anything
-          sca: !anything
-          syscheck: !anything
-          syscollector: !anything
-          syslog_output: !anything
-          vulnerability-detector: !anything
+          affected_items:
+            - agentless: !anything
+              alerts: !anything
+              auth: !anything
+              cis-cat: !anything
+              cluster: !anything
+              command: !anything
+              email_alerts: !anything
+              global: !anything
+              integration: !anything
+              localfile: !anything
+              open-scap: !anything
+              osquery: !anything
+              remote: !anything
+              rootcheck: !anything
+              ruleset: !anything
+              sca: !anything
+              syscheck: !anything
+              syscollector: !anything
+              syslog_output: !anything
+              vulnerability-detector: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Request (worker)
     request:
@@ -417,20 +505,25 @@ stages:
       status_code: 200
       body:
         data:
-          auth: !anything
-          cis-cat: !anything
-          cluster: !anything
-          command: !anything
-          global: !anything
-          localfile: !anything
-          open-scap: !anything
-          osquery: !anything
-          remote: !anything
-          rootcheck: !anything
-          ruleset: !anything
-          syscheck: !anything
-          syscollector: !anything
-          vulnerability-detector: !anything
+          affected_items:
+            - auth: !anything
+              cis-cat: !anything
+              cluster: !anything
+              command: !anything
+              global: !anything
+              localfile: !anything
+              open-scap: !anything
+              osquery: !anything
+              remote: !anything
+              rootcheck: !anything
+              ruleset: !anything
+              syscheck: !anything
+              syscollector: !anything
+              vulnerability-detector: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> section=alerts (master-node)
     request:
@@ -444,9 +537,14 @@ stages:
       status_code: 200
       body:
         data:
-          alerts:
-            email_alert_level: !anystr
-            log_alert_level: !anystr
+          affected_items:
+            - alerts:
+                email_alert_level: !anystr
+                log_alert_level: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
 
   - name: Filters -> section=syscheck (master)
@@ -461,16 +559,21 @@ stages:
       status_code: 200
       body:
         data:
-          syscheck:
-            alert_new_files: !anystr
-            auto_ignore: !anything
-            directories: !anything
-            disabled: !anystr
-            frequency: !anystr
-            ignore: !anything
-            nodiff: !anything
-            scan_on_start: !anystr
-            skip_nfs: !anystr
+          affected_items:
+            - syscheck:
+                alert_new_files: !anystr
+                auto_ignore: !anything
+                directories: !anything
+                disabled: !anystr
+                frequency: !anystr
+                ignore: !anything
+                nodiff: !anything
+                scan_on_start: !anystr
+                skip_nfs: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> section=syscollector (master)
     request:
@@ -484,16 +587,21 @@ stages:
       status_code: 200
       body:
         data:
-          syscollector:
-            disabled: !anystr
-            hardware: !anystr
-            interval: !anystr
-            network: !anystr
-            os: !anystr
-            packages: !anystr
-            ports : !anything
-            processes: !anystr
-            scan_on_start: !anystr
+          affected_items:
+            - syscollector:
+                disabled: !anystr
+                hardware: !anystr
+                interval: !anystr
+                network: !anystr
+                os: !anystr
+                packages: !anystr
+                ports : !anything
+                processes: !anystr
+                scan_on_start: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> section=alerts (worker1)
     request:
@@ -507,9 +615,14 @@ stages:
       status_code: 200
       body:
         data:
-          alerts:
-            email_alert_level: !anystr
-            log_alert_level: !anystr
+          affected_items:
+            alerts:
+              email_alert_level: !anystr
+              log_alert_level: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> section=syscheck (worker1)
     request:
@@ -2079,43 +2192,52 @@ stages:
           wazuh-db: !anystr
           wazuh-modulesd: !anystr
 
-#---
-#test_name: PUT /cluster/restart
-#
-#stages:
-#
-#  - name: Restart cluster
-#    request:
-#      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
-#      method: PUT
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#    response:
-#      status_code: 200
-#      body:
-#        message: !anystr
-#    delay_after: 30
-#
-#---
-#test_name: PUT /cluster/{node_id}restart
-#
-#marks:
-#  - parametrize:
-#      key: node_id
-#      vals:
-#        - master-node
-#        - worker1
-#        - worker2
-#
-#stages:
-#
-#  - name: Restart {node_id}
-#    request:
-#      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/restart"
-#      method: PUT
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#    response:
-#      status_code: 200
-#      body:
-#        message: !anystr
+---
+test_name: PUT /cluster/restart
+
+stages:
+
+  - name: Restart cluster
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_nodes: 'worker1,worker2'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - 'worker1'
+            - 'worker2'
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: !anystr
+    delay_after: 30
+
+---
+test_name: PUT /cluster/restart
+
+stages:
+
+  - name: Restart cluster
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - 'master-node'
+            - 'worker1'
+            - 'worker2'
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
