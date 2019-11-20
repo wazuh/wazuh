@@ -694,7 +694,18 @@ stages:
     response:
       status_code: 200
       body:
-        status: OK
+        data:
+          affected_items:
+            - master-node:
+                status: 'OK'
+            - worker1:
+                status: 'OK'
+            - worker2:
+                status: 'OK'
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
 
   #### Upload corrupted rules file
   - name: Upload corrupted configuration
@@ -709,8 +720,6 @@ stages:
         path: etc/rules/new-rules_corrupted.xml
     response:
       status_code: 200
-      body:
-        message: !anystr
 
   - name: Request validation
     request:
@@ -721,13 +730,22 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1908
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items:
+            - worker1:
+                status: 'OK'
+            - worker2:
+                status: 'OK'
+          failed_items:
+            - error:
+                code: 1908
+                message: !anystr
+                remediation: !anystr
+              id:
+                - 'master-node'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
     #### Delete corrupted rules file
   - name: Delete rules file
@@ -740,70 +758,49 @@ stages:
         path: etc/rules/new-rules_corrupted.xml
     response:
       status_code: 200
-      body:
-        message: !anystr
 
----
-test_name: GET /cluster/{node_id}/configuration/validation
-
-marks:
-  - parametrize:
-      key: node_id
-      vals:
-        - master-node
-        - worker1
-        - worker2
-
-stages:
-
-  - name: Request cluster {node_id} validation
+  - name: Request cluster validation
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/configuration/validation"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      body:
-        status: OK
-
-  #### Upload corrupted rules file
-  - name: Upload corrupted configuration
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/files"
-      method: PUT
-      data: "{corrupted_rules_file}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
       params:
-        path: etc/rules/rules_corrupted.xml
+        list_nodes: 'worker1,worker2'
     response:
       status_code: 200
-      body:
-        message: !anystr
-
-  - name: Request KO validation in {node_id}
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/configuration/validation"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
       body:
         data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1908
-                message: !anystr
-                remediation: !anystr
-              id:
-                - '{node_id:s}'
-          total_affected_items: 0
-          total_failed_items: 1
+          affected_items:
+            - worker1:
+                status: 'OK'
+            - worker2:
+                status: 'OK'
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
         message: !anystr
+
+  - name: Request cluster validation
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_nodes: 'master-node'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - master_node:
+                status: 'OK'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
+
 ---
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
 
@@ -821,7 +818,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body: &config_response
+      body:
         data:
           affected_items:
             - global:
@@ -908,7 +905,7 @@ stages:
       body:
         data:
           affected_items:
-            - auth: &auth_response
+            - auth:
                 ciphers: !anystr
                 disabled: !anystr
                 force_insert: !anystr
@@ -937,7 +934,7 @@ stages:
       body:
         data:
           affected_items:
-            - internal: &internal_response
+            - internal:
                 execd:
                   max_restart_lock: !anyint
                   request_timeout: !anyint
@@ -957,7 +954,7 @@ stages:
       body:
         data:
           affected_items:
-            - syslog_output: &csyslog_response
+            - syslog_output:
               - format: !anystr
                 level: !anyint
                 port: !anyint
@@ -993,7 +990,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body: &analysisd_response
+      body:
         data:
           affected_items:
             - internal:
@@ -1061,7 +1058,7 @@ stages:
       body:
         data:
           affected_items:
-            - internal: &internal_log_response
+            - internal:
                 logcollector:
                   debug: !anyint
                   force_reload: !anyint
@@ -1181,7 +1178,7 @@ stages:
       body:
         data:
           affected_items:
-            - remote: &remote_response
+            - remote:
               - connection: !anystr
                 ipv6: !anystr
                 port: !anystr
@@ -1191,7 +1188,6 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
         message: !anystr
-
 
   - name: Try to show the config of request/internal in the manager trough a worker
     request:
@@ -1204,7 +1200,7 @@ stages:
       body:
         data:
           affected_items:
-            - internal: &request_internal_response
+            - internal:
                 remoted:
                   buffer_relax: !anyint
                   comp_average_printout: !anyint
@@ -1232,7 +1228,6 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
         message: !anystr
-
 
   - name: Try to show the config of syscheck/syscheck in the manager trough a worker
     request:
@@ -1263,7 +1258,7 @@ stages:
       body:
         data:
           affected_items:
-            - rootcheck: &rootcheck_response
+            - rootcheck:
                 base_directory: !anything
                 check_dev: !anystr
                 check_files: !anystr
@@ -1284,7 +1279,7 @@ stages:
           total_failed_items: 0
         message: !anystr
 
-  - name: Try to show the config of syscheck/internal in the manager trough a worker
+  - name: Try to show the config of syscheck/internal in the manager through a worker
     request:
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/syscheck/internal"
       headers:
@@ -1295,7 +1290,7 @@ stages:
       body:
         data:
           affected_items:
-            - internal: &internal_rootcheck_response
+            - internal:
                 rootcheck:
                   sleep: !anyint
                 syscheck:
