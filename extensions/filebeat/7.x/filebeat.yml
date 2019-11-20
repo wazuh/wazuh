@@ -13,9 +13,9 @@ setup.template.overwrite: true
 setup.ilm.enabled: false
 
 output.elasticsearch.protocol: https
-output.elasticsearch.ssl.certificate: "/etc/filebeat/certs/filebeat.crt"
-output.elasticsearch.ssl.key: "/etc/filebeat/certs/filebeat.key"
-output.elasticsearch.ssl.certificate_authorities: ["/etc/filebeat/certs/ca/ca.crt"]
+output.elasticsearch.ssl.certificate: "/etc/elasticsearch/certs/elasticsearch.crt"
+output.elasticsearch.ssl.key: "/etc/elasticsearch/certs/elasticsearch.key"
+output.elasticsearch.ssl.certificate_authorities: ["/etc/elasticsearch/certs/ca/ca.crt"]
 output.elasticsearch.username: "elastic"
 
 output.elasticsearch.hosts: ['YOUR_ELASTIC_SERVER_IP:9200']
