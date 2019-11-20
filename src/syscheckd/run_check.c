@@ -436,7 +436,6 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
     char *real_path;
     int i;
 
-    syscheck.sym_checker_interval = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
     mdebug1(FIM_LINKCHECK_START, syscheck.sym_checker_interval);
 
     while (1) {
