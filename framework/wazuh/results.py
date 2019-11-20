@@ -540,6 +540,20 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
 
 
 def nested_itemgetter(*expressions):
+    """Builds a function to get items according to expressions. That getter function receives a dictionary
+    as the only positional argument and returns the referenced item.
+
+    Example:
+    d = {'a': {'b': 3}, 'c.1': 5}
+    items = nested_itemgetter('a.b', 'c\\.1')(d)
+    print(items)
+    (3, 5)
+
+    :param expressions: one or more strings referencing a value in a dictionary. For nested dictionaries use the '.' as
+    the key separator. If the key contains the '.' character escape it using the '\'. If more than one expressions is
+    provided a tuple is returned.
+    :return: object or tuple of objects
+    """
     getters = []
     for expr in expressions:
         fields = re.split(r'(?<!\\)\.', expr)
@@ -548,7 +562,7 @@ def nested_itemgetter(*expressions):
             value = map_
             for field in fields_:
                 try:
-                    value = value[field]
+                    value = value[field.replace('\\.', '.')]
                 except TypeError:
                     return value
                 except KeyError:
@@ -563,6 +577,18 @@ def nested_itemgetter(*expressions):
 
 
 def _goes_before_than(a, b, ascending=None, casters=None):
+    """Returns true if a should be placed before b according to ascending and casters. It is similar to a
+    a lexicographical order but taking into account ascending or descending order in each tuple position.
+
+    :param a: tuple or list
+    :param b: tuple or list
+    :param ascending: tuple or list of booleans with a length equal to the minimum length between a and b. True if
+    ascending, False otherwise.
+    :param casters: tuple or list of strings with a length equal to the minimum length between a and b. The string must
+    fit any class in builtins module (int, str, float, ...). The class will be applied to each value of the respective
+    position in a and b before comparing.
+    :return: True if a should be placed before b, False otherwise
+    """
     if ascending is None:
         ascending = [True] * len(a)
     if casters is None:
@@ -583,6 +609,16 @@ def _goes_before_than(a, b, ascending=None, casters=None):
 
 
 def merge(*iterables, criteria=None, ascending=None, types=None):
+    """ Merges iterables in a single one assuming they are already ordered according to criteria, ascending and types
+
+    :param iterables: list of lists to be merged
+    :param criteria: list or tuple of expressions accepted by the nested_itemgetter function.
+    :param ascending: list or tuple of booleans. Should have the same length as criteria.
+    True for ascending False otherwise.
+    :param types: list or tuple of strings. Should have the same length as criteria.
+    Must fit a class in builtins (int, float, str, ...)
+    :return: a new sorted iterable
+    """
     result = list()
     final_len = sum([len(iterable) for iterable in iterables])
     if criteria is None:
