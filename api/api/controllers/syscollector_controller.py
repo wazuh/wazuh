@@ -51,8 +51,14 @@ def get_hotfix_info(agent_id, pretty=False, wait_for_complete=False, offset=0, l
     :param agent_id: Agent ID
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param offset: First element to return in the collection
+    :param limit: Maximum number of elements to return
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/. at the beginning to list in
+    ascending or descending order.
+    :param search: Looks for elements with the specified string
     :param select: Select which fields to return (separated by comma)
-    :return: Data
+    :param hotfix: Filters by hotfix in Windows agents
+    :return:
     """
 
     filters = {'hotfix': hotfix}
@@ -72,7 +78,8 @@ def get_hotfix_info(agent_id, pretty=False, wait_for_complete=False, offset=0, l
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
