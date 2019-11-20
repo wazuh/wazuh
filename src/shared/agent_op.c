@@ -39,13 +39,13 @@ int os_set_restart_syscheck()
 {
     FILE *fp;
 
-    fp = fopen(SYSCHECK_RESTART, "w");
+    fp = fopen(isChroot() ? SYSCHECK_RESTART : SYSCHECK_RESTART_PATH, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, SYSCHECK_RESTART, errno, strerror(errno));
+        merror(FOPEN_ERROR, isChroot() ? SYSCHECK_RESTART : SYSCHECK_RESTART_PATH, errno, strerror(errno));
         return (0);
     }
 
-    fprintf(fp, "%s\n", SYSCHECK_RESTART);
+    fprintf(fp, "%s\n", isChroot() ? SYSCHECK_RESTART : SYSCHECK_RESTART_PATH);
     fclose(fp);
 
     return (1);
