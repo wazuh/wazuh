@@ -37,13 +37,13 @@ cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
 
 
+@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def status() -> Dict:
     """
     Returns the Manager processes that are running.
 
     :return: Dictionary (keys: status, daemon).
     """
-
     return get_manager_status()
 
 
@@ -67,6 +67,7 @@ def __get_ossec_log_fields(log):
     return datetime.strptime(date, '%Y/%m/%d %H:%M:%S'), category, type_log.lower(), description
 
 
+@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
     """Gets logs from ossec.log.
@@ -128,6 +129,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
                          offset=offset, limit=limit, q=q)
 
 
+@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def ossec_log_summary(months=3):
     """
     Summary of ossec.log.
@@ -168,22 +170,24 @@ def ossec_log_summary(months=3):
     return categories
 
 
+@expose_resources(actions=['cluster:upload_file'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def upload_file(path=None, content=None, overwrite=False):
-    """
-    Updates a group file
+    """Upload a new file
+
     :param path: Path of destination of the new file
     :param content: Content of file to be uploaded
     :param overwrite: True for updating existing files, False otherwise
     :return: Confirmation message in string
     """
-    # if file already exists and overwrite is False, raise exception
+    # If file already exists and overwrite is False, raise exception
     if not overwrite and exists(join(common.ossec_path, path)):
         raise WazuhError(1905)
-
+    elif overwrite and exists(join(common.ossec_path, path)):
+        delete_file(path=path)
     if len(content) == 0:
         raise WazuhError(1112)
 
-    # for CDB lists
+    # For CDB lists
     if re.match(r'^etc/lists', path):
         return upload_list(content, path)
 
@@ -279,22 +283,23 @@ def upload_list(list_file, path):
 
     return WazuhResult({'message': 'File updated successfully'})
 
+@expose_resources(actions=['cluster:read_file'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*',
+                                                            'file:path:{path}'])
+def get_file(path, validate=False):
+    """Returns the content of a file.
 
-def get_file(path, validation=False):
-    """
-    Returns the content of a file.
     :param path: Relative path of file from origin
+    :param validate: Whether to validate file content or not
     :return: Content file.
     """
-
-    full_path = join(common.ossec_path, path)
+    full_path = join(common.ossec_path, path[0])
 
     # validate CDB lists files
-    if validation and re.match(r'^etc/lists', path) and not validate_cdb_list(path):
-        raise WazuhError(1800, {'path': path})
+    if validate and re.match(r'^etc/lists', path[0]) and not validate_cdb_list(path[0]):
+        raise WazuhError(1800, {'path': path[0]})
 
     # validate XML files
-    if validation and not validate_xml(path):
+    if validate and not validate_xml(path[0]):
         raise WazuhError(1113)
 
     # check if file exists
@@ -308,6 +313,7 @@ def get_file(path, validation=False):
         raise WazuhInternalError(1005)
 
     return WazuhResult({'contents': output})
+
 
 def validate_xml(path):
     """
@@ -325,6 +331,7 @@ def validate_xml(path):
         return False
 
     return True
+
 
 def validate_cdb_list(path):
     """
@@ -348,8 +355,8 @@ def validate_cdb_list(path):
     return True
 
 
-@expose_resources(actions=['cluster:delete'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*',
-                                                         'file:path:{path}'])
+@expose_resources(actions=['cluster:delete_file'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*',
+                                                              'file:path:{path}'])
 def delete_file(path):
     """Deletes a file.
 
@@ -357,9 +364,7 @@ def delete_file(path):
     :param path: Relative path of the file to be deleted
     :return: string Confirmation message
     """
-    # Remove starting / in case it exists
-    file_path = path[0][1:] if path[0][0] == '/' else path[0]
-    full_path = join(common.ossec_path, file_path)
+    full_path = join(common.ossec_path, path[0])
 
     if exists(full_path):
         try:
@@ -417,7 +422,7 @@ def _check_wazuh_xml(files):
             raise WazuhError(1743, str(e))
 
 
-@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def validation():
     """Check if Wazuh configuration is OK.
 
@@ -519,7 +524,7 @@ def _parse_execd_output(output: str) -> Dict:
     return response
 
 
-@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_config(component=None, config=None):
     """
     Returns active configuration loaded in manager
@@ -553,12 +558,17 @@ def get_info() -> Dict:
     return manager_info
 
 
-@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def read_ossec_conf(section=None, field=None):
     """ Wrapper for get_ossec_conf
 
     :param section: Filters by section (i.e. rules).
     :param field: Filters by field in section (i.e. included).
-    :return:
     """
     return get_ossec_conf(section=section, field=field)
+
+
+@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def get_basic_info():
+    """ Wrapper for Wazuh().to_dict"""
+    return Wazuh().to_dict()

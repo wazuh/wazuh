@@ -115,12 +115,12 @@ cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
 
 
-@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
+@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}'])
 def read_config_wrapper():
     return read_config()
 
 
-@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
+@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}'])
 def get_node_wrapper():
     return get_node()
 
@@ -435,17 +435,19 @@ def unmerge_agent_info(merge_type, path_file, filename):
             yield dst_agent_info_path + '/' + name, data, st_mtime
 
 
-# @expose_resources(actions=['cluster:read'], resources=['node:id:{filter_node}'])
-# def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
-#     import pydevd_pycharm
-#     pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
-#     result = AffectedItemsWazuhResult(all_msg='All selected nodes healthcheck information is shown',
-#                                       some_msg='Some nodes healthcheck information not shown',
-#                                       none_msg='No healthcheck information is shown'
-#                                       )
-#
-#     data = loop.run_until_complete(get_health(lc, filter_node=filter_node))
-#     return data
+@expose_resources(actions=['cluster:read_config'], resources=['node:id:{filter_node}'])
+async def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
+    # import pydevd_pycharm
+    # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+    result = AffectedItemsWazuhResult(all_msg='All selected nodes healthcheck information is shown',
+                                      some_msg='Some nodes healthcheck information is not shown',
+                                      none_msg='No healthcheck information is shown'
+                                      )
+
+    data = await get_health(lc, filter_node=filter_node)
+    for node in data['nodes']:
+
+    return data
 
 
 class ClusterFilter(logging.Filter):

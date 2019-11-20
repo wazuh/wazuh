@@ -18,7 +18,7 @@ from wazuh.exception import WazuhError
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api.authentication import get_permissions
-
+import wazuh.common as common
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -65,7 +65,8 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
@@ -248,7 +249,8 @@ def get_status_node(node_id, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -268,13 +270,14 @@ def get_info_node(node_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'node_id': node_id}
 
-    dapi = DistributedAPI(f=Wazuh().to_dict,
+    dapi = DistributedAPI(f=manager.get_basic_info,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -348,7 +351,8 @@ def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -359,7 +363,8 @@ def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
 def get_stats_hourly_node(node_id, pretty=False, wait_for_complete=False):
     """Get a specified node's stats by hour. 
 
-    Returns Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the average of alerts per hour.
+    Returns Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the
+    average of alerts per hour.
 
     :param node_id: Cluster node name.
     :param pretty: Show results in human-readable format
@@ -373,7 +378,8 @@ def get_stats_hourly_node(node_id, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -385,7 +391,8 @@ def get_stats_hourly_node(node_id, pretty=False, wait_for_complete=False):
 def get_stats_weekly_node(node_id, pretty=False, wait_for_complete=False):
     """Get a specified node's stats by week. 
 
-    Returns Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the average of alerts per hour for that specific day.
+    Returns Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the
+    average of alerts per hour for that specific day.
 
     :param node_id: Cluster node name.
     :param pretty: Show results in human-readable format
@@ -399,7 +406,8 @@ def get_stats_weekly_node(node_id, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -409,23 +417,23 @@ def get_stats_weekly_node(node_id, pretty=False, wait_for_complete=False):
 
 @exception_handler
 def get_stats_analysisd_node(node_id, pretty=False, wait_for_complete=False):
-    """Get a specified node's analysisd stats. 
-
-    Returns Wazuh analysisd statistical information in node {node_id}.
+    """Get a specified node's analysisd stats.
 
     :param node_id: Cluster node name.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'node_id': node_id}
+    f_kwargs = {'node_id': node_id,
+                'filename': common.analysisd_stats}
 
-    dapi = DistributedAPI(f=stats.analysisd,
+    dapi = DistributedAPI(f=stats.get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -437,21 +445,21 @@ def get_stats_analysisd_node(node_id, pretty=False, wait_for_complete=False):
 def get_stats_remoted_node(node_id, pretty=False, wait_for_complete=False):
     """Get a specified node's remoted stats.
 
-    Returns Wazuh remoted statistical information in node {node_id}.
-
     :param node_id: Cluster node name.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'node_id': node_id}
+    f_kwargs = {'node_id': node_id,
+                'filename': common.remoted_stats}
 
-    dapi = DistributedAPI(f=stats.remoted,
+    dapi = DistributedAPI(f=stats.get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -471,7 +479,8 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
     :param wait_for_complete: Disable timeout response
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
     :param search: Looks for elements with the specified string
     :param category: Filter by category of log.
     :param type_log: Filters by log level.
@@ -492,7 +501,8 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -502,9 +512,7 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
 
 @exception_handler
 def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
-    """Get a summary of a specified node's wazuh logs. 
-
-    Returns a summary of the last 2000 wazuh log entries in node {node_id}.
+    """Get a summary of a specified node's wazuh logs.
 
     :param node_id: Cluster node name.
     :param pretty: Show results in human-readable format
@@ -518,7 +526,8 @@ def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -529,8 +538,6 @@ def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
 @exception_handler
 def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
     """Get file contents from a specified node in the cluster.
-
-    Returns file contents from any file in cluster node {node_id}.
 
     :param node_id: Cluster node name.
     :param path: Filepath to return.
@@ -546,7 +553,8 @@ def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -556,22 +564,15 @@ def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
 
 @exception_handler
 def put_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for_complete=False):
-    """Updates file contents in a specified cluster node.
-
-    Replaces file contents with the data contained in the API request in a specified cluster node.
+    """Upload file contents in a specified cluster node.
 
     :param body: Body request with the content of the file to be uploaded
     :param node_id: Cluster node name
     :param path: Filepath to upload the new file
-    :param overwrite: If set to false, an exception will be raised when updating contents of an already existing filename.
+    :param overwrite: If set to false, an exception will be raised when uploading an already existing filename.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    # get content-type from headers
-    try:
-        content_type = connexion.request.headers['Content-type']
-    except KeyError:
-        raise WazuhError(1910)
 
     # parse body to utf-8
     try:
@@ -592,7 +593,8 @@ def put_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for_
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 

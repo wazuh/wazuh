@@ -8,6 +8,7 @@ from wazuh.core.core_agent import Agent
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
 from wazuh.utils import filter_array_by_query
+from wazuh.rbac.decorators import expose_resources
 
 
 async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, limit=common.database_limit,
@@ -49,6 +50,10 @@ async def get_node(lc: local_client.LocalClient, filter_node=None, select=None):
         return node_info_array['items'][0]
     else:
         return {}
+
+# import asyncio
+# from asgiref.sync import async_to_sync
+# @async_to_sync
 
 
 async def get_health(lc: local_client.LocalClient, filter_node=None):

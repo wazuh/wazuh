@@ -3433,7 +3433,7 @@ components:
     edit_files_path:
       in: query
       name: path
-      description: Filepath to upload/delete file.
+      description: Filepath to upload/delete file. (Relative to wazuh installation folder)
       required: true
       schema:
         type: string
@@ -3441,7 +3441,7 @@ components:
     get_files_path:
       in: query
       name: path
-      description: Filepath to return file.
+      description: Filepath to return file. (Relative to wazuh installation folder)
       required: true
       schema:
         type: string
