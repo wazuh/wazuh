@@ -31,10 +31,7 @@ def get_cluster_node(pretty=False, wait_for_complete=False):
     Returns basic information about the cluster node receiving the request.
 
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
-    :rtype: object
     """
     f_kwargs = {}
 
@@ -48,54 +45,49 @@ def get_cluster_node(pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
-def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                      search=None, select=None):
+def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, select=None,
+                      list_nodes=None):
     """Get information about all nodes in the cluster or a list of them
-
-    Returns a list containing all connected nodes in the cluster.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
-    :type limit: int
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
-    :type sort: str
     :param search: Looks for elements with the specified string
-    :type search: str
     :param select: Select which fields to return (separated by comma)
-    :type select: List[str]
+    :param list_nodes: List of node ids
     """
-    # get type parameter from query
+    # Get type parameter from query
     type_ = connexion.request.args.get('type', 'all')
 
-    f_kwargs = {'offset': offset,
+    f_kwargs = {'filter_node': list_nodes,
+                'offset': offset,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'select': select,
                 'filter_type': type_}
 
-    dapi = DistributedAPI(f=cluster_control.get_nodes,
+    dapi = DistributedAPI(f=cluster.get_nodes_info,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=True,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          local_client_arg='lc'
+                          local_client_arg='lc',
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -151,36 +143,8 @@ def get_healthcheck(pretty=False, wait_for_complete=False, list_nodes=None):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
-
-
-@exception_handler
-def get_healthcheck_node(node_id, pretty=False, wait_for_complete=False):
-    """Show a specified node's healthcheck information 
-
-    Returns cluster healthcheck information of an specified node.
-
-    :param node_id: Cluster node name.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    """
-    f_kwargs = {'filter_node': node_id}
-
-    dapi = DistributedAPI(f=cluster_control.get_health,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=True,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger,
-                          local_client_arg='lc'
-                          )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
-
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -226,9 +190,8 @@ def get_config(pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -243,7 +206,7 @@ def get_status_node(node_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'node_id': node_id}
 
-    dapi = DistributedAPI(f=manager.status,
+    dapi = DistributedAPI(f=manager.get_status,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -253,9 +216,8 @@ def get_status_node(node_id, pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -280,9 +242,8 @@ def get_info_node(node_id, pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -311,9 +272,8 @@ def get_configuration_node(node_id, pretty=False, wait_for_complete=False, secti
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -328,11 +288,7 @@ def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
     :param date: Selects the date for getting the statistical information. Format YYYY-MM-DD.
     """
     if date:
-        try:
-            year, month, day = date.split('-')
-        except ValueError:
-            raise WazuhError(1412)
-
+        year, month, day = date.split('-')
     else:
         today = datetime.datetime.now()
         year = str(today.year)
@@ -505,9 +461,8 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -530,9 +485,8 @@ def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -557,9 +511,8 @@ def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -701,6 +654,5 @@ def get_node_config(node_id, component, wait_for_complete=False, pretty=False, *
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
