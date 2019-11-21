@@ -10,7 +10,7 @@ from wazuh.rbac.decorators import expose_resources
 from wazuh.results import AffectedItemsWazuhResult
 
 
-@expose_resources(actions=['active_response:command'], resources=['agent:id:{agent_list}'])
+@expose_resources(actions=['active-response:command'], resources=['agent:id:{agent_list}'])
 def run_command(agent_list=None, command=None, arguments=None, custom=False):
     """Run AR command in a specific agent
 
