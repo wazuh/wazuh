@@ -68,8 +68,8 @@ static void fim_process_scan_info(_sdb * sdb, const char * agent_id, fim_scan_ev
 static int fim_fetch_attributes(cJSON *new_attrs, cJSON *old_attrs, Eventinfo *lf);
 static int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state);
 
-// Replace the coded attribute string with the decoded one in the checksum
-static void fim_adjust_attributes(char *attributes, char **checksum);
+// Replace the coded fields with the decoded ones in the checksum
+static void fim_adjust_checksum(sk_sum_t newsum, char **checksum);
 
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -286,7 +286,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         InsertWhodata(&newsum, sdb);
     }
 
-    fim_adjust_attributes(newsum.attributes, &new_check_sum);
+    fim_adjust_checksum(newsum, &new_check_sum);
 
     // Checksum match, we can just return and keep going
     if (SumCompare(old_check_sum, new_check_sum) == 0) {
@@ -352,7 +352,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
             // We need to escape the checksum because it will have
             // spaces if the event comes from Windows
-            char *checksum_esc = escape_syscheck_field(new_check_sum);
+            char *checksum_esc = wstr_replace(new_check_sum, " ", "\\ ");
             snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck save %s %s!%d:%ld:%s %s",
                     lf->agent_id,
                     *ttype,
@@ -516,12 +516,16 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                              "'%9.9s' to '%9.9s'\n", opstr, npstr);
                 }
             } else if (oldsum->win_perm && newsum->win_perm) { // Check for Windows permissions
+                // We need to unescape the old permissions at this point
+                char *unesc_perms = wstr_replace(oldsum->win_perm, "\\:", ":");
+                free(oldsum->win_perm);
+                oldsum->win_perm = unesc_perms;
                 if (!strcmp(oldsum->win_perm, newsum->win_perm)) {
                     localsdb->perm[0] = '\0';
                 } else if (*oldsum->win_perm != '\0' && *newsum->win_perm != '\0') {
                     changes = 1;
                     wm_strcat(&lf->fields[FIM_CHFIELDS].value, "perm", ',');
-                    snprintf(localsdb->perm, OS_SIZE_20480, "%s", oldsum->win_perm);
+                    snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed.\n");
                     os_strdup(oldsum->win_perm, lf->perm_before);
                 }
             }
@@ -1537,16 +1541,36 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
     return 0;
 }
 
-void fim_adjust_attributes(char *attributes, char **checksum) {
-    if (!attributes) {
-        return;
+void fim_adjust_checksum(sk_sum_t newsum, char **checksum) {
+    // Adjust attributes
+    if (newsum.attributes) {
+        os_realloc(*checksum,
+                strlen(*checksum) + strlen(newsum.attributes) + 2,
+                *checksum);
+        char *found = strrchr(*checksum, ':');
+        if (found) {
+            snprintf(found + 1, strlen(newsum.attributes) + 1, "%s", newsum.attributes);
+        }
     }
 
-    os_realloc(*checksum,
-                strlen(*checksum) + strlen(attributes) + 2,
-                *checksum);
-    char *found = strrchr(*checksum, ':');
-    if (found) {
-        snprintf(found + 1, strlen(attributes) + 1, "%s", attributes);
+    // Adjust permissions
+    if (newsum.win_perm) {
+        char *first_part = strchr(*checksum, ':');
+        if (!first_part) return;
+        first_part++;
+        *(first_part++) = '\0';
+        char *second_part = strchr(first_part, ':');
+        if (!second_part) return;
+        os_strdup(second_part, second_part);
+
+        // We need to escape the character ':' from the permissions
+        //because we are going to compare against escaped permissions
+        // sent by wazuh-db
+        char *esc_perms = wstr_replace(newsum.win_perm, ":", "\\:");
+        wm_strcat(checksum, esc_perms, 0);
+        free(esc_perms);
+
+        wm_strcat(checksum, second_part, 0);
+        free(second_part);
     }
 }

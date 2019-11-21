@@ -76,6 +76,7 @@
 #define FILE_ATTRIBUTE_RECALL_ON_OPEN           0x00040000
 #define FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS    0x00400000
 
+#define MAX_WIN_PERM_SIZE OS_SIZE_20480
 
 /* Fields for rules */
 typedef enum fim_fields {
@@ -113,7 +114,7 @@ typedef enum fim_fields {
 typedef struct __sdb {
     char comment[OS_MAXSTR + 1];
     char size[OS_FLSIZE + 1];
-    char perm[OS_SIZE_20480 + 1];
+    char perm[OS_FLSIZE + 1];
     char owner[OS_FLSIZE + 1];
     char gowner[OS_FLSIZE + 1];
     char md5[OS_FLSIZE + 1];
@@ -222,9 +223,9 @@ int w_get_account_info(SID *sid, char **account_name, char **account_domain);
 #endif
 
 void decode_win_attributes(char *str, unsigned int attrs);
-int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array);
+char *decode_win_permissions(char *raw_perm);
 cJSON *attrs_to_json(const char *attributes);
-cJSON *perm_to_json(char *permissions);
+cJSON *win_perm_to_json(char *perms);
 
 /**
  * @brief Send a one-way message to Syscheck

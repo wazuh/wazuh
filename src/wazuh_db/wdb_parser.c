@@ -471,8 +471,14 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         // Only the part before '!' has been escaped
         char *mark = strchr(checksum, '!');
         if (mark) *mark = '\0';
-        char *unsc_checksum = unescape_syscheck_field(checksum);
-        if (mark) *mark = '!';
+        char *unsc_checksum = wstr_replace(checksum, "\\ ", " ");
+        if (mark) {
+            *mark = '!';
+            size_t unsc_size = strlen(unsc_checksum);
+            size_t mark_size = strlen(mark);
+            os_realloc(unsc_checksum, unsc_size + mark_size + 3, unsc_checksum);
+            strncpy(unsc_checksum + unsc_size, mark, mark_size);
+        }
 
         if (result = wdb_syscheck_save(wdb, ftype, unsc_checksum, next), result < 0) {
             mdebug1("DB(%s) Cannot save FIM.", wdb->agent_id);

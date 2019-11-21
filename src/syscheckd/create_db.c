@@ -535,12 +535,7 @@ fim_entry_data * fim_get_data (const char *file, fim_element *item) {
             free_entry_data(data);
             return NULL;
         } else {
-            int size;
-            os_calloc(OS_SIZE_20480, sizeof(char), data->perm);
-
-            if (size = decode_win_permissions(data->perm, OS_SIZE_20480, perm, 0, NULL), size > 1) {
-                os_realloc(data->perm, size + 1, data->perm);
-            }
+            data->perm = decode_win_permissions(perm);
         }
 #else
         data->perm = agent_file_perm(item->statbuf.st_mode);

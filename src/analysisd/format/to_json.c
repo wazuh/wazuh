@@ -181,7 +181,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if (lf->perm_before && *lf->perm_before) {
             if (is_win_permission(lf->perm_before)) {
                 cJSON *old_perm;
-                if (old_perm = perm_to_json(lf->perm_before), old_perm) {
+                if (old_perm = win_perm_to_json(lf->perm_before), old_perm) {
                     cJSON_AddItemToObject(file_diff, "win_perm_before", old_perm);
                 } else {
                     merror("The old permissions could not be added to the JSON alert.");
@@ -193,7 +193,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if (lf->fields[FIM_PERM].value && *lf->fields[FIM_PERM].value) {
             if (is_win_permission(lf->fields[FIM_PERM].value)) {
                 cJSON *new_perm;
-                if (new_perm = perm_to_json(lf->fields[FIM_PERM].value), new_perm) {
+                if (new_perm = win_perm_to_json(lf->fields[FIM_PERM].value), new_perm) {
                     cJSON_AddItemToObject(file_diff, "win_perm_after", new_perm);
                 } else {
                     merror("The new permissions could not be added to the JSON alert.");

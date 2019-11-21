@@ -294,7 +294,7 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         sum.attributes = (char *)sqlite3_column_text(stmt, 13);
         sum.symbolic_path = (char *)sqlite3_column_text(stmt, 14);
 
-        if (*str_perm != '|') {
+        if (str_perm && isdigit(*str_perm)) {
             sum.perm = strtol(str_perm, NULL, 8);
         } else {
             sum.win_perm = str_perm;
@@ -441,10 +441,17 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
     snprintf(s_perm, sizeof(s_perm), "%06o", sum->perm);
     stmt = wdb->stmt[WDB_STMT_FIM_INSERT_ENTRY];
 
+    // If we have Windows permissions, they will be escaped. We
+    // need to save them unescaped
+    char *unescaped_perms = NULL;
+    if (sum->win_perm) {
+        unescaped_perms = wstr_replace(sum->win_perm, "\\:", ":");
+    }
+
     sqlite3_bind_text(stmt, 1, file, -1, NULL);
     sqlite3_bind_text(stmt, 2, s_ftype, -1, NULL);
     sqlite3_bind_text(stmt, 3, sum->size, -1, NULL);
-    sqlite3_bind_text(stmt, 4, (!sum->win_perm) ? s_perm : sum->win_perm, -1, NULL);
+    sqlite3_bind_text(stmt, 4, (!unescaped_perms) ? s_perm : unescaped_perms, -1, NULL);
     sqlite3_bind_text(stmt, 5, sum->uid, -1, NULL);
     sqlite3_bind_text(stmt, 6, sum->gid, -1, NULL);
     sqlite3_bind_text(stmt, 7, sum->md5, -1, NULL);
@@ -458,8 +465,10 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
     sqlite3_bind_text(stmt, 15, sum->symbolic_path, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
+        free(unescaped_perms);
         return 0;
     } else {
+        free(unescaped_perms);
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
         return -1;
     }
@@ -564,10 +573,16 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
     snprintf(s_perm, sizeof(s_perm), "%06o", sum->perm);
     stmt = wdb->stmt[WDB_STMT_FIM_UPDATE_ENTRY];
 
+    // If we have Windows permissions, they will be escaped. We
+    // need to save them unescaped
+    char *unescaped_perms = NULL;
+    if (sum->win_perm) {
+        unescaped_perms = wstr_replace(sum->win_perm, "\\:", ":");
+    }
 
     sqlite3_bind_int64(stmt, 1, sum->changes);
     sqlite3_bind_text(stmt, 2, sum->size, -1, NULL);
-    sqlite3_bind_text(stmt, 3, (!sum->win_perm) ? s_perm : sum->win_perm, -1, NULL);
+    sqlite3_bind_text(stmt, 3, (!unescaped_perms) ? s_perm : unescaped_perms, -1, NULL);
     sqlite3_bind_text(stmt, 4, sum->uid, -1, NULL);
     sqlite3_bind_text(stmt, 5, sum->gid, -1, NULL);
     sqlite3_bind_text(stmt, 6, sum->md5, -1, NULL);
@@ -582,8 +597,10 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
     sqlite3_bind_text(stmt, 15, file, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
+        free(unescaped_perms);
         return sqlite3_changes(wdb->db);
     } else {
+        free(unescaped_perms);
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
         return -1;
     }
