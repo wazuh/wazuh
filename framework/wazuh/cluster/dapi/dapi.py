@@ -188,17 +188,15 @@ class DistributedAPI:
 
             if self.is_async:
                 task = run_local()
+                try:
+                    data = await asyncio.wait_for(task, timeout=timeout)
+                except asyncio.TimeoutError:
+                    raise exception.WazuhException(3021)
+                finally:
+                    if self.local_client_arg is not None:
+                        lc.transport.close()
             else:
-                loop = asyncio.get_running_loop()
-                task = loop.run_in_executor(self.threadpool, run_local)
-
-            try:
-                data = await asyncio.wait_for(task, timeout=timeout)
-            except asyncio.TimeoutError:
-                raise exception.WazuhException(3021)
-            finally:
-                if self.local_client_arg is not None:
-                    lc.transport.close()
+                data = run_local()
 
             after = time.time()
             self.logger.debug("Time calculating request result: {}s".format(after - before))

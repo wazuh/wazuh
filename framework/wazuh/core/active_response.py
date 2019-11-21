@@ -69,4 +69,7 @@ def send_command(msg_queue, oq, agent_id):
     agent_info = Agent(agent_id).get_basic_information()
     if agent_info['status'].lower() != 'active':
         raise WazuhError(1651)
+    agent_conf = Agent(agent_id).getconfig('com', 'active-response')
+    if agent_conf['active-response']['disabled'] == 'yes':
+        raise WazuhError(1750)
     oq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=OssecQueue.AR_TYPE)
