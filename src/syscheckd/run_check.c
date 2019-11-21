@@ -26,10 +26,9 @@
 // Prototypes
 void * fim_run_realtime(__attribute__((unused)) void * args);
 int fim_whodata_initialize();
-
 #ifdef WIN32
 static void set_priority_windows_thread();
-#elif defined INOTIFY_ENABLED
+#else
 static void *symlink_checker_thread(__attribute__((unused)) void * data);
 static void fim_link_update(int pos, char *new_path);
 static void fim_link_check_delete(int pos);
@@ -431,7 +430,7 @@ void log_realtime_status(int next) {
 
 
 // LCOV_EXCL_START
-#ifdef INOTIFY_ENABLED
+#ifndef WIN32
 static void *symlink_checker_thread(__attribute__((unused)) void * data) {
     char *real_path;
     int i;
@@ -536,7 +535,8 @@ static void fim_link_check_delete(int pos) {
 // LCOV_EXCL_STOP
 
 // LCOV_EXCL_START
-static void fim_delete_realtime_watches(int pos) {
+static void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
+#ifdef INOTIFY_ENABLED
     OSHashNode *hash_node;
     char *data;
     W_Vector * watch_to_delete = W_Vector_init(1024);
@@ -577,6 +577,7 @@ static void fim_delete_realtime_watches(int pos) {
     }
 
     W_Vector_free(watch_to_delete);
+#endif
     return;
 }
 // LCOV_EXCL_STOP
@@ -616,11 +617,9 @@ static void fim_link_silent_scan(char *path, int pos) {
     item->index = pos;
     item->mode = FIM_SCHEDULED;
 
-#ifndef WIN32
     if (syscheck.opts[pos] & REALTIME_ACTIVE) {
         realtime_adddir(path, 0);
     }
-#endif
 
     fim_checker(path, item, NULL, 0);
     os_free(item);
