@@ -4,8 +4,9 @@ import asyncio
 import ssl
 from typing import Tuple, Dict, List
 import uvloop
+
+import wazuh.core.cluster.utils
 from wazuh.core.cluster import common
-from wazuh import cluster
 import logging
 import time
 import itertools
@@ -39,7 +40,7 @@ class AbstractClientManager:
         self.logger = logger.getChild(tag)
         # logging tag
         self.tag = tag
-        self.logger.addFilter(cluster.ClusterFilter(tag=self.tag, subtag="Main"))
+        self.logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag=self.tag, subtag="Main"))
         self.tasks = []
         self.handler_class = AbstractClient
         self.client = None
