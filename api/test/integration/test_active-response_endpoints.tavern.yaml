@@ -136,7 +136,7 @@ stages:
           failed_items:
             - error:
                 code: 1701
-                message: 'Agent does not exist: 251'
+                message: !anystr
                 remediation: Please, use `GET /agents?select=id,name` to find all available
                   agents
               id:
