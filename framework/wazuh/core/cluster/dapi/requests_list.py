@@ -1,6 +1,7 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+import wazuh.core.cluster.utils
 from wazuh.agent import Agent
 from wazuh.rule import Rule
 from wazuh.decoder import Decoder
@@ -319,7 +320,7 @@ functions = {
         'is_async': False
     },
     '/cluster/config': {
-        'function': cluster.read_config,
+        'function': wazuh.core.cluster.utils.read_config,
         'type': 'local_any',
         'is_async': False
     },

@@ -4,14 +4,13 @@
 import ast
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import itertools
-from wazuh.core.cluster.utils import get_cluster_status, manager_restart, read_cluster_config
 import json
 import logging
 import os
 import zipfile
 from datetime import datetime, timedelta
-from functools import reduce, lru_cache
-from operator import eq, setitem, add
+from functools import reduce
+from operator import eq, add
 from os import path, listdir, stat, remove
 from random import random
 from shutil import rmtree
@@ -20,14 +19,15 @@ from time import time
 
 from wazuh import common
 from wazuh.InputValidator import InputValidator
+from wazuh.core.cluster import local_client
+from wazuh.core.cluster.control import get_health, get_nodes
+from wazuh.core.cluster.utils import get_cluster_status, manager_restart, read_cluster_config, get_cluster_items, \
+    read_config
 from wazuh.core.core_agent import Agent
 from wazuh.exception import WazuhException, WazuhError
-from wazuh.utils import md5, mkdir_with_mode
-from wazuh.wlogging import WazuhLogger
 from wazuh.rbac.decorators import expose_resources
-from wazuh.core.cluster.control import get_health, get_nodes
-from wazuh.core.cluster import local_client
-from wazuh.results import WazuhResult, AffectedItemsWazuhResult
+from wazuh.results import AffectedItemsWazuhResult
+from wazuh.utils import md5, mkdir_with_mode
 
 logger = logging.getLogger('wazuh')
 
@@ -66,18 +66,6 @@ def check_cluster_config(config):
         raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
 
 
-@lru_cache()
-def get_cluster_items():
-    try:
-        with open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)) as f:
-            cluster_items = json.load(f)
-        list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
-                 filter(lambda x: 'permissions' in x, cluster_items['files'].values())))
-        return cluster_items
-    except Exception as e:
-        raise WazuhException(3005, str(e))
-
-
 def get_cluster_items_master_intervals():
     return get_cluster_items()['intervals']['master']
 
@@ -88,12 +76,6 @@ def get_cluster_items_communication_intervals():
 
 def get_cluster_items_worker_intervals():
     return get_cluster_items()['intervals']['worker']
-
-
-@lru_cache()
-def read_config(config_file=common.ossec_conf):
-    """ Returns the cluster configuration. """
-    return read_cluster_config(config_file=config_file)
 
 
 def get_node():
@@ -156,6 +138,8 @@ def get_status_json():
     :return: Dictionary with the cluster status.
     """
     return get_cluster_status()
+
+
 
 
 #
@@ -460,8 +444,10 @@ async def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
                                       )
 
     data = await get_health(lc, filter_node=filter_node)
-    for k, v in data['nodes'].items():
-        result.affected_items.append({k: v})
+    for v in data['nodes'].values():
+        result.affected_items.append(v)
+
+    result.affected_items = sorted(result.affected_items, key=lambda i: i['info']['name'])
     result.total_affected_items = len(result.affected_items)
 
     return result
@@ -480,51 +466,3 @@ async def get_nodes_info(lc: local_client.LocalClient, filter_node=None, **kwarg
     result.total_affected_items = data['totalItems']
 
     return result
-
-
-class ClusterFilter(logging.Filter):
-    """
-    Adds cluster related information into cluster logs.
-    """
-    def __init__(self, tag: str, subtag: str, name: str = ''):
-        """
-        Class constructor
-
-        :param tag: First tag to show in the log - Usually describes class
-        :param subtag: Second tag to show in the log - Usually describes function
-        :param name: If name is specified, it names a logger which, together with its children, will have its events
-                     allowed through the filter. If name is the empty string, allows every event.
-        """
-        super().__init__(name=name)
-        self.tag = tag
-        self.subtag = subtag
-
-    def filter(self, record):
-        record.tag = self.tag
-        record.subtag = self.subtag
-        return True
-
-    def update_tag(self, new_tag: str):
-        self.tag = new_tag
-
-    def update_subtag(self, new_subtag: str):
-        self.subtag = new_subtag
-
-
-class ClusterLogger(WazuhLogger):
-    """
-    Defines the logger used by wazuh-clusterd.
-    """
-
-    def setup_logger(self):
-        """
-        Set ups cluster logger. In addition to super().setup_logger() this method adds:
-            * A filter to add tag and subtags to cluster logs
-            * Sets log level based on the "debug_level" parameter received from wazuh-clusterd binary.
-        """
-        super().setup_logger()
-        self.logger.addFilter(ClusterFilter(tag='Cluster', subtag='Main'))
-        debug_level = logging.DEBUG2 if self.debug_level == 2 else \
-                                        logging.DEBUG if self.debug_level == 1 else logging.INFO
-
-        self.logger.setLevel(debug_level)

@@ -9,6 +9,7 @@ import logging
 import os
 import sys
 
+import wazuh.core.cluster.utils
 from wazuh import common, configuration, pyDaemonModule, cluster
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__, master, local_server, worker
 
@@ -18,9 +19,9 @@ from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licenc
 #
 
 def set_logging(foreground_mode=False, debug_mode=0):
-    cluster_logger = cluster.ClusterLogger(foreground_mode=foreground_mode, log_path='logs/cluster.log',
-                                           debug_level=debug_mode,
-                                           tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}')
+    cluster_logger = wazuh.core.cluster.utils.ClusterLogger(foreground_mode=foreground_mode, log_path='logs/cluster.log',
+                                                            debug_level=debug_mode,
+                                                            tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}')
     cluster_logger.setup_logger()
     return cluster_logger
 
@@ -113,10 +114,10 @@ if __name__ == '__main__':
 
     main_logger = set_logging(foreground_mode=args.foreground, debug_mode=debug_mode)
 
-    cluster_configuration = cluster.read_config(config_file=args.config_file)
+    cluster_configuration = wazuh.core.cluster.utils.read_config(config_file=args.config_file)
     if cluster_configuration['disabled']:
         sys.exit(0)
-    cluster_items = cluster.get_cluster_items()
+    cluster_items = wazuh.core.cluster.utils.get_cluster_items()
     try:
         cluster.check_cluster_config(cluster_configuration)
     except Exception as e:

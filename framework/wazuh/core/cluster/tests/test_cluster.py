@@ -6,6 +6,8 @@ import time
 from datetime import datetime
 from unittest.mock import patch, mock_open
 
+import wazuh.core.cluster.utils
+
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         from wazuh.exception import WazuhException
@@ -50,7 +52,7 @@ def test_read_empty_configuration():
     """
     with patch('wazuh.cluster.cluster.get_ossec_conf') as m:
         m.side_effect = WazuhException(1106)
-        configuration = cluster.read_config()
+        configuration = wazuh.core.cluster.utils.read_config()
         configuration['disabled'] = 'yes' if configuration['disabled'] else 'no'
         assert configuration == default_cluster_configuration
 
@@ -66,7 +68,7 @@ def test_read_configuration(read_config):
     """
     with patch('wazuh.cluster.utils.get_ossec_conf') as m:
         m.return_value = read_config.copy()
-        configuration = cluster.read_config()
+        configuration = wazuh.core.cluster.utils.read_config()
         configuration['disabled'] = 'yes' if configuration['disabled'] else 'no'
         for k in read_config.keys():
             assert configuration[k] == read_config[k]
@@ -98,7 +100,7 @@ def test_checking_configuration(read_config):
     with patch('wazuh.cluster.cluster.get_ossec_conf') as m:
         m.return_value = read_config.copy()
         with pytest.raises(WazuhException, match=r'.* 3004 .*'):
-            configuration = cluster.read_config()
+            configuration = wazuh.core.cluster.utils.read_config()
             cluster.check_cluster_config(configuration)
 
 

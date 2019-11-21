@@ -15,8 +15,9 @@ from typing import Tuple, Dict, Callable
 
 import cryptography.fernet
 
+import wazuh.core.cluster.utils
 import wazuh.results as wresults
-from wazuh import exception, common, Wazuh, cluster
+from wazuh import exception, common, Wazuh
 
 
 class Response:
@@ -163,7 +164,7 @@ class Handler(asyncio.Protocol):
         self.logger = logger.getChild(tag)
         # logging tag
         self.tag = tag
-        self.logger_filter = cluster.ClusterFilter(tag=self.tag, subtag="Main")
+        self.logger_filter = wazuh.core.cluster.utils.ClusterFilter(tag=self.tag, subtag="Main")
         self.logger.addFilter(self.logger_filter)
         self.cluster_items = cluster_items
         # transports in asyncio are an abstraction of sockets
@@ -523,7 +524,7 @@ class Handler(asyncio.Protocol):
 
     def setup_task_logger(self, task_tag: str):
         task_logger = self.logger.getChild(task_tag)
-        task_logger.addFilter(cluster.ClusterFilter(tag=self.tag, subtag=task_tag))
+        task_logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag=self.tag, subtag=task_tag))
         return task_logger
 
 

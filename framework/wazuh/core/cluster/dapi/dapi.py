@@ -14,6 +14,7 @@ from operator import or_
 from typing import Callable, Dict, Tuple
 from concurrent.futures import ThreadPoolExecutor
 
+import wazuh.core.cluster.utils
 import wazuh.results as wresults
 from wazuh import exception, agent, common, cluster
 from wazuh import manager
@@ -45,7 +46,7 @@ class DistributedAPI:
         self.f = f
         self.f_kwargs = f_kwargs if f_kwargs is not None else {}
         self.node = node if node is not None else local_client
-        self.cluster_items = cluster.get_cluster_items() if node is None else node.cluster_items
+        self.cluster_items = wazuh.core.cluster.utils.get_cluster_items() if node is None else node.cluster_items
         self.debug = debug
         self.pretty = pretty
         self.node_info = cluster.get_node() if node is None else node.get_node()
@@ -95,6 +96,7 @@ class DistributedAPI:
             if not is_dapi_enabled or is_cluster_disabled or self.request_type == 'local_any' or \
                     (self.request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (self.request_type == 'distributed_master' and self.from_cluster):
+
                 response = await self.execute_local_request()
 
             # Second case: forward the request
@@ -188,17 +190,15 @@ class DistributedAPI:
 
             if self.is_async:
                 task = run_local()
+                try:
+                    data = await asyncio.wait_for(task, timeout=timeout)
+                except asyncio.TimeoutError:
+                    raise exception.WazuhException(3021)
+                finally:
+                    if self.local_client_arg is not None:
+                        lc.transport.close()
             else:
-                loop = asyncio.get_running_loop()
-                task = loop.run_in_executor(self.threadpool, run_local)
-
-            try:
-                data = await asyncio.wait_for(task, timeout=timeout)
-            except asyncio.TimeoutError:
-                raise exception.WazuhException(3021)
-            finally:
-                if self.local_client_arg is not None:
-                    lc.transport.close()
+                data = run_local()
 
             after = time.time()
             self.logger.debug("Time calculating request result: {}s".format(after - before))
@@ -349,8 +349,10 @@ class DistributedAPI:
         # get the node(s) who has all available information to answer the request.
         nodes = await self.get_solver_node()
         self.from_cluster = True
+
         if len(nodes) > 1:
             results = await asyncio.shield(asyncio.gather(*[forward(node) for node in nodes.items()]))
+
             response = reduce(or_, results)
             if isinstance(response, wresults.AbstractWazuhResult):
                 response = response.limit(limit=self.f_kwargs.get('limit', common.database_limit),
@@ -428,7 +430,7 @@ class APIRequestQueue:
         self.request_queue = asyncio.Queue()
         self.server = server
         self.logger = logging.getLogger('wazuh').getChild('dapi')
-        self.logger.addFilter(cluster.ClusterFilter(tag='Cluster', subtag='D API'))
+        self.logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag='Cluster', subtag='D API'))
         self.pending_requests = {}
 
     async def run(self):

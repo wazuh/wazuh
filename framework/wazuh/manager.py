@@ -202,6 +202,7 @@ def ossec_log_summary(months=3):
 
     for k, v in categories.items():
         result.affected_items.append({k: v})
+    result.affected_items = sorted(result.affected_items, key=lambda i: list(i.keys())[0])
     result.total_affected_items = len(result.affected_items)
 
     return result
@@ -424,7 +425,7 @@ def delete_file(path):
         else:
             raise WazuhError(1906)
     except WazuhError as e:
-        result.add_failed_item(id_=path, error=e)
+        result.add_failed_item(id_=path[0], error=e)
     result.total_affected_items = len(result.affected_items)
 
     return result
@@ -433,11 +434,12 @@ def delete_file(path):
 @expose_resources(actions=['cluster:restart'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def restart():
     """Wrapper for 'restart_manager' function due to interdependencies with cluster module and permission access. """
-    result = AffectedItemsWazuhResult(all_msg='Restart request sent to all shown managers',
-                                      some_msg='Could not send restart request to some managers',
-                                      none_msg='No restart request sent'
+    result = AffectedItemsWazuhResult(all_msg=f"Restart request sent to"
+                                              f"{' all specified nodes' if node_id != ' manager' else ''}",
+                                      some_msg='Could not send restart request to some specified nodes',
+                                      none_msg=f"No restart request sent",
+                                      sort_casting=['str']
                                       )
-
     try:
         manager_restart()
         result.affected_items.append(node_id)
@@ -482,8 +484,11 @@ def validation():
                                               f"{' in all nodes' if node_id != 'manager' else ''}",
                                       some_msg='Could not check validation in some nodes',
                                       none_msg=f"Could not check validation"
-                                               f"{' in any node' if node_id != 'manager' else ''}"
+                                               f"{' in any node' if node_id != 'manager' else ''}",
+                                      sort_fields=['name'],
+                                      sort_casting=['str']
                                       )
+
     lock_file = open(execq_lockfile, 'a+')
     fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
@@ -551,8 +556,8 @@ def validation():
         except (KeyError, json.decoder.JSONDecodeError) as e:
             raise WazuhInternalError(1904, extra_message=str(e))
 
-        result.affected_items.append({node_id: response})
-        result.total_affected_items = len(result.affected_items)
+        result.affected_items.append({'name': node_id, **response})
+        result.total_affected_items += 1
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     finally:
@@ -600,8 +605,8 @@ def get_config(component=None, config=None):
                                       )
 
     try:
-        result.affected_items.append(configuration.get_active_configuration(agent_id='000', component=component,
-                                                                            configuration=config))
+        data = configuration.get_active_configuration(agent_id='000', component=component, configuration=config)
+        len(data.keys()) > 0 and result.affected_items.append(data)
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     result.total_affected_items = len(result.affected_items)

@@ -3,17 +3,22 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import fcntl
+import json
 import logging
 import re
 import socket
 import typing
+from functools import lru_cache
 from glob import glob
+from operator import setitem
 from os.path import join, exists
 
 import wazuh.common as common
+from wazuh import common, WazuhException
 from wazuh.configuration import get_ossec_conf
 from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult
+from wazuh.wlogging import WazuhLogger
 
 logger = logging.getLogger('wazuh')
 execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
@@ -162,3 +167,69 @@ def manager_restart():
         lock_file.close()
 
     return WazuhResult({'message': 'Restart request sent'})
+
+
+@lru_cache()
+def get_cluster_items():
+    try:
+        with open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)) as f:
+            cluster_items = json.load(f)
+        list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
+                 filter(lambda x: 'permissions' in x, cluster_items['files'].values())))
+        return cluster_items
+    except Exception as e:
+        raise WazuhException(3005, str(e))
+
+
+@lru_cache()
+def read_config(config_file=common.ossec_conf):
+    """ Returns the cluster configuration. """
+    return read_cluster_config(config_file=config_file)
+
+
+class ClusterFilter(logging.Filter):
+    """
+    Adds cluster related information into cluster logs.
+    """
+    def __init__(self, tag: str, subtag: str, name: str = ''):
+        """
+        Class constructor
+
+        :param tag: First tag to show in the log - Usually describes class
+        :param subtag: Second tag to show in the log - Usually describes function
+        :param name: If name is specified, it names a logger which, together with its children, will have its events
+                     allowed through the filter. If name is the empty string, allows every event.
+        """
+        super().__init__(name=name)
+        self.tag = tag
+        self.subtag = subtag
+
+    def filter(self, record):
+        record.tag = self.tag
+        record.subtag = self.subtag
+        return True
+
+    def update_tag(self, new_tag: str):
+        self.tag = new_tag
+
+    def update_subtag(self, new_subtag: str):
+        self.subtag = new_subtag
+
+
+class ClusterLogger(WazuhLogger):
+    """
+    Defines the logger used by wazuh-clusterd.
+    """
+
+    def setup_logger(self):
+        """
+        Set ups cluster logger. In addition to super().setup_logger() this method adds:
+            * A filter to add tag and subtags to cluster logs
+            * Sets log level based on the "debug_level" parameter received from wazuh-clusterd binary.
+        """
+        super().setup_logger()
+        self.logger.addFilter(ClusterFilter(tag='Cluster', subtag='Main'))
+        debug_level = logging.DEBUG2 if self.debug_level == 2 else \
+                                        logging.DEBUG if self.debug_level == 1 else logging.INFO
+
+        self.logger.setLevel(debug_level)
