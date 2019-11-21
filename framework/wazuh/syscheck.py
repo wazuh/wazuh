@@ -122,7 +122,7 @@ def last_scan(agent_list):
         start = None if not fim_scan_info['start'] else fim_scan_info['start']
         # If start is None or the scan is running, end will be None.
         result.affected_items.append(
-            {'start': start, 'end': None if start is None else None if end is None or end > start else end})
+            {'start': start, 'end': None if start is None else None if end is None or end < start else end})
     result.total_affected_items = len(result.affected_items)
 
     return result

@@ -26,7 +26,7 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
             if field_name == 'mtime' or field_name == 'date':
                 return datetime.utcfromtimestamp(value)
             if field_name == 'end' or field_name == 'start':
-                return 'ND' if not value else datetime.utcfromtimestamp(value)
+                return None if not value else datetime.utcfromtimestamp(value)
             else:
                 return value
 
