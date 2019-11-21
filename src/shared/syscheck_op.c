@@ -10,9 +10,7 @@
 
 #include "syscheck_op.h"
 
-#ifndef CLIENT
-static char *unescape_syscheck_field(char *sum);
-#endif
+static cJSON *get_perm_type(int mask);
 
 int delete_target_file(const char *path) {
     char full_path[PATH_MAX] = "\0";
@@ -132,7 +130,20 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
         if (*c_perm == '|') {
             // Windows permissions
-            sum->win_perm = unescape_syscheck_field(c_perm);
+            char *unsc_perm = unescape_syscheck_field(c_perm);
+
+            // We need to transform them to the new format
+            // before processing
+            os_calloc(OS_SIZE_20480, sizeof(char), sum->win_perm);
+            size_t size;
+            if (size = decode_win_permissions(sum->win_perm, OS_SIZE_20480, unsc_perm, 0, NULL), size > 1) {
+                os_realloc(sum->win_perm, size + 1, sum->win_perm);
+            } else if (!size) {
+                free(sum->win_perm);
+                sum->win_perm = unsc_perm;
+                unsc_perm = NULL;
+            }
+            free(unsc_perm);
         } else {
             sum->perm = atoi(c_perm);
         }
@@ -182,7 +193,13 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
                 if (sum->sha256) {
                     if (attrs = strchr(sum->sha256, ':'), attrs) {
                         *(attrs++) = '\0';
-                        sum->attrs = strtoul(attrs, NULL, 10);
+                        if (isdigit(*attrs)) {
+                            int attributes = strtoul(attrs, NULL, 10);
+                            os_calloc(OS_SIZE_256 + 1, sizeof(char), sum->attributes);
+                            decode_win_attributes(sum->attributes, attributes);
+                        } else {
+                            os_strdup(attrs, sum->attributes);
+                        }
                     }
                 }
 
@@ -335,50 +352,37 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     os_strdup(f_name, lf->fields[FIM_FILE].value);
 
     if (sum->size) {
-        os_strdup(sum->size, lf->size_after);
         os_strdup(sum->size, lf->fields[FIM_SIZE].value);
     }
 
     if (sum->perm) {
         os_calloc(7, sizeof(char), lf->fields[FIM_PERM].value);
         snprintf(lf->fields[FIM_PERM].value, 7, "%06o", sum->perm);
-        os_strdup(lf->fields[FIM_PERM].value, lf->perm_after);
     } else if (sum->win_perm && *sum->win_perm != '\0') {
-        int size;
-        os_strdup(sum->win_perm, lf->win_perm_after);
-        os_calloc(OS_SIZE_256 + 1, sizeof(char), lf->fields[FIM_PERM].value);
-        if (size = decode_win_permissions(lf->fields[FIM_PERM].value, OS_SIZE_256, lf->win_perm_after, 1, NULL), size > 1) {
-            os_realloc(lf->fields[FIM_PERM].value, size + 1, lf->fields[FIM_PERM].value);
-        }
+        os_strdup(sum->win_perm, lf->fields[FIM_PERM].value);
     }
 
     if (sum->uid) {
-        os_strdup(sum->uid, lf->owner_after);
         os_strdup(sum->uid, lf->fields[FIM_UID].value);
     }
 
     if (sum->gid) {
-        os_strdup(sum->gid, lf->gowner_after);
         os_strdup(sum->gid, lf->fields[FIM_GID].value);
     }
 
     if (sum->md5) {
-        os_strdup(sum->md5, lf->md5_after);
         os_strdup(sum->md5, lf->fields[FIM_MD5].value);
     }
 
     if (sum->sha1) {
-        os_strdup(sum->sha1, lf->sha1_after);
         os_strdup(sum->sha1, lf->fields[FIM_SHA1].value);
     }
 
     if (sum->uname) {
-        os_strdup(sum->uname, lf->uname_after);
         os_strdup(sum->uname, lf->fields[FIM_UNAME].value);
     }
 
     if (sum->gname) {
-        os_strdup(sum->gname, lf->gname_after);
         os_strdup(sum->gname, lf->fields[FIM_GNAME].value);
     }
 
@@ -395,14 +399,11 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     }
 
     if(sum->sha256) {
-        os_strdup(sum->sha256, lf->sha256_after);
         os_strdup(sum->sha256, lf->fields[FIM_SHA256].value);
     }
 
-    if(sum->attrs) {
-        lf->attrs_after = sum->attrs;
-        os_calloc(OS_SIZE_256 + 1, sizeof(char), lf->fields[FIM_ATTRS].value);
-        decode_win_attributes(lf->fields[FIM_ATTRS].value, lf->attrs_after);
+    if(sum->attributes) {
+        os_strdup(sum->attributes, lf->fields[FIM_ATTRS].value);
     }
 
     if(sum->wdata.user_id) {
@@ -490,7 +491,7 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
 
     // size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256:attrs!changes:date_alert
     // ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^^
-    r = snprintf(output, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u!%d:%ld",
+    r = snprintf(output, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s!%d:%ld",
             sum->size,
             (!sum->win_perm) ? s_perm : sum->win_perm,
             sum->uid,
@@ -502,7 +503,7 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
             sum->mtime ? s_mtime : "",
             sum->inode ? s_inode : "",
             sum->sha256 ? sum->sha256 : "",
-            sum->attrs ? sum->attrs : 0,
+            sum->attributes ? sum->attributes : "",
             sum->changes,
             sum->date_alert
     );
@@ -513,6 +514,7 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
 
 void sk_sum_clean(sk_sum_t * sum) {
     os_free(sum->symbolic_path);
+    os_free(sum->attributes);
     os_free(sum->wdata.user_name);
     os_free(sum->wdata.process_name);
     os_free(sum->uname);
@@ -908,6 +910,12 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
     char a_type;
     long mask;
 
+    if (!perm_array && !seq && *raw_perm != '|') {
+        // It is trying to convert to the new format
+        // a permissions that have already been transformed
+        return 0;
+    }
+
     perm_it = raw_perm;
     while (perm_it = strchr(perm_it, '|'), perm_it) {
         // Get the account/group name
@@ -943,6 +951,13 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
             cJSON *a_found = NULL;
             char *perm_type_str;
 
+            // ~~~~~~~~~~~~ INCOMPLETE
+            cJSON_AddItemToArray(perm_array, cJSON_CreateString("PERMISSION 1"));
+            cJSON_AddItemToArray(perm_array, cJSON_CreateString("PERMISSION 2"));
+            cJSON_AddItemToArray(perm_array, cJSON_CreateString("PERMISSION 3"));
+            os_free(account_name);
+
+            return 100;
 
             perm_type_str = (a_type == '0') ? str_a : str_d;
             for (json_it = perm_array->child; json_it; json_it = json_it->next) {
@@ -959,29 +974,9 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
                 }
             }
 
-            if (perm_type = cJSON_CreateArray(), !perm_type) {
+            if (perm_type = get_perm_type(mask), !perm_type) {
                 goto error;
             }
-
-            if (mask & GENERIC_READ) cJSON_AddItemToArray(perm_type, cJSON_CreateString("generic_read"));
-            if (mask & GENERIC_WRITE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("generic_write"));
-            if (mask & GENERIC_EXECUTE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("generic_execute"));
-            if (mask & GENERIC_ALL) cJSON_AddItemToArray(perm_type, cJSON_CreateString("generic_all"));
-
-            if (mask & DELETE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("delete"));
-            if (mask & READ_CONTROL) cJSON_AddItemToArray(perm_type, cJSON_CreateString("read_control"));
-            if (mask & WRITE_DAC) cJSON_AddItemToArray(perm_type, cJSON_CreateString("write_dac"));
-            if (mask & WRITE_OWNER) cJSON_AddItemToArray(perm_type, cJSON_CreateString("write_owner"));
-            if (mask & SYNCHRONIZE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("synchronize"));
-
-            if (mask & FILE_READ_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("read_data"));
-            if (mask & FILE_WRITE_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("write_data"));
-            if (mask & FILE_APPEND_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("append_data"));
-            if (mask & FILE_READ_EA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("read_ea"));
-            if (mask & FILE_WRITE_EA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("write_ea"));
-            if (mask & FILE_EXECUTE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("execute"));
-            if (mask & FILE_READ_ATTRIBUTES) cJSON_AddItemToArray(perm_type, cJSON_CreateString("read_attributes"));
-            if (mask & FILE_WRITE_ATTRIBUTES) cJSON_AddItemToArray(perm_type, cJSON_CreateString("write_attributes"));
 
             if (!a_found) {
                 if (a_found = cJSON_CreateObject(), !a_found) {
@@ -1066,73 +1061,6 @@ cJSON *perm_to_json(char *permissions) {
     return perm_array;
 }
 
-cJSON *old_attrs_to_json(unsigned int attributes) {
-    cJSON *ab_array;
-
-    if (ab_array = cJSON_CreateArray(), !ab_array) {
-        return NULL;
-    }
-
-    if (attributes & FILE_ATTRIBUTE_ARCHIVE) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("ARCHIVE"));
-    }
-    if (attributes & FILE_ATTRIBUTE_COMPRESSED) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("COMPRESSED"));
-    }
-    if (attributes & FILE_ATTRIBUTE_DEVICE) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("DEVICE"));
-    }
-    if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("DIRECTORY"));
-    }
-    if (attributes & FILE_ATTRIBUTE_ENCRYPTED) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("ENCRYPTED"));
-    }
-    if (attributes & FILE_ATTRIBUTE_HIDDEN) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("HIDDEN"));
-    }
-    if (attributes & FILE_ATTRIBUTE_INTEGRITY_STREAM) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("INTEGRITY_STREAM"));
-    }
-    if (attributes & FILE_ATTRIBUTE_NORMAL) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("NORMAL"));
-    }
-    if (attributes & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("NOT_CONTENT_INDEXED"));
-    }
-    if (attributes & FILE_ATTRIBUTE_NO_SCRUB_DATA) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("NO_SCRUB_DATA"));
-    }
-    if (attributes & FILE_ATTRIBUTE_OFFLINE) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("OFFLINE"));
-    }
-    if (attributes & FILE_ATTRIBUTE_READONLY) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("READONLY"));
-    }
-    if (attributes & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("RECALL_ON_DATA_ACCESS"));
-    }
-    if (attributes & FILE_ATTRIBUTE_RECALL_ON_OPEN) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("RECALL_ON_OPEN"));
-    }
-    if (attributes & FILE_ATTRIBUTE_REPARSE_POINT) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("REPARSE_POINT"));
-    }
-    if (attributes & FILE_ATTRIBUTE_SPARSE_FILE) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("SPARSE_FILE"));
-    }
-    if (attributes & FILE_ATTRIBUTE_SYSTEM) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("SYSTEM"));
-    }
-    if (attributes & FILE_ATTRIBUTE_TEMPORARY) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("TEMPORARY"));
-    }
-    if (attributes & FILE_ATTRIBUTE_VIRTUAL) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("VIRTUAL"));
-    }
-    return ab_array;
-}
-
 cJSON *attrs_to_json(const char *attributes) {
     cJSON *attrs_array;
 
@@ -1156,4 +1084,34 @@ cJSON *attrs_to_json(const char *attributes) {
 
     free(attrs_cpy);
     return attrs_array;
+}
+
+cJSON *get_perm_type(int mask) {
+    cJSON *perm_type;
+
+    if (perm_type = cJSON_CreateArray(), !perm_type) {
+        return NULL;
+    }
+
+    if (mask & GENERIC_READ) cJSON_AddItemToArray(perm_type, cJSON_CreateString("generic_read"));
+    if (mask & GENERIC_WRITE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("generic_write"));
+    if (mask & GENERIC_EXECUTE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("generic_execute"));
+    if (mask & GENERIC_ALL) cJSON_AddItemToArray(perm_type, cJSON_CreateString("generic_all"));
+
+    if (mask & DELETE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("delete"));
+    if (mask & READ_CONTROL) cJSON_AddItemToArray(perm_type, cJSON_CreateString("read_control"));
+    if (mask & WRITE_DAC) cJSON_AddItemToArray(perm_type, cJSON_CreateString("write_dac"));
+    if (mask & WRITE_OWNER) cJSON_AddItemToArray(perm_type, cJSON_CreateString("write_owner"));
+    if (mask & SYNCHRONIZE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("synchronize"));
+
+    if (mask & FILE_READ_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("read_data"));
+    if (mask & FILE_WRITE_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("write_data"));
+    if (mask & FILE_APPEND_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("append_data"));
+    if (mask & FILE_READ_EA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("read_ea"));
+    if (mask & FILE_WRITE_EA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("write_ea"));
+    if (mask & FILE_EXECUTE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("execute"));
+    if (mask & FILE_READ_ATTRIBUTES) cJSON_AddItemToArray(perm_type, cJSON_CreateString("read_attributes"));
+    if (mask & FILE_WRITE_ATTRIBUTES) cJSON_AddItemToArray(perm_type, cJSON_CreateString("write_attributes"));
+
+    return perm_type;
 }

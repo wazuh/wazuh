@@ -17,7 +17,8 @@
 #include "config.h"
 #include "wazuh_modules/wmodules.h"
 
-void add_json_attrs(unsigned old_format, const char *new_format, cJSON *file_diff, char after);
+#define is_win_permission(x) (strchr(x, '|'))
+void add_json_attrs(const char *attrs_str, cJSON *file_diff, char after);
 
 /* Convert Eventinfo to json */
 char* Eventinfo_to_jsonstr(const Eventinfo* lf)
@@ -174,104 +175,92 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                 cJSON_AddStringToObject(file_diff, "size_before", lf->size_before);
             }
         }
-        if(lf->size_after) {
-            if (strcmp(lf->size_after, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "size_after", lf->size_after);
-            }
+        if (lf->fields[FIM_SIZE].value && *lf->fields[FIM_SIZE].value) {
+            cJSON_AddStringToObject(file_diff, "size_after", lf->fields[FIM_SIZE].value);
         }
-        if (lf->win_perm_before && *lf->win_perm_before != '\0') {
-            cJSON *old_perm;
-            if (old_perm = perm_to_json(lf->win_perm_before), old_perm) {
-                cJSON_AddItemToObject(file_diff, "win_perm_before", old_perm);
+        if (lf->perm_before && *lf->perm_before) {
+            if (is_win_permission(lf->perm_before)) {
+                cJSON *old_perm;
+                if (old_perm = perm_to_json(lf->perm_before), old_perm) {
+                    cJSON_AddItemToObject(file_diff, "win_perm_before", old_perm);
+                } else {
+                    merror("The old permissions could not be added to the JSON alert.");
+                }
             } else {
-                merror("The old permissions could not be added to the JSON alert.");
+                cJSON_AddStringToObject(file_diff, "perm_before", lf->perm_before);
             }
-        } else if (lf->perm_before) {
-            cJSON_AddStringToObject(file_diff, "perm_before", lf->perm_before);
         }
-        if (lf->win_perm_after && *lf->win_perm_after != '\0') {
-            cJSON *new_perm;
-            if (new_perm = perm_to_json(lf->win_perm_after), new_perm) {
-                cJSON_AddItemToObject(file_diff, "win_perm_after", new_perm);
+        if (lf->fields[FIM_PERM].value && *lf->fields[FIM_PERM].value) {
+            if (is_win_permission(lf->fields[FIM_PERM].value)) {
+                cJSON *new_perm;
+                if (new_perm = perm_to_json(lf->fields[FIM_PERM].value), new_perm) {
+                    cJSON_AddItemToObject(file_diff, "win_perm_after", new_perm);
+                } else {
+                    merror("The new permissions could not be added to the JSON alert.");
+                }
             } else {
-                merror("The new permissions could not be added to the JSON alert.");
+                cJSON_AddStringToObject(file_diff, "perm_after", lf->fields[FIM_PERM].value);
             }
-        } else if (lf->perm_after) {
-            cJSON_AddStringToObject(file_diff, "perm_after", lf->perm_after);
         }
-        if(lf->owner_before) {
+        if (lf->owner_before) {
             if (strcmp(lf->owner_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "uid_before", lf->owner_before);
             }
         }
-        if(lf->owner_after) {
-            if (strcmp(lf->owner_after, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "uid_after", lf->owner_after);
-            }
+        if (lf->fields[FIM_UID].value && *lf->fields[FIM_UID].value) {
+            cJSON_AddStringToObject(file_diff, "uid_after", lf->fields[FIM_UID].value);
         }
         if(lf->gowner_before) {
             if (strcmp(lf->gowner_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "gid_before", lf->gowner_before);
             }
         }
-        if(lf->gowner_after) {
-            if (strcmp(lf->gowner_after, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "gid_after", lf->gowner_after);
-            }
+        if (lf->fields[FIM_GID].value && *lf->fields[FIM_GID].value) {
+            cJSON_AddStringToObject(file_diff, "gid_after", lf->fields[FIM_GID].value);
         }
         if(lf->md5_before) {
             if (strcmp(lf->md5_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "md5_before", lf->md5_before);
             }
         }
-        if(lf->md5_after) {
-            if (strcmp(lf->md5_after, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "md5_after", lf->md5_after);
-            }
+        if (lf->fields[FIM_MD5].value && *lf->fields[FIM_MD5].value) {
+            cJSON_AddStringToObject(file_diff, "md5_after", lf->fields[FIM_MD5].value);
         }
         if(lf->sha1_before) {
             if (strcmp(lf->sha1_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "sha1_before", lf->sha1_before);
             }
         }
-        if(lf->sha1_after) {
-            if (strcmp(lf->sha1_after, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "sha1_after", lf->sha1_after);
-            }
+        if (lf->fields[FIM_SHA1].value && *lf->fields[FIM_SHA1].value) {
+            cJSON_AddStringToObject(file_diff, "sha1_after", lf->fields[FIM_SHA1].value);
         }
         if(lf->sha256_before) {
             if (strcmp(lf->sha256_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "sha256_before", lf->sha256_before);
             }
         }
-        if(lf->sha256_after) {
-            if (strcmp(lf->sha256_after, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "sha256_after", lf->sha256_after);
-            }
+        if (lf->fields[FIM_SHA256].value && *lf->fields[FIM_SHA256].value) {
+            cJSON_AddStringToObject(file_diff, "sha256_after", lf->fields[FIM_SHA256].value);
         }
 
-        add_json_attrs(lf->attrs_before, lf->attributes_before, file_diff, 0);
-        add_json_attrs(lf->attrs_after, lf->attributes_after, file_diff, 1);
+        add_json_attrs(lf->attributes_before, file_diff, 0);
+        add_json_attrs(lf->fields[FIM_ATTRS].value, file_diff, 1);
 
         if(lf->uname_before) {
             if (strcmp(lf->uname_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "uname_before", lf->uname_before);
             }
         }
-        if(lf->uname_after) {
-            if (strcmp(lf->uname_after, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "uname_after", lf->uname_after);
-            }
+        if(lf->fields[FIM_UNAME].value && *lf->fields[FIM_UNAME].value) {
+            cJSON_AddStringToObject(file_diff, "uname_after", lf->fields[FIM_UNAME].value);
         }
         if(lf->gname_before) {
             if (strcmp(lf->gname_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "gname_before", lf->gname_before);
             }
         }
-        if(lf->gname_after) {
-            if (strcmp(lf->gname_after, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "gname_after", lf->gname_after);
-            }
+        if(lf->fields[FIM_GNAME].value && *lf->fields[FIM_GNAME].value) {
+            cJSON_AddStringToObject(file_diff, "gname_after", lf->fields[FIM_GNAME].value);
         }
         if (lf->mtime_before) {
             char mtime[25];
@@ -473,10 +462,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     return out;
 }
 
-void add_json_attrs(unsigned old_format, const char *new_format, cJSON *file_diff, char after) {
-    if(old_format ||new_format) {
-        cJSON *attrs = old_format ? old_attrs_to_json(old_format) :
-                        attrs_to_json(new_format);
+void add_json_attrs(const char *attrs_str, cJSON *file_diff, char after) {
+    if(attrs_str) {
+        cJSON *attrs = attrs_to_json(attrs_str);
         if (attrs) {
             cJSON_AddItemToObject(file_diff,
                                     after ? "attrs_after" : "attrs_before",

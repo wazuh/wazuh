@@ -165,8 +165,8 @@ int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, co
         else // Old agents
             sqlite3_bind_null(stmt, 14); // sha256
 
-        if (sum->attrs)
-            sqlite3_bind_int(stmt, 15, sum->attrs);
+        if (sum->attributes)
+            sqlite3_bind_text(stmt, 15, sum->attributes, -1, NULL);
         else // Old agents
             sqlite3_bind_null(stmt, 15); // attributes
     } else {
@@ -291,7 +291,7 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         sum.inode = (long)sqlite3_column_int64(stmt, 10);
         sum.sha256 = (char *)sqlite3_column_text(stmt, 11);
         sum.date_alert = (long)sqlite3_column_int64(stmt, 12);
-        sum.attrs = (unsigned int)sqlite3_column_int(stmt, 13);
+        sum.attributes = (char *)sqlite3_column_text(stmt, 13);
         sum.symbolic_path = (char *)sqlite3_column_text(stmt, 14);
 
         if (*str_perm != '|') {
@@ -454,7 +454,7 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
     sqlite3_bind_int64(stmt, 11, sum->mtime);
     sqlite3_bind_int64(stmt, 12, sum->inode);
     sqlite3_bind_text(stmt, 13, sum->sha256, -1, NULL);
-    sqlite3_bind_int(stmt, 14, sum->attrs);
+    sqlite3_bind_text(stmt, 14, sum->attributes, -1, NULL);
     sqlite3_bind_text(stmt, 15, sum->symbolic_path, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
@@ -511,8 +511,6 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
                 sqlite3_bind_int(stmt, 12, element->valueint);
             } else if (strcmp(element->string, "inode") == 0) {
                 sqlite3_bind_int(stmt, 13, element->valueint);
-            } else if (strcmp(element->string, "attrs") == 0) {
-                sqlite3_bind_int(stmt, 15, element->valueint);
             }
 
             break;
@@ -540,6 +538,8 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
                 sqlite3_bind_text(stmt, 16, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "checksum") == 0) {
                 sqlite3_bind_text(stmt, 17, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "win_attributes") == 0) {
+                sqlite3_bind_text(stmt, 15, element->valuestring, -1, NULL);
             }
         }
     }
@@ -577,7 +577,7 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
     sqlite3_bind_int64(stmt, 10, sum->mtime);
     sqlite3_bind_int64(stmt, 11, sum->inode);
     sqlite3_bind_text(stmt, 12, sum->sha256, -1, NULL);
-    sqlite3_bind_int(stmt, 13, sum->attrs);
+    sqlite3_bind_text(stmt, 13, sum->attributes, -1, NULL);
     sqlite3_bind_text(stmt, 14, sum->symbolic_path, -1, NULL);
     sqlite3_bind_text(stmt, 15, file, -1, NULL);
 

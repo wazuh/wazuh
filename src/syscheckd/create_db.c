@@ -995,7 +995,7 @@ cJSON * fim_attributes_json(const fim_entry_data * data) {
 
 #ifdef WIN32
     if (data->options & CHECK_ATTRS) {
-        cJSON_AddStringToObject(attributes, "win_attributes", data->attributes);
+        cJSON_AddStringToObject(attributes, "attributes", data->attributes);
     }
 #endif
 

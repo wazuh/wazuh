@@ -64,6 +64,13 @@ static void fim_generate_comment(char * str, long size, const char * format, con
 // Process scan info event
 static void fim_process_scan_info(_sdb * sdb, const char * agent_id, fim_scan_event event, cJSON * data);
 
+// Extract the file attributes from the JSON object
+static int fim_fetch_attributes(cJSON *new_attrs, cJSON *old_attrs, Eventinfo *lf);
+static int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state);
+
+// Replace the coded attribute string with the decoded one in the checksum
+static void fim_adjust_attributes(char *attributes, char **checksum);
+
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -275,15 +282,17 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     mdebug2("Agent '%s' Old checksum '%s'", lf->agent_id, old_check_sum);
     mdebug2("Agent '%s' New checksum '%s'", lf->agent_id, new_check_sum);
 
+    if (decode_newsum = sk_decode_sum(&newsum, c_sum, w_sum), decode_newsum != -1) {
+        InsertWhodata(&newsum, sdb);
+    }
+
+    fim_adjust_attributes(newsum.attributes, &new_check_sum);
+
     // Checksum match, we can just return and keep going
     if (SumCompare(old_check_sum, new_check_sum) == 0) {
         mdebug1("Agent '%s' Alert discarded '%s' same check_sum", lf->agent_id, f_name);
         fim_update_date (f_name, lf, sdb);
         goto exit_ok;
-    }
-
-    if (decode_newsum = sk_decode_sum(&newsum, c_sum, w_sum), decode_newsum != -1) {
-        InsertWhodata(&newsum, sdb);
     }
 
     wazuhdb_query[0] = '\0';
@@ -341,16 +350,20 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 sym_path = escape_syscheck_field(newsum.symbolic_path);
             }
 
+            // We need to escape the checksum because it will have
+            // spaces if the event comes from Windows
+            char *checksum_esc = escape_syscheck_field(new_check_sum);
             snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck save %s %s!%d:%ld:%s %s",
                     lf->agent_id,
                     *ttype,
-                    new_check_sum,
+                    checksum_esc,
                     changes,
                     lf->time.tv_sec,
                     sym_path ? sym_path : "",
                     f_name
             );
             os_free(sym_path);
+            os_free(checksum_esc);
             db_result = wdbc_query_ex(&sdb->socket, wazuhdb_query, response, OS_SIZE_6144);
 
             switch (db_result) {
@@ -508,11 +521,8 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 } else if (*oldsum->win_perm != '\0' && *newsum->win_perm != '\0') {
                     changes = 1;
                     wm_strcat(&lf->fields[FIM_CHFIELDS].value, "perm", ',');
-                    if (!decode_win_permissions(localsdb->perm, OS_FLSIZE, newsum->win_perm, 1, NULL)) {
-                        localsdb->perm[0] = '\0';
-                    }
-
-                    os_strdup(oldsum->win_perm, lf->win_perm_before);
+                    snprintf(localsdb->perm, OS_SIZE_20480, "%s", oldsum->win_perm);
+                    os_strdup(oldsum->win_perm, lf->perm_before);
                 }
             }
 
@@ -621,19 +631,12 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             }
 
             /* Attributes message */
-            if (oldsum->attrs && newsum->attrs && oldsum->attrs != newsum->attrs) {
-                char *str_attr_before;
-                char *str_attr_after;
+            if (oldsum->attributes && newsum->attributes
+                && strcmp(oldsum->attributes, newsum->attributes)) {
                 changes = 1;
-                os_calloc(OS_SIZE_256 + 1, sizeof(char), str_attr_before);
-                os_calloc(OS_SIZE_256 + 1, sizeof(char), str_attr_after);
-                decode_win_attributes(str_attr_before, oldsum->attrs);
-                decode_win_attributes(str_attr_after, newsum->attrs);
-                wm_strcat(&lf->fields[FIM_ATTRS].value, "attributes", ',');
-                snprintf(localsdb->attrs, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n", str_attr_before, str_attr_after);
-                lf->attrs_before = oldsum->attrs;
-                free(str_attr_before);
-                free(str_attr_after);
+                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "attributes", ',');
+                snprintf(localsdb->attrs, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n", oldsum->attributes, newsum->attributes);
+                os_strdup(oldsum->attributes, lf->attributes_before);
             } else {
                 localsdb->attrs[0] = '\0';
             }
@@ -1249,7 +1252,7 @@ void fim_send_db_save(_sdb * sdb, const char * agent_id, cJSON * data) {
     os_malloc(OS_MAXSTR, query);
 
     if (snprintf(query, OS_MAXSTR, "agent %s syscheck save2 %s", agent_id, data_plain) >= OS_MAXSTR) {
-        merror("FIM decoder: Cannot build save query: input is too long.");
+        merror("FIM decoder: Cannot build save2 query: input is too long.");
         goto end;
     }
 
@@ -1264,7 +1267,7 @@ void fim_send_db_delete(_sdb * sdb, const char * agent_id, const char * path) {
     char query[OS_SIZE_6144];
 
     if (snprintf(query, sizeof(query), "agent %s syscheck delete %s", agent_id, path) >= OS_MAXSTR) {
-        merror("FIM decoder: Cannot build save query: input is too long.");
+        merror("FIM decoder: Cannot build delete query: input is too long.");
         return;
     }
 
@@ -1325,104 +1328,8 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
         os_strdup(lf->decoder_info->fields[it], lf->fields[it].key);
     }
 
-    cJSON_ArrayForEach(object, attributes) {
-        if (object->string == NULL) {
-            mdebug1("FIM attribute set contains an item with no key.");
-            return -1;
-        }
-
-        switch (object->type) {
-        case cJSON_Number:
-            if (strcmp(object->string, "size") == 0) {
-                os_calloc(OS_SIZE_32, sizeof(char), lf->fields[FIM_SIZE].value);
-                snprintf(lf->fields[FIM_SIZE].value, OS_SIZE_32, "%ld", (long)object->valuedouble);
-                os_strdup(lf->fields[FIM_SIZE].value, lf->size_after);
-            } else if (strcmp(object->string, "inode") == 0) {
-                os_calloc(OS_SIZE_32, sizeof(char), lf->fields[FIM_INODE].value);
-                snprintf(lf->fields[FIM_INODE].value, OS_SIZE_32, "%ld", (long)object->valuedouble);
-                lf->inode_after = (long)object->valuedouble;
-            } else if (strcmp(object->string, "mtime") == 0) {
-                os_calloc(OS_SIZE_16, sizeof(char), lf->fields[FIM_MTIME].value);
-                snprintf(lf->fields[FIM_MTIME].value, OS_SIZE_16, "%d", object->valueint);
-                lf->mtime_after = (long)object->valuedouble;
-            }
-
-            break;
-
-        case cJSON_String:
-            if (strcmp(object->string, "perm") == 0) {
-                os_strdup(object->valuestring, lf->fields[FIM_PERM].value);
-                os_strdup(object->valuestring, lf->perm_after);
-            } else if (strcmp(object->string, "user_name") == 0) {
-                os_strdup(object->valuestring, lf->fields[FIM_UNAME].value);
-                os_strdup(object->valuestring, lf->uname_after);
-            } else if (strcmp(object->string, "group_name") == 0) {
-                os_strdup(object->valuestring, lf->fields[FIM_GNAME].value);
-                os_strdup(object->valuestring, lf->gname_after);
-            } else if (strcmp(object->string, "uid") == 0) {
-                os_strdup(object->valuestring, lf->fields[FIM_UID].value);
-                os_strdup(object->valuestring, lf->owner_after);
-            } else if (strcmp(object->string, "gid") == 0) {
-                os_strdup(object->valuestring, lf->fields[FIM_GID].value);
-                os_strdup(object->valuestring, lf->gowner_after);
-            } else if (strcmp(object->string, "hash_md5") == 0) {
-                os_strdup(object->valuestring, lf->fields[FIM_MD5].value);
-                os_strdup(object->valuestring, lf->md5_after);
-            } else if (strcmp(object->string, "hash_sha1") == 0) {
-                os_strdup(object->valuestring, lf->fields[FIM_SHA1].value);
-                os_strdup(object->valuestring, lf->sha1_after);
-            } else if (strcmp(object->string, "hash_sha256") == 0) {
-                os_strdup(object->valuestring, lf->fields[FIM_SHA256].value);
-                os_strdup(object->valuestring, lf->sha256_after);
-            } else if (strcmp(object->string, "win_attributes") == 0) {
-                os_strdup(object->valuestring, lf->fields[FIM_ATTRS].value);
-                os_strdup(object->valuestring, lf->attributes_after);
-            } else if (strcmp(object->string, "symlink_path") == 0) {
-                os_strdup(object->valuestring, lf->fields[FIM_SYM_PATH].value);
-            }
-        }
-    }
-
-    cJSON_ArrayForEach(object, old_attributes) {
-        if (object->string == NULL) {
-            mdebug1("FIM old attribute set contains an item with no key.");
-            return -1;
-        }
-
-        switch (object->type) {
-        case cJSON_Number:
-            if (strcmp(object->string, "size") == 0) {
-                os_calloc(OS_SIZE_32, sizeof(char), lf->size_before);
-                snprintf(lf->size_before, OS_SIZE_32, "%ld", (long)object->valuedouble);
-            } else if (strcmp(object->string, "inode") == 0) {
-                lf->inode_before = (long)object->valuedouble;
-            } else if (strcmp(object->string, "mtime") == 0) {
-                lf->mtime_before = (long)object->valuedouble;
-            }
-
-            break;
-
-        case cJSON_String:
-            if (strcmp(object->string, "perm") == 0) {
-                os_strdup(object->valuestring, lf->perm_before);
-            } else if (strcmp(object->string, "user_name") == 0) {
-                os_strdup(object->valuestring, lf->uname_before);
-            } else if (strcmp(object->string, "group_name") == 0) {
-                os_strdup(object->valuestring, lf->gname_before);
-            } else if (strcmp(object->string, "uid") == 0) {
-                os_strdup(object->valuestring, lf->owner_before);
-            } else if (strcmp(object->string, "gid") == 0) {
-                os_strdup(object->valuestring, lf->gowner_before);
-            } else if (strcmp(object->string, "hash_md5") == 0) {
-                os_strdup(object->valuestring, lf->md5_before);
-            } else if (strcmp(object->string, "hash_sha1") == 0) {
-                os_strdup(object->valuestring, lf->sha1_before);
-            } else if (strcmp(object->string, "hash_sha256") == 0) {
-                os_strdup(object->valuestring, lf->sha256_before);
-            } else if (strcmp(object->string, "win_attributes") == 0) {
-                os_strdup(object->valuestring, lf->attributes_before);
-            }
-        }
+    if (fim_fetch_attributes(attributes, old_attributes, lf)) {
+        return -1;
     }
 
     cJSON_ArrayForEach(object, audit) {
@@ -1468,12 +1375,12 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
 
     // Format comment
     if (lf->event_type == FIM_MODIFIED) {
-        fim_generate_comment(change_size, sizeof(change_size), "Size changed from '%s' to '%s'\n", lf->size_before, lf->size_after);
-        fim_generate_comment(change_perm, sizeof(change_perm), "Permissions changed from '%s' to '%s'\n", lf->perm_before, lf->perm_after);
-        fim_generate_comment(change_owner, sizeof(change_owner), "Ownership was '%s', now it is '%s'\n", lf->owner_before, lf->owner_after);
-        fim_generate_comment(change_user, sizeof(change_owner), "User name was '%s', now it is '%s'\n", lf->uname_before, lf->uname_after);
-        fim_generate_comment(change_gowner, sizeof(change_gowner), "Group ownership was '%s', now it is '%s'\n", lf->gowner_before, lf->gowner_after);
-        fim_generate_comment(change_group, sizeof(change_gowner), "Group name was '%s', now it is '%s'\n", lf->gname_before, lf->gname_after);
+        fim_generate_comment(change_size, sizeof(change_size), "Size changed from '%s' to '%s'\n", lf->size_before, lf->fields[FIM_SIZE].value);
+        fim_generate_comment(change_perm, sizeof(change_perm), "Permissions changed from '%s' to '%s'\n", lf->perm_before, lf->fields[FIM_PERM].value);
+        fim_generate_comment(change_owner, sizeof(change_owner), "Ownership was '%s', now it is '%s'\n", lf->owner_before, lf->fields[FIM_UID].value);
+        fim_generate_comment(change_user, sizeof(change_owner), "User name was '%s', now it is '%s'\n", lf->uname_before, lf->fields[FIM_UNAME].value);
+        fim_generate_comment(change_gowner, sizeof(change_gowner), "Group ownership was '%s', now it is '%s'\n", lf->gowner_before, lf->fields[FIM_GID].value);
+        fim_generate_comment(change_group, sizeof(change_gowner), "Group name was '%s', now it is '%s'\n", lf->gname_before, lf->fields[FIM_GNAME].value);
 
         if (lf->mtime_before != lf->mtime_after) {
             snprintf(change_mtime, sizeof(change_mtime), "Old modification time was: '%ld', now it is '%ld'\n", lf->mtime_before, lf->mtime_after);
@@ -1482,10 +1389,10 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
             snprintf(change_inode, sizeof(change_inode), "Old inode was: '%ld', now it is '%ld'\n", lf->inode_before, lf->inode_after);
         }
 
-        fim_generate_comment(change_md5, sizeof(change_md5), "Old md5sum was: '%s'\nNew md5sum is : '%s'\n", lf->md5_before, lf->md5_after);
-        fim_generate_comment(change_sha1, sizeof(change_sha1), "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n", lf->sha1_before, lf->sha1_after);
-        fim_generate_comment(change_sha256, sizeof(change_sha256), "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n", lf->sha256_before, lf->sha256_after);
-        fim_generate_comment(change_win_attributes, sizeof(change_win_attributes), "Old attributes were: '%s'\nNow they are '%s'\n", lf->attributes_before, lf->attributes_after);
+        fim_generate_comment(change_md5, sizeof(change_md5), "Old md5sum was: '%s'\nNew md5sum is : '%s'\n", lf->md5_before, lf->fields[FIM_MD5].value);
+        fim_generate_comment(change_sha1, sizeof(change_sha1), "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n", lf->sha1_before, lf->fields[FIM_SHA1].value);
+        fim_generate_comment(change_sha256, sizeof(change_sha256), "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n", lf->sha256_before, lf->fields[FIM_SHA256].value);
+        fim_generate_comment(change_win_attributes, sizeof(change_win_attributes), "Old attributes were: '%s'\nNow they are '%s'\n", lf->attributes_before, lf->fields[FIM_ATTRS].value);
     }
 
     // Provide information about the file
@@ -1552,4 +1459,94 @@ void fim_process_scan_info(_sdb * sdb, const char * agent_id, fim_scan_event eve
     }
 
     fim_send_db_query(&sdb->socket, query);
+}
+
+int fim_fetch_attributes(cJSON *new_attrs, cJSON *old_attrs, Eventinfo *lf) {
+    if (fim_fetch_attributes_state(new_attrs, lf, 1) ||
+        fim_fetch_attributes_state(old_attrs, lf, 0)) {
+        return -1;
+    }
+
+    return 0;
+}
+
+int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
+    cJSON *attr_it;
+
+    cJSON_ArrayForEach(attr_it, attr) {
+        if (!attr_it->string) {
+            mdebug1("FIM attribute set contains an item with no key.");
+            return -1;
+        }
+
+        if (attr_it->type == cJSON_Number) {
+            if (!strcmp(attr_it->string, "size")) {
+                if (new_state) {
+                    lf->fields[FIM_SIZE].value = w_long_str((long) attr_it->valuedouble);
+                } else {
+                    lf->size_before = w_long_str((long) attr_it->valuedouble);
+                }
+            } else if (!strcmp(attr_it->string, "inode")) {
+                if (new_state) {
+                    lf->fields[FIM_INODE].value = w_long_str((long) attr_it->valuedouble);
+                    lf->inode_after = (long) attr_it->valuedouble;
+                } else {
+                    lf->inode_before = (long) attr_it->valuedouble;
+                }
+            } else if (!strcmp(attr_it->string, "mtime")) {
+                if (new_state) {
+                    lf->fields[FIM_MTIME].value = w_long_str((long) attr_it->valuedouble);
+                    lf->mtime_after = (long)attr_it->valuedouble;
+                } else {
+                    lf->mtime_before = (long) attr_it->valuedouble;
+                }
+            }
+        } else if (attr_it->type == cJSON_String) {
+            char **dst_data = NULL;
+
+            if (!strcmp(attr_it->string, "perm")) {
+                dst_data = new_state ? &lf->fields[FIM_PERM].value : &lf->perm_before;
+            } else if (!strcmp(attr_it->string, "user_name")) {
+                dst_data = new_state ? &lf->fields[FIM_UNAME].value : &lf->uname_before;
+            } else if (!strcmp(attr_it->string, "group_name")) {
+                dst_data = new_state ? &lf->fields[FIM_GNAME].value : &lf->gname_before;
+            } else if (!strcmp(attr_it->string, "uid")) {
+                dst_data = new_state ? &lf->fields[FIM_UID].value : &lf->owner_before;
+            } else if (!strcmp(attr_it->string, "gid")) {
+                dst_data = new_state ? &lf->fields[FIM_GID].value : &lf->gowner_before;
+            } else if (!strcmp(attr_it->string, "hash_md5")) {
+                dst_data = new_state ? &lf->fields[FIM_MD5].value : &lf->md5_before;
+            } else if (!strcmp(attr_it->string, "hash_sha1")) {
+                dst_data = new_state ? &lf->fields[FIM_SHA1].value : &lf->sha1_before;
+            } else if (strcmp(attr_it->string, "hash_sha256") == 0) {
+                dst_data = new_state ? &lf->fields[FIM_SHA256].value : &lf->sha256_before;
+            } else if (strcmp(attr_it->string, "win_attributes") == 0) {
+                dst_data = new_state ? &lf->fields[FIM_ATTRS].value : &lf->attributes_before;
+            } else if (new_state && strcmp(attr_it->string, "symlink_path") == 0) {
+                dst_data = &lf->fields[FIM_SYM_PATH].value;
+            }
+
+            if (dst_data) {
+                os_strdup(attr_it->valuestring, *dst_data);
+            }
+        } else {
+            mdebug1("Unknown FIM data type.");
+        }
+    }
+
+    return 0;
+}
+
+void fim_adjust_attributes(char *attributes, char **checksum) {
+    if (!attributes) {
+        return;
+    }
+
+    os_realloc(*checksum,
+                strlen(*checksum) + strlen(attributes) + 2,
+                *checksum);
+    char *found = strrchr(*checksum, ':');
+    if (found) {
+        snprintf(found + 1, strlen(attributes) + 1, "%s", attributes);
+    }
 }

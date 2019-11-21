@@ -165,7 +165,7 @@ typedef struct sk_sum_t {
     char *md5;
     char *sha1;
     char *sha256;
-    unsigned int attrs;
+    char *attributes;
     char *uname;
     char *gname;
     long mtime;
@@ -201,6 +201,9 @@ void sk_sum_clean(sk_sum_t * sum);
 void normalize_path(char *path);
 
 char *escape_syscheck_field(char *field);
+#ifndef CLIENT
+char *unescape_syscheck_field(char *sum);
+#endif
 
 #ifndef WIN32
 
@@ -220,7 +223,6 @@ int w_get_account_info(SID *sid, char **account_name, char **account_domain);
 
 void decode_win_attributes(char *str, unsigned int attrs);
 int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array);
-cJSON *old_attrs_to_json(unsigned int attributes);
 cJSON *attrs_to_json(const char *attributes);
 cJSON *perm_to_json(char *permissions);
 

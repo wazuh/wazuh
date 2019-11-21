@@ -35,6 +35,9 @@ char *convert_windows_string(LPCWSTR string);
 // Convert double to string
 #define w_double_str(x) ({char *do_str; os_calloc(20, sizeof(char),do_str); snprintf(do_str, 19, "%f", x); do_str;})
 
+// Convert long to string
+#define w_long_str(x) ({char *do_str; os_calloc(32, sizeof(char),do_str); snprintf(do_str, 31, "%ld", x); do_str;})
+
 // Replace a character in a string
 #define wchr_replace(x, y, z) { char *x_it; for (x_it = x; *x_it != '\0'; x_it++) if (*x_it == y) *x_it = z; }
 

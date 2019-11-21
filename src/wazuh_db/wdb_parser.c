@@ -468,12 +468,19 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
         *next++ = '\0';
 
-        if (result = wdb_syscheck_save(wdb, ftype, checksum, next), result < 0) {
+        // Only the part before '!' has been escaped
+        char *mark = strchr(checksum, '!');
+        if (mark) *mark = '\0';
+        char *unsc_checksum = unescape_syscheck_field(checksum);
+        if (mark) *mark = '!';
+
+        if (result = wdb_syscheck_save(wdb, ftype, unsc_checksum, next), result < 0) {
             mdebug1("DB(%s) Cannot save FIM.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
+        free(unsc_checksum);
 
         return result;
     } else if (strcmp(curr, "save2") == 0) {

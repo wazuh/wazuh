@@ -89,37 +89,23 @@ typedef struct _Eventinfo {
     char *sk_tag;
     char *sym_path;
     char *perm_before;
-    char *perm_after;
-    char *win_perm_before;
-    char *win_perm_after;
     char *md5_before;
-    char *md5_after;
     char *sha1_before;
-    char *sha1_after;
     char *sha256_before;
-    char *sha256_after;
     char *size_before;
-    char *size_after;
     char *owner_before;
-    char *owner_after;
     char *gowner_before;
-    char *gowner_after;
     char *uname_before;
-    char *uname_after;
     char *gname_before;
-    char *gname_after;
     long mtime_before;
     long mtime_after;
     long inode_before;
     long inode_after;
     char *attributes_before;
-    char *attributes_after;
     char *diff;
     char *previous;
     wlabel_t *labels;
-    unsigned int attrs_before;
-    unsigned int attrs_after;
-    // Whodata fields
+    // Whodata fields. They are duplicated by 'fields'
     char *user_id;
     char *user_name;
     char *group_id;
