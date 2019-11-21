@@ -85,7 +85,7 @@ void fim_scan() {
         fim_print_info(start, end, cputime_start);
     }
 
-#ifdef DEBUG
+#ifdef DEBUGAD
     print_rbtree();
 #ifndef WIN32
     print_inodes();
@@ -1236,7 +1236,7 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
     return;
 }
 
-#ifdef DEBUG
+#ifdef DEBUGAD
 // LCOV_EXCL_START
 #ifndef WIN32
 void print_inodes() {
