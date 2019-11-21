@@ -39,19 +39,19 @@ int mitre_load(char * mode){
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
     snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT id from attack;");
     if (result = wdb_send_query(wazuhdb_query, &response), result == -2) {
-        merror("Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
+        merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
         goto end;
     }
 
     if (result == -1) {
-        merror("No response or bad response from wazuh-db: %s", response);
+        merror("No response or bad response from wazuh-db: '%s'", response);
         goto end;
     }
 
     /* Parse IDs string */
     const char *jsonErrPtr;
     if (root = cJSON_ParseWithOpts(response+3, &jsonErrPtr, 0), !root) {
-        merror("Response from the Mitre database cannot be parsed: %s", response);
+        merror("Response from the Mitre database cannot be parsed: '%s'", response);
         result = -1;
         goto end;
     }
@@ -79,19 +79,19 @@ int mitre_load(char * mode){
         /* Consulting Mitre's database to get Tactics */
         snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT phase_name FROM has_phase WHERE attack_id = '%s';", ext_id);
         if (result = wdb_send_query(wazuhdb_query, &response), result == -2) {
-            merror("Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
+            merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
             goto end;
         }
 
         if (result == -1) {
-            merror("No response or bad response from wazuh-db: %s", response);
+            merror("No response or bad response from wazuh-db: '%s'", response);
             goto end;
         }
 
         /* Getting tactics from Mitre's database in Wazuh-DB */
         tactics_array = cJSON_CreateArray();
         if (tactics_json = cJSON_ParseWithOpts(response+3, &jsonErrPtr, 0), !tactics_json) {
-            merror("Response from the Mitre database cannot be parsed: %s", response);
+            merror("Response from the Mitre database cannot be parsed: '%s'", response);
             result = -1;
             goto end;
         }
@@ -111,7 +111,6 @@ int mitre_load(char * mode){
             cJSON_AddItemToArray(tactics_array, cJSON_Duplicate(tactic,1));
         }
         cJSON_Delete(tactics_json);
-        tactics_json = NULL;
 
         /* Filling Hash table with Mitre's information */
         if (hashcheck = OSHash_Add(mitre_table, ext_id, tactics_array), hashcheck == 0) {
@@ -122,25 +121,22 @@ int mitre_load(char * mode){
 
         if (mode != NULL && !strcmp(mode,"test")) {
             cJSON_Delete(tactics_array);
-            tactics_array = NULL;
         }
     }
 
 end:
+    os_free(wazuhdb_query);
+    os_free(response);  
     if (mode != NULL && !strcmp(mode,"test")) {
         OSHash_Free(mitre_table);
-    }
-    os_free(wazuhdb_query);
-    if (response != NULL) {
-        os_free(response);    
-    }
+    }  
     if (root != NULL) {
         cJSON_Delete(root);
     }
-    if (tactics_json && tactics_json != NULL) {
+    if (tactics_json != NULL && result != 0) {
         cJSON_Delete(tactics_json);
     }
-    if (tactics_array && tactics_array != NULL && result != 0) {
+    if (tactics_array != NULL && result != 0) {
         cJSON_Delete(tactics_array);
     }
     if (result != 0) {
