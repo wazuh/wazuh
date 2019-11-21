@@ -2,7 +2,9 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import builtins
 import collections
+import re
 import sys
 from copy import deepcopy
 from numbers import Number
@@ -272,15 +274,18 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
     """
     def __init__(self, dikt=None, affected_items=None,
                  total_affected_items=None,
-                 sortable_fields=None,
+                 sort_fields=None, sort_casting=None, sort_ascending=None,
                  all_msg="", some_msg="", none_msg=""):
-        """
-        Initialize method
+        """Initialize method
         :param dikt: dict with result data except affected and failed items
         :param affected_items: list of affected items
         :param total_affected_items: int total number of affected items.
         It may not be the same as length of affected_items
-        :param sortable_fields: set with fields to be used as sort criteria of affected items
+        :param sort_fields: list of strings with the field names to order by. The '.' is the nesting operator for fields
+        inside other. Example: 'a.b' -> {'a': {'b': 3}}
+        :param sort_casting list of strings. Each item must contain 'str' or 'int'.
+        Sets the conversion type to be considered when ordering.
+        :param sort_ascending list of booleans. True for ascending, False for descending.
         :param all_msg: str message when all items were successful
         :param some_msg: str message when some items were not successful
         :param none_msg: str message when no items where successful
@@ -294,11 +299,9 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         else:
             self._total_affected_items = len(self._affected_items)
         self._total_failed_items = 0
-        if isinstance(sortable_fields, list):
-            sortable_fields = set(sortable_fields)
-        elif sortable_fields is None:
-            sortable_fields = set()
-        self._sortable_fields = sortable_fields
+        self._sort_fields = sort_fields
+        self._sort_casting = sort_casting if sort_casting is not None else ['int']
+        self._sort_ascending = sort_ascending if sort_ascending is not None else [True]
         self._all_msg = all_msg
         self._some_msg = some_msg
         self._none_msg = none_msg
@@ -357,8 +360,11 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
             raise wexception.WazuhInternalError(1000, extra_message=f"Cannot be merged with {type(other)} object")
 
         result.add_failed_items_from(other)
-        result.affected_items = result.affected_items + other.affected_items
-        result.sortable_fields = result.sortable_fields | other.sortable_fields
+        result.affected_items = merge(result.affected_items,
+                                      other.affected_items,
+                                      criteria=self.sort_fields,
+                                      ascending=self.sort_ascending,
+                                      types=self.sort_casting)
         result.total_affected_items = result.total_affected_items + other.total_affected_items
 
         return result
@@ -367,7 +373,9 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         return {
             'affected_items': self.affected_items,
             'failed_items': self.failed_items,
-            'sortable_fields': self.sortable_fields,
+            'sort_fields': self.sort_fields,
+            'sort_ascending': self.sort_ascending,
+            'sort_casting': self.sort_casting,
             'total_affected_items': self.total_affected_items,
             'total_failed_items': self.total_failed_items,
             'dikt': self.dikt,
@@ -385,12 +393,28 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         self._affected_items = value
 
     @property
-    def sortable_fields(self):
-        return self._sortable_fields
+    def sort_fields(self):
+        return self._sort_fields
 
-    @sortable_fields.setter
-    def sortable_fields(self, value):
-        self._sortable_fields = value
+    @sort_fields.setter
+    def sort_fields(self, value):
+        self._sort_fields = value
+
+    @property
+    def sort_casting(self):
+        return self._sort_casting
+
+    @sort_casting.setter
+    def sort_casting(self, value):
+        self._sort_casting = value
+
+    @property
+    def sort_ascending(self):
+        return self._sort_ascending
+
+    @sort_ascending.setter
+    def sort_ascending(self, value):
+        self._sort_ascending = value
 
     @property
     def total_affected_items(self):
@@ -452,7 +476,9 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
     def decode_json(cls, obj):
         result = cls()
         result.affected_items = obj['affected_items']
-        result.sortable_fields = set(obj['sortable_fields'])
+        result.sort_fields = obj['sort_fields']
+        result.sort_casting = obj['sort_casting']
+        result.sort_ascending = obj['sort_ascending']
         result.total_affected_items = obj['total_affected_items']
         result.dikt = obj['dikt']
         result.all_msg = obj['all_msg']
@@ -469,7 +495,9 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
     def encode_json(self):
         result = dict()
         result['affected_items'] = self.affected_items
-        result['sortable_fields'] = list(self.sortable_fields)
+        result['sort_fields'] = self.sort_fields
+        result['sort_casting'] = self.sort_casting
+        result['sort_ascending'] = self.sort_ascending
         result['total_affected_items'] = self.total_affected_items
         result['total_failed_items'] = self.total_failed_items
         result['dikt'] = self.dikt
@@ -509,3 +537,106 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         return {'data': result,
                 'message': self.message
                 }
+
+
+def nested_itemgetter(*expressions):
+    """Builds a function to get items according to expressions. That getter function receives a dictionary
+    as the only positional argument and returns the referenced item.
+
+    Example:
+    d = {'a': {'b': 3}, 'c.1': 5}
+    items = nested_itemgetter('a.b', 'c\\.1')(d)
+    print(items)
+    (3, 5)
+
+    :param expressions: one or more strings referencing a value in a dictionary. For nested dictionaries use the '.' as
+    the key separator. If the key contains the '.' character escape it using the '\'. If more than one expressions is
+    provided a tuple is returned.
+    :return: object or tuple of objects
+    """
+    getters = []
+    for expr in expressions:
+        fields = re.split(r'(?<!\\)\.', expr)
+
+        def _getter(map_, fields_=tuple(deepcopy(fields))):
+            value = map_
+            for field in fields_:
+                try:
+                    value = value[field.replace('\\.', '.')]
+                except TypeError:
+                    return value
+                except KeyError:
+                    return None
+            return value
+        getters.append(_getter)
+
+    def _nested_itemgetter(map_, getters_=tuple(deepcopy(getters))):
+        result = [getter(map_) for getter in getters_]
+        return result[0] if len(result) == 1 else tuple(result)
+    return _nested_itemgetter
+
+
+def _goes_before_than(a, b, ascending=None, casters=None):
+    """Returns true if a should be placed before b according to ascending and casters. It is similar to a
+    a lexicographical order but taking into account ascending or descending order in each tuple position.
+
+    :param a: tuple or list
+    :param b: tuple or list
+    :param ascending: tuple or list of booleans with a length equal to the minimum length between a and b. True if
+    ascending, False otherwise.
+    :param casters: tuple or list of strings with a length equal to the minimum length between a and b. The string must
+    fit any class in builtins module (int, str, float, ...). The class will be applied to each value of the respective
+    position in a and b before comparing.
+    :return: True if a should be placed before b, False otherwise
+    """
+    if ascending is None:
+        ascending = [True] * len(a)
+    if casters is None:
+        casters = [None] * len(a)
+    for item_a, item_b, asc, cast in zip(a, b, ascending, casters):
+        if cast is not None:
+            item_a = cast(item_a) if item_a is not None else item_a
+            item_b = cast(item_b) if item_b is not None else item_b
+        if item_a is None:
+            return item_b is not None
+        elif item_b is None:
+            return False
+        elif item_a < item_b:
+            return asc
+        elif item_a > item_b:
+            return not asc
+    return False
+
+
+def merge(*iterables, criteria=None, ascending=None, types=None):
+    """ Merges iterables in a single one assuming they are already ordered according to criteria, ascending and types
+
+    :param iterables: list of lists to be merged
+    :param criteria: list or tuple of expressions accepted by the nested_itemgetter function.
+    :param ascending: list or tuple of booleans. Should have the same length as criteria.
+    True for ascending False otherwise.
+    :param types: list or tuple of strings. Should have the same length as criteria.
+    Must fit a class in builtins (int, float, str, ...)
+    :return: a new sorted iterable
+    """
+    result = list()
+    final_len = sum([len(iterable) for iterable in iterables])
+    if criteria is None:
+        getters = [lambda x: x]  # Init dummy itemgetter
+    else:
+        getters = [nested_itemgetter(criterion) for criterion in criteria]
+    casters = [getattr(builtins, type_) for type_ in types]
+    while len(result) < final_len:
+        selected = None
+        for i, iterable in enumerate(iterables):
+            if len(iterable) > 0:
+                if selected is None:
+                    selected = i
+                else:
+                    candidate = [getter(iterable[0]) for getter in getters]
+                    selected_candidate = [getter(iterables[selected][0]) for getter in getters]
+                    if _goes_before_than(candidate, selected_candidate, ascending=ascending, casters=casters):
+                        selected = i
+        result.append(iterables[selected].pop(0))
+
+    return result

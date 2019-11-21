@@ -21,11 +21,11 @@ from time import time
 from wazuh import common
 from wazuh.InputValidator import InputValidator
 from wazuh.core.core_agent import Agent
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError
 from wazuh.utils import md5, mkdir_with_mode
 from wazuh.wlogging import WazuhLogger
 from wazuh.rbac.decorators import expose_resources
-from wazuh.core.cluster.control import get_health
+from wazuh.core.cluster.control import get_health, get_nodes
 from wazuh.core.cluster import local_client
 from wazuh.results import WazuhResult, AffectedItemsWazuhResult
 
@@ -92,12 +92,8 @@ def get_cluster_items_worker_intervals():
 
 @lru_cache()
 def read_config(config_file=common.ossec_conf):
-    """
-    Returns the cluster configuration.
-
-    return: Dictionary with cluster configuration
-    """
-    return read_cluster_config(config_file=common.ossec_conf)
+    """ Returns the cluster configuration. """
+    return read_cluster_config(config_file=config_file)
 
 
 def get_node():
@@ -117,12 +113,32 @@ node_id = get_node().get('node') if cluster_enabled else None
 
 @expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}'])
 def read_config_wrapper():
-    return read_config()
+    """ Wrapper for read_config """
+    result = AffectedItemsWazuhResult(all_msg='All selected information is shown',
+                                      none_msg='No information is shown'
+                                      )
+    try:
+        result.affected_items.append(read_config())
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
 
 
 @expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}'])
 def get_node_wrapper():
-    return get_node()
+    """ Wrapper for get_node """
+    result = AffectedItemsWazuhResult(all_msg='All selected information is shown',
+                                      none_msg='No information is shown'
+                                      )
+    try:
+        result.affected_items.append(get_node())
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
 
 
 def check_cluster_status():
@@ -437,17 +453,33 @@ def unmerge_agent_info(merge_type, path_file, filename):
 
 @expose_resources(actions=['cluster:read_config'], resources=['node:id:{filter_node}'])
 async def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
-    # import pydevd_pycharm
-    # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+    """ Wrapper for get_health """
     result = AffectedItemsWazuhResult(all_msg='All selected nodes healthcheck information is shown',
                                       some_msg='Some nodes healthcheck information is not shown',
                                       none_msg='No healthcheck information is shown'
                                       )
 
     data = await get_health(lc, filter_node=filter_node)
-    for node in data['nodes']:
+    for k, v in data['nodes'].items():
+        result.affected_items.append({k: v})
+    result.total_affected_items = len(result.affected_items)
 
-    return data
+    return result
+
+
+@expose_resources(actions=['cluster:read_config'], resources=['node:id:{filter_node}'])
+async def get_nodes_info(lc: local_client.LocalClient, filter_node=None, **kwargs):
+    """ Wrapper for get_nodes """
+    result = AffectedItemsWazuhResult(all_msg='All selected nodes information is shown',
+                                      some_msg='Some nodes information is not shown',
+                                      none_msg='No information is shown'
+                                      )
+
+    data = await get_nodes(lc, filter_node=filter_node, **kwargs)
+    result.affected_items.extend(data['items'])
+    result.total_affected_items = data['totalItems']
+
+    return result
 
 
 class ClusterFilter(logging.Filter):

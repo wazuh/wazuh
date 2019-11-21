@@ -12,6 +12,7 @@ from flask_caching import Cache
 from flask_cors import CORS
 
 from api import alogging, encoder, configuration, __path__ as api_path
+from api import validator  # To register custom validators (do not remove)
 from api.api_exception import APIException
 from api.constants import CONFIG_FILE_PATH
 from api.util import to_relative_path

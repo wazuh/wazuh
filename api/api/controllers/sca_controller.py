@@ -67,7 +67,8 @@ def get_sca_agent(agent_id=None, pretty=False, wait_for_complete=False, name=Non
 @exception_handler
 def get_sca_checks(agent_id=None, pretty=False, wait_for_complete=False, policy_id=None, title=None, description=None,
                    rationale=None, remediation=None, file=None, process=None, directory=None, registry=None,
-                   references=None, result=None, offset=0, limit=database_limit, sort=None, search=None, q=None):
+                   references=None, result=None, condition=None, offset=0, limit=database_limit, sort=None, search=None,
+                   q=None):
     """Get policy monitoring alerts for a given policy
 
     :param agent_id: Agent ID. All possible values since 000 onwards
@@ -84,6 +85,7 @@ def get_sca_checks(agent_id=None, pretty=False, wait_for_complete=False, policy_
     :param registry: Filters by registry
     :param references: Filters by references
     :param result: Filters by result
+    :param condition: Filters by condition
     :param offset:First element to return in the collection
     :param limit: Maximum number of elements to return
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
@@ -101,7 +103,8 @@ def get_sca_checks(agent_id=None, pretty=False, wait_for_complete=False, policy_
                'directory': directory,
                'registry': registry,
                'references': references,
-               'result': result}
+               'result': result,
+               'condition': condition}
 
     f_kwargs = {'policy_id': policy_id,
                 'agent_list': [agent_id],
