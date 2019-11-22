@@ -553,6 +553,45 @@ components:
               items:
                   $ref: '#/components/schemas/SCAChecks'
 
+    AllItemsResponseClusterNodes:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                  $ref: '#/components/schemas/ClusterNode'
+
+    AllItemsResponseWazuhLogs:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                  $ref: '#/components/schemas/WazuhLogs'
+
+    AllItemsResponseValidationStatus:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                  $ref: '#/components/schemas/ValidationStatus'
+
     BasicInfo:
       type: object
       properties:
@@ -1574,6 +1613,16 @@ components:
         timestamp:
           type: string
           format: date-time
+
+    ValidationStatus:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Node name
+        status:
+          type: string
+          description: status value
 
     LogSummary:
       type: object
@@ -5922,14 +5971,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/ClusterNode'
+                      $ref: '#/components/schemas/AllItemsResponseClusterNodes'
               example:
                 data:
                   totalItems: 2
@@ -6723,18 +6765,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/WazuhLogs'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseWazuhLogs'
               example:
                 data:
                   totalItems: 3
@@ -6941,7 +6976,29 @@ paths:
         - $ref: '#/components/parameters/list_nodes'
       responses:
         '200':
-          description: 'Configuration is OK'
+          description: 'Configuration status'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseValidationStatus'
+                example:
+                  data:
+                    affected_items:
+                      - name: master-node
+                        status: OK
+                      - name: worker1
+                        status: OK
+                      - name: worker2
+                        status: OK
+                    failed_items: []
+                    total_affected_items: 3
+                    total_failed_items: 0
+                  message: Validation checked successfully in all nodes
         default:
           $ref: '#/components/responses/ResponseError'
 

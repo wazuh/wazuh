@@ -68,7 +68,8 @@ def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
         config_cluster['disabled'] = True
     elif not isinstance(config_cluster['disabled'], bool):
         raise WazuhError(3004,
-                         extra_message="Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'".format(config_cluster['disabled']))
+                         extra_message="Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'"
+                         .format(config_cluster['disabled']))
 
     # if config_cluster['node_name'].upper() == '$HOSTNAME':
     #     # The HOSTNAME environment variable is not always available in os.environ so use socket.gethostname() instead
