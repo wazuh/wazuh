@@ -74,7 +74,7 @@ stages:
         data:
           affected_items:
             - end: !anything
-              start: !anystr
+              start: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
