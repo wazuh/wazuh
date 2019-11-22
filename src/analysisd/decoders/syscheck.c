@@ -59,7 +59,7 @@ void fim_send_db_delete(_sdb * sdb, const char * agent_id, const char * path);
 void fim_send_db_query(int * sock, const char * query);
 
 // Build change comment
-static void fim_generate_comment(char * str, long size, const char * format, const char * a1, const char * a2);
+static size_t fim_generate_comment(char * str, long size, const char * format, const char * a1, const char * a2);
 
 // Process scan info event
 static void fim_process_scan_info(_sdb * sdb, const char * agent_id, fim_scan_event event, cJSON * data);
@@ -1313,7 +1313,7 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
 
     cJSON *object = NULL;
     char change_size[OS_FLSIZE + 1] = {'\0'};
-    char change_perm[OS_SIZE_20480 + 1] = {'\0'};
+    char change_perm[OS_FLSIZE + 1] = {'\0'};
     char change_owner[OS_FLSIZE + 1] = {'\0'};
     char change_user[OS_FLSIZE + 1] = {'\0'};
     char change_gowner[OS_FLSIZE + 1] = {'\0'};
@@ -1380,7 +1380,10 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
     // Format comment
     if (lf->event_type == FIM_MODIFIED) {
         fim_generate_comment(change_size, sizeof(change_size), "Size changed from '%s' to '%s'\n", lf->size_before, lf->fields[FIM_SIZE].value);
-        fim_generate_comment(change_perm, sizeof(change_perm), "Permissions changed from '%s' to '%s'\n", lf->perm_before, lf->fields[FIM_PERM].value);
+        size_t size = fim_generate_comment(change_perm, sizeof(change_perm), "Permissions changed from '%s' to '%s'\n", lf->perm_before, lf->fields[FIM_PERM].value);
+        if (size >= sizeof(change_perm)) {
+            snprintf(change_perm, sizeof(change_perm), "Permissions changed.\n");
+        }
         fim_generate_comment(change_owner, sizeof(change_owner), "Ownership was '%s', now it is '%s'\n", lf->owner_before, lf->fields[FIM_UID].value);
         fim_generate_comment(change_user, sizeof(change_owner), "User name was '%s', now it is '%s'\n", lf->uname_before, lf->fields[FIM_UNAME].value);
         fim_generate_comment(change_gowner, sizeof(change_gowner), "Group ownership was '%s', now it is '%s'\n", lf->gowner_before, lf->fields[FIM_GID].value);
@@ -1436,13 +1439,16 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
 
 // Build change comment
 
-void fim_generate_comment(char * str, long size, const char * format, const char * a1, const char * a2) {
+size_t fim_generate_comment(char * str, long size, const char * format, const char * a1, const char * a2) {
     a1 = a1 != NULL ? a1 : "";
     a2 = a2 != NULL ? a2 : "";
 
+    size_t str_size = 0;
     if (strcmp(a1, a2) != 0) {
-        snprintf(str, size, format, a1, a2);
+        str_size = snprintf(str, size, format, a1, a2);
     }
+
+    return str_size;
 }
 
 // Process scan info event

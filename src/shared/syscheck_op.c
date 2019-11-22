@@ -986,10 +986,9 @@ char *decode_win_permissions(char *raw_perm) {
 
     if (decoded_it && size > 1) {
         *(decoded_it - 2) = '\0';
+        // Adjusts the final size
+        os_realloc(decoded_perm, written * sizeof(char), decoded_perm);
     }
-
-    // Adjusts the final size
-    os_realloc(decoded_perm, written * sizeof(char), decoded_perm);
 
     return decoded_perm;
 error:
