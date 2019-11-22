@@ -40,7 +40,7 @@ int fim_database_clean (Eventinfo *lf, _sdb *sdb);
 // Clean sdb memory
 void sdb_clean(_sdb *localsdb);
 // Get timestamp for last scan from wazuhdb
-int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb);
+int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb, const char *param);
 
 // Process fim alert
 static int fim_process_alert(_sdb *sdb, Eventinfo *lf, cJSON *event);
@@ -377,7 +377,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             mdebug2("Agent '%s' File %s saved/updated in FIM DDBB", lf->agent_id, f_name);
 
             if(end_first_scan = (time_t*)OSHash_Get_ex(fim_agentinfo, lf->agent_id), end_first_scan == NULL) {
-                fim_get_scantime(&end_scan, lf, sdb);
+                fim_get_scantime(&end_scan, lf, sdb, "end_scan");
                 os_calloc(1, sizeof(time_t), end_first_scan);
                 *end_first_scan = end_scan;
                 int res;
@@ -807,6 +807,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
     int db_result;
     int result;
     time_t *ts_end;
+    time_t ts_start;
 
     os_calloc(OS_SIZE_128, sizeof(char), msg);
 
@@ -815,12 +816,24 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
         snprintf(msg, OS_SIZE_128, "first_start");
     }
     if(strcmp(key, HC_FIM_DB_EFS) == 0) {
+        if (fim_get_scantime(&ts_start, lf, sdb, "start_scan") == 1) {
+            if (ts_start == 0) {
+                free(msg);
+                return (-1);
+            }
+        }
         snprintf(msg, OS_SIZE_128, "first_end");
     }
     if(strcmp(key, HC_FIM_DB_SS) == 0) {
         snprintf(msg, OS_SIZE_128, "start_scan");
     }
     if(strcmp(key, HC_FIM_DB_ES) == 0) {
+        if (fim_get_scantime(&ts_start, lf, sdb, "start_scan") == 1) {
+            if (ts_start == 0) {
+                free(msg);
+                return (-1);
+            }
+        }
         snprintf(msg, OS_SIZE_128, "end_scan");
     }
     if(strcmp(key, HC_SK_DB_COMPLETED) == 0) {
@@ -977,7 +990,7 @@ int fim_database_clean (Eventinfo *lf, _sdb *sdb) {
 
 }
 
-int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
+int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb, const char* param) {
     char *wazuhdb_query = NULL;
     char *response = NULL;
     char *output;
@@ -985,8 +998,8 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
 
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
 
-    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck scan_info_get end_scan",
-            lf->agent_id
+    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck scan_info_get %s",
+            lf->agent_id, param
     );
 
     os_calloc(OS_SIZE_6144, sizeof(char), response);
@@ -1014,7 +1027,7 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
     *(output++) = '\0';
     *ts = atol(output);
 
-    mdebug2("Agent '%s' FIM end_scan '%ld'", lf->agent_id, *ts);
+    mdebug2("Agent '%s' FIM %s '%ld'", lf->agent_id, param, *ts);
 
     os_free(wazuhdb_query);
     os_free(response);
