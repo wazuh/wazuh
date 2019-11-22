@@ -10,7 +10,6 @@ import connexion
 import wazuh.active_response as active_response
 from api.authentication import get_permissions
 from api.models.active_response_model import ActiveResponse
-from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
 from wazuh.cluster.dapi.dapi import DistributedAPI
 

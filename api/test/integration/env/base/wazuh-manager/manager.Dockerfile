@@ -73,4 +73,12 @@ FROM base as wazuh-env-sca_black_rbac
 ADD configurations/rbac/sca/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
+FROM base as wazuh-env-active-response_white_rbac
+ADD configurations/rbac/active-response/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base as wazuh-env-active-response_black_rbac
+ADD configurations/rbac/active-response/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
 FROM wazuh-env-${ENVIRONMENT}

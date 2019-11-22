@@ -317,6 +317,34 @@ def environment_black_syscollector_rbac():
     down_env()
 
 
+@pytest.fixture(name="active-response_white_rbac_tests", scope="session")
+def environment_white_active_response_rbac():
+    values = build_and_up("active-response_white_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="active-response_black_rbac_tests", scope="session")
+def environment_black_active_response_rbac():
+    values = build_and_up("active-response_black_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
 @pytest.fixture(name="overview_white_rbac_tests", scope="session")
 def environment_white_overview_rbac():
     values = build_and_up("overview_white_rbac")
