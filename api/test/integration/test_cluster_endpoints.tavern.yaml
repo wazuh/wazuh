@@ -57,22 +57,20 @@ stages:
       body:
         data:
           affected_items:
-            - worker1:
-                info:
-                  name: !anystr
-                  ip: !anystr
-                  version: !anystr
-                  type: !anystr
-                  n_active_agents: !anyint
-                status: !anything
-            - worker2:
-                info:
-                  name: !anystr
-                  ip: !anystr
-                  version: !anystr
-                  type: !anystr
-                  n_active_agents: !anyint
-                status: !anything
+            - info:
+                name: !anystr
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+              status: !anything
+            - info:
+                name: !anystr
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+              status: !anything
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
@@ -89,29 +87,26 @@ stages:
       body:
         data:
           affected_items:
-            - master-node:
-                info:
-                  name: !anystr
-                  ip: !anystr
-                  version: !anystr
-                  type: !anystr
-                  n_active_agents: !anyint
-            - worker1:
-                info:
-                  name: !anystr
-                  ip: !anystr
-                  version: !anystr
-                  type: !anystr
-                  n_active_agents: !anyint
-                status: !anything
-            - worker2:
-                info:
-                  name: !anystr
-                  ip: !anystr
-                  version: !anystr
-                  type: !anystr
-                  n_active_agents: !anyint
-                status: !anything
+            - info:
+                name: 'master-node'
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+            - info:
+                name: 'worker1'
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+              status: !anything
+            - info:
+                name: 'worker2'
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+              status: !anything
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
@@ -159,11 +154,12 @@ stages:
       body:
         data:
           affected_items: &cluster_nodes_response
-            - cluster: wazuh
-              node: master-node
-              type: master
+            - name: !anystr
+              type: !anystr
+              version: !anystr
+              ip: !anything
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 3
           total_failed_items: 0
         message: !anystr
 
@@ -373,7 +369,7 @@ stages:
       <<: *connexion_error
 
 ---
-test_name: GET /cluster/nodes/{node_id}
+test_name: GET /cluster/nodes
 
 marks:
   - parametrize:
@@ -387,10 +383,12 @@ stages:
 
   - name: Get cluster {node_id}
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes/{node_id}"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_nodes: "{node_id:s}"
     response:
       status_code: 200
       body:
@@ -406,7 +404,7 @@ stages:
         message: !anystr
 
 ---
-test_name: GET /cluster/nodes/{node_id} select
+test_name: GET /cluster/nodes select
 
 marks:
   - parametrize:
@@ -421,20 +419,21 @@ stages:
 
   - name: Get cluster nodes with select
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes/master-node"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
+        list_nodes: "master-node"
         select: "{field}"
     response:
       status_code: 200
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_affected_items_response
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
-            affected_items: "{field:s}"
+            select_key: "{field:s}"
 
 ---
 test_name: GET /cluster/status
@@ -696,12 +695,12 @@ stages:
       body:
         data:
           affected_items:
-            - master-node:
-                status: 'OK'
-            - worker1:
-                status: 'OK'
-            - worker2:
-                status: 'OK'
+            - name: master-node
+              status: 'OK'
+            - name: worker1
+              status: 'OK'
+            - name: worker2
+              status: 'OK'
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
@@ -728,14 +727,14 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 200
       body:
         data:
           affected_items:
-            - worker1:
-                status: 'OK'
-            - worker2:
-                status: 'OK'
+            - name: worker1
+              status: 'OK'
+            - name: worker2
+              status: 'OK'
           failed_items:
             - error:
                 code: 1908
@@ -743,7 +742,7 @@ stages:
                 remediation: !anystr
               id:
                 - 'master-node'
-          total_affected_items: 0
+          total_affected_items: 2
           total_failed_items: 1
         message: !anystr
 
@@ -772,10 +771,10 @@ stages:
       body:
         data:
           affected_items:
-            - worker1:
-                status: 'OK'
-            - worker2:
-                status: 'OK'
+            - name: worker1
+              status: 'OK'
+            - name: worker2
+              status: 'OK'
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
@@ -794,8 +793,8 @@ stages:
       body:
         data:
           affected_items:
-            - master_node:
-                status: 'OK'
+            - name: master-node
+              status: 'OK'
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -1040,10 +1039,9 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items:
-            - socket: !anything
+          affected_items: []
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 0
           total_failed_items: 0
         message: !anystr
 
@@ -1323,6 +1321,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
         message: !anystr
+
 ---
 test_name: GET /cluster/{node_id}/files
 
@@ -1453,7 +1452,7 @@ stages:
       params:
         path: etc/rules/local-rules.xml
     response: &non_existing_file
-      status_code: 400
+      status_code: 200
       body:
         data:
           affected_items: []
@@ -1462,8 +1461,7 @@ stages:
                 code: 1906
                 message: !anystr
                 remediation: !anystr
-              id:
-                - 'etc/rules/local-rules.xml'
+              id: !anything
           total_affected_items: 0
           total_failed_items: 1
         message: !anystr
@@ -1966,7 +1964,7 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: !anyint
           total_failed_items: 0
         message: !anystr
 
@@ -2125,7 +2123,6 @@ marks:
   - parametrize:
       key: node_id
       vals:
-        - master-node
         - worker1
         - worker2
 
@@ -2143,27 +2140,28 @@ stages:
         data:
           affected_items:
             - ossec-agentlessd: !anything
-              ossec-analysisd: !anything
-              ossec-authd: !anything
-              ossec-csyslogd: !anything
-              ossec-dbd: !anything
-              ossec-execd: !anything
-              ossec-integratord: !anything
-              ossec-logcollector: !anything
-              ossec-monitord: !anything
-              ossec-remoted: !anything
-              ossec-rootcheck: !anything
-              ossec-syscheckd: !anything
-              wazuh-db: !anything
-              wazuh-modulesd: !anything
-              wazuh-modulesd:ciscat: !anything
-              wazuh-modulesd:database: !anything
-              wazuh-modulesd:download: !anything
-              wazuh-modulesd:oscap: !anything
-              wazuh-modulesd:osquery: !anything
-              wazuh-modulesd:syscollector: !anything
+            - ossec-analysisd: !anything
+            - ossec-authd: !anything
+            - ossec-csyslogd: !anything
+            - ossec-dbd: !anything
+            - ossec-execd: !anything
+            - ossec-integratord: !anything
+            - ossec-logcollector: !anything
+            - ossec-monitord: !anything
+            - ossec-remoted: !anything
+            - ossec-rootcheck: !anything
+            - ossec-syscheckd: !anything
+            - sca: !anything
+            - wazuh-db: !anything
+            - wazuh-modulesd: !anything
+            - wazuh-modulesd:ciscat: !anything
+            - wazuh-modulesd:database: !anything
+            - wazuh-modulesd:download: !anything
+            - wazuh-modulesd:oscap: !anything
+            - wazuh-modulesd:osquery: !anything
+            - wazuh-modulesd:syscollector: !anything
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 21
           total_failed_items: 0
         message: !anystr
 
@@ -2489,11 +2487,6 @@ stages:
           total_failed_items: 0
         message: !anystr
     delay_after: 30
-
----
-test_name: PUT /cluster/restart
-
-stages:
 
   - name: Restart cluster
     request:
