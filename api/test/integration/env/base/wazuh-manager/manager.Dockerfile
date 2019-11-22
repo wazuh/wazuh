@@ -18,6 +18,7 @@ ADD base/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-base
 FROM base AS wazuh-env-sca
+FROM base AS wazuh-env-syscheck
 FROM base AS wazuh-env-ciscat
 FROM base AS wazuh-env-syscollector
 FROM base AS wazuh-env-security

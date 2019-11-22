@@ -8728,6 +8728,17 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+              example:
+                data:
+                  affected_items:
+                    - '000'
+                    - '001'
+                    - '002'
+                    - '003'
+                  failed_items: []
+                  total_affected_items: 4
+                  total_failed_items: 0
+                message: Restarting Syscheck/Rootcheck on all available agents
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8768,36 +8779,43 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscheckResult'
               example:
                 data:
-                  totalItems: 2
-                  items:
-                    - size: 61
-                      md5: 8588d49be3999f2daf69c3090682594f
-                      inode: 946
-                      perm: "100644"
+                  affected_items:
+                    - attributes: 0
+                      changes: 1
+                      date: '2019-11-22T10:24:52Z'
+                      file: "/etc/dpkg/origins/debian"
+                      gid: '0'
                       gname: root
-                      mtime: "2019-01-15T15:49:39Z"
-                      sha1: a2219a7fd0a77be7422a02049b8d27805c0250ba
-                      date: "2019-03-08T10:35:06Z"
+                      inode: 1459742
+                      md5: 731423fa8ba067262f8ef37882d1e742
+                      mtime: '2009-02-02T23:06:58Z'
+                      perm: '100644'
+                      sha1: b65f7f2af66c53b51765877bbe91a22bc6fca1e2
+                      sha256: 50f35af8ac4a5df3690991a4b428fa49d56580b0020fcc6e38283b3b1b2e6c74
+                      size: 82
+                      type: file
+                      uid: '0'
                       uname: root
-                      sha256: 303c346ece82ca4f6713ac176164285d0469f326b6f12a787e11f5d702529277
-                      gid: 0
-                      type: file
-                      uid: 0
-                      file: /etc/ssl/certs/TeliaSonera_Root_CA_v1.pem
-                    - sha1: 016f8bd2ea009451042a856611d5d2967760e833
-                      file: /etc/ssh/ssh_config
-                      md5: f7bf238a3b0bf155c565454a9f819731
-                      inode: 1579
-                      uid: "0"
-                      date: "2019-03-08T10:35:01Z"
-                      perm: 100644
-                      type: file
+                    - attributes: 0
+                      changes: 1
+                      date: '2019-11-22T10:24:56Z'
+                      file: "/etc/sgml/xml-core.cat"
+                      gid: '0'
                       gname: root
+                      inode: 2896763
+                      md5: 055ba0bd3154c0a58b9bf8a0c9ecf2fa
+                      mtime: '2012-11-07T21:44:21Z'
+                      perm: '100644'
+                      sha1: 3dec5570307472381671ff18bbe4d4be09951690
+                      sha256: 3c46704b553c4b55ce928ffe89badfcfd08a02f0e6558211dfd57d9ae1e72aa4
+                      size: 45
+                      type: file
+                      uid: '0'
                       uname: root
-                      size: 1580
-                      gid: "0"
-                      mtime: "2018-11-05T11:51:29Z"
-                      sha256: a39fbc57dc2ef8a473f078d1f6a35f725809400df67070b8852e8ed725047df2
+                  failed_items: []
+                  total_affected_items: 1433
+                  total_failed_items: 0
+                message: FIM findings of the agent
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8820,8 +8838,17 @@ paths:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
               example:
-                message: "Syscheck database deleted"
+                data:
+                  affected_items:
+                    - '000'
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: Clear Syscheck/Rootcheck database on the agent
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8850,8 +8877,13 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscheckLastScan'
               example:
                 data:
-                  end: "2019-03-08T10:35:21Z"
-                  start: "2019-03-08T10:34:56Z"
+                  affected_items:
+                    - end: '2019-11-22T10:47:56Z'
+                      start: '2019-11-22T10:47:32Z'
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: Last scan of the agent
         default:
           $ref: '#/components/responses/ResponseError'
 

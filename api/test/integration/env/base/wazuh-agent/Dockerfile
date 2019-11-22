@@ -22,6 +22,9 @@ FROM base_agent AS wazuh-env-agent-cluster
 FROM base_agent AS wazuh-env-agent-sca
 COPY configurations/sca/wazuh-agent-sca/healthcheck/healthcheck.py /tmp/healthcheck.py
 
+FROM base_agent AS wazuh-env-agent-syscheck
+COPY configurations/syscheck/wazuh-agent/healthcheck/healthcheck.py /tmp/healthcheck.py
+
 FROM base_agent AS wazuh-env-agent-ciscat
 RUN apt-get update && apt-get install openjdk-8-jdk -y
 COPY configurations/ciscat/wazuh-agent-ciscat/test.keys /var/ossec/etc/test.keys

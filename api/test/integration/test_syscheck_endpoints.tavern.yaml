@@ -3,7 +3,7 @@ test_name: GET /syscheck/000
 
 marks:
   - usefixtures:
-    - base_tests
+    - syscheck_tests
 
 includes:
   - !include common.yaml
