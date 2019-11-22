@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     checksum TEXT
 );
 
+CREATE INDEX IF NOT EXISTS fim_file_index ON fim_entry (file);
+CREATE INDEX IF NOT EXISTS fim_date_index ON fim_entry (date);
+
 CREATE TABLE IF NOT EXISTS pm_event (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date_first INTEGER,

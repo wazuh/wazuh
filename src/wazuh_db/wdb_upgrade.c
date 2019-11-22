@@ -12,6 +12,13 @@
 
 #include "wdb.h"
 
+// This function performs those data migrations between
+// updates that cannot be resolved with queries
+static int wdb_adjust_upgrade(wdb_t *wdb, int upgrade_step);
+// Migrate to the fourth version of the database:
+// - The attributes field of the fim_entry table is decoded
+static int wdb_adjust_v4(wdb_t *wdb);
+
 // Upgrade agent database to last version
 wdb_t * wdb_upgrade(wdb_t *wdb) {
     const char * UPDATES[] = {
@@ -43,7 +50,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
     for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
         mdebug2("Updating database '%s' to version %d", wdb->agent_id, i + 1);
 
-        if (wdb_sql_exec(wdb, UPDATES[i]) == -1) {
+        if (wdb_sql_exec(wdb, UPDATES[i]) == -1 || wdb_adjust_upgrade(wdb, i)) {
             wdb_t * new_wdb = wdb_backup(wdb, version);
             return new_wdb ? new_wdb : wdb;
         }
@@ -140,6 +147,52 @@ int wdb_create_backup(const char * agent_id, int version) {
         merror(CHMOD_ERROR, path, errno, strerror(errno));
         unlink(path);
         return -1;
+    }
+
+    return 0;
+}
+
+int wdb_adjust_upgrade(wdb_t *wdb, int upgrade_step) {
+    switch (upgrade_step) {
+        case 3:
+            return wdb_adjust_v4(wdb);
+        default:
+            return 0;
+    }
+}
+
+int wdb_adjust_v4(wdb_t *wdb) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_GET_ATTRIBUTES) < 0) {
+        merror("DB(%s) Can't cache statement: get_attributes.", wdb->agent_id);
+        return -1;
+    }
+
+    sqlite3_stmt *get_stmt = wdb->stmt[WDB_STMT_FIM_GET_ATTRIBUTES];
+    char decoded_attrs[OS_SIZE_256];
+
+    while (sqlite3_step(get_stmt) == SQLITE_ROW) {
+        const char *file = (char *) sqlite3_column_text(get_stmt, 0);
+        const char *attrs = (char *) sqlite3_column_text(get_stmt, 1);
+
+        if (!file || !attrs || !isdigit(*attrs)) {
+            continue;
+        }
+
+        decode_win_attributes(decoded_attrs, (unsigned int) atoi(attrs));
+
+        if (wdb_stmt_cache(wdb, WDB_STMT_FIM_UPDATE_ATTRIBUTES) < 0) {
+            merror("DB(%s) Can't cache statement: update_attributes.", wdb->agent_id);
+            return -1;
+        }
+
+        sqlite3_stmt *update_stmt = wdb->stmt[WDB_STMT_FIM_UPDATE_ATTRIBUTES];
+
+        sqlite3_bind_text(update_stmt, 1, decoded_attrs, -1, NULL);
+        sqlite3_bind_text(update_stmt, 2, file, -1, NULL);
+
+        if (sqlite3_step(update_stmt) != SQLITE_DONE) {
+            mdebug1("DB(%s) The attribute coded as %s could not be updated.", wdb->agent_id, attrs);
+        }
     }
 
     return 0;

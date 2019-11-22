@@ -47,3 +47,6 @@ END;
 
 DROP TABLE IF EXISTS fim_entry;
 ALTER TABLE _fim_entry RENAME TO fim_entry;
+
+CREATE INDEX IF NOT EXISTS fim_file_index ON fim_entry (file);
+CREATE INDEX IF NOT EXISTS fim_date_index ON fim_entry (date);
