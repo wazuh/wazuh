@@ -583,7 +583,7 @@ def _parse_execd_output(output: str) -> Dict:
             if match:
                 errors.append(match.group(1))
         errors = list(OrderedDict.fromkeys(errors))
-        raise WazuhError(1908, extra_message=errors)
+        raise WazuhError(1908, extra_message=', '.join(errors))
     else:
         response = {'status': 'OK'}
 

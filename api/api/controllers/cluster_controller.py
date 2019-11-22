@@ -129,6 +129,7 @@ def get_healthcheck(pretty=False, wait_for_complete=False, list_nodes=None):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param list_nodes: List of node ids
+    :return: AllItemsResponseNodeHealthcheck
     """
     f_kwargs = {'filter_node': list_nodes}
 
@@ -612,6 +613,7 @@ def get_conf_validation(pretty=False, wait_for_complete=False, list_nodes='*'):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param list_nodes: List of node ids
+    :return: AllItemsResponseValidationStatus
     """
     f_kwargs = {'node_list': list_nodes}
 
