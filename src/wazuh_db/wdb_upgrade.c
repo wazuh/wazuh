@@ -162,6 +162,12 @@ int wdb_adjust_upgrade(wdb_t *wdb, int upgrade_step) {
 }
 
 int wdb_adjust_v4(wdb_t *wdb) {
+
+    if (wdb_begin2(wdb) < 0) {
+        merror("DB(%s) The begin statement could not be executed.", wdb->agent_id);
+        return -1;
+    }
+
     if (wdb_stmt_cache(wdb, WDB_STMT_FIM_GET_ATTRIBUTES) < 0) {
         merror("DB(%s) Can't cache statement: get_attributes.", wdb->agent_id);
         return -1;
@@ -193,6 +199,11 @@ int wdb_adjust_v4(wdb_t *wdb) {
         if (sqlite3_step(update_stmt) != SQLITE_DONE) {
             mdebug1("DB(%s) The attribute coded as %s could not be updated.", wdb->agent_id, attrs);
         }
+    }
+
+    if (wdb_commit2(wdb) < 0) {
+        merror("DB(%s) The commit statement could not be executed.", wdb->agent_id);
+        return -1;
     }
 
     return 0;
