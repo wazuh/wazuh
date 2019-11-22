@@ -273,13 +273,13 @@ in `dapi_errors` key
 
 ## Syscheck
 ### PUT /syscheck
-* In response, `data` key is now moved to new `message` key
+* The response has been changed to the new RBAC generic response
 
 ### PUT /syscheck/{agent_id}
-* In response, `data` key is now moved to new `message` key
+* Removed endpoint
 
 ### DELETE /syscheck/{agent_id}
-* In response, `data` key is now moved to new `message` key
+* The response has been changed to the new RBAC generic response
 
 ## Syscollector
 ### GET /syscollector/:agent_id/netaddr
