@@ -583,9 +583,7 @@ fim_entry_data * fim_get_data (const char *file, fim_element *item) {
     data->scanned = 1;
 
     // We won't calculate hash for symbolic links, empty or large files
-#ifdef __linux__
     if ((item->statbuf.st_mode & S_IFMT) == FIM_REGULAR)
-#endif
         if (item->statbuf.st_size > 0 &&
                 (size_t)item->statbuf.st_size < syscheck.file_max_size &&
                 ( item->configuration & CHECK_MD5SUM ||
