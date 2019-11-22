@@ -1156,17 +1156,22 @@ int Rules_OP_ReadRules(const char *rulefile)
                             if ((!mitre_opt[ind]->element) || (!mitre_opt[ind]->content)) {
                                 break;
                             } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_id) == 0) {
-                                int inarray = 0;
-                                for (l = 0; l < mitre_size; l++) {
-                                    if (strcmp(config_ruleinfo->mitre_id[l],mitre_opt[ind]->content)== 0) {
-                                        inarray = 1;
+                                if (strlen(mitre_opt[ind]->content) == 0) {
+                                    mwarn("No Mitre Technique ID found for rule '%d'",
+                                        config_ruleinfo->sigid);
+                                } else {
+                                    int inarray = 0;
+                                    for (l = 0; l < mitre_size; l++) {
+                                        if (strcmp(config_ruleinfo->mitre_id[l],mitre_opt[ind]->content)== 0) {
+                                            inarray = 1;
+                                        }
                                     }
-                                }
-                                if (!inarray && strlen(mitre_opt[ind]->content) > 0) {
-                                    os_realloc(config_ruleinfo->mitre_id, (mitre_size + 2) * sizeof(char *), config_ruleinfo->mitre_id);
-                                    os_strdup(mitre_opt[ind]->content, config_ruleinfo->mitre_id[mitre_size]);
-                                    config_ruleinfo->mitre_id[mitre_size + 1] = NULL;
-                                    mitre_size++;
+                                    if (!inarray) {
+                                        os_realloc(config_ruleinfo->mitre_id, (mitre_size + 2) * sizeof(char *), config_ruleinfo->mitre_id);
+                                        os_strdup(mitre_opt[ind]->content, config_ruleinfo->mitre_id[mitre_size]);
+                                        config_ruleinfo->mitre_id[mitre_size + 1] = NULL;
+                                        mitre_size++;
+                                    }
                                 }
                             } else {
                                 merror("Invalid option '%s' for "

@@ -96,6 +96,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON *tactics = NULL;
             cJSON * tactic = NULL;
             cJSON * element = NULL;
+            int tactic_array_size;
 
             cJSON_AddItemToObject(rule, "mitre", mitre = cJSON_CreateObject());
             /* Creating id array */
@@ -108,21 +109,24 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             for (i = 0; lf->generated_rule->mitre_id[i] != NULL; i++){
                 if (tactics = mitre_get_attack(lf->generated_rule->mitre_id[i]), tactics == NULL) {
                     mwarn("Mitre Technique ID '%s' not found in database.", lf->generated_rule->mitre_id[i]);
-                }
-                cJSON_ArrayForEach(tactic, tactics){
-                    int inarray = 0;
-                    /* Check if the element is already in the array */
-                    cJSON_ArrayForEach(element, mitre_tactic_array){
-                        if (strcmp(element->valuestring, tactic->valuestring) == 0) {
-                            inarray = 1;
+                } else {
+                    cJSON_ArrayForEach(tactic, tactics){
+                        int inarray = 0;
+                        /* Check if the element is already in the array */
+                        cJSON_ArrayForEach(element, mitre_tactic_array){
+                            if (strcmp(element->valuestring, tactic->valuestring) == 0) {
+                                inarray = 1;
+                            }
                         }
-                    }
-                    if (!inarray) {
-                        cJSON_AddItemToArray(mitre_tactic_array, cJSON_Duplicate(tactic,0));
+                        if (!inarray) {
+                            cJSON_AddItemToArray(mitre_tactic_array, cJSON_Duplicate(tactic,0));
+                        }
                     }
                 }
             }
-            cJSON_AddItemToObject(mitre, "tactics", mitre_tactic_array);
+            if (tactic_array_size = cJSON_GetArraySize(mitre_tactic_array), tactic_array_size > 0) {
+                cJSON_AddItemToObject(mitre, "tactics", mitre_tactic_array);
+            }
         }
         if(lf->generated_rule->cve) {
             cJSON_AddStringToObject(rule, "cve", lf->generated_rule->cve);
