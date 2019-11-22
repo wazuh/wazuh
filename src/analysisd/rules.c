@@ -1147,9 +1147,10 @@ int Rules_OP_ReadRules(const char *rulefile)
                         mitre_opt = OS_GetElementsbyNode(&xml, rule_opt[k]);
 
                         if (mitre_opt == NULL) {
-                            merror("Empty Mitre information for rule '%d'",
+                            mwarn("Empty Mitre information for rule '%d'",
                                 config_ruleinfo->sigid);
-                            goto cleanup;
+                            k++;
+                            break;
                         }
 
                         for (ind = 0; mitre_opt[ind] != NULL; ind++) {
