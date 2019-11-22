@@ -166,8 +166,8 @@ void run_notify()
 
     /* Create message */
     if(*agent_ip && strcmp(agent_ip,"Err")){
-        if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
-                (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
+        if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
+                (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) == 0)) {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n%s",
                     getuname(), md5sum, tmp_labels, shared_files, label_ip, keep_alive_random);
         } else {
@@ -176,8 +176,8 @@ void run_notify()
         }
     }
     else{
-        if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
-                (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
+        if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
+                (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) == 0)) {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n%s",
                     getuname(), md5sum, tmp_labels, shared_files, keep_alive_random);
         } else {
