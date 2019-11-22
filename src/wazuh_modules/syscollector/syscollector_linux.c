@@ -24,7 +24,6 @@
 #include <net/if_arp.h>
 #include <netinet/tcp.h>
 #include <linux/if_packet.h>
-#include "external/procps/readproc.h"
 #include "external/libdb/build_unix/db.h"
 
 hw_info *get_system_linux();                    // Get system information
@@ -1471,25 +1470,37 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
 
+    w_mutex_lock(&sys->processes_entry_mutex);
+
     while (proc_info = readproc(proc, NULL), proc_info != NULL) {
+        process_entry_data * entry_data = NULL;
+
+        //Get process attributes
+        if (entry_data = get_process_data_linux(proc_info), !entry_data) {
+            mdebug1("Couldn't get attributes for process: '%s'", proc_info->cmd);
+            freeproc(proc_info);
+            continue;
+        }
+        freeproc(proc_info);
+
         cJSON *object = cJSON_CreateObject();
         cJSON *process = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "process");
         cJSON_AddNumberToObject(object, "ID", random_id);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
         cJSON_AddItemToObject(object, "process", process);
-        cJSON_AddNumberToObject(process,"pid",proc_info->tid);
-        cJSON_AddStringToObject(process,"name",proc_info->cmd);
-        cJSON_AddStringToObject(process,"state",&proc_info->state);
-        cJSON_AddNumberToObject(process,"ppid",proc_info->ppid);
-        cJSON_AddNumberToObject(process,"utime",proc_info->utime);
-        cJSON_AddNumberToObject(process,"stime",proc_info->stime);
-        if (proc_info->cmdline && proc_info->cmdline[0]) {
+        cJSON_AddNumberToObject(process, "pid", entry_data->pid);
+        cJSON_AddStringToObject(process, "name", entry_data->cmd);
+        cJSON_AddStringToObject(process, "state", entry_data->state);
+        cJSON_AddNumberToObject(process, "ppid", entry_data->ppid);
+        cJSON_AddNumberToObject(process, "utime", entry_data->utime);
+        cJSON_AddNumberToObject(process, "stime", entry_data->stime);
+        if (entry_data->cmd) {
             cJSON *argvs = cJSON_CreateArray();
-            cJSON_AddStringToObject(process, "cmd", proc_info->cmdline[0]);
-            for (i = 1; proc_info->cmdline[i]; i++) {
-                if (!strlen(proc_info->cmdline[i])==0) {
-                    cJSON_AddItemToArray(argvs, cJSON_CreateString(proc_info->cmdline[i]));
+            cJSON_AddStringToObject(process, "cmd", entry_data->cmd);
+            for (i = 0; entry_data->argvs[i]; i++) {
+                if (!strlen(entry_data->argvs[i]) == 0) {
+                    cJSON_AddItemToArray(argvs, cJSON_CreateString(entry_data->argvs[i]));
                 }
             }
             if (cJSON_GetArraySize(argvs) > 0) {
@@ -1498,30 +1509,33 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
                 cJSON_Delete(argvs);
             }
         }
-        cJSON_AddStringToObject(process,"euser",proc_info->euser);
-        cJSON_AddStringToObject(process,"ruser",proc_info->ruser);
-        cJSON_AddStringToObject(process,"suser",proc_info->suser);
-        cJSON_AddStringToObject(process,"egroup",proc_info->egroup);
-        cJSON_AddStringToObject(process,"rgroup",proc_info->rgroup);
-        cJSON_AddStringToObject(process,"sgroup",proc_info->sgroup);
-        cJSON_AddStringToObject(process,"fgroup",proc_info->fgroup);
-        cJSON_AddNumberToObject(process,"priority",proc_info->priority);
-        cJSON_AddNumberToObject(process,"nice",proc_info->nice);
-        cJSON_AddNumberToObject(process,"size",proc_info->size);
-        cJSON_AddNumberToObject(process,"vm_size",proc_info->vm_size);
-        cJSON_AddNumberToObject(process,"resident",proc_info->resident);
-        cJSON_AddNumberToObject(process,"share",proc_info->share);
-        cJSON_AddNumberToObject(process,"start_time",proc_info->start_time);
-        cJSON_AddNumberToObject(process,"pgrp",proc_info->pgrp);
-        cJSON_AddNumberToObject(process,"session",proc_info->session);
-        cJSON_AddNumberToObject(process,"nlwp",proc_info->nlwp);
-        cJSON_AddNumberToObject(process,"tgid",proc_info->tgid);
-        cJSON_AddNumberToObject(process,"tty",proc_info->tty);
-        cJSON_AddNumberToObject(process,"processor",proc_info->processor);
+        cJSON_AddStringToObject(process, "euser", entry_data->euser);
+        cJSON_AddStringToObject(process, "ruser", entry_data->ruser);
+        cJSON_AddStringToObject(process, "suser", entry_data->suser);
+        cJSON_AddStringToObject(process, "egroup", entry_data->egroup);
+        cJSON_AddStringToObject(process, "rgroup", entry_data->rgroup);
+        cJSON_AddStringToObject(process, "sgroup", entry_data->sgroup);
+        cJSON_AddStringToObject(process, "fgroup", entry_data->fgroup);
+        cJSON_AddNumberToObject(process, "priority", entry_data->priority);
+        cJSON_AddNumberToObject(process, "nice", entry_data->nice);
+        cJSON_AddNumberToObject(process, "size", entry_data->size);
+        cJSON_AddNumberToObject(process, "vm_size", entry_data->vm_size);
+        cJSON_AddNumberToObject(process, "resident", entry_data->resident);
+        cJSON_AddNumberToObject(process, "share", entry_data->share);
+        cJSON_AddNumberToObject(process, "start_time", entry_data->start_time);
+        cJSON_AddNumberToObject(process, "pgrp", entry_data->pgrp);
+        cJSON_AddNumberToObject(process, "session", entry_data->session);
+        cJSON_AddNumberToObject(process, "nlwp", entry_data->nlwp);
+        cJSON_AddNumberToObject(process, "tgid", entry_data->tgid);
+        cJSON_AddNumberToObject(process, "tty", entry_data->tty);
+        cJSON_AddNumberToObject(process, "processor", entry_data->processor);
 
         cJSON_AddItemToArray(proc_array, object);
-        freeproc(proc_info);
+
+        free_process_data(entry_data); //////////////////////////////REMOVE
     }
+
+    w_mutex_unlock(&sys->processes_entry_mutex);
 
     cJSON_ArrayForEach(item, proc_array) {
         string = cJSON_PrintUnformatted(item);
@@ -1546,6 +1560,64 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     free(end_msg);
     free(timestamp);
 
+}
+
+// Get data from process
+process_entry_data * get_process_data_linux(proc_t * proc_info) {
+    int i;
+    int pos = 0;
+    process_entry_data * data = NULL;
+
+    os_calloc(1, sizeof(process_entry_data), data);
+    init_process_data_entry(data);
+
+    data->pid = proc_info->tid;
+    data->ppid = proc_info->ppid;
+
+    os_strdup(proc_info->cmd, data->name);
+    os_strdup(&proc_info->state, data->state);
+
+    os_malloc(sizeof(char *), data->argvs);
+    if (proc_info->cmdline && proc_info->cmdline[0]) {
+        os_strdup(proc_info->cmdline[0], data->cmd);
+        for (i = 1; proc_info->cmdline[i]; i++) {
+            if (!strlen(proc_info->cmdline[i]) == 0) {
+                os_strdup(proc_info->cmdline[i], data->argvs[pos]);
+                os_realloc(data->argvs, (pos + 2) * sizeof(char *), data->argvs);
+                pos++;
+            }
+        }
+    }
+    data->argvs[pos] = NULL;
+
+    os_strdup(proc_info->euser, data->euser);
+    os_strdup(proc_info->ruser, data->ruser);
+    os_strdup(proc_info->suser, data->suser);
+    os_strdup(proc_info->egroup, data->egroup);
+    os_strdup(proc_info->egroup, data->rgroup);
+    os_strdup(proc_info->egroup, data->sgroup);
+    os_strdup(proc_info->egroup, data->fgroup);
+
+    data->priority = proc_info->priority;
+    data->nice = proc_info->nice;
+
+    data->size = proc_info->size;
+    data->vm_size = proc_info->vm_size;
+    data->resident = proc_info->resident;
+    data->share = proc_info->share;
+
+    data->start_time =  proc_info->start_time;
+    data->utime = proc_info->utime;
+    data->stime = proc_info->stime;
+
+    data->pgrp = proc_info->pgrp;
+    data->session = proc_info->session;
+    data->nlwp = proc_info->nlwp;
+    data->tgid = proc_info->tgid;
+    data->tty = proc_info->tty;
+    data->processor = proc_info->processor;
+
+    return data;
 }
 
 // Read string from a byte array until find a NULL byte

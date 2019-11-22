@@ -1656,6 +1656,11 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     os_free(end_msg);
 }
 
+// Get data from process
+process_entry_data * get_process_data_mac(int pid) {
+    return NULL;
+}
+
 #endif
 
 #endif /* __BSD__ */

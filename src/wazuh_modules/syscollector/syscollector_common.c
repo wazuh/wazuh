@@ -12,7 +12,7 @@
 #include "syscollector.h"
 #include <errno.h>
 
-static wm_sys_t *sys;                           // Pointer to configuration
+wm_sys_t *sys = NULL;                           // Definition of global config
 
 static void* wm_sys_main(wm_sys_t *sys);        // Module main function. It won't return
 static void wm_sys_destroy(wm_sys_t *sys);      // Destroy data
@@ -48,6 +48,9 @@ void* wm_sys_main(wm_sys_t *sys) {
     // Check configuration and show debug information
 
     wm_sys_setup(sys);
+
+    sys_initialize_datastores();
+
     mtinfo(WM_SYS_LOGTAG, "Module started.");
 
     // First sleeping
@@ -321,4 +324,92 @@ int wm_sys_get_random_id() {
     }
 
     return ID;
+}
+
+
+// Initialize syscheck data
+void sys_initialize_datastores() {
+    // Create store data for processes
+    sys->processes_entry = rbtree_init();
+
+    if (!sys->processes_entry) {
+        merror_exit("Error while creating data structure: rb-tree init. Exiting."); // LCOV_EXCL_LINE
+    }
+
+    rbtree_set_dispose(sys->processes_entry, (void (*)(void *))free_process_data);
+    w_mutex_init(&sys->processes_entry_mutex, NULL);
+}
+
+// Initialize process_entry_data structure
+void init_process_data_entry(process_entry_data * data) {
+    data->pid = 0;
+    data->ppid = 0;
+    data->name = NULL;
+    data->cmd = NULL;
+    data->argvs = NULL;
+    data->state = NULL;
+    data->euser = NULL;
+    data->ruser = NULL;
+    data->suser = NULL;
+    data->egroup = NULL;
+    data->rgroup = NULL;
+    data->sgroup = NULL;
+    data->fgroup = NULL;
+    data->priority = 0;
+    data->nice = 0;
+    data->size = 0;
+    data->vm_size = 0;
+    data->resident = 0;
+    data->share = 0;
+    data->start_time = 0;
+    data->utime = 0;
+    data->stime = 0;
+    data->pgrp = 0;
+    data->session = 0;
+    data->nlwp = 0;
+    data->tgid = 0;
+    data->tty = 0;
+    data->processor = 0;
+}
+
+// Free process_entry_data structure
+void free_process_data(process_entry_data * data) {
+    if (!data) {
+        return;
+    }
+    if (data->name) {
+        os_free(data->name);
+    }
+    if (data->cmd) {
+        os_free(data->cmd);
+    }
+    if (data->argvs) {
+        free_strarray(data->argvs);
+    }
+    if (data->state) {
+        os_free(data->state);
+    }
+    if (data->euser) {
+        os_free(data->euser);
+    }
+    if (data->ruser) {
+        os_free(data->ruser);
+    }
+    if (data->suser) {
+        os_free(data->suser);
+    }
+    if (data->egroup) {
+        os_free(data->egroup);
+    }
+    if (data->rgroup) {
+        os_free(data->rgroup);
+    }
+    if (data->sgroup) {
+        os_free(data->sgroup);
+    }
+    if (data->fgroup) {
+        os_free(data->fgroup);
+    }
+
+    os_free(data);
 }

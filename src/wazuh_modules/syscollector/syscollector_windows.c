@@ -2346,6 +2346,11 @@ void sys_proc_windows(const char* LOCATION) {
     free(timestamp);
 }
 
+// Get data from process
+process_entry_data * get_process_data_windows(PROCESSENTRY32 * pe) {
+    return NULL;
+}
+
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
 	TOKEN_PRIVILEGES tp;
 	LUID pr_uid;

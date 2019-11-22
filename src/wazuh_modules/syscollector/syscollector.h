@@ -15,6 +15,10 @@
 #include "shared.h"
 #include "version_op.h"
 
+#if defined(__linux__)
+#include "external/procps/readproc.h"
+#endif
+
 #ifdef WIN32
 #include <windows.h>
 #include <winsock2.h>
@@ -103,6 +107,42 @@ typedef struct hw_info {
     int ram_usage;  // Percentage
 } hw_info;
 
+typedef struct process_entry_data {
+    unsigned int pid;
+    unsigned int ppid;
+    char * name;
+    char * cmd;
+    char ** argvs;
+    char * state;
+
+    char * euser;
+    char * ruser;
+    char * suser;
+    char * egroup;
+    char * rgroup;
+    char * sgroup;
+    char * fgroup;
+
+    int priority;
+    int nice;
+
+    unsigned int size;
+    unsigned int vm_size;
+    unsigned int resident;
+    unsigned int share;
+
+    unsigned int start_time;
+    unsigned int utime;
+    unsigned int stime;
+
+    unsigned int pgrp;
+    unsigned int session;
+    unsigned int nlwp;
+    unsigned int tgid;
+    unsigned int tty;
+    unsigned int processor;
+} process_entry_data;
+
 typedef struct wm_sys_flags_t {
     unsigned int enabled:1;                 // Main switch
     unsigned int scan_on_start:1;           // Scan always on start
@@ -124,6 +164,9 @@ typedef struct wm_sys_t {
     unsigned int interval;                  // Time interval between cycles (seconds)
     wm_sys_flags_t flags;                   // Flag bitfield
     wm_sys_state_t state;                   // Running state
+
+    rb_tree * processes_entry;
+    pthread_mutex_t processes_entry_mutex;
 } wm_sys_t;
 
 struct link_stats
@@ -144,6 +187,7 @@ typedef struct gateway {
 } gateway;
 
 extern const wm_context WM_SYS_CONTEXT;     // Context
+extern wm_sys_t *sys;                       // Configuration
 
 // Parse XML configuration
 int wm_sys_read(XML_NODE node, wmodule *module);
@@ -253,6 +297,26 @@ int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr);
 int wm_sys_get_random_id();
 // Initialize hw_info struct values
 void init_hw_info(hw_info *info);
+
+// Initialize datastores
+void sys_initialize_datastores();
+
+// Initialize process data
+void init_process_data_entry(process_entry_data * data);
+
+#ifdef WIN32
+// Fill process data for Windows
+process_entry_data * get_process_data_windows(PROCESSENTRY32 * pe);
+#elif defined(__linux__)
+// Fill process data for Linux
+process_entry_data * get_process_data_linux(proc_t * proc_info);
+#elif defined(__MACH__)
+// Fill process data for MAC OS X
+process_entry_data * get_process_data_mac(int pid);
+#endif
+
+// Free process data
+void free_process_data(process_entry_data * data);
 
 #endif
 #endif
