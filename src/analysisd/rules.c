@@ -1150,7 +1150,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                             mwarn("Empty Mitre information for rule '%d'",
                                 config_ruleinfo->sigid);
                             k++;
-                            break;
+                            continue;
                         }
 
                         for (ind = 0; mitre_opt[ind] != NULL; ind++) {
@@ -1176,7 +1176,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                                 }
                             } else {
                                 merror("Invalid option '%s' for "
-                                "rule '%d'.", mitre_opt[ind]->element,
+                                "rule '%d'", mitre_opt[ind]->element,
                                 config_ruleinfo->sigid);
                                 goto cleanup;
                             }
