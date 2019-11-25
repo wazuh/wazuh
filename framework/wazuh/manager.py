@@ -25,8 +25,7 @@ from wazuh.core.core_agent import Agent
 from wazuh.core.cluster.utils import get_manager_status, get_cluster_status, manager_restart, read_cluster_config
 from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.utils import previous_month, tail, load_wazuh_xml, safe_move
-from wazuh.utils import process_array
+from wazuh.utils import previous_month, tail, load_wazuh_xml, safe_move, process_array
 from wazuh.cluster import get_node
 from wazuh.rbac.decorators import expose_resources
 from wazuh.configuration import get_ossec_conf
@@ -43,7 +42,7 @@ def status():
     return get_manager_status()
 
 
-@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read_config' if cluster_enabled else 'manager:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_status() -> AffectedItemsWazuhResult:
     """Wrapper for status(). """
     result = AffectedItemsWazuhResult(all_msg=f"Processes status read successfully"
@@ -419,7 +418,7 @@ def delete_file(path):
         if exists(full_path):
             try:
                 remove(full_path)
-                result.affected_items.append(path)
+                result.affected_items.append(path[0])
             except IOError:
                 raise WazuhError(1907)
         else:

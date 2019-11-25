@@ -17,6 +17,7 @@ from api.util import remove_nones_to_dict, exception_handler, parse_api_param, r
 from wazuh import Wazuh
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
+from api.authentication import get_permissions
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -74,9 +75,7 @@ def get_info(pretty=False, wait_for_complete=False):
 
 @exception_handler
 def get_configuration(pretty=False, wait_for_complete=False, section=None, field=None):
-    """Get a specified node's configuration 
-
-    Returns wazuh configuration used in node {node_id}
+    """Get manager's configuration
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -86,21 +85,20 @@ def get_configuration(pretty=False, wait_for_complete=False, section=None, field
     f_kwargs = {'section': section,
                 'field': field}
 
-    dapi = DistributedAPI(f=configuration.get_ossec_conf,
+    import pydevd_pycharm
+    pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+    dapi = DistributedAPI(f=manager.read_ossec_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    # if section is not None:
-    #     data = data[section]
 
-    response = Data(data)
-
-    return response, 200
+    return data, 200
 
 
 @exception_handler
