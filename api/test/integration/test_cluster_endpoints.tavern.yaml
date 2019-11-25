@@ -803,12 +803,8 @@ stages:
 ---
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Try to show the config of analisys/global through a worker
     request:
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/global"
