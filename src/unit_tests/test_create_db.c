@@ -1383,8 +1383,6 @@ void test_fim_checker_link(void **state)
     item->mode = 1;
 
     will_return(__wrap_lstat, 0);
-    will_return(__wrap_rbtree_get, NULL);
-    will_return(__wrap_rbtree_insert, 0);
 
     fim_checker(path, item, NULL, 1);
 
