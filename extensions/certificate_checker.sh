@@ -11,11 +11,13 @@ elasticsearch_settings=( "xpack.security.transport.ssl.key"
                                     "xpack.security.http.ssl.certificate"
                                     "xpack.security.http.ssl.certificate_authorities"
                                     )
+# ------------------
 
+# Filebeat definitions
 filebeat_config_folder="/etc/filebeat"
 filebeat_config_file="filebeat.yml"
 
-# Filebeat definitions
+
 filebeat_settings=( "output.elasticsearch.ssl.certificate" 
                                "output.elasticsearch.ssl.key"
                                "output.elasticsearch.ssl.certificate_authorities"
