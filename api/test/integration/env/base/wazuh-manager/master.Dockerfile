@@ -31,9 +31,10 @@ FROM base AS wazuh-env-base
 FROM base AS wazuh-env-ciscat
 FROM base AS wazuh-env-sca
 
+FROM base AS wazuh-env-syscheck
+COPY configurations/syscheck/wazuh-master/healthcheck/healthcheck.py /tmp/healthcheck.py
+
 FROM base AS wazuh-env-syscollector
-COPY configurations/syscollector/wazuh-master/send_to_wdb.py /send_to_wdb.py
-ADD configurations/syscollector/wazuh-master/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-security
 COPY configurations/security/wazuh-master/rbac.db /var/ossec/api/configuration/security/rbac.db
@@ -141,6 +142,14 @@ ADD configurations/rbac/lists/black_configuration_rbac.sh /scripts/configuration
 RUN /scripts/configuration_rbac.sh
 COPY configurations/base/wazuh-master/healthcheck/healthcheck_daemons.py /tmp/healthcheck.py
 COPY configurations/base/wazuh-master/healthcheck/daemons_check.txt /tmp/daemons_check.txt
+
+FROM base AS wazuh-env-syscheck_white_rbac
+ADD configurations/rbac/syscheck/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base AS wazuh-env-syscheck_black_rbac
+ADD configurations/rbac/syscheck/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
 
 FROM wazuh-env-${ENVIRONMENT}
 

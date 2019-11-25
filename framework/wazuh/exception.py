@@ -571,9 +571,11 @@ class WazuhException(Exception):
         return hash((self._code, self._extra_message, self._extra_remediation, self._cmd_error))
 
     def __or__(self, other):
-        result = self.__class__(**self.to_dict())
         if isinstance(other, WazuhException):
+            result = self.__class__(**self.to_dict())
             result.dapi_errors = {**self._dapi_errors, **other.dapi_errors}
+        else:
+            result = other | self
         return result
 
     def __deepcopy__(self, memodict=None):
@@ -627,7 +629,36 @@ class WazuhError(WazuhException):
     This type of exception is raised as a controlled response to a bad request from user
     that cannot be performed properly
     """
-    pass
+
+    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, ids=None):
+        """Creates a WazuhError exception.
+
+        :param code: Exception code.
+        :param extra_message: Adds an extra message to the error description.
+        :param extra_remediation: Adds an extra description to remediation
+        :param cmd_error: If it is a custom error code (i.e. ossec commands), the error description will be the message.
+        :param dapi_errors: dict with details about node and logfile. I.e.:
+                            {'master-node': {'error': 'Wazuh Internal error',
+                                             'logfile': WAZUH_HOME/logs/api.log}
+                            }
+        :param ids: List or set with the ids involved in the exception
+        """
+        super().__init__(code, extra_message=extra_message,
+                         extra_remediation=extra_remediation,
+                         cmd_error=cmd_error,
+                         dapi_errors=dapi_errors
+                         )
+        self._ids = set() if ids is None else set(ids)
+
+    @property
+    def ids(self):
+        return self._ids
+
+    def to_dict(self):
+        result = super().to_dict()
+        result['ids'] = list(self.ids)
+
+        return result
 
 
 class WazuhClusterError(WazuhException):

@@ -263,6 +263,15 @@ def _match_permissions(req_permissions: dict = None):
     return allow_match
 
 
+def _get_denied(original, allowed, target_param, res_id):
+    try:
+        return {original[target_param]} - allowed[res_id]
+    except TypeError:
+        return set(original[target_param]) - allowed[res_id]
+    except KeyError:
+        return set()
+
+
 def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowed: dict = None, target: dict = None,
                  add_denied: bool = False,
                  **post_proc_kwargs):
@@ -277,15 +286,11 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
     """
     if add_denied:
         for res_id, target_param in target.items():
-            try:
-                denied = {original[target_param]} - allowed[res_id]
-            except TypeError:
-                denied = set(original[target_param]) - allowed[res_id]
-            except KeyError:
-                denied = set()
+            denied = _get_denied(original, allowed, target_param, res_id)
             for denied_item in denied:
                 result.add_failed_item(id_=denied_item, error=WazuhError(4000,
-                                                                         extra_message=f'Resource type: {res_id}'))
+                                                                         extra_message=f'Resource type: {res_id}',
+                                                                         ids=denied))
     else:
         if 'exclude_codes' in post_proc_kwargs:
             result.remove_failed_items(post_proc_kwargs['exclude_codes'])
@@ -313,6 +318,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                 _get_required_permissions(actions=actions, resources=resources, **kwargs)
             allow = _match_permissions(req_permissions=req_permissions)
             original_kwargs = dict(kwargs)
+
             for res_id, target_param in target_params.items():
                 try:
                     # We don't have any permissions over the required resources
@@ -325,9 +331,11 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                     elif len(allow[res_id]) == 0:
                         raise Exception
                 except Exception:
-                    kwargs[target_param] = list()
-                    if not (post_proc_func is list_handler and broadcast):
-                        raise WazuhError(4000)
+                    if add_denied:
+                        denied = _get_denied(original_kwargs, allow, target_param, res_id)
+                        raise WazuhError(4000, extra_message=f'Resource type: {res_id}', ids=denied)
+                    else:
+                        kwargs[target_param] = list()
             result = func(*args, **kwargs)
             if post_proc_func is None:
                 return result
