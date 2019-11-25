@@ -347,6 +347,8 @@ char *get_release_from_build(char *os_build) {
             os_strdup("1809", retval);
         } else if (!strcmp(os_build, "18362")) {
             os_strdup("1903", retval);
+        } else if (!strcmp(os_build, "18363")) {
+            os_strdup("1909", retval);
         } else {
             mdebug1("The release associated with the %s build is not recognized.", os_build);
         }

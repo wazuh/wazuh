@@ -1358,6 +1358,7 @@ int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
                 scan_time->valuestring,
                 hotfix->valuestring);
 
+        fillData(lf, "hotfix", hotfix->valuestring);
         if (wdbc_query_ex(socket, msg, response, sizeof(response)) != 0 || wdbc_parse_result(response, NULL) != WDBC_OK) {
             free(msg);
             return -1;

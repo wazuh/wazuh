@@ -9,18 +9,22 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add support to Windows agents for vulnerability detector. ([#2787](https://github.com/wazuh/wazuh/pull/2787))
+- Add support to Debian 10 Buster for vulnerability detector (by @aderumier). ([#4151](https://github.com/wazuh/wazuh/pull/4151))
 - Make the Wazuh service to start after the network systemd unit (by @VAdamec). ([#1106](https://github.com/wazuh/wazuh/pull/1106))
 - Add process inventory support for Mac OS X agents. ([#3322](https://github.com/wazuh/wazuh/pull/3322))
 - Add port inventory support for MAC OS X agents. ([#3349](https://github.com/wazuh/wazuh/pull/3349))
 - Make Analysisd compile the CDB list upon start. ([#3488](https://github.com/wazuh/wazuh/pull/3488))
 - New rules option `global_frequency` to make frequency rules independent from the event source. ([#3931](https://github.com/wazuh/wazuh/pull/3931))
 - Add a validation for avoiding agents to keep trying to connect to an invalid address indefinitely. ([#3951](https://github.com/wazuh/wazuh/pull/3951))
+- Add the condition field of SCA checks to the agent databases. ([#3631](https://github.com/wazuh/wazuh/pull/3631))
+- Display a warning message when registering to an unverified manager. ([#4207](https://github.com/wazuh/wazuh/pull/4207))
 
 ### Changed
 
 - Now EventChannel alerts include the full message with the translation of coded fields. ([#3320](https://github.com/wazuh/wazuh/pull/3320))
 - Changed `-G` agent-auth description in help message. ([#3856](https://github.com/wazuh/wazuh/pull/3856))
 - Unified the Makefile flags allowed values. ([#4034](https://github.com/wazuh/wazuh/pull/4034))
+- Let Logcollector queue file rotation and keepalive messages. ([#4222](https://github.com/wazuh/wazuh/pull/4222))
 
 ### Fixed
 
@@ -41,6 +45,11 @@ All notable changes to this project will be documented in this file.
 - Fix service's installation path for CentOS 8. ([#4060](https://github.com/wazuh/wazuh/pull/4060))
 - Add macOS Catalina to the list of detected versions. ([#4061](https://github.com/wazuh/wazuh/pull/4061))
 - Prevent FIM from producing false negatives due to wrong checksum comparison. ([#4066](https://github.com/wazuh/wazuh/pull/4066))
+- Fix `previous_output` count for alerts when matching by group. ([#4097](https://github.com/wazuh/wazuh/pull/4097))
+- Fix event iteration when evaluating contextual rules. ([#4106](https://github.com/wazuh/wazuh/pull/4106))
+- Fix the use of `prefilter_cmd` remotely by a new local option `allow_remote_prefilter_cmd`. ([#4178](https://github.com/wazuh/wazuh/pull/4178) & [4194](https://github.com/wazuh/wazuh/pull/4194))
+- Fix restarting agents by group using the API when some of them are in a worker node. ([#4226](https://github.com/wazuh/wazuh/pull/4226))
+- Fixed error in Fluent Forwarder that requests an user and pass although the server does not need it. ([#3910](https://github.com/wazuh/wazuh/pull/3910))
 
 
 ## [v3.10.2] - 2019-09-23

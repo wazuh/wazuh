@@ -58,7 +58,7 @@ def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, sea
     os_name = agent_obj.get_agent_attr('os_name')
     windows_fields = {'hostname': 'hostname', 'os_version': 'os_version', 'os_name': 'os_name',
                       'architecture': 'architecture', 'os_major': 'os_major', 'os_minor': 'os_minor',
-                      'os_build': 'os_build', 'version': 'version', 'scan_time': 'scan_time',
+                      'os_build': 'os_build', 'version': 'version', 'os_release': 'os_release', 'scan_time': 'scan_time',
                       'scan_id': 'scan_id'}
     linux_fields = {**windows_fields, **{'os_codename': 'os_codename', 'os_platform': 'os_platform',
                                          'sysname': 'sysname', 'release': 'release'}}

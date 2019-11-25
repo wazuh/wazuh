@@ -54,6 +54,7 @@ static int wm_fluent_unpack(wm_fluent_t * fluent, msgpack_unpacker * unp, msgpac
 static wm_fluent_helo_t * wm_fluent_recv_helo(wm_fluent_t * fluent);
 static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * helo);
 static wm_fluent_pong_t * wm_fluent_recv_pong(wm_fluent_t * fluent);
+static int wm_fluent_hs_tls(wm_fluent_t * fluent);
 static int wm_fluent_handshake(wm_fluent_t * fluent);
 static int wm_fluent_send(wm_fluent_t * fluent, const char * str, size_t size);
 static int wm_fluent_check_config(wm_fluent_t * fluent);
@@ -190,6 +191,7 @@ static int wm_fluent_connect(wm_fluent_t * fluent) {
             merror("Cannot set receiving timeout to '%s': %s (%d)", fluent->address, strerror(errno), errno);
         }
     }
+    mdebug2("Connected to '%s'.", fluent->address);
 
     return 0;
 }
@@ -443,7 +445,7 @@ static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * he
     char salt[16];
     char hostname[512] = "";
     os_sha512 shared_key_hexdigest;
-    os_sha512 password;
+    os_sha512 password = {0};
     msgpack_sbuffer sbuf;
     msgpack_packer pk;
     int retval;
@@ -473,11 +475,10 @@ static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * he
         OS_SHA512_Hex(md, shared_key_hexdigest);
     }
 
+
     if (helo->auth_size > 0) {
         unsigned char md[SHA512_DIGEST_LENGTH];
         SHA512_CTX ctx;
-
-        assert(fluent->user_name && fluent->user_pass);
 
         /* Compute password hex digest */
 
@@ -508,11 +509,12 @@ static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * he
     if (helo->auth_size > 0) {
         msgpack_pack_str(&pk, strlen(fluent->user_name));
         msgpack_pack_str_body(&pk, fluent->user_name, strlen(fluent->user_name));
-        msgpack_pack_str(&pk, OS_SHA512_LEN - 1); /* Remove terminator byte */
+        msgpack_pack_str(&pk, OS_SHA512_LEN - 1);
         msgpack_pack_str_body(&pk, password, OS_SHA512_LEN - 1);
     } else {
-        /* Insert two empty strings */
-
+        if (strlen(fluent->user_name) || strlen(fluent->user_pass)){
+            mwarn("Credentials are configured but fluentd server does not require authentication. Please check your configuration.");
+        }
         msgpack_pack_str(&pk, 0);
         msgpack_pack_str_body(&pk, "", 0);
         msgpack_pack_str(&pk, 0);
@@ -578,11 +580,54 @@ end:
     return pong;
 }
 
-static int wm_fluent_handshake(wm_fluent_t * fluent) {
-    wm_fluent_helo_t * helo = NULL;
-    wm_fluent_pong_t * pong = NULL;
+static int wm_fluent_hs_tls(wm_fluent_t * fluent) {
     int retval = -1;
 
+    /* TLS mode */
+
+    if (wm_fluent_ssl_connect(fluent) < 0) {
+        return -1;
+    }
+
+    mdebug1("Connection with %s:%hu established", fluent->address, fluent->port);
+
+    /* Fluent protocol handshake */
+    wm_fluent_helo_t * helo = wm_fluent_recv_helo(fluent);
+
+    if (!helo) {
+        merror("Cannot receive HELO message from server");
+        return -1;
+    }
+
+    wm_fluent_pong_t * pong = NULL;
+    if (wm_fluent_send_ping(fluent, helo) < 0) {
+        merror("Cannot send PING message to server");
+        goto end;
+    }
+
+    pong = wm_fluent_recv_pong(fluent);
+    if (!pong) {
+        merror("Cannot receive PONG message from server");
+        goto end;
+    }
+
+    /* Check the authentication result */
+
+    if (!pong->auth_result) {
+        mwarn("Authentication error: the Fluent server rejected the connection: %s", pong->reason ? pong->reason : "Unknown reason");
+        goto end;
+    }
+
+    minfo("Connected to host '%s' (%s:%hu)", pong->server_hostname, fluent->address, fluent->port);
+
+    retval = 0;
+end:
+    wm_fluent_helo_free(helo);
+    wm_fluent_pong_free(pong);
+    return retval;
+}
+
+static int wm_fluent_handshake(wm_fluent_t * fluent) {
     /* Connect to address */
 
     if (wm_fluent_connect(fluent) < 0) {
@@ -590,59 +635,14 @@ static int wm_fluent_handshake(wm_fluent_t * fluent) {
     }
 
     if (fluent->shared_key) {
-        /* TLS mode */
-
-        if (wm_fluent_ssl_connect(fluent) < 0) {
+        if (wm_fluent_hs_tls(fluent) < 0) {
             return -1;
         }
-
-        mdebug1("Connection with %s:%hu established", fluent->address, fluent->port);
-
-        /* Fluent protocol handshake */
-
-        helo = wm_fluent_recv_helo(fluent);
-        if (!helo) {
-            merror("Cannot receive HELO message from server");
-            return -1;
-        }
-
-        if (helo->auth_size > 0) {
-            if (!(fluent->user_name && fluent->user_pass)) {
-                mwarn("Authentication error: the Fluent server requires user name and password.");
-                goto end;
-            }
-        } else if (fluent->user_name || fluent->user_pass) {
-            mdebug1("The Fluent server does not require user authentication. Ignoring user name and pass.");
-        }
-
-        if (wm_fluent_send_ping(fluent, helo) < 0) {
-            merror("Cannot send PING message to server");
-            goto end;
-        }
-
-        pong = wm_fluent_recv_pong(fluent);
-        if (!pong) {
-            merror("Cannot receive PONG message from server");
-            goto end;
-        }
-
-        /* Check the authentication result */
-
-        if (!pong->auth_result) {
-            mwarn("Authentication error: the Fluent server rejected the connection: %s", pong->reason ? pong->reason : "");
-            goto end;
-        }
-
-        minfo("Connected to host '%s' (%s:%hu)", pong->server_hostname, fluent->address, fluent->port);
     } else {
         minfo("Connected to host %s:%hu", fluent->address, fluent->port);
     }
 
-    retval = 0;
-end:
-    wm_fluent_helo_free(helo);
-    wm_fluent_pong_free(pong);
-    return retval;
+    return 0;
 }
 
 static int wm_fluent_send(wm_fluent_t * fluent, const char * str, size_t size) {
@@ -743,8 +743,8 @@ cJSON *wm_fluent_dump(const wm_fluent_t *fluent) {
     if (fluent->port) cJSON_AddNumberToObject(wm_wd, "port", fluent->port);
     if (fluent->shared_key) cJSON_AddStringToObject(wm_wd, "shared_key", fluent->shared_key);
     if (fluent->certificate) cJSON_AddStringToObject(wm_wd, "ca_file", fluent->certificate);
-    if (fluent->user_name) cJSON_AddStringToObject(wm_wd, "user", fluent->user_name);
-    if (fluent->user_pass) cJSON_AddStringToObject(wm_wd, "password", fluent->user_pass);
+    cJSON_AddStringToObject(wm_wd, "user", fluent->user_name);
+    cJSON_AddStringToObject(wm_wd, "password", fluent->user_pass);
     cJSON_AddNumberToObject(wm_wd, "timeout", fluent->timeout);
 
     cJSON_AddItemToObject(root,"fluent-forward",wm_wd);

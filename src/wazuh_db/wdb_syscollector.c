@@ -333,6 +333,31 @@ int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id) {
     return 0;
 }
 
+int wdb_set_hotfix_metadata(wdb_t * wdb, const char * scan_id) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("at wdb_set_hotfix_metadata(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_SET_HOTFIX_MET) < 0) {
+        mdebug1("at wdb_set_hotfix_metadata(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_SET_HOTFIX_MET];
+
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Could not set the hotfix metadata: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    return 0;
+}
+
 // Function to save OS info into the DB. Return 0 on success or -1 on error.
 int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release) {
 
@@ -537,29 +562,62 @@ int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 
 // Function to update old Package information from DB. Return 0 on success or -1 on error.
 int wdb_package_update(wdb_t * wdb, const char * scan_id) {
-
-    sqlite3_stmt *stmt = NULL;
+    sqlite3_stmt *stmt_get = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_package_update(): cannot begin transaction");
         return -1;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_UPD) < 0) {
-        mdebug1("at wdb_package_update(): cannot cache statement");
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_GET) < 0) {
+        mdebug1("at wdb_package_update(): cannot cache get statement");
         return -1;
     }
 
-    stmt = wdb->stmt[WDB_STMT_PROGRAM_UPD];
+    stmt_get = wdb->stmt[WDB_STMT_PROGRAM_GET];
+    sqlite3_bind_text(stmt_get, 1, scan_id, -1, NULL);
 
-    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+    int result;
+    while (result = sqlite3_step(stmt_get), result == SQLITE_ROW) {
+        const char *cpe = (const char *) sqlite3_column_text(stmt_get, 0);
+        const char *msu_name = (const char *) sqlite3_column_text(stmt_get, 1);
+        const int triaged = sqlite3_column_int(stmt_get, 2);
+        const char *format = (const char *) sqlite3_column_text(stmt_get, 3);
+        const char *name = (const char *) sqlite3_column_text(stmt_get, 4);
+        const char *vendor = (const char *) sqlite3_column_text(stmt_get, 5);
+        const char *version = (const char *) sqlite3_column_text(stmt_get, 6);
+        const char *arch = (const char *) sqlite3_column_text(stmt_get, 7);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to update the 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
-        return -1;
+        sqlite3_stmt *stmt_update = NULL;
+        if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_UPD) < 0) {
+            mdebug1("at wdb_package_update(): cannot cache update statement");
+            return -1;
+        }
+
+        stmt_update = wdb->stmt[WDB_STMT_PROGRAM_UPD];
+        sqlite3_bind_text(stmt_update, 1, cpe, -1, NULL);
+        sqlite3_bind_text(stmt_update, 2, msu_name, -1, NULL);
+        sqlite3_bind_int(stmt_update, 3, triaged);
+        sqlite3_bind_text(stmt_update, 4, scan_id, -1, NULL);
+        sqlite3_bind_text(stmt_update, 5, format, -1, NULL);
+        sqlite3_bind_text(stmt_update, 6, name, -1, NULL);
+        sqlite3_bind_text(stmt_update, 7, vendor, -1, NULL);
+        sqlite3_bind_text(stmt_update, 8, version, -1, NULL);
+        sqlite3_bind_text(stmt_update, 9, arch, -1, NULL);
+
+        if (sqlite3_step(stmt_update) != SQLITE_DONE) {
+            goto error;
+        }
+    }
+
+    if (result != SQLITE_DONE) {
+        goto error;
     }
 
     return 0;
+error:
+    merror("Unable to update the 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
+    return -1;
 }
 
 // Function to delete old Package information from DB. Return 0 on success or -1 on error.
