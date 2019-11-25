@@ -354,7 +354,14 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
 
     def __or__(self, other):
         result = super().__or__(other)
-        if isinstance(result, wexception.WazuhException):
+        if isinstance(other, wexception.WazuhError):
+            if len(other.ids) > 0:
+                for id_ in other.ids:
+                    self.add_failed_item(id_=id_, error=other)
+                return self
+            else:
+                return other
+        elif isinstance(result, wexception.WazuhException):
             return result
         elif not isinstance(other, AffectedItemsWazuhResult):
             raise wexception.WazuhInternalError(1000, extra_message=f"Cannot be merged with {type(other)} object")
