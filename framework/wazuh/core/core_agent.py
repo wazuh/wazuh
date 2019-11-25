@@ -234,7 +234,7 @@ class Agent:
         try:
             data = db_query.run()['items'][0]
         except IndexError:
-            raise WazuhError(1701, extra_message=str(self.id))
+            raise WazuhError(1701)
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 

@@ -1,7 +1,7 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-import copy
+
 import re
 from collections import defaultdict
 from functools import wraps
@@ -115,7 +115,10 @@ def _black_mode_expansion(final_user_permissions, identifier, black_negation):
     :param black_negation: Set of already negative resources
     """
     if identifier not in black_negation:
-        final_user_permissions[identifier] = _expand_resource(identifier + ':*')
+        try:
+            final_user_permissions[identifier].update(_expand_resource(identifier + ':*'))
+        except TypeError:
+            final_user_permissions[identifier] = _expand_resource(identifier + ':*')
         black_negation.add(identifier)
 
 
@@ -154,7 +157,9 @@ def _permissions_processing(req_resources, user_permissions_for_resource, final_
         req_resources_value[':'.join(element.split(':')[:-1])].add(element.split(':')[-1])
     # If RBAC policies is empty and the RBAC's mode is black, we have the permission over the required resource
     # or if we can't expand the resource, the action is resourceless
-    if len(user_permissions_for_resource.keys()) == 0 and mode == 'black':
+    # With this set we know if a resource is already "deny"
+    black_negation = set()
+    if mode == 'black':
         for req_resource in req_resources:
             identifier = ':'.join(req_resource.split(':')[:-1])
             if identifier == '*:*':
@@ -162,34 +167,30 @@ def _permissions_processing(req_resources, user_permissions_for_resource, final_
             else:
                 expanded_resource = _expand_resource(req_resource)
                 final_user_permissions[identifier].update(expanded_resource)
-    # RBAC policies are not empty or the mode is not black
-    else:
-        # With this set we know if a resource is already "deny"
-        black_negation = set()
-        for user_resource, user_resource_effect in user_permissions_for_resource.items():
-            name, attribute, value = user_resource.split(':')
-            identifier = name + ':' + attribute
-            if identifier == 'agent:group':
-                identifier = 'agent:id'
-            # We expand the resource for the black mode, in this way,
-            # we allow all permissions for the resource (black mode)
-            mode == 'black' and _black_mode_expansion(final_user_permissions, identifier, black_negation)
-            expanded_resource = _expand_resource(user_resource)
-            try:
-                if identifier == '*:*' or (user_resource_effect == 'allow' and
-                                           '*' not in req_resources_value[identifier] and value == '*'):
-                    final_user_permissions[identifier].update(req_resources_value[identifier] - expanded_resource)
+    for user_resource, user_resource_effect in user_permissions_for_resource.items():
+        name, attribute, value = user_resource.split(':')
+        identifier = name + ':' + attribute
+        if identifier == 'agent:group':
+            identifier = 'agent:id'
+        # We expand the resource for the black mode, in this way,
+        # we allow all permissions for the resource (black mode)
+        mode == 'black' and _black_mode_expansion(final_user_permissions, identifier, black_negation)
+        expanded_resource = _expand_resource(user_resource)
+        try:
+            if identifier == '*:*' or (user_resource_effect == 'allow' and
+                                       '*' not in req_resources_value[identifier] and value == '*'):
+                final_user_permissions[identifier].update(req_resources_value[identifier] - expanded_resource)
 
-                _use_expanded_resource(user_resource_effect, final_user_permissions[identifier],
-                                       expanded_resource, req_resources_value[identifier],
-                                       value == '*' and user_resource_effect == 'deny')
-            except KeyError:  # Multiples resources in action and only one is required
-                pass
-                # if len(final_user_permissions[identifier]) == 0:
-                #     final_user_permissions.pop(identifier)
+            _use_expanded_resource(user_resource_effect, final_user_permissions[identifier],
+                                   expanded_resource, req_resources_value[identifier],
+                                   value == '*' and user_resource_effect == 'deny')
+        except KeyError:  # Multiples resources in action and only one is required
+            pass
+            # if len(final_user_permissions[identifier]) == 0:
+            #     final_user_permissions.pop(identifier)
         # If the black mode is enabled we need to sanity the output due the initial expansion
         # (allow all permissions over the resource)
-        mode == 'black' and _black_mode_sanitize(final_user_permissions, req_resources_value)
+    mode == 'black' and _black_mode_sanitize(final_user_permissions, req_resources_value)
 
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
@@ -256,6 +257,15 @@ def _match_permissions(req_permissions: dict = None):
     return allow_match
 
 
+def _get_denied(original, allowed, target_param, res_id):
+    try:
+        return {original[target_param]} - allowed[res_id]
+    except TypeError:
+        return set(original[target_param]) - allowed[res_id]
+    except KeyError:
+        return set()
+
+
 def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowed: dict = None, target: dict = None,
                  add_denied: bool = False,
                  **post_proc_kwargs):
@@ -270,15 +280,11 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
     """
     if add_denied:
         for res_id, target_param in target.items():
-            try:
-                denied = {original[target_param]} - allowed[res_id]
-            except TypeError:
-                denied = set(original[target_param]) - allowed[res_id]
-            except KeyError:
-                denied = set()
+            denied = _get_denied(original, allowed, target_param, res_id)
             for denied_item in denied:
                 result.add_failed_item(id_=denied_item, error=WazuhError(4000,
-                                                                         extra_message=f'Resource type: {res_id}'))
+                                                                         extra_message=f'Resource type: {res_id}',
+                                                                         ids=denied))
     else:
         if 'exclude_codes' in post_proc_kwargs:
             result.remove_failed_items(post_proc_kwargs['exclude_codes'])
@@ -305,7 +311,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
             target_params, req_permissions, add_denied = \
                 _get_required_permissions(actions=actions, resources=resources, **kwargs)
             allow = _match_permissions(req_permissions=req_permissions)
-            original_kwargs = copy.deepcopy(kwargs)
+            original_kwargs = dict(kwargs)
 
             for res_id, target_param in target_params.items():
                 try:
@@ -319,7 +325,11 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                     elif len(allow[res_id]) == 0:
                         raise Exception
                 except Exception:
-                    raise WazuhError(4000)
+                    if add_denied:
+                        denied = _get_denied(original_kwargs, allow, target_param, res_id)
+                        raise WazuhError(4000, extra_message=f'Resource type: {res_id}', ids=denied)
+                    else:
+                        kwargs[target_param] = list()
             result = func(*args, **kwargs)
             if post_proc_func is None:
                 return result
