@@ -758,7 +758,7 @@ int fim_update_inode(char *file, char inode_key[]) {
 }
 #endif
 
-int fim_delete (char * file_name) {
+void fim_delete (char * file_name) {
     fim_entry_data * data;
 
     if (data = rbtree_get(syscheck.fim_entry, file_name), data) {

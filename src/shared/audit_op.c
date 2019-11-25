@@ -285,42 +285,6 @@ int audit_delete_rule(const char *path, const char *key) {
 }
 
 
-int audit_check_lock_output(void) {
-    int retval;
-    int audit_handler;
-
-    int flags = AUDIT_FILTER_TASK;
-
-    audit_handler = audit_open();
-    if (audit_handler < 0) {
-        return (-1);
-    }
-
-    struct audit_rule_data *myrule = NULL;
-    os_malloc(sizeof(struct audit_rule_data), myrule);
-    memset(myrule, 0, sizeof(struct audit_rule_data));
-
-    retval = audit_add_rule_data(audit_handler, myrule, flags, AUDIT_NEVER);
-
-    if (retval == -17) {
-        audit_rule_free_data(myrule);
-        audit_close(audit_handler);
-        return 1;
-    } else {
-        // Delete if it was inserted
-        retval = audit_delete_rule_data(audit_handler, myrule, flags, AUDIT_NEVER);
-        audit_rule_free_data(myrule);
-        audit_close(audit_handler);
-        if (retval < 0) {
-            mdebug2("audit_delete_rule_data = (%i) %s", retval, audit_errno_to_name(abs(retval)));
-            merror("Error removing test rule. Audit output is blocked.");
-            return 1;
-        }
-        return 0;
-    }
-}
-
-
 w_audit_rules_list *audit_rules_list_init(int initialSize) {
     w_audit_rules_list *wlist;
     os_malloc(sizeof(w_audit_rules_list), wlist);

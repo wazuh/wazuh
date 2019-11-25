@@ -162,16 +162,5 @@ int audit_add_rule(const char *path, const char *key);
  */
 int audit_delete_rule(const char *path, const char *key);
 
-
-/**
- * @brief Check if exists the rule '-a task,never'.
- *        This rule blocks the logging from Anudit.
- *
- * @retval 1 if the rule is loaded.
- * @retval 0 if the rule is no loaded.
- * @retval -1 on error.
- */
-int audit_check_lock_output(void);
-
 #endif /* ENABLE_AUDIT */
 #endif /* AUDIT_OP_H */
