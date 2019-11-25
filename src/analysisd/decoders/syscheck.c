@@ -1496,6 +1496,8 @@ int fim_fetch_attributes(cJSON *new_attrs, cJSON *old_attrs, Eventinfo *lf) {
 int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
     cJSON *attr_it;
 
+    assert(lf);
+
     cJSON_ArrayForEach(attr_it, attr) {
         if (!attr_it->string) {
             mdebug1("FIM attribute set contains an item with no key.");

@@ -18,6 +18,7 @@
 #include "wazuh_modules/wmodules.h"
 
 #define is_win_permission(x) (strchr(x, '|'))
+#define print_before_field(x, y) (x && *x && (!y || strcmp(x, y)))
 void add_json_attrs(const char *attrs_str, cJSON *file_diff, char after);
 
 /* Convert Eventinfo to json */
@@ -170,15 +171,15 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if (lf->sym_path && *lf->sym_path) {
             cJSON_AddStringToObject(file_diff, "symbolic_path", lf->sym_path);
         }
-        if(lf->size_before) {
-            if (strcmp(lf->size_before, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "size_before", lf->size_before);
-            }
+
+        if (print_before_field(lf->size_before, lf->fields[FIM_SIZE].value)) {
+            cJSON_AddStringToObject(file_diff, "size_before", lf->size_before);
         }
         if (lf->fields[FIM_SIZE].value && *lf->fields[FIM_SIZE].value) {
             cJSON_AddStringToObject(file_diff, "size_after", lf->fields[FIM_SIZE].value);
         }
-        if (lf->perm_before && *lf->perm_before) {
+
+        if (print_before_field(lf->perm_before, lf->fields[FIM_PERM].value)) {
             if (is_win_permission(lf->perm_before)) {
                 cJSON *old_perm;
                 if (old_perm = win_perm_to_json(lf->perm_before), old_perm) {
@@ -202,67 +203,64 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                 cJSON_AddStringToObject(file_diff, "perm_after", lf->fields[FIM_PERM].value);
             }
         }
-        if (lf->owner_before) {
-            if (strcmp(lf->owner_before, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "uid_before", lf->owner_before);
-            }
+
+        if (print_before_field(lf->owner_before, lf->fields[FIM_UID].value)) {
+            cJSON_AddStringToObject(file_diff, "uid_before", lf->owner_before);
         }
         if (lf->fields[FIM_UID].value && *lf->fields[FIM_UID].value) {
             cJSON_AddStringToObject(file_diff, "uid_after", lf->fields[FIM_UID].value);
         }
-        if(lf->gowner_before) {
-            if (strcmp(lf->gowner_before, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "gid_before", lf->gowner_before);
-            }
+
+        if (print_before_field(lf->gowner_before, lf->fields[FIM_GID].value)) {
+            cJSON_AddStringToObject(file_diff, "gid_before", lf->gowner_before);
         }
         if (lf->fields[FIM_GID].value && *lf->fields[FIM_GID].value) {
             cJSON_AddStringToObject(file_diff, "gid_after", lf->fields[FIM_GID].value);
         }
-        if(lf->md5_before) {
-            if (strcmp(lf->md5_before, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "md5_before", lf->md5_before);
-            }
+
+        if (print_before_field(lf->md5_before, lf->fields[FIM_MD5].value)) {
+            cJSON_AddStringToObject(file_diff, "md5_before", lf->md5_before);
         }
         if (lf->fields[FIM_MD5].value && *lf->fields[FIM_MD5].value) {
             cJSON_AddStringToObject(file_diff, "md5_after", lf->fields[FIM_MD5].value);
         }
-        if(lf->sha1_before) {
-            if (strcmp(lf->sha1_before, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "sha1_before", lf->sha1_before);
-            }
+
+        if (print_before_field(lf->sha1_before, lf->fields[FIM_SHA1].value)) {
+            cJSON_AddStringToObject(file_diff, "sha1_before", lf->sha1_before);
         }
         if (lf->fields[FIM_SHA1].value && *lf->fields[FIM_SHA1].value) {
             cJSON_AddStringToObject(file_diff, "sha1_after", lf->fields[FIM_SHA1].value);
         }
-        if(lf->sha256_before) {
-            if (strcmp(lf->sha256_before, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "sha256_before", lf->sha256_before);
-            }
+
+        if (print_before_field(lf->sha256_before, lf->fields[FIM_SHA256].value)) {
+            cJSON_AddStringToObject(file_diff, "sha256_before", lf->sha256_before);
         }
         if (lf->fields[FIM_SHA256].value && *lf->fields[FIM_SHA256].value) {
             cJSON_AddStringToObject(file_diff, "sha256_after", lf->fields[FIM_SHA256].value);
         }
 
-        add_json_attrs(lf->attributes_before, file_diff, 0);
-        add_json_attrs(lf->fields[FIM_ATTRS].value, file_diff, 1);
-
-        if(lf->uname_before) {
-            if (strcmp(lf->uname_before, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "uname_before", lf->uname_before);
-            }
+        if (print_before_field(lf->attributes_before, lf->fields[FIM_ATTRS].value)) {
+            add_json_attrs(lf->attributes_before, file_diff, 0);
         }
-        if(lf->fields[FIM_UNAME].value && *lf->fields[FIM_UNAME].value) {
+        if (lf->fields[FIM_ATTRS].value) {
+            add_json_attrs(lf->fields[FIM_ATTRS].value, file_diff, 1);
+        }
+
+        if (print_before_field(lf->uname_before, lf->fields[FIM_UNAME].value)) {
+            cJSON_AddStringToObject(file_diff, "uname_before", lf->uname_before);
+        }
+        if (lf->fields[FIM_UNAME].value && *lf->fields[FIM_UNAME].value) {
             cJSON_AddStringToObject(file_diff, "uname_after", lf->fields[FIM_UNAME].value);
         }
-        if(lf->gname_before) {
-            if (strcmp(lf->gname_before, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "gname_before", lf->gname_before);
-            }
+
+        if (print_before_field(lf->gname_before, lf->fields[FIM_GNAME].value)) {
+            cJSON_AddStringToObject(file_diff, "gname_before", lf->gname_before);
         }
         if(lf->fields[FIM_GNAME].value && *lf->fields[FIM_GNAME].value) {
             cJSON_AddStringToObject(file_diff, "gname_after", lf->fields[FIM_GNAME].value);
         }
-        if (lf->mtime_before) {
+
+        if (lf->mtime_before && lf->mtime_before != lf->mtime_after) {
             char mtime[25];
             strftime(mtime, 20, "%FT%T%z", localtime(&lf->mtime_before));
             cJSON_AddStringToObject(file_diff, "mtime_before", mtime);
@@ -272,7 +270,8 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             strftime(mtime, 20, "%FT%T%z", localtime(&lf->mtime_after));
             cJSON_AddStringToObject(file_diff, "mtime_after", mtime);
         }
-        if (lf->inode_before) {
+
+        if (lf->inode_before && lf->inode_before != lf->inode_after) {
             cJSON_AddNumberToObject(file_diff, "inode_before", lf->inode_before);
         }
         if (lf->inode_after) {
@@ -463,15 +462,13 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 }
 
 void add_json_attrs(const char *attrs_str, cJSON *file_diff, char after) {
-    if(attrs_str) {
-        cJSON *attrs = attrs_to_json(attrs_str);
-        if (attrs) {
-            cJSON_AddItemToObject(file_diff,
-                                    after ? "attrs_after" : "attrs_before",
-                                    attrs);
-        } else {
-            merror("The %s file attributes could not be added to the JSON alert.",
-                    after ? "new" : "before");
-        }
+    cJSON *attrs = attrs_to_json(attrs_str);
+    if (attrs) {
+        cJSON_AddItemToObject(file_diff,
+                                after ? "attrs_after" : "attrs_before",
+                                attrs);
+    } else {
+        merror("The %s file attributes could not be added to the JSON alert.",
+                after ? "new" : "before");
     }
 }
