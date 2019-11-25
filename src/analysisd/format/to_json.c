@@ -126,6 +126,8 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             }
             if (tactic_array_size = cJSON_GetArraySize(mitre_tactic_array), tactic_array_size > 0) {
                 cJSON_AddItemToObject(mitre, "tactics", mitre_tactic_array);
+            } else {
+                cJSON_Delete(mitre_tactic_array);
             }
         }
         if(lf->generated_rule->cve) {
