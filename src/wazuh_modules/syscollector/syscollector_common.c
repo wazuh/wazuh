@@ -164,6 +164,9 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys->flags.procinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Running processes inventory is not available for this OS version.");
             #endif
+            #ifdef DEBUG
+                print_rbtree();
+            #endif
         }
 
         time_sleep = time(NULL) - time_start;
@@ -342,8 +345,8 @@ void sys_initialize_datastores() {
 
 // Initialize process_entry_data structure
 void init_process_data_entry(process_entry_data * data) {
-    data->pid = 0;
-    data->ppid = 0;
+    data->pid = INT_MIN;
+    data->ppid = INT_MIN;
     data->name = NULL;
     data->cmd = NULL;
     data->argvs = NULL;
@@ -355,21 +358,22 @@ void init_process_data_entry(process_entry_data * data) {
     data->rgroup = NULL;
     data->sgroup = NULL;
     data->fgroup = NULL;
-    data->priority = 0;
-    data->nice = 0;
-    data->size = 0;
-    data->vm_size = 0;
-    data->resident = 0;
-    data->share = 0;
-    data->start_time = 0;
-    data->utime = 0;
-    data->stime = 0;
-    data->pgrp = 0;
-    data->session = 0;
-    data->nlwp = 0;
-    data->tgid = 0;
-    data->tty = 0;
-    data->processor = 0;
+    data->priority = INT_MIN;
+    data->nice = INT_MIN;
+    data->size = INT_MIN;
+    data->vm_size = INT_MIN;
+    data->resident = INT_MIN;
+    data->share = INT_MIN;
+    data->start_time = INT_MIN;
+    data->utime = INT_MIN;
+    data->stime = INT_MIN;
+    data->pgrp = INT_MIN;
+    data->session = INT_MIN;
+    data->nlwp = INT_MIN;
+    data->tgid = INT_MIN;
+    data->tty = INT_MIN;
+    data->processor = INT_MIN;
+    data->running = INT_MIN;
 }
 
 // Free process_entry_data structure
@@ -412,4 +416,190 @@ void free_process_data(process_entry_data * data) {
     }
 
     os_free(data);
+}
+
+// Insert process into hash table
+int process_insert(char * pid, process_entry_data * data) {
+    if (rbtree_insert(sys->processes_entry, pid, data) == NULL) {
+        mdebug1("Couldn't insert entry, duplicate pid: '%s'", pid);
+        return -1;
+    }
+    return 0;
+}
+
+// Update process to hash table
+int process_update(char * pid, process_entry_data * data) {
+    if (rbtree_replace(sys->processes_entry, pid, data) == NULL) {
+        mdebug1("Unable to update process to db, key not found: '%s'", pid);
+        return -1;
+    }
+    return 0;
+}
+
+// Delete process from hash table
+void process_delete(char * pid) {
+    process_entry_data * data;
+    if (data = rbtree_get(sys->processes_entry, pid), data) {
+        rbtree_delete(sys->processes_entry, pid);
+    }
+}
+
+// Deletes the terminated processes from the hash table
+void check_terminated_processes() {
+    char ** keys;
+    int i;
+
+    w_mutex_lock(&sys->processes_entry_mutex);
+    keys = rbtree_keys(sys->processes_entry);
+    w_mutex_unlock(&sys->processes_entry_mutex);
+
+    for (i = 0; keys[i] != NULL; i++) {
+
+        w_mutex_lock(&sys->processes_entry_mutex);
+
+        process_entry_data * data = rbtree_get(sys->processes_entry, keys[i]);
+
+        if (!data) {
+            w_mutex_unlock(&sys->processes_entry_mutex);
+            continue;
+        }
+
+        if (!data->running) {
+            process_delete(keys[i]);
+        } else {
+            // We reset the running flag
+            data->running = 0;
+        }
+
+        w_mutex_unlock(&sys->processes_entry_mutex);
+    }
+
+    free_strarray(keys);
+
+    return;
+}
+
+// Print processes hash table
+void print_rbtree() {
+    char **keys;
+    process_entry_data * node;
+    int i = 0;
+
+    w_mutex_lock(&sys->processes_entry_mutex);
+    keys = rbtree_keys(sys->processes_entry);
+
+    while(keys[i]) {
+        node = (process_entry_data *) rbtree_get(sys->processes_entry, keys[i]);
+        mdebug2("entry(%d) => (%s)'%d:%s'", i, keys[i], node->pid, node->name);
+        i++;
+    }
+    free_strarray(keys);
+    w_mutex_unlock(&sys->processes_entry_mutex);
+
+    return;
+}
+
+//
+cJSON * process_json_event(process_entry_data *old_data, process_entry_data *new_data, int random_id, char * timestamp) {
+    cJSON *object = cJSON_CreateObject();
+    cJSON *process = cJSON_CreateObject();
+    int i = 0;
+
+    cJSON_AddStringToObject(object, "type", "process");
+    cJSON_AddNumberToObject(object, "ID", random_id);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
+    cJSON_AddItemToObject(object, "process", process);
+
+    cJSON_AddNumberToObject(process, "pid", new_data->pid);
+    if (new_data->name) {
+        cJSON_AddStringToObject(process, "name", new_data->name);
+    }
+    if (new_data->state) {
+        cJSON_AddStringToObject(process, "state", new_data->state);
+    }
+    if (new_data->ppid > INT_MIN) {
+        cJSON_AddNumberToObject(process, "ppid", new_data->ppid);
+    }
+    if (new_data->utime > INT_MIN) {
+        cJSON_AddNumberToObject(process, "utime", new_data->utime);
+    }
+    if (new_data->stime > INT_MIN) {
+        cJSON_AddNumberToObject(process, "stime", new_data->stime);
+    }
+    if (new_data->cmd) {
+        cJSON *argvs = cJSON_CreateArray();
+        cJSON_AddStringToObject(process, "cmd", new_data->cmd);
+        for (i = 0; new_data->argvs[i]; i++) {
+            if (!strlen(new_data->argvs[i]) == 0) {
+                cJSON_AddItemToArray(argvs, cJSON_CreateString(new_data->argvs[i]));
+            }
+        }
+        if (cJSON_GetArraySize(argvs) > 0) {
+            cJSON_AddItemToObject(process, "argvs", argvs);
+        } else {
+            cJSON_Delete(argvs);
+        }
+    }
+    if (new_data->euser) {
+        cJSON_AddStringToObject(process, "euser", new_data->euser);
+    }
+    if (new_data->ruser) {
+        cJSON_AddStringToObject(process, "ruser", new_data->ruser);
+    }
+    if (new_data->suser) {
+        cJSON_AddStringToObject(process, "suser", new_data->suser);
+    }
+    if (new_data->egroup) {
+        cJSON_AddStringToObject(process, "egroup", new_data->egroup);
+    }
+    if (new_data->rgroup) {
+        cJSON_AddStringToObject(process, "rgroup", new_data->rgroup);
+    }
+    if (new_data->sgroup) {
+        cJSON_AddStringToObject(process, "sgroup", new_data->sgroup);
+    }
+    if (new_data->fgroup) {
+        cJSON_AddStringToObject(process, "fgroup", new_data->fgroup);
+    }
+    if (new_data->priority > INT_MIN) {
+        cJSON_AddNumberToObject(process, "priority", new_data->priority);
+    }
+    if (new_data->nice > INT_MIN) {
+        cJSON_AddNumberToObject(process, "nice", new_data->nice);
+    }
+    if (new_data->size > INT_MIN) {
+        cJSON_AddNumberToObject(process, "size", new_data->size);
+    }
+    if (new_data->vm_size > INT_MIN) {
+        cJSON_AddNumberToObject(process, "vm_size", new_data->vm_size);
+    }
+    if (new_data->resident > INT_MIN) {
+        cJSON_AddNumberToObject(process, "resident", new_data->resident);
+    }
+    if (new_data->share > INT_MIN) {
+        cJSON_AddNumberToObject(process, "share", new_data->share);
+    }
+    if (new_data->start_time > INT_MIN) {
+        cJSON_AddNumberToObject(process, "start_time", new_data->start_time);
+    }
+    if (new_data->pgrp > INT_MIN) {
+        cJSON_AddNumberToObject(process, "pgrp", new_data->pgrp);
+    }
+    if (new_data->session > INT_MIN) {
+        cJSON_AddNumberToObject(process, "session", new_data->session);
+    }
+    if (new_data->nlwp > INT_MIN) {
+        cJSON_AddNumberToObject(process, "nlwp", new_data->nlwp);
+    }
+    if (new_data->tgid > INT_MIN) {
+        cJSON_AddNumberToObject(process, "tgid", new_data->tgid);
+    }
+    if (new_data->tty > INT_MIN) {
+        cJSON_AddNumberToObject(process, "tty", new_data->tty);
+    }
+    if (new_data->processor > INT_MIN) {
+        cJSON_AddNumberToObject(process, "processor", new_data->processor);
+    }
+
+    return object;
 }

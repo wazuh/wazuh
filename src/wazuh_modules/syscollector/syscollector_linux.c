@@ -1464,16 +1464,16 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         return;
     }
 
-    int i = 0;
     cJSON *item;
     cJSON *proc_array = cJSON_CreateArray();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
 
-    w_mutex_lock(&sys->processes_entry_mutex);
-
     while (proc_info = readproc(proc, NULL), proc_info != NULL) {
+        cJSON *json_event = NULL;
         process_entry_data * entry_data = NULL;
+        process_entry_data * saved_data = NULL;
+        char * key = NULL;
 
         //Get process attributes
         if (entry_data = get_process_data_linux(proc_info), !entry_data) {
@@ -1481,61 +1481,51 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
             freeproc(proc_info);
             continue;
         }
+        if (entry_data->pid < 0) {
+            mdebug1("COuldn't get pid from process: '%s'", proc_info->cmd);
+            freeproc(proc_info);
+            continue;
+        }
         freeproc(proc_info);
 
-        cJSON *object = cJSON_CreateObject();
-        cJSON *process = cJSON_CreateObject();
-        cJSON_AddStringToObject(object, "type", "process");
-        cJSON_AddNumberToObject(object, "ID", random_id);
-        cJSON_AddStringToObject(object, "timestamp", timestamp);
-        cJSON_AddItemToObject(object, "process", process);
-        cJSON_AddNumberToObject(process, "pid", entry_data->pid);
-        cJSON_AddStringToObject(process, "name", entry_data->cmd);
-        cJSON_AddStringToObject(process, "state", entry_data->state);
-        cJSON_AddNumberToObject(process, "ppid", entry_data->ppid);
-        cJSON_AddNumberToObject(process, "utime", entry_data->utime);
-        cJSON_AddNumberToObject(process, "stime", entry_data->stime);
-        if (entry_data->cmd) {
-            cJSON *argvs = cJSON_CreateArray();
-            cJSON_AddStringToObject(process, "cmd", entry_data->cmd);
-            for (i = 0; entry_data->argvs[i]; i++) {
-                if (!strlen(entry_data->argvs[i]) == 0) {
-                    cJSON_AddItemToArray(argvs, cJSON_CreateString(entry_data->argvs[i]));
-                }
+        w_mutex_lock(&sys->processes_entry_mutex);
+
+        os_calloc(12, sizeof(char), key);
+        sprintf(key, "%d", entry_data->pid);
+        if (saved_data = (process_entry_data *) rbtree_get(sys->processes_entry, key), !saved_data) {
+            // New entry. Insert into hash table
+            if (process_insert(key, entry_data) == -1) {
+                w_mutex_unlock(&sys->processes_entry_mutex);
+                free_process_data(entry_data);
+                mdebug1("Couldn't insert process into hash table: '%s'", entry_data->name);
+                continue;
             }
-            if (cJSON_GetArraySize(argvs) > 0) {
-                cJSON_AddItemToObject(process, "argvs", argvs);
+            json_event = process_json_event(NULL, entry_data, random_id, timestamp);
+        }
+        else {
+            // Checking for changes
+            saved_data->running = 1;
+            if (json_event = process_json_event(saved_data, entry_data, random_id, timestamp), json_event) {
+                if (process_update(key, entry_data) == -1) {
+                    w_mutex_unlock(&sys->processes_entry_mutex);
+                    free_process_data(entry_data);
+                    mdebug1("Couldn't update process in hash table: '%s'", entry_data->name);
+                    continue;
+                }
             } else {
-                cJSON_Delete(argvs);
+                free_process_data(entry_data);
             }
         }
-        cJSON_AddStringToObject(process, "euser", entry_data->euser);
-        cJSON_AddStringToObject(process, "ruser", entry_data->ruser);
-        cJSON_AddStringToObject(process, "suser", entry_data->suser);
-        cJSON_AddStringToObject(process, "egroup", entry_data->egroup);
-        cJSON_AddStringToObject(process, "rgroup", entry_data->rgroup);
-        cJSON_AddStringToObject(process, "sgroup", entry_data->sgroup);
-        cJSON_AddStringToObject(process, "fgroup", entry_data->fgroup);
-        cJSON_AddNumberToObject(process, "priority", entry_data->priority);
-        cJSON_AddNumberToObject(process, "nice", entry_data->nice);
-        cJSON_AddNumberToObject(process, "size", entry_data->size);
-        cJSON_AddNumberToObject(process, "vm_size", entry_data->vm_size);
-        cJSON_AddNumberToObject(process, "resident", entry_data->resident);
-        cJSON_AddNumberToObject(process, "share", entry_data->share);
-        cJSON_AddNumberToObject(process, "start_time", entry_data->start_time);
-        cJSON_AddNumberToObject(process, "pgrp", entry_data->pgrp);
-        cJSON_AddNumberToObject(process, "session", entry_data->session);
-        cJSON_AddNumberToObject(process, "nlwp", entry_data->nlwp);
-        cJSON_AddNumberToObject(process, "tgid", entry_data->tgid);
-        cJSON_AddNumberToObject(process, "tty", entry_data->tty);
-        cJSON_AddNumberToObject(process, "processor", entry_data->processor);
 
-        cJSON_AddItemToArray(proc_array, object);
+        w_mutex_unlock(&sys->processes_entry_mutex);
 
-        free_process_data(entry_data); //////////////////////////////REMOVE
+        if (json_event) {
+            cJSON_AddItemToArray(proc_array, json_event);
+        }
     }
 
-    w_mutex_unlock(&sys->processes_entry_mutex);
+    // Checking for terminated processes
+    check_terminated_processes();
 
     cJSON_ArrayForEach(item, proc_array) {
         string = cJSON_PrintUnformatted(item);
@@ -1616,6 +1606,8 @@ process_entry_data * get_process_data_linux(proc_t * proc_info) {
     data->tgid = proc_info->tgid;
     data->tty = proc_info->tty;
     data->processor = proc_info->processor;
+
+    data->running = 1;
 
     return data;
 }

@@ -108,8 +108,8 @@ typedef struct hw_info {
 } hw_info;
 
 typedef struct process_entry_data {
-    unsigned int pid;
-    unsigned int ppid;
+    int pid;
+    int ppid;
     char * name;
     char * cmd;
     char ** argvs;
@@ -126,21 +126,23 @@ typedef struct process_entry_data {
     int priority;
     int nice;
 
-    unsigned int size;
-    unsigned int vm_size;
-    unsigned int resident;
-    unsigned int share;
+    int size;
+    int vm_size;
+    int resident;
+    int share;
 
-    unsigned int start_time;
-    unsigned int utime;
-    unsigned int stime;
+    int start_time;
+    int utime;
+    int stime;
 
-    unsigned int pgrp;
-    unsigned int session;
-    unsigned int nlwp;
-    unsigned int tgid;
-    unsigned int tty;
-    unsigned int processor;
+    int pgrp;
+    int session;
+    int nlwp;
+    int tgid;
+    int tty;
+    int processor;
+
+    int running;
 } process_entry_data;
 
 typedef struct wm_sys_flags_t {
@@ -317,6 +319,24 @@ process_entry_data * get_process_data_mac(int pid);
 
 // Free process data
 void free_process_data(process_entry_data * data);
+
+// Insert process into hash table
+int process_insert(char * pid, process_entry_data * data);
+
+// Update process to hash table
+int process_update(char * pid, process_entry_data * data);
+
+// Delete process from hash table
+void process_delete(char * pid);
+
+// Deletes the terminated processes from the hash table
+void check_terminated_processes();
+
+// Print processes hash table
+void print_rbtree();
+
+//
+cJSON * process_json_event(process_entry_data *old_data, process_entry_data *new_data, int random_id, char * timestamp);
 
 #endif
 #endif
