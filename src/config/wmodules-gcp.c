@@ -18,6 +18,9 @@ static const char *XML_INTERVAL = "interval";
 static const char *XML_MAX_MESSAGES = "max_messages";
 static const char *XML_PULL_ON_START = "pull_on_start";
 static const char *XML_LOGGING = "logging";
+static const char *XML_SCAN_DAY = "day";
+static const char *XML_WEEK_DAY = "wday";
+static const char *XML_TIME = "time";
 
 static short eval_bool(const char *str) {
     return !str ? OS_INVALID : !strcmp(str, "yes") ? 1 : !strcmp(str, "no") ? 0 : OS_INVALID;
@@ -27,16 +30,17 @@ static short eval_bool(const char *str) {
 
 int wm_gcp_read(xml_node **nodes, wmodule *module) {
     unsigned int i;
+    int month_interval = 0;
     wm_gcp *gcp;
-
-    if (!nodes)
-        return 0;
 
     if (!module->data) {
         os_calloc(1, sizeof(wm_gcp), gcp);
         gcp->enabled = 1;
         gcp->max_messages = 100;
         gcp->project_id = NULL;
+        gcp->scan_wday = -1;
+        gcp->scan_day = 0;
+        gcp->scan_time = NULL;
         gcp->subscription_name = NULL;
         gcp->credentials_file = NULL;
         gcp->pull_on_start = 1;
@@ -67,33 +71,14 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
         }
         else if (!strcmp(nodes[i]->element, XML_PROJECT_ID)) {
             if (strlen(nodes[i]->content) == 0) {
-                merror("Empty content for tag '%s' at module '%s'.", XML_PROJECT_ID, WM_GCP_CONTEXT.name);
+                merror("Empty content for tag '%s' at module '%s'", XML_PROJECT_ID, WM_GCP_CONTEXT.name);
                 return OS_INVALID;
             }
-
-            int is_number = 0;
-            unsigned int j = 0;
-
-            while (j < strlen(nodes[i]->content)) {
-                is_number = isdigit(nodes[i]->content[j]);
-                if (!is_number) {
-                    break;
-                } else {
-                    is_number = 1;
-                }
-                j++;
-            }
-
-            if (is_number) {
-                merror("Tag '%s' from the '%s' module should not be a number.", XML_PROJECT_ID, WM_GCP_CONTEXT.name);
-                return OS_INVALID;
-            }
-
             os_strdup(nodes[i]->content, gcp->project_id);
         }
         else if (!strcmp(nodes[i]->element, XML_SUBSCRIPTION_NAME)) {
             if (strlen(nodes[i]->content) == 0) {
-                merror("Empty content for tag '%s' at module '%s'.", XML_SUBSCRIPTION_NAME, WM_GCP_CONTEXT.name);
+                merror("Empty content for tag '%s' at module '%s'", XML_SUBSCRIPTION_NAME, WM_GCP_CONTEXT.name);
                 return OS_INVALID;
             }
             os_strdup(nodes[i]->content, gcp->subscription_name);
@@ -103,7 +88,7 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
                 merror("File path is too long. Max path length is %d.", PATH_MAX);
                 return OS_INVALID;
             } else if (strlen(nodes[i]->content) == 0) {
-                merror("Empty content for tag '%s' at module '%s'.", XML_CREDENTIALS_FILE, WM_GCP_CONTEXT.name);
+                merror("Empty content for tag '%s' at module '%s'", XML_CREDENTIALS_FILE, WM_GCP_CONTEXT.name);
                 return OS_INVALID;
             }
 
@@ -141,6 +126,10 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
             }
 
             switch (*endptr) {
+                case 'M':
+                    month_interval = 1;
+                    gcp->interval *= 60; // We can`t calculate seconds of a month
+                    break;
                 case 'w':
                     gcp->interval *= 604800;
                     break;
@@ -167,7 +156,8 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
 
-            for(unsigned int j=0; j < strlen(nodes[i]->content); j++) {
+            unsigned int j;
+            for(j=0; j < strlen(nodes[i]->content); j++) {
                 if (!isdigit(nodes[i]->content[j])) {
                     merror("Tag '%s' from the '%s' module should not have an alphabetic character.", XML_MAX_MESSAGES, WM_GCP_CONTEXT.name);
                     return OS_INVALID;
@@ -204,23 +194,77 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
                 merror("Invalid content for tag '%s'", XML_LOGGING);
                 return OS_INVALID;
             }
+        } else if (!strcmp(nodes[i]->element, XML_WEEK_DAY)) {
+            gcp->scan_wday = w_validate_wday(nodes[i]->content);
+            if (gcp->scan_wday < 0 || gcp->scan_wday > 6) {
+                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                return (OS_INVALID);
+            }
+        }
+        else if (!strcmp(nodes[i]->element, XML_SCAN_DAY)) {
+            if (!OS_StrIsNum(nodes[i]->content)) {
+                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                return (OS_INVALID);
+            } else {
+                gcp->scan_day = atoi(nodes[i]->content);
+                if (gcp->scan_day < 1 || gcp    ->scan_day > 31) {
+                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                    return (OS_INVALID);
+                }
+            }
+        }
+        else if (!strcmp(nodes[i]->element, XML_TIME))
+        {
+            gcp->scan_time = w_validate_time(nodes[i]->content);
+            if (!gcp->scan_time) {
+                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                return (OS_INVALID);
+            }
         } else {
             mwarn("No such tag <%s>", nodes[i]->element);
         }
     }
 
+    // Validate scheduled scan parameters and interval value
+
+    if (gcp->scan_day && (gcp->scan_wday >= 0)) {
+        merror("Options 'day' and 'wday' are not compatible.");
+        return OS_INVALID;
+    } else if (gcp->scan_day) {
+        if (!month_interval) {
+            mwarn("Interval must be a multiple of one month. New interval value: 1M");
+            gcp->interval = 60; // 1 month
+        }
+        if (!gcp->scan_time)
+            gcp->scan_time = strdup("00:00");
+    } else if (gcp->scan_wday >= 0) {
+        if (w_validate_interval(gcp->interval, 1) != 0) {
+            gcp->interval = 604800;  // 1 week
+            mwarn("Interval must be a multiple of one week. New interval value: 1w");
+        }
+        if (gcp->interval == 0)
+            gcp->interval = 604800;
+        if (!gcp->scan_time)
+            gcp->scan_time = strdup("00:00");
+    } else if (gcp->scan_time) {
+        if (w_validate_interval(gcp->interval, 0) != 0) {
+            gcp->interval = WM_DEF_INTERVAL;  // 1 day
+            mwarn("Interval must be a multiple of one day. New interval value: 1d");
+        }
+    }
+
     if (!gcp->project_id) {
-        merror("No value defined for tag '%s' in module '%s'.", XML_PROJECT_ID, WM_GCP_CONTEXT.name);
+        merror("No value defined for tag '%s' in module '%s'", XML_PROJECT_ID, WM_GCP_CONTEXT.name);
         return OS_INVALID;
     }
 
     if (!gcp->subscription_name) {
-        merror("No value defined for tag '%s' in module '%s'.", XML_SUBSCRIPTION_NAME, WM_GCP_CONTEXT.name);
+        merror("No value defined for tag '%s' in module '%s'", XML_SUBSCRIPTION_NAME, WM_GCP_CONTEXT.name);
         return OS_INVALID;
     }
 
     if (!gcp->credentials_file) {
-        merror("No value defined for tag '%s' in module '%s'.", XML_CREDENTIALS_FILE, WM_GCP_CONTEXT.name);
+        merror("No value defined for tag '%s' in module '%s'", XML_CREDENTIALS_FILE, WM_GCP_CONTEXT.name);
         return OS_INVALID;
     }
 

@@ -36,7 +36,7 @@ void* wm_gcp_main(wm_gcp *data) {
 
     // If module is disabled, exit
     if (data->enabled) {
-        mtinfo(WM_GCP_LOGTAG, "Module started");
+        mtinfo(WM_GCP_LOGTAG, "Module started.");
     } else {
         mtinfo(WM_GCP_LOGTAG, "Module disabled. Exiting.");
         pthread_exit(NULL);
@@ -45,13 +45,59 @@ void* wm_gcp_main(wm_gcp *data) {
     if (!data->pull_on_start) {
         time_start = time(NULL);
 
+        int status = 0;
+        time_t time_start = 0;
+        time_t time_sleep = 0;
+
+        if (data->scan_day) {
+            do {
+                status = check_day_to_scan(data->scan_day, data->scan_time);
+                if (status == 0) {
+                    time_sleep = get_time_to_hour(data->scan_time);
+                } else {
+                    wm_delay(1000); // Sleep one second to avoid an infinite loop
+                    time_sleep = get_time_to_hour("00:00");
+                }
+
+                mdebug2("Sleeping for %d seconds.", (int)time_sleep);
+                wm_delay(1000 * time_sleep);
+
+            } while (status < 0);
+
+        } else if (data->scan_wday >= 0) {
+
+            time_sleep = get_time_to_day(data->scan_wday, data->scan_time);
+            minfo("Waiting for turn to evaluate.");
+            mdebug2("Sleeping for %d seconds.", (int)time_sleep);
+            wm_delay(1000 * time_sleep);
+
+        } else if (data->scan_time) {
+
+            time_sleep = get_time_to_hour(data->scan_time);
+            minfo("Waiting for turn to evaluate.");
+            mdebug2("Sleeping for %d seconds.", (int)time_sleep);
+            wm_delay(1000 * time_sleep);
+
+        } else if (data->next_time == 0 || data->next_time > time_start) {
+
+            // On first run, take into account the interval of time specified
+            time_sleep = data->next_time == 0 ?
+                        (time_t)data->interval :
+                        data->next_time - time_start;
+
+            minfo("Waiting for turn to evaluate.");
+            mdebug2("Sleeping for %ld seconds.", (long)time_sleep);
+            wm_delay(1000 * time_sleep);
+
+        }
+
         // On first run, take into account the interval of time specified
         if (data->time_interval == 0) {
             data->time_interval = time_start + data->interval;
         }
 
         if (data->time_interval > time_start) {
-            mtinfo(WM_GCP_LOGTAG, "Waiting interval to start fetching.");
+            mtinfo(WM_GCP_LOGTAG, "Waiting for turn to start fetching.");
             time_sleep = data->time_interval - time_start;
             wm_delay(1000 * time_sleep);
         }
@@ -234,6 +280,34 @@ cJSON *wm_gcp_dump(const wm_gcp *data) {
     if (data->project_id) cJSON_AddStringToObject(wm_wd, "project_id", data->project_id);
     if (data->subscription_name) cJSON_AddStringToObject(wm_wd, "subscription_name", data->subscription_name);
     if (data->credentials_file) cJSON_AddStringToObject(wm_wd, "credentials_file", data->credentials_file);
+    if (data->scan_day) cJSON_AddNumberToObject(wm_wd, "day", data->scan_day);
+
+    switch (data->scan_wday) {
+        case 0:
+            cJSON_AddStringToObject(wm_wd, "wday", "sunday");
+            break;
+        case 1:
+            cJSON_AddStringToObject(wm_wd, "wday", "monday");
+            break;
+        case 2:
+            cJSON_AddStringToObject(wm_wd, "wday", "tuesday");
+            break;
+        case 3:
+            cJSON_AddStringToObject(wm_wd, "wday", "wednesday");
+            break;
+        case 4:
+            cJSON_AddStringToObject(wm_wd, "wday", "thursday");
+            break;
+        case 5:
+            cJSON_AddStringToObject(wm_wd, "wday", "friday");
+            break;
+        case 6:
+            cJSON_AddStringToObject(wm_wd, "wday", "saturday");
+            break;
+        default:
+            break;
+    }
+    if (data->scan_time) cJSON_AddStringToObject(wm_wd, "time", data->scan_time);
 
     switch (data->logging) {
         case 0:
