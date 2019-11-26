@@ -1545,7 +1545,7 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
                 dst_data = new_state ? &lf->fields[FIM_SHA1].value : &lf->sha1_before;
             } else if (strcmp(attr_it->string, "hash_sha256") == 0) {
                 dst_data = new_state ? &lf->fields[FIM_SHA256].value : &lf->sha256_before;
-            } else if (strcmp(attr_it->string, "win_attributes") == 0) {
+            } else if (strcmp(attr_it->string, "attributes") == 0) {
                 dst_data = new_state ? &lf->fields[FIM_ATTRS].value : &lf->attributes_before;
             } else if (new_state && strcmp(attr_it->string, "symlink_path") == 0) {
                 dst_data = &lf->fields[FIM_SYM_PATH].value;
