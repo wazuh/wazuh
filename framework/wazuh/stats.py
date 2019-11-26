@@ -25,7 +25,8 @@ cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
 
 
-@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def totals(year, month, day, date=False):
     """
     Returns the totals file.
@@ -105,6 +106,8 @@ def totals(year, month, day, date=False):
     return WazuhResult({'data': response})
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def hourly():
     """
     Returns the hourly averages.
@@ -133,6 +136,8 @@ def hourly():
     return WazuhResult({'averages': averages, 'interactions': interactions})
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def weekly():
     """
     Returns the weekly averages.
@@ -166,7 +171,8 @@ def weekly():
     return WazuhResult(response)
 
 
-@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_daemons_stats(filename):
     """Returns the stats of an input file.
 
@@ -185,7 +191,7 @@ def get_daemons_stats(filename):
 
         try:
             for key, value in items.items():
-                items[key] = float(value[1:-1])  # delete extra quotation marks
+                items[key] = float(value[1:-1])  # Delete extra quotation marks
         except Exception as e:
             return WazuhInternalError(1104, extra_message=str(e))
 
