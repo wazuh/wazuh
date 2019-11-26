@@ -173,7 +173,7 @@ def manager_restart():
 @lru_cache()
 def get_cluster_items():
     try:
-        with open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)) as f:
+        with open('{0}/framework/wazuh/core/cluster/cluster.json'.format(common.ossec_path)) as f:
             cluster_items = json.load(f)
         list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
                  filter(lambda x: 'permissions' in x, cluster_items['files'].values())))
