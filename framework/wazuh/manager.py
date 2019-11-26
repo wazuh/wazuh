@@ -434,7 +434,7 @@ def delete_file(path):
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:restart"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def restart():
     """Wrapper for 'restart_manager' function due to interdependencies with cluster module and permission access. """
