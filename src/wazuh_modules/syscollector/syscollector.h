@@ -314,8 +314,11 @@ process_entry_data * get_process_data_windows(PROCESSENTRY32 * pe);
 process_entry_data * get_process_data_linux(proc_t * proc_info);
 #elif defined(__MACH__)
 // Fill process data for MAC OS X
-process_entry_data * get_process_data_mac(int pid);
+process_entry_data * get_process_data_mac(pid_t pid);
 #endif
+
+// Analyze if insert new process or update an existing one
+cJSON * analyze_process(process_entry_data * entry_data, int random_id, char * timestamp);
 
 // Free process data
 void free_process_data(process_entry_data * data);
@@ -336,7 +339,7 @@ void check_terminated_processes();
 void print_rbtree();
 
 //
-cJSON * process_json_event(process_entry_data *old_data, process_entry_data *new_data, int random_id, char * timestamp);
+cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, int random_id, char * timestamp);
 
 #endif
 #endif

@@ -1470,56 +1470,19 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
 
     while (proc_info = readproc(proc, NULL), proc_info != NULL) {
-        cJSON *json_event = NULL;
+        cJSON * json_event = NULL;
         process_entry_data * entry_data = NULL;
-        process_entry_data * saved_data = NULL;
-        char * key = NULL;
 
-        //Get process attributes
+        // Get process attributes
         if (entry_data = get_process_data_linux(proc_info), !entry_data) {
             mdebug1("Couldn't get attributes for process: '%s'", proc_info->cmd);
             freeproc(proc_info);
             continue;
         }
-        if (entry_data->pid < 0) {
-            mdebug1("COuldn't get pid from process: '%s'", proc_info->cmd);
-            freeproc(proc_info);
-            continue;
-        }
         freeproc(proc_info);
 
-        w_mutex_lock(&sys->processes_entry_mutex);
-
-        os_calloc(12, sizeof(char), key);
-        sprintf(key, "%d", entry_data->pid);
-        if (saved_data = (process_entry_data *) rbtree_get(sys->processes_entry, key), !saved_data) {
-            // New entry. Insert into hash table
-            if (process_insert(key, entry_data) == -1) {
-                w_mutex_unlock(&sys->processes_entry_mutex);
-                free_process_data(entry_data);
-                mdebug1("Couldn't insert process into hash table: '%s'", entry_data->name);
-                continue;
-            }
-            json_event = process_json_event(NULL, entry_data, random_id, timestamp);
-        }
-        else {
-            // Checking for changes
-            saved_data->running = 1;
-            if (json_event = process_json_event(saved_data, entry_data, random_id, timestamp), json_event) {
-                if (process_update(key, entry_data) == -1) {
-                    w_mutex_unlock(&sys->processes_entry_mutex);
-                    free_process_data(entry_data);
-                    mdebug1("Couldn't update process in hash table: '%s'", entry_data->name);
-                    continue;
-                }
-            } else {
-                free_process_data(entry_data);
-            }
-        }
-
-        w_mutex_unlock(&sys->processes_entry_mutex);
-
-        if (json_event) {
+        // Check if it is necessary to create a process event
+        if (json_event = analyze_process(entry_data, random_id, timestamp), json_event) {
             cJSON_AddItemToArray(proc_array, json_event);
         }
     }
@@ -1564,8 +1527,13 @@ process_entry_data * get_process_data_linux(proc_t * proc_info) {
     data->pid = proc_info->tid;
     data->ppid = proc_info->ppid;
 
-    os_strdup(proc_info->cmd, data->name);
-    os_strdup(&proc_info->state, data->state);
+    if (proc_info->cmd) {
+        os_strdup(proc_info->cmd, data->name);
+    }
+
+    if (&proc_info->state) {
+        os_strdup(&proc_info->state, data->state);
+    }
 
     os_malloc(sizeof(char *), data->argvs);
     if (proc_info->cmdline && proc_info->cmdline[0]) {
@@ -1580,13 +1548,33 @@ process_entry_data * get_process_data_linux(proc_t * proc_info) {
     }
     data->argvs[pos] = NULL;
 
-    os_strdup(proc_info->euser, data->euser);
-    os_strdup(proc_info->ruser, data->ruser);
-    os_strdup(proc_info->suser, data->suser);
-    os_strdup(proc_info->egroup, data->egroup);
-    os_strdup(proc_info->egroup, data->rgroup);
-    os_strdup(proc_info->egroup, data->sgroup);
-    os_strdup(proc_info->egroup, data->fgroup);
+    if (proc_info->euser) {
+        os_strdup(proc_info->euser, data->euser);
+    }
+
+    if (proc_info->ruser) {
+        os_strdup(proc_info->ruser, data->ruser);
+    }
+
+    if (proc_info->suser) {
+        os_strdup(proc_info->suser, data->suser);
+    }
+
+    if (proc_info->egroup) {
+        os_strdup(proc_info->egroup, data->egroup);
+    }
+
+    if (proc_info->rgroup) {
+        os_strdup(proc_info->rgroup, data->rgroup);
+    }
+
+    if (proc_info->sgroup) {
+        os_strdup(proc_info->sgroup, data->sgroup);
+    }
+
+    if (proc_info->fgroup) {
+        os_strdup(proc_info->fgroup, data->fgroup);
+    }
 
     data->priority = proc_info->priority;
     data->nice = proc_info->nice;

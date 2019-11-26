@@ -1556,83 +1556,23 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
 
     int index;
     for(index=0; index < count; ++index) {
+        cJSON * json_event = NULL;
+        process_entry_data * entry_data = NULL;
 
-        struct proc_taskallinfo task_info;
-        pid_t pid = pids[index] ;
-
-        int st = proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &task_info, PROC_PIDTASKALLINFO_SIZE);
-
-        if(st != PROC_PIDTASKALLINFO_SIZE) {
-            mterror(WM_SYS_LOGTAG, "Cannot get process info for PID %d", pid);
+        // Get process attributes
+        if (entry_data = get_process_data_mac(pids[index]), !entry_data) {
             continue;
         }
 
-        cJSON *object = cJSON_CreateObject();
-        cJSON_AddStringToObject(object, "type", "process");
-        cJSON_AddNumberToObject(object, "ID", random_id);
-        cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-        cJSON *process = cJSON_CreateObject();
-        cJSON_AddItemToObject(object, "process", process);
-        cJSON_AddNumberToObject(process, "pid", pid);
-
-        /*
-            I : Idle
-            R : Running
-            S : Sleep
-            T : Stopped
-            Z : Zombie
-            E : Internal error getting the status
-        */
-        char *status;
-        switch(task_info.pbsd.pbi_status){
-            case 1:
-                status = "I";
-                break;
-            case 2:
-                status = "R";
-                break;
-            case 3:
-                status = "S";
-                break;
-            case 4:
-                status = "T";
-                break;
-            case 5:
-                status = "Z";
-                break;
-            default:
-                mtdebug1(WM_SYS_LOGTAG, "Error getting the status of the process %d", pid);
-                status = "E";
+        // Check if it is necessary to create a process event
+        if (json_event = analyze_process(entry_data, random_id, timestamp), json_event) {
+            cJSON_AddItemToArray(proc_array, json_event);
         }
-
-        cJSON_AddStringToObject(process, "name", task_info.pbsd.pbi_name);
-        cJSON_AddStringToObject(process, "state", status);
-        cJSON_AddNumberToObject(process, "ppid", task_info.pbsd.pbi_ppid);
-
-        struct passwd *euser = getpwuid((int)task_info.pbsd.pbi_uid);
-        if(euser) {
-            cJSON_AddStringToObject(process, "euser", euser->pw_name);
-        }
-
-        struct passwd *ruser = getpwuid((int)task_info.pbsd.pbi_ruid);
-        if(ruser) {
-            cJSON_AddStringToObject(process, "ruser", ruser->pw_name);
-        }
-
-        struct group *rgroup = getgrgid((int)task_info.pbsd.pbi_rgid);
-        if(rgroup) {
-            cJSON_AddStringToObject(process, "rgroup", rgroup->gr_name);
-        }
-
-        cJSON_AddNumberToObject(process, "priority", task_info.ptinfo.pti_priority);
-        cJSON_AddNumberToObject(process, "nice", task_info.pbsd.pbi_nice);
-        cJSON_AddNumberToObject(process, "vm_size", task_info.ptinfo.pti_virtual_size / 1024);
-
-        cJSON_AddItemToArray(proc_array, object);
     }
-
     os_free(pids);
+
+    // Checking for terminated processes
+    check_terminated_processes();
 
     cJSON *item;
     cJSON_ArrayForEach(item, proc_array) {
@@ -1657,8 +1597,84 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
 }
 
 // Get data from process
-process_entry_data * get_process_data_mac(int pid) {
-    return NULL;
+process_entry_data * get_process_data_mac(pid_t pid) {
+    struct proc_taskallinfo task_info;
+    process_entry_data * data = NULL;
+
+    os_calloc(1, sizeof(process_entry_data), data);
+    init_process_data_entry(data);
+
+    int st = proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &task_info, PROC_PIDTASKALLINFO_SIZE);
+
+    if(st != PROC_PIDTASKALLINFO_SIZE) {
+        mterror(WM_SYS_LOGTAG, "Cannot get process info for PID %d", pid);
+        return NULL;
+    }
+
+    /*
+        I : Idle
+        R : Running
+        S : Sleep
+        T : Stopped
+        Z : Zombie
+        E : Internal error getting the status
+    */
+    char *status;
+    switch(task_info.pbsd.pbi_status){
+        case 1:
+            status = "I";
+            break;
+        case 2:
+            status = "R";
+            break;
+        case 3:
+            status = "S";
+            break;
+        case 4:
+            status = "T";
+            break;
+        case 5:
+            status = "Z";
+            break;
+        default:
+            mtdebug1(WM_SYS_LOGTAG, "Error getting the status of the process %d", pid);
+            status = "E";
+    }
+
+    data->pid = pid;
+    data->ppid = task_info.pbsd.pbi_ppid;
+
+    if (task_info.pbsd.pbi_name) {
+        os_strdup(task_info.pbsd.pbi_name, data->name);
+    }
+
+    if (status) {
+        os_strdup(status, data->state);
+    }
+
+    struct passwd *euser = getpwuid((int)task_info.pbsd.pbi_uid);
+    if(euser) {
+        os_strdup(euser->pw_name, data->euser);
+    }
+
+    struct passwd *ruser = getpwuid((int)task_info.pbsd.pbi_ruid);
+    if(ruser) {
+        os_strdup(ruser->pw_name, data->ruser);
+    }
+
+    struct group *rgroup = getgrgid((int)task_info.pbsd.pbi_rgid);
+    if(rgroup) {
+        os_strdup(rgroup->gr_name, data->suser);
+    }
+
+    data->priority = task_info.ptinfo.pti_priority;
+    data->nice = task_info.pbsd.pbi_nice;
+
+    data->vm_size = task_info.ptinfo.pti_virtual_size / 1024;
+
+    data->running = 1;
+
+    return data;
 }
 
 #endif

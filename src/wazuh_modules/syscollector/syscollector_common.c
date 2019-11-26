@@ -418,6 +418,47 @@ void free_process_data(process_entry_data * data) {
     os_free(data);
 }
 
+// Analyze if insert new process or update an existing one
+cJSON * analyze_process(process_entry_data * entry_data, int random_id, char * timestamp) {
+    cJSON * json_event = NULL;
+    process_entry_data * saved_data = NULL;
+    char * key = NULL;
+
+    os_calloc(12, sizeof(char), key);
+    sprintf(key, "%d", entry_data->pid);
+
+    w_mutex_lock(&sys->processes_entry_mutex);
+
+    if (saved_data = (process_entry_data *) rbtree_get(sys->processes_entry, key), !saved_data) {
+        // New entry. Insert into hash table
+        if (process_insert(key, entry_data) == -1) {
+            w_mutex_unlock(&sys->processes_entry_mutex);
+            free_process_data(entry_data);
+            mdebug1("Couldn't insert process into hash table: '%s'", entry_data->name);
+            return NULL;
+        }
+        json_event = process_json_event(NULL, entry_data, random_id, timestamp);
+    }
+    else {
+        // Checking for changes
+        saved_data->running = 1;
+        if (json_event = process_json_event(saved_data, entry_data, random_id, timestamp), json_event) {
+            if (process_update(key, entry_data) == -1) {
+                w_mutex_unlock(&sys->processes_entry_mutex);
+                free_process_data(entry_data);
+                mdebug1("Couldn't update process in hash table: '%s'", entry_data->name);
+                return NULL;
+            }
+        } else {
+            free_process_data(entry_data);
+        }
+    }
+
+    w_mutex_unlock(&sys->processes_entry_mutex);
+
+    return json_event;
+}
+
 // Insert process into hash table
 int process_insert(char * pid, process_entry_data * data) {
     if (rbtree_insert(sys->processes_entry, pid, data) == NULL) {
@@ -500,7 +541,7 @@ void print_rbtree() {
 }
 
 //
-cJSON * process_json_event(process_entry_data *old_data, process_entry_data *new_data, int random_id, char * timestamp) {
+cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, int random_id, char * timestamp) {
     cJSON *object = cJSON_CreateObject();
     cJSON *process = cJSON_CreateObject();
     int i = 0;
@@ -527,17 +568,20 @@ cJSON * process_json_event(process_entry_data *old_data, process_entry_data *new
         cJSON_AddNumberToObject(process, "stime", new_data->stime);
     }
     if (new_data->cmd) {
-        cJSON *argvs = cJSON_CreateArray();
         cJSON_AddStringToObject(process, "cmd", new_data->cmd);
-        for (i = 0; new_data->argvs[i]; i++) {
-            if (!strlen(new_data->argvs[i]) == 0) {
-                cJSON_AddItemToArray(argvs, cJSON_CreateString(new_data->argvs[i]));
+        if (new_data->argvs)
+        {
+            cJSON *argvs = cJSON_CreateArray();
+            for (i = 0; new_data->argvs[i]; i++) {
+                if (!strlen(new_data->argvs[i]) == 0) {
+                    cJSON_AddItemToArray(argvs, cJSON_CreateString(new_data->argvs[i]));
+                }
             }
-        }
-        if (cJSON_GetArraySize(argvs) > 0) {
-            cJSON_AddItemToObject(process, "argvs", argvs);
-        } else {
-            cJSON_Delete(argvs);
+            if (cJSON_GetArraySize(argvs) > 0) {
+                cJSON_AddItemToObject(process, "argvs", argvs);
+            } else {
+                cJSON_Delete(argvs);
+            }
         }
     }
     if (new_data->euser) {
