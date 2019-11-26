@@ -1438,16 +1438,14 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             OS_ClearNode(children);
         /* Set priority process this value should be between -20 and 19 */
         } else if (strcmp(node[i]->element, xml_process_priority) == 0) {
-            if (!OS_StrIsNum(node[i]->content)) {
+            char * end;
+            long value = strtol(node[i]->content, &end, 10);
+
+            if (value < -20 || value > 19 || *end) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
-            }
-
-            syscheck->process_priority = atoi(node[i]->content);
-
-            if (syscheck->process_priority < -20 || syscheck->process_priority > 19) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
+            } else {
+                syscheck->process_priority = value;
             }
         } else if (strcmp(node[i]->element, xml_inventory) == 0) {
             children = OS_GetElementsbyNode(xml, node[i]);
