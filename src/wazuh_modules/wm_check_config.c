@@ -104,8 +104,8 @@ void *wm_chk_conf_main() {
 
                 if(output) {
                     cJSON *data_array = cJSON_CreateArray();
+                    char *json_data;
                     char *current_message;
-                    char *output_data = NULL;
 
                     if(result) {
                         cJSON_AddStringToObject(json_output, "error", "1");
@@ -114,19 +114,24 @@ void *wm_chk_conf_main() {
                     }
 
                     for (current_message = strtok(output, "\n"); current_message; current_message = strtok(NULL, "\n")) {
+                        char *output_data = NULL;
                         cJSON *validator = cJSON_CreateObject();
 
-                        if(!strcmp(current_message, "WARNING")) {
+                        if(!strncmp(current_message, "WARNING", 7)) {
                             cJSON_AddStringToObject(validator, "type", "WARNING");
-                            output_data = strdup(current_message + 9);
-                        } else if(!strcmp(current_message, "INFO")) {
+                            output_data = current_message + 9;
+                        } else if(!strncmp(current_message, "INFO", 4)) {
                             cJSON_AddStringToObject(validator, "type", "INFO");
-                            output_data = strdup(current_message + 6);
+                            output_data = current_message + 6;
                         } else if (result){
                             cJSON_AddStringToObject(validator, "type", "ERROR");
-                            output_data = strdup(current_message + 7);
+                            if(!strncmp(current_message, "ERROR", 5)){
+                                output_data = current_message + 7;
+                            } else {
+                                output_data = current_message;
+                            }
                         } else {
-                            output_data = strdup(current_message);
+                            output_data = current_message;
                         }
 
                         cJSON_AddStringToObject(validator, "message", output_data);
@@ -136,10 +141,10 @@ void *wm_chk_conf_main() {
 
                     os_free(output);
                     output = strdup("ok");
-                    wm_strcat(&output, cJSON_PrintUnformatted(json_output), ' ');
+                    json_data = cJSON_PrintUnformatted(json_output);
+                    wm_strcat(&output, json_data, ' ');
 
-                    os_free(current_message);
-                    os_free(output_data);
+                    os_free(json_data);
                 } else {
                     cJSON_AddStringToObject(json_output, "error", "1");
                     cJSON_AddStringToObject(json_output, "data", "failure testing the configuration file");
