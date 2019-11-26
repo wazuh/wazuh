@@ -33,6 +33,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_label = "label";
     const char *xml_localfile_target = "target";
     const char *xml_localfile_outformat = "out_format";
+    const char *xml_localfile_reconnect_time = "reconnect_time";
     const char *xml_localfile_age = "age";
     const char *xml_localfile_exclude = "exclude";
     const char *xml_localfile_binaries = "ignore_binaries";
@@ -79,6 +80,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logf[pl].ign = 360;
     logf[pl].exists = 1;
     logf[pl].future = 1;
+    logf[pl].reconnect_time = DEFAULT_EVENTCHANNEL_REC_TIME;
 
     /* Search for entries related to files */
     i = 0;
@@ -138,6 +140,35 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             logf[pl].out_format[n]->target = target ? strdup(target) : NULL;
             os_strdup(node[i]->content, logf[pl].out_format[n]->format);
             logf[pl].out_format[n + 1] = NULL;
+        } else if (strcmp(node[i]->element, xml_localfile_reconnect_time) == 0) {
+            char *c;
+            int time = strtoul(node[i]->content, &c, 0);
+            if(time) {
+                switch (c[0]) {
+                case 'w':
+                    time *= 604800;
+                    break;
+                case 'd':
+                    time *= 86400;
+                    break;
+                case 'h':
+                    time *= 3600;
+                    break;
+                case 'm':
+                    time *= 60;
+                    break;
+                case 's':
+                    break;
+                default:
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                }
+            }
+            if(time < 1 ||  time == UINT_MAX){
+                mwarn("Invalid reconnection time value. Changed to %d seconds.", DEFAULT_EVENTCHANNEL_REC_TIME);
+                time = DEFAULT_EVENTCHANNEL_REC_TIME;
+            }
+            logf[pl].reconnect_time = time;
         } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {
             flags.hidden = flags.system = 0;
             char *key_value = 0;
