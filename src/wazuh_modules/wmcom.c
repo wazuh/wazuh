@@ -27,14 +27,14 @@ size_t wmcom_dispatch(char * command, char ** output){
         // getconfig section
         if (!rcv_args){
             mdebug1("WMCOM getconfig needs arguments.");
-            *output = strdup("err WMCOM getconfig needs arguments");
+            os_strdup("err WMCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return wmcom_getconfig(rcv_args, output);
 
     } else {
         mdebug1("WMCOM Unrecognized command '%s'.", rcv_comm);
-        *output = strdup("err Unrecognized command");
+        os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
 }
@@ -46,7 +46,7 @@ size_t wmcom_getconfig(const char * section, char ** output) {
 
     if (strcmp(section, "wmodules") == 0){
         if (cfg = getModulesConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -57,7 +57,7 @@ size_t wmcom_getconfig(const char * section, char ** output) {
         }
     } else if (strcmp(section, "internal_options") == 0){
         if (cfg = getModulesInternalOptions(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -71,7 +71,7 @@ size_t wmcom_getconfig(const char * section, char ** output) {
     }
 error:
     mdebug1("At WMCOM getconfig: Could not get '%s' section", section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
 

@@ -196,7 +196,7 @@ int k_extract(const char *cmdextract, int json_output)
         json_root = cJSON_CreateObject();
 
     if (cmdextract) {
-        user_input = strdup(cmdextract);
+        os_strdup(cmdextract, user_input);
         FormatID(user_input);
 
         if (!IDExist(user_input, 1)) {
