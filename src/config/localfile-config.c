@@ -80,7 +80,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logf[pl].ign = 360;
     logf[pl].exists = 1;
     logf[pl].future = 1;
-    logf[pl].reconnect_time = MIN_EVENTCHANNEL_REC_TIME;
+    logf[pl].reconnect_time = DEFAULT_EVENTCHANNEL_REC_TIME;
 
     /* Search for entries related to files */
     i = 0;
@@ -164,9 +164,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     return (OS_INVALID);
                 }
             }
-            if(time < MIN_EVENTCHANNEL_REC_TIME){
-                mwarn("Reconnection time too low. Changed to %d seconds.", MIN_EVENTCHANNEL_REC_TIME);
-                time = MIN_EVENTCHANNEL_REC_TIME;
+            if(time < 1 ||  time == UINT_MAX){
+                mwarn("Invalid reconnection time value. Changed to %d seconds.", DEFAULT_EVENTCHANNEL_REC_TIME);
+                time = DEFAULT_EVENTCHANNEL_REC_TIME;
             }
             logf[pl].reconnect_time = time;
         } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {

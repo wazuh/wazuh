@@ -14,7 +14,7 @@
 #define EVENTLOG     "eventlog"
 #define EVENTCHANNEL "eventchannel"
 #define DATE_MODIFIED   1
-#define MIN_EVENTCHANNEL_REC_TIME 5
+#define DEFAULT_EVENTCHANNEL_REC_TIME 5
 
 #include <pthread.h>
 
