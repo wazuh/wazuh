@@ -39,14 +39,14 @@ install:
 ifneq (,$(filter ${USE_FRAMEWORK_LIB},yes y Y 1))
 	$(INSTALL_DIR) $(PREFIX)/framework/lib
 endif
-	$(INSTALL_DIR) $(PREFIX)/framework/wazuh/cluster
-	$(INSTALL_DIR) $(PREFIX)/framework/wazuh/cluster/dapi
+	$(INSTALL_DIR) $(PREFIX)/framework/wazuh/core/cluster
+	$(INSTALL_DIR) $(PREFIX)/framework/wazuh/core/cluster/dapi
 
 	$(INSTALL_FILE) scripts/*.py ${PREFIX}/framework/scripts
 	$(INSTALL_FILE) wazuh/*.py ${PREFIX}/framework/wazuh
-	$(INSTALL_FILE) wazuh/cluster/*.json ${PREFIX}/framework/wazuh/cluster
-	$(INSTALL_FILE) wazuh/cluster/*.py ${PREFIX}/framework/wazuh/cluster
-	$(INSTALL_FILE) wazuh/cluster/dapi/*.py ${PREFIX}/framework/wazuh/cluster/dapi
+	$(INSTALL_FILE) wazuh/core/cluster/*.json ${PREFIX}/framework/wazuh/core/cluster
+	$(INSTALL_FILE) wazuh/core/cluster/*.py ${PREFIX}/framework/wazuh/core/cluster
+	$(INSTALL_FILE) wazuh/core/cluster/dapi/*.py ${PREFIX}/framework/wazuh/core/cluster/dapi
 ifneq (,$(filter ${USE_FRAMEWORK_LIB},yes y Y 1))
 	$(INSTALL_FILE) libsqlite3.so.0 ${PREFIX}/framework/lib/
 endif
