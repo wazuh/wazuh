@@ -47,7 +47,7 @@ static int fim_process_alert(_sdb *sdb, Eventinfo *lf, cJSON *event);
 
 // Generate fim alert
 static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
-        time_t event_time, cJSON *attributes, cJSON *old_attributes, cJSON *audit);
+        cJSON *attributes, cJSON *old_attributes, cJSON *audit);
 
 // Send save query to Wazuh DB
 static void fim_send_db_save(_sdb * sdb, const char * agent_id, cJSON * data);
@@ -1155,7 +1155,6 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     cJSON *object = NULL;
     char *mode = NULL;
     char *event_type = NULL;
-    time_t event_time = 0;
 
     cJSON_ArrayForEach(object, event) {
         if (object->string == NULL) {
@@ -1164,13 +1163,6 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         }
 
         switch (object->type) {
-        case cJSON_Number:
-            if (strcmp(object->string, "timestamp") == 0) {
-                event_time = (time_t)object->valuedouble;
-            }
-
-            break;
-
         case cJSON_String:
             if (strcmp(object->string, "path") == 0) {
                 os_strdup(object->valuestring, lf->filename);
@@ -1236,7 +1228,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
 
     lf->decoder_syscheck_id = lf->decoder_info->id;
 
-    fim_generate_alert(lf, mode, event_type, event_time, attributes, old_attributes, audit);
+    fim_generate_alert(lf, mode, event_type, attributes, old_attributes, audit);
 
     switch (lf->event_type) {
     case FIM_ADDED:
@@ -1322,7 +1314,7 @@ end:
 
 
 static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
-    time_t event_time, cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
+    cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
 
     cJSON *object = NULL;
     char change_size[OS_FLSIZE + 1] = {'\0'};
@@ -1416,21 +1408,16 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
     }
 
     // Provide information about the file
-    char str_time[DATE_LENGTH];
     char changed_attributes[OS_SIZE_256];
-
-    strftime(str_time, sizeof(str_time), "%D %T", localtime(&event_time));
     snprintf(changed_attributes, OS_SIZE_256, "Changed attributes: %s\n", lf->fields[FIM_CHFIELDS].value);
 
     snprintf(lf->full_log, OS_MAXSTR,
             "File '%.756s' %s\n"
             "Mode: %s\n"
-            "Event time: %s\n"
             "%s"
             "%s%s%s%s%s%s%s%s%s%s%s%s",
             lf->fields[FIM_FILE].value, event_type,
             mode,
-            str_time,
             lf->fields[FIM_CHFIELDS].value ? changed_attributes : "",
             change_size,
             change_perm,
