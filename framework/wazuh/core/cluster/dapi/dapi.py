@@ -74,13 +74,12 @@ class DistributedAPI:
 
         :return: Dictionary with API response or WazuhException in case of error
         """
-
         try:
             self.logger.debug("Receiving parameters {}".format(self.f_kwargs))
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
             is_cluster_disabled = self.node == local_client and cluster.check_cluster_status()
 
-            # if it is a cluster API request and the cluster is not enabled, raise an exception
+            # If it is a cluster API request and the cluster is not enabled, raise an exception
             if is_cluster_disabled and 'cluster' in self.f.__name__ and \
                     self.f.__name__ != '/cluster/status' and \
                     self.f.__name__ != '/cluster/config' and \
@@ -190,15 +189,17 @@ class DistributedAPI:
 
             if self.is_async:
                 task = run_local()
-                try:
-                    data = await asyncio.wait_for(task, timeout=timeout)
-                except asyncio.TimeoutError:
-                    raise exception.WazuhException(3021)
-                finally:
-                    if self.local_client_arg is not None:
-                        lc.transport.close()
             else:
-                data = run_local()
+                loop = asyncio.get_running_loop()
+                task = loop.run_in_executor(self.threadpool, run_local)
+
+            try:
+                data = await asyncio.wait_for(task, timeout=timeout)
+            except asyncio.TimeoutError:
+                raise exception.WazuhException(3021)
+            finally:
+                if self.local_client_arg is not None:
+                    lc.transport.close()
 
             after = time.time()
             self.logger.debug("Time calculating request result: {}s".format(after - before))

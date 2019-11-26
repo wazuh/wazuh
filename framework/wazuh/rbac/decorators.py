@@ -8,7 +8,7 @@ from functools import wraps
 
 from api import configuration
 from api.authentication import AuthenticationManager
-from wazuh.common import rbac, broadcast
+from wazuh.common import rbac, broadcast, my_cluster
 from wazuh.configuration import get_ossec_conf
 from wazuh.core.cdb_list import iterate_lists
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
@@ -76,10 +76,7 @@ def _expand_resource(resource):
         elif resource_type == 'list:path':
             return {cdb_list['path'] for cdb_list in iterate_lists(only_names=True)}
         elif resource_type == 'node:id':
-            # import pydevd_pycharm
-            # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
-            # lc = local_client.LocalClient()
-            # return set(get_nodes(lc)['items'])
+            # return {node['name'] for node in my_cluster.system_nodes['items']}
             return {'master-node', 'worker1', 'worker2'}
         return set()
     # We return the value casted to set
@@ -263,13 +260,13 @@ def _match_permissions(req_permissions: dict = None):
     return allow_match
 
 
-def _get_denied(original, allowed, target_param, res_id):
+def _get_denied(original, allowed, target_param, res_id, resources=None):
     try:
         return {original[target_param]} - allowed[res_id]
     except TypeError:
         return set(original[target_param]) - allowed[res_id]
     except KeyError:
-        return set()
+        return {res.split(':')[2] for res in resources} if resources is not None else {}
 
 
 def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowed: dict = None, target: dict = None,
@@ -284,6 +281,8 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
     :param add_denied: Flag to add denied permissions to answer
     :return: WazuhResult
     """
+    # if not isinstance(result, AffectedItemsWazuhResult):
+    #     result = AffectedItemsWazuhResult()
     if add_denied:
         for res_id, target_param in target.items():
             denied = _get_denied(original, allowed, target_param, res_id)
@@ -332,7 +331,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                         raise Exception
                 except Exception:
                     if add_denied:
-                        denied = _get_denied(original_kwargs, allow, target_param, res_id)
+                        denied = _get_denied(original_kwargs, allow, target_param, res_id, resources)
                         raise WazuhError(4000, extra_message=f'Resource type: {res_id}', ids=denied)
                     else:
                         kwargs[target_param] = list()

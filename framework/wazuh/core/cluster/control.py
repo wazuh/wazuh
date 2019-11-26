@@ -50,10 +50,6 @@ async def get_node(lc: local_client.LocalClient, filter_node=None, select=None):
     else:
         return {}
 
-# import asyncio
-# from asgiref.sync import async_to_sync
-# @async_to_sync
-
 
 async def get_health(lc: local_client.LocalClient, filter_node=None):
     result = json.loads(await lc.execute(command=b'get_health',

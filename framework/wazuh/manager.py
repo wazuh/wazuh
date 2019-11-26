@@ -25,8 +25,7 @@ from wazuh.core.core_agent import Agent
 from wazuh.core.cluster.utils import get_manager_status, get_cluster_status, manager_restart, read_cluster_config
 from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.utils import previous_month, tail, load_wazuh_xml, safe_move
-from wazuh.utils import process_array
+from wazuh.utils import previous_month, tail, load_wazuh_xml, safe_move, process_array
 from wazuh.cluster import get_node
 from wazuh.rbac.decorators import expose_resources
 from wazuh.configuration import get_ossec_conf
@@ -43,7 +42,7 @@ def status():
     return get_manager_status()
 
 
-@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read_config' if cluster_enabled else 'manager:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_status() -> AffectedItemsWazuhResult:
     """Wrapper for status(). """
     result = AffectedItemsWazuhResult(all_msg=f"Processes status read successfully"
@@ -81,7 +80,8 @@ def __get_ossec_log_fields(log):
     return datetime.strptime(date, '%Y/%m/%d %H:%M:%S'), category, type_log.lower(), description
 
 
-@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
     """Gets logs from ossec.log.
@@ -156,7 +156,8 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
     return result
 
 
-@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def ossec_log_summary(months=3):
     """ Summary of ossec.log.
 
@@ -330,8 +331,10 @@ def upload_list(list_file, path):
 
     return WazuhResult({'message': 'File updated successfully'})
 
-@expose_resources(actions=['cluster:read_file'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*',
-                                                            'file:path:{path}'])
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_file"],
+                  resources=[f'node:id:{node_id}', 'file:path:{path}'] if cluster_enabled else ['file:path:{path}'],
+                  post_proc_func=None)
 def get_file(path, validate=False):
     """Returns the content of a file.
 
@@ -402,8 +405,8 @@ def validate_cdb_list(path):
     return True
 
 
-@expose_resources(actions=['cluster:delete_file'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*',
-                                                              'file:path:{path}'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:delete_file"],
+                  resources=[f'node:id:{node_id}', 'file:path:{path}'] if cluster_enabled else ['file:path:{path}'])
 def delete_file(path):
     """Deletes a file.
 
@@ -419,7 +422,7 @@ def delete_file(path):
         if exists(full_path):
             try:
                 remove(full_path)
-                result.affected_items.append(path)
+                result.affected_items.append(path[0])
             except IOError:
                 raise WazuhError(1907)
         else:
@@ -431,7 +434,8 @@ def delete_file(path):
     return result
 
 
-@expose_resources(actions=['cluster:restart'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def restart():
     """Wrapper for 'restart_manager' function due to interdependencies with cluster module and permission access. """
     result = AffectedItemsWazuhResult(all_msg=f"Restart request sent to"
@@ -474,7 +478,8 @@ def _check_wazuh_xml(files):
             raise WazuhError(1743, str(e))
 
 
-@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def validation():
     """Check if Wazuh configuration is OK.
 
@@ -590,7 +595,8 @@ def _parse_execd_output(output: str) -> Dict:
     return response
 
 
-@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_config(component=None, config=None):
     """ Wrapper for get_active_configuration
 
@@ -640,7 +646,8 @@ def get_info() -> Dict:
     return manager_info
 
 
-@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def read_ossec_conf(section=None, field=None):
     """ Wrapper for get_ossec_conf
 
@@ -663,7 +670,8 @@ def read_ossec_conf(section=None, field=None):
     return result
 
 
-@expose_resources(actions=['cluster:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_basic_info():
     """ Wrapper for Wazuh().to_dict"""
     result = AffectedItemsWazuhResult(all_msg=f"Basic information read successfully"
