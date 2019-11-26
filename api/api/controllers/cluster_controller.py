@@ -13,7 +13,7 @@ import wazuh.cluster as cluster
 import wazuh.core.cluster.control as cluster_control
 import wazuh.configuration as configuration
 from wazuh import Wazuh
-from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.cluster.dapi.dapi import DistributedAPI, set_system_nodes
 from wazuh.exception import WazuhError
 import wazuh.manager as manager
 import wazuh.stats as stats
@@ -85,6 +85,7 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
                           local_client_arg='lc',
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
@@ -143,6 +144,7 @@ def get_healthcheck(pretty=False, wait_for_complete=False, list_nodes=None):
                           local_client_arg='lc',
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200

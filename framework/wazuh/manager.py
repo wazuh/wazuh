@@ -42,7 +42,8 @@ def status():
     return get_manager_status()
 
 
-@expose_resources(actions=['cluster:read_config' if cluster_enabled else 'manager:read_config'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read_config' if cluster_enabled else 'manager:read_config'],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_status() -> AffectedItemsWazuhResult:
     """Wrapper for status(). """
     result = AffectedItemsWazuhResult(all_msg=f"Processes status read successfully"
@@ -434,16 +435,20 @@ def delete_file(path):
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+_restart_default_result_kwargs = {
+    'all_msg': f"Restart request sent to {' all specified nodes' if node_id != ' manager' else ''}",
+    'some_msg': 'Could not send restart request to some specified nodes',
+    'none_msg': "No restart request sent",
+    'sort_casting': ['str']
+}
+
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:restart"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
+                  post_proc_kwargs={'default_result_kwargs': _restart_default_result_kwargs})
 def restart():
-    """Wrapper for 'restart_manager' function due to interdependencies with cluster module and permission access. """
-    result = AffectedItemsWazuhResult(all_msg=f"Restart request sent to"
-                                              f"{' all specified nodes' if node_id != ' manager' else ''}",
-                                      some_msg='Could not send restart request to some specified nodes',
-                                      none_msg=f"No restart request sent",
-                                      sort_casting=['str']
-                                      )
+    """Wrapper for 'restart_manager' function due to interdependence with cluster module and permission access. """
+    result = AffectedItemsWazuhResult(**_restart_default_result_kwargs)
     try:
         manager_restart()
         result.affected_items.append(node_id)
@@ -478,21 +483,24 @@ def _check_wazuh_xml(files):
             raise WazuhError(1743, str(e))
 
 
+_validation_default_result_kwargs = {
+    'all_msg': f"Validation checked successfully{' in all nodes' if node_id != 'manager' else ''}",
+    'some_msg': 'Could not check validation in some nodes',
+    'none_msg': f"Could not check validation{' in any node' if node_id != 'manager' else ''}",
+    'sort_fields': ['name'],
+    'sort_casting': ['str'],
+}
+
+
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
+                  post_proc_kwargs={'default_result_kwargs': _validation_default_result_kwargs})
 def validation():
     """Check if Wazuh configuration is OK.
 
     :return: Confirmation message.
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Validation checked successfully"
-                                              f"{' in all nodes' if node_id != 'manager' else ''}",
-                                      some_msg='Could not check validation in some nodes',
-                                      none_msg=f"Could not check validation"
-                                               f"{' in any node' if node_id != 'manager' else ''}",
-                                      sort_fields=['name'],
-                                      sort_casting=['str']
-                                      )
+    result = AffectedItemsWazuhResult(**_validation_default_result_kwargs)
 
     lock_file = open(execq_lockfile, 'a+')
     fcntl.lockf(lock_file, fcntl.LOCK_EX)

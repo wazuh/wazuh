@@ -1,6 +1,7 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 import itertools
 import json
@@ -18,8 +19,18 @@ import wazuh.core.cluster.utils
 import wazuh.results as wresults
 from wazuh import exception, agent, common, cluster
 from wazuh import manager
-from wazuh.core.cluster import local_client, common as c_common
+from wazuh.core.cluster import control, local_client, common as c_common
 from wazuh.exception import WazuhException
+
+
+async def set_system_nodes():
+    if common.my_cluster.system_nodes is None:
+        lc = local_client.LocalClient()
+        try:
+            result = await control.get_nodes(lc)
+        finally:
+            lc.transport.close()
+        common.my_cluster.system_nodes = result
 
 
 class DistributedAPI:

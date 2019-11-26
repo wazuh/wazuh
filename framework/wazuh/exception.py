@@ -660,6 +660,13 @@ class WazuhError(WazuhException):
 
         return result
 
+    def __or__(self, other):
+        result: WazuhError = super().__or__(other)
+        if isinstance(result, WazuhError):
+            if hasattr(other, 'ids'):
+                result._ids = self.ids | other.ids
+        return result
+
 
 class WazuhClusterError(WazuhException):
     """
