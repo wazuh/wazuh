@@ -456,8 +456,6 @@ async def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
 @expose_resources(actions=['cluster:read_config'], resources=['node:id:{filter_node}'])
 async def get_nodes_info(lc: local_client.LocalClient, filter_node=None, **kwargs):
     """ Wrapper for get_nodes """
-    import pydevd_pycharm
-    pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
     result = AffectedItemsWazuhResult(all_msg='All selected nodes information is shown',
                                       some_msg='Some nodes information is not shown',
                                       none_msg='No information is shown'

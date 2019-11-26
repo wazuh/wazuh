@@ -8,7 +8,6 @@ from wazuh.core.cluster import local_client
 from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
 from wazuh.core.core_agent import Agent
 from wazuh.utils import filter_array_by_query
-import asyncio
 
 
 async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, limit=common.database_limit,
@@ -51,10 +50,6 @@ async def get_node(lc: local_client.LocalClient, filter_node=None, select=None):
     else:
         return {}
 
-# import asyncio
-# from asgiref.sync import async_to_sync
-# @async_to_sync
-
 
 async def get_health(lc: local_client.LocalClient, filter_node=None):
     result = json.loads(await lc.execute(command=b'get_health',
@@ -94,6 +89,3 @@ async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_stat
     filled_result = [{**r, **{key: 'unknown' for key in select_fields - r.keys()}} for r in result['items']]
     result['items'] = filled_result
     return result
-
-
-
