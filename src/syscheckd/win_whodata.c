@@ -616,6 +616,16 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     goto clean;
                 }
 
+                // Ignore the file if belongs to a non-whodata directory
+                if (!(syscheck.wdata.dirs_status[position].status & WD_CHECK_WHODATA)) {
+                    mdebug2(FIM_WHODATA_CANCELED, path);
+                    goto clean;
+                }
+
+                if (!syscheck.realtime) {
+                    realtime_start();
+                }
+
                 int device_type;
                 if (device_type = check_path_type(path), device_type == 2) { // If it is an existing directory, check_path_type returns 2
                     is_directory = 1;
@@ -886,7 +896,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                         syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
                         syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
                         // Removes CHECK_WHODATA from directory properties to prevent from being found in the whodata callback for Windows (find_dir_pos)
-                        syscheck.opts[i] = syscheck.opts[i] & ~WHODATA_ACTIVE;
+                        syscheck.opts[i] &= ~WHODATA_ACTIVE;
                         // Mark it to prevent the restoration of its SACL
                         syscheck.wdata.dirs_status[i].status &= ~WD_IGNORE_REST;
                         notify_SACL_change(syscheck.dir[i]);
