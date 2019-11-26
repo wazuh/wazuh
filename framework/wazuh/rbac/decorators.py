@@ -16,6 +16,7 @@ from wazuh.core.rule import format_rule_decoder_file, Status
 from wazuh.exception import WazuhError
 from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import AffectedItemsWazuhResult
+import asyncio
 
 mode = configuration.read_api_config()['rbac']['mode']
 
@@ -268,6 +269,11 @@ def _get_denied(original, allowed, target_param, res_id, resources=None):
         return set(original[target_param]) - allowed[res_id]
     except KeyError:
         return {res.split(':')[2] for res in resources} if resources is not None else {}
+
+
+async def async_list_handler(result: asyncio.coroutine, **kwargs):
+    result = await result
+    return list_handler(result, **kwargs)
 
 
 def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowed: dict = None, target: dict = None,

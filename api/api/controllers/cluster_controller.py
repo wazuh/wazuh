@@ -44,6 +44,7 @@ def get_cluster_node(pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
@@ -89,35 +90,6 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
-
-
-@exception_handler
-def get_cluster_node_info(node_id, pretty=False, wait_for_complete=False, select=None):
-    """Get information about a specified node.
-
-    Returns information about a specified node in the cluster.
-
-    :param node_id: Cluster node name.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param select: Select which fields to return (separated by comma)
-    """
-    f_kwargs = {'filter_node': node_id,
-                'select': select}
-
-    dapi = DistributedAPI(f=cluster_control.get_node,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=True,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger,
-                          local_client_arg='lc'
-                          )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
-
-    return response, 200
 
 
 @exception_handler
@@ -168,6 +140,7 @@ def get_status(pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
 
@@ -192,6 +165,7 @@ def get_config(pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
@@ -218,6 +192,7 @@ def get_status_node(node_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
@@ -244,6 +219,7 @@ def get_info_node(node_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
@@ -274,6 +250,7 @@ def get_configuration_node(node_id, pretty=False, wait_for_complete=False, secti
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
@@ -313,6 +290,7 @@ def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
@@ -340,6 +318,7 @@ def get_stats_hourly_node(node_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
 
@@ -368,6 +347,7 @@ def get_stats_weekly_node(node_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
 
@@ -394,6 +374,7 @@ def get_stats_analysisd_node(node_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
 
@@ -420,6 +401,7 @@ def get_stats_remoted_node(node_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
 
@@ -463,6 +445,7 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
@@ -487,6 +470,7 @@ def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
@@ -513,6 +497,7 @@ def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
@@ -552,6 +537,7 @@ def put_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for_
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
@@ -578,6 +564,7 @@ def delete_files_node(node_id, path, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
@@ -603,6 +590,7 @@ def put_restart(pretty=False, wait_for_complete=False, list_nodes='*'):
                           broadcasting=list_nodes == '*',
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
@@ -629,6 +617,7 @@ def get_conf_validation(pretty=False, wait_for_complete=False, list_nodes='*'):
                           broadcasting=list_nodes == '*',
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
@@ -657,6 +646,7 @@ def get_node_config(node_id, component, wait_for_complete=False, pretty=False, *
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
+    loop.run_until_complete(set_system_nodes())
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200

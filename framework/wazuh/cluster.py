@@ -25,7 +25,7 @@ from wazuh.core.cluster.utils import get_cluster_status, manager_restart, read_c
     read_config
 from wazuh.core.core_agent import Agent
 from wazuh.exception import WazuhException, WazuhError
-from wazuh.rbac.decorators import expose_resources
+from wazuh.rbac.decorators import expose_resources, async_list_handler
 from wazuh.results import AffectedItemsWazuhResult
 from wazuh.utils import md5, mkdir_with_mode
 
@@ -435,7 +435,9 @@ def unmerge_agent_info(merge_type, path_file, filename):
             yield dst_agent_info_path + '/' + name, data, st_mtime
 
 
-@expose_resources(actions=['cluster:read_config'], resources=['node:id:{filter_node}'])
+@expose_resources(actions=['cluster:read_config'],
+                  resources=['node:id:{filter_node}'],
+                  post_proc_func=async_list_handler)
 async def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
     """ Wrapper for get_health """
     result = AffectedItemsWazuhResult(all_msg='All selected nodes healthcheck information is shown',
@@ -453,7 +455,9 @@ async def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
     return result
 
 
-@expose_resources(actions=['cluster:read_config'], resources=['node:id:{filter_node}'])
+@expose_resources(actions=['cluster:read_config'],
+                  resources=['node:id:{filter_node}'],
+                  post_proc_func=async_list_handler)
 async def get_nodes_info(lc: local_client.LocalClient, filter_node=None, **kwargs):
     """ Wrapper for get_nodes """
     result = AffectedItemsWazuhResult(all_msg='All selected nodes information is shown',
