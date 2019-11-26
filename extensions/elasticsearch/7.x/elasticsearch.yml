@@ -1,6 +1,6 @@
 network.host: <elasticsearch_ip>
 node.name: <node_name>
-cluster.initial_master_nodes: ["<node_name>"]
+cluster.initial_master_nodes: <node_name>
 
 # Transport layer
 xpack.security.transport.ssl.enabled: true
