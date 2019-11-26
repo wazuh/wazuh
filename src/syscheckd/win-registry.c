@@ -245,6 +245,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
         }
 
         fim_entry_data *data;
+        int result;
         os_calloc(1, sizeof(fim_entry_data), data);
 
         init_fim_data_entry(data);
@@ -264,8 +265,10 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
 
         OS_SHA1_Str(data->hash_sha256, sizeof(data->hash_sha256), data->checksum);
 
-        if (fim_registry_event(path, data, pos) < 0) {
+        if (result = fim_registry_event(path, data, pos), result == -1) {
             mdebug1(FIM_REGISTRY_EVENT_FAIL, path);
+            free_entry_data(data);
+        } else if (result == 0) {
             free_entry_data(data);
         }
     }
