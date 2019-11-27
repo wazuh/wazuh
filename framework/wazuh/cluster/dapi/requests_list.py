@@ -220,7 +220,7 @@ functions = {
     },
 
     # Configuration
-    'PUT/configuration/validation': {
+    'PUT/configuration/validation/:type': {
         'function': configuration.validate_configuration,
         'type': 'local_master',
         'is_async': False
