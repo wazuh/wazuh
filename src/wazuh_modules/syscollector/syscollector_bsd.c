@@ -1664,7 +1664,7 @@ process_entry_data * get_process_data_mac(pid_t pid) {
 
     struct group *rgroup = getgrgid((int)task_info.pbsd.pbi_rgid);
     if(rgroup) {
-        os_strdup(rgroup->gr_name, data->suser);
+        os_strdup(rgroup->gr_name, data->rgroup);
     }
 
     data->priority = task_info.ptinfo.pti_priority;
