@@ -71,7 +71,7 @@ void *wm_chk_conf_main() {
         os_calloc(OS_MAXSTR+1, sizeof(char), buffer);
         switch (OS_RecvSecureTCP(peer, buffer, OS_MAXSTR)) {
             case OS_SOCKTERR:
-                mterror(WM_CHECK_CONFIG_LOGTAG, "At main(): OS_RecvSecureTCP(): response size is bigger than expected");
+                mterror(WM_CHECK_CONFIG_LOGTAG, "At main(): OS_RecvSecureTCP(): request size is bigger than expected");
                 break;
             case -1:
                 mterror(WM_CHECK_CONFIG_LOGTAG, "At main(): OS_RecvSecureTCP(): %s", strerror(errno));
@@ -123,6 +123,9 @@ void *wm_chk_conf_main() {
                         } else if(!strncmp(current_message, "INFO", 4)) {
                             cJSON_AddStringToObject(validator, "type", "INFO");
                             output_data = current_message + 6;
+                        } else if(!strncmp(current_message, "CRITICAL", 8)){
+                            cJSON_AddStringToObject(validator, "type", "CRITICAL");
+                            output_data = current_message + 10;
                         } else if (result){
                             cJSON_AddStringToObject(validator, "type", "ERROR");
                             if(!strncmp(current_message, "ERROR", 5)){
@@ -131,6 +134,7 @@ void *wm_chk_conf_main() {
                                 output_data = current_message;
                             }
                         } else {
+                            cJSON_AddStringToObject(validator, "type", "INFO");
                             output_data = current_message;
                         }
 
@@ -151,8 +155,6 @@ void *wm_chk_conf_main() {
                     output = strdup("ok");
                     wm_strcat(&output, cJSON_PrintUnformatted(json_output), ' ');
                 }
-
-                mwarn("%s", output);
 
                 /* Send the test result to API socket */
                 int rc;
@@ -212,30 +214,6 @@ int check_event_rcvd(const char *buffer, char **filetype, char **filepath) {
         return -1;
     }
 
-    cJSON *operation = cJSON_GetObjectItem(event, "operation");
-    if(!operation) {
-        merror("'operation' field not found");
-        goto fail;
-    } else if(strcmp(operation->valuestring, "GET")) {
-        merror("Invalid operation: '%s', at received event.", operation->valuestring);
-        goto fail;
-    }
-
-    cJSON *type = cJSON_GetObjectItem(event, "type");
-    if(!type) {
-        merror("'type' field not found");
-        goto fail;
-    } else if(strcmp(type->valuestring, "request")) {
-        merror("Invalid operation type: '%s', at received event.", type->valuestring);
-        goto fail;
-    }
-
-    cJSON *version = cJSON_GetObjectItem(event, "version");
-    if(!version) {
-        merror("'version' field not found");
-        goto fail;
-    }
-
     cJSON *component = cJSON_GetObjectItem(event, "component");
     if(!component) {
         merror("'component' field not found");
@@ -246,25 +224,25 @@ int check_event_rcvd(const char *buffer, char **filetype, char **filepath) {
     }
 
     /* Data values */
-    cJSON *data = cJSON_GetObjectItem(event, "data");
-    if(!data) {
-        merror("'data' field not found");
+    cJSON *params = cJSON_GetObjectItem(event, "params");
+    if(!params) {
+        merror("'params' field not found");
         goto fail;
     }
 
-    cJSON *data_type = cJSON_GetObjectItem(data, "type");
-    if(!data_type) {
-        merror("'data.type' item not found");
+    cJSON *params_type = cJSON_GetObjectItem(params, "type");
+    if(!params_type) {
+        merror("'params.type' item not found");
         goto fail;
-    } else if(strcmp(data_type->valuestring, "manager") && strcmp(data_type->valuestring, "agent") && strcmp(data_type->valuestring, "remote")) {
-        merror("Invalid value for data.type: %s", data_type->valuestring);
+    } else if(strcmp(params_type->valuestring, "manager") && strcmp(params_type->valuestring, "agent") && strcmp(params_type->valuestring, "remote")) {
+        merror("Invalid value for params.type: %s", params_type->valuestring);
         goto fail;
     }
-    *filetype = strdup(data_type->valuestring);
+    *filetype = strdup(params_type->valuestring);
 
-    cJSON *data_file = cJSON_GetObjectItem(data, "file");
-    if(data_file) {
-        *filepath = strdup(data_file->valuestring);
+    cJSON *params_file = cJSON_GetObjectItem(params, "file");
+    if(params_file) {
+        *filepath = strdup(params_file->valuestring);
     } else {
         mwarn("'file' field not found, the default configuration file will be used.");
     }
@@ -293,6 +271,8 @@ int test_file(const char *filetype, const char *filepath, char **output) {
 
     if (result == 0) {
         wm_strcat(output, "Configuration validated successfully", '\n');
+    } else {
+        wm_strcat(output, "CRITICAL: Invalid configuration file", '\n');
     }
 
     return result;

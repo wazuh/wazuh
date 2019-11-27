@@ -97,6 +97,11 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2,
             if (output == NULL) {
                 mwarn("The <%s> tag is deprecated for version newer than 2.1.1, please use <%s> instead.",
                     xml_buffer_length, xml_buffer_queue_size);
+            } else  {
+                snprintf(message, OS_FLSIZE,
+                    "WARNING: The <%s> tag is deprecated for version newer than 2.1.1, please use <%s> instead.",
+                    xml_buffer_length, xml_buffer_queue_size);
+                wm_strcat(output, message, '\n');
             }
             if (!OS_StrIsNum(node[i]->content)) {
                 if (output == NULL){

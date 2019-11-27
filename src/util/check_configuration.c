@@ -127,6 +127,8 @@ int main(int argc, char **argv)
             printf("%s\n", output);
             if (result == 0){
                 printf("Configuration validated successfully\n");
+            } else {
+                printf("CRITICAL: Invalid configuration file\n");
             }
         }
 
