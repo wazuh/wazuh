@@ -145,7 +145,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
         while ((dep = readdir(dr)) != NULL) {
 
-            if (strncmp(dep->d_name, ".", 1) == 0 || strncmp(dep->d_name, "..", 2) == 0) {
+            if (strncmp(dep->d_name, ".", 1) == 0) {
                 continue;
             }
 
