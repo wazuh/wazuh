@@ -15,10 +15,6 @@
 #include "shared.h"
 #include "version_op.h"
 
-#if defined(__linux__)
-#include "external/procps/readproc.h"
-#endif
-
 #ifdef WIN32
 #include <windows.h>
 #include <winsock2.h>
@@ -107,6 +103,25 @@ typedef struct hw_info {
     int ram_usage;  // Percentage
 } hw_info;
 
+typedef struct program_entry_data {
+    char * format;
+    char * name;
+
+    char * priority;
+    char * group;
+    long size;
+    char * vendor;
+    char * install_time;
+    char * version;
+    char * architecture;
+    char * multi_arch;
+    char * source;
+    char * description;
+    char * location;
+
+    int installed;
+} program_entry_data;
+
 typedef struct process_entry_data {
     int pid;
     int ppid;
@@ -167,7 +182,9 @@ typedef struct wm_sys_t {
     wm_sys_flags_t flags;                   // Flag bitfield
     wm_sys_state_t state;                   // Running state
 
+    rb_tree * programs_entry;
     rb_tree * processes_entry;
+    pthread_mutex_t programs_entry_mutex;
     pthread_mutex_t processes_entry_mutex;
 } wm_sys_t;
 
@@ -304,42 +321,49 @@ void init_hw_info(hw_info *info);
 void sys_initialize_datastores();
 
 // Initialize process data
+void init_program_data_entry(program_entry_data * data);
+
+// Initialize process data
 void init_process_data_entry(process_entry_data * data);
 
-#ifdef WIN32
-// Fill process data for Windows
-process_entry_data * get_process_data_windows(PROCESSENTRY32 * pe);
-#elif defined(__linux__)
-// Fill process data for Linux
-process_entry_data * get_process_data_linux(proc_t * proc_info);
-#elif defined(__MACH__)
-// Fill process data for MAC OS X
-process_entry_data * get_process_data_mac(pid_t pid);
-#endif
-
-// Analyze if insert new process or update an existing one
-cJSON * analyze_process(process_entry_data * entry_data, int random_id, char * timestamp);
+// Free program data
+void free_program_data(program_entry_data * data);
 
 // Free process data
 void free_process_data(process_entry_data * data);
 
-// Insert process into hash table
-int process_insert(char * pid, process_entry_data * data);
+// Analyze if insert new program or update an existing one
+cJSON * analyze_program(program_entry_data * entry_data, int random_id, char * timestamp);
 
-// Update process to hash table
-int process_update(char * pid, process_entry_data * data);
+// Analyze if insert new process or update an existing one
+cJSON * analyze_process(process_entry_data * entry_data, int random_id, char * timestamp);
 
-// Delete process from hash table
-void process_delete(char * pid);
+// Deletes the uninstalled programs from the hash table
+void check_uninstalled_programs();
 
 // Deletes the terminated processes from the hash table
 void check_terminated_processes();
 
-// Print processes hash table
-void print_rbtree();
+// Insert process into hash table
+int insert_entry(rb_tree * tree, const char * key, void * data);
+
+// Update process to hash table
+int update_entry(rb_tree * tree, const char * key, void * data);
+
+// Delete process from hash table
+void delete_entry(rb_tree * tree, const char * key);
+
+//
+cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, int random_id, char * timestamp);
 
 //
 cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, int random_id, char * timestamp);
+
+// Print programs hash table
+void print_programs_rbtree();
+
+// Print processes hash table
+void print_processes_rbtree();
 
 #endif
 #endif

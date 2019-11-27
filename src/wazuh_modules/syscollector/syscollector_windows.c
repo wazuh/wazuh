@@ -2138,6 +2138,8 @@ int ntpath_to_win32path(char *ntpath, char **outbuf)
 }
 
 void sys_proc_windows(const char* LOCATION) {
+    char read_buff[OS_MAXSTR];
+
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
 
@@ -2149,15 +2151,20 @@ void sys_proc_windows(const char* LOCATION) {
 
     int ID = wm_sys_get_random_id();
 
-    cJSON *item;
-    cJSON *proc_array = cJSON_CreateArray();
-
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
 
 	PROCESSENTRY32 pe = { 0 };
 	pe.dwSize = sizeof(PROCESSENTRY32);
 
-	HANDLE hSnapshot;
+    HANDLE hSnapshot, hProcess;
+    FILETIME lpCreationTime, lpExitTime, lpKernelTime, lpUserTime;
+    PROCESS_MEMORY_COUNTERS ppsmemCounters;
+
+    LONG priority;
+    char *exec_path, *name;
+    ULARGE_INTEGER kernel_mode_time, user_mode_time;
+    DWORD pid, parent_pid, session_id, thread_count, page_file_usage, virtual_size;
+
 	HANDLE hdle;
 	int privilege_enabled = 0;
 
@@ -2184,29 +2191,136 @@ void sys_proc_windows(const char* LOCATION) {
                 cJSON * json_event = NULL;
                 process_entry_data * entry_data = NULL;
 
-                // Get process attributes
-                if (entry_data = get_process_data_windows(&pe), !entry_data) {
-                    mdebug1("Couldn't get attributes for process: '%s'", pe.szExeFile);
-                    continue;
+                /* Get process ID */
+                pid = pe.th32ProcessID;
+
+                /* Get thread count */
+                thread_count = pe.cntThreads;
+
+                /* Get parent process ID */
+                parent_pid = pe.th32ParentProcessID;
+
+                /* Get process base priority */
+                priority = pe.pcPriClassBase;
+
+                /* Initialize variables */
+                name = exec_path = NULL;
+                kernel_mode_time.QuadPart = user_mode_time.QuadPart = 0;
+                session_id = page_file_usage = virtual_size = 0;
+
+                /* Check if we are dealing with a system process */
+                if (pid == 0 || pid == 4)
+                {
+                    name = strdup(pid == 0 ? "System Idle Process" : "System");
+                    exec_path = strdup("none");
+                } else {
+                    /* Get process name */
+                    name = strdup(pe.szExeFile);
+
+                    /* Get process handle */
+                    hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+                    if (hProcess != NULL)
+                    {
+                        /* Get full Windows kernel path for the process */
+                        if (GetProcessImageFileName(hProcess, read_buff, OS_MAXSTR))
+                        {
+                            /* Convert Windows kernel path to a valid Win32 filepath */
+                            /* E.g.: "\Device\HarddiskVolume1\Windows\system32\notepad.exe" -> "C:\Windows\system32\notepad.exe" */
+                            /* This requires hotfix KB931305 in order to work under XP/Server 2003, so the conversion will be skipped if we're not running under Vista or greater */
+                            if (!checkVista() || !ntpath_to_win32path(read_buff, &exec_path))
+                            {
+                                /* If there were any errors, the read_buff array will remain intact */
+                                /* In that case, let's just use the Windows kernel path. It's better than nothing */
+                                exec_path = strdup(read_buff);
+                            }
+                        } else {
+                            mtwarn(WM_SYS_LOGTAG, "Unable to retrieve executable path from process with PID %lu (%lu).", pid, GetLastError());
+                            exec_path = strdup("unknown");
+                        }
+
+                        /* Get kernel mode and user mode times */
+                        if (GetProcessTimes(hProcess, &lpCreationTime, &lpExitTime, &lpKernelTime, &lpUserTime))
+                        {
+                            /* Copy the kernel mode filetime high and low parts and convert it to seconds */
+                            kernel_mode_time.LowPart = lpKernelTime.dwLowDateTime;
+                            kernel_mode_time.HighPart = lpKernelTime.dwHighDateTime;
+                            kernel_mode_time.QuadPart /= 10000000ULL;
+
+                            /* Copy the user mode filetime high and low parts and convert it to seconds */
+                            user_mode_time.LowPart = lpUserTime.dwLowDateTime;
+                            user_mode_time.HighPart = lpUserTime.dwHighDateTime;
+                            user_mode_time.QuadPart /= 10000000ULL;
+                        } else {
+                            mtwarn(WM_SYS_LOGTAG, "Unable to retrieve kernel mode and user mode times from process with PID %lu (%lu).", pid, GetLastError());
+                        }
+
+                        /* Get page file usage and virtual size */
+                        /* Reference: https://stackoverflow.com/a/1986486 */
+                        if (GetProcessMemoryInfo(hProcess, &ppsmemCounters, sizeof(ppsmemCounters)))
+                        {
+                            page_file_usage = ppsmemCounters.PagefileUsage;
+                            virtual_size = (ppsmemCounters.WorkingSetSize + ppsmemCounters.PagefileUsage);
+                        } else {
+                            mtwarn(WM_SYS_LOGTAG, "Unable to retrieve page file usage from process with PID %lu (%lu).", pid, GetLastError());
+                        }
+
+                        /* Get session ID */
+                        if (!ProcessIdToSessionId(pid, &session_id)) mtwarn(WM_SYS_LOGTAG, "Unable to retrieve session ID from process with PID %lu (%lu).", pid, GetLastError());
+
+                        /* Close process handle */
+                        CloseHandle(hProcess);
+                    } else {
+                        /* Silence access denied errors under Windows Vista or greater */
+                        DWORD lastError = GetLastError();
+                        if (!checkVista() || lastError != ERROR_ACCESS_DENIED)
+                        {
+                            mtwarn(WM_SYS_LOGTAG, "Unable to retrieve process handle for PID %lu (%lu).", pid, lastError);
+                            exec_path = strdup("unknown");
+                        }
+                    }
                 }
+
+                os_calloc(1, sizeof(process_entry_data), entry_data);
+                init_process_data_entry(entry_data);
+
+                entry_data->pid = pid;
+                entry_data->ppid = parent_pid;
+
+                if (name) {
+                    os_strdup(name, entry_data->name);
+                    free(name);
+                }
+
+                if (exec_path) {
+                    os_strdup(exec_path, entry_data->cmd);
+                    free(exec_path);
+                }
+
+                entry_data->priority = priority;
+
+                entry_data->size = page_file_usage;
+                entry_data->vm_size = virtual_size;
+
+                entry_data->utime = user_mode_time.QuadPart;
+                entry_data->stime = kernel_mode_time.QuadPart;
+
+                entry_data->session = session_id;
+                entry_data->nlwp = thread_count;
+
+                entry_data->running = 1;
 
                 // Check if it is necessary to create a process event
                 if (json_event = analyze_process(entry_data, ID, timestamp), json_event) {
-                    cJSON_AddItemToArray(proc_array, json_event);
+                    char * string = cJSON_PrintUnformatted(json_event);
+                    mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
+                    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+                    free(string);
                 }
 			} while(Process32Next(hSnapshot, &pe));
 
             // Checking for terminated processes
             check_terminated_processes();
 
-			cJSON_ArrayForEach(item, proc_array) {
-				char *string = cJSON_PrintUnformatted(item);
-				mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
-				wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-				free(string);
-			}
-
-			cJSON_Delete(proc_array);
 		} else {
 			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve process information from the snapshot.");
 		}
@@ -2237,142 +2351,6 @@ void sys_proc_windows(const char* LOCATION) {
     cJSON_Delete(object);
     free(string);
     free(timestamp);
-}
-
-// Get data from process
-process_entry_data * get_process_data_windows(PROCESSENTRY32 * pe) {
-    char read_buff[OS_MAXSTR];
-
-    HANDLE hProcess;
-	FILETIME lpCreationTime, lpExitTime, lpKernelTime, lpUserTime;
-	PROCESS_MEMORY_COUNTERS ppsmemCounters;
-
-	LONG priority;
-	char *exec_path, *name;
-	ULARGE_INTEGER kernel_mode_time, user_mode_time;
-	DWORD pid, parent_pid, session_id, thread_count, page_file_usage, virtual_size;
-
-    process_entry_data * data = NULL;
-
-    os_calloc(1, sizeof(process_entry_data), data);
-    init_process_data_entry(data);
-
-    /* Get process ID */
-    pid = pe->th32ProcessID;
-
-    /* Get thread count */
-    thread_count = pe->cntThreads;
-
-    /* Get parent process ID */
-    parent_pid = pe->th32ParentProcessID;
-
-    /* Get process base priority */
-    priority = pe->pcPriClassBase;
-
-    /* Initialize variables */
-    name = exec_path = NULL;
-    kernel_mode_time.QuadPart = user_mode_time.QuadPart = 0;
-    session_id = page_file_usage = virtual_size = 0;
-
-    /* Check if we are dealing with a system process */
-    if (pid == 0 || pid == 4)
-    {
-        name = strdup(pid == 0 ? "System Idle Process" : "System");
-        exec_path = strdup("none");
-    } else {
-        /* Get process name */
-        name = strdup(pe->szExeFile);
-
-        /* Get process handle */
-        hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-        if (hProcess != NULL)
-        {
-            /* Get full Windows kernel path for the process */
-            if (GetProcessImageFileName(hProcess, read_buff, OS_MAXSTR))
-            {
-                /* Convert Windows kernel path to a valid Win32 filepath */
-                /* E.g.: "\Device\HarddiskVolume1\Windows\system32\notepad.exe" -> "C:\Windows\system32\notepad.exe" */
-                /* This requires hotfix KB931305 in order to work under XP/Server 2003, so the conversion will be skipped if we're not running under Vista or greater */
-                if (!checkVista() || !ntpath_to_win32path(read_buff, &exec_path))
-                {
-                    /* If there were any errors, the read_buff array will remain intact */
-                    /* In that case, let's just use the Windows kernel path. It's better than nothing */
-                    exec_path = strdup(read_buff);
-                }
-            } else {
-                mtwarn(WM_SYS_LOGTAG, "Unable to retrieve executable path from process with PID %lu (%lu).", pid, GetLastError());
-                exec_path = strdup("unknown");
-            }
-
-            /* Get kernel mode and user mode times */
-            if (GetProcessTimes(hProcess, &lpCreationTime, &lpExitTime, &lpKernelTime, &lpUserTime))
-            {
-                /* Copy the kernel mode filetime high and low parts and convert it to seconds */
-                kernel_mode_time.LowPart = lpKernelTime.dwLowDateTime;
-                kernel_mode_time.HighPart = lpKernelTime.dwHighDateTime;
-                kernel_mode_time.QuadPart /= 10000000ULL;
-
-                /* Copy the user mode filetime high and low parts and convert it to seconds */
-                user_mode_time.LowPart = lpUserTime.dwLowDateTime;
-                user_mode_time.HighPart = lpUserTime.dwHighDateTime;
-                user_mode_time.QuadPart /= 10000000ULL;
-            } else {
-                mtwarn(WM_SYS_LOGTAG, "Unable to retrieve kernel mode and user mode times from process with PID %lu (%lu).", pid, GetLastError());
-            }
-
-            /* Get page file usage and virtual size */
-            /* Reference: https://stackoverflow.com/a/1986486 */
-            if (GetProcessMemoryInfo(hProcess, &ppsmemCounters, sizeof(ppsmemCounters)))
-            {
-                page_file_usage = ppsmemCounters.PagefileUsage;
-                virtual_size = (ppsmemCounters.WorkingSetSize + ppsmemCounters.PagefileUsage);
-            } else {
-                mtwarn(WM_SYS_LOGTAG, "Unable to retrieve page file usage from process with PID %lu (%lu).", pid, GetLastError());
-            }
-
-            /* Get session ID */
-            if (!ProcessIdToSessionId(pid, &session_id)) mtwarn(WM_SYS_LOGTAG, "Unable to retrieve session ID from process with PID %lu (%lu).", pid, GetLastError());
-
-            /* Close process handle */
-            CloseHandle(hProcess);
-        } else {
-            /* Silence access denied errors under Windows Vista or greater */
-            DWORD lastError = GetLastError();
-            if (!checkVista() || lastError != ERROR_ACCESS_DENIED)
-            {
-                mtwarn(WM_SYS_LOGTAG, "Unable to retrieve process handle for PID %lu (%lu).", pid, lastError);
-                exec_path = strdup("unknown");
-            }
-        }
-    }
-
-    data->pid = pid;
-    data->ppid = parent_pid;
-
-    if (name) {
-        os_strdup(name, data->name);
-        free(name);
-    }
-
-    if (exec_path) {
-        os_strdup(exec_path, data->cmd);
-        free(exec_path);
-    }
-
-    data->priority = priority;
-
-    data->size = page_file_usage;
-    data->vm_size = virtual_size;
-
-    data->utime = user_mode_time.QuadPart;
-    data->stime = kernel_mode_time.QuadPart;
-
-    data->session = session_id;
-    data->nlwp = thread_count;
-
-    data->running = 1;
-
-    return data;
 }
 
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {

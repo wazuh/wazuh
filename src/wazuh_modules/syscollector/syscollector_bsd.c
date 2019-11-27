@@ -1552,21 +1552,89 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
 
     mtdebug2(WM_SYS_LOGTAG, "Number of processes retrieved: %d", count);
 
-    cJSON *proc_array = cJSON_CreateArray();
-
     int index;
     for(index=0; index < count; ++index) {
+        pid_t pid;
+        struct proc_taskallinfo task_info;
+
         cJSON * json_event = NULL;
         process_entry_data * entry_data = NULL;
 
-        // Get process attributes
-        if (entry_data = get_process_data_mac(pids[index]), !entry_data) {
+        pid = pids[index];
+        int st = proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &task_info, PROC_PIDTASKALLINFO_SIZE);
+
+        if(st != PROC_PIDTASKALLINFO_SIZE) {
+            mterror(WM_SYS_LOGTAG, "Cannot get process info for PID %d", pid);
             continue;
         }
 
+        /*
+            I : Idle
+            R : Running
+            S : Sleep
+            T : Stopped
+            Z : Zombie
+            E : Internal error getting the status
+        */
+        char *status;
+        switch(task_info.pbsd.pbi_status){
+            case 1:
+                status = "I";
+                break;
+            case 2:
+                status = "R";
+                break;
+            case 3:
+                status = "S";
+                break;
+            case 4:
+                status = "T";
+                break;
+            case 5:
+                status = "Z";
+                break;
+            default:
+                mtdebug1(WM_SYS_LOGTAG, "Error getting the status of the process %d", pid);
+                status = "E";
+        }
+
+        os_calloc(1, sizeof(process_entry_data), entry_data);
+        init_process_data_entry(entry_data);
+
+        entry_data->pid = pid;
+        entry_data->ppid = task_info.pbsd.pbi_ppid;
+
+        os_strdup(task_info.pbsd.pbi_name, entry_data->name);
+        os_strdup(status, entry_data->state);
+
+        struct passwd *euser = getpwuid((int)task_info.pbsd.pbi_uid);
+        if(euser) {
+            os_strdup(euser->pw_name, entry_data->euser);
+        }
+
+        struct passwd *ruser = getpwuid((int)task_info.pbsd.pbi_ruid);
+        if(ruser) {
+            os_strdup(ruser->pw_name, entry_data->ruser);
+        }
+
+        struct group *rgroup = getgrgid((int)task_info.pbsd.pbi_rgid);
+        if(rgroup) {
+            os_strdup(rgroup->gr_name, entry_data->rgroup);
+        }
+
+        entry_data->priority = task_info.ptinfo.pti_priority;
+        entry_data->nice = task_info.pbsd.pbi_nice;
+
+        entry_data->vm_size = task_info.ptinfo.pti_virtual_size / 1024;
+
+        entry_data->running = 1;
+
         // Check if it is necessary to create a process event
         if (json_event = analyze_process(entry_data, random_id, timestamp), json_event) {
-            cJSON_AddItemToArray(proc_array, json_event);
+            char * string = cJSON_PrintUnformatted(json_event);
+            mtdebug2(WM_SYS_LOGTAG, "sys_proc_mac() sending '%s'", string);
+            wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+            free(string);
         }
     }
     os_free(pids);
@@ -1574,15 +1642,6 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     // Checking for terminated processes
     check_terminated_processes();
 
-    cJSON *item;
-    cJSON_ArrayForEach(item, proc_array) {
-        char *string = cJSON_PrintUnformatted(item);
-        mtdebug2(WM_SYS_LOGTAG, "sys_proc_mac() sending '%s'", string);
-        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-        os_free(string);
-    }
-
-    cJSON_Delete(proc_array);
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "process_end");
     cJSON_AddNumberToObject(object, "ID", random_id);
@@ -1594,82 +1653,6 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     wm_sendmsg(usec, queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     os_free(end_msg);
-}
-
-// Get data from process
-process_entry_data * get_process_data_mac(pid_t pid) {
-    struct proc_taskallinfo task_info;
-    process_entry_data * data = NULL;
-
-    os_calloc(1, sizeof(process_entry_data), data);
-    init_process_data_entry(data);
-
-    int st = proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &task_info, PROC_PIDTASKALLINFO_SIZE);
-
-    if(st != PROC_PIDTASKALLINFO_SIZE) {
-        mterror(WM_SYS_LOGTAG, "Cannot get process info for PID %d", pid);
-        return NULL;
-    }
-
-    /*
-        I : Idle
-        R : Running
-        S : Sleep
-        T : Stopped
-        Z : Zombie
-        E : Internal error getting the status
-    */
-    char *status;
-    switch(task_info.pbsd.pbi_status){
-        case 1:
-            status = "I";
-            break;
-        case 2:
-            status = "R";
-            break;
-        case 3:
-            status = "S";
-            break;
-        case 4:
-            status = "T";
-            break;
-        case 5:
-            status = "Z";
-            break;
-        default:
-            mtdebug1(WM_SYS_LOGTAG, "Error getting the status of the process %d", pid);
-            status = "E";
-    }
-
-    data->pid = pid;
-    data->ppid = task_info.pbsd.pbi_ppid;
-
-    os_strdup(task_info.pbsd.pbi_name, data->name);
-    os_strdup(status, data->state);
-
-    struct passwd *euser = getpwuid((int)task_info.pbsd.pbi_uid);
-    if(euser) {
-        os_strdup(euser->pw_name, data->euser);
-    }
-
-    struct passwd *ruser = getpwuid((int)task_info.pbsd.pbi_ruid);
-    if(ruser) {
-        os_strdup(ruser->pw_name, data->ruser);
-    }
-
-    struct group *rgroup = getgrgid((int)task_info.pbsd.pbi_rgid);
-    if(rgroup) {
-        os_strdup(rgroup->gr_name, data->rgroup);
-    }
-
-    data->priority = task_info.ptinfo.pti_priority;
-    data->nice = task_info.pbsd.pbi_nice;
-
-    data->vm_size = task_info.ptinfo.pti_virtual_size / 1024;
-
-    data->running = 1;
-
-    return data;
 }
 
 #endif

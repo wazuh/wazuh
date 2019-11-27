@@ -130,6 +130,9 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys->flags.programinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Packages inventory is not available for this OS version.");
             #endif
+            #ifdef DEBUG
+                print_programs_rbtree();
+            #endif
         }
 
         /* Installed hotfixes inventory */
@@ -165,7 +168,7 @@ void* wm_sys_main(wm_sys_t *sys) {
                 mtwarn(WM_SYS_LOGTAG, "Running processes inventory is not available for this OS version.");
             #endif
             #ifdef DEBUG
-                print_rbtree();
+                print_processes_rbtree();
             #endif
         }
 
@@ -330,17 +333,38 @@ int wm_sys_get_random_id() {
 }
 
 
-// Initialize syscheck data
+// Initialize syscollector datastores
 void sys_initialize_datastores() {
-    // Create store data for processes
+    sys->programs_entry = rbtree_init();
     sys->processes_entry = rbtree_init();
 
-    if (!sys->processes_entry) {
+    if (!sys->programs_entry || !sys->processes_entry) {
         merror_exit("Error while creating data structure: rb-tree init. Exiting."); // LCOV_EXCL_LINE
     }
 
+    rbtree_set_dispose(sys->programs_entry, (void (*)(void *))free_program_data);
     rbtree_set_dispose(sys->processes_entry, (void (*)(void *))free_process_data);
+
+    w_mutex_init(&sys->programs_entry_mutex, NULL);
     w_mutex_init(&sys->processes_entry_mutex, NULL);
+}
+
+// Initialize program_entry_data structure
+void init_program_data_entry(program_entry_data * data) {
+    data->format = NULL;
+    data->name = NULL;
+    data->priority = NULL;
+    data->group = NULL;
+    data->size = LONG_MIN;
+    data->vendor = NULL;
+    data->install_time = NULL;
+    data->version = NULL;
+    data->architecture = NULL;
+    data->multi_arch = NULL;
+    data->source = NULL;
+    data->description = NULL;
+    data->location = NULL;
+    data->installed = INT_MIN;
 }
 
 // Initialize process_entry_data structure
@@ -374,6 +398,51 @@ void init_process_data_entry(process_entry_data * data) {
     data->tty = INT_MIN;
     data->processor = INT_MIN;
     data->running = INT_MIN;
+}
+
+// Free program_entry_data structure
+void free_program_data(program_entry_data * data) {
+    if (!data) {
+        return;
+    }
+    if (data->format) {
+        os_free(data->format);
+    }
+    if (data->name) {
+        os_free(data->name);
+    }
+    if (data->priority) {
+        os_free(data->priority);
+    }
+    if (data->group) {
+        os_free(data->group);
+    }
+    if (data->vendor) {
+        os_free(data->vendor);
+    }
+    if (data->install_time) {
+        os_free(data->install_time);
+    }
+    if (data->version) {
+        os_free(data->version);
+    }
+    if (data->architecture) {
+        os_free(data->architecture);
+    }
+    if (data->multi_arch) {
+        os_free(data->multi_arch);
+    }
+    if (data->source) {
+        os_free(data->source);
+    }
+    if (data->description) {
+        os_free(data->description);
+    }
+    if (data->location) {
+        os_free(data->location);
+    }
+
+    os_free(data);
 }
 
 // Free process_entry_data structure
@@ -418,23 +487,77 @@ void free_process_data(process_entry_data * data) {
     os_free(data);
 }
 
+// Analyze if insert new program or update an existing one
+cJSON * analyze_program(program_entry_data * entry_data, int random_id, char * timestamp) {
+    cJSON * json_event = NULL;
+    program_entry_data * saved_data = NULL;
+    char * key = NULL;
+
+    if (entry_data->name) {
+        os_strdup(entry_data->name, key);
+    }
+    else {
+        free_program_data(entry_data);
+        mdebug1("Couldn't get the name of the program");
+        return NULL;
+    }
+
+    w_mutex_lock(&sys->programs_entry_mutex);
+
+    if (saved_data = (program_entry_data *) rbtree_get(sys->programs_entry, key), !saved_data) {
+        // New entry. Insert into hash table
+        if (insert_entry(sys->programs_entry, key, (void *) entry_data) == -1) {
+            w_mutex_unlock(&sys->programs_entry_mutex);
+            free_program_data(entry_data);
+            mdebug1("Couldn't insert program into hash table: '%s'", key);
+            return NULL;
+        }
+        json_event = program_json_event(NULL, entry_data, random_id, timestamp);
+    }
+    else {
+        // Checking for changes
+        saved_data->installed = 1;
+        if (json_event = program_json_event(saved_data, entry_data, random_id, timestamp), json_event) {
+            if (update_entry(sys->programs_entry, key, (void *) entry_data) == -1) {
+                w_mutex_unlock(&sys->programs_entry_mutex);
+                free_program_data(entry_data);
+                mdebug1("Couldn't update program in hash table: '%s'", key);
+                return NULL;
+            }
+        } else {
+            free_program_data(entry_data);
+        }
+    }
+
+    w_mutex_unlock(&sys->programs_entry_mutex);
+
+    return json_event;
+}
+
 // Analyze if insert new process or update an existing one
 cJSON * analyze_process(process_entry_data * entry_data, int random_id, char * timestamp) {
     cJSON * json_event = NULL;
     process_entry_data * saved_data = NULL;
     char * key = NULL;
 
-    os_calloc(12, sizeof(char), key);
-    sprintf(key, "%d", entry_data->pid);
+    if (entry_data->pid > INT_MIN) {
+        os_calloc(12, sizeof(char), key);
+        sprintf(key, "%d", entry_data->pid);
+    }
+    else {
+        free_process_data(entry_data);
+        mdebug1("Couldn't get the pid of the process");
+        return NULL;
+    }
 
     w_mutex_lock(&sys->processes_entry_mutex);
 
     if (saved_data = (process_entry_data *) rbtree_get(sys->processes_entry, key), !saved_data) {
         // New entry. Insert into hash table
-        if (process_insert(key, entry_data) == -1) {
+        if (insert_entry(sys->processes_entry, key, (void *) entry_data) == -1) {
             w_mutex_unlock(&sys->processes_entry_mutex);
             free_process_data(entry_data);
-            mdebug1("Couldn't insert process into hash table: '%s'", entry_data->name);
+            mdebug1("Couldn't insert process into hash table: '%s'", key);
             return NULL;
         }
         json_event = process_json_event(NULL, entry_data, random_id, timestamp);
@@ -443,10 +566,10 @@ cJSON * analyze_process(process_entry_data * entry_data, int random_id, char * t
         // Checking for changes
         saved_data->running = 1;
         if (json_event = process_json_event(saved_data, entry_data, random_id, timestamp), json_event) {
-            if (process_update(key, entry_data) == -1) {
+            if (update_entry(sys->processes_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->processes_entry_mutex);
                 free_process_data(entry_data);
-                mdebug1("Couldn't update process in hash table: '%s'", entry_data->name);
+                mdebug1("Couldn't update process in hash table: '%s'", key);
                 return NULL;
             }
         } else {
@@ -459,30 +582,39 @@ cJSON * analyze_process(process_entry_data * entry_data, int random_id, char * t
     return json_event;
 }
 
-// Insert process into hash table
-int process_insert(char * pid, process_entry_data * data) {
-    if (rbtree_insert(sys->processes_entry, pid, data) == NULL) {
-        mdebug1("Couldn't insert entry, duplicate pid: '%s'", pid);
-        return -1;
-    }
-    return 0;
-}
+// Deletes the uninstalled programs from the hash table
+void check_uninstalled_programs() {
+    char ** keys;
+    int i;
 
-// Update process to hash table
-int process_update(char * pid, process_entry_data * data) {
-    if (rbtree_replace(sys->processes_entry, pid, data) == NULL) {
-        mdebug1("Unable to update process to db, key not found: '%s'", pid);
-        return -1;
-    }
-    return 0;
-}
+    w_mutex_lock(&sys->programs_entry_mutex);
+    keys = rbtree_keys(sys->programs_entry);
+    w_mutex_unlock(&sys->programs_entry_mutex);
 
-// Delete process from hash table
-void process_delete(char * pid) {
-    process_entry_data * data;
-    if (data = rbtree_get(sys->processes_entry, pid), data) {
-        rbtree_delete(sys->processes_entry, pid);
+    for (i = 0; keys[i] != NULL; i++) {
+
+        w_mutex_lock(&sys->programs_entry_mutex);
+
+        program_entry_data * data = rbtree_get(sys->programs_entry, keys[i]);
+
+        if (!data) {
+            w_mutex_unlock(&sys->programs_entry_mutex);
+            continue;
+        }
+
+        if (!data->installed) {
+            delete_entry(sys->programs_entry, keys[i]);
+        } else {
+            // We reset the installed flag
+            data->installed = 0;
+        }
+
+        w_mutex_unlock(&sys->programs_entry_mutex);
     }
+
+    free_strarray(keys);
+
+    return;
 }
 
 // Deletes the terminated processes from the hash table
@@ -506,7 +638,7 @@ void check_terminated_processes() {
         }
 
         if (!data->running) {
-            process_delete(keys[i]);
+            delete_entry(sys->processes_entry, keys[i]);
         } else {
             // We reset the running flag
             data->running = 0;
@@ -520,24 +652,81 @@ void check_terminated_processes() {
     return;
 }
 
-// Print processes hash table
-void print_rbtree() {
-    char **keys;
-    process_entry_data * node;
-    int i = 0;
-
-    w_mutex_lock(&sys->processes_entry_mutex);
-    keys = rbtree_keys(sys->processes_entry);
-
-    while(keys[i]) {
-        node = (process_entry_data *) rbtree_get(sys->processes_entry, keys[i]);
-        mdebug2("entry(%d) => (%s)'%d:%s'", i, keys[i], node->pid, node->name);
-        i++;
+// Insert entry into hash table
+int insert_entry(rb_tree * tree, const char * key, void * data) {
+    if (rbtree_insert(tree, key, data) == NULL) {
+        mdebug1("Couldn't insert entry, duplicated key: '%s'", key);
+        return -1;
     }
-    free_strarray(keys);
-    w_mutex_unlock(&sys->processes_entry_mutex);
+    return 0;
+}
 
-    return;
+// Update entry to hash table
+int update_entry(rb_tree * tree, const char * key, void * data) {
+    if (rbtree_replace(tree, key, data) == NULL) {
+        mdebug1("Unable to update entry to db, key not found: '%s'", key);
+        return -1;
+    }
+    return 0;
+}
+
+// Delete entry from hash table
+void delete_entry(rb_tree * tree, const char * key) {
+    process_entry_data * data;
+    if (data = rbtree_get(tree, key), data) {
+        rbtree_delete(tree, key);
+    }
+}
+
+//
+cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, int random_id, char * timestamp) {
+    cJSON *object = cJSON_CreateObject();
+    cJSON *program = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(object, "type", "program");
+    cJSON_AddNumberToObject(object, "ID", random_id);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
+    cJSON_AddItemToObject(object, "program", program);
+
+    cJSON_AddStringToObject(program, "name", new_data->name);
+    if (new_data->format) {
+        cJSON_AddStringToObject(program, "format", new_data->format);
+    }
+    if (new_data->priority) {
+        cJSON_AddStringToObject(program, "priority", new_data->priority);
+    }
+    if (new_data->group) {
+        cJSON_AddStringToObject(program, "group", new_data->group);
+    }
+    if (new_data->size > LONG_MIN) {
+        cJSON_AddNumberToObject(program, "size", new_data->size);
+    }
+    if (new_data->vendor) {
+        cJSON_AddStringToObject(program, "vendor", new_data->vendor);
+    }
+    if (new_data->install_time) {
+        cJSON_AddStringToObject(program, "install_time", new_data->install_time);
+    }
+    if (new_data->version) {
+        cJSON_AddStringToObject(program, "version", new_data->version);
+    }
+    if (new_data->architecture) {
+        cJSON_AddStringToObject(program, "architecture", new_data->architecture);
+    }
+    if (new_data->multi_arch) {
+        cJSON_AddStringToObject(program, "multi-arch", new_data->multi_arch);
+    }
+    if (new_data->source) {
+        cJSON_AddStringToObject(program, "source", new_data->source);
+    }
+    if (new_data->description) {
+        cJSON_AddStringToObject(program, "description", new_data->description);
+    }
+    if (new_data->location) {
+        cJSON_AddStringToObject(program, "location", new_data->location);
+    }
+
+    return object;
 }
 
 //
@@ -646,4 +835,44 @@ cJSON * process_json_event(process_entry_data * old_data, process_entry_data * n
     }
 
     return object;
+}
+
+// Print programs hash table
+void print_programs_rbtree() {
+    char **keys;
+    program_entry_data * node;
+    int i = 0;
+
+    w_mutex_lock(&sys->programs_entry_mutex);
+    keys = rbtree_keys(sys->programs_entry);
+
+    while(keys[i]) {
+        node = (program_entry_data *) rbtree_get(sys->programs_entry, keys[i]);
+        mdebug2("entry(%d) => (%s)'%s:%s'", i, keys[i], node->name, node->format);
+        i++;
+    }
+    free_strarray(keys);
+    w_mutex_unlock(&sys->programs_entry_mutex);
+
+    return;
+}
+
+// Print processes hash table
+void print_processes_rbtree() {
+    char **keys;
+    process_entry_data * node;
+    int i = 0;
+
+    w_mutex_lock(&sys->processes_entry_mutex);
+    keys = rbtree_keys(sys->processes_entry);
+
+    while(keys[i]) {
+        node = (process_entry_data *) rbtree_get(sys->processes_entry, keys[i]);
+        mdebug2("entry(%d) => (%s)'%d:%s'", i, keys[i], node->pid, node->name);
+        i++;
+    }
+    free_strarray(keys);
+    w_mutex_unlock(&sys->processes_entry_mutex);
+
+    return;
 }

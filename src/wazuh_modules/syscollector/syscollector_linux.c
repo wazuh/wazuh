@@ -24,6 +24,7 @@
 #include <net/if_arp.h>
 #include <netinet/tcp.h>
 #include <linux/if_packet.h>
+#include "external/procps/readproc.h"
 #include "external/libdb/build_unix/db.h"
 
 hw_info *get_system_linux();                    // Get system information
@@ -1456,7 +1457,6 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     PROCTAB* proc = openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV);
 
     proc_t * proc_info;
-    char *string;
 
     if (!proc) {
         mterror(WM_SYS_LOGTAG, "Running process inventory: could not create libproc context.");
@@ -1464,41 +1464,105 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         return;
     }
 
-    cJSON *item;
-    cJSON *proc_array = cJSON_CreateArray();
-
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
 
     while (proc_info = readproc(proc, NULL), proc_info != NULL) {
+        int i;
+        int pos = 0;
+
         cJSON * json_event = NULL;
         process_entry_data * entry_data = NULL;
 
-        // Get process attributes
-        if (entry_data = get_process_data_linux(proc_info), !entry_data) {
-            mdebug1("Couldn't get attributes for process: '%s'", proc_info->cmd);
-            freeproc(proc_info);
-            continue;
+        os_calloc(1, sizeof(process_entry_data), entry_data);
+        init_process_data_entry(entry_data);
+
+        entry_data->pid = proc_info->tid;
+        entry_data->ppid = proc_info->ppid;
+
+        if (proc_info->cmd) {
+            os_strdup(proc_info->cmd, entry_data->name);
         }
+
+        if (&proc_info->state) {
+            os_strdup(&proc_info->state, entry_data->state);
+        }
+
+        os_malloc(sizeof(char *), entry_data->argvs);
+        if (proc_info->cmdline && proc_info->cmdline[0]) {
+            os_strdup(proc_info->cmdline[0], entry_data->cmd);
+            for (i = 1; proc_info->cmdline[i]; i++) {
+                if (!strlen(proc_info->cmdline[i]) == 0) {
+                    os_strdup(proc_info->cmdline[i], entry_data->argvs[pos]);
+                    os_realloc(entry_data->argvs, (pos + 2) * sizeof(char *), entry_data->argvs);
+                    pos++;
+                }
+            }
+        }
+        entry_data->argvs[pos] = NULL;
+
+        if (proc_info->euser) {
+            os_strdup(proc_info->euser, entry_data->euser);
+        }
+
+        if (proc_info->ruser) {
+            os_strdup(proc_info->ruser, entry_data->ruser);
+        }
+
+        if (proc_info->suser) {
+            os_strdup(proc_info->suser, entry_data->suser);
+        }
+
+        if (proc_info->egroup) {
+            os_strdup(proc_info->egroup, entry_data->egroup);
+        }
+
+        if (proc_info->rgroup) {
+            os_strdup(proc_info->rgroup, entry_data->rgroup);
+        }
+
+        if (proc_info->sgroup) {
+            os_strdup(proc_info->sgroup, entry_data->sgroup);
+        }
+
+        if (proc_info->fgroup) {
+            os_strdup(proc_info->fgroup, entry_data->fgroup);
+        }
+
+        entry_data->priority = proc_info->priority;
+        entry_data->nice = proc_info->nice;
+
+        entry_data->size = proc_info->size;
+        entry_data->vm_size = proc_info->vm_size;
+        entry_data->resident = proc_info->resident;
+        entry_data->share = proc_info->share;
+
+        entry_data->start_time =  proc_info->start_time;
+        entry_data->utime = proc_info->utime;
+        entry_data->stime = proc_info->stime;
+
+        entry_data->pgrp = proc_info->pgrp;
+        entry_data->session = proc_info->session;
+        entry_data->nlwp = proc_info->nlwp;
+        entry_data->tgid = proc_info->tgid;
+        entry_data->tty = proc_info->tty;
+        entry_data->processor = proc_info->processor;
+
+        entry_data->running = 1;
+
         freeproc(proc_info);
 
         // Check if it is necessary to create a process event
         if (json_event = analyze_process(entry_data, random_id, timestamp), json_event) {
-            cJSON_AddItemToArray(proc_array, json_event);
+            char * string = cJSON_PrintUnformatted(json_event);
+            mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", string);
+            wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+            free(string);
         }
     }
+    closeproc(proc);
 
     // Checking for terminated processes
     check_terminated_processes();
-
-    cJSON_ArrayForEach(item, proc_array) {
-        string = cJSON_PrintUnformatted(item);
-        mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", string);
-        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-        free(string);
-    }
-
-    cJSON_Delete(proc_array);
-    closeproc(proc);
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "process_end");
@@ -1513,91 +1577,6 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     free(end_msg);
     free(timestamp);
 
-}
-
-// Get data from process
-process_entry_data * get_process_data_linux(proc_t * proc_info) {
-    int i;
-    int pos = 0;
-    process_entry_data * data = NULL;
-
-    os_calloc(1, sizeof(process_entry_data), data);
-    init_process_data_entry(data);
-
-    data->pid = proc_info->tid;
-    data->ppid = proc_info->ppid;
-
-    if (proc_info->cmd) {
-        os_strdup(proc_info->cmd, data->name);
-    }
-
-    if (&proc_info->state) {
-        os_strdup(&proc_info->state, data->state);
-    }
-
-    os_malloc(sizeof(char *), data->argvs);
-    if (proc_info->cmdline && proc_info->cmdline[0]) {
-        os_strdup(proc_info->cmdline[0], data->cmd);
-        for (i = 1; proc_info->cmdline[i]; i++) {
-            if (!strlen(proc_info->cmdline[i]) == 0) {
-                os_strdup(proc_info->cmdline[i], data->argvs[pos]);
-                os_realloc(data->argvs, (pos + 2) * sizeof(char *), data->argvs);
-                pos++;
-            }
-        }
-    }
-    data->argvs[pos] = NULL;
-
-    if (proc_info->euser) {
-        os_strdup(proc_info->euser, data->euser);
-    }
-
-    if (proc_info->ruser) {
-        os_strdup(proc_info->ruser, data->ruser);
-    }
-
-    if (proc_info->suser) {
-        os_strdup(proc_info->suser, data->suser);
-    }
-
-    if (proc_info->egroup) {
-        os_strdup(proc_info->egroup, data->egroup);
-    }
-
-    if (proc_info->rgroup) {
-        os_strdup(proc_info->rgroup, data->rgroup);
-    }
-
-    if (proc_info->sgroup) {
-        os_strdup(proc_info->sgroup, data->sgroup);
-    }
-
-    if (proc_info->fgroup) {
-        os_strdup(proc_info->fgroup, data->fgroup);
-    }
-
-    data->priority = proc_info->priority;
-    data->nice = proc_info->nice;
-
-    data->size = proc_info->size;
-    data->vm_size = proc_info->vm_size;
-    data->resident = proc_info->resident;
-    data->share = proc_info->share;
-
-    data->start_time =  proc_info->start_time;
-    data->utime = proc_info->utime;
-    data->stime = proc_info->stime;
-
-    data->pgrp = proc_info->pgrp;
-    data->session = proc_info->session;
-    data->nlwp = proc_info->nlwp;
-    data->tgid = proc_info->tgid;
-    data->tty = proc_info->tty;
-    data->processor = proc_info->processor;
-
-    data->running = 1;
-
-    return data;
 }
 
 // Read string from a byte array until find a NULL byte
