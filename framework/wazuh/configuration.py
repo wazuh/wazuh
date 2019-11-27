@@ -769,11 +769,8 @@ def validate_configuration(configuration_type, tmp_file):
                                'check_config_sock')
     command = json.dumps(
         {
-            "operation": "GET",
-            "type": "request",
-            "version": "1",
             "component": "check_configuration",
-            "data":
+            "params":
                 {
                     "type": configuration_type,
                     "file": tmp_file_full_path
@@ -796,7 +793,7 @@ def validate_configuration(configuration_type, tmp_file):
         s.close()
         if rec_msg_ok.startswith('ok'):
             msg = json.loads(rec_msg)
-            return msg
+            return msg['data']
         else:
             raise WazuhException(1117 if "No such file or directory" in
                                  rec_msg or "Cannot send request" in rec_msg
