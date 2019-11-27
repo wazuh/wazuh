@@ -34,7 +34,6 @@ void *wm_chk_conf_main() {
 
     int sock, peer;
     char *buffer = NULL;
-    ssize_t length;
     fd_set fdset;
 
     char *filetype = NULL;
@@ -70,10 +69,12 @@ void *wm_chk_conf_main() {
         }
 
         os_calloc(OS_MAXSTR+1, sizeof(char), buffer);
-        length = OS_RecvUnix(peer, OS_MAXSTR, buffer);
-        switch (length) {
+        switch (OS_RecvSecureTCP(peer, buffer, OS_MAXSTR)) {
+            case OS_SOCKTERR:
+                mterror(WM_CHECK_CONFIG_LOGTAG, "At main(): OS_RecvSecureTCP(): response size is bigger than expected");
+                break;
             case -1:
-                mterror(WM_CHECK_CONFIG_LOGTAG, "At main(): OS_RecvUnix(): %s", strerror(errno));
+                mterror(WM_CHECK_CONFIG_LOGTAG, "At main(): OS_RecvSecureTCP(): %s", strerror(errno));
                 break;
 
             case 0:
@@ -99,64 +100,75 @@ void *wm_chk_conf_main() {
 
                 char *output = NULL;
                 int result = test_file(filetype, filepath, &output);
-                cJSON *temp_obj = cJSON_CreateObject();
+                cJSON *json_output = cJSON_CreateObject();
 
                 if(output) {
-                    cJSON *temp_obj2 = cJSON_CreateArray();
+                    cJSON *data_array = cJSON_CreateArray();
+                    char *json_data;
+                    char *current_message;
+
                     if(result) {
-                        cJSON_AddStringToObject(temp_obj, "error", "1");
+                        cJSON_AddStringToObject(json_output, "error", "1");
                     } else {
-                        cJSON_AddStringToObject(temp_obj, "error", "0");
+                        cJSON_AddStringToObject(json_output, "error", "0");
                     }
 
-                    char *current_message;
-                    char *output_data = NULL;
                     for (current_message = strtok(output, "\n"); current_message; current_message = strtok(NULL, "\n")) {
-                        int i;
-                        int size = (int) strlen(current_message);
+                        char *output_data = NULL;
                         cJSON *validator = cJSON_CreateObject();
-                        output_data = strdup(current_message);
-                        if(strstr(current_message, "WARNING")) {
+
+                        if(!strncmp(current_message, "WARNING", 7)) {
                             cJSON_AddStringToObject(validator, "type", "WARNING");
-                            for (i = 0; i <= size - 9; i++) {
-                                output_data[i] = output_data[i + 9];
-                            }
-                            cJSON_AddStringToObject(validator, "message", output_data);
-                        } else if(strstr(current_message, "INFO")) {
+                            output_data = current_message + 9;
+                        } else if(!strncmp(current_message, "INFO", 4)) {
                             cJSON_AddStringToObject(validator, "type", "INFO");
-                            for (i = 0; i <= size - 6; i++) {
-                                output_data[i] = output_data[i + 6];
-                            }
-                            cJSON_AddStringToObject(validator, "message", output_data);
+                            output_data = current_message + 6;
                         } else if (result){
                             cJSON_AddStringToObject(validator, "type", "ERROR");
-                            if (strstr(output_data, "ERROR")) {
-                                for (i = 0; i <= size - 7; i++) {
-                                    output_data[i] = output_data[i + 7];
-                                }
+                            if(!strncmp(current_message, "ERROR", 5)){
+                                output_data = current_message + 7;
+                            } else {
+                                output_data = current_message;
                             }
-                            cJSON_AddStringToObject(validator, "message", output_data);
+                        } else {
+                            output_data = current_message;
                         }
-                        cJSON_AddItemToArray(temp_obj2, validator);
+
+                        cJSON_AddStringToObject(validator, "message", output_data);
+                        cJSON_AddItemToArray(data_array, validator);
                     }
-                    cJSON_AddItemToObject(temp_obj, "data", temp_obj2);
+                    cJSON_AddItemToObject(json_output, "data", data_array);
+
                     os_free(output);
-                    output = cJSON_PrintUnformatted(temp_obj);
-                    os_free(current_message);
-                    os_free(output_data);
+                    output = strdup("ok");
+                    json_data = cJSON_PrintUnformatted(json_output);
+                    wm_strcat(&output, json_data, ' ');
+
+                    os_free(json_data);
                 } else {
-                    cJSON_AddStringToObject(temp_obj, "error", "1");	
-                    cJSON_AddStringToObject(temp_obj, "data", "failure testing the configuration file");	
-                    output = cJSON_PrintUnformatted(temp_obj);	
+                    cJSON_AddStringToObject(json_output, "error", "1");
+                    cJSON_AddStringToObject(json_output, "data", "failure testing the configuration file");
+                    output = strdup("ok");
+                    wm_strcat(&output, cJSON_PrintUnformatted(json_output), ' ');
                 }
 
                 mwarn("%s", output);
 
                 /* Send the test result to API socket */
-                send_message(output);
+                int rc;
+                if ((rc = OS_SendSecureTCP(peer, strlen(output), output)) < 0) {
+                    /* Error on the socket */
+                    if (rc == OS_SOCKTERR) {
+                        merror("socketerr (not available).");
+                        break;
+                    }
+
+                    /* Unable to send. Socket busy */
+                    mdebug2("Socket busy, discarding message.");
+                }
 
                 os_free(output);
-                cJSON_Delete(temp_obj);
+                cJSON_Delete(json_output);
 
                 break;
         }
@@ -284,31 +296,6 @@ int test_file(const char *filetype, const char *filepath, char **output) {
     }
 
     return result;
-}
-
-void send_message(const char *output) {
-
-    /* Start api socket */
-    int api_sock, rc;
-    if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE)) < 0) {
-        merror(QUEUE_ERROR, EXECQUEUEPATHAPI, strerror(errno));
-        return;
-    }
-
-    if ((rc = OS_SendUnix(api_sock, output, 0)) < 0) {
-        /* Error on the socket */
-        if (rc == OS_SOCKTERR) {
-            merror("socketerr (not available).");
-            close(api_sock);
-            return;
-        }
-
-        /* Unable to send. Socket busy */
-        mdebug2("Socket busy, discarding message.");
-    }
-
-    close(api_sock);
-    mdebug2("The message was sent successfully.");
 }
 
 #endif
