@@ -9,15 +9,14 @@ import logging
 import connexion
 from dateutil.parser import parse
 
-import wazuh.configuration as configuration
 import wazuh.manager as manager
 import wazuh.stats as stats
+from api.authentication import get_permissions
 from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh import common
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
-from api.authentication import get_permissions
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -25,9 +24,7 @@ logger = logging.getLogger('wazuh')
 
 @exception_handler
 def get_status(pretty=False, wait_for_complete=False):
-    """Get a specified node's status 
-
-    Returns the status of all Wazuh daemons in node node_id
+    """Get manager's or local_node's Wazuh daemons status
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -50,7 +47,7 @@ def get_status(pretty=False, wait_for_complete=False):
 
 @exception_handler
 def get_info(pretty=False, wait_for_complete=False):
-    """Get a specified node's information
+    """Get manager's or local_node's basic information
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -73,7 +70,7 @@ def get_info(pretty=False, wait_for_complete=False):
 
 @exception_handler
 def get_configuration(pretty=False, wait_for_complete=False, section=None, field=None):
-    """Get manager's configuration
+    """Get manager's or local_node's configuration (ossec.conf)
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -99,9 +96,9 @@ def get_configuration(pretty=False, wait_for_complete=False, section=None, field
 
 @exception_handler
 def get_stats(pretty=False, wait_for_complete=False, date=None):
-    """Get a specified node's stats. 
+    """Get manager's or local_node's stats.
 
-    Returns Wazuh statistical information in node {node_id} for the current or specified date.
+    Returns Wazuh statistical information for the current or specified date.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -136,10 +133,10 @@ def get_stats(pretty=False, wait_for_complete=False, date=None):
 
 @exception_handler
 def get_stats_hourly(pretty=False, wait_for_complete=False):
-    """Get a specified node's stats by hour. 
+    """Get manager's or local_node's stats by hour.
 
-    Returns Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the
-    average of alerts per hour.
+    Returns Wazuh statistical information per hour. Each number in the averages field represents the average of alerts
+    per hour.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -163,10 +160,10 @@ def get_stats_hourly(pretty=False, wait_for_complete=False):
 
 @exception_handler
 def get_stats_weekly(pretty=False, wait_for_complete=False):
-    """Get a specified node's stats by week. 
+    """Get manager's or local_node's stats by week.
 
-    Returns Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the
-    average of alerts per hour for that specific day.
+    Returns Wazuh statistical information per week. Each number in the averages field represents the average of alerts
+    per hour for that specific day.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -190,9 +187,7 @@ def get_stats_weekly(pretty=False, wait_for_complete=False):
 
 @exception_handler
 def get_stats_analysisd(pretty=False, wait_for_complete=False):
-    """Get a specified node's analysisd stats. 
-
-    Returns Wazuh analysisd statistical information in node {node_id}.
+    """Get manager's or local_node's analysisd stats.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -216,9 +211,7 @@ def get_stats_analysisd(pretty=False, wait_for_complete=False):
 
 @exception_handler
 def get_stats_remoted(pretty=False, wait_for_complete=False):
-    """Get a specified node's remoted stats.
-
-    Returns Wazuh remoted statistical information in node {node_id}.
+    """Get manager's or local_node's remoted stats.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -243,9 +236,7 @@ def get_stats_remoted(pretty=False, wait_for_complete=False):
 @exception_handler
 def get_log(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
             search=None, category=None, type_log=None):
-    """Get a specified node's wazuh logs. 
-
-    Returns the last 2000 wazuh log entries in node {node_id}.
+    """Get manager's or local_node's last 2000 wazuh log entries.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -282,9 +273,7 @@ def get_log(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=No
 
 @exception_handler
 def get_log_summary(pretty=False, wait_for_complete=False):
-    """Get a summary of a specified node's wazuh logs. 
-
-    Returns a summary of the last 2000 wazuh log entries in node {node_id}.
+    """Get manager's or local_node's summary of the last 2000 wazuh log entries.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -307,7 +296,7 @@ def get_log_summary(pretty=False, wait_for_complete=False):
 
 @exception_handler
 def get_files(pretty=False, wait_for_complete=False, path=None):
-    """Get file contents.
+    """Get file contents in manager or local_node.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -331,7 +320,7 @@ def get_files(pretty=False, wait_for_complete=False, path=None):
 
 @exception_handler
 def put_files(body, overwrite=False, pretty=False, wait_for_complete=False, path=None):
-    """Uploads files.
+    """Upload file in manager or local_node.
 
     :param body: Body request with the content of the file to be uploaded
     :param overwrite: If set to false, an exception will be raised when updating contents of an already existing
@@ -368,9 +357,7 @@ def put_files(body, overwrite=False, pretty=False, wait_for_complete=False, path
 
 @exception_handler
 def delete_files(pretty=False, wait_for_complete=False, path=None):
-    """Removes a file.
-
-    Removes a specified file.
+    """Delete file in manager or local_node.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -394,7 +381,7 @@ def delete_files(pretty=False, wait_for_complete=False, path=None):
 
 @exception_handler
 def put_restart(pretty=False, wait_for_complete=False):
-    """Restarts the wazuh manager.
+    """Restart manager or local_node.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -417,7 +404,7 @@ def put_restart(pretty=False, wait_for_complete=False):
 
 @exception_handler
 def get_conf_validation(pretty=False, wait_for_complete=False):
-    """Check if Wazuh configuration is correct.
+    """Check if Wazuh configuration is correct in manager or local_node.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -440,7 +427,7 @@ def get_conf_validation(pretty=False, wait_for_complete=False):
 
 @exception_handler
 def get_manager_config_ondemand(component, pretty=False, wait_for_complete=False, **kwargs):
-    """Get active configuration in manager for one component [on demand]
+    """Get active configuration in manager or local_node for one component [on demand]
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response

@@ -1,7 +1,9 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
+import wazuh.core.manager
 from wazuh.agent import Agent
 from wazuh.rule import Rule
 from wazuh.decoder import Decoder
@@ -237,7 +239,7 @@ functions = {
         'is_async': False
     },
     '/manager/status': {
-        'function': manager.status,
+        'function': wazuh.core.manager.status,
         'type': 'local_any',
         'is_async': False
     },
@@ -325,7 +327,7 @@ functions = {
         'is_async': False
     },
     '/cluster/node': {
-        'function': cluster.get_node,
+        'function': wazuh.core.cluster.cluster.get_node,
         'type': 'local_any',
         'is_async': False
     },
@@ -350,7 +352,7 @@ functions = {
         'is_async': False
     },
     '/cluster/:node_id/status': {
-        'function': manager.status,
+        'function': wazuh.core.manager.status,
         'type': 'distributed_master',
         'is_async': False
     },

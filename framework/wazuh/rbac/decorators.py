@@ -8,7 +8,7 @@ from functools import wraps
 
 from api import configuration
 from api.authentication import AuthenticationManager
-from wazuh.common import rbac, broadcast, my_cluster
+from wazuh.common import rbac, broadcast, cluster_nodes
 from wazuh.configuration import get_ossec_conf
 from wazuh.core.cdb_list import iterate_lists
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
@@ -77,8 +77,7 @@ def _expand_resource(resource):
         elif resource_type == 'list:path':
             return {cdb_list['path'] for cdb_list in iterate_lists(only_names=True)}
         elif resource_type == 'node:id':
-            return {node['name'] for node in my_cluster.system_nodes['items']}
-            # return {'master-node', 'worker1', 'worker2'}
+            return set(cluster_nodes.get())
         return set()
     # We return the value casted to set
     else:
@@ -333,7 +332,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                             original_kwargs.get(target_param, None) is not None and \
                             len(original_kwargs[target_param]) != 0:
                         raise Exception
-                    if target_param != '*':  # No resourceless
+                    if target_param != '*':  # No resourceless and not static
                         kwargs[target_param] = list(allow[res_id])
                     elif len(allow[res_id]) == 0:
                         raise Exception

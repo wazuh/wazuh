@@ -10,27 +10,19 @@ import operator
 import os
 import random
 import time
+from concurrent.futures import ThreadPoolExecutor
 from functools import reduce
 from operator import or_
 from typing import Callable, Dict, Tuple
-from concurrent.futures import ThreadPoolExecutor
 
+import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
+import wazuh.core.manager
 import wazuh.results as wresults
 from wazuh import exception, agent, common, cluster
 from wazuh import manager
 from wazuh.core.cluster import control, local_client, common as c_common
-from wazuh.exception import WazuhException
-
-
-async def set_system_nodes():
-    if common.my_cluster.system_nodes is None:
-        lc = local_client.LocalClient()
-        try:
-            result = await control.get_nodes(lc)
-        finally:
-            lc.transport.close()
-        common.my_cluster.system_nodes = result
+from wazuh.exception import WazuhException, WazuhInternalError
 
 
 class DistributedAPI:
@@ -41,7 +33,7 @@ class DistributedAPI:
                  debug: bool = False, pretty: bool = False, request_type: str = "local_master",
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
-                 rbac_permissions: Dict = None):
+                 rbac_permissions: Dict = None, nodes: list = None):
         """
         Class constructor
 
@@ -60,7 +52,7 @@ class DistributedAPI:
         self.cluster_items = wazuh.core.cluster.utils.get_cluster_items() if node is None else node.cluster_items
         self.debug = debug
         self.pretty = pretty
-        self.node_info = cluster.get_node() if node is None else node.get_node()
+        self.node_info = wazuh.core.cluster.cluster.get_node() if node is None else node.get_node()
         self.request_id = str(random.randint(0, 2**10 - 1))
         self.request_type = request_type
         self.wait_for_complete = wait_for_complete
@@ -68,6 +60,7 @@ class DistributedAPI:
         self.is_async = is_async
         self.broadcasting = broadcasting
         self.rbac_permissions = rbac_permissions if rbac_permissions is not None else dict()
+        self.nodes = nodes if nodes is not None else list()
         if not basic_services:
             self.basic_services = ('wazuh-modulesd', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
             if common.install_type != "local":
@@ -88,7 +81,7 @@ class DistributedAPI:
         try:
             self.logger.debug("Receiving parameters {}".format(self.f_kwargs))
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
-            is_cluster_disabled = self.node == local_client and cluster.check_cluster_status()
+            is_cluster_disabled = self.node == local_client and wazuh.core.cluster.cluster.check_cluster_status()
 
             # If it is a cluster API request and the cluster is not enabled, raise an exception
             if is_cluster_disabled and 'cluster' in self.f.__name__ and \
@@ -155,10 +148,10 @@ class DistributedAPI:
 
         The basic services wazuh needs to be running are: wazuh-modulesd, ossec-remoted, ossec-analysisd, ossec-execd and wazuh-db
         """
-        if self.f == manager.status:
+        if self.f == wazuh.core.manager.status:
             return
 
-        status = manager.status()
+        status = wazuh.core.manager.status()
 
         not_ready_daemons = {k: status[k] for k in self.basic_services if status[k] in ('failed',
                                                                                         'restarting',
@@ -179,6 +172,7 @@ class DistributedAPI:
             self.logger.debug("Starting to execute request locally")
             common.rbac.set(self.rbac_permissions)
             common.broadcast.set(self.broadcasting)
+            common.cluster_nodes.set(self.nodes)
             data = self.f(**self.f_kwargs)
             common.reset_context_cache()
             self.logger.debug("Finished executing request locally")
@@ -268,7 +262,8 @@ class DistributedAPI:
                 "local_client_arg": self.local_client_arg,
                 "basic_services": self.basic_services,
                 "rbac_permissions": self.rbac_permissions,
-                "broadcasting": self.broadcasting
+                "broadcasting": self.broadcasting,
+                "nodes": self.nodes
                 }
 
     def get_error_info(self, e) -> Dict:
@@ -347,7 +342,6 @@ class DistributedAPI:
             else:
                 if 'tmp_file' in self.f_kwargs:
                     await self.send_tmp_file(node_name)
-
                 client = self.get_client()
                 result = json.loads(await client.execute(b'dapi_forward',
                                                          "{} {}".format(node_name,
@@ -488,3 +482,16 @@ class APIRequestQueue:
         """
         self.logger.debug("Received request: {}".format(request))
         self.request_queue.put_nowait(request.decode())
+
+
+async def get_system_nodes():
+    try:
+        lc = local_client.LocalClient()
+        try:
+            result = await control.get_nodes(lc)
+        finally:
+            lc.transport.close()
+
+        return [node['name'] for node in result['items']]
+    except Exception:
+        raise WazuhInternalError(3012)

@@ -10,6 +10,7 @@ import argparse
 import operator
 import sys
 
+import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 from wazuh.core.cluster import control, local_client
 from wazuh import cluster
@@ -155,7 +156,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     cluster_config = wazuh.core.cluster.utils.read_config()
-    cluster.check_cluster_config(config=cluster_config)
+    wazuh.core.cluster.cluster.check_cluster_config(config=cluster_config)
 
     try:
         if args.filter_status and not args.list_agents:

@@ -127,7 +127,7 @@ max_groups_per_multigroup = 256
 # Context variables
 rbac: ContextVar[Dict] = ContextVar('rbac', default=dict())
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
-nodes = None
+cluster_nodes: ContextVar[set] = ContextVar('cluster_nodes', default=list())
 
 _context_cache = dict()
 
@@ -160,19 +160,3 @@ def reset_context_cache():
 
     for context_var in _context_cache.values():
         context_var.set(None)
-
-
-class ClusterInfo:
-    def __init__(self):
-        self._system_nodes = None
-
-    @property
-    def system_nodes(self):
-        return self._system_nodes
-
-    @system_nodes.setter
-    def system_nodes(self, value):
-        self._system_nodes = value
-
-
-my_cluster = ClusterInfo()

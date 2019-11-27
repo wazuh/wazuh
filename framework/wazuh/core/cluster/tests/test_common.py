@@ -7,7 +7,7 @@ with patch('wazuh.common.getgrnam'):
         from wazuh import Wazuh
         from wazuh.agent import get_agents_summary_status
         from wazuh.exception import WazuhError, WazuhInternalError
-        from wazuh.manager import status
+        from wazuh.core.manager import status
         from wazuh.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh.core.cluster import WazuhJSONEncoder, as_wazuh_object
 
