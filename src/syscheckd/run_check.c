@@ -29,7 +29,7 @@ int fim_whodata_initialize();
 #ifdef WIN32
 static void set_priority_windows_thread();
 #ifdef WIN_WHODATA
-static void check_whodata_mode_changes();
+static void set_whodata_mode_changes();
 #endif
 #else
 static void *symlink_checker_thread(__attribute__((unused)) void * data);
@@ -298,11 +298,13 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 #endif
 
     while (1) {
+#ifdef WIN_WHODATA
+        if (syscheck.realtime_change) {
+            set_whodata_mode_changes();
+        }
+#endif
         if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
             log_realtime_status(1);
-#ifdef WIN_WHODATA
-            check_whodata_mode_changes();
-#endif
 #ifdef INOTIFY_ENABLED
             struct timeval selecttime;
             fd_set rfds;
@@ -656,7 +658,13 @@ static void fim_link_reload_broken_link(char *path, int index) {
 // LCOV_EXCL_STOP
 #endif
 #ifdef WIN_WHODATA
-void check_whodata_mode_changes() {
+void set_whodata_mode_changes() {
+    if (!syscheck.realtime) {
+        realtime_start();
+    }
+
+    realtime_change = 0;
+
     int i;
     for (i = 0; syscheck.dir[i]; i++) {
         if (syscheck.wdata.dirs_status[i].status & WD_CHECK_REALTIME) {

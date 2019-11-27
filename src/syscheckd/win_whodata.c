@@ -622,10 +622,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     goto clean;
                 }
 
-                if (!syscheck.realtime) {
-                    realtime_start();
-                }
-
                 int device_type;
                 if (device_type = check_path_type(path), device_type == 2) { // If it is an existing directory, check_path_type returns 2
                     is_directory = 1;
@@ -891,6 +887,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                 } else {
                     // Check if the SACL is invalid
                     if (check_object_sacl(syscheck.dir[i], (d_status->object_type == WD_STATUS_FILE_TYPE) ? 1 : 0)) {
+                        syscheck.realtime_change = 1;
                         minfo(FIM_WHODATA_SACL_CHANGED, syscheck.dir[i]);
                         // Mark the directory to prevent its children from sending partial whodata alerts
                         syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;

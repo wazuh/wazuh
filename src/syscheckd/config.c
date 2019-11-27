@@ -51,6 +51,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.wdata.fd      = NULL;
 #endif
 #ifdef WIN32
+    syscheck.realtime_change = 0;
     syscheck.registry       = NULL;
     syscheck.max_fd_win_rt  = 0;
 #endif

@@ -252,6 +252,7 @@ typedef struct _config {
 
     /* Windows only registry checking */
 #ifdef WIN32
+    char realtime_change;                       // Variable to activate the change to realtime from a whodata monitoring
     registry *registry_ignore;                  /* list of registry entries to ignore */
     registry_regex *registry_ignore_regex;      /* regex of registry entries to ignore */
     registry *registry;                         /* array of registry entries to be scanned */
