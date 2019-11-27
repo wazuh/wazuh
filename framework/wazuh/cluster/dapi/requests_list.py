@@ -111,11 +111,6 @@ functions = {
         'type': 'local_master',
         'is_async': False
     },
-    'PUT/agents/configuration/validation': {
-        'function': Agent.validate_configuration,
-        'type': 'local_master',
-        'is_async': False
-    },
     'POST/agents/restart': {
         'function': Agent.restart_agents,
         'type': 'distributed_master',
@@ -220,6 +215,13 @@ functions = {
     },
     'DELETE/agents/groups': {
         'function': Agent.remove_group,
+        'type': 'local_master',
+        'is_async': False
+    },
+
+    # Configuration
+    'PUT/configuration/validation': {
+        'function': configuration.validate_configuration,
         'type': 'local_master',
         'is_async': False
     },

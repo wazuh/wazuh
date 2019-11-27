@@ -752,3 +752,58 @@ def get_active_configuration(agent_id, component, configuration):
     else:
         raise WazuhException(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg
                                   else 1116, rec_msg.replace("err ", ""))
+
+
+def validate_configuration(configuration_type, tmp_file):
+    """Validate an agent configuration from a temporary file.
+
+    :param configuration_type: Type of the configuration file
+    :param tmp_file: Relative path of the configuration which will be validated
+    :return: Evaluation of agent configuration
+    """
+    tmp_file_full_path = os_path.join(common.ossec_path, tmp_file)
+    # check that the file exists
+    if not os_path.exists(tmp_file_full_path):
+        raise WazuhException(1906)
+    dest_socket = os_path.join(common.ossec_path, 'queue', 'ossec',
+                               'check_config_sock')
+    command = json.dumps(
+        {
+            "operation": "GET",
+            "type": "request",
+            "version": "1",
+            "component": "check_configuration",
+            "data":
+                {
+                    "type": configuration_type,
+                    "file": tmp_file_full_path
+                },
+        }
+    )
+    try:
+        try:
+            s = OssecSocket(dest_socket)
+        except Exception as e:
+            raise WazuhException(1117, str(e))
+        # Send message
+        s.send(command.encode())
+        # Receive response
+        try:
+            # Receive data length
+            rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
+        except ValueError:
+            raise WazuhException(1118, "Data could not be received")
+        s.close()
+        if rec_msg_ok.startswith('ok'):
+            msg = json.loads(rec_msg)
+            return msg
+        else:
+            raise WazuhException(1117 if "No such file or directory" in
+                                 rec_msg or "Cannot send request" in rec_msg
+                                 else 1116, rec_msg.replace("err ", ""))
+    finally:
+        # delete temporary file
+        try:
+            remove(tmp_file_full_path)
+        except OSError:
+            raise WazuhException(1903)
