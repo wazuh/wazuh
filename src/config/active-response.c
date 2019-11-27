@@ -85,7 +85,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 #endif
 
     if ((chmod(DEFAULTARPATH, 0640)) == -1) {
-        merror("Could not chmod to 0640: %d.", errno);
+        merror("Could not chmod to 0640: '%d'", errno);
         fclose(fp);
         return (-1);
     }
