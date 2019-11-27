@@ -1394,16 +1394,16 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 /* Listen another audit keys */
                 if (strcmp(children[j]->element, xml_audit_key) == 0) {
                     int keyit = 0;
-                    char delim = ',';
+                    const char * DELIM = ",";
                     char *key;
-                    key = strtok(children[j]->content, &delim);
+                    key = strtok(children[j]->content, DELIM);
 
                     while (key) {
                         if (*key) {
                             syscheck->audit_key[keyit] = check_ascci_hex(key);
                             os_realloc(syscheck->audit_key, (keyit + 2) * sizeof(char *), syscheck->audit_key);
                             syscheck->audit_key[keyit + 1] = NULL;
-                            key = strtok(NULL, &delim);
+                            key = strtok(NULL, DELIM);
                             keyit++;
                         }
                     }
