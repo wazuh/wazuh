@@ -138,7 +138,11 @@ int validate_target(const char *path, int type, char **output) {
 
     node = OS_GetElementsbyNode(&xml, NULL);
     if (!node) {
-        return (0);
+        if(xml.cur == 0) {
+            snprintf(message, OS_FLSIZE, "No XML nodes found on: %s", path);
+            wm_strcat(output, message, '\n');
+        }
+        return OS_INVALID;
     }
 
     /* Read the main configuration */

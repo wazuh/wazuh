@@ -401,7 +401,7 @@ int Test_Remoted(const char *path, char **output) {
         if (output == NULL){
             mwarn("Remoted Config: Queue size is very high. The application may run out of memory.");
         } else {
-            wm_strcat(output, "Remoted Config: Queue size is very high. The application may run out of memory.", '\n');
+            wm_strcat(output, "WARNING: Remoted Config: Queue size is very high. The application may run out of memory.", '\n');
         }
     }
 

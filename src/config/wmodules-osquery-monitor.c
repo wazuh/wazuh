@@ -145,7 +145,7 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module, char **output)
             mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_OSQUERYMONITOR_CONTEXT.name);
         } else {
             snprintf(message, OS_FLSIZE,
-                "No such tag <%s> at module '%s'.",
+                "WARNING: No such tag <%s> at module '%s'.",
                 nodes[i]->element, WM_OSQUERYMONITOR_CONTEXT.name);
             wm_strcat(output, message, '\n');
         }
