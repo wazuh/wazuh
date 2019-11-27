@@ -4,6 +4,7 @@
 
 import itertools
 import json
+import logging
 import os
 import zipfile
 from datetime import datetime, timedelta
@@ -17,10 +18,10 @@ from time import time
 
 from wazuh import WazuhException, common
 from wazuh.InputValidator import InputValidator
-from wazuh.cluster import logger
 from wazuh.core.cluster.utils import get_cluster_items, read_config
 from wazuh.utils import md5, mkdir_with_mode
 
+logger = logging.getLogger('wazuh')
 
 #
 # Cluster

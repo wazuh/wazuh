@@ -45,7 +45,7 @@ def get_status():
         result.affected_items.append(status())
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
-    result.total_affected_items=len(result.affected_items)
+    result.total_affected_items = len(result.affected_items)
 
     return result
 

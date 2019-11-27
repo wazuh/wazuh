@@ -2,8 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import logging
-
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.control import get_health, get_nodes
@@ -11,8 +9,6 @@ from wazuh.core.cluster.utils import get_cluster_status, read_cluster_config, re
 from wazuh.exception import WazuhError
 from wazuh.rbac.decorators import expose_resources, async_list_handler
 from wazuh.results import AffectedItemsWazuhResult
-
-logger = logging.getLogger('wazuh')
 
 cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
