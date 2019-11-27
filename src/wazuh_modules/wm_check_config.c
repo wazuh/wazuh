@@ -68,25 +68,27 @@ void *wm_chk_conf_main() {
             continue;
         }
 
+        cJSON *json_output = cJSON_CreateObject();
         os_calloc(OS_MAXSTR+1, sizeof(char), buffer);
+
         switch (OS_RecvSecureTCP(peer, buffer, OS_MAXSTR)) {
             case OS_SOCKTERR:
                 mterror(WM_CHECK_CONFIG_LOGTAG, "At main(): OS_RecvSecureTCP(): request size is bigger than expected");
+                cJSON_AddStringToObject(json_output, "error", "2");
                 break;
             case -1:
                 mterror(WM_CHECK_CONFIG_LOGTAG, "At main(): OS_RecvSecureTCP(): %s", strerror(errno));
+                cJSON_AddStringToObject(json_output, "error", "3");
                 break;
 
             case 0:
                 mtinfo(WM_CHECK_CONFIG_LOGTAG, "Empty message from local client.");
-                break;
-
-            case OS_MAXLEN:
-                mterror(WM_CHECK_CONFIG_LOGTAG, "Received message > %i", MAX_DYN_STR);
+                cJSON_AddStringToObject(json_output, "error", "4");
                 break;
 
             default:
                 if(check_event_rcvd(buffer, &filetype, &filepath) < 0) {
+                    cJSON_AddStringToObject(json_output, "error", "5");
                     break;
                 }
 
@@ -98,13 +100,24 @@ void *wm_chk_conf_main() {
                     }
                 }
 
+                if(IsFile(filepath)) {
+                    mterror(WM_CHECK_CONFIG_LOGTAG, "'%s': No such file", filepath);
+                    cJSON_AddStringToObject(json_output, "error", "6");
+                    break;
+                }
+
                 char *output = NULL;
                 int result = test_file(filetype, filepath, &output);
-                cJSON *json_output = cJSON_CreateObject();
+
+                if(result == OS_NOTFOUND) {
+                    mterror(WM_CHECK_CONFIG_LOGTAG, "Unknown value '%s' for -t option.", filetype);
+                    cJSON_AddStringToObject(json_output, "error", "7");
+                    os_free(output);
+                    break;
+                }
 
                 if(output) {
                     cJSON *data_array = cJSON_CreateArray();
-                    char *json_data;
                     char *current_message;
 
                     if(result) {
@@ -123,16 +136,15 @@ void *wm_chk_conf_main() {
                         } else if(!strncmp(current_message, "INFO", 4)) {
                             cJSON_AddStringToObject(validator, "type", "INFO");
                             output_data = current_message + 6;
+                        } else if(!strncmp(current_message, "ERROR", 5)){
+                            cJSON_AddStringToObject(validator, "type", "ERROR");
+                            output_data = current_message + 7;
                         } else if(!strncmp(current_message, "CRITICAL", 8)){
                             cJSON_AddStringToObject(validator, "type", "CRITICAL");
                             output_data = current_message + 10;
                         } else if (result){
                             cJSON_AddStringToObject(validator, "type", "ERROR");
-                            if(!strncmp(current_message, "ERROR", 5)){
-                                output_data = current_message + 7;
-                            } else {
-                                output_data = current_message;
-                            }
+                            output_data = current_message;
                         } else {
                             cJSON_AddStringToObject(validator, "type", "INFO");
                             output_data = current_message;
@@ -143,38 +155,30 @@ void *wm_chk_conf_main() {
                     }
                     cJSON_AddItemToObject(json_output, "data", data_array);
 
-                    os_free(output);
-                    output = strdup("ok");
-                    json_data = cJSON_PrintUnformatted(json_output);
-                    wm_strcat(&output, json_data, ' ');
-
-                    os_free(json_data);
                 } else {
                     cJSON_AddStringToObject(json_output, "error", "1");
-                    cJSON_AddStringToObject(json_output, "data", "failure testing the configuration file");
-                    output = strdup("ok");
-                    wm_strcat(&output, cJSON_PrintUnformatted(json_output), ' ');
-                }
-
-                /* Send the test result to API socket */
-                int rc;
-                if ((rc = OS_SendSecureTCP(peer, strlen(output), output)) < 0) {
-                    /* Error on the socket */
-                    if (rc == OS_SOCKTERR) {
-                        merror("socketerr (not available).");
-                        break;
-                    }
-
-                    /* Unable to send. Socket busy */
-                    mdebug2("Socket busy, discarding message.");
+                    cJSON_AddStringToObject(json_output, "data",
+                        "CRITICAL: An unexpected error occured while validating the configuration");
                 }
 
                 os_free(output);
-                cJSON_Delete(json_output);
-
                 break;
         }
 
+        char *response = strdup("ok");
+        char *json_response = cJSON_PrintUnformatted(json_output);
+
+        wm_strcat(&response, json_response, ' ');
+
+        cJSON_Delete(json_output);
+        os_free(json_response);
+
+        /* Send the test result to API socket */
+        if (OS_SendSecureTCP(peer, strlen(response), response) != 0) {
+            mterror(WM_CHECK_CONFIG_LOGTAG, "socketerr (not available).");
+        }
+
+        os_free(response);
         close(peer);
         os_free(filetype);
         os_free(filepath);
@@ -266,7 +270,7 @@ int test_file(const char *filetype, const char *filepath, char **output) {
         result = test_remote_conf(filepath, CRMOTE_CONFIG, output);
     } else {
         wm_strcat(output, "Unknown value for -t option.", '\n');
-        return OS_INVALID;
+        return OS_NOTFOUND;
     }
 
     if (result == 0) {
