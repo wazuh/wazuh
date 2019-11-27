@@ -573,7 +573,7 @@ cJSON * process_json_event(process_entry_data * old_data, process_entry_data * n
         {
             cJSON *argvs = cJSON_CreateArray();
             for (i = 0; new_data->argvs[i]; i++) {
-                if (!strlen(new_data->argvs[i]) == 0) {
+                if (strlen(new_data->argvs[i])) {
                     cJSON_AddItemToArray(argvs, cJSON_CreateString(new_data->argvs[i]));
                 }
             }

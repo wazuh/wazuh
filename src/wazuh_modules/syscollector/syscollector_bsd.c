@@ -1644,13 +1644,8 @@ process_entry_data * get_process_data_mac(pid_t pid) {
     data->pid = pid;
     data->ppid = task_info.pbsd.pbi_ppid;
 
-    if (task_info.pbsd.pbi_name) {
-        os_strdup(task_info.pbsd.pbi_name, data->name);
-    }
-
-    if (status) {
-        os_strdup(status, data->state);
-    }
+    os_strdup(task_info.pbsd.pbi_name, data->name);
+    os_strdup(status, data->state);
 
     struct passwd *euser = getpwuid((int)task_info.pbsd.pbi_uid);
     if(euser) {
