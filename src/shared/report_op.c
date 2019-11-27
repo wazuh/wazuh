@@ -388,14 +388,14 @@ void os_ReportdStart(report_filter *r_filter)
     alert_data **data_to_clean = NULL;
 
     time_t tm;
-    struct tm *p;
+    struct tm tm_result = { .tm_sec = 0 };
 
     file_queue *fileq;
     alert_data *al_data;
 
     /* Get current time before starting */
     tm = time(NULL);
-    p = localtime(&tm);
+    localtime_r(&tm, &tm_result);
 
     /* Initiate file queue - to read the alerts */
     os_calloc(1, sizeof(file_queue), fileq);
@@ -453,12 +453,12 @@ void os_ReportdStart(report_filter *r_filter)
 
 
 
-    Init_FileQueue(fileq, p, CRALERT_READ_ALL | CRALERT_FP_SET);
+    Init_FileQueue(fileq, &tm_result, CRALERT_READ_ALL | CRALERT_FP_SET);
 
     /* Read the alerts */
     while (1) {
         /* Get message if available */
-        al_data = Read_FileMon(fileq, p, 1);
+        al_data = Read_FileMon(fileq, &tm_result, 1);
         if (!al_data) {
             break;
         }

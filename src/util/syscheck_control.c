@@ -220,7 +220,7 @@ int main(int argc, char **argv)
         /* Clean all agents (and server) db */
         if (strcmp(agent_id, "all") == 0) {
             DIR *sys_dir;
-            struct dirent *entry;
+            struct dirent *entry = NULL;
 
             sys_dir = opendir(SYSCHECK_DIR);
             if (!sys_dir) {

@@ -425,13 +425,13 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             /* Wildcard exclusion, check for date */
             if (logf[pl].exclude && strchr(logf[pl].exclude, '%')) {
 
-                struct tm *p;
                 time_t l_time = time(0);
                 char excluded_path_date[PATH_MAX] = {0};
                 size_t ret;
+                struct tm tm_result = { .tm_sec = 0 };
 
-                p = localtime(&l_time);
-                ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, p);
+                localtime_r(&l_time, &tm_result);
+                ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, &tm_result);
                 if (ret != 0) {
                     os_strdup(excluded_path_date, log_config->globs[gl].exclude_path);
                 }
@@ -469,13 +469,13 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             /* Wildcard exclusion, check for date */
             if (logf[pl].exclude && strchr(logf[pl].exclude, '%')) {
 
-                struct tm *p;
                 time_t l_time = time(0);
+                struct tm tm_result = { .tm_sec = 0 };
                 char excluded_path_date[PATH_MAX] = {0};
                 size_t ret;
 
-                p = localtime(&l_time);
-                ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, p);
+                localtime_r(&l_time, &tm_result);
+                ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, &tm_result);
                 if (ret != 0) {
                     os_strdup(excluded_path_date, log_config->globs[gl].exclude_path);
                 }
@@ -495,14 +495,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 #endif
         } else if (strchr(logf[pl].file, '%')) {
             /* We need the format file (based on date) */
-            struct tm *p;
             time_t l_time = time(0);
+            struct tm tm_result = { .tm_sec = 0 };
             char lfile[OS_FLSIZE + 1];
             size_t ret;
 
-            p = localtime(&l_time);
+            localtime_r(&l_time, &tm_result);
             lfile[OS_FLSIZE] = '\0';
-            ret = strftime(lfile, OS_FLSIZE, logf[pl].file, p);
+            ret = strftime(lfile, OS_FLSIZE, logf[pl].file, &tm_result);
             if (ret != 0) {
                 os_strdup(logf[pl].file, logf[pl].ffile);
             }

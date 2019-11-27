@@ -1988,7 +1988,8 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
     }
 
     int result_accumulator = RETURN_NOT_FOUND;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
+
     while ((entry = readdir(dp)) != NULL) {
         /* Ignore . and ..  */
         if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {

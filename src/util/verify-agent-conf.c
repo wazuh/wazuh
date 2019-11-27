@@ -41,7 +41,7 @@ int main(int argc, char **argv)
     char path[PATH_MAX + 1];
     char path_f[PATH_MAX + 1];
     DIR *gdir, *subdir;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     int c = 0;
     int error = 0;
 
