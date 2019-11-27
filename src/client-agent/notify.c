@@ -134,34 +134,23 @@ void run_notify()
     char *agent_ip;
     int sock;
     char label_ip[60];
-    int i;
     os_calloc(IPSIZE + 1,sizeof(char),agent_ip);
 
-    for (i = SOCK_ATTEMPTS; i > 0; --i) {
-        if (sock = control_check_connection(), sock >= 0) {
-            if (OS_SendUnix(sock, agent_ip, IPSIZE) < 0) {
-                merror("Error sending msg to control socket (%d) %s", errno, strerror(errno));
-            }
-            else{
-                if(OS_RecvUnix(sock, IPSIZE, agent_ip) == 0){
-                    merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
-                    *agent_ip = '\0';
-                }
-                else{
-                    snprintf(label_ip,sizeof label_ip,"#\"_agent_ip\":%s", agent_ip);
-                }
-            }
-
-            close(sock);
-            break;
+    if (sock = control_check_connection(), sock >= 0) {
+        if (OS_SendUnix(sock, agent_ip, IPSIZE) < 0) {
+            merror("Error sending msg to control socket (%d) %s", errno, strerror(errno));
         } else {
-            mdebug2("Control module not yet available. Remaining attempts: %d", i - 1);
-            sleep(1);
+            if (OS_RecvUnix(sock, IPSIZE, agent_ip) == 0) {
+                merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
+                *agent_ip = '\0';
+            } else {
+                snprintf(label_ip,sizeof label_ip,"#\"_agent_ip\":%s", agent_ip);
+            }
         }
-    }
 
-    if(sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
+        close(sock);
+    } else {
+        mdebug2("Control module is not yet available. Check that wazuh-modulesd is running.");
     }
 
     /* Create message */
