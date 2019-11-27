@@ -1634,6 +1634,7 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
             char * string = cJSON_PrintUnformatted(json_event);
             mtdebug2(WM_SYS_LOGTAG, "sys_proc_mac() sending '%s'", string);
             wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+            cJSON_Delete(json_event);
             free(string);
         }
     }

@@ -373,8 +373,6 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
     char *format = "rpm";
     char *timestamp;
-    cJSON *object = NULL;
-    cJSON *package = NULL;
 
     DBT key, data;
     DBC *cursor;
@@ -426,6 +424,9 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     memset(&data, 0, sizeof(DBT));
 
     int j;
+
+    cJSON *object = NULL;
+    cJSON *package = NULL;
 
     for (j = 0; ret = cursor->c_get(cursor, &key, &data, DB_NEXT), ret == 0; j++) {
 
@@ -588,10 +589,8 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
     char read_buff[OS_MAXSTR];
     FILE *fp;
     size_t length;
-    int i, installed = 1;
+    int i;
     char *timestamp;
-    cJSON *object = NULL;
-    cJSON *package = NULL;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -605,6 +604,8 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
     if ((fp = fopen(file, "r"))) {
         w_file_cloexec(fp);
 
+        program_entry_data * entry_data = NULL;
+
         while(fgets(read_buff, OS_MAXSTR, fp) != NULL){
 
             // Remove '\n' from the read line
@@ -613,21 +614,19 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             if (!strncmp(read_buff, "Package: ", 9)) {
 
-                if(object){
-                    cJSON_Delete(object);
+                if (entry_data) {
+                    free_program_data(entry_data);
+                    entry_data = NULL;
                 }
 
-                object = cJSON_CreateObject();
-                package = cJSON_CreateObject();
-                cJSON_AddStringToObject(object, "type", "program");
-                cJSON_AddNumberToObject(object, "ID", random_id);
-                cJSON_AddStringToObject(object, "timestamp", timestamp);
-                cJSON_AddItemToObject(object, "program", package);
-                cJSON_AddStringToObject(package, "format", format);
+                os_calloc(1, sizeof(program_entry_data), entry_data);
+                init_program_data_entry(entry_data);
+
+                os_strdup(format, entry_data->format);
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "name", parts[1]);
+                os_strdup(parts[1], entry_data->name);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -637,15 +636,15 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
             } else if (!strncmp(read_buff, "Status: ", 8)) {
 
                 if (strstr(read_buff, "install ok installed"))
-                    installed = 1;
+                    entry_data->installed = 1;
                 else
-                    installed = 0;
+                    entry_data->installed = 0;
 
             } else if (!strncmp(read_buff, "Priority: ", 10)) {
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "priority", parts[1]);
+                os_strdup(parts[1], entry_data->priority);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -656,7 +655,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "group", parts[1]);
+                os_strdup(parts[1], entry_data->group);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -667,7 +666,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddNumberToObject(package, "size", atoi(parts[1]));
+                entry_data->size = atoi(parts[1]);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -678,7 +677,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "vendor", parts[1]);
+                os_strdup(parts[1], entry_data->vendor);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -689,7 +688,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "architecture", parts[1]);
+                os_strdup(parts[1], entry_data->architecture);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -700,7 +699,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "multi-arch", parts[1]);
+                os_strdup(parts[1], entry_data->multi_arch);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -711,7 +710,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "source", parts[1]);
+                os_strdup(parts[1], entry_data->source);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -722,7 +721,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "version", parts[1]);
+                os_strdup(parts[1], entry_data->version);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -733,7 +732,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "description", parts[1]);
+                os_strdup(parts[1], entry_data->description);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -742,24 +741,19 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
                 // Send message to the queue
 
-                if (installed) {
-
-                    installed = 0;
-
-                    char *string;
-                    string = cJSON_PrintUnformatted(object);
-                    mtdebug2(WM_SYS_LOGTAG, "sys_deb_packages() sending '%s'", string);
-                    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-                    cJSON_Delete(object);
-                    object = NULL;
-                    free(string);
-
+                cJSON * json_event = NULL;
+                if (entry_data->installed) {
+                    if (json_event = analyze_program(entry_data, random_id, timestamp), json_event) {
+                        char * string = cJSON_PrintUnformatted(json_event);
+                        mtdebug2(WM_SYS_LOGTAG, "sys_deb_packages() sending '%s'", string);
+                        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                        cJSON_Delete(json_event);
+                        free(string);
+                    }
                 } else {
-                    cJSON_Delete(object);
-                    object = NULL;
-                    continue;
+                    free_program_data(entry_data);
                 }
-
+                entry_data = NULL;
             }
         }
 
@@ -773,11 +767,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
     }
 
-    if(object){
-        cJSON_Delete(object);
-    }
-
-    object = cJSON_CreateObject();
+    cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program_end");
     cJSON_AddNumberToObject(object, "ID", random_id);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
@@ -1556,6 +1546,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
             char * string = cJSON_PrintUnformatted(json_event);
             mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", string);
             wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+            cJSON_Delete(json_event);
             free(string);
         }
     }

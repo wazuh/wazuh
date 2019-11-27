@@ -2314,6 +2314,7 @@ void sys_proc_windows(const char* LOCATION) {
                     char * string = cJSON_PrintUnformatted(json_event);
                     mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
                     wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+                    cJSON_Delete(json_event);
                     free(string);
                 }
 			} while(Process32Next(hSnapshot, &pe));
