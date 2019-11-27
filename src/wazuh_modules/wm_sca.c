@@ -1987,7 +1987,7 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
         return RETURN_INVALID;
     }
 
-    int result_accumulator = 0;
+    int result_accumulator = RETURN_NOT_FOUND;
     struct dirent *entry = NULL;
 
     while ((entry = readdir(dp)) != NULL) {
