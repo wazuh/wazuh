@@ -69,7 +69,7 @@ static int fim_fetch_attributes(cJSON *new_attrs, cJSON *old_attrs, Eventinfo *l
 static int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state);
 
 // Replace the coded fields with the decoded ones in the checksum
-static void fim_adjust_checksum(sk_sum_t newsum, char **checksum);
+static void fim_adjust_checksum(sk_sum_t *newsum, char **checksum);
 
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -286,7 +286,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         InsertWhodata(&newsum, sdb);
     }
 
-    fim_adjust_checksum(newsum, &new_check_sum);
+    fim_adjust_checksum(&newsum, &new_check_sum);
 
     // Checksum match, we can just return and keep going
     if (SumCompare(old_check_sum, new_check_sum) == 0) {
@@ -1549,20 +1549,20 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
     return 0;
 }
 
-void fim_adjust_checksum(sk_sum_t newsum, char **checksum) {
+void fim_adjust_checksum(sk_sum_t *newsum, char **checksum) {
     // Adjust attributes
-    if (newsum.attributes) {
+    if (newsum->attributes) {
         os_realloc(*checksum,
-                strlen(*checksum) + strlen(newsum.attributes) + 2,
+                strlen(*checksum) + strlen(newsum->attributes) + 2,
                 *checksum);
         char *found = strrchr(*checksum, ':');
         if (found) {
-            snprintf(found + 1, strlen(newsum.attributes) + 1, "%s", newsum.attributes);
+            snprintf(found + 1, strlen(newsum->attributes) + 1, "%s", newsum->attributes);
         }
     }
 
     // Adjust permissions
-    if (newsum.win_perm) {
+    if (newsum->win_perm) {
         char *first_part = strchr(*checksum, ':');
         if (!first_part) return;
         first_part++;
@@ -1574,7 +1574,7 @@ void fim_adjust_checksum(sk_sum_t newsum, char **checksum) {
         // We need to escape the character ':' from the permissions
         //because we are going to compare against escaped permissions
         // sent by wazuh-db
-        char *esc_perms = wstr_replace(newsum.win_perm, ":", "\\:");
+        char *esc_perms = wstr_replace(newsum->win_perm, ":", "\\:");
         wm_strcat(checksum, esc_perms, 0);
         free(esc_perms);
 
