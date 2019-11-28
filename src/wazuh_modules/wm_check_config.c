@@ -78,7 +78,21 @@ void *wm_chk_conf_main() {
                 break;
             case -1:
                 mterror(WM_CHECK_CONFIG_LOGTAG, "At main(): OS_RecvSecureTCP(): %s", strerror(errno));
-                cJSON_AddStringToObject(json_output, "error", "3");
+
+                // Format the response
+                {
+                    cJSON *data_array = cJSON_CreateArray();
+                    cJSON *error_message = cJSON_CreateObject();
+
+                    cJSON_AddStringToObject(error_message, "type", "ERROR");
+                    cJSON_AddStringToObject(error_message, "message", strerror(errno));
+
+                    cJSON_AddItemToArray(data_array, error_message);
+
+                    cJSON_AddStringToObject(json_output, "error", "3");
+                    cJSON_AddItemToObject(json_output, "data", data_array);
+                }
+
                 break;
 
             case 0:

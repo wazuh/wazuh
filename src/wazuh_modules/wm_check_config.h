@@ -20,7 +20,7 @@
 #include "syscollector/syscollector.h"
 #include "external/cJSON/cJSON.h"
 #include "file_op.h"
-#include "../os_net/os_net.h"
+#include "os_net/os_net.h"
 #include <ifaddrs.h>
 
 extern const wm_context WM_CHK_CONF_CONTEXT;

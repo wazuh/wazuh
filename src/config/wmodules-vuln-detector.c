@@ -204,7 +204,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             if (output == NULL) {
                 mwarn("The specific definition of the Red Hat feeds is deprecated. Use only redhat instead.");
             } else {
-                wm_strcat(output, "The specific definition of the Red Hat feeds is deprecated. Use only redhat instead.", '\n');
+                wm_strcat(output, "WARNING: The specific definition of the Red Hat feeds is deprecated. Use only redhat instead.", '\n');
             }
             rh_dep_adv = 1;
         }
@@ -255,10 +255,9 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             mwarn("Duplicate OVAL configuration for '%s%s%s'.", upd->dist,  upd->version ? " " : "", upd->version ? upd->version : "");
         } else {
             snprintf(message, OS_FLSIZE,
-                "Duplicate OVAL configuration for '%s%s%s'.", upd->dist,  upd->version ? " " : "", upd->version ? upd->version : "");
+                "WARNING: Duplicate OVAL configuration for '%s%s%s'.", upd->dist,  upd->version ? " " : "", upd->version ? upd->version : "");
             wm_strcat(output, message, '\n');
         }
-        mwarn("Duplicate OVAL configuration for '%s%s%s'.", upd->dist,  upd->version ? " " : "", upd->version ? upd->version : "");
         retval = OS_SUPP_SIZE;
         goto end;
     }
@@ -485,7 +484,7 @@ int wm_vuldet_read_deprecated_config(const OS_XML *xml, xml_node *node, update_n
         mwarn("'%s' option at module '%s' is deprecated. Use '%s' instead.", node->element, WM_VULNDETECTOR_CONTEXT.name, XML_PROVIDER);
     } else {
         snprintf(message, OS_FLSIZE,
-            "'%s' option at module '%s' is deprecated. Use '%s' instead.",
+            "WARNING: '%s' option at module '%s' is deprecated. Use '%s' instead.",
             node->element, WM_VULNDETECTOR_CONTEXT.name, XML_PROVIDER);
         wm_strcat(output, message, '\n');
     }
@@ -526,7 +525,7 @@ static int wm_vuldet_read_deprecated_multifeed_tag(xml_node *node, update_node *
                                     merror("Invalid %s version '%s'.", os_tag, version);
                                 } else {
                                     snprintf(message, OS_FLSIZE,
-                                        "Invalid %s version '%s'.", os_tag, version);
+                                        "ERROR: Invalid %s version '%s'.", os_tag, version);
                                     wm_strcat(output, message, '\n');
                                 }
                             }
