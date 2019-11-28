@@ -22,7 +22,7 @@ FROM base AS wazuh-env-syscheck
 FROM base AS wazuh-env-ciscat
 FROM base AS wazuh-env-syscollector
 FROM base AS wazuh-env-security
-FROM base AS wazuh-env-manager
+
 FROM base as wazuh-env-rules_white_rbac
 FROM base as wazuh-env-rules_black_rbac
 FROM base as wazuh-env-decoders_white_rbac
@@ -35,6 +35,9 @@ FROM base as wazuh-env-lists_white_rbac
 FROM base as wazuh-env-lists_black_rbac
 FROM base AS wazuh-env-syscheck_white_rbac
 FROM base AS wazuh-env-syscheck_black_rbac
+
+FROM base AS wazuh-env-manager
+ADD configurations/manager/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-cluster
 COPY configurations/cluster/wazuh-manager/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
@@ -81,5 +84,8 @@ RUN /scripts/configuration_rbac.sh
 FROM base as wazuh-env-active-response_black_rbac
 ADD configurations/rbac/active-response/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
+
+FROM wazuh-env-manager as wazuh-env-manager_white_rbac
+FROM wazuh-env-manager as wazuh-env-manager_black_rbac
 
 FROM wazuh-env-${ENVIRONMENT}

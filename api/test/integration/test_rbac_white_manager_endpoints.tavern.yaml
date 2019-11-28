@@ -1,0 +1,267 @@
+---
+test_name: GET /manager/configuration
+
+marks:
+  - usefixtures:
+    - manager_white_rbac_tests
+
+includes:
+  - !include common.yaml
+
+stages:
+
+  # Authentication stage
+  - type: ref
+    id: login_get_token
+
+  - name: Request manager configuration (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: GET /manager/configuration/validation
+
+stages:
+
+  - name: Request manager configuration validation (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/validation"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: GET /manager/configuration/{component}/{configuration}
+
+stages:
+
+  - name: Request manager component configuration (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/agentless/agentless"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: DELETE /manager/files
+
+marks:
+  - xfail
+
+stages:
+
+  - name: Delete a file (Denied)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}//manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: 'etc/decoders/local_decoder.xml'
+    response:
+      status_code: 400
+      body:
+        code: 4000
+
+  - name: Delete a file (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}//manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: 'etc/rules/local_rules.xml'
+    response:
+      status_code: 200
+
+---
+test_name: GET /manager/files
+
+marks:
+  - xfail
+
+stages:
+
+  - name: Read a file (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}//manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: 'etc/rules/local_rules.xml'
+    response:
+      status_code: 200
+
+---
+test_name: PUT /manager/files
+
+marks:
+  - xfail
+
+stages:
+
+  - name: Upload a file (Denied)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}//manager/files"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
+      params:
+        path: 'etc/decoders/test_decoders.xml'
+    response:
+      status_code: 400
+      body:
+        code: 4000
+
+---
+test_name: GET /manager/info
+
+stages:
+
+  - name: Request manager info (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/info"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: GET /manager/logs
+
+stages:
+
+  - name: Request manager logs (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: GET /manager/logs/summary
+
+stages:
+
+  - name: Request manager logs summary (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs/summary"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: PUT /manager/restart
+
+stages:
+
+  - name: Restart manager (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: GET /manager/stats
+
+stages:
+
+  - name: Request manager stats (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        date: "2019-08-27"
+    response:
+      status_code: 200
+
+---
+test_name: GET /manager/stats/analysisd
+
+stages:
+
+  - name: Request manager analysisd stats (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/analysisd"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: GET /manager/stats/hourly
+
+stages:
+
+  - name: Request manager hourly stats (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/hourly"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: GET /manager/stats/remoted
+
+stages:
+
+  - name: Request manager remoted stats (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/remoted"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: GET /manager/stats/weekly
+
+stages:
+
+  - name: Request manager weekly stats (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/weekly"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: GET /manager/status
+
+stages:
+
+  - name: Request manager status (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200

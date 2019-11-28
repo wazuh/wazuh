@@ -41,6 +41,7 @@ COPY configurations/security/wazuh-master/rbac.db /var/ossec/api/configuration/s
 
 FROM base AS wazuh-env-manager
 COPY configurations/manager/wazuh-master/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
+COPY configurations/manager/wazuh-master/config/ossec.conf /var/ossec/etc/ossec.conf
 
 FROM base AS wazuh-env-cluster
 COPY configurations/cluster/wazuh-master/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
@@ -149,6 +150,14 @@ RUN /scripts/configuration_rbac.sh
 
 FROM base AS wazuh-env-syscheck_black_rbac
 ADD configurations/rbac/syscheck/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM wazuh-env-manager AS wazuh-env-manager_white_rbac
+ADD configurations/rbac/manager/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM wazuh-env-manager AS wazuh-env-manager_black_rbac
+ADD configurations/rbac/manager/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
 FROM wazuh-env-${ENVIRONMENT}
