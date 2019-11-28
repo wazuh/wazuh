@@ -15,7 +15,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "../external/cJSON/cJSON.h"
 #include "execd.h"
-#include "../config/config.h"
+#include "config/config.h"
 
 int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
 time_t pending_upg = 0;
