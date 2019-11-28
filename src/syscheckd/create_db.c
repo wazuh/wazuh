@@ -433,8 +433,8 @@ int fim_registry_event (char * key, fim_entry_data * data, int pos) {
 
 // Returns the position of the path into directories array
 int fim_configuration_directory(const char *path, const char *entry) {
-    char full_path[OS_SIZE_4096 + 1];
-    char full_entry[OS_SIZE_4096 + 1];
+    char full_path[OS_SIZE_4096 + 1] = {'\0'};
+    char full_entry[OS_SIZE_4096 + 1] = {'\0'};
     int it = 0;
     int top = 0;
     int match = 0;
