@@ -53,6 +53,13 @@ class WazuhException(Exception):
         1117: "Unable to connect with component. The component might be disabled.",
         1118: "Could not request component configuration",
         1119: "Directory '/tmp' needs read, write & execution permission for 'ossec' user",
+        1120: "Invalid configuration file",
+        1121: "Request size bigger than expected",
+        1122: "Unable to receive the input message due to a socket error",
+        1123: "Empty input file received",
+        1124: "Invalid input message received, some field is missing or invalid",
+        1125: "Requested file does not exist",
+        1126: "Invalid request type, the available inputs are manager, agent, remote",
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',

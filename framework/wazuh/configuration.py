@@ -754,6 +754,25 @@ def get_active_configuration(agent_id, component, configuration):
                                   else 1116, rec_msg.replace("err ", ""))
 
 
+def _parse_execd_output(output: str):
+    """
+    Parses output from execd socket to fetch log message and remove log date, log daemon, log level, etc.
+    :param output: Raw output from execd
+    :return: Cleaned log message in a dictionary structure
+    """
+    json_output = json.loads(output)
+    error_flag = json_output['error']
+    if error_flag != 0:
+        errors = []
+        for lines in json_output['data']:
+            errors.append(lines)
+        response = {'status': 'KO', 'details': errors}
+    else:
+        response = {'status': 'OK'}
+
+    return response
+
+
 def validate_configuration(configuration_type, tmp_file):
     """Validate an agent configuration from a temporary file.
 
@@ -792,8 +811,27 @@ def validate_configuration(configuration_type, tmp_file):
             raise WazuhException(1118, "Data could not be received")
         s.close()
         if rec_msg_ok.startswith('ok'):
-            msg = json.loads(rec_msg)
-            return msg['data']
+            message = dict()
+            rec_msg_dict = json.loads(rec_msg)
+            rec_msg_dict['error'] = int(rec_msg_dict['error'])
+            if rec_msg_dict['error'] == 0:
+                message['error'] = rec_msg_dict['error']
+                message['data'] = rec_msg_dict['data']
+            elif rec_msg_dict['error'] == 1:
+                message = _parse_execd_output(rec_msg)
+            elif rec_msg_dict['error'] == 2:
+                raise WazuhException(1121)
+            elif rec_msg_dict['error'] == 3:
+                raise WazuhException(1122)
+            elif rec_msg_dict['error'] == 4:
+                raise WazuhException(1123)
+            elif rec_msg_dict['error'] == 5:
+                raise WazuhException(1124)
+            elif rec_msg_dict['error'] == 6:
+                raise WazuhException(1125)
+            elif rec_msg_dict['error'] == 7:
+                raise WazuhException(1126)
+            return message
         else:
             raise WazuhException(1117 if "No such file or directory" in
                                  rec_msg or "Cannot send request" in rec_msg
