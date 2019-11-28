@@ -274,6 +274,8 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
         /* Look for a symbolic path */
         if (sum->tag && (sum->symbolic_path = wstr_chr(sum->tag, ':'))) {
             *(sum->symbolic_path++) = '\0';
+        } else {
+            sum->symbolic_path = NULL;
         }
 
         /* Look if it is a silent event */

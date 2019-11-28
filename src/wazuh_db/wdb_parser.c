@@ -476,8 +476,9 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
             *mark = '!';
             size_t unsc_size = strlen(unsc_checksum);
             size_t mark_size = strlen(mark);
-            os_realloc(unsc_checksum, unsc_size + mark_size + 3, unsc_checksum);
+            os_realloc(unsc_checksum, unsc_size + mark_size + 1, unsc_checksum);
             strncpy(unsc_checksum + unsc_size, mark, mark_size);
+            unsc_checksum[unsc_size + mark_size] = '\0';
         }
 
         if (result = wdb_syscheck_save(wdb, ftype, unsc_checksum, next), result < 0) {
