@@ -70,7 +70,7 @@ void test_getSyscheckConfig(void **state)
     assert_non_null(ret);
     assert_int_equal(cJSON_GetArraySize(ret), 1);
     cJSON* sys_items = cJSON_GetObjectItem(ret, "syscheck");
-    assert_int_equal(cJSON_GetArraySize(sys_items), 16);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 17);
     cJSON* sys_dir = cJSON_GetObjectItem(sys_items, "directories");
     assert_int_equal(cJSON_GetArraySize(sys_dir), 6);
 }
