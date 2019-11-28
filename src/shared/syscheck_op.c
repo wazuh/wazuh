@@ -901,7 +901,6 @@ char *decode_win_permissions(char *raw_perm) {
     int size = 0;
     char *base_it = NULL;
     char *account_name = NULL;
-    cJSON *perm_type = NULL;
     char a_type;
     long mask;
 
@@ -992,9 +991,6 @@ char *decode_win_permissions(char *raw_perm) {
 
     return decoded_perm;
 error:
-    if (perm_type) {
-        cJSON_Delete(perm_type);
-    }
     free(decoded_perm);
     free(account_name);
     mdebug1("The file permissions could not be decoded: '%s'.", raw_perm);
