@@ -41,7 +41,7 @@ COPY configurations/security/wazuh-master/rbac.db /var/ossec/api/configuration/s
 
 FROM base AS wazuh-env-manager
 COPY configurations/manager/wazuh-master/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
-COPY configurations/manager/wazuh-master/config/ossec.conf /var/ossec/etc/ossec.conf
+ADD configurations/manager/wazuh-master/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-cluster
 COPY configurations/cluster/wazuh-master/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
