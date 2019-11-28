@@ -15,6 +15,7 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
+#include <openssl/evp.h>
 
 /* Default values */
 #define MAX_KEY_LENGTH   260
@@ -181,15 +182,15 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
     /* Get values (if available) */
     if (value_count) {
         char *mt_data;
-        char buffer[OS_MAXSTR];
-        int offset;
+        char buffer[OS_SIZE_2048];
+        EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+        EVP_DigestInit(ctx, EVP_sha1());
 
         /* Clear the values for value_size and data_size */
         value_buffer[MAX_VALUE_NAME] = '\0';
         data_buffer[MAX_VALUE_NAME] = '\0';
 
         /* Get each value */
-        offset = 0;
         buffer[0] = '\0';
         for (i = 0; i < value_count; i++) {
             value_size = MAX_VALUE_NAME;
@@ -213,57 +214,58 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
             }
 
             /* Write value name and data in the file (for checksum later) */
-            offset += snprintf(buffer + offset, OS_MAXSTR, "%s=", value_buffer);
-            //minfo("value_buffer:'%s'", value_buffer);
+            EVP_DigestUpdate(ctx, value_buffer, strlen(value_buffer));
             switch (data_type) {
                 case REG_SZ:
                 case REG_EXPAND_SZ:
-                    offset += snprintf(buffer + offset, OS_MAXSTR - offset, "%s", data_buffer);
-                    //minfo("REG_EXPAND_SZ:'%s'", data_buffer);
+                    EVP_DigestUpdate(ctx, data_buffer, strlen(data_buffer));
                     break;
                 case REG_MULTI_SZ:
                     /* Print multiple strings */
                     mt_data = data_buffer;
 
                     while (*mt_data) {
-                        offset += snprintf(buffer + offset, OS_MAXSTR - offset, "%s ", mt_data);
-                        //minfo("REG_MULTI_SZ:'%s'", mt_data);
+                        EVP_DigestUpdate(ctx, mt_data, strlen(mt_data));
                         mt_data += strlen(mt_data) + 1;
                     }
                     break;
                 case REG_DWORD:
-                    offset += snprintf(buffer + offset, OS_MAXSTR - offset, "%08x", (unsigned int)*data_buffer);
-                    //minfo("REG_DWORD:'%08x'", (unsigned int)*data_buffer);
+                    snprintf(buffer, OS_SIZE_2048, "%08x", (unsigned int)*data_buffer);
+                    EVP_DigestUpdate(ctx, buffer, strlen(buffer));
+                    buffer[0] = '\0';
                     break;
                 default:
                     for (j = 0; j < data_size; j++) {
-                        offset += snprintf(buffer + offset, OS_MAXSTR - offset, "%02x", (unsigned int)data_buffer[j]);
-                        //minfo("default:'%02x'", (unsigned int)data_buffer[j]);
+                        snprintf(buffer, OS_SIZE_2048, "%02x", (unsigned int)data_buffer[j]);
+                        EVP_DigestUpdate(ctx, buffer, strlen(buffer));
+                        buffer[0] = '\0';
                     }
                     break;
             }
         }
 
         fim_entry_data *data;
+        char path[MAX_PATH + 7];
+        unsigned char digest[EVP_MAX_MD_SIZE];
         int result;
-        os_calloc(1, sizeof(fim_entry_data), data);
+        unsigned int digest_size;
 
+        os_calloc(1, sizeof(fim_entry_data), data);
         init_fim_data_entry(data);
 
         // Set registry entry type
         data->entry_type = fim_entry_type[1];
-
-        char path[OS_SIZE_512];
-        snprintf(path, OS_SIZE_512, "%s %s", syscheck.registry[pos].arch == ARCH_64BIT ? "[x64]" : "[x32]", full_key_name);
-
+        snprintf(path, MAX_PATH + 7, "%s%s", syscheck.registry[pos].arch == ARCH_64BIT ? "[x64] " : "[x32] ", full_key_name);
         data->last_event = time(NULL);
-        data->options |= CHECK_SHA256SUM | CHECK_MTIME;
+        data->options |= CHECK_SHA1SUM | CHECK_MTIME;
         data->mtime = get_windows_file_time_epoch(file_time);
-
-        OS_SHA256_String(buffer, data->hash_sha256);
         data->scanned = 1;
 
-        OS_SHA1_Str(data->hash_sha256, sizeof(data->hash_sha256), data->checksum);
+        EVP_DigestFinal_ex(ctx, digest, &digest_size);
+        OS_SHA1_Hexdigest(digest, data->hash_sha1);
+        EVP_MD_CTX_destroy(ctx);
+
+        fim_get_checksum(data);
 
         if (result = fim_registry_event(path, data, pos), result == -1) {
             mdebug1(FIM_REGISTRY_EVENT_FAIL, path);

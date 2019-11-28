@@ -405,7 +405,7 @@ int fim_registry_event (char * key, fim_entry_data * data, int pos) {
         }
         result = 1;
     } else {
-        if (strcmp(saved_data->hash_sha256, data->hash_sha256) != 0) {
+        if (strcmp(saved_data->hash_sha1, data->hash_sha1) != 0) {
             json_event = fim_json_event(key, saved_data, data, pos, FIM_MODIFICATION, 0, NULL);
             if (fim_update(key, data, saved_data) < 0) {
                 w_mutex_unlock(&syscheck.fim_entry_mutex);
