@@ -663,7 +663,7 @@ void set_whodata_mode_changes() {
         realtime_start();
     }
 
-    realtime_change = 0;
+    syscheck.realtime_change = 0;
 
     int i;
     for (i = 0; syscheck.dir[i]; i++) {
