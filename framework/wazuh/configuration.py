@@ -762,13 +762,11 @@ def _parse_execd_output(output: str):
     """
     json_output = json.loads(output)
     error_flag = json_output['error']
-    if error_flag != 0:
-        errors = []
-        for lines in json_output['data']:
-            errors.append(lines)
-        response = {'status': 'KO', 'details': errors}
-    else:
-        response = {'status': 'OK'}
+    status = 'KO' if error_flag != 0 else 'OK'
+    errors = []
+    for lines in json_output['data']:
+        errors.append(lines)
+    response = {'status': status, 'details': errors}
 
     return response
 
@@ -814,10 +812,7 @@ def validate_configuration(configuration_type, tmp_file):
             message = dict()
             rec_msg_dict = json.loads(rec_msg)
             rec_msg_dict['error'] = int(rec_msg_dict['error'])
-            if rec_msg_dict['error'] == 0:
-                message['error'] = rec_msg_dict['error']
-                message['data'] = rec_msg_dict['data']
-            elif rec_msg_dict['error'] == 1:
+            if rec_msg_dict['error'] == 0 or rec_msg_dict['error'] == 1:
                 message = _parse_execd_output(rec_msg)
             elif rec_msg_dict['error'] == 2:
                 raise WazuhException(1121)
