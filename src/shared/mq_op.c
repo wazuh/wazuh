@@ -116,7 +116,11 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
     _message = msgsubst(target->format, message, locmsg, mtime);
 
     if (strcmp(target->log_socket->name, "agent") == 0) {
-        SendMSG(queue, _message, locmsg, loc);
+        if (SendMSG(queue, _message, locmsg, loc) < 0) {
+            merror(QUEUE_SEND);
+            free(_message);
+            return -1;
+        }
     }
     else {
         tmpstr[OS_MAXSTR] = '\0';

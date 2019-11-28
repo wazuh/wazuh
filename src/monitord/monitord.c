@@ -59,8 +59,8 @@ void Monitord()
 #endif
 
     /* Connect to the message queue or exit */
-    if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+    while ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
+        merror("Cannot connect to queue '%s'. Retrying it.", DEFAULTQUEUE);
     }
 
     /* Send startup message */

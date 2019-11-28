@@ -412,18 +412,17 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     key_unlock();
 
     /* If we can't send the message, try to connect to the
-     * socket again. If it not exit.
+     * socket again until we can.
      */
-    if (SendMSG(logr.m_queue, tmp_msg, srcmsg,
+    while (SendMSG(logr.m_queue, tmp_msg, srcmsg,
                 SECURE_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
         if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+            merror("Cannot connect to queue '%s'. Retrying it.", DEFAULTQUEUE);
         }
-    } else {
-        rem_inc_evt();
     }
+    rem_inc_evt();
 }
 
 // Close and remove socket from keystore

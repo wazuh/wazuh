@@ -1819,7 +1819,7 @@ void * w_output_thread(void * args){
             merror(QUEUE_SEND);
 
             if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+                merror("Cannot connect to queue '%s'. Retrying it.", DEFAULTQPATH);
             }
         }
 

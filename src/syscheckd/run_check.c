@@ -35,11 +35,11 @@ static void send_silent_del(char *path);
 /* Send a message related to syscheck change/addition */
 int send_syscheck_msg(const char *msg)
 {
-    if (SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ) < 0) {
+    while (SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ) < 0) {
         merror(QUEUE_SEND);
 
         if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+            merror("Cannot connect to queue '%s'. Retrying it.", DEFAULTQPATH);
         }
 
         /* Try to send it again */
