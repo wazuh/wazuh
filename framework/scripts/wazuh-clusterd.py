@@ -9,6 +9,7 @@ import logging
 import os
 import sys
 
+import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 from wazuh import common, configuration, pyDaemonModule, cluster
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__, master, local_server, worker
@@ -119,7 +120,7 @@ if __name__ == '__main__':
         sys.exit(0)
     cluster_items = wazuh.core.cluster.utils.get_cluster_items()
     try:
-        cluster.check_cluster_config(cluster_configuration)
+        wazuh.core.cluster.cluster.check_cluster_config(cluster_configuration)
     except Exception as e:
         main_logger.error(e)
         sys.exit(1)
@@ -128,7 +129,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     # clean
-    cluster.clean_up()
+    wazuh.core.cluster.cluster.clean_up()
 
     # Foreground/Daemon
     if not args.foreground:

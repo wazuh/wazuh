@@ -9,7 +9,7 @@ from wazuh import common
 from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult
 from wazuh.rbac.decorators import expose_resources
-from wazuh.cluster import get_node
+from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 
 try:

@@ -3,22 +3,20 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-import connexion
 import datetime
 import logging
 
-from api.models.base_model_ import Data
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+import connexion
+
 import wazuh.cluster as cluster
-import wazuh.core.cluster.control as cluster_control
-import wazuh.configuration as configuration
-from wazuh import Wazuh
-from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.exception import WazuhError
+import wazuh.common as common
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api.authentication import get_permissions
-import wazuh.common as common
+from api.models.base_model_ import Data
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from wazuh.core.cluster.dapi.dapi import DistributedAPI, get_system_nodes
+from wazuh.exception import WazuhError
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -26,15 +24,14 @@ logger = logging.getLogger('wazuh')
 
 @exception_handler
 def get_cluster_node(pretty=False, wait_for_complete=False):
-    """Get information about the local node.
-
-    Returns basic information about the cluster node receiving the request.
+    """Get basic information about the local node.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
     f_kwargs = {}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=cluster.get_node_wrapper,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
@@ -42,7 +39,8 @@ def get_cluster_node(pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -75,6 +73,7 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
                 'select': select,
                 'filter_type': type_}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=cluster.get_nodes_info,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -83,40 +82,12 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
                           pretty=pretty,
                           logger=logger,
                           local_client_arg='lc',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
-
-
-@exception_handler
-def get_cluster_node_info(node_id, pretty=False, wait_for_complete=False, select=None):
-    """Get information about a specified node.
-
-    Returns information about a specified node in the cluster.
-
-    :param node_id: Cluster node name.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param select: Select which fields to return (separated by comma)
-    """
-    f_kwargs = {'filter_node': node_id,
-                'select': select}
-
-    dapi = DistributedAPI(f=cluster_control.get_node,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=True,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger,
-                          local_client_arg='lc'
-                          )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
-
-    return response, 200
 
 
 @exception_handler
@@ -133,6 +104,7 @@ def get_healthcheck(pretty=False, wait_for_complete=False, list_nodes=None):
     """
     f_kwargs = {'filter_node': list_nodes}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=cluster.get_health_nodes,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -141,7 +113,8 @@ def get_healthcheck(pretty=False, wait_for_complete=False, list_nodes=None):
                           pretty=pretty,
                           logger=logger,
                           local_client_arg='lc',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -157,6 +130,7 @@ def get_status(pretty=False, wait_for_complete=False):
     """
     f_kwargs = {}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=cluster.get_status_json,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -164,7 +138,8 @@ def get_status(pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -181,6 +156,7 @@ def get_config(pretty=False, wait_for_complete=False):
     """
     f_kwargs = {}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=cluster.read_config_wrapper,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
@@ -188,7 +164,8 @@ def get_config(pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -197,9 +174,7 @@ def get_config(pretty=False, wait_for_complete=False):
 
 @exception_handler
 def get_status_node(node_id, pretty=False, wait_for_complete=False):
-    """Get a specified node's status 
-
-    Returns the status of all Wazuh daemons in node node_id
+    """Get a specified node's Wazuh daemons status
 
     :param node_id: Cluster node name.
     :param pretty: Show results in human-readable format
@@ -207,6 +182,7 @@ def get_status_node(node_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'node_id': node_id}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=manager.get_status,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -214,7 +190,8 @@ def get_status_node(node_id, pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -233,6 +210,7 @@ def get_info_node(node_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'node_id': node_id}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=manager.get_basic_info,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -240,7 +218,8 @@ def get_info_node(node_id, pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -249,9 +228,7 @@ def get_info_node(node_id, pretty=False, wait_for_complete=False):
 
 @exception_handler
 def get_configuration_node(node_id, pretty=False, wait_for_complete=False, section=None, field=None):
-    """Get a specified node's configuration 
-
-    Returns wazuh configuration used in node {node_id}
+    """Get a specified node's configuration (ossec.conf)
 
     :param node_id: Cluster node name.
     :param pretty: Show results in human-readable format
@@ -263,6 +240,7 @@ def get_configuration_node(node_id, pretty=False, wait_for_complete=False, secti
                 'section': section,
                 'field': field}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=manager.read_ossec_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -270,7 +248,8 @@ def get_configuration_node(node_id, pretty=False, wait_for_complete=False, secti
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -302,6 +281,7 @@ def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
                 'day': day,
                 'date': True if date else False}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=stats.totals,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -309,7 +289,8 @@ def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -329,6 +310,7 @@ def get_stats_hourly_node(node_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'node_id': node_id}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=stats.hourly,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -336,7 +318,8 @@ def get_stats_hourly_node(node_id, pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -357,6 +340,7 @@ def get_stats_weekly_node(node_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'node_id': node_id}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=stats.weekly,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -364,7 +348,8 @@ def get_stats_weekly_node(node_id, pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -383,6 +368,7 @@ def get_stats_analysisd_node(node_id, pretty=False, wait_for_complete=False):
     f_kwargs = {'node_id': node_id,
                 'filename': common.analysisd_stats}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=stats.get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -390,7 +376,8 @@ def get_stats_analysisd_node(node_id, pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -409,6 +396,7 @@ def get_stats_remoted_node(node_id, pretty=False, wait_for_complete=False):
     f_kwargs = {'node_id': node_id,
                 'filename': common.remoted_stats}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=stats.get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -416,7 +404,8 @@ def get_stats_remoted_node(node_id, pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -452,6 +441,7 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
                 'category': category,
                 'type_log': type_log}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=manager.ossec_log,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -459,7 +449,8 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -476,6 +467,7 @@ def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'node_id': node_id}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=manager.ossec_log_summary,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -483,7 +475,8 @@ def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -502,6 +495,7 @@ def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
     f_kwargs = {'node_id': node_id,
                 'path': path}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=manager.get_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -509,7 +503,8 @@ def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -541,6 +536,7 @@ def put_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for_
                 'overwrite': overwrite,
                 'content': body}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=manager.upload_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -548,7 +544,8 @@ def put_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for_
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -567,6 +564,7 @@ def delete_files_node(node_id, path, pretty=False, wait_for_complete=False):
     f_kwargs = {'node_id': node_id,
                 'path': path}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=manager.delete_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -574,7 +572,8 @@ def delete_files_node(node_id, path, pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -591,6 +590,7 @@ def put_restart(pretty=False, wait_for_complete=False, list_nodes='*'):
     """
     f_kwargs = {'node_list': list_nodes}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=manager.restart,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -599,7 +599,8 @@ def put_restart(pretty=False, wait_for_complete=False, list_nodes='*'):
                           pretty=pretty,
                           logger=logger,
                           broadcasting=list_nodes == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -617,6 +618,7 @@ def get_conf_validation(pretty=False, wait_for_complete=False, list_nodes='*'):
     """
     f_kwargs = {'node_list': list_nodes}
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=manager.validation,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -625,7 +627,8 @@ def get_conf_validation(pretty=False, wait_for_complete=False, list_nodes='*'):
                           pretty=pretty,
                           logger=logger,
                           broadcasting=list_nodes == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -646,6 +649,7 @@ def get_node_config(node_id, component, wait_for_complete=False, pretty=False, *
                 'config': kwargs.get('configuration', None)
                 }
 
+    nodes = loop.run_until_complete(get_system_nodes())
     dapi = DistributedAPI(f=manager.get_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -653,7 +657,8 @@ def get_node_config(node_id, component, wait_for_complete=False, pretty=False, *
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          nodes=nodes
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 

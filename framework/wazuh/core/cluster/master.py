@@ -13,6 +13,8 @@ import operator
 import os
 from typing import Tuple, Dict, Callable
 import fcntl
+
+import wazuh.core.cluster.cluster
 from wazuh.core.core_agent import Agent
 from wazuh.core.cluster import server, common as c_common
 from wazuh.core import cluster as metadata
@@ -375,7 +377,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
-        files_checksums, decompressed_files_path = await cluster.decompress_files(received_filename)
+        files_checksums, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
         logger.info("Analyzing worker files: Received {} files to check.".format(len(files_checksums)))
         await self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
 
@@ -432,11 +434,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
-        files_checksums, decompressed_files_path = await cluster.decompress_files(received_filename)
+        files_checksums, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
         logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
 
         # classify files in shared, missing, extra and extra valid.
-        worker_files_ko, counts = cluster.compare_files(self.server.integrity_control, files_checksums, self.name)
+        worker_files_ko, counts = wazuh.core.cluster.cluster.compare_files(self.server.integrity_control, files_checksums, self.name)
 
         # health check
         self.sync_integrity_status['total_files'] = counts
@@ -451,7 +453,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             # Compress data: master files (only KO shared and missing)
             logger.debug("Analyzing worker integrity: Files checked. Compressing KO files.")
             master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
-            compressed_data = cluster.compress_files(self.name, master_files_paths, worker_files_ko)
+            compressed_data = wazuh.core.cluster.cluster.compress_files(self.name, master_files_paths, worker_files_ko)
 
             logger.info("Analyzing worker integrity: Files checked. KO files compressed.")
             try:
@@ -511,9 +513,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                         self.sync_agent_info_status['total_agent_info'] = len(agent_ids)
                     else:
                         self.sync_extra_valid_status['total_extra_valid'] = len(agent_ids)
-                    for file_path, file_data, file_time in cluster.unmerge_agent_info(data['merge_type'],
-                                                                                      decompressed_files_path,
-                                                                                      data['merge_name']):
+                    for file_path, file_data, file_time in wazuh.core.cluster.cluster.unmerge_agent_info(data['merge_type'],
+                                                                                                         decompressed_files_path,
+                                                                                                         data['merge_name']):
                         full_unmerged_name = os.path.join(common.ossec_path, file_path)
                         tmp_unmerged_path = os.path.join(common.ossec_path, 'queue/cluster', self.name, os.path.basename(file_path))
                         try:
@@ -691,7 +693,7 @@ class Master(server.AbstractServer):
         while True:
             file_integrity_logger.debug("Calculating")
             try:
-                self.integrity_control = cluster.get_files_status('master', self.configuration['node_name'])
+                self.integrity_control = wazuh.core.cluster.cluster.get_files_status('master', self.configuration['node_name'])
             except Exception as e:
                 file_integrity_logger.error("Error calculating file integrity: {}".format(e))
             file_integrity_logger.debug("Calculated.")

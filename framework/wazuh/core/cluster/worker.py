@@ -11,6 +11,8 @@ import re
 import shutil
 import time
 from typing import Tuple, Dict, Callable, List, TextIO, KeysView
+
+import wazuh.core.cluster.cluster
 from wazuh.core.cluster import client, common as c_common
 from wazuh import exception, cluster
 from wazuh.core import cluster as metadata
@@ -72,8 +74,8 @@ class SyncWorker:
             self.logger.info("Permission to synchronize granted.")
 
         self.logger.info("Compressing files")
-        compressed_data_path = cluster.compress_files(name=self.worker.name, list_path=self.files_to_sync,
-                                                      cluster_control_json=self.checksums)
+        compressed_data_path = wazuh.core.cluster.cluster.compress_files(name=self.worker.name, list_path=self.files_to_sync,
+                                                                         cluster_control_json=self.checksums)
 
         task_id = await self.worker.send_request(command=self.cmd, data=b'')
         try:
@@ -212,8 +214,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             try:
                 if self.connected:
                     before = time.time()
-                    await SyncWorker(cmd=b'sync_i_w_m', files_to_sync={}, checksums=cluster.get_files_status('master',
-                                                                                                             self.name),
+                    await SyncWorker(cmd=b'sync_i_w_m', files_to_sync={}, checksums=wazuh.core.cluster.cluster.get_files_status('master',
+                                                                                                                                self.name),
                                      logger=integrity_logger, worker=self).sync()
                     after = time.time()
                     integrity_logger.debug("Time synchronizing integrity: {} s".format(after - before))
@@ -241,7 +243,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 if self.connected:
                     before = time.time()
                     agent_info_logger.info("Starting to send agent status files")
-                    worker_files = cluster.get_files_status('worker', self.name, get_md5=False)
+                    worker_files = wazuh.core.cluster.cluster.get_files_status('worker', self.name, get_md5=False)
                     await SyncWorker(cmd=b'sync_a_w_m', files_to_sync=worker_files, checksums=worker_files,
                                      logger=agent_info_logger, worker=self).sync()
                     after = time.time()
@@ -271,8 +273,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             before = time.time()
             self.logger.debug("Starting to send extra valid files")
             # TODO: Add support for more extra valid file types if ever added
-            n_files, merged_file = cluster.merge_agent_info(merge_type='agent-groups', files=extra_valid.keys(),
-                                                            time_limit_seconds=0, node_name=self.name)
+            n_files, merged_file = wazuh.core.cluster.cluster.merge_agent_info(merge_type='agent-groups', files=extra_valid.keys(),
+                                                                               time_limit_seconds=0, node_name=self.name)
             if n_files:
                 files_to_sync = {merged_file: {'merged': True, 'merge_type': 'agent-groups', 'merge_name': merged_file,
                                                'cluster_item_key': '/queue/agent-groups/'}}
@@ -311,7 +313,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             logger = self.task_loggers['Integrity']
             logger.info("Analyzing received files: Start.")
 
-            ko_files, zip_path = await cluster.decompress_files(received_filename)
+            ko_files, zip_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
             logger.info("Analyzing received files: Missing: {}. Shared: {}. Extra: {}. ExtraValid: {}".format(
                 len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid'])))
 
@@ -465,7 +467,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     logger.warning("Agent status received in a worker node")
                     raise WazuhException(3011)
 
-                for name, content, _ in cluster.unmerge_agent_info('agent-groups', zip_path, filename):
+                for name, content, _ in wazuh.core.cluster.cluster.unmerge_agent_info('agent-groups', zip_path, filename):
                     full_unmerged_name = os.path.join(common.ossec_path, name)
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
                     with open(tmp_unmerged_path, 'wb') as f:
