@@ -1106,11 +1106,15 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
     HKEY program_key;
     DWORD cbData, ret;
     DWORD buffer_size = TOTALBYTES;
+    const char * format = "win";
     char * program_name;
     char * version;
     char * vendor;
     char * date;
     char * location;
+
+    cJSON * json_event = NULL;
+    program_entry_data * entry_data = NULL;
 
     if (root_key == LM_KEY)
         primary_key = HKEY_LOCAL_MACHINE;
@@ -1142,22 +1146,19 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
         if (ret == ERROR_SUCCESS && program_name[0] != '\0') {
 
-            cJSON *object = cJSON_CreateObject();
-            cJSON *package = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "program");
-            cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "program", package);
-            cJSON_AddStringToObject(package, "format", "win");
-            cJSON_AddStringToObject(package, "name", program_name);
+            os_calloc(1, sizeof(program_entry_data), entry_data);
+            init_program_data_entry(entry_data);
+
+            os_strdup(format, entry_data->format);
+            os_strdup(program_name, entry_data->name);
             free(program_name);
 
             if (arch == ARCH32)
-                cJSON_AddStringToObject(package, "architecture", "i686");
+                os_strdup("i686", entry_data->architecture);
             else if (arch == ARCH64)
-                cJSON_AddStringToObject(package, "architecture", "x86_64");
+                os_strdup("x86_64", entry_data->architecture);
             else
-                cJSON_AddStringToObject(package, "architecture", "unknown");
+                os_strdup("unknown", entry_data->architecture);
 
             // Get version
 
@@ -1176,7 +1177,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
             }
 
             if (ret == ERROR_SUCCESS && version[0] != '\0') {
-                cJSON_AddStringToObject(package, "version", version);
+                os_strdup(version, entry_data->version);
             }
 
             free(version);
@@ -1198,7 +1199,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
             }
 
             if (ret == ERROR_SUCCESS && vendor[0] != '\0') {
-                cJSON_AddStringToObject(package, "vendor", vendor);
+                os_strdup(vendor, entry_data->vendor);
             }
 
             free(vendor);
@@ -1220,7 +1221,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
             }
 
             if (ret == ERROR_SUCCESS && date[0] != '\0') {
-                cJSON_AddStringToObject(package, "install_time", date);
+                os_strdup(date, entry_data->install_time);
             }
 
             free(date);
@@ -1242,17 +1243,18 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
             }
 
             if (ret == ERROR_SUCCESS && location[0] != '\0') {
-                cJSON_AddStringToObject(package, "location", location);
+                os_strdup(location, entry_data->location);
             }
 
             free(location);
 
-            char *string;
-            string = cJSON_PrintUnformatted(object);
-            mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
-            wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-            cJSON_Delete(object);
-            free(string);
+            if (json_event = analyze_program(entry_data, ID, timestamp), json_event) {
+                char * string = cJSON_PrintUnformatted(json_event);
+                mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
+                wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+                cJSON_Delete(json_event);
+                free(string);
+            }
 
         } else
             free(program_name);

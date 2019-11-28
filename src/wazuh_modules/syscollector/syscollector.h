@@ -333,10 +333,10 @@ void free_program_data(program_entry_data * data);
 void free_process_data(process_entry_data * data);
 
 // Analyze if insert new program or update an existing one
-cJSON * analyze_program(program_entry_data * entry_data, int random_id, char * timestamp);
+cJSON * analyze_program(program_entry_data * entry_data, int random_id, const char * timestamp);
 
 // Analyze if insert new process or update an existing one
-cJSON * analyze_process(process_entry_data * entry_data, int random_id, char * timestamp);
+cJSON * analyze_process(process_entry_data * entry_data, int random_id, const char * timestamp);
 
 // Deletes the uninstalled programs from the hash table
 void check_uninstalled_programs();
@@ -354,10 +354,10 @@ int update_entry(rb_tree * tree, const char * key, void * data);
 void delete_entry(rb_tree * tree, const char * key);
 
 //
-cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, int random_id, char * timestamp);
+cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, int random_id, const char * timestamp);
 
 //
-cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, int random_id, char * timestamp);
+cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, int random_id, const char * timestamp);
 
 // Print programs hash table
 void print_programs_rbtree();

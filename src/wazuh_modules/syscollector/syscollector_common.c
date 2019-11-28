@@ -488,7 +488,7 @@ void free_process_data(process_entry_data * data) {
 }
 
 // Analyze if insert new program or update an existing one
-cJSON * analyze_program(program_entry_data * entry_data, int random_id, char * timestamp) {
+cJSON * analyze_program(program_entry_data * entry_data, int random_id, const char * timestamp) {
     cJSON * json_event = NULL;
     program_entry_data * saved_data = NULL;
     char * key = NULL;
@@ -535,7 +535,7 @@ cJSON * analyze_program(program_entry_data * entry_data, int random_id, char * t
 }
 
 // Analyze if insert new process or update an existing one
-cJSON * analyze_process(process_entry_data * entry_data, int random_id, char * timestamp) {
+cJSON * analyze_process(process_entry_data * entry_data, int random_id, const char * timestamp) {
     cJSON * json_event = NULL;
     process_entry_data * saved_data = NULL;
     char * key = NULL;
@@ -679,7 +679,7 @@ void delete_entry(rb_tree * tree, const char * key) {
 }
 
 //
-cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, int random_id, char * timestamp) {
+cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, int random_id, const char * timestamp) {
     cJSON *object = cJSON_CreateObject();
     cJSON *program = cJSON_CreateObject();
 
@@ -730,7 +730,7 @@ cJSON * program_json_event(program_entry_data * old_data, program_entry_data * n
 }
 
 //
-cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, int random_id, char * timestamp) {
+cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, int random_id, const char * timestamp) {
     cJSON *object = cJSON_CreateObject();
     cJSON *process = cJSON_CreateObject();
     int i = 0;

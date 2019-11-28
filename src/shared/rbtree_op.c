@@ -467,9 +467,10 @@ void rbtree_set_dispose(rb_tree * tree, void (*dispose)(void *)) {
 void * rbtree_insert(rb_tree * tree, const char * key, void * value) {
     rb_node * node = rb_init(key, value);
     rb_node * parent = NULL;
+    rb_node * t = NULL;
     int cmp;
 
-    for (rb_node * t = tree->root; t != NULL; t = cmp < 0 ? t->left : t->right) {
+    for (t = tree->root; t != NULL; t = cmp < 0 ? t->left : t->right) {
         parent = t;
         cmp = strcmp(key, t->key);
 

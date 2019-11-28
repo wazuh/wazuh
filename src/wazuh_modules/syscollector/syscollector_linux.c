@@ -425,10 +425,10 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
     int j;
 
-    cJSON *object = NULL;
-    cJSON *package = NULL;
-
     for (j = 0; ret = cursor->c_get(cursor, &key, &data, DB_NEXT), ret == 0; j++) {
+
+        cJSON * json_event = NULL;
+        program_entry_data * entry_data = NULL;
 
         // First header is not a package
 
@@ -467,13 +467,10 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
         epoch = 0;
         skip = 0;
 
-        object = cJSON_CreateObject();
-        package = cJSON_CreateObject();
-        cJSON_AddStringToObject(object, "type", "program");
-        cJSON_AddNumberToObject(object, "ID", random_id);
-        cJSON_AddStringToObject(object, "timestamp", timestamp);
-        cJSON_AddItemToObject(object, "program", package);
-        cJSON_AddStringToObject(package, "format", format);
+        os_calloc(1, sizeof(program_entry_data), entry_data);
+        init_program_data_entry(entry_data);
+
+        os_strdup(format, entry_data->format);
 
         for (info = head; info; info = next_info) {
             next_info = info->next;
@@ -485,18 +482,23 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
                 case 0:
                     break;
                 case 6:   // String
-
                     read = read_string(bytes);
 
-                    if (!strncmp(info->tag, "name", 4) && !strncmp(read, "gpg-pubkey", 10))
-                        skip = 1;
-
-                    if (!strncmp(info->tag, "version", 7)) {
+                    if (!strncmp(info->tag, "name", 4)) {
+                        os_strdup(read, entry_data->name);
+                        if (!strncmp(read, "gpg-pubkey", 10)) {
+                            skip = 1;
+                        }
+                    } else if (!strncmp(info->tag, "version", 7)) {
                         snprintf(version, TYPE_LENGTH - 1, "%s", read);
                     } else if (!strncmp(info->tag, "release", 7)) {
                         snprintf(release, TYPE_LENGTH - 1, "%s", read);
+                    } else if (!strncmp(info->tag, "vendor", 6)) {
+                        os_strdup(read, entry_data->vendor);
+                    } else if (!strncmp(info->tag, "architecture", 12)) {
+                        os_strdup(read, entry_data->architecture);
                     } else {
-                        cJSON_AddStringToObject(package, info->tag, read);
+                        mtdebug2(WM_SYS_LOGTAG, "Unknown package tag: '%s'", info->tag);
                     }
                     free(read);
                     break;
@@ -506,24 +508,29 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
                     if (!strncmp(info->tag, "size", 4)) {
                         result = result / 1024;   // Bytes to KBytes
+                        entry_data->size = result;
                     }
-
-                    if (!strncmp(info->tag, "install_time", 12)) {    // Format date
+                    else if (!strncmp(info->tag, "install_time", 12)) {    // Format date
                         char *installt = w_get_timestamp(result);
-
-                        cJSON_AddStringToObject(package, info->tag, installt);
+                        os_strdup(installt, entry_data->install_time);
                         free(installt);
                     } else if (!strncmp(info->tag, "epoch", 5)) {
                         epoch = result;
                     } else {
-                        cJSON_AddNumberToObject(package, info->tag, result);
+                        mtdebug2(WM_SYS_LOGTAG, "Unknown package tag: '%s'", info->tag);
                     }
-
                     break;
 
                 case 9:   // Vector of strings
                     read = read_string(bytes);
-                    cJSON_AddStringToObject(package, info->tag, read);
+
+                    if (!strncmp(info->tag, "group", 5)) {
+                        os_strdup(read, entry_data->group);
+                    } else if (!strncmp(info->tag, "description", 11)) {
+                        os_strdup(read, entry_data->description);
+                    } else {
+                        mtdebug2(WM_SYS_LOGTAG, "Unknown package tag: '%s'", info->tag);
+                    }
                     free(read);
                     break;
 
@@ -537,19 +544,20 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
         } else {
             snprintf(final_version, V_LENGTH, "%s-%s", version, release);
         }
-        cJSON_AddStringToObject(package, "version", final_version);
+        os_strdup(final_version, entry_data->version);
 
         // Send RPM package information to the manager
 
         if (skip) {
-            cJSON_Delete(object);
+            free_program_data(entry_data);
         } else {
-            char *string;
-            string = cJSON_PrintUnformatted(object);
-            mtdebug2(WM_SYS_LOGTAG, "sys_rpm_packages() sending '%s'", string);
-            wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-            cJSON_Delete(object);
-            free(string);
+            if (json_event = analyze_program(entry_data, random_id, timestamp), json_event) {
+                char * string = cJSON_PrintUnformatted(json_event);
+                mtdebug2(WM_SYS_LOGTAG, "sys_rpm_packages() sending '%s'", string);
+                wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                cJSON_Delete(json_event);
+                free(string);
+            }
         }
 
         // Free resources
@@ -568,7 +576,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     cursor->c_close(cursor);
     dbp->close(dbp, 0);
 
-    object = cJSON_CreateObject();
+    cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program_end");
     cJSON_AddNumberToObject(object, "ID", random_id);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
@@ -606,7 +614,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
         program_entry_data * entry_data = NULL;
 
-        while(fgets(read_buff, OS_MAXSTR, fp) != NULL){
+        while(fgets(read_buff, OS_MAXSTR, fp) != NULL) {
 
             // Remove '\n' from the read line
             length = strlen(read_buff);

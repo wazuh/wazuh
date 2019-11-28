@@ -62,6 +62,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
 
 void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
+    char *format = "pkg";
     int random_id = os_random();
     char *timestamp = w_get_timestamp(time(NULL));
     struct dirent *de;
@@ -149,18 +150,18 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                 continue;
             }
 
-            cJSON *object = cJSON_CreateObject();
-            cJSON *package = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "program");
-            cJSON_AddNumberToObject(object, "ID", random_id);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "program", package);
-            cJSON_AddStringToObject(package, "format", "pkg");
-            cJSON_AddStringToObject(package, "name", de->d_name);
+            cJSON * json_event = NULL;
+            program_entry_data * entry_data = NULL;
+
+            os_calloc(1, sizeof(program_entry_data), entry_data);
+            init_program_data_entry(entry_data);
+
+            os_strdup(format, entry_data->format);
+            os_strdup(de->d_name, entry_data->name);
 
             snprintf(path, PATH_LENGTH - 1, "%s/%s", HOMEBREW_APPS, de->d_name);
-            cJSON_AddStringToObject(package, "location", path);
-            cJSON_AddStringToObject(package, "source", "homebrew");
+            os_strdup(path, entry_data->location);
+            os_strdup("homebrew", entry_data->source);
 
             dir = opendir(path);
             if (dir != NULL) {
@@ -169,7 +170,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                         continue;
                     }
 
-                    cJSON_AddStringToObject(package, "version", version->d_name);
+                    os_strdup(version->d_name, entry_data->version);
                     snprintf(path, PATH_LENGTH - 1, "%s/%s/%s/.brew/%s.rb", HOMEBREW_APPS, de->d_name, version->d_name, de->d_name);
 
                     char read_buff[OS_MAXSTR];
@@ -181,7 +182,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                             if (strstr(read_buff, "desc \"") != NULL) {
                                 found = 1;
                                 char ** parts = OS_StrBreak('"', read_buff, 3);
-                                cJSON_AddStringToObject(package, "description", parts[1]);
+                                os_strdup(parts[1], entry_data->description);
                                 int i;
                                 for (i = 0; parts[i]; ++i) {
                                     free(parts[i]);
@@ -196,12 +197,13 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             }
 
             /* Send package information */
-            char *string;
-            string = cJSON_PrintUnformatted(object);
-            mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
-            wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-            cJSON_Delete(object);
-            free(string);
+            if (json_event = analyze_program(entry_data, random_id, timestamp), json_event) {
+                char * string = cJSON_PrintUnformatted(json_event);
+                mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
+                wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                cJSON_Delete(json_event);
+                free(string);
+            }
         }
         closedir(dr);
     }
@@ -222,24 +224,25 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
 char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_id) {
 
+    char *format = "pkg";
     char read_buff[OS_MAXSTR];
     char filepath[PATH_LENGTH];
     FILE *fp;
     int i = 0;
     int invalid = 0;
 
+    cJSON * json_event = NULL;
+    program_entry_data * entry_data = NULL;
+
     snprintf(filepath, PATH_LENGTH - 1, "%s/%s", app_folder, INFO_FILE);
     memset(read_buff, 0, OS_MAXSTR);
 
     if ((fp = fopen(filepath, "r"))) {
 
-        cJSON *object = cJSON_CreateObject();
-        cJSON *package = cJSON_CreateObject();
-        cJSON_AddStringToObject(object, "type", "program");
-        cJSON_AddNumberToObject(object, "ID", random_id);
-        cJSON_AddStringToObject(object, "timestamp", timestamp);
-        cJSON_AddItemToObject(object, "program", package);
-        cJSON_AddStringToObject(package, "format", "pkg");
+        os_calloc(1, sizeof(program_entry_data), entry_data);
+        init_program_data_entry(entry_data);
+
+        os_strdup(format, entry_data->format);
 
         // Check if valid Info.plist file (not an Apple binary property list)
         if (fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) {
@@ -256,7 +259,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             char ** parts = OS_StrBreak('>', read_buff, 4);
                             char ** _parts = OS_StrBreak('<', parts[3], 2);
 
-                            cJSON_AddStringToObject(package, "name", _parts[0]);
+                            os_strdup(_parts[0], entry_data->name);
 
                             for (i = 0; _parts[i]; i++) {
                                 os_free(_parts[i]);
@@ -272,7 +275,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             char ** parts = OS_StrBreak('>', read_buff, 2);
                             char ** _parts = OS_StrBreak('<', parts[1], 2);
 
-                            cJSON_AddStringToObject(package, "name", _parts[0]);
+                            os_strdup(_parts[0], entry_data->name);
 
                             for (i = 0; _parts[i]; i++) {
                                 os_free(_parts[i]);
@@ -290,7 +293,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             char ** parts = OS_StrBreak('>', read_buff, 4);
                             char ** _parts = OS_StrBreak('<', parts[3], 2);
 
-                            cJSON_AddStringToObject(package, "version", _parts[0]);
+                            os_strdup(_parts[0], entry_data->version);
 
                             for (i = 0; _parts[i]; i++) {
                                 os_free(_parts[i]);
@@ -306,7 +309,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             char ** parts = OS_StrBreak('>', read_buff, 2);
                             char ** _parts = OS_StrBreak('<', parts[1], 2);
 
-                            cJSON_AddStringToObject(package, "version", _parts[0]);
+                            os_strdup(_parts[0], entry_data->version);
 
                             for (i = 0; _parts[i]; i++) {
                                 os_free(_parts[i]);
@@ -323,7 +326,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             char ** parts = OS_StrBreak('>', read_buff, 4);
                             char ** _parts = OS_StrBreak('<', parts[3], 2);
 
-                            cJSON_AddStringToObject(package, "group", _parts[0]);
+                            os_strdup(_parts[0], entry_data->group);
 
                             for (i = 0; _parts[i]; i++) {
                                 os_free(_parts[i]);
@@ -339,7 +342,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             char ** parts = OS_StrBreak('>', read_buff, 2);
                             char ** _parts = OS_StrBreak('<', parts[1], 2);
 
-                            cJSON_AddStringToObject(package, "group", _parts[0]);
+                            os_strdup(_parts[0], entry_data->group);
 
                             for (i = 0; _parts[i]; i++) {
                                 os_free(_parts[i]);
@@ -356,7 +359,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             char ** parts = OS_StrBreak('>', read_buff, 4);
                             char ** _parts = OS_StrBreak('<', parts[3], 2);
 
-                            cJSON_AddStringToObject(package, "description", _parts[0]);
+                            os_strdup(_parts[0], entry_data->description);
 
                             for (i = 0; _parts[i]; i++) {
                                 os_free(_parts[i]);
@@ -372,7 +375,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             char ** parts = OS_StrBreak('>', read_buff, 2);
                             char ** _parts = OS_StrBreak('<', parts[1], 2);
 
-                            cJSON_AddStringToObject(package, "description", _parts[0]);
+                            os_strdup(_parts[0], entry_data->description);
 
                             for (i = 0; _parts[i]; i++) {
                                 os_free(_parts[i]);
@@ -392,11 +395,11 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
         }
 
         if (strstr(app_folder, "/Utilities") != NULL) {
-            cJSON_AddStringToObject(package, "source", "utilities");
+            os_strdup("utilities", entry_data->source);
         } else {
-            cJSON_AddStringToObject(package, "source", "applications");
+            os_strdup("applications", entry_data->source);
         }
-        cJSON_AddStringToObject(package, "location", app_folder);
+        os_strdup(app_folder, entry_data->location);
 
         if (invalid) {
             char * program_name;
@@ -408,15 +411,17 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
             end = strchr(program_name, '.');
             *end = '\0';
 
-            cJSON_AddStringToObject(package, "name", program_name);
+            os_strdup(program_name, entry_data->name);
         }
 
-        char *string;
-        string = cJSON_PrintUnformatted(object);
-        cJSON_Delete(object);
+        char * string = NULL;
+        if (json_event = analyze_program(entry_data, random_id, timestamp), json_event) {
+            string = cJSON_PrintUnformatted(json_event);
+            cJSON_Delete(json_event);
+        }
+
         fclose(fp);
         return string;
-
     }
 
     return NULL;
@@ -428,6 +433,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
 
 void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
+    char *format = "pkg";
     char read_buff[OS_MAXSTR];
     char *command;
     FILE *output;
@@ -455,26 +461,25 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
         while(fgets(read_buff, OS_MAXSTR, output)){
 
-            cJSON *object = cJSON_CreateObject();
-            cJSON *package = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "program");
-            cJSON_AddNumberToObject(object, "ID", random_id);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "program", package);
-            cJSON_AddStringToObject(package, "format", "pkg");
+            cJSON * json_event = NULL;
+            program_entry_data * entry_data = NULL;
 
-            char *string;
             char ** parts = NULL;
+            char ** description = NULL;
+
+            os_calloc(1, sizeof(program_entry_data), entry_data);
+            init_program_data_entry(entry_data);
+
+            os_strdup(format, entry_data->format);
 
             parts = OS_StrBreak('|', read_buff, 5);
-            cJSON_AddStringToObject(package, "name", parts[0]);
-            cJSON_AddStringToObject(package, "vendor", parts[1]);
-            cJSON_AddStringToObject(package, "version", parts[2]);
-            cJSON_AddStringToObject(package, "architecture", parts[3]);
+            os_strdup(parts[0], entry_data->name);
+            os_strdup(parts[1], entry_data->vendor);
+            os_strdup(parts[2], entry_data->version);
+            os_strdup(parts[3], entry_data->architecture);
 
-            char ** description = NULL;
             description = OS_StrBreak('\n', parts[4], 2);
-            cJSON_AddStringToObject(package, "description", description[0]);
+            os_strdup(description[0], entry_data->description);
             for (i=0; description[i]; i++){
                 free(description[i]);
             }
@@ -484,13 +489,13 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             free(description);
             free(parts);
 
-            string = cJSON_PrintUnformatted(object);
-
-            mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
-            wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-            cJSON_Delete(object);
-
-            free(string);
+            if (json_event = analyze_program(entry_data, random_id, timestamp), json_event) {
+                char * string = cJSON_PrintUnformatted(json_event);
+                mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
+                wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                cJSON_Delete(json_event);
+                free(string);
+            }
         }
 
         if (status = pclose(output), status) {
