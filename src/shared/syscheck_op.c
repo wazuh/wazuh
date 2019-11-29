@@ -119,6 +119,11 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
         *(c_perm++) = '\0';
 
+        if (!(sum->uid = wstr_chr(c_perm, ':')))
+            return -1;
+
+        *(sum->uid++) = '\0';
+
         if (*c_perm == '|') {
             // Windows permissions
             char *unsc_perm = unescape_syscheck_field(c_perm);
@@ -133,11 +138,6 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
         } else {
             os_strdup(c_perm, sum->win_perm);
         }
-
-        if (!(sum->uid = wstr_chr(c_perm, ':')))
-            return -1;
-
-        *(sum->uid++) = '\0';
 
         if (!(sum->gid = strchr(sum->uid, ':')))
             return -1;

@@ -462,6 +462,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 }
 
 void add_json_attrs(const char *attrs_str, cJSON *file_diff, char after) {
+    if (!attrs_str || !*attrs_str) {
+        return;
+    }
+
     cJSON *attrs = attrs_to_json(attrs_str);
     if (attrs) {
         cJSON_AddItemToObject(file_diff,
