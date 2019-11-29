@@ -82,11 +82,11 @@ FROM base as wazuh-env-active-response_black_rbac
 ADD configurations/rbac/active-response/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
-FROM base AS wazuh-env-cluster_white_rbac
+FROM wazuh-env-cluster AS wazuh-env-cluster_white_rbac
 ADD configurations/rbac/cluster/white_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
-FROM base AS wazuh-env-cluster_black_rbac
+FROM wazuh-env-cluster AS wazuh-env-cluster_black_rbac
 ADD configurations/rbac/cluster/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 

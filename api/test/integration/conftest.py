@@ -146,7 +146,7 @@ def environment_sca():
 
 
 @pytest.fixture(name="syscheck_tests", scope="session")
-def environment_sca():
+def environment_syscheck():
     values = build_and_up("syscheck")
     while values['retries'] < values['max_retries']:
         master_health = check_health()
