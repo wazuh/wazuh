@@ -53,7 +53,7 @@ class DistributedAPI:
         self.debug = debug
         self.pretty = pretty
         self.node_info = wazuh.core.cluster.cluster.get_node() if node is None else node.get_node()
-        self.request_id = str(random.randint(0, 2 ** 10 - 1))
+        self.request_id = str(random.randint(0, 2**10 - 1))
         self.request_type = request_type
         self.wait_for_complete = wait_for_complete
         self.from_cluster = from_cluster
