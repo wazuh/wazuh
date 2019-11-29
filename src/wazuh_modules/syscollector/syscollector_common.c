@@ -133,9 +133,9 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys->flags.programinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Packages inventory is not available for this OS version.");
             #endif
-            //#ifdef DEBUG
+            #ifdef DEBUG
                 print_rbtree(sys->programs_entry, sys->programs_entry_mutex);
-            //#endif
+            #endif
         }
 
         /* Installed hotfixes inventory */
@@ -143,9 +143,9 @@ void* wm_sys_main(wm_sys_t *sys) {
             #ifdef WIN32
                 sys_hotfixes(WM_SYS_LOCATION);
             #endif
-            //#ifdef DEBUG
+            #ifdef DEBUG
                 print_rbtree(sys->hotfixes_entry, sys->hotfixes_entry_mutex);
-            //#endif
+            #endif
         }
         /* Opened ports inventory */
         if (sys->flags.portsinfo){
@@ -159,9 +159,9 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys->flags.portsinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Opened ports inventory is not available for this OS version.");
             #endif
-            //#ifdef DEBUG
+            #ifdef DEBUG
                 print_rbtree(sys->ports_entry, sys->ports_entry_mutex);
-            //#endif
+            #endif
         }
 
         /* Running processes inventory */
@@ -176,9 +176,9 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys->flags.procinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Running processes inventory is not available for this OS version.");
             #endif
-            //#ifdef DEBUG
+            #ifdef DEBUG
                 print_rbtree(sys->processes_entry, sys->processes_entry_mutex);
-            //#endif
+            #endif
         }
 
         time_sleep = time(NULL) - time_start;
