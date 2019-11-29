@@ -1414,7 +1414,6 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
         proc_pidinfo(pid, PROC_PIDLISTFDS, 0, procFDInfo, bufferSize);
         int numberOfProcFDs = bufferSize / PROC_PIDLISTFD_SIZE;
 
-        cJSON* procPorts = cJSON_CreateArray();
         int i;
         for(i = 0; i < numberOfProcFDs; i++) {
             if(procFDInfo[i].proc_fdtype != PROX_FDTYPE_SOCKET) {
@@ -1433,6 +1432,9 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
             if (socketInfo.psi.soi_kind != SOCKINFO_TCP && socketInfo.psi.soi_kind != SOCKINFO_IN) {
                 continue;
             }
+
+            cJSON * json_event = NULL;
+            port_entry_data * entry_data = NULL;
 
             char laddr[NI_MAXHOST];
             char faddr[NI_MAXHOST];
@@ -1469,60 +1471,48 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
             int localPort = (int)ntohs(socketInfo.psi.soi_proto.pri_in.insi_lport);
             int remotePort = (int)ntohs(socketInfo.psi.soi_proto.pri_in.insi_fport);
 
-            cJSON *object = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "port");
-            cJSON_AddNumberToObject(object, "ID", random_id);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
+            os_calloc(1, sizeof(port_entry_data), entry_data);
+            init_port_data_entry(entry_data);
 
-            cJSON *port = cJSON_CreateObject();
-            cJSON_AddItemToObject(object, "port", port);
-            cJSON_AddStringToObject(port, "protocol", protocol);
-            cJSON_AddStringToObject(port, "local_ip", laddr);
-            cJSON_AddNumberToObject(port, "local_port", localPort);
-            cJSON_AddStringToObject(port, "remote_ip", faddr);
-            cJSON_AddNumberToObject(port, "remote_port", remotePort);
-            cJSON_AddNumberToObject(port, "PID", pid);
-            cJSON_AddStringToObject(port, "process", pbsd.pbi_name);
+            os_strdup(protocol, entry_data->protocol);
+
+            os_strdup(laddr, entry_data->local_ip);
+            entry_data->local_port = localPort;
+            os_strdup(faddr, entry_data->remote_ip);
+            entry_data->remote_port = remotePort;
+
+            entry_data->pid = pid;
+            os_strdup(pbsd.pbi_name, entry_data->process);
 
             if (!strncmp(protocol, "tcp", 3)) {
                 char *port_state = get_port_state((int)socketInfo.psi.soi_proto.pri_tcp.tcpsi_state);
-                cJSON_AddStringToObject(port, "state", port_state);
+                os_strdup(port_state, entry_data->state);
                 if (strcmp(port_state, "listening") && !check_all) {
                     os_free(port_state);
-                    cJSON_Delete(object);
+                    free_port_data(entry_data);
                     continue;
                 }
                 os_free(port_state);
             }
 
-            cJSON *prev_port = NULL;
-            int found = 0;
-            cJSON_ArrayForEach(prev_port, procPorts) {
-                if(cJSON_Compare(port, prev_port, 1)) {
-                    found = 1;
-                    break;
-                }
+            // Check if it is necessary to create a port event
+            if (json_event = analyze_port(entry_data, random_id, timestamp), json_event) {
+                char * string = cJSON_PrintUnformatted(json_event);
+                mtdebug2(WM_SYS_LOGTAG, "sys_ports_mac() sending '%s'", string);
+                wm_sendmsg(usec, queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+                cJSON_Delete(json_event);
+                free(string);
             }
-
-            if (found) {
-                cJSON_Delete(object);
-                continue;
-            }
-
-            cJSON_AddItemToArray(procPorts, cJSON_Duplicate(port, 1));
-
-            char *string = cJSON_PrintUnformatted(object);
-            mtdebug2(WM_SYS_LOGTAG, "sys_ports_mac() sending '%s'", string);
-            wm_sendmsg(usec, queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
-            os_free(string);
-            cJSON_Delete(object);
         }
 
-        cJSON_Delete(procPorts);
         os_free(procFDInfo);
     }
 
     os_free(pids);
+
+    // Checking for closed ports
+    check_closed_ports();
+
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "port_end");
     cJSON_AddNumberToObject(object, "ID", random_id);

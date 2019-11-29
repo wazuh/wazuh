@@ -94,7 +94,7 @@ void* wm_sys_main(wm_sys_t *sys) {
                 mtwarn(WM_SYS_LOGTAG, "Network inventory is not available for this OS version.");
             #endif
             #ifdef DEBUG
-                print_rbtree(interfaces_entry, interfaces_entry_mutex);
+                print_rbtree(sys->interfaces_entry, sys->interfaces_entry_mutex);
             #endif
         }
 
@@ -133,9 +133,9 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys->flags.programinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Packages inventory is not available for this OS version.");
             #endif
-            #ifdef DEBUG
-                print_rbtree(programs_entry, programs_entry_mutex);
-            #endif
+            //#ifdef DEBUG
+                print_rbtree(sys->programs_entry, sys->programs_entry_mutex);
+            //#endif
         }
 
         /* Installed hotfixes inventory */
@@ -143,9 +143,9 @@ void* wm_sys_main(wm_sys_t *sys) {
             #ifdef WIN32
                 sys_hotfixes(WM_SYS_LOCATION);
             #endif
-            #ifdef DEBUG
-                print_rbtree(hotfixes_entry, hotfixes_entry_mutex);
-            #endif
+            //#ifdef DEBUG
+                print_rbtree(sys->hotfixes_entry, sys->hotfixes_entry_mutex);
+            //#endif
         }
         /* Opened ports inventory */
         if (sys->flags.portsinfo){
@@ -159,9 +159,9 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys->flags.portsinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Opened ports inventory is not available for this OS version.");
             #endif
-            #ifdef DEBUG
-                print_rbtree(ports_entry, ports_entry_mutex);
-            #endif
+            //#ifdef DEBUG
+                print_rbtree(sys->ports_entry, sys->ports_entry_mutex);
+            //#endif
         }
 
         /* Running processes inventory */
@@ -176,9 +176,9 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys->flags.procinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Running processes inventory is not available for this OS version.");
             #endif
-            #ifdef DEBUG
-                print_rbtree(processes_entry, processes_entry_mutex);
-            #endif
+            //#ifdef DEBUG
+                print_rbtree(sys->processes_entry, sys->processes_entry_mutex);
+            //#endif
         }
 
         time_sleep = time(NULL) - time_start;
@@ -713,7 +713,19 @@ cJSON * analyze_program(program_entry_data * entry_data, int random_id, const ch
     char * key = NULL;
 
     if (entry_data->name) {
-        os_strdup(entry_data->name, key);
+        os_calloc(OS_SIZE_128, sizeof(char), key);
+        if (entry_data->version && entry_data->architecture) {
+            sprintf(key, "%s-%s-%s", entry_data->name, entry_data->version, entry_data->architecture);
+        }
+        else if (entry_data->version) {
+            sprintf(key, "%s-%s", entry_data->name, entry_data->version);
+        }
+        else if (entry_data->architecture) {
+            sprintf(key, "%s-%s", entry_data->name, entry_data->architecture);
+        }
+        else {
+            sprintf(key, "%s", entry_data->name);
+        }
     }
     else {
         free_program_data(entry_data);
@@ -816,25 +828,18 @@ cJSON * analyze_port(port_entry_data * entry_data, int random_id, const char * t
     port_entry_data * saved_data = NULL;
     char * key = NULL;
 
-    if (entry_data->local_ip) {
-        if (entry_data->local_port > INT_MIN) {
-            os_calloc(OS_SIZE_128, sizeof(char), key);
-            if (entry_data->pid > INT_MIN) {
-                sprintf(key, "%s-%d-%d", entry_data->local_ip, entry_data->local_port, entry_data->pid);
-            }
-            else {
-                sprintf(key, "%s-%d", entry_data->local_ip, entry_data->local_port);
-            }
+    if (entry_data->local_ip && entry_data->local_port > INT_MIN) {
+        os_calloc(OS_SIZE_128, sizeof(char), key);
+        if (entry_data->pid > INT_MIN) {
+            sprintf(key, "%s-%d-%d", entry_data->local_ip, entry_data->local_port, entry_data->pid);
         }
         else {
-            free_port_data(entry_data);
-            mdebug1("Couldn't get the local port of the connection");
-            return NULL;
+            sprintf(key, "%s-%d", entry_data->local_ip, entry_data->local_port);
         }
     }
     else {
         free_port_data(entry_data);
-        mdebug1("Couldn't get the local ip of the connection");
+        mdebug1("Couldn't get the local ip/port of the connection");
         return NULL;
     }
 
@@ -881,20 +886,13 @@ cJSON * analyze_process(process_entry_data * entry_data, int random_id, const ch
     process_entry_data * saved_data = NULL;
     char * key = NULL;
 
-    if (entry_data->pid > INT_MIN) {
-        if (entry_data->name) {
-            os_calloc(OS_SIZE_128, sizeof(char), key);
-            sprintf(key, "%d-%s", entry_data->pid, entry_data->name);
-        }
-        else {
-            free_process_data(entry_data);
-            mdebug1("Couldn't get the name of the process");
-            return NULL;
-        }
+    if (entry_data->pid > INT_MIN && entry_data->name) {
+        os_calloc(OS_SIZE_128, sizeof(char), key);
+        sprintf(key, "%d-%s", entry_data->pid, entry_data->name);
     }
     else {
         free_process_data(entry_data);
-        mdebug1("Couldn't get the pid of the process");
+        mdebug1("Couldn't get the pid/name of the process");
         return NULL;
     }
 

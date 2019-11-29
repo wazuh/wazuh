@@ -112,6 +112,9 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
         while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL){
 
+            cJSON * json_event = NULL;
+            port_entry_data * entry_data = NULL;
+
             listening = 0;
 
             if (first_line){
@@ -130,25 +133,24 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
             snprintf(laddress, NI_MAXHOST, "%s", inet_ntoa(local));
             snprintf(raddress, NI_MAXHOST, "%s", inet_ntoa(remote));
 
-            cJSON *object = cJSON_CreateObject();
-            cJSON *port = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "port");
-            cJSON_AddNumberToObject(object, "ID", random_id);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "port", port);
-            cJSON_AddStringToObject(port, "protocol", protocol);
-            cJSON_AddStringToObject(port, "local_ip", laddress);
-            cJSON_AddNumberToObject(port, "local_port", local_port);
-            cJSON_AddStringToObject(port, "remote_ip", raddress);
-            cJSON_AddNumberToObject(port, "remote_port", rem_port);
-            cJSON_AddNumberToObject(port, "tx_queue", txq);
-            cJSON_AddNumberToObject(port, "rx_queue", rxq);
-            cJSON_AddNumberToObject(port, "inode", inode);
+            os_calloc(1, sizeof(port_entry_data), entry_data);
+            init_port_data_entry(entry_data);
+
+            os_strdup(protocol, entry_data->protocol);
+
+            os_strdup(laddress, entry_data->local_ip);
+            entry_data->local_port = local_port;
+            os_strdup(raddress, entry_data->remote_ip);
+            entry_data->remote_port = rem_port;
+
+            entry_data->tx_queue = txq;
+            entry_data->rx_queue = rxq;
+            entry_data->inode = inode;
 
             if (!strncmp(protocol, "tcp", 3)){
                 char *port_state;
                 port_state = get_port_state(state);
-                cJSON_AddStringToObject(port, "state", port_state);
+                os_strdup(port_state, entry_data->state);
                 if (!strcmp(port_state, "listening")) {
                     listening = 1;
                 }
@@ -157,15 +159,18 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
             if (check_all || listening) {
 
-                char *string;
-                string = cJSON_PrintUnformatted(object);
-                mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
-                wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(object);
-                free(string);
+                // Check if it is necessary to create a port event
+                if (json_event = analyze_port(entry_data, random_id, timestamp), json_event) {
+                    char * string = cJSON_PrintUnformatted(json_event);
+                    mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
+                    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                    cJSON_Delete(json_event);
+                    free(string);
+                }
 
-            } else
-                cJSON_Delete(object);
+            } else {
+                free_port_data(entry_data);
+            }
 
         }
         fclose(fp);
@@ -203,6 +208,9 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
         while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL){
 
+            cJSON * json_event = NULL;
+            port_entry_data * entry_data = NULL;
+
             listening = 0;
 
             if (first_line){
@@ -225,25 +233,24 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                 &rem.s6_addr32[2], &rem.s6_addr32[3]);
             inet_ntop(AF_INET6, &rem, raddress, sizeof(raddress));
 
-            cJSON *object = cJSON_CreateObject();
-            cJSON *port = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "port");
-            cJSON_AddNumberToObject(object, "ID", random_id);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "port", port);
-            cJSON_AddStringToObject(port, "protocol", protocol);
-            cJSON_AddStringToObject(port, "local_ip", laddress);
-            cJSON_AddNumberToObject(port, "local_port", local_port);
-            cJSON_AddStringToObject(port, "remote_ip", raddress);
-            cJSON_AddNumberToObject(port, "remote_port", rem_port);
-            cJSON_AddNumberToObject(port, "tx_queue", txq);
-            cJSON_AddNumberToObject(port, "rx_queue", rxq);
-            cJSON_AddNumberToObject(port, "inode", inode);
+            os_calloc(1, sizeof(port_entry_data), entry_data);
+            init_port_data_entry(entry_data);
+
+            os_strdup(protocol, entry_data->protocol);
+
+            os_strdup(laddress, entry_data->local_ip);
+            entry_data->local_port = local_port;
+            os_strdup(raddress, entry_data->remote_ip);
+            entry_data->remote_port = rem_port;
+
+            entry_data->tx_queue = txq;
+            entry_data->rx_queue = rxq;
+            entry_data->inode = inode;
 
             if (!strncmp(protocol, "tcp6", 4)){
                 char *port_state;
                 port_state = get_port_state(state);
-                cJSON_AddStringToObject(port, "state", port_state);
+                os_strdup(port_state, entry_data->state);
                 if (!strcmp(port_state, "listening")) {
                     listening = 1;
                 }
@@ -252,15 +259,18 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
             if (check_all || listening) {
 
-                char *string;
-                string = cJSON_PrintUnformatted(object);
-                mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
-                wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(object);
-                free(string);
+                // Check if it is necessary to create a port event
+                if (json_event = analyze_port(entry_data, random_id, timestamp), json_event) {
+                    char * string = cJSON_PrintUnformatted(json_event);
+                    mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
+                    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                    cJSON_Delete(json_event);
+                    free(string);
+                }
 
-            } else
-                cJSON_Delete(object);
+            } else {
+                free_port_data(entry_data);
+            }
 
         }
         fclose(fp);
@@ -307,6 +317,9 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
     }
 
     free(protocol);
+
+    // Checking for closed ports
+    check_closed_ports();
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "port_end");
