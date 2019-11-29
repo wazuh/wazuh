@@ -84,13 +84,13 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         mterror("Unable to open '%s' directory.", MAC_APPS);
     } else {
 
-        while ((de = readdir(dr)) != NULL) {
+        while ((dep = readdir(dr)) != NULL) {
 
             // Skip not intereset files
-            if (strncmp(de->d_name, ".", 1) == 0 || strncmp(de->d_name, "..", 2) == 0) {
+            if (!strncmp(dep->d_name, ".", 1)) {
                 continue;
-            } else if (strstr(de->d_name, ".app")) {
-                snprintf(path, PATH_LENGTH - 1, "%s/%s", MAC_APPS, de->d_name);
+            } else if (strstr(dep->d_name, ".app")) {
+                snprintf(path, PATH_LENGTH - 1, "%s/%s", MAC_APPS, dep->d_name);
                 char * string = NULL;
                 if (string = sys_parse_pkg(path, timestamp, random_id), string) {
 
@@ -99,7 +99,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                     free(string);
 
                 } else
-                    mterror(WM_SYS_LOGTAG, "Unable to get package information for '%s'", de->d_name);
+                    mterror(WM_SYS_LOGTAG, "Unable to get package information for '%s'", dep->d_name);
             }
         }
         closedir(dr);
@@ -111,13 +111,13 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         mterror("Unable to open '%s' directory.", UTILITIES);
     } else {
 
-        while ((de = readdir(dr)) != NULL) {
+        while ((dep = readdir(dr)) != NULL) {
 
             // Skip not intereset files
-            if (strncmp(de->d_name, ".", 1) == 0 || strncmp(de->d_name, "..", 2) == 0) {
+            if (!strncmp(dep->d_name, ".", 1)) {
                 continue;
-            } else if (strstr(de->d_name, ".app")) {
-                snprintf(path, PATH_LENGTH - 1, "%s/%s", UTILITIES, de->d_name);
+            } else if (strstr(dep->d_name, ".app")) {
+                snprintf(path, PATH_LENGTH - 1, "%s/%s", UTILITIES, dep->d_name);
                 char * string = NULL;
                 if (string = sys_parse_pkg(path, timestamp, random_id), string) {
 
@@ -126,7 +126,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                     free(string);
 
                 } else
-                    mterror(WM_SYS_LOGTAG, "Unable to get package information for '%s'", de->d_name);
+                    mterror(WM_SYS_LOGTAG, "Unable to get package information for '%s'", dep->d_name);
             }
         }
         closedir(dr);
@@ -141,11 +141,11 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     } else {
 
         DIR *dir;
-        struct dirent *version;
+        struct dirent *version = NULL;
 
-        while ((de = readdir(dr)) != NULL) {
+        while ((dep = readdir(dr)) != NULL) {
 
-            if (strncmp(de->d_name, ".", 1) == 0 || strncmp(de->d_name, "..", 2) == 0) {
+            if (strncmp(dep->d_name, ".", 1) == 0) {
                 continue;
             }
 
@@ -156,9 +156,9 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             cJSON_AddStringToObject(object, "timestamp", timestamp);
             cJSON_AddItemToObject(object, "program", package);
             cJSON_AddStringToObject(package, "format", "pkg");
-            cJSON_AddStringToObject(package, "name", de->d_name);
+            cJSON_AddStringToObject(package, "name", dep->d_name);
 
-            snprintf(path, PATH_LENGTH - 1, "%s/%s", HOMEBREW_APPS, de->d_name);
+            snprintf(path, PATH_LENGTH - 1, "%s/%s", HOMEBREW_APPS, dep->d_name);
             cJSON_AddStringToObject(package, "location", path);
             cJSON_AddStringToObject(package, "source", "homebrew");
 
@@ -170,7 +170,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                     }
 
                     cJSON_AddStringToObject(package, "version", version->d_name);
-                    snprintf(path, PATH_LENGTH - 1, "%s/%s/%s/.brew/%s.rb", HOMEBREW_APPS, de->d_name, version->d_name, de->d_name);
+                    snprintf(path, PATH_LENGTH - 1, "%s/%s/%s/.brew/%s.rb", HOMEBREW_APPS, dep->d_name, version->d_name, dep->d_name);
 
                     char read_buff[OS_MAXSTR];
                     FILE *fp;

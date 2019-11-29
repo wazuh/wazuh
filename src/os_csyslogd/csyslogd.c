@@ -30,7 +30,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
 {
     int s = 0;
     time_t tm;
-    struct tm *p;
+    struct tm tm_result = { .tm_sec = 0 };
     int tries = 0;
     alert_source_t sources = get_alert_sources(syslog_config);
     file_queue *fileq = NULL;
@@ -42,12 +42,12 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
 
         /* Get current time before starting */
         tm = time(NULL);
-        p = localtime(&tm);
+        localtime_r(&tm, &tm_result);
 
         /* Initialize file queue to read the alerts */
         os_calloc(1, sizeof(file_queue), fileq);
 
-        for (tries = 0; tries < OS_CSYSLOGD_MAX_TRIES && Init_FileQueue(fileq, p, 0) < 0; tries++) {
+        for (tries = 0; tries < OS_CSYSLOGD_MAX_TRIES && Init_FileQueue(fileq, &tm_result, 0) < 0; tries++) {
             sleep(1);
         }
 
@@ -95,12 +95,12 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     /* Infinite loop reading the alerts and inserting them */
     while (1) {
         tm = time(NULL);
-        p = localtime(&tm);
+        localtime_r(&tm, &tm_result);
 
         if (sources.alert_log) {
             /* Get message if available (timeout of 5 seconds) */
             mdebug2("Read_FileMon()");
-            al_data = Read_FileMon(fileq, p, 1);
+            al_data = Read_FileMon(fileq, &tm_result, 1);
         }
 
         if (sources.alert_json) {
