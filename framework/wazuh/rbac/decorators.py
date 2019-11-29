@@ -338,7 +338,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                         raise Exception
                 except Exception:
                     if add_denied:
-                        denied = _get_denied(original_kwargs, allow, target_param, res_id, resources)
+                        denied = _get_denied(original_kwargs, allow, target_param, res_id, resources=resources)
                         raise WazuhError(4000, extra_message=f'Resource type: {res_id}', ids=denied)
                     else:
                         if target_param != '*':
