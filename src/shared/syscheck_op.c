@@ -485,7 +485,7 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
             sum->uname ? username : "",
             sum->gname ? sum->gname : "",
             sum->mtime ? s_mtime : "",
-            sum->inode ? s_inode : "0",
+            sum->inode ? s_inode : "",
             sum->sha256 ? sum->sha256 : "",
             sum->attributes ? sum->attributes : "",
             sum->changes,

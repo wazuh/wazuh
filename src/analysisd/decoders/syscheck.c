@@ -1562,7 +1562,7 @@ void fim_adjust_checksum(sk_sum_t *newsum, char **checksum) {
     }
 
     // Adjust permissions
-    if (newsum->win_perm) {
+    if (newsum->win_perm && *newsum->win_perm) {
         char *first_part = strchr(*checksum, ':');
         if (!first_part) return;
         first_part++;
