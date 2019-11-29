@@ -618,7 +618,7 @@ int Test_ActiveResponse(const char *path, int type, char **output) {
             merror(LIST_ERROR);
         } else {
             wm_strcat(output, "Active-Response: Unable to create a new list", '\n');
-        }      
+        }
         return OS_INVALID;
     }
 
@@ -632,9 +632,31 @@ int Test_ActiveResponse(const char *path, int type, char **output) {
         fail = 1;
     }
 
-    /* Frees the LogReader config struct */
-    Free_OSList(test_activecmd);
-    Free_OSList(test_activeresp);
+    /* Frees the the active response and command config structs */
+    OSListNode *node;
+    for (node = OSList_GetFirstNode(test_activecmd); node; node = OSList_GetCurrentlyNode(test_activecmd)) {
+        ar_command* current_command = (ar_command*)node->data;
+
+        os_free(current_command->name);
+        os_free(current_command->executable);
+        os_free(current_command->extra_args);
+        os_free(current_command);
+
+        OSList_DeleteCurrentlyNode(test_activecmd);
+    }
+    for (node = OSList_GetFirstNode(test_activeresp); node; node = OSList_GetCurrentlyNode(test_activeresp)) {
+        active_response* current_response = (active_response*)node->data;
+
+        os_free(current_response->name);
+        os_free(current_response->command);
+        os_free(current_response->agent_id);
+        os_free(current_response->rules_id);
+        os_free(current_response->rules_group);
+        os_free(current_response->ar_cmd);
+        os_free(current_response);
+
+        OSList_DeleteCurrentlyNode(test_activeresp);
+    }
 
     os_free (test_activecmd);
     os_free (test_activeresp);
@@ -727,6 +749,7 @@ next:
             OS_ClearXML(&xml);
             return OS_INVALID;
         }
+        free_strarray(repeated_comp);
     }
     os_free(repeated);
 
@@ -758,6 +781,8 @@ next:
             } else {
                 wm_strcat(output, "INFO: No option <ca_store> defined. Wazuh default CA (%s) will be used.", '\n');
             }
+        } else {
+            free_strarray(wcom_ca_store);
         }
     }
     else {

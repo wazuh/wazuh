@@ -137,7 +137,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
                 OSMatch *ptm;
 
                 ptm = syscheck->filerestrict[pl];
-                
+
                 if (output == NULL){
                     merror(REGEX_COMPILE, restrictfile, ptm->error);
                 } else {
@@ -1271,6 +1271,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
         /* Get scan day */
         else if (strcmp(node[i]->element, xml_scanday) == 0) {
+            os_free(syscheck->scan_day);
             syscheck->scan_day = OS_IsValidDay(node[i]->content, output);
             if (!syscheck->scan_day) {
                 if (output == NULL) {
@@ -1725,7 +1726,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         OS_ClearNode(children);
                         return(OS_INVALID);
                     }
-                } else if (output == NULL){                    
+                } else if (output == NULL){
                     merror(XML_ELEMNULL);
                     OS_ClearNode(children);
                     return OS_INVALID;
@@ -1858,10 +1859,10 @@ void Free_Syscheck(syscheck_config *config) {
         int pl = 0;
         free(config->opts);
         free(config->remote_db);
-        free(config->db);        
+        free(config->db);
         free(config->scan_day);
         free(config->scan_time);
-        
+
         if (config->dir) {
             while (config->dir[pl]) {
                     pl++;
