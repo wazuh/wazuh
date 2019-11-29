@@ -120,6 +120,7 @@ static int delete_entry_data(void **state)
 {
     fim_entry_data *data = *state;
     free_entry_data(data);
+    os_free(data);
     return 0;
 }
 
@@ -239,7 +240,9 @@ void test_fim_json_event(void **state)
 
     *state = ret;
     free_entry_data(old_data);
+    os_free(old_data);
     free_entry_data(new_data);
+    os_free(new_data);
 
     assert_non_null(ret);
     cJSON *data = cJSON_GetObjectItem(ret, "data");
@@ -339,7 +342,9 @@ void test_fim_json_event_whodata(void **state)
 
     *state = ret;
     free_entry_data(old_data);
+    os_free(old_data);
     free_entry_data(new_data);
+    os_free(new_data);
     free_whodata_event(w_evt);
 
     assert_non_null(ret);
@@ -395,6 +400,7 @@ void test_fim_json_event_no_changes(void **state)
     *state = ret;
 
     free_entry_data(data);
+    os_free(data);
 
     assert_null(ret);
 }
@@ -431,6 +437,7 @@ void test_fim_attributes_json(void **state)
     *state = ret;
 
     free_entry_data(data);
+    os_free(data);
 
     assert_non_null(ret);
     assert_int_equal(cJSON_GetArraySize(ret), 13);
@@ -469,6 +476,7 @@ void test_fim_entry_json(void **state)
     *state = ret;
 
     free_entry_data(data);
+    os_free(data);
 
     assert_non_null(ret);
     cJSON *path = cJSON_GetObjectItem(ret, "path");
@@ -540,7 +548,9 @@ void test_fim_json_compare_attrs(void **state)
 
     *state = ret;
     free_entry_data(old_data);
+    os_free(old_data);
     free_entry_data(new_data);
+    os_free(new_data);
 
     assert_non_null(ret);
     assert_int_equal(cJSON_GetArraySize(ret), 11);
