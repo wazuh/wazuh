@@ -791,7 +791,7 @@ def validate_configuration(configuration_type, tmp_file):
                 {
                     "type": configuration_type,
                     "file": tmp_file_full_path
-                },
+                }
         }
     )
     try:
