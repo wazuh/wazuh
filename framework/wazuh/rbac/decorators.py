@@ -238,7 +238,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                 target_params[m.group(1)] = m.group(2)
             else:  # Static resource
                 target_params[m.group(1)] = '*'
-                add_denied = not broadcast.get()
+            add_denied = not broadcast.get()
             res_list.append(resource)
     # Create dict of required policies with action: list(resources) pairs
     req_permissions = dict()
