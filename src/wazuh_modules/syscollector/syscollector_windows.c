@@ -364,7 +364,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
             ipaddress.S_un.S_addr = (u_long) pTcpTable->table[i].dwRemoteAddr;
             snprintf(rem_addr, NI_MAXHOST, "%s", inet_ntoa(ipaddress));
-            os_strdup(raddress, entry_data->remote_ip);
+            os_strdup(rem_addr, entry_data->remote_ip);
             entry_data->remote_port = ntohs((u_short)pTcpTable->table[i].dwRemotePort);
 
             /* Get port state */
