@@ -551,6 +551,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
         if (skip) {
             free_program_data(entry_data);
         } else {
+            // Check if it is necessary to create a program event
             if (json_event = analyze_program(entry_data, random_id, timestamp), json_event) {
                 char * string = cJSON_PrintUnformatted(json_event);
                 mtdebug2(WM_SYS_LOGTAG, "sys_rpm_packages() sending '%s'", string);
@@ -575,6 +576,9 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
     cursor->c_close(cursor);
     dbp->close(dbp, 0);
+
+    // Checking for uninstalled programs
+    check_uninstalled_programs();
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program_end");
@@ -751,6 +755,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
                 cJSON * json_event = NULL;
                 if (entry_data->installed) {
+                    // Check if it is necessary to create a program event
                     if (json_event = analyze_program(entry_data, random_id, timestamp), json_event) {
                         char * string = cJSON_PrintUnformatted(json_event);
                         mtdebug2(WM_SYS_LOGTAG, "sys_deb_packages() sending '%s'", string);
@@ -774,6 +779,9 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
         return NULL;
 
     }
+
+    // Checking for uninstalled programs
+    check_uninstalled_programs();
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program_end");
@@ -1544,8 +1552,6 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         entry_data->tgid = proc_info->tgid;
         entry_data->tty = proc_info->tty;
         entry_data->processor = proc_info->processor;
-
-        entry_data->running = 1;
 
         freeproc(proc_info);
 

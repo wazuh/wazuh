@@ -791,6 +791,9 @@ void sys_programs_windows(const char* LOCATION){
     }
     RegCloseKey(main_key);
 
+    // Checking for uninstalled programs
+    check_uninstalled_programs();
+
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program_end");
     cJSON_AddNumberToObject(object, "ID", ID);
@@ -829,6 +832,9 @@ void sys_hotfixes(const char* LOCATION){
     } else {
         mterror(WM_SYS_LOGTAG, "Could not open the registry '%s'. Error: %lu.", HOTFIXES_REG, result);
     }
+
+    // Checking for uninstalled hotfixes
+    check_uninstalled_hotfixes();
 
     end_evt = cJSON_CreateObject();
     cJSON_AddStringToObject(end_evt, "type", "hotfix_end");
@@ -1248,6 +1254,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
             free(location);
 
+            // Check if it is necessary to create a program event
             if (json_event = analyze_program(entry_data, ID, timestamp), json_event) {
                 char * string = cJSON_PrintUnformatted(json_event);
                 mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
@@ -1271,21 +1278,22 @@ void send_hotfix(const char *hotfix, int usec, const char *timestamp, int ID, co
         return;
     }
 
-    cJSON *event;
-    if (event = cJSON_CreateObject(), !event) {
-        mterror(WM_SYS_LOGTAG, "Could not create the hotfix event.");
-        return;
-    }
-    cJSON_AddStringToObject(event, "type", "hotfix");
-    cJSON_AddNumberToObject(event, "ID", ID);
-    cJSON_AddStringToObject(event, "timestamp", timestamp);
-    cJSON_AddStringToObject(event, "hotfix", hotfix);
+    cJSON * json_event = NULL;
+    hotfix_entry_data * entry_data = NULL;
 
-    char *str_event = cJSON_PrintUnformatted(event);
-    mtdebug2(WM_SYS_LOGTAG, "sys_hotfixes() sending '%s'", str_event);
-    wm_sendmsg(usec, 0, str_event, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(event);
-    free(str_event);
+    os_calloc(1, sizeof(hotfix_entry_data), entry_data);
+    init_hotfix_data_entry(entry_data);
+
+    os_strdup(hotfix, entry_data->hotfix);
+
+    // Check if it is necessary to create a hotfix event
+    if (json_event = analyze_hotfix(entry_data, ID, timestamp), json_event) {
+        char * string = cJSON_PrintUnformatted(json_event);
+        mtdebug2(WM_SYS_LOGTAG, "sys_hotfixes() sending '%s'", string);
+        wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+        cJSON_Delete(json_event);
+        free(string);
+    }
 }
 
 void sys_hw_windows(const char* LOCATION){
@@ -2309,8 +2317,6 @@ void sys_proc_windows(const char* LOCATION) {
                 entry_data->session = session_id;
                 entry_data->nlwp = thread_count;
 
-                entry_data->running = 1;
-
                 // Check if it is necessary to create a process event
                 if (json_event = analyze_process(entry_data, ID, timestamp), json_event) {
                     char * string = cJSON_PrintUnformatted(json_event);
@@ -2320,9 +2326,6 @@ void sys_proc_windows(const char* LOCATION) {
                     free(string);
                 }
 			} while(Process32Next(hSnapshot, &pe));
-
-            // Checking for terminated processes
-            check_terminated_processes();
 
 		} else {
 			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve process information from the snapshot.");
@@ -2341,6 +2344,9 @@ void sys_proc_windows(const char* LOCATION) {
 	}
 
 	if (hdle) CloseHandle(hdle);
+
+    // Checking for terminated processes
+    check_terminated_processes();
 
 	cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "process_end");

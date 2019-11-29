@@ -196,7 +196,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                 closedir(dir);
             }
 
-            /* Send package information */
+            // Check if it is necessary to create a program event
             if (json_event = analyze_program(entry_data, random_id, timestamp), json_event) {
                 char * string = cJSON_PrintUnformatted(json_event);
                 mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
@@ -207,6 +207,9 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         }
         closedir(dr);
     }
+
+    // Checking for uninstalled programs
+    check_uninstalled_programs();
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program_end");
@@ -415,6 +418,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
         }
 
         char * string = NULL;
+        // Check if it is necessary to create a program event
         if (json_event = analyze_program(entry_data, random_id, timestamp), json_event) {
             string = cJSON_PrintUnformatted(json_event);
             cJSON_Delete(json_event);
@@ -489,6 +493,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             free(description);
             free(parts);
 
+            // Check if it is necessary to create a program event
             if (json_event = analyze_program(entry_data, random_id, timestamp), json_event) {
                 char * string = cJSON_PrintUnformatted(json_event);
                 mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
@@ -505,6 +510,9 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s' to get software inventory.", command);
     }
     free(command);
+
+    // Checking for uninstalled programs
+    check_uninstalled_programs();
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program_end");
@@ -1631,8 +1639,6 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
         entry_data->nice = task_info.pbsd.pbi_nice;
 
         entry_data->vm_size = task_info.ptinfo.pti_virtual_size / 1024;
-
-        entry_data->running = 1;
 
         // Check if it is necessary to create a process event
         if (json_event = analyze_process(entry_data, random_id, timestamp), json_event) {

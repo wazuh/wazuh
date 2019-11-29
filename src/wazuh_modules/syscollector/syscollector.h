@@ -103,6 +103,38 @@ typedef struct hw_info {
     int ram_usage;  // Percentage
 } hw_info;
 
+typedef struct net_addr {
+    char ** address;
+    char ** netmask;
+    char ** broadcast;
+    int metric;
+    char * gateway;
+    char * dhcp;
+} net_addr;
+
+typedef struct interface_entry_data {
+    char * name;
+    char * adapter;
+    char * type;
+    char * state;
+    char * mac;
+    int mtu;
+
+    int tx_packets;
+    int rx_packets;
+    int tx_bytes;
+    int rx_bytes;
+    int tx_errors;
+    int rx_errors;
+    int tx_dropped;
+    int rx_dropped;
+
+    struct net_addr * ipv4;
+    struct net_addr * ipv6;
+
+    int enabled;
+} interface_entry_data;
+
 typedef struct program_entry_data {
     char * format;
     char * name;
@@ -121,6 +153,32 @@ typedef struct program_entry_data {
 
     int installed;
 } program_entry_data;
+
+typedef struct hotfix_entry_data {
+    char * hotfix;
+
+    int installed;
+} hotfix_entry_data;
+
+typedef struct port_entry_data {
+    char * protocol;
+
+    char * local_ip;
+    int local_port;
+    char * remote_ip;
+    int remote_port;
+
+    int tx_queue;
+    int rx_queue;
+    int inode;
+
+    char * state;
+
+    int pid;
+    char * process;
+
+    int opened;
+} port_entry_data;
 
 typedef struct process_entry_data {
     int pid;
@@ -141,14 +199,14 @@ typedef struct process_entry_data {
     int priority;
     int nice;
 
-    int size;
-    int vm_size;
-    int resident;
-    int share;
+    long size;
+    long vm_size;
+    long resident;
+    long share;
 
-    int start_time;
-    int utime;
-    int stime;
+    long long start_time;
+    long long utime;
+    long long stime;
 
     int pgrp;
     int session;
@@ -182,9 +240,15 @@ typedef struct wm_sys_t {
     wm_sys_flags_t flags;                   // Flag bitfield
     wm_sys_state_t state;                   // Running state
 
+    rb_tree * interfaces_entry;
     rb_tree * programs_entry;
+    rb_tree * hotfixes_entry;
+    rb_tree * ports_entry;
     rb_tree * processes_entry;
+    pthread_mutex_t interfaces_entry_mutex;
     pthread_mutex_t programs_entry_mutex;
+    pthread_mutex_t hotfixes_entry_mutex;
+    pthread_mutex_t ports_entry_mutex;
     pthread_mutex_t processes_entry_mutex;
 } wm_sys_t;
 
@@ -314,56 +378,77 @@ int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr);
 
 // Generate a random ID
 int wm_sys_get_random_id();
+
 // Initialize hw_info struct values
 void init_hw_info(hw_info *info);
 
 // Initialize datastores
 void sys_initialize_datastores();
 
+// Initialize interface data
+void init_interface_data_entry(interface_entry_data * data);
 // Initialize process data
 void init_program_data_entry(program_entry_data * data);
-
+// Initialize hotfix data
+void init_hotfix_data_entry(hotfix_entry_data * data);
+// Initialize port data
+void init_port_data_entry(port_entry_data * data);
 // Initialize process data
 void init_process_data_entry(process_entry_data * data);
 
+// Free interface data
+void free_interface_data(interface_entry_data * data);
 // Free program data
 void free_program_data(program_entry_data * data);
-
+// Free hotfix data
+void free_hotfix_data(hotfix_entry_data * data);
+// Free port data
+void free_port_data(port_entry_data * data);
 // Free process data
 void free_process_data(process_entry_data * data);
 
+// Analyze if insert new interface or update an existing one
+cJSON * analyze_interface(interface_entry_data * entry_data, int random_id, const char * timestamp);
 // Analyze if insert new program or update an existing one
 cJSON * analyze_program(program_entry_data * entry_data, int random_id, const char * timestamp);
-
+// Analyze if insert new hotfix or update an existing one
+cJSON * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char * timestamp);
+// Analyze if insert new port or update an existing one
+cJSON * analyze_port(port_entry_data * entry_data, int random_id, const char * timestamp);
 // Analyze if insert new process or update an existing one
 cJSON * analyze_process(process_entry_data * entry_data, int random_id, const char * timestamp);
 
+// Deletes the disabled interfaces from the hash table
+void check_disabled_interfaces();
 // Deletes the uninstalled programs from the hash table
 void check_uninstalled_programs();
-
+// Deletes the uninstalled hotfixes from the hash table
+void check_uninstalled_hotfixes();
+// Deletes the closed ports from the hash table
+void check_closed_ports();
 // Deletes the terminated processes from the hash table
 void check_terminated_processes();
 
 // Insert process into hash table
 int insert_entry(rb_tree * tree, const char * key, void * data);
-
 // Update process to hash table
 int update_entry(rb_tree * tree, const char * key, void * data);
-
 // Delete process from hash table
 void delete_entry(rb_tree * tree, const char * key);
 
+// Print keys from hash table
+void print_rbtree(rb_tree * tree, pthread_mutex_t mutex);
+
+//
+cJSON * interface_json_event(interface_entry_data * old_data, interface_entry_data * new_data, int random_id, const char * timestamp);
 //
 cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, int random_id, const char * timestamp);
-
+//
+cJSON * hotfix_json_event(hotfix_entry_data * old_data, hotfix_entry_data * new_data, int random_id, const char * timestamp);
+//
+cJSON * port_json_event(port_entry_data * old_data, port_entry_data * new_data, int random_id, const char * timestamp);
 //
 cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, int random_id, const char * timestamp);
-
-// Print programs hash table
-void print_programs_rbtree();
-
-// Print processes hash table
-void print_processes_rbtree();
 
 #endif
 #endif

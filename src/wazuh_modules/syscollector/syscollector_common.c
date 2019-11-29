@@ -93,6 +93,9 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys->flags.netinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Network inventory is not available for this OS version.");
             #endif
+            #ifdef DEBUG
+                print_rbtree(interfaces_entry, interfaces_entry_mutex);
+            #endif
         }
 
         /* Operating System inventory */
@@ -131,7 +134,7 @@ void* wm_sys_main(wm_sys_t *sys) {
                 mtwarn(WM_SYS_LOGTAG, "Packages inventory is not available for this OS version.");
             #endif
             #ifdef DEBUG
-                print_programs_rbtree();
+                print_rbtree(programs_entry, programs_entry_mutex);
             #endif
         }
 
@@ -139,6 +142,9 @@ void* wm_sys_main(wm_sys_t *sys) {
         if (sys->flags.hotfixinfo) {
             #ifdef WIN32
                 sys_hotfixes(WM_SYS_LOCATION);
+            #endif
+            #ifdef DEBUG
+                print_rbtree(hotfixes_entry, hotfixes_entry_mutex);
             #endif
         }
         /* Opened ports inventory */
@@ -152,6 +158,9 @@ void* wm_sys_main(wm_sys_t *sys) {
             #else
                 sys->flags.portsinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Opened ports inventory is not available for this OS version.");
+            #endif
+            #ifdef DEBUG
+                print_rbtree(ports_entry, ports_entry_mutex);
             #endif
         }
 
@@ -168,7 +177,7 @@ void* wm_sys_main(wm_sys_t *sys) {
                 mtwarn(WM_SYS_LOGTAG, "Running processes inventory is not available for this OS version.");
             #endif
             #ifdef DEBUG
-                print_processes_rbtree();
+                print_rbtree(processes_entry, processes_entry_mutex);
             #endif
         }
 
@@ -335,18 +344,58 @@ int wm_sys_get_random_id() {
 
 // Initialize syscollector datastores
 void sys_initialize_datastores() {
+    sys->interfaces_entry = rbtree_init();
     sys->programs_entry = rbtree_init();
+    sys->hotfixes_entry = rbtree_init();
+    sys->ports_entry = rbtree_init();
     sys->processes_entry = rbtree_init();
 
-    if (!sys->programs_entry || !sys->processes_entry) {
+    if (!sys->interfaces_entry || !sys->programs_entry || !sys->hotfixes_entry || !sys->ports_entry || !sys->processes_entry) {
         merror_exit("Error while creating data structure: rb-tree init. Exiting."); // LCOV_EXCL_LINE
     }
 
+    rbtree_set_dispose(sys->interfaces_entry, (void (*)(void *))free_interface_data);
     rbtree_set_dispose(sys->programs_entry, (void (*)(void *))free_program_data);
+    rbtree_set_dispose(sys->hotfixes_entry, (void (*)(void *))free_hotfix_data);
+    rbtree_set_dispose(sys->ports_entry, (void (*)(void *))free_port_data);
     rbtree_set_dispose(sys->processes_entry, (void (*)(void *))free_process_data);
 
+    w_mutex_init(&sys->interfaces_entry_mutex, NULL);
     w_mutex_init(&sys->programs_entry_mutex, NULL);
+    w_mutex_init(&sys->hotfixes_entry_mutex, NULL);
+    w_mutex_init(&sys->ports_entry_mutex, NULL);
     w_mutex_init(&sys->processes_entry_mutex, NULL);
+}
+
+// Initialize interface_entry_data structure
+void init_interface_data_entry(interface_entry_data * data) {
+    data->name = NULL;
+    data->adapter = NULL;
+    data->type = NULL;
+    data->state = NULL;
+    data->mac = NULL;
+    data->mtu = INT_MIN;
+    data->tx_packets = INT_MIN;
+    data->rx_packets = INT_MIN;
+    data->tx_bytes = INT_MIN;
+    data->rx_bytes = INT_MIN;
+    data->tx_errors = INT_MIN;
+    data->rx_errors = INT_MIN;
+    data->tx_dropped = INT_MIN;
+    data->rx_dropped = INT_MIN;
+    data->ipv4->address = NULL;
+    data->ipv4->netmask = NULL;
+    data->ipv4->broadcast = NULL;
+    data->ipv4->metric = INT_MIN;
+    data->ipv4->gateway = NULL;
+    data->ipv4->dhcp = NULL;
+    data->ipv6->address = NULL;
+    data->ipv6->netmask = NULL;
+    data->ipv6->broadcast = NULL;
+    data->ipv6->metric = INT_MIN;
+    data->ipv6->gateway = NULL;
+    data->ipv6->dhcp = NULL;
+    data->enabled = 0;
 }
 
 // Initialize program_entry_data structure
@@ -364,7 +413,29 @@ void init_program_data_entry(program_entry_data * data) {
     data->source = NULL;
     data->description = NULL;
     data->location = NULL;
-    data->installed = INT_MIN;
+    data->installed = 0;
+}
+
+// Initialize hotfix_entry_data structure
+void init_hotfix_data_entry(hotfix_entry_data * data) {
+    data->hotfix = NULL;
+    data->installed = 0;
+}
+
+// Initialize port_entry_data structure
+void init_port_data_entry(port_entry_data * data) {
+    data->protocol = NULL;
+    data->local_ip = NULL;
+    data->local_port = INT_MIN;
+    data->remote_ip = NULL;
+    data->remote_port = INT_MIN;
+    data->tx_queue = INT_MIN;
+    data->rx_queue = INT_MIN;
+    data->inode = INT_MIN;
+    data->state = NULL;
+    data->pid = INT_MIN;
+    data->process = NULL;
+    data->opened = 0;
 }
 
 // Initialize process_entry_data structure
@@ -384,20 +455,80 @@ void init_process_data_entry(process_entry_data * data) {
     data->fgroup = NULL;
     data->priority = INT_MIN;
     data->nice = INT_MIN;
-    data->size = INT_MIN;
-    data->vm_size = INT_MIN;
-    data->resident = INT_MIN;
-    data->share = INT_MIN;
-    data->start_time = INT_MIN;
-    data->utime = INT_MIN;
-    data->stime = INT_MIN;
+    data->size = LONG_MIN;
+    data->vm_size = LONG_MIN;
+    data->resident = LONG_MIN;
+    data->share = LONG_MIN;
+    data->start_time = LLONG_MIN;
+    data->utime = LLONG_MIN;
+    data->stime = LLONG_MIN;
     data->pgrp = INT_MIN;
     data->session = INT_MIN;
     data->nlwp = INT_MIN;
     data->tgid = INT_MIN;
     data->tty = INT_MIN;
     data->processor = INT_MIN;
-    data->running = INT_MIN;
+    data->running = 0;
+}
+
+// Free interface_entry_data structure
+void free_interface_data(interface_entry_data * data) {
+    if (!data) {
+        return;
+    }
+    if (data->name) {
+        os_free(data->name);
+    }
+    if (data->adapter) {
+        os_free(data->adapter);
+    }
+    if (data->type) {
+        os_free(data->type);
+    }
+    if (data->state) {
+        os_free(data->state);
+    }
+    if (data->mac) {
+        os_free(data->mac);
+    }
+    if (data->ipv4) {
+        if (data->ipv4->address) {
+            free_strarray(data->ipv4->address);
+        }
+        if (data->ipv4->netmask) {
+            free_strarray(data->ipv4->netmask);
+        }
+        if (data->ipv4->broadcast) {
+            free_strarray(data->ipv4->broadcast);
+        }
+        if (data->ipv4->gateway) {
+            os_free(data->ipv4->gateway);
+        }
+        if (data->ipv4->dhcp) {
+            os_free(data->ipv4->dhcp);
+        }
+        os_free(data->ipv4);
+    }
+    if (data->ipv6) {
+        if (data->ipv6->address) {
+            free_strarray(data->ipv6->address);
+        }
+        if (data->ipv6->netmask) {
+            free_strarray(data->ipv6->netmask);
+        }
+        if (data->ipv6->broadcast) {
+            free_strarray(data->ipv6->broadcast);
+        }
+        if (data->ipv6->gateway) {
+            os_free(data->ipv6->gateway);
+        }
+        if (data->ipv6->dhcp) {
+            os_free(data->ipv6->dhcp);
+        }
+        os_free(data->ipv6);
+    }
+
+    os_free(data);
 }
 
 // Free program_entry_data structure
@@ -445,6 +576,42 @@ void free_program_data(program_entry_data * data) {
     os_free(data);
 }
 
+// Free hotfix_entry_data structure
+void free_hotfix_data(hotfix_entry_data * data){
+    if (!data) {
+        return;
+    }
+    if (data->hotfix) {
+        os_free(data->hotfix);
+    }
+
+    os_free(data);
+}
+
+// Free port_entry_data structure
+void free_port_data(port_entry_data * data) {
+    if (!data) {
+        return;
+    }
+    if (data->protocol) {
+        os_free(data->protocol);
+    }
+    if (data->local_ip) {
+        os_free(data->local_ip);
+    }
+    if (data->remote_ip) {
+        os_free(data->remote_ip);
+    }
+    if (data->state) {
+        os_free(data->state);
+    }
+    if (data->process) {
+        os_free(data->process);
+    }
+
+    os_free(data);
+}
+
 // Free process_entry_data structure
 void free_process_data(process_entry_data * data) {
     if (!data) {
@@ -487,6 +654,58 @@ void free_process_data(process_entry_data * data) {
     os_free(data);
 }
 
+// Analyze if insert new interface or update an existing one
+cJSON * analyze_interface(interface_entry_data * entry_data, int random_id, const char * timestamp) {
+    cJSON * json_event = NULL;
+    interface_entry_data * saved_data = NULL;
+    char * key = NULL;
+
+    if (entry_data->name) {
+        os_strdup(entry_data->name, key);
+    }
+    else {
+        free_interface_data(entry_data);
+        mdebug1("Couldn't get the name of the interface");
+        return NULL;
+    }
+
+    entry_data->enabled = 1;
+
+    w_mutex_lock(&sys->interfaces_entry_mutex);
+
+    if (saved_data = (interface_entry_data *) rbtree_get(sys->interfaces_entry, key), !saved_data) {
+        // New entry. Insert into hash table
+        if (insert_entry(sys->interfaces_entry, key, (void *) entry_data) == -1) {
+            w_mutex_unlock(&sys->interfaces_entry_mutex);
+            free_interface_data(entry_data);
+            mdebug1("Couldn't insert interface into hash table: '%s'", key);
+            free(key);
+            return NULL;
+        }
+        json_event = interface_json_event(NULL, entry_data, random_id, timestamp);
+    }
+    else {
+        // Checking for changes
+        saved_data->enabled = 1;
+        if (json_event = interface_json_event(saved_data, entry_data, random_id, timestamp), json_event) {
+            if (update_entry(sys->interfaces_entry, key, (void *) entry_data) == -1) {
+                w_mutex_unlock(&sys->interfaces_entry_mutex);
+                free_interface_data(entry_data);
+                mdebug1("Couldn't update interface in hash table: '%s'", key);
+                free(key);
+                return NULL;
+            }
+        } else {
+            free_interface_data(entry_data);
+            free(key);
+        }
+    }
+
+    w_mutex_unlock(&sys->interfaces_entry_mutex);
+
+    return json_event;
+}
+
 // Analyze if insert new program or update an existing one
 cJSON * analyze_program(program_entry_data * entry_data, int random_id, const char * timestamp) {
     cJSON * json_event = NULL;
@@ -502,6 +721,8 @@ cJSON * analyze_program(program_entry_data * entry_data, int random_id, const ch
         return NULL;
     }
 
+    entry_data->installed = 1;
+
     w_mutex_lock(&sys->programs_entry_mutex);
 
     if (saved_data = (program_entry_data *) rbtree_get(sys->programs_entry, key), !saved_data) {
@@ -510,6 +731,7 @@ cJSON * analyze_program(program_entry_data * entry_data, int random_id, const ch
             w_mutex_unlock(&sys->programs_entry_mutex);
             free_program_data(entry_data);
             mdebug1("Couldn't insert program into hash table: '%s'", key);
+            free(key);
             return NULL;
         }
         json_event = program_json_event(NULL, entry_data, random_id, timestamp);
@@ -522,14 +744,133 @@ cJSON * analyze_program(program_entry_data * entry_data, int random_id, const ch
                 w_mutex_unlock(&sys->programs_entry_mutex);
                 free_program_data(entry_data);
                 mdebug1("Couldn't update program in hash table: '%s'", key);
+                free(key);
                 return NULL;
             }
         } else {
             free_program_data(entry_data);
+            free(key);
         }
     }
 
     w_mutex_unlock(&sys->programs_entry_mutex);
+
+    return json_event;
+}
+
+// Analyze if insert new hotfix or update an existing one
+cJSON * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char * timestamp) {
+    cJSON * json_event = NULL;
+    hotfix_entry_data * saved_data = NULL;
+    char * key = NULL;
+
+    if (entry_data->hotfix) {
+        os_strdup(entry_data->hotfix, key);
+    }
+    else {
+        free_hotfix_data(entry_data);
+        mdebug1("Couldn't get the name of the hotfix");
+        return NULL;
+    }
+
+    entry_data->installed = 1;
+
+    w_mutex_lock(&sys->hotfixes_entry_mutex);
+
+    if (saved_data = (hotfix_entry_data *) rbtree_get(sys->hotfixes_entry, key), !saved_data) {
+        // New entry. Insert into hash table
+        if (insert_entry(sys->hotfixes_entry, key, (void *) entry_data) == -1) {
+            w_mutex_unlock(&sys->hotfixes_entry_mutex);
+            free_hotfix_data(entry_data);
+            mdebug1("Couldn't insert hotfix into hash table: '%s'", key);
+            free(key);
+            return NULL;
+        }
+        json_event = hotfix_json_event(NULL, entry_data, random_id, timestamp);
+    }
+    else {
+        // Checking for changes
+        saved_data->installed = 1;
+        if (json_event = hotfix_json_event(saved_data, entry_data, random_id, timestamp), json_event) {
+            if (update_entry(sys->hotfixes_entry, key, (void *) entry_data) == -1) {
+                w_mutex_unlock(&sys->hotfixes_entry_mutex);
+                free_hotfix_data(entry_data);
+                mdebug1("Couldn't update hotfix in hash table: '%s'", key);
+                free(key);
+                return NULL;
+            }
+        } else {
+            free_hotfix_data(entry_data);
+            free(key);
+        }
+    }
+
+    w_mutex_unlock(&sys->hotfixes_entry_mutex);
+
+    return json_event;
+}
+
+// Analyze if insert new port or update an existing one
+cJSON * analyze_port(port_entry_data * entry_data, int random_id, const char * timestamp) {
+    cJSON * json_event = NULL;
+    port_entry_data * saved_data = NULL;
+    char * key = NULL;
+
+    if (entry_data->local_ip) {
+        if (entry_data->local_port > INT_MIN) {
+            os_calloc(OS_SIZE_128, sizeof(char), key);
+            if (entry_data->pid > INT_MIN) {
+                sprintf(key, "%s-%d-%d", entry_data->local_ip, entry_data->local_port, entry_data->pid);
+            }
+            else {
+                sprintf(key, "%s-%d", entry_data->local_ip, entry_data->local_port);
+            }
+        }
+        else {
+            free_port_data(entry_data);
+            mdebug1("Couldn't get the local port of the connection");
+            return NULL;
+        }
+    }
+    else {
+        free_port_data(entry_data);
+        mdebug1("Couldn't get the local ip of the connection");
+        return NULL;
+    }
+
+    entry_data->opened = 1;
+
+    w_mutex_lock(&sys->ports_entry_mutex);
+
+    if (saved_data = (port_entry_data *) rbtree_get(sys->ports_entry, key), !saved_data) {
+        // New entry. Insert into hash table
+        if (insert_entry(sys->ports_entry, key, (void *) entry_data) == -1) {
+            w_mutex_unlock(&sys->ports_entry_mutex);
+            free_port_data(entry_data);
+            mdebug1("Couldn't insert port into hash table: '%s'", key);
+            free(key);
+            return NULL;
+        }
+        json_event = port_json_event(NULL, entry_data, random_id, timestamp);
+    }
+    else {
+        // Checking for changes
+        saved_data->opened = 1;
+        if (json_event = port_json_event(saved_data, entry_data, random_id, timestamp), json_event) {
+            if (update_entry(sys->ports_entry, key, (void *) entry_data) == -1) {
+                w_mutex_unlock(&sys->ports_entry_mutex);
+                free_port_data(entry_data);
+                mdebug1("Couldn't update port in hash table: '%s'", key);
+                free(key);
+                return NULL;
+            }
+        } else {
+            free_port_data(entry_data);
+            free(key);
+        }
+    }
+
+    w_mutex_unlock(&sys->ports_entry_mutex);
 
     return json_event;
 }
@@ -541,14 +882,23 @@ cJSON * analyze_process(process_entry_data * entry_data, int random_id, const ch
     char * key = NULL;
 
     if (entry_data->pid > INT_MIN) {
-        os_calloc(12, sizeof(char), key);
-        sprintf(key, "%d", entry_data->pid);
+        if (entry_data->name) {
+            os_calloc(OS_SIZE_128, sizeof(char), key);
+            sprintf(key, "%d-%s", entry_data->pid, entry_data->name);
+        }
+        else {
+            free_process_data(entry_data);
+            mdebug1("Couldn't get the name of the process");
+            return NULL;
+        }
     }
     else {
         free_process_data(entry_data);
         mdebug1("Couldn't get the pid of the process");
         return NULL;
     }
+
+    entry_data->running = 1;
 
     w_mutex_lock(&sys->processes_entry_mutex);
 
@@ -558,6 +908,7 @@ cJSON * analyze_process(process_entry_data * entry_data, int random_id, const ch
             w_mutex_unlock(&sys->processes_entry_mutex);
             free_process_data(entry_data);
             mdebug1("Couldn't insert process into hash table: '%s'", key);
+            free(key);
             return NULL;
         }
         json_event = process_json_event(NULL, entry_data, random_id, timestamp);
@@ -570,16 +921,53 @@ cJSON * analyze_process(process_entry_data * entry_data, int random_id, const ch
                 w_mutex_unlock(&sys->processes_entry_mutex);
                 free_process_data(entry_data);
                 mdebug1("Couldn't update process in hash table: '%s'", key);
+                free(key);
                 return NULL;
             }
         } else {
             free_process_data(entry_data);
+            free(key);
         }
     }
 
     w_mutex_unlock(&sys->processes_entry_mutex);
 
     return json_event;
+}
+
+// Deletes the disabled interfaces from the hash table
+void check_disabled_interfaces() {
+    char ** keys;
+    int i;
+
+    w_mutex_lock(&sys->interfaces_entry_mutex);
+    keys = rbtree_keys(sys->interfaces_entry);
+    w_mutex_unlock(&sys->interfaces_entry_mutex);
+
+    for (i = 0; keys[i] != NULL; i++) {
+
+        w_mutex_lock(&sys->interfaces_entry_mutex);
+
+        interface_entry_data * data = rbtree_get(sys->interfaces_entry, keys[i]);
+
+        if (!data) {
+            w_mutex_unlock(&sys->interfaces_entry_mutex);
+            continue;
+        }
+
+        if (!data->enabled) {
+            delete_entry(sys->interfaces_entry, keys[i]);
+        } else {
+            // We reset the enabled flag
+            data->enabled = 0;
+        }
+
+        w_mutex_unlock(&sys->interfaces_entry_mutex);
+    }
+
+    free_strarray(keys);
+
+    return;
 }
 
 // Deletes the uninstalled programs from the hash table
@@ -610,6 +998,76 @@ void check_uninstalled_programs() {
         }
 
         w_mutex_unlock(&sys->programs_entry_mutex);
+    }
+
+    free_strarray(keys);
+
+    return;
+}
+
+// Deletes the uninstalled hotfixes from the hash table
+void check_uninstalled_hotfixes() {
+    char ** keys;
+    int i;
+
+    w_mutex_lock(&sys->hotfixes_entry_mutex);
+    keys = rbtree_keys(sys->hotfixes_entry);
+    w_mutex_unlock(&sys->hotfixes_entry_mutex);
+
+    for (i = 0; keys[i] != NULL; i++) {
+
+        w_mutex_lock(&sys->hotfixes_entry_mutex);
+
+        hotfix_entry_data * data = rbtree_get(sys->hotfixes_entry, keys[i]);
+
+        if (!data) {
+            w_mutex_unlock(&sys->hotfixes_entry_mutex);
+            continue;
+        }
+
+        if (!data->installed) {
+            delete_entry(sys->hotfixes_entry, keys[i]);
+        } else {
+            // We reset the installed flag
+            data->installed = 0;
+        }
+
+        w_mutex_unlock(&sys->hotfixes_entry_mutex);
+    }
+
+    free_strarray(keys);
+
+    return;
+}
+
+// Deletes the closed ports from the hash table
+void check_closed_ports() {
+    char ** keys;
+    int i;
+
+    w_mutex_lock(&sys->ports_entry_mutex);
+    keys = rbtree_keys(sys->ports_entry);
+    w_mutex_unlock(&sys->ports_entry_mutex);
+
+    for (i = 0; keys[i] != NULL; i++) {
+
+        w_mutex_lock(&sys->ports_entry_mutex);
+
+        port_entry_data * data = rbtree_get(sys->ports_entry, keys[i]);
+
+        if (!data) {
+            w_mutex_unlock(&sys->ports_entry_mutex);
+            continue;
+        }
+
+        if (!data->opened) {
+            delete_entry(sys->ports_entry, keys[i]);
+        } else {
+            // We reset the opened flag
+            data->opened = 0;
+        }
+
+        w_mutex_unlock(&sys->ports_entry_mutex);
     }
 
     free_strarray(keys);
@@ -679,6 +1137,163 @@ void delete_entry(rb_tree * tree, const char * key) {
 }
 
 //
+cJSON * interface_json_event(interface_entry_data * old_data, interface_entry_data * new_data, int random_id, const char * timestamp) {
+    cJSON *object = cJSON_CreateObject();
+    cJSON *iface = cJSON_CreateObject();
+    int i = 0;
+
+    cJSON_AddStringToObject(object, "type", "network");
+    cJSON_AddNumberToObject(object, "ID", random_id);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
+    cJSON_AddItemToObject(object, "iface", iface);
+
+    cJSON_AddStringToObject(iface, "name", new_data->name);
+    if (new_data->adapter) {
+        cJSON_AddStringToObject(iface, "adapter", new_data->adapter);
+    }
+    if (new_data->type) {
+        cJSON_AddStringToObject(iface, "type", new_data->type);
+    }
+    if (new_data->state) {
+        cJSON_AddStringToObject(iface, "state", new_data->state);
+    }
+    if (new_data->mac) {
+        cJSON_AddStringToObject(iface, "MAC", new_data->mac);
+    }
+    if (new_data->mtu > INT_MIN) {
+        cJSON_AddNumberToObject(iface, "MTU", new_data->mtu);
+    }
+    if (new_data->tx_packets > INT_MIN) {
+        cJSON_AddNumberToObject(iface, "tx_packets", new_data->tx_packets);
+    }
+    if (new_data->rx_packets > INT_MIN) {
+        cJSON_AddNumberToObject(iface, "rx_packets", new_data->rx_packets);
+    }
+    if (new_data->tx_bytes > INT_MIN) {
+        cJSON_AddNumberToObject(iface, "tx_bytes", new_data->tx_bytes);
+    }
+    if (new_data->rx_bytes > INT_MIN) {
+        cJSON_AddNumberToObject(iface, "rx_bytes", new_data->rx_bytes);
+    }
+    if (new_data->tx_errors > INT_MIN) {
+        cJSON_AddNumberToObject(iface, "tx_errors", new_data->tx_errors);
+    }
+    if (new_data->rx_errors > INT_MIN) {
+        cJSON_AddNumberToObject(iface, "rx_errors", new_data->rx_errors);
+    }
+    if (new_data->tx_dropped > INT_MIN) {
+        cJSON_AddNumberToObject(iface, "tx_dropped", new_data->tx_dropped);
+    }
+    if (new_data->rx_dropped > INT_MIN) {
+        cJSON_AddNumberToObject(iface, "rx_dropped", new_data->rx_dropped);
+    }
+    if (new_data->ipv4 && new_data->ipv4->address) {
+        cJSON *ipv4 = cJSON_CreateObject();
+        cJSON *ipv4_addr = cJSON_CreateArray();
+        for (i = 0; new_data->ipv4->address[i]; i++) {
+            if (strlen(new_data->ipv4->address[i])) {
+                cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(new_data->ipv4->address[i]));
+            }
+        }
+        if (cJSON_GetArraySize(ipv4_addr) > 0) {
+            cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
+            if (new_data->ipv4->netmask) {
+                cJSON *ipv4_netmask = cJSON_CreateArray();
+                for (i = 0; new_data->ipv4->netmask[i]; i++) {
+                    if (strlen(new_data->ipv4->netmask[i])) {
+                        cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(new_data->ipv4->netmask[i]));
+                    }
+                }
+                if (cJSON_GetArraySize(ipv4_netmask) > 0) {
+                    cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
+                } else {
+                    cJSON_Delete(ipv4_netmask);
+                }
+            }
+            if (new_data->ipv4->broadcast) {
+                cJSON *ipv4_broadcast = cJSON_CreateArray();
+                for (i = 0; new_data->ipv4->broadcast[i]; i++) {
+                    if (strlen(new_data->ipv4->broadcast[i])) {
+                        cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(new_data->ipv4->broadcast[i]));
+                    }
+                }
+                if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
+                    cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
+                } else {
+                    cJSON_Delete(ipv4_broadcast);
+                }
+            }
+            if (new_data->ipv4->metric > INT_MIN) {
+                cJSON_AddNumberToObject(ipv4, "metric", new_data->ipv4->metric);
+            }
+            if (new_data->ipv4->gateway) {
+                cJSON_AddStringToObject(ipv4, "gateway", new_data->ipv4->gateway);
+            }
+            if (new_data->ipv4->dhcp) {
+                cJSON_AddStringToObject(ipv4, "DHCP", new_data->ipv4->dhcp);
+            }
+            cJSON_AddItemToObject(iface, "IPv4", ipv4);
+        } else {
+            cJSON_Delete(ipv4_addr);
+            cJSON_Delete(ipv4);
+        }
+    }
+    if (new_data->ipv6 && new_data->ipv6->address) {
+        cJSON *ipv6 = cJSON_CreateObject();
+        cJSON *ipv6_addr = cJSON_CreateArray();
+        for (i = 0; new_data->ipv6->address[i]; i++) {
+            if (strlen(new_data->ipv6->address[i])) {
+                cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(new_data->ipv6->address[i]));
+            }
+        }
+        if (cJSON_GetArraySize(ipv6_addr) > 0) {
+            cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
+            if (new_data->ipv6->netmask) {
+                cJSON *ipv6_netmask = cJSON_CreateArray();
+                for (i = 0; new_data->ipv6->netmask[i]; i++) {
+                    if (strlen(new_data->ipv6->netmask[i])) {
+                        cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(new_data->ipv6->netmask[i]));
+                    }
+                }
+                if (cJSON_GetArraySize(ipv6_netmask) > 0) {
+                    cJSON_AddItemToObject(ipv6, "netmask", ipv6_netmask);
+                } else {
+                    cJSON_Delete(ipv6_netmask);
+                }
+            }
+            if (new_data->ipv6->broadcast) {
+                cJSON *ipv6_broadcast = cJSON_CreateArray();
+                for (i = 0; new_data->ipv6->broadcast[i]; i++) {
+                    if (strlen(new_data->ipv6->broadcast[i])) {
+                        cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(new_data->ipv6->broadcast[i]));
+                    }
+                }
+                if (cJSON_GetArraySize(ipv6_broadcast) > 0) {
+                    cJSON_AddItemToObject(ipv6, "broadcast", ipv6_broadcast);
+                } else {
+                    cJSON_Delete(ipv6_broadcast);
+                }
+            }
+            if (new_data->ipv6->metric > INT_MIN) {
+                cJSON_AddNumberToObject(ipv6, "metric", new_data->ipv6->metric);
+            }
+            if (new_data->ipv6->gateway) {
+                cJSON_AddStringToObject(ipv6, "gateway", new_data->ipv6->gateway);
+            }
+            if (new_data->ipv6->dhcp) {
+                cJSON_AddStringToObject(ipv6, "DHCP", new_data->ipv6->dhcp);
+            }
+            cJSON_AddItemToObject(iface, "IPv6", ipv6);
+        } else {
+            cJSON_Delete(ipv6_addr);
+            cJSON_Delete(ipv6);
+        }
+    }
+
+    return object;
+}
+
+//
 cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, int random_id, const char * timestamp) {
     cJSON *object = cJSON_CreateObject();
     cJSON *program = cJSON_CreateObject();
@@ -730,6 +1345,61 @@ cJSON * program_json_event(program_entry_data * old_data, program_entry_data * n
 }
 
 //
+cJSON * hotfix_json_event(hotfix_entry_data * old_data, hotfix_entry_data * new_data, int random_id, const char * timestamp) {
+    cJSON *object = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(object, "type", "hotfix");
+    cJSON_AddNumberToObject(object, "ID", random_id);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
+    cJSON_AddStringToObject(object, "hotfix", new_data->hotfix);
+
+    return object;
+}
+
+//
+cJSON * port_json_event(port_entry_data * old_data, port_entry_data * new_data, int random_id, const char * timestamp) {
+    cJSON *object = cJSON_CreateObject();
+    cJSON *port = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(object, "type", "port");
+    cJSON_AddNumberToObject(object, "ID", random_id);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
+    cJSON_AddItemToObject(object, "port", port);
+
+    cJSON_AddStringToObject(port, "local_ip", new_data->local_ip);
+    cJSON_AddNumberToObject(port, "local_port", new_data->local_port);
+    if (new_data->remote_ip) {
+        cJSON_AddStringToObject(port, "remote_ip", new_data->remote_ip);
+    }
+    if (new_data->remote_port > INT_MIN) {
+        cJSON_AddNumberToObject(port, "remote_port", new_data->remote_port);
+    }
+    if (new_data->protocol) {
+        cJSON_AddStringToObject(port, "protocol", new_data->protocol);
+    }
+    if (new_data->tx_queue > INT_MIN) {
+        cJSON_AddNumberToObject(port, "tx_queue", new_data->tx_queue);
+    }
+    if (new_data->rx_queue > INT_MIN) {
+        cJSON_AddNumberToObject(port, "rx_queue", new_data->rx_queue);
+    }
+    if (new_data->inode > INT_MIN) {
+        cJSON_AddNumberToObject(port, "inode", new_data->inode);
+    }
+    if (new_data->state) {
+        cJSON_AddStringToObject(port, "state", new_data->state);
+    }
+    if (new_data->pid > INT_MIN) {
+        cJSON_AddNumberToObject(port, "PID", new_data->pid);
+    }
+    if (new_data->process) {
+        cJSON_AddStringToObject(port, "process", new_data->process);
+    }
+
+    return object;
+}
+
+//
 cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, int random_id, const char * timestamp) {
     cJSON *object = cJSON_CreateObject();
     cJSON *process = cJSON_CreateObject();
@@ -741,19 +1411,17 @@ cJSON * process_json_event(process_entry_data * old_data, process_entry_data * n
     cJSON_AddItemToObject(object, "process", process);
 
     cJSON_AddNumberToObject(process, "pid", new_data->pid);
-    if (new_data->name) {
-        cJSON_AddStringToObject(process, "name", new_data->name);
-    }
+    cJSON_AddStringToObject(process, "name", new_data->name);
     if (new_data->state) {
         cJSON_AddStringToObject(process, "state", new_data->state);
     }
     if (new_data->ppid > INT_MIN) {
         cJSON_AddNumberToObject(process, "ppid", new_data->ppid);
     }
-    if (new_data->utime > INT_MIN) {
+    if (new_data->utime > LLONG_MIN) {
         cJSON_AddNumberToObject(process, "utime", new_data->utime);
     }
-    if (new_data->stime > INT_MIN) {
+    if (new_data->stime > LLONG_MIN) {
         cJSON_AddNumberToObject(process, "stime", new_data->stime);
     }
     if (new_data->cmd) {
@@ -800,19 +1468,19 @@ cJSON * process_json_event(process_entry_data * old_data, process_entry_data * n
     if (new_data->nice > INT_MIN) {
         cJSON_AddNumberToObject(process, "nice", new_data->nice);
     }
-    if (new_data->size > INT_MIN) {
+    if (new_data->size > LONG_MIN) {
         cJSON_AddNumberToObject(process, "size", new_data->size);
     }
-    if (new_data->vm_size > INT_MIN) {
+    if (new_data->vm_size > LONG_MIN) {
         cJSON_AddNumberToObject(process, "vm_size", new_data->vm_size);
     }
-    if (new_data->resident > INT_MIN) {
+    if (new_data->resident > LONG_MIN) {
         cJSON_AddNumberToObject(process, "resident", new_data->resident);
     }
-    if (new_data->share > INT_MIN) {
+    if (new_data->share > LONG_MIN) {
         cJSON_AddNumberToObject(process, "share", new_data->share);
     }
-    if (new_data->start_time > INT_MIN) {
+    if (new_data->start_time > LLONG_MIN) {
         cJSON_AddNumberToObject(process, "start_time", new_data->start_time);
     }
     if (new_data->pgrp > INT_MIN) {
@@ -837,42 +1505,20 @@ cJSON * process_json_event(process_entry_data * old_data, process_entry_data * n
     return object;
 }
 
-// Print programs hash table
-void print_programs_rbtree() {
+// Print keys from hash table
+void print_rbtree(rb_tree * tree, pthread_mutex_t mutex) {
     char **keys;
-    program_entry_data * node;
     int i = 0;
 
-    w_mutex_lock(&sys->programs_entry_mutex);
-    keys = rbtree_keys(sys->programs_entry);
+    w_mutex_lock(&mutex);
+    keys = rbtree_keys(tree);
+    w_mutex_unlock(&mutex);
 
     while(keys[i]) {
-        node = (program_entry_data *) rbtree_get(sys->programs_entry, keys[i]);
-        mdebug2("entry(%d) => (%s)'%s:%s'", i, keys[i], node->name, node->format);
+        mdebug2("entry(%d) => (%s)", i, keys[i]);
         i++;
     }
     free_strarray(keys);
-    w_mutex_unlock(&sys->programs_entry_mutex);
-
-    return;
-}
-
-// Print processes hash table
-void print_processes_rbtree() {
-    char **keys;
-    process_entry_data * node;
-    int i = 0;
-
-    w_mutex_lock(&sys->processes_entry_mutex);
-    keys = rbtree_keys(sys->processes_entry);
-
-    while(keys[i]) {
-        node = (process_entry_data *) rbtree_get(sys->processes_entry, keys[i]);
-        mdebug2("entry(%d) => (%s)'%d:%s'", i, keys[i], node->pid, node->name);
-        i++;
-    }
-    free_strarray(keys);
-    w_mutex_unlock(&sys->processes_entry_mutex);
 
     return;
 }
