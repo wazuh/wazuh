@@ -198,6 +198,32 @@ components:
                 $ref: '#/components/schemas/AgentID'
         - $ref: '#/components/schemas/AllItemsResponse'
 
+    AllItemsResponseNodeIDs:
+      allOf:
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/NodeID'
+        - $ref: '#/components/schemas/AllItemsResponse'
+
+    AllItemsResponseNodeHealthcheck:
+      allOf:
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/NodeHealthcheck'
+        - $ref: '#/components/schemas/AllItemsResponse'
+
     AllItemsResponseGroupIDs:
       allOf:
         - type: object
@@ -553,6 +579,45 @@ components:
               items:
                   $ref: '#/components/schemas/SCAChecks'
 
+    AllItemsResponseClusterNodes:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                  $ref: '#/components/schemas/ClusterNode'
+
+    AllItemsResponseWazuhLogs:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                  $ref: '#/components/schemas/WazuhLogs'
+
+    AllItemsResponseValidationStatus:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                  $ref: '#/components/schemas/ValidationStatus'
+
     BasicInfo:
       type: object
       properties:
@@ -772,6 +837,11 @@ components:
       description: Agent ID.
       format: numbers
 
+    NodeID:
+      type: string
+      description: Node ID.
+      format: string
+
     GroupID:
       type: string
       minLength: 1
@@ -883,88 +953,80 @@ components:
             name:
               $ref: '#/components/schemas/ClusterNodeName'
 
-    Healthcheck:
+    NodeHealthcheck:
       type: object
       properties:
-        n_connected_nodes:
-          type: integer
-          format: int32
-        nodes:
+        name:
           type: object
-          additionalProperties:
-            type: object
-            properties:
-              info:
-                type: object
-                properties:
-                  name:
-                    $ref: '#/components/schemas/ClusterNodeName'
-                  info:
-                    allOf:
-                      - $ref: '#/components/schemas/ClusterNodeBasic'
-                      - type: object
-                        properties:
-                          totalActiveAgents:
-                            type: integer
-                            format: int32
-                            minimum: 0
-                            description: Number of agents currently reporting to that node.
-              status:
-                type: object
-                properties:
-                  last_keep_alive:
-                    type: string
-                  last_sync_agent_groups:
-                    type: object
-                    properties:
-                      date_start_master:
+          properties:
+            info:
+              type: object
+              properties:
+                name:
+                  $ref: '#/components/schemas/ClusterNodeName'
+                info:
+                  allOf:
+                    - $ref: '#/components/schemas/ClusterNodeBasic'
+                    - type: object
+                      properties:
+                        totalActiveAgents:
+                          type: integer
+                          format: int32
+                          minimum: 0
+                          description: Number of agents currently reporting to that node.
+            status:
+              type: object
+              properties:
+                last_keep_alive:
+                  type: string
+                last_sync_agent_groups:
+                  type: object
+                  properties:
+                    date_start_master:
+                      type: string
+                    date_end_master:
+                      type: string
+                    total_agentgroups:
+                      type: integer
+                      format: int32
+                last_sync_agentinfo:
+                  type: object
+                  properties:
+                    date_start_master:
+                      type: string
+                    date_end_master:
+                      type: string
+                    total_agentinfo:
+                      type: integer
+                      format: int32
+                last_sync_integrity:
+                  type: object
+                  properties:
+                    date_start_master:
                         type: string
-                      date_end_master:
+                    date_end_master:
                         type: string
-                      total_agentgroups:
-                        type: integer
-                        format: int32
-                  last_sync_agentinfo:
-                    type: object
-                    properties:
-                      date_start_master:
-                        type: string
-                      date_end_master:
-                        type: string
-                      total_agentinfo:
-                        type: integer
-                        format: int32
-                  last_sync_integrity:
-                    type: object
-                    properties:
-                      date_start_master:
-                          type: string
-                      date_end_master:
-                          type: string
-                      total_files:
-                        type: object
-                        properties:
-                          extra:
-                            type: integer
-                            format: int32
-                          extra_valid:
-                            type: integer
-                            format: int32
-                          missing:
-                            type: integer
-                            format: int32
-                          shared:
-                            type: integer
-                            format: int32
-                  sync_agentinfo_free:
-                    type: boolean
-                  sync_extravalid_free:
-                    type: boolean
-                  sync_integrity_free:
-                    type: boolean
-            required:
-              - info
-
+                    total_files:
+                      type: object
+                      properties:
+                        extra:
+                          type: integer
+                          format: int32
+                        extra_valid:
+                          type: integer
+                          format: int32
+                        missing:
+                          type: integer
+                          format: int32
+                        shared:
+                          type: integer
+                          format: int32
+                sync_agentinfo_free:
+                  type: boolean
+                sync_extravalid_free:
+                  type: boolean
+                sync_integrity_free:
+                  type: boolean
 
     DaemonStatus:
       type: string
@@ -1577,6 +1639,16 @@ components:
         timestamp:
           type: string
           format: date-time
+
+    ValidationStatus:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Node name
+        status:
+          type: string
+          description: status value
 
     LogSummary:
       type: object
@@ -2984,6 +3056,14 @@ components:
           minLength: 1
           minimum: 2
           description: Policy ID.
+    list_nodes:
+      in: query
+      name: list_nodes
+      description: List of node IDs (separated by comma)
+      schema:
+        type: array
+        items:
+          type: string
     manager_host:
       in: query
       name: manager
@@ -3445,7 +3525,7 @@ components:
     edit_files_path:
       in: query
       name: path
-      description: Filepath to upload/delete file.
+      description: Filepath to upload/delete file. (Relative to wazuh installation folder)
       required: true
       schema:
         type: string
@@ -3453,7 +3533,7 @@ components:
     get_files_path:
       in: query
       name: path
-      description: Filepath to return file.
+      description: Filepath to return file. (Relative to wazuh installation folder)
       required: true
       schema:
         type: string
@@ -5850,7 +5930,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /cluster/node:
+  /cluster/local/info:
     get:
       tags:
       - cluster
@@ -5893,8 +5973,8 @@ paths:
     get:
       tags:
       - cluster
-      summary: Get information about all nodes in the cluster.
-      description: Returns a list containing all connected nodes in the cluster.
+      summary: Get cluster nodes information
+      description: Get information about all nodes in the cluster or a list of them
       operationId: api.controllers.cluster_controller.get_cluster_nodes
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -5905,6 +5985,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/node_type'
+        - $ref: '#/components/parameters/list_nodes'
       responses:
         '200':
           description: 'List of connected nodes'
@@ -5916,14 +5997,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/ClusterNode'
+                      $ref: '#/components/schemas/AllItemsResponseClusterNodes'
               example:
                 data:
                   totalItems: 2
@@ -5939,61 +6013,29 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /cluster/nodes/{node_id}:
-    get:
-      tags:
-      - cluster
-      summary: Get information about a specified node.
-      description: Returns information about a specified node in the cluster.
-      operationId: api.controllers.cluster_controller.get_cluster_node_info
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/node_id'
-      responses:
-        '200':
-          description: 'Node information'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/ClusterNode'
-              example:
-                data:
-                  name: "node02"
-                  type: "worker"
-                  version: "3.9.0"
-                  ip: "172.17.0.101"
-        default:
-          $ref: '#/components/responses/ResponseError'
-
   /cluster/healthcheck:
     get:
       tags:
       - cluster
-      summary: Show cluster healthcheck
-      description: Returns cluster healthcheck information such as last keep alive, last synchronization time and number of agents reporting on each node.
+      summary: Get cluster nodes healthcheck
+      description: Returns cluster healthcheck information for all nodes or a list of them. Such information includes last keep alive, last synchronization time and number of agents reporting on each node.
       operationId: api.controllers.cluster_controller.get_healthcheck
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_nodes'
       responses:
         '200':
-          description: Health information
+          description: Health information for cluster nodes
           content:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Healthcheck'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseNodeHealthcheck'
               example:
                 data:
                   n_connected_nodes: 2
@@ -6031,62 +6073,6 @@ paths:
                         last_keep_alive: "2019-01-11T18:52:16.66Z"
                         sync_agentinfo_free: true
                         sync_extravalid_free: true
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-  /cluster/healthcheck/{node_id}:
-    get:
-      tags:
-      - cluster
-      summary: Show a specified node's healthcheck information
-      description: Returns cluster healthcheck information of an specified node.
-      operationId: api.controllers.cluster_controller.get_healthcheck_node
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/node_id'
-      responses:
-        '200':
-          description: Node health information
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Healthcheck'
-              example:
-                data:
-                  info:
-                    ip: "172.17.0.101"
-                    version: "3.9.0"
-                    type: "worker"
-                    totalActiveAgents: 5
-                  status:
-                    - type: "Agent status"
-                      date_start: "2019-01-11T18:52:57.72Z"
-                      date_end: "2019-01-11T18:52:57.73Z"
-                      synchronized_files: 4
-                      free: true
-                    - type: "Extra valid"
-                      date_start: "2019-01-11T18:52:57.72Z"
-                      date_end: "2019-01-11T18:52:57.73Z"
-                      synchronized_files: 4
-                      free: true
-                    - type: "Integrity"
-                      date_start: "2019-01-11T18:52:57.72Z"
-                      date_end: "2019-01-11T18:52:57.73Z"
-                      synchronized_files:
-                        shared: 5
-                        missing: 4
-                        extra_valid: 0
-                        extra: 0
-                      free: true
-                    - type: "Last keep alive"
-                      date_start: "2019-01-11T18:52:57.72Z"
-                      date_end: "2019-01-11T18:52:57.73Z"
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6131,12 +6117,12 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /cluster/config:
+  /cluster/local/config:
     get:
       tags:
       - cluster
-      summary: Get cluster configuration
-      description: Returns the current cluster configuration
+      summary: Get local node cluster configuration
+      description: Returns the current node cluster configuration
       operationId: api.controllers.cluster_controller.get_config
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -6805,18 +6791,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/WazuhLogs'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseWazuhLogs'
               example:
                 data:
                   totalItems: 3
@@ -6978,82 +6957,77 @@ paths:
     put:
       tags:
       - cluster
-      summary: Restarts all nodes in cluster.
-      description: Restarts all nodes in cluster.
+      summary: Restart cluster nodes.
+      description: Restarts all nodes in the cluster or a list of them.
       operationId: api.controllers.cluster_controller.put_restart
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_nodes'
       responses:
         '200':
-          description: 'Confirmation message'
+          description: 'List of affected nodes'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: Restarting cluster.
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseNodeIDs'
+                example:
+                  message: Restart command sent to all shown nodes
+                  data:
+                    affected_items:
+                      - 'master-node'
+                      - 'worker1'
+                    total_affected_items: 2
+                    failed_items: []
+                    total_failed_items: 0
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /cluster/{node_id}/restart:
-    put:
-      tags:
-      - cluster
-      summary: Restarts a specific node in cluster.
-      description: Restarts a specific node in cluster.
-      operationId: api.controllers.cluster_controller.put_restart_node
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/node_id'
-      responses:
-        '200':
-          description: 'Confirmation message'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: Restart request sent.
-        default:
-          $ref: '#/components/responses/ResponseError'
 
   /cluster/configuration/validation:
     get:
       tags:
       - cluster
-      summary: Check Wazuh configuration in all cluster nodes.
-      description: Returns wether the Wazuh configuration in all cluster nodes is correct.
+      summary: Check cluster nodes Wazuh configuration.
+      description: Returns whether the Wazuh configuration is correct or not in all cluster nodes or a list of them.
       operationId: api.controllers.cluster_controller.get_conf_validation
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_nodes'
       responses:
         '200':
-          description: 'Configuration is OK'
-
+          description: 'Configuration status'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseValidationStatus'
+                example:
+                  data:
+                    affected_items:
+                      - name: master-node
+                        status: OK
+                      - name: worker1
+                        status: OK
+                      - name: worker2
+                        status: OK
+                    failed_items: []
+                    total_affected_items: 3
+                    total_failed_items: 0
+                  message: Validation checked successfully in all nodes
         default:
           $ref: '#/components/responses/ResponseError'
 
-
-  /cluster/{node_id}/configuration/validation:
-    get:
-      tags:
-      - cluster
-      summary: Check Wazuh configuration in a cluster node
-      description: Returns wether the Wazuh configuration in node {node_id} is correct.
-      operationId: api.controllers.cluster_controller.get_conf_validation_node
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/node_id'
-      responses:
-        '200':
-          description: 'Configuration is OK'
-
-        default:
-          $ref: '#/components/responses/ResponseError'
 
   /cluster/{node_id}/configuration/{component}/{configuration}:
     get:
@@ -7811,18 +7785,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/WazuhLogs'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseWazuhLogs'
               example:
                 data:
                   totalItems: 3

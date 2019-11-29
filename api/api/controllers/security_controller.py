@@ -13,7 +13,7 @@ from api.authentication import get_permissions
 from api.models.token_response import TokenResponse
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc, parse_api_param
 from wazuh import security
-from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
 
 loop = asyncio.get_event_loop()

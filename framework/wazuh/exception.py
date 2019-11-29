@@ -117,6 +117,9 @@ class WazuhException(Exception):
                },
 
         # Stats: 1300 - 1399
+        1301: {'message': 'Invalid date',
+               'remediation': 'Please, make sure you use a valid date value)'
+               },
         1307: {'message': 'Invalid parameters',
                'remediation': 'Please, check that the update is correct, there is a problem while reading the results, contact us at [official repository](https://github.com/wazuh/wazuh/issues)'
                },
@@ -654,10 +657,24 @@ class WazuhError(WazuhException):
     def ids(self):
         return self._ids
 
+    def __or__(self, other):
+        result: WazuhError = super().__or__(other)
+        if isinstance(result, WazuhError):
+            if hasattr(other, 'ids'):
+                result._ids = self.ids | other.ids
+        return result
+
     def to_dict(self):
         result = super().to_dict()
         result['ids'] = list(self.ids)
 
+        return result
+
+    def __or__(self, other):
+        result: WazuhError = super().__or__(other)
+        if isinstance(result, WazuhError):
+            if hasattr(other, 'ids'):
+                result._ids = self.ids | other.ids
         return result
 
 

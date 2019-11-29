@@ -1,13 +1,14 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-from wazuh import Wazuh
-from wazuh import common
+import wazuh.core.cluster.cluster
+import wazuh.core.cluster.utils
+import wazuh.core.manager
 from wazuh.agent import Agent
 from wazuh.rule import Rule
 from wazuh.decoder import Decoder
-import wazuh.cluster.cluster as cluster
-import wazuh.cluster.control as cluster_control
+import wazuh.cluster as cluster
+import wazuh.core.cluster.control as cluster_control
 import wazuh.configuration as configuration
 import wazuh.security_configuration_assessment as sca
 import wazuh.manager as manager
@@ -238,7 +239,7 @@ functions = {
         'is_async': False
     },
     '/manager/status': {
-        'function': manager.status,
+        'function': wazuh.core.manager.status,
         'type': 'local_any',
         'is_async': False
     },
@@ -321,12 +322,12 @@ functions = {
         'is_async': False
     },
     '/cluster/config': {
-        'function': cluster.read_config,
+        'function': wazuh.core.cluster.utils.read_config,
         'type': 'local_any',
         'is_async': False
     },
     '/cluster/node': {
-        'function': cluster.get_node,
+        'function': wazuh.core.cluster.cluster.get_node,
         'type': 'local_any',
         'is_async': False
     },
@@ -351,7 +352,7 @@ functions = {
         'is_async': False
     },
     '/cluster/:node_id/status': {
-        'function': manager.status,
+        'function': wazuh.core.manager.status,
         'type': 'distributed_master',
         'is_async': False
     },

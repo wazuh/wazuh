@@ -3,10 +3,10 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
 
-from wazuh import common
+from wazuh import common, WazuhInternalError
+from wazuh.core.cluster import local_client
+from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
 from wazuh.core.core_agent import Agent
-from wazuh.cluster import local_client
-from wazuh.cluster.common import as_wazuh_object, WazuhJSONEncoder
 from wazuh.utils import filter_array_by_query
 
 
@@ -14,11 +14,11 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
                     sort=None, search=None, select=None, filter_type='all', q=''):
     if q:
         # if exists q parameter, apply limit and offset after filtering by q
-       arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.database_limit, 'sort': sort, 'search': search,
-                 'select': select, 'filter_type': filter_type}
+        arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.database_limit, 'sort': sort,
+                     'search': search, 'select': select, 'filter_type': filter_type}
     else:
         arguments = {'filter_node': filter_node, 'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
-                 'select': select, 'filter_type': filter_type}
+                     'select': select, 'filter_type': filter_type}
     result = json.loads(await lc.execute(command=b'get_nodes',
                                          data=json.dumps(arguments).encode(),
                                          wait_for_complete=False),
@@ -89,3 +89,16 @@ async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_stat
     filled_result = [{**r, **{key: 'unknown' for key in select_fields - r.keys()}} for r in result['items']]
     result['items'] = filled_result
     return result
+
+
+async def get_system_nodes():
+    try:
+        lc = local_client.LocalClient()
+        try:
+            result = await get_nodes(lc)
+        finally:
+            lc.transport.close()
+
+        return [node['name'] for node in result['items']]
+    except Exception:
+        raise WazuhInternalError(3012)

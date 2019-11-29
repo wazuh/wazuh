@@ -11,7 +11,7 @@ import connexion
 import wazuh.security_configuration_assessment as sca
 from api.authentication import get_permissions
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
-from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.common import database_limit
 
 loop = asyncio.get_event_loop()

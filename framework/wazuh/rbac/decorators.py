@@ -8,14 +8,15 @@ from functools import wraps
 
 from api import configuration
 from api.authentication import AuthenticationManager
-from wazuh.common import rbac, broadcast
+from wazuh.common import rbac, broadcast, cluster_nodes
+from wazuh.configuration import get_ossec_conf
+from wazuh.core.cdb_list import iterate_lists
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
+from wazuh.core.rule import format_rule_decoder_file, Status
 from wazuh.exception import WazuhError
 from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import AffectedItemsWazuhResult
-from wazuh.configuration import get_ossec_conf
-from wazuh.core.rule import format_rule_decoder_file, Status
-from wazuh.core.cdb_list import iterate_lists
+import asyncio
 
 mode = configuration.read_api_config()['rbac']['mode']
 
@@ -75,6 +76,8 @@ def _expand_resource(resource):
             return {decoder['file'] for decoder in format_decoders}
         elif resource_type == 'list:path':
             return {cdb_list['path'] for cdb_list in iterate_lists(only_names=True)}
+        elif resource_type == 'node:id':
+            return set(cluster_nodes.get())
         return set()
     # We return the value casted to set
     else:
@@ -235,6 +238,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                 target_params[m.group(1)] = m.group(2)
             else:  # Static resource
                 target_params[m.group(1)] = '*'
+            add_denied = not broadcast.get()
             res_list.append(resource)
     # Create dict of required policies with action: list(resources) pairs
     req_permissions = dict()
@@ -257,13 +261,18 @@ def _match_permissions(req_permissions: dict = None):
     return allow_match
 
 
-def _get_denied(original, allowed, target_param, res_id):
+def _get_denied(original, allowed, target_param, res_id, resources=None):
     try:
         return {original[target_param]} - allowed[res_id]
     except TypeError:
         return set(original[target_param]) - allowed[res_id]
     except KeyError:
-        return set()
+        return {res.split(':')[2] for res in resources} if resources is not None else {}
+
+
+async def async_list_handler(result: asyncio.coroutine, **kwargs):
+    result = await result
+    return list_handler(result, **kwargs)
 
 
 def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowed: dict = None, target: dict = None,
@@ -276,7 +285,7 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
     :param allowed: Allowed input call parameter values
     :param target: Name of the input parameters used to calculate resource access
     :param add_denied: Flag to add denied permissions to answer
-    :return: WazuhResult
+    :return: AffectedItemsWazuhResult
     """
     if add_denied:
         for res_id, target_param in target.items():
@@ -286,6 +295,8 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
                                                                          extra_message=f'Resource type: {res_id}',
                                                                          ids=denied))
     else:
+        if 'default_result_kwargs' in post_proc_kwargs and result is None:
+            return AffectedItemsWazuhResult(**post_proc_kwargs['default_result_kwargs'])
         if 'exclude_codes' in post_proc_kwargs:
             result.remove_failed_items(post_proc_kwargs['exclude_codes'])
 
@@ -312,6 +323,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                 _get_required_permissions(actions=actions, resources=resources, **kwargs)
             allow = _match_permissions(req_permissions=req_permissions)
             original_kwargs = dict(kwargs)
+            skip_execution = False
 
             for res_id, target_param in target_params.items():
                 try:
@@ -320,17 +332,20 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                             original_kwargs.get(target_param, None) is not None and \
                             len(original_kwargs[target_param]) != 0:
                         raise Exception
-                    if target_param != '*':  # No resourceless
+                    if target_param != '*':  # No resourceless and not static
                         kwargs[target_param] = list(allow[res_id])
                     elif len(allow[res_id]) == 0:
                         raise Exception
                 except Exception:
                     if add_denied:
-                        denied = _get_denied(original_kwargs, allow, target_param, res_id)
+                        denied = _get_denied(original_kwargs, allow, target_param, res_id, resources=resources)
                         raise WazuhError(4000, extra_message=f'Resource type: {res_id}', ids=denied)
                     else:
-                        kwargs[target_param] = list()
-            result = func(*args, **kwargs)
+                        if target_param != '*':
+                            kwargs[target_param] = list()
+                        else:
+                            skip_execution = True
+            result = func(*args, **kwargs) if not skip_execution else None
             if post_proc_func is None:
                 return result
             else:

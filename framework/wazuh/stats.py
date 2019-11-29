@@ -6,7 +6,10 @@ import os
 from io import StringIO
 
 from wazuh import common
+from wazuh.core.cluster.cluster import get_node
+from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.exception import WazuhError, WazuhInternalError
+from wazuh.rbac.decorators import expose_resources
 from wazuh.results import WazuhResult
 
 try:
@@ -18,15 +21,19 @@ except ImportError:
 
 DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+cluster_enabled = not read_cluster_config()['disabled']
+node_id = get_node().get('node') if cluster_enabled else None
 
 
-def totals(year, month, day, date=False):
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def totals(year, month, day, today=False):
     """
     Returns the totals file.
     :param year: Year in YYYY format, e.g. 2016
     :param month: Month in number or 3 first letters, e.g. Feb or 2
     :param day: Day, e.g. 9
-    :param date: True if date is not today, False otherwise
+    :param today: True if date is today, False otherwise
     :return: Array of dictionaries. Each dictionary represents an hour.
     """
     try:
@@ -53,16 +60,16 @@ def totals(year, month, day, date=False):
             month = MONTHS[index - 1]
         except IndexError:
             raise WazuhError(1307)
-
+    stat_filename = ""
     try:
         stat_filename = os.path.join(
             common.stats_path, "totals", str(year), str(month), ("ossec-totals-" + str(day) + ".log"))
         stats = open(stat_filename, 'r')
     except IOError:
-        if date:
-            raise WazuhError(1310, extra_message=stat_filename)
-        else:
+        if today:
             raise WazuhError(1308, extra_message=stat_filename)
+        else:
+            raise WazuhError(1310, extra_message=stat_filename)
 
     response = []
     alerts = []
@@ -71,7 +78,6 @@ def totals(year, month, day, date=False):
         data = line.split('-')
 
         if len(data) == 4:
-            hour = int(data[0])
             sigid = int(data[1])
             level = int(data[2])
             times = int(data[3])
@@ -99,6 +105,8 @@ def totals(year, month, day, date=False):
     return WazuhResult({'data': response})
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def hourly():
     """
     Returns the hourly averages.
@@ -127,6 +135,8 @@ def hourly():
     return WazuhResult({'averages': averages, 'interactions': interactions})
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def weekly():
     """
     Returns the weekly averages.
@@ -160,9 +170,11 @@ def weekly():
     return WazuhResult(response)
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_daemons_stats(filename):
-    """
-    Returns the stats of an input file.
+    """Returns the stats of an input file.
+
     :param filename: Full path of the file to get information.
     :return: A dictionary with the stats of the input file.
     """
@@ -173,12 +185,12 @@ def get_daemons_stats(filename):
 
         fp = StringIO(input_file)
         config = configparser.RawConfigParser()
-        config.readfp(fp)
+        config.read_file(fp)
         items = dict(config.items("root"))
 
         try:
             for key, value in items.items():
-                items[key] = float(value[1:-1])  # delete extra quotation marks
+                items[key] = float(value[1:-1])  # Delete extra quotation marks
         except Exception as e:
             return WazuhInternalError(1104, extra_message=str(e))
 
@@ -186,19 +198,3 @@ def get_daemons_stats(filename):
 
     except Exception as e:
         raise WazuhInternalError(1308, extra_message=str(e))
-
-
-def analysisd():
-    """
-    Returns the stats of analysisd.
-    :return: A dictionary with the stats of analysisd.
-    """
-    return WazuhResult(get_daemons_stats(common.analysisd_stats))
-
-
-def remoted():
-    """
-    Returns the stats of remoted.
-    :return: A dictionary with the stats of remoted.
-    """
-    return WazuhResult(get_daemons_stats(common.remoted_stats))

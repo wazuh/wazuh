@@ -9,7 +9,10 @@ import logging
 import argparse
 import operator
 import sys
-from wazuh.cluster import control, cluster, local_client
+
+import wazuh.core.cluster.cluster
+import wazuh.core.cluster.utils
+from wazuh.core.cluster import control, local_client
 
 
 def __print_table(data, headers, show_header=False):
@@ -146,13 +149,13 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
 
-    cluster_status = cluster.get_status_json()
+    cluster_status = wazuh.core.cluster.utils.get_cluster_status()
     if cluster_status['enabled'] == 'no' or cluster_status['running'] == 'no':
         logging.error("Cluster is not running.")
         sys.exit(1)
 
-    cluster_config = cluster.read_config()
-    cluster.check_cluster_config(config=cluster_config)
+    cluster_config = wazuh.core.cluster.utils.read_config()
+    wazuh.core.cluster.cluster.check_cluster_config(config=cluster_config)
 
     try:
         if args.filter_status and not args.list_agents:

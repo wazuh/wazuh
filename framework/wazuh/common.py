@@ -10,6 +10,7 @@ from grp import getgrnam
 from pwd import getpwnam
 from typing import Dict
 
+
 try:
     here = os.path.abspath(os.path.dirname(__file__))
     with open(os.path.join(here, 'wazuh.json'), 'r') as f:
@@ -126,6 +127,7 @@ max_groups_per_multigroup = 256
 # Context variables
 rbac: ContextVar[Dict] = ContextVar('rbac', default=dict())
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
+cluster_nodes: ContextVar[set] = ContextVar('cluster_nodes', default=list())
 
 _context_cache = dict()
 

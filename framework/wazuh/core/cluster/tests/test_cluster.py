@@ -6,11 +6,13 @@ import time
 from datetime import datetime
 from unittest.mock import patch, mock_open
 
+import wazuh.core.cluster.cluster
+import wazuh.core.cluster.utils
+
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         from wazuh.exception import WazuhException
-        from wazuh.cluster import cluster
-        from wazuh import common
+        from wazuh import common, cluster
 
 import pytest
 
@@ -51,7 +53,7 @@ def test_read_empty_configuration():
     """
     with patch('wazuh.cluster.cluster.get_ossec_conf') as m:
         m.side_effect = WazuhException(1106)
-        configuration = cluster.read_config()
+        configuration = wazuh.core.cluster.utils.read_config()
         configuration['disabled'] = 'yes' if configuration['disabled'] else 'no'
         assert configuration == default_cluster_configuration
 
@@ -67,7 +69,7 @@ def test_read_configuration(read_config):
     """
     with patch('wazuh.cluster.utils.get_ossec_conf') as m:
         m.return_value = read_config.copy()
-        configuration = cluster.read_config()
+        configuration = wazuh.core.cluster.utils.read_config()
         configuration['disabled'] = 'yes' if configuration['disabled'] else 'no'
         for k in read_config.keys():
             assert configuration[k] == read_config[k]
@@ -99,8 +101,8 @@ def test_checking_configuration(read_config):
     with patch('wazuh.cluster.cluster.get_ossec_conf') as m:
         m.return_value = read_config.copy()
         with pytest.raises(WazuhException, match=r'.* 3004 .*'):
-            configuration = cluster.read_config()
-            cluster.check_cluster_config(configuration)
+            configuration = wazuh.core.cluster.utils.read_config()
+            wazuh.core.cluster.cluster.check_cluster_config(configuration)
 
 
 agent_info = b"""Linux |agent1 |3.10.0-862.el7.x86_64 |#1 SMP Fri Apr 20 16:44:24 UTC 2018 |x86_64 [CentOS Linux|centos: 7 (Core)] - Wazuh v3.7.2 / d10d46b48c280384e8773a5fa24ecacb
@@ -122,7 +124,7 @@ def test_merge_agent_info(stat_mock, listdir_mock):
     stat_mock.return_value.st_size = len(agent_info)
 
     with patch('builtins.open', mock_open(read_data=agent_info)) as m:
-        cluster.merge_agent_info('agent-info', 'worker1')
+        wazuh.core.cluster.cluster.merge_agent_info('agent-info', 'worker1')
         m.assert_any_call(common.ossec_path + '/queue/cluster/worker1/agent-info.merged', 'wb')
         m.assert_any_call(common.ossec_path + '/queue/agent-info/agent1-any', 'rb')
         m.assert_any_call(common.ossec_path + '/queue/agent-info/agent2-any', 'rb')
@@ -139,5 +141,6 @@ def test_merge_agent_info(stat_mock, listdir_mock):
 def test_unmerge_agent_info(stat_mock, agent_info, exception):
     stat_mock.return_value.st_size = len(agent_info)
     with patch('builtins.open', mock_open(read_data=agent_info)) as m:
-        agent_infos = list(cluster.unmerge_agent_info('agent-info', '/random/path', 'agent-info.merged'))
+        agent_infos = list(
+            wazuh.core.cluster.cluster.unmerge_agent_info('agent-info', '/random/path', 'agent-info.merged'))
         assert len(agent_infos) == (1 if exception is None else 0)

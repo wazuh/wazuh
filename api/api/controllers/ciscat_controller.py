@@ -11,7 +11,7 @@ import connexion
 import wazuh.ciscat as ciscat
 from api.authentication import get_permissions
 from api.util import remove_nones_to_dict, parse_api_param, exception_handler, raise_if_exc
-from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')

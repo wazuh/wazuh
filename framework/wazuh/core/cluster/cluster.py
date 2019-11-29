@@ -1,36 +1,33 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-import ast
-# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import itertools
-from wazuh.cluster.utils import get_cluster_status, manager_restart, read_cluster_config
 import json
 import logging
 import os
 import zipfile
 from datetime import datetime, timedelta
-from functools import reduce, lru_cache
-from operator import eq, setitem, add
-from os import path, listdir, stat, remove
+from functools import reduce
+from operator import eq, add
+from os import listdir, path, stat, remove
 from random import random
 from shutil import rmtree
 from subprocess import check_output
 from time import time
 
-from wazuh import common
+from wazuh import WazuhException, common
 from wazuh.InputValidator import InputValidator
-from wazuh.core.core_agent import Agent
-from wazuh.exception import WazuhException
+from wazuh.core.cluster.utils import get_cluster_items, read_config
 from wazuh.utils import md5, mkdir_with_mode
-from wazuh.wlogging import WazuhLogger
 
 logger = logging.getLogger('wazuh')
-
 
 #
 # Cluster
 #
+
+
 def get_localhost_ips():
     return set(str(check_output(['hostname', '--all-ip-addresses']).decode()).split(" ")[:-1])
 
@@ -62,18 +59,6 @@ def check_cluster_config(config):
         raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
 
 
-@lru_cache()
-def get_cluster_items():
-    try:
-        with open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)) as f:
-            cluster_items = json.load(f)
-        list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
-                 filter(lambda x: 'permissions' in x, cluster_items['files'].values())))
-        return cluster_items
-    except Exception as e:
-        raise WazuhException(3005, str(e))
-
-
 def get_cluster_items_master_intervals():
     return get_cluster_items()['intervals']['master']
 
@@ -86,23 +71,13 @@ def get_cluster_items_worker_intervals():
     return get_cluster_items()['intervals']['worker']
 
 
-@lru_cache()
-def read_config(config_file=common.ossec_conf):
-    """
-    Returns the cluster configuration.
-
-    return: Dictionary with cluster configuration
-    """
-    return read_cluster_config(config_file=common.ossec_conf)
-
-
 def get_node():
     data = {}
     config_cluster = read_config()
 
-    data["node"]    = config_cluster["node_name"]
+    data["node"] = config_cluster["node_name"]
     data["cluster"] = config_cluster["name"]
-    data["type"]    = config_cluster["node_type"]
+    data["type"] = config_cluster["node_type"]
 
     return data
 
@@ -113,21 +88,13 @@ def check_cluster_status():
     """
     return read_config()['disabled']
 
-
-def get_status_json():
-    """
-    Returns the cluster status
-
-    :return: Dictionary with the cluster status.
-    """
-    return get_cluster_status()
-
-
 #
 # Files
 #
 
-def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5=True, whoami='master'):
+
+def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5=True,
+             whoami='master'):
     walk_files = {}
 
     try:
@@ -183,9 +150,11 @@ def get_files_status(node_type, node_name, get_md5=True):
 
         if item['source'] == node_type or item['source'] == 'all':
             if item.get("files") and "agent-info.merged" in item["files"]:
-                agents_to_send, merged_path = merge_agent_info(merge_type="agent-info", node_name=node_name,
-                                                               time_limit_seconds=cluster_items\
-                                                                        ['sync_options']['get_agentinfo_newer_than'])
+                agents_to_send, merged_path = \
+                    merge_agent_info(merge_type="agent-info",
+                                     node_name=node_name,
+                                     time_limit_seconds=cluster_items['sync_options']['get_agentinfo_newer_than']
+                                     )
                 if agents_to_send == 0:
                     return {}
 
@@ -193,8 +162,9 @@ def get_files_status(node_type, node_name, get_md5=True):
             else:
                 fullpath = file_path
             try:
-                final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
-                                            cluster_items['files']['excluded_extensions'], file_path, get_md5, node_type))
+                final_items.update(
+                    walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
+                             cluster_items['files']['excluded_extensions'], file_path, get_md5, node_type))
             except Exception as e:
                 logger.warning("Error getting file status: {}.".format(e))
 
@@ -306,8 +276,8 @@ def clean_up(node_name=""):
                     rmtree(f_path)
                 else:
                     remove(f_path)
-            except Exception as e:
-                logger.error("[Cluster] Error removing '{}': '{}'.".format(f_path, e))
+            except Exception as err:
+                logger.error("[Cluster] Error removing '{}': '{}'.".format(f_path, err))
                 continue
 
     try:
@@ -319,45 +289,12 @@ def clean_up(node_name=""):
         logger.error("[Cluster] Error cleaning up: {0}.".format(str(e)))
 
 
-def restart_all_nodes():
-    """
-    Restart all cluster nodes.
-
-    :return: Confirmation message.
-    """
-    manager_restart()
-    return "Restart request sent"
-
-
 #
 # Agents
 #
-def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=common.database_limit):
-    """
-    Return a nested list where each element has the following structure
-    [agent_id, agent_name, agent_status, manager_hostname]
-    """
-    if not offset:
-        offset = 0
-    if not filter_status:
-        filter_status="all"
-    if not filter_nodes:
-        filter_nodes="all"
-    elif filter_nodes != 'all':
-        filter_nodes=ast.literal_eval(filter_nodes)
-    if not limit:
-        limit = common.database_limit
 
-    agents = Agent.get_agents_overview(filters={'status':filter_status, 'node_name':filter_nodes},
-                                       select=['id','ip','name','status','node_name'], limit=limit,
-                                       offset=offset)
-    return agents
-
-
-#
-# Agents-info
-#
 def merge_agent_info(merge_type, node_name, files=None, file_type="", time_limit_seconds=1800):
+    min_mtime = 0
     if time_limit_seconds:
         min_mtime = time() - time_limit_seconds
     merge_path = "{}/queue/{}".format(common.ossec_path, merge_type)
@@ -414,51 +351,3 @@ def unmerge_agent_info(merge_type, path_file, filename):
             bytes_read += st_size
 
             yield dst_agent_info_path + '/' + name, data, st_mtime
-
-
-class ClusterFilter(logging.Filter):
-    """
-    Adds cluster related information into cluster logs.
-    """
-    def __init__(self, tag: str, subtag: str, name: str = ''):
-        """
-        Class constructor
-
-        :param tag: First tag to show in the log - Usually describes class
-        :param subtag: Second tag to show in the log - Usually describes function
-        :param name: If name is specified, it names a logger which, together with its children, will have its events
-                     allowed through the filter. If name is the empty string, allows every event.
-        """
-        super().__init__(name=name)
-        self.tag = tag
-        self.subtag = subtag
-
-    def filter(self, record):
-        record.tag = self.tag
-        record.subtag = self.subtag
-        return True
-
-    def update_tag(self, new_tag: str):
-        self.tag = new_tag
-
-    def update_subtag(self, new_subtag: str):
-        self.subtag = new_subtag
-
-
-class ClusterLogger(WazuhLogger):
-    """
-    Defines the logger used by wazuh-clusterd.
-    """
-
-    def setup_logger(self):
-        """
-        Set ups cluster logger. In addition to super().setup_logger() this method adds:
-            * A filter to add tag and subtags to cluster logs
-            * Sets log level based on the "debug_level" parameter received from wazuh-clusterd binary.
-        """
-        super().setup_logger()
-        self.logger.addFilter(ClusterFilter(tag='Cluster', subtag='Main'))
-        debug_level = logging.DEBUG2 if self.debug_level == 2 else \
-                                        logging.DEBUG if self.debug_level == 1 else logging.INFO
-
-        self.logger.setLevel(debug_level)

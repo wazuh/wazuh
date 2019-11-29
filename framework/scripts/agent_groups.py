@@ -9,8 +9,7 @@ from os.path import basename
 from getopt import GetoptError, getopt
 from signal import signal, SIGINT
 import logging
-from wazuh.cluster.cluster import read_config
-from wazuh import Wazuh
+from wazuh.core.cluster import read_config
 from wazuh.core.core_agent import Agent
 from wazuh.exception import WazuhException
 

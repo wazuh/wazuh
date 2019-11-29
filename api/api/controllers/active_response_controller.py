@@ -11,7 +11,7 @@ import wazuh.active_response as active_response
 from api.authentication import get_permissions
 from api.models.active_response_model import ActiveResponse
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
-from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
