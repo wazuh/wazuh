@@ -63,7 +63,7 @@ NSIS_FILE="../src/win32/ossec-installer.nsi"
 MSI_FILE="../src/win32/wazuh-installer.wxs"
 FW_SETUP="../framework/setup.py"
 FW_INIT="../framework/wazuh/__init__.py"
-CLUSTER_INIT="../framework/wazuh/cluster/__init__.py"
+CLUSTER_INIT="../framework/wazuh/core/cluster/__init__.py"
 
 if [ -n "$version" ]
 then

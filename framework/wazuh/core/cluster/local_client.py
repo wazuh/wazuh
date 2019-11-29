@@ -6,8 +6,9 @@ from typing import Tuple
 
 import uvloop
 
+import wazuh.core.cluster.utils
 from wazuh import common, exception
-from wazuh.cluster import client, cluster
+from wazuh.core.cluster import client
 
 
 class LocalClientHandler(client.AbstractClient):
@@ -81,9 +82,9 @@ class LocalClient(client.AbstractClientManager):
         """
         Class constructor
         """
-        super().__init__(configuration=cluster.read_config(), enable_ssl=False, performance_test=0, concurrency_test=0,
+        super().__init__(configuration=wazuh.core.cluster.utils.read_config(), enable_ssl=False, performance_test=0, concurrency_test=0,
                          file='', string=0, logger=logging.getLogger(), tag="Local Client",
-                         cluster_items=cluster.get_cluster_items())
+                         cluster_items=wazuh.core.cluster.utils.get_cluster_items())
         self.request_result = None
         self.protocol = None
         self.transport = None

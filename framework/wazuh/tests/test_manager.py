@@ -2,16 +2,12 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-import json
 import os
 import pytest
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import patch, mock_open
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        from wazuh.exception import WazuhException, WazuhError
-        from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file, ossec_log
-        from wazuh import common
         from wazuh.manager import *
         from wazuh.exception import WazuhException
         

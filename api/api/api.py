@@ -18,7 +18,7 @@ from api.constants import CONFIG_FILE_PATH
 from api.util import to_relative_path
 
 from wazuh import common
-from wazuh.cluster.cluster import read_config
+from wazuh.core.cluster.utils import read_config
 
 
 #

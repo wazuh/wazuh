@@ -1,5 +1,5 @@
 ---
-test_name: GET /cluster/config
+test_name: GET /cluster/local/config
 
 marks:
   - usefixtures:
@@ -16,7 +16,7 @@ stages:
 
   - name: Get cluster config
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/config"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -24,15 +24,20 @@ stages:
       status_code: 200
       body:
         data:
-          name: !anystr
-          node_name: !anystr
-          node_type: !anystr
-          key: !anystr
-          port: !anyint
-          bind_addr: !anystr
-          nodes: !anything
-          hidden: !anystr
-          disabled: false
+          affected_items:
+            - name: !anystr
+              node_name: !anystr
+              node_type: !anystr
+              key: !anystr
+              port: !anyint
+              bind_addr: !anystr
+              nodes: !anything
+              hidden: !anystr
+              disabled: false
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /cluster/healthcheck
@@ -45,44 +50,35 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_nodes: 'worker1,worker2'
     response:
       status_code: 200
       body:
         data:
-          n_connected_nodes: !anyint
-          nodes:
-            master-node:
-              info:
-                name: !anystr
-                ip: !anystr
-                version: !anystr
-                type: !anystr
-                n_active_agents: !anyint
-            worker1:
-              info:
+          affected_items:
+            - info:
                 name: !anystr
                 ip: !anystr
                 version: !anystr
                 type: !anystr
                 n_active_agents: !anyint
               status: !anything
-            worker2:
-              info:
+            - info:
                 name: !anystr
                 ip: !anystr
                 version: !anystr
                 type: !anystr
                 n_active_agents: !anyint
               status: !anything
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: !anystr
 
----
-test_name: GET /cluster/node
-
-stages:
-
-  - name: Get cluster node
+  - name: Get cluster healtcheck
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/node"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/healthcheck"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -90,9 +86,55 @@ stages:
       status_code: 200
       body:
         data:
-          cluster: wazuh
-          node: master-node
-          type: master
+          affected_items:
+            - info:
+                name: 'master-node'
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+            - info:
+                name: 'worker1'
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+              status: !anything
+            - info:
+                name: 'worker2'
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+              status: !anything
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
+
+---
+test_name: GET /cluster/local/info
+
+stages:
+
+  - name: Get cluster node
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/info"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - cluster: wazuh
+              node: master-node
+              type: master
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /cluster/nodes
@@ -111,12 +153,15 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 3
-          items: &cluster_nodes_response
-            - ip: !anystr
-              version: !anystr
+          affected_items: &cluster_nodes_response
+            - name: !anystr
               type: !anystr
-              name: !anystr
+              version: !anystr
+              ip: !anything
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
 
   - name: Get cluster nodes
     request:
@@ -127,11 +172,14 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 3
-          items:
+          affected_items:
             - <<: *cluster_nodes_response
             - <<: *cluster_nodes_response
             - <<: *cluster_nodes_response
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
 
   - name: Retrieve all elements with limit=0
     request:
@@ -155,7 +203,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *cluster_nodes_response
               type: master
               name: master-node
@@ -165,6 +213,10 @@ stages:
             - <<: *cluster_nodes_response
               type: worker
               name: worker2
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
 
   - name: Sort nodes by name in descending order
     request:
@@ -175,7 +227,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *cluster_nodes_response
               type: worker
               name: worker2
@@ -185,6 +237,10 @@ stages:
             - <<: *cluster_nodes_response
               type: master
               name: master-node
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
 
   - name: Search master
     request:
@@ -195,11 +251,14 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 1
-          items:
+          affected_items:
             - <<: *cluster_nodes_response
               type: master
               name: master-node
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Search worker1
     request:
@@ -210,10 +269,13 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 1
-          items:
+          affected_items:
             - <<: *cluster_nodes_response
               name: worker1
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters (type) -> master
     request:
@@ -224,10 +286,13 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 1
-          items:
+          affected_items:
             - <<: *cluster_nodes_response
               type: master
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters (type) -> worker
     request:
@@ -239,10 +304,13 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 2
-          items:
+          affected_items:
             - <<: *cluster_nodes_response
               type: worker
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: !anystr
 
 
   - name: Filters -> invalid type
@@ -262,14 +330,17 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 3
-          items:
+          affected_items:
             - name: !anystr
               version: !anystr
             - name: !anystr
               version: !anystr
             - name: !anystr
               version: !anystr
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
 
   - name: Select type
     request:
@@ -280,11 +351,14 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 3
-          items:
+          affected_items:
             - type: !anystr
             - type: !anystr
             - type: !anystr
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
 
   - name: Select wrong_field
     request:
@@ -295,7 +369,7 @@ stages:
       <<: *connexion_error
 
 ---
-test_name: GET /cluster/nodes/{node_id}
+test_name: GET /cluster/nodes
 
 marks:
   - parametrize:
@@ -309,21 +383,28 @@ stages:
 
   - name: Get cluster {node_id}
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes/{node_id}"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_nodes: "{node_id:s}"
     response:
       status_code: 200
       body:
         data:
-          ip: !anystr
-          name: !anystr
-          type: !anystr
-          version: !anystr
+          affected_items:
+            - ip: !anystr
+              name: !anystr
+              type: !anystr
+              version: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
 ---
-test_name: GET /cluster/nodes/{node_id} select
+test_name: GET /cluster/nodes select
 
 marks:
   - parametrize:
@@ -338,18 +419,19 @@ stages:
 
   - name: Get cluster nodes with select
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes/master-node"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
+        list_nodes: "master-node"
         select: "{field}"
     response:
       status_code: 200
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_no_items
+          function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
 
@@ -386,26 +468,31 @@ stages:
       status_code: 200
       body:
         data:
-          agentless: !anything
-          alerts: !anything
-          auth: !anything
-          cis-cat: !anything
-          cluster: !anything
-          command: !anything
-          email_alerts: !anything
-          global: !anything
-          integration: !anything
-          localfile: !anything
-          open-scap: !anything
-          osquery: !anything
-          remote: !anything
-          rootcheck: !anything
-          ruleset: !anything
-          sca: !anything
-          syscheck: !anything
-          syscollector: !anything
-          syslog_output: !anything
-          vulnerability-detector: !anything
+          affected_items:
+            - agentless: !anything
+              alerts: !anything
+              auth: !anything
+              cis-cat: !anything
+              cluster: !anything
+              command: !anything
+              email_alerts: !anything
+              global: !anything
+              integration: !anything
+              localfile: !anything
+              open-scap: !anything
+              osquery: !anything
+              remote: !anything
+              rootcheck: !anything
+              ruleset: !anything
+              sca: !anything
+              syscheck: !anything
+              syscollector: !anything
+              syslog_output: !anything
+              vulnerability-detector: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Request (worker)
     request:
@@ -417,20 +504,25 @@ stages:
       status_code: 200
       body:
         data:
-          auth: !anything
-          cis-cat: !anything
-          cluster: !anything
-          command: !anything
-          global: !anything
-          localfile: !anything
-          open-scap: !anything
-          osquery: !anything
-          remote: !anything
-          rootcheck: !anything
-          ruleset: !anything
-          syscheck: !anything
-          syscollector: !anything
-          vulnerability-detector: !anything
+          affected_items:
+            - auth: !anything
+              cis-cat: !anything
+              cluster: !anything
+              command: !anything
+              global: !anything
+              localfile: !anything
+              open-scap: !anything
+              osquery: !anything
+              remote: !anything
+              rootcheck: !anything
+              ruleset: !anything
+              syscheck: !anything
+              syscollector: !anything
+              vulnerability-detector: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> section=alerts (master-node)
     request:
@@ -444,9 +536,14 @@ stages:
       status_code: 200
       body:
         data:
-          alerts:
-            email_alert_level: !anystr
-            log_alert_level: !anystr
+          affected_items:
+            - alerts:
+                email_alert_level: !anystr
+                log_alert_level: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
 
   - name: Filters -> section=syscheck (master)
@@ -461,16 +558,21 @@ stages:
       status_code: 200
       body:
         data:
-          syscheck:
-            alert_new_files: !anystr
-            auto_ignore: !anything
-            directories: !anything
-            disabled: !anystr
-            frequency: !anystr
-            ignore: !anything
-            nodiff: !anything
-            scan_on_start: !anystr
-            skip_nfs: !anystr
+          affected_items:
+            - syscheck:
+                alert_new_files: !anystr
+                auto_ignore: !anything
+                directories: !anything
+                disabled: !anystr
+                frequency: !anystr
+                ignore: !anything
+                nodiff: !anything
+                scan_on_start: !anystr
+                skip_nfs: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> section=syscollector (master)
     request:
@@ -484,16 +586,21 @@ stages:
       status_code: 200
       body:
         data:
-          syscollector:
-            disabled: !anystr
-            hardware: !anystr
-            interval: !anystr
-            network: !anystr
-            os: !anystr
-            packages: !anystr
-            ports : !anything
-            processes: !anystr
-            scan_on_start: !anystr
+          affected_items:
+            - syscollector:
+                disabled: !anystr
+                hardware: !anystr
+                interval: !anystr
+                network: !anystr
+                os: !anystr
+                packages: !anystr
+                ports : !anything
+                processes: !anystr
+                scan_on_start: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> section=alerts (worker1)
     request:
@@ -507,9 +614,14 @@ stages:
       status_code: 200
       body:
         data:
-          alerts:
-            email_alert_level: !anystr
-            log_alert_level: !anystr
+          affected_items:
+            - alerts:
+                email_alert_level: !anystr
+                log_alert_level: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> section=syscheck (worker1)
     request:
@@ -523,16 +635,21 @@ stages:
       status_code: 200
       body:
         data:
-          syscheck:
-            alert_new_files: !anystr
-            auto_ignore: !anything
-            directories: !anything
-            disabled: !anystr
-            frequency: !anystr
-            ignore: !anything
-            nodiff: !anything
-            scan_on_start: !anystr
-            skip_nfs: !anystr
+          affected_items:
+            - syscheck:
+                alert_new_files: !anystr
+                auto_ignore: !anything
+                directories: !anything
+                disabled: !anystr
+                frequency: !anystr
+                ignore: !anything
+                nodiff: !anything
+                scan_on_start: !anystr
+                skip_nfs: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> section=syscollector (worker1)
     request:
@@ -546,16 +663,21 @@ stages:
       status_code: 200
       body:
         data:
-          syscollector:
-            disabled: !anystr
-            hardware: !anystr
-            interval: !anystr
-            network: !anystr
-            os: !anystr
-            packages: !anystr
-            ports : !anything
-            processes: !anystr
-            scan_on_start: !anystr
+          affected_items:
+            - syscollector:
+                disabled: !anystr
+                hardware: !anystr
+                interval: !anystr
+                network: !anystr
+                os: !anystr
+                packages: !anystr
+                ports : !anything
+                processes: !anystr
+                scan_on_start: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /cluster/configuration/validation
@@ -571,7 +693,18 @@ stages:
     response:
       status_code: 200
       body:
-        status: OK
+        data:
+          affected_items:
+            - name: master-node
+              status: 'OK'
+            - name: worker1
+              status: 'OK'
+            - name: worker2
+              status: 'OK'
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
 
   #### Upload corrupted rules file
   - name: Upload corrupted configuration
@@ -586,8 +719,6 @@ stages:
         path: etc/rules/new-rules_corrupted.xml
     response:
       status_code: 200
-      body:
-        message: !anystr
 
   - name: Request validation
     request:
@@ -596,15 +727,24 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 1908
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items:
+            - name: worker1
+              status: 'OK'
+            - name: worker2
+              status: 'OK'
+          failed_items:
+            - error:
+                code: 1908
+                message: !anystr
+                remediation: !anystr
+              id:
+                - 'master-node'
+          total_affected_items: 2
+          total_failed_items: 1
+        message: !anystr
 
     #### Delete corrupted rules file
   - name: Delete rules file
@@ -617,74 +757,54 @@ stages:
         path: etc/rules/new-rules_corrupted.xml
     response:
       status_code: 200
-      body:
-        message: !anystr
 
----
-test_name: GET /cluster/{node_id}/configuration/validation
-
-marks:
-  - parametrize:
-      key: node_id
-      vals:
-        - master-node
-        - worker1
-        - worker2
-
-stages:
-
-  - name: Request cluster {node_id} validation
+  - name: Request cluster validation
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/configuration/validation"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      body:
-        status: OK
-
-  #### Upload corrupted rules file
-  - name: Upload corrupted configuration
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/files"
-      method: PUT
-      data: "{corrupted_rules_file}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
       params:
-        path: etc/rules/rules_corrupted.xml
+        list_nodes: 'worker1,worker2'
     response:
       status_code: 200
       body:
+        data:
+          affected_items:
+            - name: worker1
+              status: 'OK'
+            - name: worker2
+              status: 'OK'
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
         message: !anystr
 
-  - name: Request KO validation in {node_id}
+  - name: Request cluster validation
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/configuration/validation"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_nodes: 'master-node'
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 1908
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items:
+            - name: master-node
+              status: 'OK'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
+
 ---
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Try to show the config of analisys/global through a worker
     request:
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/global"
@@ -693,24 +813,29 @@ stages:
       method: GET
     response:
       status_code: 200
-      body: &config_response
+      body:
         data:
-          global:
-            alerts_log: !anystr
-            email_notification: !anystr
-            host_information: !anyint
-            integrity_checking: !anyint
-            jsonout_output: !anystr
-            logall: !anystr
-            logall_json: !anystr
-            max_output_size: !anyint
-            memory_size: !anyint
-            prelude_output: !anystr
-            rootkit_detection: !anyint
-            rotate_interval: !anyint
-            stats: !anyint
-            white_list: !anything
-            zeromq_output: !anystr
+          affected_items:
+            - global:
+                alerts_log: !anystr
+                email_notification: !anystr
+                host_information: !anyint
+                integrity_checking: !anyint
+                jsonout_output: !anystr
+                logall: !anystr
+                logall_json: !anystr
+                max_output_size: !anyint
+                memory_size: !anyint
+                prelude_output: !anystr
+                rootkit_detection: !anyint
+                rotate_interval: !anyint
+                stats: !anyint
+                white_list: !anything
+                zeromq_output: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of analysis/active_response through a worker
     request:
@@ -722,7 +847,12 @@ stages:
       status_code: 200
       body:
         data:
-          active-response: !anything
+          affected_items:
+            - active-response: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of analysis/alerts through a worker
     request:
@@ -734,7 +864,12 @@ stages:
       status_code: 200
       body:
         data:
-          alerts: !anything
+          affected_items:
+            - alerts: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show analysis/command through a worker
 
@@ -747,7 +882,12 @@ stages:
       status_code: 200
       body:
         data:
-          command: !anything
+          affected_items:
+            - command: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of authd/authd in the manager through a worker
     request:
@@ -759,19 +899,24 @@ stages:
       status_code: 200
       body:
         data:
-          auth: &auth_response
-            ciphers: !anystr
-            disabled: !anystr
-            force_insert: !anystr
-            force_time: !anystr
-            limit_maxagents: !anystr
-            port: !anyint
-            purge: !anystr
-            ssl_auto_negotiate: !anystr
-            ssl_manager_cert: !anystr
-            ssl_manager_key: !anystr
-            use_password: !anystr
-            use_source_ip: !anystr
+          affected_items:
+            - auth:
+                ciphers: !anystr
+                disabled: !anystr
+                force_insert: !anystr
+                force_time: !anystr
+                limit_maxagents: !anystr
+                port: !anyint
+                purge: !anystr
+                ssl_auto_negotiate: !anystr
+                ssl_manager_cert: !anystr
+                ssl_manager_key: !anystr
+                use_password: !anystr
+                use_source_ip: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of com/internal in the manager through a worker
     request:
@@ -783,10 +928,15 @@ stages:
       status_code: 200
       body:
         data:
-          internal: &internal_response
-            execd:
-              max_restart_lock: !anyint
-              request_timeout: !anyint
+          affected_items:
+            - internal:
+                execd:
+                  max_restart_lock: !anyint
+                  request_timeout: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of csyslog/csyslog in the manager through a worker
     request:
@@ -798,12 +948,17 @@ stages:
       status_code: 200
       body:
         data:
-          syslog_output: &csyslog_response
-            - format: !anystr
-              level: !anyint
-              port: !anyint
-              server: !anystr
-              use_fqdn: !anystr
+          affected_items:
+            - syslog_output:
+              - format: !anystr
+                level: !anyint
+                port: !anyint
+                server: !anystr
+                use_fqdn: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of integrator/integration in the manager through a worker
     request:
@@ -815,7 +970,12 @@ stages:
       status_code: 200
       body:
         data:
-          integration: !anything
+          affected_items:
+            - integration: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of analysis/internal through a worker
     request:
@@ -825,23 +985,28 @@ stages:
       method: GET
     response:
       status_code: 200
-      body: &analysisd_response
+      body:
         data:
-          internal:
-            analysisd:
-              debug: !anyint
-              decoder_order_size: !anyint
-              default_timeframe: !anyint
-              fts_list_size: !anyint
-              fts_min_size_for_str: !anyint
-              label_cache_maxage: !anyint
-              log_fw: !anyint
-              min_rotate_interval: !anyint
-              rlimit_nofile: !anyint
-              show_hidden_labels: !anyint
-              stats_maxdiff: !anyint
-              stats_mindiff: !anyint
-              stats_percent_diff: !anyint
+          affected_items:
+            - internal:
+                analysisd:
+                  debug: !anyint
+                  decoder_order_size: !anyint
+                  default_timeframe: !anyint
+                  fts_list_size: !anyint
+                  fts_min_size_for_str: !anyint
+                  label_cache_maxage: !anyint
+                  log_fw: !anyint
+                  min_rotate_interval: !anyint
+                  rlimit_nofile: !anyint
+                  show_hidden_labels: !anyint
+                  stats_maxdiff: !anyint
+                  stats_mindiff: !anyint
+                  stats_percent_diff: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of logcollector/localfile in the manager trough a worker
     request:
@@ -853,7 +1018,12 @@ stages:
       status_code: 200
       body:
         data:
-          localfile: !anything
+          affected_items:
+            - localfile: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of logcollector/socket in the manager trough a worker
     request:
@@ -864,7 +1034,12 @@ stages:
     response:
       status_code: 200
       body:
-        data: !anything
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of logcollector/internal in the manager trough a worker
     request:
@@ -876,23 +1051,28 @@ stages:
       status_code: 200
       body:
         data:
-          internal: &internal_log_response
-            logcollector:
-              debug: !anyint
-              force_reload: !anyint
-              input_threads: !anyint
-              loop_timeout: !anyint
-              max_files: !anyint
-              max_lines: !anyint
-              open_attempts: !anyint
-              queue_size: !anyint
-              reload_delay: !anyint
-              reload_interval: !anyint
-              remote_commands: !anyint
-              rlimit_nofile: !anyint
-              sample_log_length: !anyint
-              sock_fail_time: !anyint
-              vcheck_files: !anyint
+          affected_items:
+            - internal:
+                logcollector:
+                  debug: !anyint
+                  force_reload: !anyint
+                  input_threads: !anyint
+                  loop_timeout: !anyint
+                  max_files: !anyint
+                  max_lines: !anyint
+                  open_attempts: !anyint
+                  queue_size: !anyint
+                  reload_delay: !anyint
+                  reload_interval: !anyint
+                  remote_commands: !anyint
+                  rlimit_nofile: !anyint
+                  sample_log_length: !anyint
+                  sock_fail_time: !anyint
+                  vcheck_files: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of mail/global in the manager trough a worker
     request:
@@ -904,11 +1084,16 @@ stages:
       status_code: 200
       body:
         data:
-          global:
-            email_maxperhour: !anyint
-            email_to: !anything
-            email_from: !anything
-            smtp_server: !anystr
+          affected_items:
+            - global:
+                email_maxperhour: !anyint
+                email_to: !anything
+                email_from: !anything
+                smtp_server: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of mail/alerts in the manager trough a worker
     request:
@@ -920,10 +1105,15 @@ stages:
       status_code: 200
       body:
         data:
-          email_alerts:
-            - email_to: !anystr
-              format: !anystr
-              level: !anyint
+          affected_items:
+            - email_alerts:
+              - email_to: !anystr
+                format: !anystr
+                level: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of mail/internal in the manager trough a worker
     request:
@@ -935,10 +1125,15 @@ stages:
       status_code: 200
       body:
         data:
-          internal:
-            mail:
-              grouping: !anyint
-              strict_checking: !anyint
+          affected_items:
+            - internal:
+                mail:
+                  grouping: !anyint
+                  strict_checking: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of monitor/internal in the manager trough a worker
     request:
@@ -950,16 +1145,21 @@ stages:
       status_code: 200
       body:
         data:
-          monitord:
-            compress: !anyint
-            daily_rotations: !anyint
-            day_wait: !anyint
-            delete_old_agents: !anyint
-            keep_log_days: !anyint
-            monitor_agents: !anyint
-            rotate_log: !anyint
-            sign: !anyint
-            size_rotate: !anyint
+          affected_items:
+            - monitord:
+                compress: !anyint
+                daily_rotations: !anyint
+                day_wait: !anyint
+                delete_old_agents: !anyint
+                keep_log_days: !anyint
+                monitor_agents: !anyint
+                rotate_log: !anyint
+                sign: !anyint
+                size_rotate: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of request/remote in the manager trough a worker
     request:
@@ -971,13 +1171,17 @@ stages:
       status_code: 200
       body:
         data:
-          remote: &remote_response
-            - connection: !anystr
-              ipv6: !anystr
-              port: !anystr
-              protocol: !anystr
-              queue_size: !anystr
-
+          affected_items:
+            - remote:
+              - connection: !anystr
+                ipv6: !anystr
+                port: !anystr
+                protocol: !anystr
+                queue_size: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of request/internal in the manager trough a worker
     request:
@@ -989,31 +1193,35 @@ stages:
       status_code: 200
       body:
         data:
-          internal: &request_internal_response
-            remoted:
-              buffer_relax: !anyint
-              comp_average_printout: !anyint
-              group_data_flush: !anyint
-              guess_agent_group: !anyint
-              max_attempts: !anyint
-              merge_shared: !anyint
-              pass_empty_keyfile: !anyint
-              receive_chunk: !anyint
-              recv_counter_flush: !anyint
-              recv_timeout: !anyint
-              request_pool: !anyint
-              request_rto_msec: !anyint
-              request_rto_sec: !anyint
-              request_timeout: !anyint
-              response_timeout: !anyint
-              rlimit_nofile: !anyint
-              sender_pool: !anyint
-              shared_reload: !anyint
-              tcp_keepcnt: !anyint
-              tcp_keepidle: !anyint
-              tcp_keepintvl: !anyint
-              verify_msg_id: !anyint
-
+          affected_items:
+            - internal:
+                remoted:
+                  buffer_relax: !anyint
+                  comp_average_printout: !anyint
+                  group_data_flush: !anyint
+                  guess_agent_group: !anyint
+                  max_attempts: !anyint
+                  merge_shared: !anyint
+                  pass_empty_keyfile: !anyint
+                  receive_chunk: !anyint
+                  recv_counter_flush: !anyint
+                  recv_timeout: !anyint
+                  request_pool: !anyint
+                  request_rto_msec: !anyint
+                  request_rto_sec: !anyint
+                  request_timeout: !anyint
+                  response_timeout: !anyint
+                  rlimit_nofile: !anyint
+                  sender_pool: !anyint
+                  shared_reload: !anyint
+                  tcp_keepcnt: !anyint
+                  tcp_keepidle: !anyint
+                  tcp_keepintvl: !anyint
+                  verify_msg_id: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of syscheck/syscheck in the manager trough a worker
     request:
@@ -1025,8 +1233,13 @@ stages:
       status_code: 200
       body:
         data:
-          syscheck:
-            directories: !anything
+          affected_items:
+            - syscheck:
+                directories: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of syscheck/rootcheck in the manager trough a worker
     request:
@@ -1038,24 +1251,29 @@ stages:
       status_code: 200
       body:
         data:
-          rootcheck: &rootcheck_response
-            base_directory: !anything
-            check_dev: !anystr
-            check_files: !anystr
-            check_if: !anystr
-            check_pids: !anystr
-            check_ports: !anystr
-            check_sys: !anystr
-            check_trojans: !anystr
-            check_unixaudit: !anystr
-            disabled: !anystr
-            frequency: !anyint
-            rootkit_files: !anystr
-            rootkit_trojans: !anystr
-            scanall: !anystr
-            skip_nfs: !anystr
+          affected_items:
+            - rootcheck:
+                base_directory: !anything
+                check_dev: !anystr
+                check_files: !anystr
+                check_if: !anystr
+                check_pids: !anystr
+                check_ports: !anystr
+                check_sys: !anystr
+                check_trojans: !anystr
+                check_unixaudit: !anystr
+                disabled: !anystr
+                frequency: !anyint
+                rootkit_files: !anystr
+                rootkit_trojans: !anystr
+                scanall: !anystr
+                skip_nfs: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
-  - name: Try to show the config of syscheck/internal in the manager trough a worker
+  - name: Try to show the config of syscheck/internal in the manager through a worker
     request:
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/syscheck/internal"
       headers:
@@ -1065,18 +1283,23 @@ stages:
       status_code: 200
       body:
         data:
-          internal: &internal_rootcheck_response
-            rootcheck:
-              sleep: !anyint
-            syscheck:
-              debug: !anyint
-              default_max_depth: !anyint
-              file_max_size: !anyint
-              max_audit_entries: !anyint
-              rt_delay: !anyint
-              sleep: !anyint
-              sleep_after: !anyint
-              symlink_scan_interval: !anyint
+          affected_items:
+            - internal:
+                rootcheck:
+                  sleep: !anyint
+                syscheck:
+                  debug: !anyint
+                  default_max_depth: !anyint
+                  file_max_size: !anyint
+                  max_audit_entries: !anyint
+                  rt_delay: !anyint
+                  sleep: !anyint
+                  sleep_after: !anyint
+                  symlink_scan_interval: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the config of wmodules/wmodules in the manager trough a worker
     request:
@@ -1088,7 +1311,13 @@ stages:
       status_code: 200
       body:
         data:
-          wmodules: !anything
+          affected_items:
+            - wmodules: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
+
 ---
 test_name: GET /cluster/{node_id}/files
 
@@ -1113,8 +1342,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          contents: !anystr
+        contents: !anything
 
   - name: Get local rules {node_id}
     request:
@@ -1124,8 +1352,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          contents: !anystr
+        contents: !anything
 
   - name: Get rules {node_id}
     request:
@@ -1135,8 +1362,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          contents: !anystr
+        contents: !anything
 
   - name: Get local decoder {node_id}
     request:
@@ -1146,8 +1372,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          contents: !anystr
+        contents: !anything
 
   - name: Get decoder {node_id}
     request:
@@ -1157,8 +1382,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          contents: !anystr
+        contents: !anything
 
   - name: Get CDB list {node_id}
     request:
@@ -1168,8 +1392,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          contents: !anystr
+        contents: !anything
 
   - name: Get file with wrong path (master)
     request:
@@ -1211,6 +1434,12 @@ stages:
     response:
       status_code: 200
       body:
+        data:
+          affected_items:
+            - 'etc/rules/local_rules.xml'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
         message: !anystr
 
   - name: Delete unexisting rules file
@@ -1219,15 +1448,19 @@ stages:
       params:
         path: etc/rules/local-rules.xml
     response: &non_existing_file
-      status_code: 400
+      status_code: 200
       body:
-        code: 1906
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1906
+                message: !anystr
+                remediation: !anystr
+              id: !anything
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   - name: Delete decoder file
     request:
@@ -1237,6 +1470,12 @@ stages:
     response:
       status_code: 200
       body:
+        data:
+          affected_items:
+            - 'etc/decoders/local_decoder.xml'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
         message: !anystr
 
   - name: Delete unexisting decoder file
@@ -1255,6 +1494,12 @@ stages:
     response:
       status_code: 200
       body:
+        data:
+          affected_items:
+            - 'etc/lists/audit-keys'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
         message: !anystr
 
   - name: Delete unexisting CDB list file
@@ -1290,11 +1535,10 @@ stages:
     response:
       save:
         body:
-          ossec_conf: data.contents
+          ossec_conf: contents
       status_code: 200
       body:
-        data:
-          contents: !anystr
+        contents: !anystr
 
   - name: Upload ossec.conf {node_id}
     request: &upload_cluster_files
@@ -1310,6 +1554,12 @@ stages:
     response:
       status_code: 200
       body:
+        data:
+          affected_items:
+            - 'etc/ossec.conf'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
         message: !anystr
 
   - name: Upload new rules {node_id}
@@ -1321,6 +1571,12 @@ stages:
     response:
       status_code: 200
       body:
+        data:
+          affected_items:
+            - 'etc/rules/new-rules.xml'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
         message: !anystr
 
   - name: Upload rules (overwrite=false) {node_id}
@@ -1331,15 +1587,20 @@ stages:
         path: etc/rules/new-rules.xml
         overwrite: False
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 1905
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1905
+                message: !anystr
+                remediation: !anystr
+              id:
+                - 'etc/rules/new-rules.xml'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   - name: Upload rules (overwrite=true) {node_id}
     request:
@@ -1351,6 +1612,12 @@ stages:
     response:
       status_code: 200
       body:
+        data:
+          affected_items:
+            - 'etc/rules/new-rules.xml'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
         message: !anystr
 
   - name: Upload rules with XML syntax error (overwrite=true)
@@ -1361,15 +1628,20 @@ stages:
         path: etc/rules/new-rules.xml
         overwrite: True
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 1113
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1113
+                message: !anystr
+                remediation: !anystr
+              id:
+                - 'etc/rules/new-rules.xml'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   - name: Upload new decoder
     request:
@@ -1380,6 +1652,12 @@ stages:
     response:
       status_code: 200
       body:
+        data:
+          affected_items:
+            - 'etc/decoders/new-decoder.xml'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
         message: !anystr
 
   - name: Upload decoder (overwrite=false)
@@ -1390,15 +1668,20 @@ stages:
         path: etc/decoders/new-decoder.xml
         overwrite: False
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 1905
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1905
+                message: !anystr
+                remediation: !anystr
+              id:
+                - 'etc/decoders/new-decoder.xml'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   - name: Upload decoder (overwrite=true)
     request:
@@ -1410,6 +1693,12 @@ stages:
     response:
       status_code: 200
       body:
+        data:
+          affected_items:
+            - 'etc/decoders/new-decoder.xml'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
         message: !anystr
 
   - name: Upload decoder with XML syntax error (overwrite=true)
@@ -1420,15 +1709,20 @@ stages:
         path: etc/decoders/new-decoder.xml
         overwrite: True
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 1113
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1113
+                message: !anystr
+                remediation: !anystr
+              id:
+                - 'etc/decoders/new-decoder.xml'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   - name: Upload new CDB list
     request:
@@ -1439,6 +1733,12 @@ stages:
     response:
       status_code: 200
       body:
+        data:
+          affected_items:
+            - 'etc/lists/new-list'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
         message: !anystr
 
   - name: Upload CDB list (overwrite=false)
@@ -1449,15 +1749,20 @@ stages:
         path: etc/lists/new-list
         overwrite: False
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 1905
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1905
+                message: !anystr
+                remediation: !anystr
+              id:
+                - 'etc/lists/new-list'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   - name: Upload CDB list (overwrite=true)
     request:
@@ -1469,6 +1774,12 @@ stages:
     response:
       status_code: 200
       body:
+        data:
+          affected_items:
+            - 'etc/lists/new-list'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
         message: !anystr
 
   - name: Upload CDB list with a syntax error (overwrite=true)
@@ -1479,15 +1790,20 @@ stages:
         path: etc/lists/new-list
         overwrite: True
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 1802
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1802
+                message: !anystr
+                remediation: !anystr
+              id:
+                - 'etc/lists/new-list'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
 ---
 test_name: PUT /cluster/wrong_node/files
@@ -1509,7 +1825,7 @@ stages:
       status_code: 500 # should be 400?
       body:
         code: 3022
-        dapi_errors: !anything
+        dapi_errors: {}
         detail: !anystr
         remediation: !anystr
         status: 500
@@ -1531,7 +1847,7 @@ stages:
       status_code: 500 # should be 400
       body:
         code: 3022
-        dapi_errors: !anything
+        dapi_errors: {}
         detail: !anystr
         remediation: !anystr
         status: 500
@@ -1553,7 +1869,7 @@ stages:
       status_code: 500  # should be 400?
       body:
         code: 3022
-        dapi_errors: !anything
+        dapi_errors: {}
         detail: !anystr
         remediation: !anystr
         status: 500
@@ -1583,15 +1899,20 @@ stages:
       status_code: 200
       body:
         data:
-          path: !anystr
-          version: !anystr
-          compilation_date: !anystr
-          type: !anystr
-          max_agents: !anystr
-          openssl_support: !anystr
-          ruleset_version: !anystr
-          tz_offset: !anystr
-          tz_name: !anystr
+          affected_items:
+            - path: !anystr
+              version: !anystr
+              compilation_date: !anystr
+              type: !anystr
+              max_agents: !anystr
+              openssl_support: !anystr
+              ruleset_version: !anystr
+              tz_offset: !anystr
+              tz_name: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /cluster/{node_id}/logs
@@ -1616,8 +1937,11 @@ stages:
       status_code: 200
       body:
         data:
-          items: !anything
-          totalItems: !anyint
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> limit=3 {node_id}
     request:
@@ -1628,7 +1952,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - &cluster_log
               description: !anystr
               level: !anystr
@@ -1636,7 +1960,10 @@ stages:
               timestamp: !anystr
             - <<: *cluster_log
             - <<: *cluster_log
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> limit=4 {node_id}
     request:
@@ -1647,12 +1974,15 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *cluster_log
             - <<: *cluster_log
             - <<: *cluster_log
             - <<: *cluster_log
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> limit=2, sort=tag {node_id}
     request:
@@ -1664,10 +1994,13 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *cluster_log
             - <<: *cluster_log
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> limit=1, sort=-level {node_id}
     request:
@@ -1679,9 +2012,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *cluster_log
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> offset=2, limit=3 {node_id}
     request:
@@ -1693,11 +2029,14 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *cluster_log
             - <<: *cluster_log
             - <<: *cluster_log
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> offset=5, limit=2 {node_id}
     request:
@@ -1709,10 +2048,13 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *cluster_log
             - <<: *cluster_log
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> category=ossec-analysisd, limit=1 {node_id}
     request:
@@ -1724,9 +2066,12 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *cluster_log
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
 
   - name: Filters -> category=ossec-syscheckd, limit=2 {node_id}
     request:
@@ -1738,10 +2083,13 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          affected_items:
             - <<: *cluster_log
             - <<: *cluster_log
-          totalItems: !anyint
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /cluster/{node_id}/logs/summary
@@ -1750,7 +2098,6 @@ marks:
   - parametrize:
       key: node_id
       vals:
-        - master-node
         - worker1
         - worker2
 
@@ -1766,26 +2113,32 @@ stages:
       status_code: 200
       body:
         data:
-          ossec-agentlessd: !anything
-          ossec-analysisd: !anything
-          ossec-authd: !anything
-          ossec-csyslogd: !anything
-          ossec-dbd: !anything
-          ossec-execd: !anything
-          ossec-integratord: !anything
-          ossec-logcollector: !anything
-          ossec-monitord: !anything
-          ossec-remoted: !anything
-          ossec-rootcheck: !anything
-          ossec-syscheckd: !anything
-          wazuh-db: !anything
-          wazuh-modulesd: !anything
-          wazuh-modulesd:ciscat: !anything
-          wazuh-modulesd:database: !anything
-          wazuh-modulesd:download: !anything
-          wazuh-modulesd:oscap: !anything
-          wazuh-modulesd:osquery: !anything
-          wazuh-modulesd:syscollector: !anything
+          affected_items:
+            - ossec-agentlessd: !anything
+            - ossec-analysisd: !anything
+            - ossec-authd: !anything
+            - ossec-csyslogd: !anything
+            - ossec-dbd: !anything
+            - ossec-execd: !anything
+            - ossec-integratord: !anything
+            - ossec-logcollector: !anything
+            - ossec-monitord: !anything
+            - ossec-remoted: !anything
+            - ossec-rootcheck: !anything
+            - ossec-syscheckd: !anything
+            - sca: !anything
+            - wazuh-db: !anything
+            - wazuh-modulesd: !anything
+            - wazuh-modulesd:ciscat: !anything
+            - wazuh-modulesd:database: !anything
+            - wazuh-modulesd:download: !anything
+            - wazuh-modulesd:oscap: !anything
+            - wazuh-modulesd:osquery: !anything
+            - wazuh-modulesd:syscollector: !anything
+          failed_items: []
+          total_affected_items: 21
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /cluster/{node_id}/stats
@@ -2061,61 +2414,70 @@ stages:
       status_code: 200
       body:
         data:
-          ossec-agentlessd: !anystr
-          ossec-analysisd: !anystr
-          ossec-authd: !anystr
-          ossec-csyslogd: !anystr
-          ossec-dbd: !anystr
-          ossec-execd: !anystr
-          ossec-integratord: !anystr
-          ossec-logcollector: !anystr
-          ossec-maild: !anystr
-          ossec-monitord: !anystr
-          ossec-remoted: !anystr
-          ossec-reportd: !anystr
-          ossec-syscheckd: !anystr
-          wazuh-apid: !anystr
-          wazuh-clusterd: !anystr
-          wazuh-db: !anystr
-          wazuh-modulesd: !anystr
+          affected_items:
+            - ossec-agentlessd: !anystr
+              ossec-analysisd: !anystr
+              ossec-authd: !anystr
+              ossec-csyslogd: !anystr
+              ossec-dbd: !anystr
+              ossec-execd: !anystr
+              ossec-integratord: !anystr
+              ossec-logcollector: !anystr
+              ossec-maild: !anystr
+              ossec-monitord: !anystr
+              ossec-remoted: !anystr
+              ossec-reportd: !anystr
+              ossec-syscheckd: !anystr
+              wazuh-apid: !anystr
+              wazuh-clusterd: !anystr
+              wazuh-db: !anystr
+              wazuh-modulesd: !anystr
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
 
-#---
-#test_name: PUT /cluster/restart
-#
-#stages:
-#
-#  - name: Restart cluster
-#    request:
-#      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
-#      method: PUT
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#    response:
-#      status_code: 200
-#      body:
-#        message: !anystr
-#    delay_after: 30
-#
-#---
-#test_name: PUT /cluster/{node_id}restart
-#
-#marks:
-#  - parametrize:
-#      key: node_id
-#      vals:
-#        - master-node
-#        - worker1
-#        - worker2
-#
-#stages:
-#
-#  - name: Restart {node_id}
-#    request:
-#      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/restart"
-#      method: PUT
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#    response:
-#      status_code: 200
-#      body:
-#        message: !anystr
+---
+test_name: PUT /cluster/restart
+
+stages:
+
+  - name: Restart cluster
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_nodes: 'worker1,worker2'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - 'worker1'
+            - 'worker2'
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: !anystr
+    delay_after: 30
+
+  - name: Restart cluster
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - 'master-node'
+            - 'worker1'
+            - 'worker2'
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr

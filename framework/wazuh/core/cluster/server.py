@@ -5,8 +5,10 @@ import itertools
 import ssl
 import uvloop
 import time
-from wazuh.cluster import common as c_common, cluster
-from wazuh import common, exception, utils
+
+import wazuh.core.cluster.utils
+from wazuh.core.cluster import common as c_common
+from wazuh import common, exception, utils, cluster
 import logging
 from typing import Tuple, Dict
 import random
@@ -162,7 +164,7 @@ class AbstractServer:
         self.tag = tag
         self.logger = logger.getChild(tag)
         # logging tag
-        self.logger.addFilter(cluster.ClusterFilter(tag=tag, subtag="Main"))
+        self.logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag=tag, subtag="Main"))
         self.tasks = [self.check_clients_keepalive]
         self.handler_class = AbstractServerHandler
         self.loop = asyncio.get_running_loop()
@@ -175,7 +177,7 @@ class AbstractServer:
 
     def setup_task_logger(self, task_tag: str) -> logging.Logger:
         task_logger = self.logger.getChild(task_tag)
-        task_logger.addFilter(cluster.ClusterFilter(tag=self.tag, subtag=task_tag))
+        task_logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag=self.tag, subtag=task_tag))
         return task_logger
 
     def get_connected_nodes(self, filter_node: str = None, offset: int = 0, limit: int = common.database_limit,

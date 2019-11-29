@@ -146,7 +146,7 @@ def environment_sca():
 
 
 @pytest.fixture(name="syscheck_tests", scope="session")
-def environment_sca():
+def environment_syscheck():
     values = build_and_up("syscheck")
     while values['retries'] < values['max_retries']:
         master_health = check_health()
@@ -462,6 +462,61 @@ def environment_white_syscheck_rbac():
 @pytest.fixture(name="syscheck_black_rbac_tests", scope="session")
 def environment_black_syscheck_rbac():
     values = build_and_up("syscheck_black_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+@pytest.fixture(name="manager_white_rbac_tests", scope="session")
+def environment_white_syscheck_rbac():
+    values = build_and_up("manager_white_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="manager_black_rbac_tests", scope="session")
+def environment_black_syscheck_rbac():
+    values = build_and_up("manager_black_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="cluster_white_rbac_tests", scope="session")
+def environment_white_cluster_rbac():
+    values = build_and_up("cluster_white_rbac")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="cluster_black_rbac_tests", scope="session")
+def environment_black_cluster_rbac():
+    values = build_and_up("cluster_black_rbac")
     while values['retries'] < values['max_retries']:
         health = check_health()
         if health:

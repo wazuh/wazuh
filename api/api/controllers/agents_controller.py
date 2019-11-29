@@ -15,7 +15,7 @@ from api.models.agent_inserted import AgentInserted
 from api.models.base_model_ import Data
 from api.util import parse_api_param
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
-from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.common import database_limit
 from wazuh.exception import WazuhError
 

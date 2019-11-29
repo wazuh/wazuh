@@ -11,7 +11,7 @@ from api.authentication import get_permissions
 from api.models.base_model_ import Data
 from api.util import exception_handler, raise_if_exc, remove_nones_to_dict
 from wazuh.agent import get_full_overview
-from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')

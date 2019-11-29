@@ -8,8 +8,8 @@ from typing import Tuple, Union
 
 import uvloop
 from wazuh import common
-from wazuh.cluster import server, common as c_common, client
-from wazuh.cluster.dapi import dapi
+from wazuh.core.cluster import server, common as c_common, client
+from wazuh.core.cluster.dapi import dapi
 from wazuh.exception import WazuhClusterError
 
 
