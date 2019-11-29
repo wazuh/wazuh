@@ -547,7 +547,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
                 sqlite3_bind_text(stmt, 16, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "checksum") == 0) {
                 sqlite3_bind_text(stmt, 17, element->valuestring, -1, NULL);
-            } else if (strcmp(element->string, "win_attributes") == 0) {
+            } else if (strcmp(element->string, "attributes") == 0) {
                 sqlite3_bind_text(stmt, 15, element->valuestring, -1, NULL);
             }
         }
