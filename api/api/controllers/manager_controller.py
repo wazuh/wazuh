@@ -192,7 +192,7 @@ def get_stats_analysisd(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'filename': common.remoted_stats}
+    f_kwargs = {'filename': common.analysisd_stats}
 
     dapi = DistributedAPI(f=stats.get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
