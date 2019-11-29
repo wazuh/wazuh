@@ -20,8 +20,8 @@ import wazuh.core.cluster.utils
 import wazuh.core.manager
 import wazuh.results as wresults
 from wazuh import exception, agent, common
-from wazuh.core.cluster import control, local_client, common as c_common
-from wazuh.exception import WazuhException, WazuhInternalError
+from wazuh.core.cluster import local_client, common as c_common
+from wazuh.exception import WazuhException
 
 
 class DistributedAPI:
@@ -53,7 +53,7 @@ class DistributedAPI:
         self.debug = debug
         self.pretty = pretty
         self.node_info = wazuh.core.cluster.cluster.get_node() if node is None else node.get_node()
-        self.request_id = str(random.randint(0, 2 ** 10 - 1))
+        self.request_id = str(random.randint(0, 2**10 - 1))
         self.request_type = request_type
         self.wait_for_complete = wait_for_complete
         self.from_cluster = from_cluster
@@ -492,16 +492,3 @@ class APIRequestQueue:
         """
         self.logger.debug("Received request: {}".format(request))
         self.request_queue.put_nowait(request.decode())
-
-
-async def get_system_nodes():
-    try:
-        lc = local_client.LocalClient()
-        try:
-            result = await control.get_nodes(lc)
-        finally:
-            lc.transport.close()
-
-        return [node['name'] for node in result['items']]
-    except Exception:
-        raise WazuhInternalError(3012)

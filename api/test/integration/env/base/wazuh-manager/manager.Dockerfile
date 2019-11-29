@@ -88,4 +88,12 @@ RUN /scripts/configuration_rbac.sh
 FROM wazuh-env-manager as wazuh-env-manager_white_rbac
 FROM wazuh-env-manager as wazuh-env-manager_black_rbac
 
+FROM wazuh-env-cluster AS wazuh-env-cluster_white_rbac
+ADD configurations/rbac/cluster/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM wazuh-env-cluster AS wazuh-env-cluster_black_rbac
+ADD configurations/rbac/cluster/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
 FROM wazuh-env-${ENVIRONMENT}

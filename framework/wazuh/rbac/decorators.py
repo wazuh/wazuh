@@ -238,7 +238,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                 target_params[m.group(1)] = m.group(2)
             else:  # Static resource
                 target_params[m.group(1)] = '*'
-                add_denied = not broadcast.get()
+            add_denied = not broadcast.get()
             res_list.append(resource)
     # Create dict of required policies with action: list(resources) pairs
     req_permissions = dict()
@@ -338,7 +338,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                         raise Exception
                 except Exception:
                     if add_denied:
-                        denied = _get_denied(original_kwargs, allow, target_param, res_id, resources)
+                        denied = _get_denied(original_kwargs, allow, target_param, res_id, resources=resources)
                         raise WazuhError(4000, extra_message=f'Resource type: {res_id}', ids=denied)
                     else:
                         if target_param != '*':

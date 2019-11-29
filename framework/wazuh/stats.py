@@ -6,11 +6,11 @@ import os
 from io import StringIO
 
 from wazuh import common
-from wazuh.exception import WazuhError, WazuhInternalError
-from wazuh.results import WazuhResult
-from wazuh.rbac.decorators import expose_resources
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
+from wazuh.exception import WazuhError, WazuhInternalError
+from wazuh.rbac.decorators import expose_resources
+from wazuh.results import WazuhResult
 
 try:
     import configparser
@@ -27,13 +27,13 @@ node_id = get_node().get('node') if cluster_enabled else None
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def totals(year, month, day, date=False):
+def totals(year, month, day, today=False):
     """
     Returns the totals file.
     :param year: Year in YYYY format, e.g. 2016
     :param month: Month in number or 3 first letters, e.g. Feb or 2
     :param day: Day, e.g. 9
-    :param date: True if date is not today, False otherwise
+    :param today: True if date is today, False otherwise
     :return: Array of dictionaries. Each dictionary represents an hour.
     """
     try:
@@ -60,16 +60,16 @@ def totals(year, month, day, date=False):
             month = MONTHS[index - 1]
         except IndexError:
             raise WazuhError(1307)
-
+    stat_filename = ""
     try:
         stat_filename = os.path.join(
             common.stats_path, "totals", str(year), str(month), ("ossec-totals-" + str(day) + ".log"))
         stats = open(stat_filename, 'r')
     except IOError:
-        if date:
-            raise WazuhError(1310, extra_message=stat_filename)
-        else:
+        if today:
             raise WazuhError(1308, extra_message=stat_filename)
+        else:
+            raise WazuhError(1310, extra_message=stat_filename)
 
     response = []
     alerts = []
@@ -78,7 +78,6 @@ def totals(year, month, day, date=False):
         data = line.split('-')
 
         if len(data) == 4:
-            hour = int(data[0])
             sigid = int(data[1])
             level = int(data[2])
             times = int(data[3])
@@ -186,7 +185,7 @@ def get_daemons_stats(filename):
 
         fp = StringIO(input_file)
         config = configparser.RawConfigParser()
-        config.readfp(fp)
+        config.read_file(fp)
         items = dict(config.items("root"))
 
         try:

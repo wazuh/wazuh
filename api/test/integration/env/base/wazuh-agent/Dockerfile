@@ -57,6 +57,8 @@ FROM base_agent AS wazuh-env-agent-syscheck_white_rbac
 FROM base_agent AS wazuh-env-agent-syscheck_black_rbac
 FROM base_agent AS wazuh-env-agent-manager_white_rbac
 FROM base_agent AS wazuh-env-agent-manager_black_rbac
+FROM base_agent AS wazuh-env-agent-cluster_white_rbac
+FROM base_agent AS wazuh-env-agent-cluster_black_rbac
 
 FROM wazuh-env-agent-${ENVIRONMENT}
 
