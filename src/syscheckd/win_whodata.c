@@ -59,7 +59,6 @@ void restore_sacls();
 int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 int is_valid_sacl(PACL sacl, int is_file);
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attribute__((unused)) void *_void, EVT_HANDLE event);
-char *guid_to_string(GUID *guid);
 int set_policies();
 void set_subscription_query(wchar_t *query);
 extern int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
@@ -90,20 +89,6 @@ void whodata_clean_rlist();
 int get_volume_names();
 int get_drive_names(wchar_t *volume_name, char *device);
 void replace_device_path(char **path);
-
-char *guid_to_string(GUID *guid) {
-    char *string_guid;
-    os_calloc(40, sizeof(char), string_guid);
-
-    snprintf(string_guid, 40, "{%08lX-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-    guid->Data1,
-    guid->Data2,
-    guid->Data3,
-    guid->Data4[0], guid->Data4[1],
-    guid->Data4[2], guid->Data4[3],guid->Data4[4], guid->Data4[5],guid->Data4[6], guid->Data4[7]);
-
-    return string_guid;
-}
 
 int set_winsacl(const char *dir, int position) {
 	DWORD result = 0;
