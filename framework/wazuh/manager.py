@@ -214,7 +214,7 @@ def upload_file(path=None, content=None, overwrite=False):
 
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_file"],
-                  resources=[f'node:id:{node_id}', 'file:path:{path}'] if cluster_enabled else ['file:path:{path}'],
+                  resources=[f'node:id:{node_id}&file:path:{{path}}'] if cluster_enabled else ['file:path:{path}'],
                   post_proc_func=None)
 def get_file(path, validate=False):
     """Returns the content of a file.
@@ -247,7 +247,7 @@ def get_file(path, validate=False):
 
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:delete_file"],
-                  resources=[f'node:id:{node_id}', 'file:path:{path}'] if cluster_enabled else ['file:path:{path}'])
+                  resources=[f'node:id:{node_id}&file:path:{{path}}'] if cluster_enabled else ['file:path:{path}'])
 def delete_file(path):
     """Deletes a file.
 

@@ -85,7 +85,6 @@ def test_expose_resources(mock_create_engine, mock_declarative_base, mock_sessio
             except WazuhError as e:
                 assert (result is None or result == "deny")
                 for allowed_resource in allowed_resources:
-                    print(allowed_resource)
                     assert (len(allowed_resource) == 0)
                 assert (e.code == 4000)
 

@@ -12,7 +12,7 @@ class PreProcessor:
     def __init__(self):
         self.odict = dict()
 
-    def remove_previous_elements(self, resource, action, combination=False):
+    def remove_previous_elements(self, resource, action):
         """Remove previous incompatible resources
 
         :param resource: Resource to be deleted
@@ -57,19 +57,19 @@ class PreProcessor:
         """
         resource_regex = \
             r'^(\*)|' \
-            r'(([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*]+\&)+([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*]+))|' \
-            r'([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*]+)$'
+            r'(([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/]+\&)+([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/]+))|' \
+            r'([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/]+)$'
         for action in policy['actions']:
             if action not in self.odict.keys():
                 self.odict[action] = dict()
             for resource in policy['resources']:
                 if not re.match(resource_regex, resource):
-                    raise WazuhError(4999)
+                    raise WazuhError(4501)
                 resource_type = PreProcessor.is_combination(resource)
                 if len(resource_type[1]) > 2:
-                    raise WazuhError(4998)
+                    raise WazuhError(4500)
                 resource = resource_type[1] if resource != '*' else ['*:*:*']
-                self.remove_previous_elements(resource, action, resource_type[0])
+                self.remove_previous_elements(resource, action)
                 self.odict[action]['&'.join(resource)] = policy['effect']
 
     def get_optimize_dict(self):

@@ -33,6 +33,7 @@ def switch_mode(m):
 
 def _expand_resource(resource):
     """This function expand a specified resource depending of it type.
+
     :param resource: Resource to be expanded
     :return expanded_resource: Returns the result of the resource expansion
     """
@@ -84,6 +85,30 @@ def _expand_resource(resource):
         return {value}
 
 
+def combination_defined_rbac(needed_resources, user_resources):
+    for needed_resource in needed_resources:
+        split_needed_resource = needed_resource.split('&')
+        split_user_resource = user_resources.split('&')
+        if len(split_user_resource) != len(split_needed_resource):
+            return False
+        counter = 0
+        for index, element in enumerate(split_needed_resource):
+            user_resource_identifier = ':'.join(split_user_resource[index].split(':')[:-1])
+            needed_resource_identifier = ':'.join(split_user_resource[index].split(':')[:-1])
+            if user_resource_identifier != needed_resource_identifier:  # Not the same resource
+                return False
+
+            # * wildcard founded in RBAC permissions for the required resource
+            if split_user_resource[index].split(':')[-1] == '*':
+                counter += 1
+            else:
+                if split_user_resource == split_needed_resource:
+                    counter += 1
+
+        return counter == len(split_needed_resource)
+    return False
+
+
 def _use_expanded_resource(effect, final_permissions, expanded_resource, req_resources_value, delete):
     """After expanding the user permissions, depending on the effect of these we will introduce
     them or not in the list of final permissions.
@@ -117,12 +142,13 @@ def _black_mode_expansion(final_user_permissions, identifier, black_negation):
     :param identifier: Resource identifier. Ex: agent:id
     :param black_negation: Set of already negative resources
     """
-    if identifier not in black_negation:
-        try:
-            final_user_permissions[identifier].update(_expand_resource(identifier + ':*'))
-        except TypeError:
-            final_user_permissions[identifier] = _expand_resource(identifier + ':*')
-        black_negation.add(identifier)
+    for id_ in identifier:
+        if id_ not in black_negation:
+            try:
+                final_user_permissions[id_].update(_expand_resource(id_ + ':*'))
+            except TypeError:
+                final_user_permissions[id_] = _expand_resource(id_ + ':*')
+            black_negation.add(id_)
 
 
 def _black_mode_sanitize(final_user_permissions, req_resources_value):
@@ -154,15 +180,17 @@ def _permissions_processing(req_resources, user_permissions_for_resource, final_
     :param final_user_permissions: Dictionary where the final permissions will be inserted
     """
     req_resources_value = dict()
+    combination = any('&' in req_resource for req_resource in req_resources)
     for element in req_resources:
-        if ':'.join(element.split(':')[:-1]) not in req_resources_value.keys():
-            req_resources_value[':'.join(element.split(':')[:-1])] = set()
-        req_resources_value[':'.join(element.split(':')[:-1])].add(element.split(':')[-1])
+        if not combination:
+            if ':'.join(element.split(':')[:-1]) not in req_resources_value.keys():
+                req_resources_value[':'.join(element.split(':')[:-1])] = set()
+            req_resources_value[':'.join(element.split(':')[:-1])].add(element.split(':')[-1])
     # If RBAC policies is empty and the RBAC's mode is black, we have the permission over the required resource
     # or if we can't expand the resource, the action is resourceless
     # With this set we know if a resource is already "deny"
     black_negation = set()
-    if mode == 'black':
+    if mode == 'black' and not combination:
         for req_resource in req_resources:
             identifier = ':'.join(req_resource.split(':')[:-1])
             if identifier == '*:*':
@@ -170,30 +198,47 @@ def _permissions_processing(req_resources, user_permissions_for_resource, final_
             else:
                 expanded_resource = _expand_resource(req_resource)
                 final_user_permissions[identifier].update(expanded_resource)
+    if combination and mode == 'black':
+        user_permissions_for_resource['black_combination'] = 'black'
     for user_resource, user_resource_effect in user_permissions_for_resource.items():
-        name, attribute, value = user_resource.split(':')
-        identifier = name + ':' + attribute
-        if identifier == 'agent:group':
-            identifier = 'agent:id'
-        # We expand the resource for the black mode, in this way,
-        # we allow all permissions for the resource (black mode)
-        mode == 'black' and _black_mode_expansion(final_user_permissions, identifier, black_negation)
-        expanded_resource = _expand_resource(user_resource)
-        try:
-            if identifier == '*:*' or (user_resource_effect == 'allow' and
-                                       '*' not in req_resources_value[identifier] and value == '*'):
-                final_user_permissions[identifier].update(req_resources_value[identifier] - expanded_resource)
+        if not combination or len(req_resources) == 0:
+            name, attribute, value = user_resource.split(':')
+            identifier = name + ':' + attribute
+            if identifier == 'agent:group':
+                identifier = 'agent:id'
+            # We expand the resource for the black mode, in this way,
+            # we allow all permissions for the resource (black mode)
+            mode == 'black' and _black_mode_expansion(final_user_permissions, identifier, black_negation)
+            expanded_resource = _expand_resource(user_resource)
+            try:
+                if identifier == '*:*' or (user_resource_effect == 'allow' and
+                                           '*' not in req_resources_value[identifier] and value == '*'):
+                    final_user_permissions[identifier].update(req_resources_value[identifier] - expanded_resource)
 
-            _use_expanded_resource(user_resource_effect, final_user_permissions[identifier],
-                                   expanded_resource, req_resources_value[identifier],
-                                   value == '*' and user_resource_effect == 'deny')
-        except KeyError:  # Multiples resources in action and only one is required
-            pass
-            # if len(final_user_permissions[identifier]) == 0:
-            #     final_user_permissions.pop(identifier)
-        # If the black mode is enabled we need to sanity the output due the initial expansion
-        # (allow all permissions over the resource)
-    mode == 'black' and _black_mode_sanitize(final_user_permissions, req_resources_value)
+                _use_expanded_resource(user_resource_effect, final_user_permissions[identifier],
+                                       expanded_resource, req_resources_value[identifier],
+                                       value == '*' and user_resource_effect != 'allow')
+            except KeyError:  # Multiples resources in action and only one is required
+                pass
+                # if len(final_user_permissions[identifier]) == 0:
+                #     final_user_permissions.pop(identifier)
+        elif combination:
+            if combination_defined_rbac(req_resources, user_resource) or \
+                    'black_combination' in user_permissions_for_resource.keys():
+                for resource in req_resources:
+                    resource = resource.split('&')
+                    for r in resource:
+                        split_resource = r.split(':')
+                        if mode == 'black':
+                            final_user_permissions[':'.join(split_resource[:-1])].add(split_resource[-1])
+                        if user_resource_effect == 'allow':
+                            final_user_permissions[':'.join(split_resource[:-1])].add(split_resource[-1])
+                        elif user_resource_effect != 'black':
+                            final_user_permissions[':'.join(split_resource[:-1])].discard(split_resource[-1])
+
+    # If the black mode is enabled we need to sanity the output due the initial expansion
+    # (allow all permissions over the resource)
+    mode == 'black' and not combination and _black_mode_sanitize(final_user_permissions, req_resources_value)
 
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
@@ -207,43 +252,51 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
     res_list = list()
     target_params = dict()
     add_denied = True
+    combination = False
     for resource in resources:
-        m = re.search(r'^([a-z*]+:[a-z*]+):([^\{\}]+|\*|{(\w+)})$', resource)
-        res_base = m.group(1)
-        # If we find a '{' in the regex we obtain the dynamic resource/s
-        if '{' in m.group(2):
-            target_params[m.group(1)] = m.group(3)
-            if m.group(3) in kwargs:
-                # Dynamic resources ids are found within the {}
-                params = kwargs[m.group(3)]
-                if isinstance(params, list):
-                    for param in params:
-                        res_list.append("{0}:{1}".format(res_base, param))
-                    add_denied = not broadcast.get()
-                else:
-                    if params is None or params == '*':
-                        add_denied = True
-                        params = '*'
-                    else:
+        split_resource = resource.split('&')
+        if len(split_resource) > 1:
+            combination = True
+        for r in split_resource:
+            m = re.search(r'^([a-z*]+:[a-z*]+):([^{\}]+|\*|{(\w+)})$', r)
+            res_base = m.group(1)
+            # If we find a '{' in the regex we obtain the dynamic resource/s
+            if '{' in m.group(2):
+                target_params[m.group(1)] = m.group(3)
+                if m.group(3) in kwargs:
+                    # Dynamic resources ids are found within the {}
+                    params = kwargs[m.group(3)]
+                    if isinstance(params, list):
+                        for param in params:
+                            res_list.append("{0}:{1}".format(res_base, param))
                         add_denied = not broadcast.get()
+                    else:
+                        if params is None or params == '*':
+                            add_denied = True
+                            params = '*'
+                        else:
+                            add_denied = not broadcast.get()
+                        res_list.append("{0}:{1}".format(res_base, params))
+                # KeyError occurs if required dynamic resources can't be found within request parameters
+                else:
+                    add_denied = False
+                    params = '*'
                     res_list.append("{0}:{1}".format(res_base, params))
-            # KeyError occurs if required dynamic resources can't be found within request parameters
+            # If we don't find a regex match we obtain the static resource/s
             else:
-                add_denied = False
-                params = '*'
-                res_list.append("{0}:{1}".format(res_base, params))
-        # If we don't find a regex match we obtain the static resource/s
-        else:
-            if m.group(2) == '*':  # If resourceless
-                target_params[m.group(1)] = m.group(2)
-            else:  # Static resource
-                target_params[m.group(1)] = '*'
-            add_denied = not broadcast.get()
-            res_list.append(resource)
+                if m.group(2) == '*':  # If resourceless
+                    target_params[m.group(1)] = m.group(2)
+                else:  # Static resource
+                    target_params[m.group(1)] = '*'
+                add_denied = not broadcast.get()
+                res_list.append(r)
     # Create dict of required policies with action: list(resources) pairs
     req_permissions = dict()
     for action in actions:
-        req_permissions[action] = res_list
+        if combination:
+            req_permissions[action] = ['&'.join(res_list)]
+        else:
+            req_permissions[action] = res_list
     return target_params, req_permissions, add_denied
 
 
