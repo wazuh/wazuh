@@ -489,6 +489,12 @@ class WazuhException(Exception):
         4015: {'message': 'Permission denied, could not remove agents from group before deleting it',
                'remediation': 'Please, make sure you have the right permissions for actions: agent:modify_group and '
                               'group:modify_assignments before attempting to delete the group'},
+        4998: {'message': 'Specified resources are invalid',
+               'remediation': 'The maximum length for permission combinations is two, '
+                              'for more information on setting up permissions please visit XXXX'},
+        4999: {'message': 'The defined resources are not valid',
+               'remediation': 'Please, make sure permissions are properly defined, '
+                              'for more information on setting up permissions please visit XXXX'},
 
         # User management
         5000: {'message': 'The user could not be created',
