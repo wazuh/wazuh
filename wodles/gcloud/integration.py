@@ -24,11 +24,11 @@ class WazuhGCloudSubscriber:
     """Class for sending events from Google Cloud to Wazuh."""
 
     header = '1:Wazuh-GCloud:'
+    key_name = 'gcp'
 
     def __init__(self, credentials_file: str, project: str,
                  subscription_id: str):
         """Instantiate a WazuhGCloudSubscriber object.
-
         :params credentials_file: Path to credentials file
         :params project: Project name
         :params subscription_id: Subscription ID
@@ -43,7 +43,6 @@ class WazuhGCloudSubscriber:
     def get_subscriber_client(self, credentials_file: str) \
             -> pubsub.subscriber.Client:
         """Get a subscriber client.
-
         :param credentials_file: Path to credentials file
         :return: Instance of subscriber client object created with the
             provided key
@@ -53,7 +52,6 @@ class WazuhGCloudSubscriber:
     def get_subscription_path(self, project: str, subscription_id: str) \
             -> str:
         """Get the subscription path.
-
         :param project: Project name
         :param subscription_id: Subscription ID
         :return: String with the subscription path
@@ -62,7 +60,6 @@ class WazuhGCloudSubscriber:
 
     def send_msg(self, msg: bytes):
         """Send an event to the Wazuh queue.
-
         :param msg: Event to be sent
         """
         event_json = f'{self.header}{self.format_msg(msg)}'.encode(errors='replace')  # noqa: E501
@@ -81,14 +78,14 @@ class WazuhGCloudSubscriber:
 
     def format_msg(self, msg: bytes) -> str:
         """Format a message.
-
         :param msg: Message to be formatted
         """
-        return msg.decode(errors='replace')
+        # Insert msg as value of 'gcloud' key.
+        formated_msg = '{"' + self.key_name + '" : ' + msg.decode(errors='replace') + '}'
+        return formated_msg
 
     def process_message(self, ack_id: str, data: bytes):
         """Send a message to Wazuh queue.
-
         :param ack_id: ACK_ID from event
         :param data: Data to be sent to Wazuh
         """
@@ -108,7 +105,6 @@ class WazuhGCloudSubscriber:
     def pull_request(self, max_messages: int = 100) \
             -> pubsub.types.PullResponse:
         """Make request for pulling messages from the subscription.
-
         :param max_messages: Maximum number of messages to retrieve
         :return: Response of pull request. If the deadline is exceeded,
             the method will return an empty PullResponse object
@@ -127,7 +123,6 @@ class WazuhGCloudSubscriber:
 
     def process_messages(self, max_messages: int = 100) -> int:
         """Process the available messages in the subscription.
-
         :param max_messages: Maximum number of messages to retrieve
         :return: Number of processed messages
         """
@@ -136,7 +131,7 @@ class WazuhGCloudSubscriber:
         while len(response.received_messages) > 0:
             for message in response.received_messages:
                 message_data: bytes = message.message.data
-                logger.debug(f'Processing event:\n{message_data.decode()}')
+                logger.debug(f'Processing event:\n{self.format_msg(message_data)}')
                 self.process_message(message.ack_id, message_data)
                 processed_messages += 1  # increment processed_messages counter
             # get more messages
