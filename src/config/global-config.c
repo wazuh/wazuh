@@ -186,7 +186,6 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
 int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
 {
     int i = 0;
-    int j = 0;
     char message[OS_FLSIZE];
 
     /* Whitelist size */
@@ -269,30 +268,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
         while (*ww != NULL) {
             mailto_size++;
             ww++;
-        }
-    }
-
-    if (output) { // We are checking the configuration file, free everything just in case
-        if(Mail) {
-            if(Mail->to) {
-                for(j = 0; Mail->to[j]; j++) {
-                    free(Mail->to[j]);
-                }
-                free(Mail->to);
-            }
-            os_free(Mail->from);
-            os_free(Mail->reply_to);
-            os_free(Mail->idsname);
-            os_free(Mail->smtpserver);
-            os_free(Mail->heloserver);
-        }
-        if (Config){
-            os_free(Config->custom_alert_output_format);
-            os_free(Config->geoipdb_file);
-            os_free(Config->prelude_profile);
-            os_free(Config->zeromq_output_uri);
-            os_free(Config->zeromq_output_server_cert);
-            os_free(Config->zeromq_output_client_cert);
         }
     }
 

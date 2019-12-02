@@ -19,6 +19,9 @@
 #include "active-response.h"
 #include "config.h"
 
+void free_ar_command(ar_command* arcommand);
+void free_ar_response(active_response* ar);
+
 /* Global variables */
 int ar_flag = 0;
 
@@ -156,6 +159,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
 
         /* Command */
         if (strcmp(node[i]->element, xml_ar_command) == 0) {
+            os_free(tmp_ar->command);
             tmp_ar->command = strdup(node[i]->content);
         }
         /* Target */
@@ -163,10 +167,13 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2, char **output)
             free(tmp_location);
             tmp_location = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, xml_ar_agent_id) == 0) {
+            os_free(tmp_ar->agent_id);
             tmp_ar->agent_id = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, xml_ar_rules_id) == 0) {
+            os_free(tmp_ar->rules_id);
             tmp_ar->rules_id = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, xml_ar_rules_group) == 0) {
+            os_free(tmp_ar->rules_group);
             tmp_ar->rules_group = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, xml_ar_level) == 0) {
             /* Level must be numeric */
@@ -489,7 +496,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
                 wm_strcat(output, "Invalid NULL element in the configuration.", '\n');
             }
             free(tmp_str);
-            free(tmp_command);
+            free_ar_command(tmp_command);
             return (OS_INVALID);
         } else if (!node[i]->content) {
             if (output == NULL) {
@@ -501,7 +508,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
                 wm_strcat(output, message, '\n');
             }
             free(tmp_str);
-            free(tmp_command);
+            free_ar_command(tmp_command);
             return (OS_INVALID);
         }
         if (strcmp(node[i]->element, command_name) == 0) {
@@ -517,14 +524,16 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
                     wm_strcat(output, message, '\n');
                 }
                 free(tmp_str);
-                free(tmp_command);
+                free_ar_command(tmp_command);
                 return (OS_INVALID);
             }
+            os_free(tmp_command->name);
             tmp_command->name = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, command_expect) == 0) {
             free(tmp_str);
             tmp_str = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, command_executable) == 0) {
+            os_free(tmp_command->executable);
             tmp_command->executable = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, timeout_allowed) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
@@ -534,7 +543,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
             } else if (output == NULL) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 free(tmp_str);
-                free(tmp_command);
+                free_ar_command(tmp_command);
                 return (OS_INVALID);
             } else {
                 snprintf(message, OS_FLSIZE,
@@ -542,7 +551,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
                     node[i]->element, node[i]->content);
                 wm_strcat(output, message, '\n');
                 free(tmp_str);
-                free(tmp_command);
+                free_ar_command(tmp_command);
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, extra_args) == 0) {
@@ -550,7 +559,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
         } else if (output == NULL) {
             merror(XML_INVELEM, node[i]->element);
             free(tmp_str);
-            free(tmp_command);
+            free_ar_command(tmp_command);
             return (OS_INVALID);
         } else {
             snprintf(message, OS_FLSIZE,
@@ -558,7 +567,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
                 node[i]->element);
             wm_strcat(output, message, '\n');
             free(tmp_str);
-            free(tmp_command);
+            free_ar_command(tmp_command);
             return (OS_INVALID);
         }
         i++;
@@ -571,7 +580,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
             wm_strcat(output, "Missing command options. " "You must specify a 'name' and 'executable'.", '\n');
         }
         free(tmp_str);
-        free(tmp_command);
+        free_ar_command(tmp_command);
         return (-1);
     }
 
@@ -598,7 +607,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
         } else {
             wm_strcat(output, "Error adding nodes to list.", '\n');
         }
-        free(tmp_command);
+        free_ar_command(tmp_command);
         return (-1);
     }
 
@@ -634,30 +643,29 @@ int Test_ActiveResponse(const char *path, int type, char **output) {
 
     /* Frees the the active response and command config structs */
     OSListNode *node;
-    for (node = OSList_GetFirstNode(test_activecmd); node; node = OSList_GetCurrentlyNode(test_activecmd)) {
-        ar_command* current_command = (ar_command*)node->data;
 
-        os_free(current_command->name);
-        os_free(current_command->executable);
-        os_free(current_command->extra_args);
-        os_free(current_command);
+    for (node = OSList_GetFirstNode(test_activecmd); node; node = OSList_GetNextNode(test_activecmd)) {
+        w_rwlock_wrlock((pthread_rwlock_t *)&test_activecmd->wr_mutex);
+        w_mutex_lock((pthread_mutex_t *)&test_activecmd->mutex);
 
-        OSList_DeleteCurrentlyNode(test_activecmd);
-    }
-    for (node = OSList_GetFirstNode(test_activeresp); node; node = OSList_GetCurrentlyNode(test_activeresp)) {
-        active_response* current_response = (active_response*)node->data;
+        free_ar_command((ar_command*)node->data);
 
-        os_free(current_response->name);
-        os_free(current_response->command);
-        os_free(current_response->agent_id);
-        os_free(current_response->rules_id);
-        os_free(current_response->rules_group);
-        os_free(current_response->ar_cmd);
-        os_free(current_response);
-
-        OSList_DeleteCurrentlyNode(test_activeresp);
+        w_mutex_unlock((pthread_mutex_t *)&test_activecmd->mutex);
+        w_rwlock_unlock((pthread_rwlock_t *)&test_activecmd->wr_mutex);
     }
 
+    for (node = OSList_GetFirstNode(test_activeresp); node; node = OSList_GetNextNode(test_activeresp)) {
+        w_rwlock_wrlock((pthread_rwlock_t *)&test_activeresp->wr_mutex);
+        w_mutex_lock((pthread_mutex_t *)&test_activeresp->mutex);
+
+        free_ar_response((active_response*)node->data);
+
+        w_mutex_unlock((pthread_mutex_t *)&test_activeresp->mutex);
+        w_rwlock_unlock((pthread_rwlock_t *)&test_activeresp->wr_mutex);
+    }
+
+    Free_OSList(test_activecmd);
+    Free_OSList(test_activeresp);
     os_free (test_activecmd);
     os_free (test_activeresp);
 
@@ -795,4 +803,28 @@ next:
 
     OS_ClearXML(&xml);
     return 0;
+}
+
+void free_ar_command(ar_command* arcommand) {
+    if(arcommand) {
+        os_free(arcommand->name);
+        os_free(arcommand->executable);
+        os_free(arcommand->extra_args);
+
+        free(arcommand);
+        arcommand = NULL;
+    }
+}
+
+void free_ar_response(active_response* ar) {
+    if(ar) {
+        os_free(ar->name);
+        os_free(ar->command);
+        os_free(ar->agent_id);
+        os_free(ar->rules_id);
+        os_free(ar->rules_group);
+
+        free(ar);
+        ar = NULL;
+    }
 }
