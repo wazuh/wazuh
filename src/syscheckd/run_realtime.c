@@ -221,6 +221,8 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     PFILE_NOTIFY_INFORMATION pinfo;
     TCHAR finalfile[MAX_PATH];
 
+    memset(final_path, '\0', MAX_LINE + 1);
+
     if (dwBytes == 0) {
         mwarn(FIM_WARN_REALTIME_OVERFLOW);
     }

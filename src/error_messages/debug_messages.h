@@ -194,7 +194,7 @@
 #define FIM_WHODATA_DEVICE_LETTER           "(6303): Device '%s' associated with the mounting point '%s'"
 #define FIM_WHODATA_DEVICE_PATH             "(6304): Find device '%s' in path '%s'"
 #define FIM_WHODATA_DEVICE_REPLACE          "(6305): Replacing '%s' to '%s'"
-#define FIM_WHODATA_PATH_NOPROCCESED        "(6306): The path '%s' could not be processed in Whodata mode. Error: %lu."
+#define FIM_WHODATA_PATH_NOPROCCESED        "(6306): The path could not be processed in Whodata mode. Error: %u."
 #define FIM_WHODATA_CONVERT_PATH            "(6307): Convert '%s' to '%s' to process the whodata event."
 #define FIM_WHODATA_FOLDER_REMOVED          "(6308): File '%s' was inside the removed directory '%s'. It will be notified."
 #define FIM_WHODATA_IGNORE_FILEEVENT        "(6309): Ignoring remove event for file '%s' because it has already been reported."
@@ -225,5 +225,6 @@
 #define FIM_AUDIT_INVALID_AUID              "(6334): Audit: Invalid 'auid' value read. Check Audit configuration (PAM)."
 #define FIM_ENTRIES_INFO                    "(6335): Fim entries: %d"
 #define FIM_INODES_INFO                     "(6336): Fim inode entries: %d, path count: %d"
+#define FIM_WHODATA_INVALID_UNKNOWN_UID     "(6337): The user ID could not be extracted from the event."
 
 #endif /* DEBUG_MESSAGES_H */

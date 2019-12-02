@@ -93,7 +93,7 @@ void replace_device_path(char **path);
 
 char *guid_to_string(GUID *guid) {
     char *string_guid;
-    os_calloc(40, sizeof(char *), string_guid);
+    os_calloc(40, sizeof(char), string_guid);
 
     snprintf(string_guid, 40, "{%08lX-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
     guid->Data1,
@@ -595,7 +595,11 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             mwarn(FIM_WHODATA_PARAMETER, buffer[7].Type, "user_id");
             user_id = NULL;
         } else if (!ConvertSidToStringSid(buffer[7].SidVal, &user_id)) {
-            mdebug1(FIM_WHODATA_INVALID_UID, user_name);
+            if (user_name) {
+                mdebug1(FIM_WHODATA_INVALID_UID, user_name);
+            } else {
+                mdebug1(FIM_WHODATA_INVALID_UNKNOWN_UID);
+            }
             goto clean;
         }
         snprintf(hash_id, 21, "%llu", handle_id);
@@ -604,7 +608,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             case 4656:
                 is_directory = 0;
                 ignore_remove_event = 0;
-                position = -1;
 
                 if (!path) {
                     goto clean;
@@ -758,7 +761,7 @@ add_whodata_evt:
                 os_calloc(1, sizeof(fim_element), item);
                 item->mode = FIM_WHODATA;
 
-                if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
+                if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt && w_evt->path) {
                     unsigned int mask = w_evt->mask;
                     if (!w_evt->scan_directory) {
                         if (w_evt->deleted) {
@@ -1250,7 +1253,6 @@ int get_volume_names() {
         win_error = GetLastError();
         mwarn("FindFirstVolumeW failed (%u)'%s'", win_error, strerror(win_error));
         FindVolumeClose(fh);
-        fh = INVALID_HANDLE_VALUE;
         return success;
     }
 
@@ -1271,7 +1273,6 @@ int get_volume_names() {
             volume_name[3]     != L'\\' ||
             volume_name[index] != L'\\')
         {
-            win_error = ERROR_BAD_PATHNAME;
             mwarn("Find Volume returned a bad path: %s", convert_volume);
             break;
         }
@@ -1305,7 +1306,6 @@ int get_volume_names() {
             }
 
             // Finished iterating, through all the volumes.
-            win_error = ERROR_SUCCESS;
             success = 0;
             break;
         }
@@ -1313,7 +1313,6 @@ int get_volume_names() {
     }
 
     FindVolumeClose(fh);
-    fh = INVALID_HANDLE_VALUE;
 
     os_free(convert_device);
     os_free(convert_volume);
@@ -1332,7 +1331,7 @@ int get_drive_names(wchar_t *volume_name, char *device) {
 
     while (1) {
         // Allocate a buffer to hold the paths.
-        os_calloc(MAX_PATH, sizeof(wchar_t *), names);
+        os_calloc(MAX_PATH, sizeof(wchar_t), names);
 
         // Obtain all of the paths for this volume.
         success = GetVolumePathNamesForVolumeNameW(
@@ -1340,7 +1339,6 @@ int get_drive_names(wchar_t *volume_name, char *device) {
             );
 
         if (success) {
-            retval = 0;
             break;
         }
 
@@ -1431,16 +1429,22 @@ void replace_device_path(char **path) {
 char *get_whodata_path(const short unsigned int *win_path) {
     int count;
     char *path = NULL;
+    int error = -1;
 
     if (count = WideCharToMultiByte(CP_ACP, 0, win_path, -1, NULL, 0, NULL, NULL), count > 0) {
         os_calloc(count + 1, sizeof(char), path);
-        count = WideCharToMultiByte(CP_ACP, 0, win_path, -1, path, count, NULL, NULL);
-        path[count] = '\0';
+        if (count = WideCharToMultiByte(CP_ACP, 0, win_path, -1, path, count, NULL, NULL), count > 0) {
+            path[count] = '\0';
+        } else {
+            error = GetLastError();
+        }
+    } else {
+        error = GetLastError();
     }
 
-    if (!count) {
+    if (count <= 0) {
+        mdebug1(FIM_WHODATA_PATH_NOPROCCESED, error);
         os_free(path);
-        mdebug1(FIM_WHODATA_PATH_NOPROCCESED, path, GetLastError());
     }
 
     return path;
@@ -1513,7 +1517,7 @@ int whodata_check_arch() {
 int w_update_sacl(const char *obj_path) {
     SYSTEM_AUDIT_ACE *ace = NULL;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
-    HANDLE hdle;
+    HANDLE hdle = NULL;
     PSECURITY_DESCRIPTOR security_descriptor = NULL;
     PACL old_sacl = NULL;
     PACL new_sacl = NULL;
