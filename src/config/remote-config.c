@@ -217,6 +217,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2, char 
                 logr->ipv6[pl] = 1;
             }
         } else if (strcasecmp(node[i]->element, xml_remote_lip) == 0) {
+            os_free(logr->lip[pl]);
             os_strdup(node[i]->content, logr->lip[pl]);
             if (OS_IsValidIP(logr->lip[pl], NULL) != 1) {
                 if (output == NULL) {
@@ -412,14 +413,9 @@ int Test_Remoted(const char *path, char **output) {
 
 void free_remoted(remoted *rmt) {
     if(rmt) {
-        os_free(rmt->proto);
-        os_free(rmt->port);
-        os_free(rmt->conn);
-        os_free(rmt->ipv6);
-                
         int i;
         if(rmt->lip) {
-            for(i = 0; rmt->lip[i]; i++) {
+            for(i = 0; rmt->conn[i] != 0; i++) {
                 free(rmt->lip[i]);
             }
             free(rmt->lip);
@@ -440,6 +436,12 @@ void free_remoted(remoted *rmt) {
             }
             free(rmt->denyips);
         }
+
+        os_free(rmt->proto);
+        os_free(rmt->port);
+        os_free(rmt->conn);
+        os_free(rmt->ipv6);
+
         free(rmt);
     }
 }

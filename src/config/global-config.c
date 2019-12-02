@@ -272,8 +272,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
         }
     }
 
-    if (output) {
-        if (Mail && Config){
+    if (output) { // We are checking the configuration file, free everything just in case
+        if(Mail) {
             if(Mail->to) {
                 for(j = 0; Mail->to[j]; j++) {
                     free(Mail->to[j]);
@@ -285,6 +285,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
             os_free(Mail->idsname);
             os_free(Mail->smtpserver);
             os_free(Mail->heloserver);
+        }
+        if (Config){
             os_free(Config->custom_alert_output_format);
             os_free(Config->geoipdb_file);
             os_free(Config->prelude_profile);
@@ -315,6 +317,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
         } else if (strcmp(node[i]->element, xml_custom_alert_output) == 0) {
             if (Config) {
                 Config->custom_alert_output = 1;
+                os_free(Config->custom_alert_output_format);
                 os_strdup(node[i]->content, Config->custom_alert_output_format);
             }
         }
@@ -367,12 +370,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
             }
         /* GeoIP */
         } else if(strcmp(node[i]->element, xml_geoipdb_file) == 0) {
-            if(Config)
-            {
+            if(Config) {
+                os_free(Config->geoipdb_file);
                 Config->geoipdb_file = strdup(node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_prelude_profile) == 0) {
             if (Config) {
+                os_free(Config->prelude_profile);
                 Config->prelude_profile = strdup(node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_prelude_log_level) == 0) {
@@ -414,14 +418,17 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
             }
         } else if (strcmp(node[i]->element, xml_zeromq_output_uri) == 0) {
             if (Config) {
+                os_free(Config->zeromq_output_uri);
                 Config->zeromq_output_uri = strdup(node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_zeromq_output_server_cert) == 0) {
             if (Config) {
+                os_free(Config->zeromq_output_server_cert);
                 Config->zeromq_output_server_cert = strdup(node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_zeromq_output_client_cert) == 0) {
             if (Config) {
+                os_free(Config->zeromq_output_client_cert);
                 Config->zeromq_output_client_cert = strdup(node[i]->content);
             }
         }
@@ -748,6 +755,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp, char **output)
 #endif
         } else if (strcmp(node[i]->element, xml_heloserver) == 0) {
             if (Mail) {
+                os_free(Mail->heloserver);
                 os_strdup(node[i]->content, Mail->heloserver);
             }
         } else if (strcmp(node[i]->element, xml_mailmaxperhour) == 0) {

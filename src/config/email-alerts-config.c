@@ -205,6 +205,10 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
                 Mail->gran_format[granto_size] = DONOTGROUP;
             }
         } else if (strcmp(node[i]->element, xml_email_location) == 0) {
+            if (Mail->gran_location[granto_size]) {
+                OSMatch_FreePattern(Mail->gran_location[granto_size]);
+                free(Mail->gran_location[granto_size]);
+            }
             os_calloc(1, sizeof(OSMatch), Mail->gran_location[granto_size]);
             if (!OSMatch_Compile(node[i]->content,
                                  Mail->gran_location[granto_size], 0)) {
@@ -221,6 +225,10 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
                 return (-1);
             }
         } else if (strcmp(node[i]->element, xml_email_group) == 0) {
+            if (Mail->gran_group[granto_size]) {
+                OSMatch_FreePattern(Mail->gran_group[granto_size]);
+                free(Mail->gran_group[granto_size]);
+            }
             os_calloc(1, sizeof(OSMatch), Mail->gran_group[granto_size]);
             if (!OSMatch_Compile(node[i]->content,
                                  Mail->gran_group[granto_size], 0)) {
@@ -297,7 +305,7 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
             merror(XML_INV_GRAN_MAIL);
         } else {
             wm_strcat(output, "Invalid 'email_alerts' config (missing parameters).", '\n');
-        }    
+        }
         return (OS_INVALID);
     }
 

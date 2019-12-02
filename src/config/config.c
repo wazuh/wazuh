@@ -65,7 +65,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 
         if (!node[i]->element) {
             if (output == NULL){
-                merror(XML_ELEMNULL);                    
+                merror(XML_ELEMNULL);
             } else {
                 wm_strcat(output, "Invalid NULL element in the configuration", '\n');
             }
@@ -324,7 +324,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
                                 mwarn("Agent name filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
                             } else {
                                 snprintf(message, OS_FLSIZE,
-                                    "WARNING: Agent name filter (%d bytes) exceeds the limit (%d)", 
+                                    "WARNING: Agent name filter (%d bytes) exceeds the limit (%d)",
                                     attrlen, OS_PATTERN_MAXSIZE);
                                 wm_strcat(output, message, '\n');
                             }
@@ -354,7 +354,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
                                 mwarn("Agent OS filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
                             } else {
                                 snprintf(message, OS_FLSIZE,
-                                    "WARNING: Agent OS filter (%d bytes) exceeds the limit (%d)", 
+                                    "WARNING: Agent OS filter (%d bytes) exceeds the limit (%d)",
                                     attrlen, OS_PATTERN_MAXSIZE);
                                 wm_strcat(output, message, '\n');
                             }
@@ -380,7 +380,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
                                 mwarn("Agent profile filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
                             } else {
                                 snprintf(message, OS_FLSIZE,
-                                    "WARNING: Agent profile filter (%d bytes) exceeds the limit (%d)", 
+                                    "WARNING: Agent profile filter (%d bytes) exceeds the limit (%d)",
                                     attrlen, OS_PATTERN_MAXSIZE);
                                 wm_strcat(output, message, '\n');
                             }
@@ -428,7 +428,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
                 if (output == NULL){
                     mdebug2("agent_config element does not have any attributes.");
                 }
-                
+
                 /* if node does not have any attributes, it is a generic config block.
                  * check if agent has a profile name
                  * if agent does not have profile name, then only read this generic
@@ -472,7 +472,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2, char **outp
                     "Invalid element in the configuration: '%s'.",
                     node[i]->element);
                 wm_strcat(output, message, '\n');
-            } 
+            }
             OS_ClearNode(node);
             OS_ClearXML(&xml);
             return (OS_INVALID);
