@@ -183,6 +183,7 @@ void LogCollectorStart()
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
 #endif
+            free(current->file);
             current->file = NULL;
             current->command = NULL;
             current->fp = NULL;
@@ -199,6 +200,7 @@ void LogCollectorStart()
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
 #endif
+            free(current->file);
             current->file = NULL;
             current->command = NULL;
             current->fp = NULL;
