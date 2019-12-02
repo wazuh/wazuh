@@ -254,7 +254,9 @@ endif
 MING_BASE:=
 ifeq (${TARGET}, winagent)
 # Avoid passing environment variables such CFLAGS to external Makefiles
-MAKEOVERRIDES=
+ifeq (${CC}, gcc)
+	MAKEOVERRIDES=
+endif
 
 CC=gcc
 ifneq (,$(shell which amd64-mingw32msvc-gcc))
@@ -266,7 +268,11 @@ ifneq (,$(shell which i686-pc-mingw32-gcc))
 	MINGW_HOST="i686-pc-mingw32"
 else
 ifneq (,$(shell which i686-w64-mingw32-gcc))
-	MING_BASE:=i686-w64-mingw32-
+	ifeq (${CC}, gcc)
+		MING_BASE:=i686-w64-mingw32-
+	else
+		MING_BASE:=
+	endif
 	MINGW_HOST="i686-w64-mingw32"
 else
 $(error No windows cross-compiler found!) #MING_BASE:=unknown-
