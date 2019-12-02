@@ -299,7 +299,7 @@ void sys_programs_windows(const char* LOCATION);
 void sys_hotfixes(const char* LOCATION);
 
 // Network inventory for Windows XP
-char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO AdapterInfo, int ID, char * timestamp);
+interface_entry_data * get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO AdapterInfo);
 
 // Get values about a single program from the registry
 void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
@@ -370,9 +370,9 @@ int read_entry(u_int8_t* bytes, rpm_data *info);
 
 // Get the inventory for a network interface in the object passed as parameter
 struct ifaddrs;
-void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifaddr);
+interface_entry_data * getNetworkIface_linux(char *iface_name, struct ifaddrs *ifaddr);
 
-void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddrs_ptr, __attribute__((unused)) gateway *gate);
+interface_entry_data * getNetworkIface_bsd(char *iface_name, struct ifaddrs *ifaddrs_ptr, __attribute__((unused)) gateway *gate);
 // Create the interface list
 int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr);
 
@@ -385,6 +385,8 @@ void init_hw_info(hw_info *info);
 // Initialize datastores
 void sys_initialize_datastores();
 
+// Initialize network address
+void initialize_net_addr(net_addr * net);
 // Initialize interface data
 void init_interface_data_entry(interface_entry_data * data);
 // Initialize process data

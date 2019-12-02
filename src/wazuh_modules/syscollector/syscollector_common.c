@@ -367,6 +367,16 @@ void sys_initialize_datastores() {
     w_mutex_init(&sys->processes_entry_mutex, NULL);
 }
 
+// Initialize net_addr structure
+void initialize_net_addr(net_addr * net) {
+    net->address = NULL;
+    net->netmask = NULL;
+    net->broadcast = NULL;
+    net->metric = INT_MIN;
+    net->gateway = NULL;
+    net->dhcp = NULL;
+}
+
 // Initialize interface_entry_data structure
 void init_interface_data_entry(interface_entry_data * data) {
     data->name = NULL;
@@ -383,18 +393,8 @@ void init_interface_data_entry(interface_entry_data * data) {
     data->rx_errors = INT_MIN;
     data->tx_dropped = INT_MIN;
     data->rx_dropped = INT_MIN;
-    data->ipv4->address = NULL;
-    data->ipv4->netmask = NULL;
-    data->ipv4->broadcast = NULL;
-    data->ipv4->metric = INT_MIN;
-    data->ipv4->gateway = NULL;
-    data->ipv4->dhcp = NULL;
-    data->ipv6->address = NULL;
-    data->ipv6->netmask = NULL;
-    data->ipv6->broadcast = NULL;
-    data->ipv6->metric = INT_MIN;
-    data->ipv6->gateway = NULL;
-    data->ipv6->dhcp = NULL;
+    data->ipv4 = NULL;
+    data->ipv6 = NULL;
     data->enabled = 0;
 }
 

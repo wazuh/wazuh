@@ -18,8 +18,8 @@
 
 #define MAXSTR 1024
 
-typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);  // char* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
-typedef int (*CallFunc1)(char **serial);                                                    // int get_baseboard_serial(char **serial);
+typedef interface_entry_data* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses);  // interface_entry_data* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddresses);
+typedef int (*CallFunc1)(char **serial);                                          // int get_baseboard_serial(char **serial);
 
 typedef struct _SYSTEM_PROCESS_IMAGE_NAME_INFORMATION
 {
@@ -1520,12 +1520,11 @@ char* get_broadcast_addr_xp(char* ip, char* netmask) {
     return broadcast_addr;
 }
 
-char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO AdapterInfo, int ID, char * timestamp) {
+interface_entry_data * get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO AdapterInfo) {
     PIP_ADAPTER_UNICAST_ADDRESS pUnicast = NULL;
     PIP_ADAPTER_INFO currAdapterInfo = NULL;
     PIP_ADDR_STRING currIP = NULL;
 
-    char *string;
     unsigned int i = 0;
     char host[NI_MAXHOST];
     char ipv4addr[NI_MAXHOST];
@@ -1535,76 +1534,74 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
     struct sockaddr_in6 *addr6;
     socklen_t socksize;
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON *iface_info = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "network");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    cJSON_AddItemToObject(object, "iface", iface_info);
+    interface_entry_data * entry_data = NULL;
+
+    os_calloc(1, sizeof(interface_entry_data), entry_data);
+    init_interface_data_entry(entry_data);
 
     /* Iface Name */
     char iface_name[MAXSTR];
     snprintf(iface_name, MAXSTR, "%S", pCurrAddresses->FriendlyName);
-    cJSON_AddStringToObject(iface_info, "name", iface_name);
+    os_strdup(iface_name, entry_data->name);
 
     /* Iface adapter */
     char description[MAXSTR];
     snprintf(description, MAXSTR, "%S", pCurrAddresses->Description);
-    cJSON_AddStringToObject(iface_info, "adapter", description);
+    os_strdup(description, entry_data->adapter);
 
     /* Type of interface */
     switch (pCurrAddresses->IfType){
         case IF_TYPE_ETHERNET_CSMACD:
-            cJSON_AddStringToObject(iface_info, "type", "ethernet");
+            os_strdup("ethernet", entry_data->type);
             break;
         case IF_TYPE_ISO88025_TOKENRING:
-            cJSON_AddStringToObject(iface_info, "type", "token ring");
+            os_strdup("token ring", entry_data->type);
             break;
         case IF_TYPE_PPP:
-            cJSON_AddStringToObject(iface_info, "type", "point-to-point");
+            os_strdup("point-to-point", entry_data->type);
             break;
         case IF_TYPE_ATM:
-            cJSON_AddStringToObject(iface_info, "type", "ATM");
+            os_strdup("ATM", entry_data->type);
             break;
         case IF_TYPE_IEEE80211:
-            cJSON_AddStringToObject(iface_info, "type", "wireless");
+            os_strdup("wireless", entry_data->type);
             break;
         case IF_TYPE_TUNNEL:
-            cJSON_AddStringToObject(iface_info, "type", "tunnel");
+            os_strdup("tunnel", entry_data->type);
             break;
         case IF_TYPE_IEEE1394:
-            cJSON_AddStringToObject(iface_info, "type", "firewire");
+            os_strdup("firewire", entry_data->type);
             break;
         default:
-            cJSON_AddStringToObject(iface_info, "type", "unknown");
+            os_strdup("unknown", entry_data->type);
             break;
     }
 
     /* Operational status */
     switch (pCurrAddresses->OperStatus){
         case IfOperStatusUp:
-            cJSON_AddStringToObject(iface_info, "state", "up");
+            os_strdup("up", entry_data->state);
             break;
         case IfOperStatusDown:
-            cJSON_AddStringToObject(iface_info, "state", "down");
+            os_strdup("down", entry_data->state);
             break;
         case IfOperStatusTesting:
-            cJSON_AddStringToObject(iface_info, "state", "testing");    // In testing mode
+            os_strdup("testing", entry_data->state);
             break;
         case IfOperStatusUnknown:
-            cJSON_AddStringToObject(iface_info, "state", "unknown");
+            os_strdup("unknown", entry_data->state);
             break;
         case IfOperStatusDormant:
-            cJSON_AddStringToObject(iface_info, "state", "dormant");    // In a pending state, waiting for some external event
+            os_strdup("dormant", entry_data->state);
             break;
         case IfOperStatusNotPresent:
-            cJSON_AddStringToObject(iface_info, "state", "notpresent"); // Interface down because of any component is not present (hardware typically)
+            os_strdup("notpresent", entry_data->state);
             break;
         case IfOperStatusLowerLayerDown:
-            cJSON_AddStringToObject(iface_info, "state", "lowerlayerdown"); // This interface depends on a lower layer interface which is down
+            os_strdup("lowerlayerdown", entry_data->state);
             break;
         default:
-            cJSON_AddStringToObject(iface_info, "state", "unknown");
+            os_strdup("unknown", entry_data->state);
             break;
     }
 
@@ -1616,20 +1613,24 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
             snprintf(MAC + strlen(MAC), 3, "%.2X", pCurrAddresses->PhysicalAddress[i]);
             if (i < (pCurrAddresses->PhysicalAddressLength - 1)) MAC[strlen(MAC)] = ':';
         }
-        cJSON_AddStringToObject(iface_info, "MAC", MAC);
+        os_strdup(MAC, entry_data->mac);
     }
 
     /* MTU */
     int mtu = (int) pCurrAddresses->Mtu;
-    if (mtu != 0) cJSON_AddNumberToObject(iface_info, "MTU", mtu);
+    entry_data->mtu = mtu;
 
-    cJSON *ipv4 = cJSON_CreateObject();
-    cJSON *ipv4_addr = cJSON_CreateArray();
-    cJSON *ipv4_netmask = cJSON_CreateArray();
-    cJSON *ipv4_broadcast = cJSON_CreateArray();
+    os_calloc(1, sizeof(net_addr), entry_data->ipv4);
+    initialize_net_addr(entry_data->ipv4);
+    os_malloc(sizeof(char *), entry_data->ipv4->address);
+    os_malloc(sizeof(char *), entry_data->ipv4->netmask);
+    os_malloc(sizeof(char *), entry_data->ipv4->broadcast);
+    int address4 = 0, nmask4 = 0, bcast4 = 0;
 
-    cJSON *ipv6 = cJSON_CreateObject();
-    cJSON *ipv6_addr = cJSON_CreateArray();
+    os_calloc(1, sizeof(net_addr), entry_data->ipv6);
+    initialize_net_addr(entry_data->ipv6);
+    os_malloc(sizeof(char *), entry_data->ipv6->address);
+    int address6 = 0;
 
     /* Get network stats */
     DWORD retVal = 0;
@@ -1648,14 +1649,14 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
             ULONG64 tx_packets = ifRow.dwOutUcastPkts + ifRow.dwOutNUcastPkts;
             ULONG64 rx_packets = ifRow.dwInUcastPkts + ifRow.dwInNUcastPkts;
 
-            cJSON_AddNumberToObject(iface_info, "tx_packets", tx_packets);
-            cJSON_AddNumberToObject(iface_info, "rx_packets", rx_packets);
-            cJSON_AddNumberToObject(iface_info, "tx_bytes", ifRow.dwOutOctets);
-            cJSON_AddNumberToObject(iface_info, "rx_bytes", ifRow.dwInOctets);
-            cJSON_AddNumberToObject(iface_info, "tx_errors", ifRow.dwOutErrors);
-            cJSON_AddNumberToObject(iface_info, "rx_errors", ifRow.dwInErrors);
-            cJSON_AddNumberToObject(iface_info, "tx_dropped", ifRow.dwOutDiscards);
-            cJSON_AddNumberToObject(iface_info, "rx_dropped", ifRow.dwInDiscards);
+            entry_data->tx_packets = tx_packets;
+            entry_data->rx_packets = rx_packets;
+            entry_data->tx_bytes = ifRow.dwOutOctets;
+            entry_data->rx_bytes = ifRow.dwInOctets;
+            entry_data->tx_errors = ifRow.dwOutErrors;
+            entry_data->rx_errors = ifRow.dwInErrors;
+            entry_data->tx_dropped = ifRow.dwOutDiscards;
+            entry_data->rx_dropped = ifRow.dwInDiscards;
         }
     }
 
@@ -1688,7 +1689,9 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
                 /* inet_ntoa() is used to provide compatibility with XP */
                 ipaddress = ((struct sockaddr_in*)(pUnicast->Address.lpSockaddr))->sin_addr;
                 snprintf(host, NI_MAXHOST, "%s", inet_ntoa(ipaddress));
-                cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
+                os_strdup(host, entry_data->ipv4->address[address4]);
+                os_realloc(entry_data->ipv4->address, (address4 + 2) * sizeof(char *), entry_data->ipv4->address);
+                address4++;
                 snprintf(ipv4addr, NI_MAXHOST, "%s", host);
 
                 /* Locate this network interface in the IP_ADAPTER_INFO struct array */
@@ -1719,12 +1722,16 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
                 if (currIP) {
                     /* We found a full match. Let's get the network mask right away */
                     snprintf(host, NI_MAXHOST, "%s", currIP->IpMask.String);
-                    cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(host));
+                    os_strdup(host, entry_data->ipv4->netmask[nmask4]);
+                    os_realloc(entry_data->ipv4->netmask, (nmask4 + 2) * sizeof(char *), entry_data->ipv4->netmask);
+                    nmask4++;
 
                     /* Get the broadcast address only if we already retrieved the network mask */
                     broadcast = get_broadcast_addr_xp(ipv4addr, host);
                     if (broadcast) {
-                        cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadcast));
+                        os_strdup(broadcast, entry_data->ipv4->broadcast[bcast4]);
+                        os_realloc(entry_data->ipv4->broadcast, (bcast4 + 2) * sizeof(char *), entry_data->ipv4->broadcast);
+                        bcast4++;
                         free(broadcast);
                         broadcast = NULL;
                     }
@@ -1750,7 +1757,9 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
                     clean_wsa_conversion(host);
                 }
 
-                cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(host));
+                os_strdup(host, entry_data->ipv6->address[address6]);
+                os_realloc(entry_data->ipv6->address, (address6 + 2) * sizeof(char *), entry_data->ipv6->address);
+                address6++;
             }
 
             pUnicast = pUnicast->Next;
@@ -1774,7 +1783,7 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
 
             while(currIP) {
                 snprintf(host, NI_MAXHOST, "%s", currIP->IpAddress.String);
-                cJSON_AddStringToObject(ipv4, "gateway", host);
+                os_strdup(host, entry_data->ipv4->gateway);
                 currIP = currIP->Next;
             }
 
@@ -1788,50 +1797,23 @@ finish:
     if (wsa_enabled) WSACleanup();
 
     if ((pCurrAddresses->Flags & IP_ADAPTER_DHCP_ENABLED) && (pCurrAddresses->IfIndex != 0)) {
-        cJSON_AddStringToObject(ipv4, "DHCP", "enabled");
+        os_strdup("enabled", entry_data->ipv4->dhcp);
     }else{
-        cJSON_AddStringToObject(ipv4, "DHCP", "disabled");
+        os_strdup("disabled", entry_data->ipv4->dhcp);
     }
 
-    if ((pCurrAddresses->Flags & IP_ADAPTER_DHCP_ENABLED) && (pCurrAddresses->Ipv6IfIndex != 0)){
-        cJSON_AddStringToObject(ipv6, "DHCP", "enabled");
-    }else{
-        cJSON_AddStringToObject(ipv6, "DHCP", "disabled");
+    if ((pCurrAddresses->Flags & IP_ADAPTER_DHCP_ENABLED) && (pCurrAddresses->Ipv6IfIndex != 0)){\
+        os_strdup("enabled", entry_data->ipv6->dhcp);
+    }else{\
+        os_strdup("disabled", entry_data->ipv6->dhcp);
     }
 
-    /* Create structure and send data in JSON format of each interface */
+    entry_data->ipv4->address[address4] = NULL;
+    entry_data->ipv4->netmask[nmask4] = NULL;
+    entry_data->ipv4->broadcast[bcast4] = NULL;
+    entry_data->ipv6->address[address6] = NULL;
 
-    if (cJSON_GetArraySize(ipv4_addr) > 0) {
-        cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
-        if (cJSON_GetArraySize(ipv4_netmask) > 0) {
-            cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
-        } else {
-            cJSON_Delete(ipv4_netmask);
-        }
-        if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
-            cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
-        } else {
-            cJSON_Delete(ipv4_broadcast);
-        }
-        cJSON_AddItemToObject(iface_info, "IPv4", ipv4);
-    } else {
-        cJSON_Delete(ipv4_addr);
-        cJSON_Delete(ipv4_netmask);
-        cJSON_Delete(ipv4_broadcast);
-        cJSON_Delete(ipv4);
-    }
-
-    if (cJSON_GetArraySize(ipv6_addr) > 0) {
-        cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
-        cJSON_AddItemToObject(iface_info, "IPv6", ipv6);
-    } else {
-        cJSON_Delete(ipv6_addr);
-        cJSON_Delete(ipv6);
-    }
-
-    string = cJSON_PrintUnformatted(object);
-    cJSON_Delete(object);
-    return string;
+    return entry_data;
 }
 
 /* Network inventory for Windows systems */
@@ -1968,25 +1950,35 @@ void sys_network_windows(const char* LOCATION){
                     continue;
                 }
 
-                char* string;
+                cJSON * json_event = NULL;
+                interface_entry_data * entry_data = NULL;
 
                 if (checkVista()) {
                     /* Call function get_network_vista() in syscollector_win_ext.dll */
                     if(_get_network_vista) {
-                        string = _get_network_vista(pCurrAddresses, ID, timestamp);
+                        entry_data = _get_network_vista(pCurrAddresses);
                     }
                     else {
-                        os_strdup("UNKNOWN",string);
+                        continue;
                     }
                 } else {
                     /* Call function get_network_xp() */
-                    string = get_network_xp(pCurrAddresses, AdapterInfo, ID, timestamp);
+                    entry_data = get_network_xp(pCurrAddresses, AdapterInfo);
                 }
 
-                mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
-                wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+                if (!entry_data) {
+                    mdebug2("Couldn't get the data of the interface: '%S'", pCurrAddresses->FriendlyName);
+                    continue;
+                }
 
-                free(string);
+                // Check if it is necessary to create an interface event
+                if (json_event = analyze_interface(entry_data, ID, timestamp), json_event) {
+                    char * string = cJSON_PrintUnformatted(json_event);
+                    mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
+                    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+                    cJSON_Delete(json_event);
+                    free(string);
+                }
 
                 pCurrAddresses = pCurrAddresses->Next;
             }
@@ -2014,6 +2006,9 @@ void sys_network_windows(const char* LOCATION){
     if (pAddresses) {
         win_free(pAddresses);
     }
+
+    // Checking for disabled interfaces
+    check_disabled_interfaces();
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "network_end");

@@ -978,21 +978,21 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     /* Collect all information for each interface */
     for (i=0; i < size_ifaces; i++){
 
-        char *string;
-        cJSON *object = cJSON_CreateObject();
-        cJSON_AddStringToObject(object, "type", "network");
-        cJSON_AddNumberToObject(object, "ID", random_id);
-        cJSON_AddStringToObject(object, "timestamp", timestamp);
+        cJSON * json_event = NULL;
+        interface_entry_data * entry_data = NULL;
 
-        getNetworkIface_linux(object, ifaces_list[i], ifaddr);
-
-        /* Send interface data in JSON format */
-        string = cJSON_PrintUnformatted(object);
-        mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
-        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-        cJSON_Delete(object);
-
-        free(string);
+        if (entry_data = getNetworkIface_linux(ifaces_list[i], ifaddr), entry_data) {
+            // Check if it is necessary to create an interface event
+            if (json_event = analyze_interface(entry_data, random_id, timestamp), json_event) {
+                char * string = cJSON_PrintUnformatted(json_event);
+                mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
+                wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                cJSON_Delete(json_event);
+                free(string);
+            }
+        } else {
+            mdebug2("Couldn't get the data of the interface: '%s'", ifaces_list[i]);
+        }
     }
 
     freeifaddrs(ifaddr);
@@ -1000,6 +1000,9 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         free(ifaces_list[i]);
     }
     free(ifaces_list);
+
+    // Checking for disabled interfaces
+    check_disabled_interfaces();
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "network_end");
@@ -1692,26 +1695,29 @@ int read_entry(u_int8_t* bytes, rpm_data *info) {
 
 }
 
-void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
+interface_entry_data * getNetworkIface_linux(char *iface_name, struct ifaddrs *ifaddr){
 
     struct ifaddrs *ifa;
     int k = 0;
     int family = 0;
 
-    cJSON *interface = cJSON_CreateObject();
-    cJSON_AddItemToObject(object, "iface", interface);
-    cJSON_AddStringToObject(interface, "name", iface_name);
+    interface_entry_data * entry_data = NULL;
+
+    os_calloc(1, sizeof(interface_entry_data), entry_data);
+    init_interface_data_entry(entry_data);
+
+    os_strdup(iface_name, entry_data->name);
 
     /* Interface type */
     char *type;
     type = get_if_type(iface_name);
-    cJSON_AddStringToObject(interface, "type", type);
+    os_strdup(type, entry_data->type);
     free(type);
 
     /* Operational state */
     char *state;
     state = get_oper_state(iface_name);
-    cJSON_AddStringToObject(interface, "state", state);
+    os_strdup(state, entry_data->state);
     free(state);
 
     /* Get MAC address */
@@ -1725,7 +1731,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
             if (newline) {
                 *newline = '\0';
             }
-            cJSON_AddStringToObject(interface, "MAC", mac);
+            os_strdup(mac, entry_data->mac);
         } else {
             mtdebug1(WM_SYS_LOGTAG, "Invalid MAC address length for interface '%s' at '%s': file is empty.", iface_name, addr_path);
         }
@@ -1734,15 +1740,19 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
         mtdebug1(WM_SYS_LOGTAG, "Unable to read MAC address for interface '%s' from '%s': %s (%d)", iface_name, addr_path, strerror(errno), errno);
     }
 
-    cJSON *ipv4 = cJSON_CreateObject();
-    cJSON *ipv4_addr = cJSON_CreateArray();
-    cJSON *ipv4_netmask = cJSON_CreateArray();
-    cJSON *ipv4_broadcast = cJSON_CreateArray();
+    os_calloc(1, sizeof(net_addr), entry_data->ipv4);
+    initialize_net_addr(entry_data->ipv4);
+    os_malloc(sizeof(char *), entry_data->ipv4->address);
+    os_malloc(sizeof(char *), entry_data->ipv4->netmask);
+    os_malloc(sizeof(char *), entry_data->ipv4->broadcast);
+    int addr4 = 0, nmask4 = 0, bcast4 = 0;
 
-    cJSON *ipv6 = cJSON_CreateObject();
-    cJSON *ipv6_addr = cJSON_CreateArray();
-    cJSON *ipv6_netmask = cJSON_CreateArray();
-    cJSON *ipv6_broadcast = cJSON_CreateArray();
+    os_calloc(1, sizeof(net_addr), entry_data->ipv6);
+    initialize_net_addr(entry_data->ipv6);
+    os_malloc(sizeof(char *), entry_data->ipv6->address);
+    os_malloc(sizeof(char *), entry_data->ipv6->netmask);
+    os_malloc(sizeof(char *), entry_data->ipv6->broadcast);
+    int addr6 = 0, nmask6 = 0, bcast6 = 0;
 
     for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
 
@@ -1765,7 +1775,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                         host, NI_MAXHOST,
                         NULL, 0, NI_NUMERICHOST);
                 if (result == 0) {
-                    cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
+                    os_strdup(host, entry_data->ipv4->address[addr4]);
+                    os_realloc(entry_data->ipv4->address, (addr4 + 2) * sizeof(char *), entry_data->ipv4->address);
+                    addr4++;
                 } else {
                     mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 address for interface '%s': %s\n", iface_name, gai_strerror(result));
                 }
@@ -1779,7 +1791,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                         NULL, 0, NI_NUMERICHOST);
 
                     if (result == 0) {
-                        cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
+                        os_strdup(netmask, entry_data->ipv4->netmask[nmask4]);
+                        os_realloc(entry_data->ipv4->netmask, (nmask4 + 2) * sizeof(char *), entry_data->ipv4->netmask);
+                        nmask4++;
                     } else {
                         mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 netmask for interface '%s': %s\n", iface_name, gai_strerror(result));
                     }
@@ -1793,7 +1807,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                             NULL, 0, NI_NUMERICHOST);
 
                         if (result == 0) {
-                            cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
+                            os_strdup(broadaddr, entry_data->ipv4->broadcast[bcast4]);
+                            os_realloc(entry_data->ipv4->broadcast, (bcast4 + 2) * sizeof(char *), entry_data->ipv4->broadcast);
+                            bcast4++;
                         } else {
                             mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 broadcast for interface '%s': %s\n", iface_name, gai_strerror(result));
                         }
@@ -1801,7 +1817,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                         char * broadaddr;
                         broadaddr = get_broadcast_addr(host, netmask);
                         if (strncmp(broadaddr, "unknown", 7)) {
-                            cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
+                            os_strdup(broadaddr, entry_data->ipv4->broadcast[bcast4]);
+                            os_realloc(entry_data->ipv4->broadcast, (bcast4 + 2) * sizeof(char *), entry_data->ipv4->broadcast);
+                            bcast4++;
                         } else {
                             mterror(WM_SYS_LOGTAG, "Failed getting broadcast addr for '%s'", host);
                         }
@@ -1823,7 +1841,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     parts = OS_StrBreak('%', host, 2);
                     if(parts) {
                         ip_addrr = w_strtrim(parts[0]);
-                        cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(ip_addrr));
+                        os_strdup(ip_addrr, entry_data->ipv6->address[addr6]);
+                        os_realloc(entry_data->ipv6->address, (addr6 + 2) * sizeof(char *), entry_data->ipv6->address);
+                        addr6++;
                         for (k=0; parts[k]; k++){
                             free(parts[k]);
                         }
@@ -1842,7 +1862,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                         NULL, 0, NI_NUMERICHOST);
 
                     if (result == 0) {
-                        cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
+                        os_strdup(netmask6, entry_data->ipv6->netmask[nmask6]);
+                        os_realloc(entry_data->ipv6->netmask, (nmask6 + 2) * sizeof(char *), entry_data->ipv6->netmask);
+                        nmask6++;
                     } else {
                         mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 netmask for interface '%s': %s\n", iface_name, gai_strerror(result));
                     }
@@ -1857,7 +1879,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                         NULL, 0, NI_NUMERICHOST);
 
                     if (result == 0) {
-                        cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(broadaddr6));
+                        os_strdup(broadaddr6, entry_data->ipv6->broadcast[bcast6]);
+                        os_realloc(entry_data->ipv6->broadcast, (bcast6 + 2) * sizeof(char *), entry_data->ipv6->broadcast);
+                        bcast6++;
                     } else {
                         mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 broadcast for interface '%s': %s\n", iface_name, gai_strerror(result));
                     }
@@ -1867,99 +1891,62 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
 
                 /* Get stats of interface */
                 struct link_stats *stats = ifa->ifa_data;
-                cJSON_AddNumberToObject(interface, "tx_packets", stats->tx_packets);
-                cJSON_AddNumberToObject(interface, "rx_packets", stats->rx_packets);
-                cJSON_AddNumberToObject(interface, "tx_bytes", stats->tx_bytes);
-                cJSON_AddNumberToObject(interface, "rx_bytes", stats->rx_bytes);
-                cJSON_AddNumberToObject(interface, "tx_errors", stats->tx_errors);
-                cJSON_AddNumberToObject(interface, "rx_errors", stats->rx_errors);
-                cJSON_AddNumberToObject(interface, "tx_dropped", stats->tx_dropped);
-                cJSON_AddNumberToObject(interface, "rx_dropped", stats->rx_dropped);
+                entry_data->tx_packets = stats->tx_packets;
+                entry_data->rx_packets = stats->rx_packets;
+                entry_data->tx_bytes = stats->tx_bytes;
+                entry_data->rx_bytes = stats->rx_bytes;
+                entry_data->tx_errors = stats->tx_errors;
+                entry_data->rx_errors = stats->rx_errors;
+                entry_data->tx_dropped = stats->tx_dropped;
+                entry_data->rx_dropped = stats->rx_dropped;
 
                 /* MTU */
                 char *mtu;
                 int mtu_value;
                 mtu = get_mtu(iface_name);
                 mtu_value = atoi(mtu);
-                cJSON_AddNumberToObject(interface, "MTU", mtu_value);
+                entry_data->mtu = mtu_value;
                 free(mtu);
             }
         }
     }
 
-    /* Add address information to the structure */
+    entry_data->ipv4->address[addr4] = NULL;
+    entry_data->ipv4->netmask[nmask4] = NULL;
+    entry_data->ipv4->broadcast[bcast4] = NULL;
+    entry_data->ipv6->address[addr6] = NULL;
+    entry_data->ipv6->netmask[nmask6] = NULL;
+    entry_data->ipv6->broadcast[bcast6] = NULL;
 
-    if (cJSON_GetArraySize(ipv4_addr) > 0) {
-        cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
-        if (cJSON_GetArraySize(ipv4_netmask) > 0) {
-            cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
-        } else {
-            cJSON_Delete(ipv4_netmask);
-        }
-        if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
-            cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
-        } else {
-            cJSON_Delete(ipv4_broadcast);
-        }
+    /* Get Default Gateway */
+    char *gateway;
+    char *metric = NULL;
+    char *end = NULL;
 
-        /* Get Default Gateway */
-        char *gateway;
-        char *metric = NULL;
-        char *end = NULL;
+    gateway = get_default_gateway(iface_name);
 
-        gateway = get_default_gateway(iface_name);
-
-        if (metric = end = strchr(gateway, '|'), metric) {
-            metric++;
-            cJSON_AddNumberToObject(ipv4, "metric", atoi(metric));
-            *end = '\0';
-        }
-
-        cJSON_AddStringToObject(ipv4, "gateway", gateway);
-        free(gateway);
-
-        /* Get DHCP status for IPv4 */
-        char *dhcp_v4;
-        dhcp_v4 = check_dhcp(iface_name, AF_INET);
-        cJSON_AddStringToObject(ipv4, "DHCP", dhcp_v4);
-        free(dhcp_v4);
-
-        cJSON_AddItemToObject(interface, "IPv4", ipv4);
-
-    } else {
-        cJSON_Delete(ipv4_addr);
-        cJSON_Delete(ipv4_netmask);
-        cJSON_Delete(ipv4_broadcast);
-        cJSON_Delete(ipv4);
+    if (metric = end = strchr(gateway, '|'), metric) {
+        metric++;
+        entry_data->ipv4->metric = atoi(metric);
+        *end = '\0';
     }
 
-    if (cJSON_GetArraySize(ipv6_addr) > 0) {
-        cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
-        if (cJSON_GetArraySize(ipv6_netmask) > 0) {
-            cJSON_AddItemToObject(ipv6, "netmask", ipv6_netmask);
-        } else {
-            cJSON_Delete(ipv6_netmask);
-        }
-        if (cJSON_GetArraySize(ipv6_broadcast) > 0) {
-            cJSON_AddItemToObject(ipv6, "broadcast", ipv6_broadcast);
-        } else {
-            cJSON_Delete(ipv6_broadcast);
-        }
+    os_strdup(gateway, entry_data->ipv4->gateway);
+    free(gateway);
 
-        /* Get DHCP status for IPv6 */
-        char *dhcp_v6;
-        dhcp_v6 = check_dhcp(iface_name, AF_INET6);
-        cJSON_AddStringToObject(ipv6, "DHCP", dhcp_v6);
-        free(dhcp_v6);
+    /* Get DHCP status for IPv4 */
+    char *dhcp_v4;
+    dhcp_v4 = check_dhcp(iface_name, AF_INET);
+    os_strdup(dhcp_v4, entry_data->ipv4->dhcp);
+    free(dhcp_v4);
 
-        cJSON_AddItemToObject(interface, "IPv6", ipv6);
-    } else {
-        cJSON_Delete(ipv6_addr);
-        cJSON_Delete(ipv6_netmask);
-        cJSON_Delete(ipv6_broadcast);
-        cJSON_Delete(ipv6);
-    }
+    /* Get DHCP status for IPv6 */
+    char *dhcp_v6;
+    dhcp_v6 = check_dhcp(iface_name, AF_INET6);
+    os_strdup(dhcp_v6, entry_data->ipv6->dhcp);
+    free(dhcp_v6);
 
+    return entry_data;
 }
 
 #endif /* __linux__ */
