@@ -219,6 +219,13 @@ functions = {
         'is_async': False
     },
 
+    # Configuration
+    'PUT/configuration/validation/:type': {
+        'function': configuration.validate_configuration,
+        'type': 'local_master',
+        'is_async': False
+    },
+
     # Decoders
     '/decoders': {
         'function': Decoder.get_decoders,

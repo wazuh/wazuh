@@ -11,7 +11,7 @@ from base64 import b64encode
 from datetime import date, datetime, timedelta, timezone
 from functools import reduce
 from glob import glob
-from json import loads
+from json import loads, JSONDecodeError
 from os import chown, chmod, path, makedirs, urandom, listdir, stat, remove
 from platform import platform
 from shutil import copyfile, rmtree

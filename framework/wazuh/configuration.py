@@ -752,3 +752,88 @@ def get_active_configuration(agent_id, component, configuration):
     else:
         raise WazuhException(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg
                                   else 1116, rec_msg.replace("err ", ""))
+
+
+def _parse_execd_output(output: str):
+    """
+    Parses output from execd socket to fetch log message and remove log date, log daemon, log level, etc.
+    :param output: Raw output from execd
+    :return: Cleaned log message in a dictionary structure
+    """
+    json_output = json.loads(output)
+    error_flag = json_output['error']
+    status = 'KO' if error_flag != 0 else 'OK'
+    errors = []
+    for lines in json_output['data']:
+        errors.append(lines)
+    response = {'status': status, 'details': errors}
+
+    return response
+
+
+def validate_configuration(configuration_type, tmp_file):
+    """Validate an agent configuration from a temporary file.
+
+    :param configuration_type: Type of the configuration file
+    :param tmp_file: Relative path of the configuration which will be validated
+    :return: Evaluation of agent configuration
+    """
+    tmp_file_full_path = os_path.join(common.ossec_path, tmp_file)
+    # check that the file exists
+    if not os_path.exists(tmp_file_full_path):
+        raise WazuhException(1906)
+    dest_socket = os_path.join(common.ossec_path, 'queue', 'ossec',
+                               'check_config_sock')
+    command = json.dumps(
+        {
+            "component": "check_configuration",
+            "params":
+                {
+                    "type": configuration_type,
+                    "file": tmp_file_full_path
+                }
+        }
+    )
+    try:
+        try:
+            s = OssecSocket(dest_socket)
+        except Exception as e:
+            raise WazuhException(1117, str(e))
+        # Send message
+        s.send(command.encode())
+        # Receive response
+        try:
+            # Receive data length
+            rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
+        except ValueError:
+            raise WazuhException(1118, "Data could not be received")
+        s.close()
+        if rec_msg_ok.startswith('ok'):
+            message = dict()
+            rec_msg_dict = json.loads(rec_msg)
+            rec_msg_dict['error'] = int(rec_msg_dict['error'])
+            if rec_msg_dict['error'] == 0 or rec_msg_dict['error'] == 1:
+                message = _parse_execd_output(rec_msg)
+            elif rec_msg_dict['error'] == 2:
+                raise WazuhException(1121)
+            elif rec_msg_dict['error'] == 3:
+                raise WazuhException(1122)
+            elif rec_msg_dict['error'] == 4:
+                raise WazuhException(1123)
+            elif rec_msg_dict['error'] == 5:
+                raise WazuhException(1124)
+            elif rec_msg_dict['error'] == 6:
+                raise WazuhException(1125)
+            elif rec_msg_dict['error'] == 7:
+                raise WazuhException(1126)
+            return message
+        else:
+            raise WazuhException(1117 if "No such file or directory" in
+                                 rec_msg or "Cannot send request" in rec_msg
+                                 else 1116, rec_msg.replace("err ", ""))
+    finally:
+        # delete temporary file
+        try:
+            remove(tmp_file_full_path)
+        except OSError:
+            raise WazuhException(1903)
