@@ -15,8 +15,7 @@ from wazuh.results import AffectedItemsWazuhResult
 @expose_resources(actions=['syscollector:read'], resources=['agent:id:{agent_id}'])
 def get_item_agent(agent_id, offset=0, limit=common.database_limit, select=None, search=None, sort=None, filters=None,
                    query='', array=True, nested=True, element_type='os'):
-    """Get info about an agent
-    """
+    """ Get info about an agent """
     result = AffectedItemsWazuhResult(none_msg='No items was shown',
                                       some_msg='Some items could not be shown',
                                       all_msg='All specified items were shown')

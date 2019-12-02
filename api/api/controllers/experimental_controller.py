@@ -3,16 +3,17 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-import connexion
 import logging
 
-from api.models.base_model_ import Data
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
-from wazuh.core.cluster.dapi.dapi import DistributedAPI
+import connexion
+
 import wazuh.ciscat as ciscat
 import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
-
+from api.authentication import get_permissions
+from api.models.base_model_ import Data
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -26,14 +27,17 @@ def clear_syscheck_database(pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     :return: Message
     """
-    f_kwargs = {'all_agents': True}
+    f_kwargs = {'agent_list': '*'}
+
     dapi = DistributedAPI(f=syscheck.clear,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          broadcasting=True,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -63,36 +67,37 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
     :param score: Filters by final score
     :return: Data
     """
-    f_kwargs = {
-        'offset': offset,
-        'limit': limit,
-        'select': select,
-        'sort': parse_api_param(sort, 'sort'),
-        'search': parse_api_param(search, 'search'),
-        'filters': {
-            'benchmark': benchmark,
-            'profile': profile,
-            'fail': fail,
-            'error': error,
-            'notchecked': notchecked,
-            'unknown': unknown,
-            'score': score,
-            'pass': connexion.request.args.get('pass', None)
+    f_kwargs = {'agent_list': '*',
+                'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': {
+                    'benchmark': benchmark,
+                    'profile': profile,
+                    'fail': fail,
+                    'error': error,
+                    'notchecked': notchecked,
+                    'unknown': unknown,
+                    'score': score,
+                    'pass': connexion.request.args.get('pass', None)
+                    }
                 }
-            }
 
-    dapi = DistributedAPI(f=ciscat.get_ciscat_experimental,
+    dapi = DistributedAPI(f=ciscat.get_ciscat_results,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          broadcasting=True,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -133,7 +138,8 @@ def get_hardware_info(pretty=False, wait_for_complete=False, offset=0, limit=Non
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -182,7 +188,8 @@ def get_network_address_info(pretty=False, wait_for_complete=False, offset=0, li
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -234,7 +241,8 @@ def get_network_interface_info(pretty=False, wait_for_complete=False, offset=0, 
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -280,7 +288,8 @@ def get_network_protocol_info(pretty=False, wait_for_complete=False, offset=0, l
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -329,7 +338,8 @@ def get_os_info(pretty=False, wait_for_complete=False, offset=0, limit=None, sel
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -377,7 +387,8 @@ def get_packages_info(pretty=False, wait_for_complete=False, offset=0, limit=Non
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -432,7 +443,8 @@ def get_ports_info(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -500,7 +512,8 @@ def get_processes_info(pretty=False, wait_for_complete=False, offset=0, limit=No
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)

@@ -26,7 +26,7 @@ def get_hardware_info(agent_id, pretty=False, wait_for_complete=False, select=No
     :param select: Select which fields to return (separated by comma)
     :return: Data
     """
-    f_kwargs = {'agent_id': agent_id,
+    f_kwargs = {'agent_list': agent_id[0],
                 'select': select,
                 'element_type': 'hardware'}
     dapi = DistributedAPI(f=syscollector.get_item_agent,
@@ -63,7 +63,7 @@ def get_hotfix_info(agent_id, pretty=False, wait_for_complete=False, offset=0, l
 
     filters = {'hotfix': hotfix}
 
-    f_kwargs = {'agent_id': agent_id,
+    f_kwargs = {'agent_list': agent_id[0],
                 'offset': offset,
                 'limit': limit,
                 'select': select,
@@ -114,7 +114,7 @@ def get_network_address_info(agent_id, pretty=False, wait_for_complete=False, of
                'broadcast': broadcast,
                'netmask': netmask}
 
-    f_kwargs = {'agent_id': agent_id,
+    f_kwargs = {'agent_list': agent_id[0],
                 'offset': offset,
                 'limit': limit,
                 'select': select,
@@ -167,14 +167,15 @@ def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False, 
     for field in nested:
         filters[field] = connexion.request.args.get(field, None)
 
-    f_kwargs = {'agent_id': agent_id,
+    f_kwargs = {'agent_list': agent_id[0],
                 'offset': offset,
                 'limit': limit,
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
-                'element_type': 'netiface'}
+                'element_type': 'netiface'
+                }
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -214,7 +215,7 @@ def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=False, o
                'gateway': gateway,
                'dhcp': dhcp}
 
-    f_kwargs = {'agent_id': agent_id,
+    f_kwargs = {'agent_list': agent_id[0],
                 'offset': offset,
                 'limit': limit,
                 'select': select,
@@ -247,7 +248,7 @@ def get_os_info(agent_id, pretty=False, wait_for_complete=False, select=None):
     :param select: Select which fields to return (separated by comma)
     :return: Data
     """
-    f_kwargs = {'agent_id': agent_id,
+    f_kwargs = {'agent_list': agent_id[0],
                 'select': select,
                 'element_type': 'os'}
 
@@ -291,7 +292,7 @@ def get_packages_info(agent_id, pretty=False, wait_for_complete=False, offset=0,
                'format': connexion.request.args.get('format', None),
                'version': version}
 
-    f_kwargs = {'agent_id': agent_id,
+    f_kwargs = {'agent_list': agent_id[0],
                 'offset': offset,
                 'limit': limit,
                 'select': select,
@@ -338,13 +339,14 @@ def get_ports_info(agent_id, pretty=False, wait_for_complete=False, offset=0, li
     filters = {'pid': pid,
                'protocol': protocol,
                'tx_queue': tx_queue,
-               'state': state}
+               'state': state,
+               'process': process}
     # Add nested fields to kwargs filters
     nested = ['local.ip', 'local.port', 'remote.ip']
     for field in nested:
         filters[field] = connexion.request.args.get(field, None)
 
-    f_kwargs = {'agent_id': agent_id,
+    f_kwargs = {'agent_list': agent_id[0],
                 'offset': offset,
                 'limit': limit,
                 'select': select,
@@ -413,7 +415,7 @@ def get_processes_info(agent_id, pretty=False, wait_for_complete=False, offset=0
                'sgroup': sgroup,
                'suser': suser}
 
-    f_kwargs = {'agent_id': agent_id,
+    f_kwargs = {'agent_list': agent_id[0],
                 'offset': offset,
                 'limit': limit,
                 'select': select,
