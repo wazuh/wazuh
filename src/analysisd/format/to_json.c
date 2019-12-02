@@ -32,6 +32,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     char* out;
     int i;
     char * saveptr;
+    struct tm tm_result = { .tm_sec = 0 };
 
     extern long int __crt_ftell;
 
@@ -293,12 +294,12 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         }
         if (lf->mtime_before) {
             char mtime[25];
-            strftime(mtime, 20, "%FT%T%z", localtime(&lf->mtime_before));
+            strftime(mtime, 20, "%FT%T%z", localtime_r(&lf->mtime_before, &tm_result));
             cJSON_AddStringToObject(file_diff, "mtime_before", mtime);
         }
         if (lf->mtime_after) {
             char mtime[25];
-            strftime(mtime, 20, "%FT%T%z", localtime(&lf->mtime_after));
+            strftime(mtime, 20, "%FT%T%z", localtime_r(&lf->mtime_after, &tm_result));
             cJSON_AddStringToObject(file_diff, "mtime_after", mtime);
         }
         if (lf->inode_before) {

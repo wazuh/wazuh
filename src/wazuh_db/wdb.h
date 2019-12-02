@@ -63,6 +63,7 @@ typedef enum wdb_stmt {
     WDB_STMT_HOTFIX_INSERT,
     WDB_STMT_HWINFO_DEL,
     WDB_STMT_HOTFIX_DEL,
+    WDB_STMT_SET_HOTFIX_MET,
     WDB_STMT_PORT_INSERT,
     WDB_STMT_PORT_DEL,
     WDB_STMT_PROC_INSERT,
@@ -415,6 +416,9 @@ int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id);
 
 // Delete Hotfix info from DB.
 int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id);
+
+// Set hotfix metadata.
+int wdb_set_hotfix_metadata(wdb_t * wdb, const char * scan_id);
 
 // Insert IPv4/IPv6 protocol info tuple. Return 0 on success or -1 on error.
 int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface,  int type, const char * gateway, const char * dhcp, int metric);

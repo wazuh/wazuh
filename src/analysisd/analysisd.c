@@ -2544,19 +2544,19 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
 
     int day = 0;
     int year = 0;
-    struct tm *p;
+    struct tm tm_result = { .tm_sec = 0 };
     char mon[4] = {0};
 
     while(1){
         time(&current_time);
-        p = localtime(&c_time);
-        day = p->tm_mday;
-        year = p->tm_year + 1900;
-        strncpy(mon, month[p->tm_mon], 3);
+        localtime_r(&c_time, &tm_result);
+        day = tm_result.tm_mday;
+        year = tm_result.tm_year + 1900;
+        strncpy(mon, month[tm_result.tm_mon], 3);
 
         /* Set the global hour/weekday */
-        __crt_hour = p->tm_hour;
-        __crt_wday = p->tm_wday;
+        __crt_hour = tm_result.tm_hour;
+        __crt_wday = tm_result.tm_wday;
 
         w_mutex_lock(&writer_threads_mutex);
 

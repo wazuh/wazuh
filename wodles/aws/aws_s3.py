@@ -146,9 +146,16 @@ class WazuhIntegration:
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-AWS:"
-        self.client = self.get_client(access_key=access_key, secret_key=secret_key,
-                                      profile=aws_profile, iam_role_arn=iam_role_arn, service_name=service_name,
-                                      bucket=bucket, region=region)
+        # GovCloud regions
+        self.gov_regions = {'us-gov-east-1', 'us-gov-west-1'}
+        self.client = self.get_client(access_key=access_key,
+                                      secret_key=secret_key,
+                                      profile=aws_profile,
+                                      iam_role_arn=iam_role_arn,
+                                      service_name=service_name,
+                                      bucket=bucket,
+                                      region=region
+                                      )
 
         # db_name is an instance variable of subclass
         self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
@@ -218,9 +225,13 @@ class WazuhIntegration:
         if profile is not None:
             conn_args['profile_name'] = profile
 
-        # only for Inspector
-        if region is not None:
+        # set region name
+        if region and service_name == 'inspector':
             conn_args['region_name'] = region
+        else:
+            # it is necessary to set region_name for GovCloud regions
+            conn_args['region_name'] = region if region in self.gov_regions \
+                else None
 
         boto_session = boto3.Session(**conn_args)
 
@@ -229,15 +240,16 @@ class WazuhIntegration:
             if iam_role_arn:
                 sts_client = boto_session.client('sts')
                 sts_role_assumption = sts_client.assume_role(RoleArn=iam_role_arn,
-                                                             RoleSessionName='WazuhLogParsing')
+                                                             RoleSessionName='WazuhLogParsing'
+                                                             )
                 sts_session = boto3.Session(aws_access_key_id=sts_role_assumption['Credentials']['AccessKeyId'],
                                             aws_secret_access_key=sts_role_assumption['Credentials']['SecretAccessKey'],
-                                            aws_session_token=sts_role_assumption['Credentials']['SessionToken'])
+                                            aws_session_token=sts_role_assumption['Credentials']['SessionToken'],
+                                            region_name=conn_args.get('region_name')
+                                            )
                 client = sts_session.client(service_name=service_name)
             else:
                 client = boto_session.client(service_name=service_name)
-                if bucket:
-                    client.head_bucket(Bucket=bucket)
         except botocore.exceptions.ClientError as e:
             print("ERROR: Access error: {}".format(e))
             sys.exit(3)
@@ -332,7 +344,7 @@ class AWSBucket(WazuhIntegration):
 
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
-                 prefix, delete_file, aws_organization_id):
+                 prefix, delete_file, aws_organization_id, region):
         """
         AWS Bucket constructor.
 
@@ -445,8 +457,14 @@ class AWSBucket(WazuhIntegration):
                                     aws_region='{aws_region}';"""
 
         self.db_name = 's3_cloudtrail'
-        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
-                                  aws_profile=profile, iam_role_arn=iam_role_arn, bucket=bucket, service_name='s3')
+        WazuhIntegration.__init__(self, access_key=access_key,
+                                  secret_key=secret_key,
+                                  aws_profile=profile,
+                                  iam_role_arn=iam_role_arn,
+                                  bucket=bucket,
+                                  service_name='s3',
+                                  region=region
+                                  )
         self.retain_db_records = 500
         self.reparse = reparse
         self.only_logs_after = datetime.strptime(only_logs_after, "%Y%m%d")
@@ -797,13 +815,15 @@ class AWSBucket(WazuhIntegration):
             print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
             sys.exit(7)
 
-    def check_empty_bucket(self):
-        """
-        Exits if the bucket is empty
-        """
-        if not 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter='/'):
-            print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
-            exit(14)
+    def check_bucket(self):
+        """Check if the bucket is empty or the credentials are wrong."""
+        try:
+            if not 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter='/'):
+                print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
+                exit(14)
+        except botocore.exceptions.ClientError:
+            print("ERROR: Invalid credentials to access S3 Bucket")
+            exit(3)
 
 
 class AWSLogsBucket(AWSBucket):
@@ -863,7 +883,7 @@ class AWSLogsBucket(AWSBucket):
                                                 Delimiter='/')['CommonPrefixes']
                     ]
         except KeyError as err:
-            bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'custom'}
+            bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'waf', 'custom'}
             print("ERROR: Invalid type of bucket. The bucket was set up as '{}' type and this bucket does not contain log files from this type. Try with other type: {}".format(get_script_arguments().type.lower(), bucket_types - {get_script_arguments().type.lower()}))
             sys.exit(12)
 
@@ -1925,6 +1945,75 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             yield event
 
 
+class CiscoUmbrella(AWSCustomBucket):
+
+    def __init__(self, **kwargs):
+        db_table_name = 'cisco_umbrella'
+        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+
+    def load_information_from_file(self, log_key):
+        """Load data from a Cisco Umbrella log file."""
+        with self.decompress_file(log_key=log_key) as f:
+            if 'dnslogs' in self.prefix:
+                fieldnames = ('timestamp', 'most_granular_identity',
+                              'identities', 'internal_ip', 'external_ip',
+                              'action', 'query_type', 'response_code', 'domain',  # noqa: E501
+                              'categories', 'most_granular_identity_type',
+                              'identity_types', 'blocked_categories'
+                              )
+            elif 'proxylogs' in self.prefix:
+                fieldnames = ('timestamp', 'identities', 'internal_ip',
+                              'external_ip', 'destination_ip', 'content_type',
+                              'verdict', 'url', 'referer', 'user_agent',
+                              'status_code', 'requested_size', 'response_size',
+                              'response_body_size', 'sha', 'categories',
+                              'av_detections', 'puas', 'amp_disposition',
+                              'amp_malware_name', 'amp_score', 'identity_type',
+                              'blocked_categories'
+                              )
+            elif 'iplogs' in self.prefix:
+                fieldnames = ('timestamp', 'identity', 'source_ip',
+                              'source_port', 'destination_ip',
+                              'destination_port', 'categories'
+                              )
+            else:
+                print("ERROR: Only 'dnslogs', 'proxylogs' or 'iplogs' are allowed for Cisco Umbrella")
+                exit(12)
+            csv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=',')
+
+            # remove None values in csv_file
+            return [dict({k: v for k, v in row.items() if v is not None},
+                    source='cisco_umbrella') for row in csv_file]
+
+    def marker_only_logs_after(self, aws_region, aws_account_id):
+        return '{init}{only_logs_after}'.format(
+            init=self.get_full_prefix(aws_account_id, aws_region),
+            only_logs_after=self.only_logs_after.strftime('%Y-%m-%d')
+        )
+
+
+class AWSWAFBucket(AWSCustomBucket):
+
+    def __init__(self, **kwargs):
+        db_table_name = 'waf'
+        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+
+    def load_information_from_file(self, log_key):
+        """Load data from a WAF log file."""
+        content = []
+        with self.decompress_file(log_key=log_key) as f:
+            for line in f.readlines():
+                try:
+                    event = json.loads(line.rstrip())
+                except json.JSONDecodeError:
+                    print("ERROR: Events from {} file could not be loaded.".format(log_key.split('/')[-1]))
+                    sys.exit(9)
+                event['source'] = 'waf'
+                content.append(event)
+
+        return json.loads(json.dumps(content))
+
+
 class AWSService(WazuhIntegration):
     """
     Class for getting AWS Services logs from API calls
@@ -2236,17 +2325,27 @@ def main(argv):
                 bucket_type = AWSCustomBucket
             elif options.type.lower() == 'guardduty':
                 bucket_type = AWSGuardDutyBucket
+            elif options.type.lower() == 'cisco_umbrella':
+                bucket_type = CiscoUmbrella
+            elif options.type.lower() == 'waf':
+                bucket_type = AWSWAFBucket
             else:
                 raise Exception("Invalid type of bucket")
             bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,
-                                 secret_key=options.secret_key, profile=options.aws_profile,
-                                 iam_role_arn=options.iam_role_arn, bucket=options.logBucket,
-                                 only_logs_after=options.only_logs_after, skip_on_error=options.skip_on_error,
+                                 secret_key=options.secret_key,
+                                 profile=options.aws_profile,
+                                 iam_role_arn=options.iam_role_arn,
+                                 bucket=options.logBucket,
+                                 only_logs_after=options.only_logs_after,
+                                 skip_on_error=options.skip_on_error,
                                  account_alias=options.aws_account_alias,
-                                 prefix=options.trail_prefix, delete_file=options.deleteFile,
-                                 aws_organization_id=options.aws_organization_id)
-            # check if bucket is empty
-            bucket.check_empty_bucket()
+                                 prefix=options.trail_prefix,
+                                 delete_file=options.deleteFile,
+                                 aws_organization_id=options.aws_organization_id,
+                                 region=options.regions[0] if options.regions else None
+                                 )
+            # check if bucket is empty or credentials are wrong
+            bucket.check_bucket()
             bucket.iter_bucket(options.aws_account_id, options.regions)
         elif options.service:
             if options.service.lower() == 'inspector':

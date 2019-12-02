@@ -387,14 +387,14 @@ void os_ReportdStart(report_filter *r_filter){
     alert_data **data_to_clean = NULL;
 
     time_t tm;
-    struct tm *p;
+    struct tm tm_result = { .tm_sec = 0 };
 
     file_queue *fileq;
     alert_data *al_data;
 
     /* Get current time before starting */
     tm = time(NULL);
-    p = localtime(&tm);
+    localtime_r(&tm, &tm_result);
 
     /* Initiate file queue - to read the alerts */
     os_calloc(1, sizeof(file_queue), fileq);
@@ -455,7 +455,7 @@ void os_ReportdStart(report_filter *r_filter){
     switch (r_filter->report_log_source) {
         case REPORT_SOURCE_LOG:
             minfo("Getting alerts in log format.");
-            Init_FileQueue(fileq, p, CRALERT_READ_ALL | CRALERT_FP_SET);
+            Init_FileQueue(fileq, &tm_result, CRALERT_READ_ALL | CRALERT_FP_SET);
             break;
 
         case REPORT_SOURCE_JSON:
@@ -480,13 +480,13 @@ void os_ReportdStart(report_filter *r_filter){
         /* Get message if available */
         switch (r_filter->report_log_source) {
             case REPORT_SOURCE_LOG:
-                al_data = Read_FileMon(fileq, p, 1);
+                al_data = Read_FileMon(fileq, &tm_result, 1);
                 break;
             case REPORT_SOURCE_JSON:
-                al_data = Read_JSON_Mon(fileq, p, 1);
+                al_data = Read_JSON_Mon(fileq, &tm_result, 1);
                 break;
         }
-        
+
         if (!al_data) {
             break;
         }

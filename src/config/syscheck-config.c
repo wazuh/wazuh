@@ -1288,14 +1288,15 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     int keyit = 0;
                     char delim = ',';
                     char *key;
-                    key = strtok(children[j]->content, &delim);
+                    char *saveptr;
+                    key = strtok_r(children[j]->content, &delim, &saveptr);
 
                     while (key) {
                         if (*key) {
                             syscheck->audit_key[keyit] = check_ascci_hex(key);
                             os_realloc(syscheck->audit_key, (keyit + 2) * sizeof(char *), syscheck->audit_key);
                             syscheck->audit_key[keyit + 1] = NULL;
-                            key = strtok(NULL, &delim);
+                            key = strtok_r(NULL, &delim, &saveptr);
                             keyit++;
                         }
                     }
