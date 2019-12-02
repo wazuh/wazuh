@@ -8,7 +8,6 @@
 
 """This module contains tools for processing events from a Google Cloud subscription."""  # noqa: E501
 
-import json
 import logging
 import socket
 
@@ -58,11 +57,11 @@ class WazuhGCloudSubscriber:
         """
         return self.subscriber.subscription_path(project, subscription_id)
 
-    def send_msg(self, msg: bytes):
+    def send_msg(self, msg: str):
         """Send an event to the Wazuh queue.
         :param msg: Event to be sent
         """
-        event_json = f'{self.header}{self.format_msg(msg)}'.encode(errors='replace')  # noqa: E501
+        event_json = f'{self.header}{msg}'.encode(errors='replace')  # noqa: E501
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
@@ -76,20 +75,20 @@ class WazuhGCloudSubscriber:
                 logger.critical('Error sending event to Wazuh')
                 raise e
 
-    def format_msg(self, msg: bytes) -> str:
+    def format_msg(self, msg: str) -> str:
         """Format a message.
         :param msg: Message to be formatted
         """
-        # Insert msg as value of 'gcloud' key.
-        formated_msg = '{"' + self.key_name + '" : ' + msg.decode(errors='replace') + '}'
-        return formated_msg
+        # Insert msg as value of self.key_name key.
+        return f'{{"{self.key_name}": {msg}}}'
 
     def process_message(self, ack_id: str, data: bytes):
         """Send a message to Wazuh queue.
         :param ack_id: ACK_ID from event
         :param data: Data to be sent to Wazuh
         """
-        self.send_msg(data)
+        formatted_msg = self.format_msg(data.decode(errors='replace'))
+        self.send_msg(formatted_msg)
         self.subscriber.acknowledge(self.subscription_path, [ack_id])
 
     def check_permissions(self):
@@ -131,7 +130,8 @@ class WazuhGCloudSubscriber:
         while len(response.received_messages) > 0:
             for message in response.received_messages:
                 message_data: bytes = message.message.data
-                logger.debug(f'Processing event:\n{self.format_msg(message_data)}')
+                if logger.getEffectiveLevel() == logging.DEBUG:
+                    logger.debug(f'Processing event:\n{self.format_msg(message_data.decode(errors="replace"))}')
                 self.process_message(message.ack_id, message_data)
                 processed_messages += 1  # increment processed_messages counter
             # get more messages
