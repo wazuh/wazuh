@@ -128,6 +128,9 @@ static wm_sca_t * data_win;
 
 cJSON **last_summary_json = NULL;
 
+// Mutexes
+static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t dump_rwlock;
 
@@ -3232,9 +3235,13 @@ static void *wm_sca_check_integrity_periodically (wm_sca_t * data) {
             int cis_db_index = i;
 
             cJSON_AddStringToObject(json_integrity, "type", "integrity_check");
-            
+
             mdebug1("Calculating hash for scanned results.");
+            
+            /* Mutex for global varible cis_db_for_hash */
+            w_mutex_lock(&control_msg_mutex);
             char *integrity_hash = wm_sca_hash_integrity(cis_db_index);
+            w_mutex_unlock(&control_msg_mutex);
 
             /* If there is no hash in the local db, it will send an empty one */
             if (!integrity_hash) {
