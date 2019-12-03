@@ -38,7 +38,7 @@ class WazuhDBQueryMitre(WazuhDBQuery):
                  table: str = 'attack', sort: Optional[Dict] = None,
                  default_query: str = default_query,
                  default_sort_field: str = 'id', fields: Dict = mitre_fields,
-                 count_field: str = 'id', search: str = ''):
+                 count_field: str = 'id', search: dict = {}):
         """Create an instance of WazuhDBQueryMitre query."""
         self.default_query = default_query
         self.count_field = count_field
@@ -69,7 +69,7 @@ class WazuhDBQueryMitre(WazuhDBQuery):
 
 
 def get_attack(attack: str = '', phase: str = '', platform: str = '', 
-               search: str = '', offset: int = 0, limit: int = 10, 
+               search: dict = {}, offset: int = 0, limit: int = 10, 
                sort: Optional[Dict] = None, q: str = '') -> Dict:
     """Get information from Mitre database.
 
@@ -99,7 +99,7 @@ def get_attack(attack: str = '', phase: str = '', platform: str = '',
 
     db_query = WazuhDBQueryMitre(offset=offset, limit=limit if limit < 10
                                  else 10, query=query, sort=sort, 
-                                 search={'negation': False, 'value': search})
+                                 search=search)
     # execute query
     result = db_query.run()
 

@@ -376,6 +376,6 @@ def test_check_total_items_searched_attack(mock_wdb, search):
     rows = cur.fetchone()
     expected_total_items = rows[0]
 
-    total_items = get_attack(search=search)['totalItems']
+    total_items = get_attack(search={'value':search, 'negation':0})['totalItems']
 
     assert expected_total_items == total_items
