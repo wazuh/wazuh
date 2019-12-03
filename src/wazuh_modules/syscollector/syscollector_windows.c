@@ -1480,7 +1480,7 @@ void sys_os_windows(const char* LOCATION){
     free_osinfo(info);
 
     // Check if it is necessary to create a operative system event
-    if (json_event = analyze_os(os_data, random_id, timestamp), json_event) {
+    if (json_event = analyze_os(os_data, ID, timestamp), json_event) {
         char * string = cJSON_PrintUnformatted(json_event);
         mtdebug2(WM_SYS_LOGTAG, "sys_os_windows() sending '%s'", string);
         SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
@@ -2094,8 +2094,6 @@ void get_system_windows(hw_entry * info) {
         info->ram_free = statex.ullAvailPhys/1024;
         info->ram_usage = statex.dwMemoryLoad;
     }
-
-    return info;
 }
 
 int ntpath_to_win32path(char *ntpath, char **outbuf)
