@@ -17,12 +17,21 @@
 
 #include "../headers/rbtree_op.h"
 
-
-/* tests */
+/* setup/teardowns */
 
 static int create_rbtree(void **state)
 {
     rb_tree *tree = rbtree_init();
+    *state = tree;
+    return 0;
+}
+
+static int create_rbtree_with_dispose(void **state)
+{
+    rb_tree *tree = rbtree_init();
+
+    rbtree_set_dispose(tree, free);
+
     *state = tree;
     return 0;
 }
@@ -34,6 +43,8 @@ static int delete_rbtree(void **state)
     return 0;
 }
 
+/* tests */
+
 void test_rbtree_insert_success(void **state)
 {
     (void) state;
@@ -41,13 +52,12 @@ void test_rbtree_insert_success(void **state)
     char *value = strdup("testing");
     char *ret;
 
-    rbtree_set_dispose(tree, free);
     ret = rbtree_insert(tree, "test", value);
 
     assert_non_null(tree->root);
-    assert_string_equal(ret, value);
+    assert_ptr_equal(ret, value);
     assert_string_equal(tree->root->key, "test");
-    assert_string_equal(tree->root->value, value);
+    assert_ptr_equal(tree->root->value, value);
 }
 
 void test_rbtree_insert_failure(void **state)
@@ -57,7 +67,6 @@ void test_rbtree_insert_failure(void **state)
     char *value = strdup("testing");
     char *ret;
 
-    rbtree_set_dispose(tree, free);
     rbtree_insert(tree, "test", value);
     ret = rbtree_insert(tree, "test", value);
 
@@ -72,13 +81,12 @@ void test_rbtree_replace_success(void **state)
     char *value_replaced = strdup("replaced");
     char *ret;
 
-    rbtree_set_dispose(tree, free);
     rbtree_insert(tree, "test", value_testing);
     ret = rbtree_replace(tree, "test", value_replaced);
 
-    assert_string_equal(ret, value_replaced);
+    assert_ptr_equal(ret, value_replaced);
     assert_string_equal(tree->root->key, "test");
-    assert_string_equal(tree->root->value, value_replaced);
+    assert_ptr_equal(tree->root->value, value_replaced);
 }
 
 
@@ -89,13 +97,12 @@ void test_rbtree_replace_failure(void **state)
     char *value_testing = strdup("testing");
     char *ret;
 
-    rbtree_set_dispose(tree, free);
     rbtree_insert(tree, "test", value_testing);
     ret = rbtree_replace(tree, "invalid", value_testing);
-    assert_null(ret);
 
+    assert_null(ret);
     assert_string_equal(tree->root->key, "test");
-    assert_string_equal(tree->root->value, value_testing);
+    assert_ptr_equal(tree->root->value, value_testing);
 }
 
 void test_rbtree_get_success(void **state)
@@ -105,11 +112,9 @@ void test_rbtree_get_success(void **state)
     char *value_testing = strdup("testing");
     rb_node *ret;
 
-    rbtree_set_dispose(tree, free);
     rbtree_insert(tree, "test", value_testing);
 
-    assert_non_null(rbtree_get(tree, "test"));
-    //assert_string_equal(ret->value, value_testing);
+    assert_ptr_equal(rbtree_get(tree, "test"), value_testing);
 }
 
 void test_rbtree_get_failure(void **state)
@@ -119,7 +124,6 @@ void test_rbtree_get_failure(void **state)
     char *value_testing = strdup("testing");
     rb_node *ret;
 
-    rbtree_set_dispose(tree, free);
     rbtree_insert(tree, "test", value_testing);
     ret = rbtree_get(tree, "invalid");
 
@@ -134,7 +138,6 @@ void test_rbtree_delete_success(void **state)
     char *value_2 = strdup("value_2");
     char *value_3 = strdup("value_3");
 
-    rbtree_set_dispose(tree, free);
     rbtree_insert(tree, "test_1", value_1);
     rbtree_insert(tree, "test_2", value_2);
     rbtree_insert(tree, "test_3", value_3);
@@ -153,7 +156,6 @@ void test_rbtree_delete_failure(void **state)
     rb_tree *tree = *state;
     char *value = strdup("value");
 
-    rbtree_set_dispose(tree, free);
     rbtree_insert(tree, "test", value);
 
     assert_int_equal(rbtree_delete(tree, "invalid"), 0);
@@ -199,6 +201,7 @@ void test_rbtree_keys(void **state)
     rb_tree *tree = *state;
     char *value = strdup("value");
     char ** ret = NULL;
+    char expected_ret[32];
     int i;
 
     rbtree_insert(tree, "key1", value);
@@ -209,19 +212,19 @@ void test_rbtree_keys(void **state)
     ret = rbtree_keys(tree);
     free(value);
 
-    assert_non_null(ret[0]);
-    assert_string_equal(ret[0], "key1");
-    assert_non_null(ret[1]);
-    assert_string_equal(ret[1], "key2");
-    assert_non_null(ret[2]);
-    assert_string_equal(ret[2], "key3");
-    assert_non_null(ret[3]);
-    assert_string_equal(ret[3], "key4");
+    for(i = 0; ret[i]; i++) {
+        assert_non_null(ret[i]);
 
-    for (i = 0; i <= 4; i++) {
+        snprintf(expected_ret, 32, "key%d", (i + 1));
+        assert_string_equal(ret[i], expected_ret);
+
         free(ret[i]);
     }
+
+    free(ret[i]);
     free(ret);
+
+    assert_int_equal(i, 4);
 }
 
 void test_rbtree_range(void **state)
@@ -229,6 +232,7 @@ void test_rbtree_range(void **state)
     (void) state;
     rb_tree *tree = *state;
     char *value = strdup("value");
+    char expected_ret[32];
     char ** ret = NULL;
     int i;
 
@@ -241,16 +245,18 @@ void test_rbtree_range(void **state)
     ret = rbtree_range(tree, "b_key", "d_key");
     free(value);
 
-    assert_non_null(ret[0]);
-    assert_string_equal(ret[0], "b_key");
-    assert_non_null(ret[1]);
-    assert_string_equal(ret[1], "c_key");
-    assert_non_null(ret[2]);
-    assert_string_equal(ret[2], "d_key");
+    for(i = 0; ret[i]; i++) {
+        assert_non_null(ret[i]);
 
-    for (i = 0; i <= 3; i++) {
+        snprintf(expected_ret, 32, "%c_key", (i + 'b'));
+        assert_string_equal(ret[i], expected_ret);
+
         free(ret[i]);
     }
+
+    assert_int_equal(i, 3);
+
+    free(ret[i]);
     free(ret);
 }
 
@@ -333,14 +339,14 @@ void test_rbtree_empty(void **state)
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_rbtree_insert_success, create_rbtree, delete_rbtree),
-        cmocka_unit_test_setup_teardown(test_rbtree_insert_failure, create_rbtree, delete_rbtree),
-        cmocka_unit_test_setup_teardown(test_rbtree_replace_success, create_rbtree, delete_rbtree),
-        cmocka_unit_test_setup_teardown(test_rbtree_replace_failure, create_rbtree, delete_rbtree),
-        cmocka_unit_test_setup_teardown(test_rbtree_get_success, create_rbtree, delete_rbtree),
-        cmocka_unit_test_setup_teardown(test_rbtree_get_failure, create_rbtree, delete_rbtree),
-        cmocka_unit_test_setup_teardown(test_rbtree_delete_success, create_rbtree, delete_rbtree),
-        cmocka_unit_test_setup_teardown(test_rbtree_delete_failure, create_rbtree, delete_rbtree),
+        cmocka_unit_test_setup_teardown(test_rbtree_insert_success, create_rbtree_with_dispose, delete_rbtree),
+        cmocka_unit_test_setup_teardown(test_rbtree_insert_failure, create_rbtree_with_dispose, delete_rbtree),
+        cmocka_unit_test_setup_teardown(test_rbtree_replace_success, create_rbtree_with_dispose, delete_rbtree),
+        cmocka_unit_test_setup_teardown(test_rbtree_replace_failure, create_rbtree_with_dispose, delete_rbtree),
+        cmocka_unit_test_setup_teardown(test_rbtree_get_success, create_rbtree_with_dispose, delete_rbtree),
+        cmocka_unit_test_setup_teardown(test_rbtree_get_failure, create_rbtree_with_dispose, delete_rbtree),
+        cmocka_unit_test_setup_teardown(test_rbtree_delete_success, create_rbtree_with_dispose, delete_rbtree),
+        cmocka_unit_test_setup_teardown(test_rbtree_delete_failure, create_rbtree_with_dispose, delete_rbtree),
         cmocka_unit_test_setup_teardown(test_rbtree_minimum, create_rbtree, delete_rbtree),
         cmocka_unit_test_setup_teardown(test_rbtree_maximum, create_rbtree, delete_rbtree),
         cmocka_unit_test_setup_teardown(test_rbtree_keys, create_rbtree, delete_rbtree),
