@@ -353,3 +353,29 @@ def test_sort_mitre(mock_wdb):
     result_desc = get_attack(sort={"fields": ["id"], "order": "desc"}, limit=1)
 
     assert result_asc['items'][0]['id'] < result_desc['items'][0]['id']
+
+
+@pytest.mark.parametrize('search', [
+    ('new shell opens or when a user logs'),
+    ('rootkits'),
+    ('Monitor Registry keys'),
+    ('correlate with other'),
+    ('Exfiltration'),
+    ('Windows'),
+    ('clipboard from')
+])
+@patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
+        sql_schema_file='schema_mitre_test.sql'))
+def test_check_total_items_searched_attack(mock_wdb, search):
+    """Test the number of returned items when filtering by search."""
+    # load test database and make the query
+    cur = get_fake_mitre_data('schema_mitre_test.sql').cursor()
+    cur.execute("SELECT COUNT(DISTINCT id) FROM"
+                f" attack WHERE json LIKE '%{search}%'")
+
+    rows = cur.fetchone()
+    expected_total_items = rows[0]
+
+    total_items = get_attack(search=search)['totalItems']
+
+    assert expected_total_items == total_items

@@ -38,13 +38,13 @@ class WazuhDBQueryMitre(WazuhDBQuery):
                  table: str = 'attack', sort: Optional[Dict] = None,
                  default_query: str = default_query,
                  default_sort_field: str = 'id', fields: Dict = mitre_fields,
-                 count_field: str = 'id'):
+                 count_field: str = 'id', search: str = ''):
         """Create an instance of WazuhDBQueryMitre query."""
         self.default_query = default_query
         self.count_field = count_field
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit,
-                              table=table, sort=sort, search=None,
+                              table=table, sort=sort, search=search,
                               select=None, fields=fields,
                               default_sort_field=default_sort_field,
                               default_sort_order='ASC', filters=None,
@@ -68,14 +68,15 @@ class WazuhDBQueryMitre(WazuhDBQuery):
         self._data = self.backend.execute(final_query, self.request)
 
 
-def get_attack(attack: str = '', phase: str = '', platform: str = '',
-               offset: int = 0, limit: int = 10, sort: Optional[Dict] = None,
-               q: str = '') -> Dict:
+def get_attack(attack: str = '', phase: str = '', platform: str = '', 
+               search: str = '', offset: int = 0, limit: int = 10, 
+               sort: Optional[Dict] = None, q: str = '') -> Dict:
     """Get information from Mitre database.
 
     :param attack: Filters by attack ID
     :param phase: Filters by phase
     :param platform: Filters by platform
+    :param search: Search if the string is contained in the db
     :param offset: First item to return
     :param limit: Maximum number of items to return
     :param sort: Sort the items. Format: {'fields': ['field1', 'field2'],
@@ -97,7 +98,8 @@ def get_attack(attack: str = '', phase: str = '', platform: str = '',
                 f'platform_name={platform}'
 
     db_query = WazuhDBQueryMitre(offset=offset, limit=limit if limit < 10
-                                 else 10, query=query, sort=sort)
+                                 else 10, query=query, sort=sort, 
+                                 search={'negation': False, 'value': search})
     # execute query
     result = db_query.run()
 
