@@ -357,5 +357,89 @@
         "*:*:*": "deny"
       }
     }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:*"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:worker1&file:path:etc/rules/local_rules.xml"],
+        "effect": "allow"
+      }
+    ],
+    "processed_policies": {
+      "cluster:read_file": {
+        "node:id:*&file:path:*": "deny",
+        "node:id:worker1&file:path:etc/rules/local_rules.xml": "allow"
+      }
+    }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "allow"
+      }
+    ],
+    "processed_policies": {
+      "cluster:read_file": {
+        "node:id:*&file:path:etc/ossec.conf": "allow"
+      }
+    }
+  },
+  {
+    "no_processed_policies": [
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "allow"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:*"],
+        "effect": "deny"
+      },
+      {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "effect": "allow"
+      }
+    ],
+    "processed_policies": {
+      "cluster:read_file": {
+        "node:id:*&file:path:*": "deny",
+        "node:id:*&file:path:etc/ossec.conf": "allow"
+      }
+    }
   }
 ]

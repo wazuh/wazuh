@@ -646,5 +646,147 @@
     },
     "fake_system_resources": {"agent:id:*": []},
     "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:*&file:path:etc/ossec.conf": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:master_node&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/rules/local_rules.xml"]
+    },
+    "fake_system_resources": {},
+    "allowed_resources": [["etc/rules/local_rules.xml"]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:*&file:path:etc/ossec.conf": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:master_node&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:*&file:path:etc/ossec.conf": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:worker2&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {}
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:master_node&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:*&file:path:etc/ossec.conf": "deny",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:worker2&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {},
+    "allowed_resources": [["etc/ossec.conf"]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:*&file:path:etc/ossec.conf": "deny",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:worker1&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:*&file:path:etc/ossec.conf": "allow",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:worker1&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {},
+    "allowed_resources": [["etc/ossec.conf"]]
   }
 ]

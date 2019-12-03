@@ -31,15 +31,14 @@ class PreProcessor:
                     if counter == len(actual_split_resource):
                         self.odict[action].pop(actual_resource)
         else:  # Individual
-            result = self.odict[action].pop(resource[0], False)
-            if not result:
-                split_resource = resource[0].split(':')
-                if split_resource[-1] == '*':
-                    for key in list(self.odict[action].keys()):
-                        resource_name = ':'.join(resource[0].split(':')[0:-1]) if len(split_resource) > 1 else '*:*:*'
-                        if (key.startswith(resource_name) or key.startswith('agent:group')) \
-                                and len(key.split('&')) == 1:
-                            self.odict[action].pop(key)
+            self.odict[action].pop(resource[0], None)
+            split_resource = resource[0].split(':')
+            if split_resource[-1] == '*':
+                for key in list(self.odict[action].keys()):
+                    resource_name = ':'.join(resource[0].split(':')[0:-1]) if len(split_resource) > 1 else '*:*:*'
+                    if (key.startswith(resource_name) or key.startswith('agent:group')) \
+                            and len(key.split('&')) == 1:
+                        self.odict[action].pop(key)
 
     @staticmethod
     def is_combination(resource):
@@ -57,8 +56,9 @@ class PreProcessor:
         """
         resource_regex = \
             r'^(\*)|' \
-            r'(([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/]+\&)+([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/]+))|' \
-            r'([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/]+)$'
+            r'(([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+\&)+' \
+            r'([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+))|' \
+            r'([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+)$'
         for action in policy['actions']:
             if action not in self.odict.keys():
                 self.odict[action] = dict()
@@ -87,7 +87,7 @@ def optimize_resources():
     policies = rbac.run()
 
     # Testing
-    policies = RBAChecker.run_testing()
+    # policies = RBAChecker.run_testing()
 
     preprocessor = PreProcessor()
     for policy in policies:

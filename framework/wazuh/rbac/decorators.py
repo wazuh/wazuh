@@ -85,7 +85,7 @@ def _expand_resource(resource):
         return {value}
 
 
-def combination_defined_rbac(needed_resources, user_resources):
+def _combination_defined_rbac(needed_resources, user_resources):
     for needed_resource in needed_resources:
         split_needed_resource = needed_resource.split('&')
         split_user_resource = user_resources.split('&')
@@ -94,16 +94,17 @@ def combination_defined_rbac(needed_resources, user_resources):
         counter = 0
         for index, element in enumerate(split_needed_resource):
             user_resource_identifier = ':'.join(split_user_resource[index].split(':')[:-1])
-            needed_resource_identifier = ':'.join(split_user_resource[index].split(':')[:-1])
+            needed_resource_identifier = ':'.join(split_needed_resource[index].split(':')[:-1])
             if user_resource_identifier != needed_resource_identifier:  # Not the same resource
                 return False
-
             # * wildcard founded in RBAC permissions for the required resource
             if split_user_resource[index].split(':')[-1] == '*':
                 counter += 1
             else:
-                if split_user_resource == split_needed_resource:
+                if split_user_resource[index] == element:
                     counter += 1
+                else:
+                    break
 
         return counter == len(split_needed_resource)
     return False
@@ -172,73 +173,93 @@ def _black_mode_sanitize(final_user_permissions, req_resources_value):
                 req_resources_value[user_key])
 
 
-def _permissions_processing(req_resources, user_permissions_for_resource, final_user_permissions: defaultdict):
-    """Given some required resources and the user's permissions on that resource,
-    we extract the user's final permissions on the resource.
-    :param req_resources: List of required resources
-    :param user_permissions_for_resource: List of the users's permissions over the specified resource
-    :param final_user_permissions: Dictionary where the final permissions will be inserted
-    """
-    req_resources_value = dict()
-    combination = any('&' in req_resource for req_resource in req_resources)
+def _optimize_resources(req_resources):
+    resources_value_odict = dict()
     for element in req_resources:
-        if not combination:
-            if ':'.join(element.split(':')[:-1]) not in req_resources_value.keys():
-                req_resources_value[':'.join(element.split(':')[:-1])] = set()
-            req_resources_value[':'.join(element.split(':')[:-1])].add(element.split(':')[-1])
+        if ':'.join(element.split(':')[:-1]) not in resources_value_odict.keys():
+            resources_value_odict[':'.join(element.split(':')[:-1])] = set()
+        resources_value_odict[':'.join(element.split(':')[:-1])].add(element.split(':')[-1])
+
+    return resources_value_odict
+
+
+def _empty_black_expansion(req_resources, final_user_permissions):
     # If RBAC policies is empty and the RBAC's mode is black, we have the permission over the required resource
     # or if we can't expand the resource, the action is resourceless
+    for req_resource in req_resources:
+        identifier = ':'.join(req_resource.split(':')[:-1])
+        if identifier == '*:*':
+            final_user_permissions['*:*'] = {'*'}
+        else:
+            expanded_resource = _expand_resource(req_resource)
+            final_user_permissions[identifier].update(expanded_resource)
+
+
+def _black_white_processor(req_resources, user_permissions_for_resource, final_user_permissions):
     # With this set we know if a resource is already "deny"
     black_negation = set()
-    if mode == 'black' and not combination:
-        for req_resource in req_resources:
-            identifier = ':'.join(req_resource.split(':')[:-1])
-            if identifier == '*:*':
-                final_user_permissions['*:*'] = {'*'}
-            else:
-                expanded_resource = _expand_resource(req_resource)
-                final_user_permissions[identifier].update(expanded_resource)
-    if combination and mode == 'black':
-        user_permissions_for_resource['black_combination'] = 'black'
+    resources_value = _optimize_resources(req_resources)
     for user_resource, user_resource_effect in user_permissions_for_resource.items():
-        if not combination or len(req_resources) == 0:
-            name, attribute, value = user_resource.split(':')
-            identifier = name + ':' + attribute
-            if identifier == 'agent:group':
-                identifier = 'agent:id'
-            # We expand the resource for the black mode, in this way,
-            # we allow all permissions for the resource (black mode)
-            mode == 'black' and _black_mode_expansion(final_user_permissions, identifier, black_negation)
-            expanded_resource = _expand_resource(user_resource)
-            try:
-                if identifier == '*:*' or (user_resource_effect == 'allow' and
-                                           '*' not in req_resources_value[identifier] and value == '*'):
-                    final_user_permissions[identifier].update(req_resources_value[identifier] - expanded_resource)
+        name, attribute, value = user_resource.split(':')
+        identifier = name + ':' + attribute
+        if identifier == 'agent:group':
+            identifier = 'agent:id'
+        # We expand the resource for the black mode, in this way,
+        # we allow all permissions for the resource (black mode)
+        mode == 'black' and _black_mode_expansion(final_user_permissions, identifier, black_negation)
+        expanded_resource = _expand_resource(user_resource)
+        try:
+            if identifier == '*:*' or (user_resource_effect == 'allow' and
+                                       '*' not in resources_value[identifier] and value == '*'):
+                final_user_permissions[identifier].update(resources_value[identifier] - expanded_resource)
 
-                _use_expanded_resource(user_resource_effect, final_user_permissions[identifier],
-                                       expanded_resource, req_resources_value[identifier],
-                                       value == '*' and user_resource_effect != 'allow')
-            except KeyError:  # Multiples resources in action and only one is required
-                pass
-                # if len(final_user_permissions[identifier]) == 0:
-                #     final_user_permissions.pop(identifier)
-        elif combination:
-            if combination_defined_rbac(req_resources, user_resource) or \
-                    'black_combination' in user_permissions_for_resource.keys():
-                for resource in req_resources:
-                    resource = resource.split('&')
-                    for r in resource:
-                        split_resource = r.split(':')
-                        if mode == 'black':
-                            final_user_permissions[':'.join(split_resource[:-1])].add(split_resource[-1])
-                        if user_resource_effect == 'allow':
-                            final_user_permissions[':'.join(split_resource[:-1])].add(split_resource[-1])
-                        elif user_resource_effect != 'black':
-                            final_user_permissions[':'.join(split_resource[:-1])].discard(split_resource[-1])
-
+            _use_expanded_resource(user_resource_effect, final_user_permissions[identifier],
+                                   expanded_resource, resources_value[identifier],
+                                   value == '*' and user_resource_effect != 'allow')
+        except KeyError:  # Multiples resources in action and only one is required
+            pass
     # If the black mode is enabled we need to sanity the output due the initial expansion
     # (allow all permissions over the resource)
-    mode == 'black' and not combination and _black_mode_sanitize(final_user_permissions, req_resources_value)
+    mode == 'black' and _black_mode_sanitize(final_user_permissions, resources_value)
+
+
+def _combination_processor(req_resources, user_permissions_for_resource, final_user_permissions):
+    if mode == 'black' and len(user_permissions_for_resource) == 0:
+        for resource in req_resources:
+            resource = resource.split('&')
+            for r in resource:
+                split_resource = r.split(':')
+                if mode == 'black':
+                    final_user_permissions[':'.join(split_resource[:-1])].add(split_resource[-1])
+        return
+
+    for user_resource, user_resource_effect in user_permissions_for_resource.items():
+        if _combination_defined_rbac(req_resources, user_resource):
+            for resource in req_resources:
+                resource = resource.split('&')
+                for r in resource:
+                    split_resource = r.split(':')
+                    if user_resource_effect == 'allow':
+                        final_user_permissions[':'.join(split_resource[:-1])].add(split_resource[-1])
+                    else:
+                        final_user_permissions[':'.join(split_resource[:-1])].discard(split_resource[-1])
+
+
+def _match_permissions(req_permissions: dict = None):
+    """Try to match function required permissions against user permissions to allow or deny execution
+
+    :param req_permissions: Required permissions to allow function execution
+    :return: Dictionary with final permissions
+    """
+    allow_match = defaultdict(set)
+    for req_action, req_resources in req_permissions.items():
+        is_combination = any('&' in req_resource for req_resource in req_resources)
+        if not is_combination or len(req_resources) == 0:
+            mode == 'black' and _empty_black_expansion(req_resources, allow_match)
+            _black_white_processor(req_resources, rbac.get().get(req_action, dict()), allow_match)
+        else:
+            _combination_processor(req_resources, rbac.get().get(req_action, dict()), allow_match)
+    return allow_match
 
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
@@ -298,20 +319,6 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
         else:
             req_permissions[action] = res_list
     return target_params, req_permissions, add_denied
-
-
-def _match_permissions(req_permissions: dict = None):
-    """Try to match function required permissions against user permissions to allow or deny execution
-    :param req_permissions: Required permissions to allow function execution
-    :return: Dictionary with final permissions
-    """
-    allow_match = defaultdict(set)
-    for req_action, req_resources in req_permissions.items():
-        try:
-            _permissions_processing(req_resources, rbac.get()[req_action], allow_match)
-        except KeyError:
-            _permissions_processing(req_resources, dict(), allow_match)
-    return allow_match
 
 
 def _get_denied(original, allowed, target_param, res_id, resources=None):
