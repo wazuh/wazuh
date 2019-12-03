@@ -49,16 +49,12 @@ with open(test_data_path + 'RBAC_decorators_resourceless_black.json') as f:
 def get_identifier(resources):
     list_params = list()
     for resource in resources:
-        if '&' not in resource:
+        resource = resource.split('&')
+        for r in resource:
             try:
-                list_params.append(re.search(r'^([a-z*]+:[a-z*]+:)(\w+|\*|{(\w+)})$', resource).group(3))
-            except:
-                list_params.append(re.search(r'^([a-z*]+:[a-z*]+:)(\w+|\*|{(\w+)})$', resource).group(2))
-        else:
-            try:
-                list_params.append(re.search(r'^(([a-z*]+:[a-z*]+:)(\w+&?|\*&?|{(\w+)}))+$', resource).group(4))
-            except:
-                list_params.append(re.search(r'^(([a-z*]+:[a-z*]+:)(\w+&?|\*&?|{(\w+)}))+$', resource).group(3))
+                list_params.append(re.search(r'^([a-z*]+:[a-z*]+:)(\*|{(\w+)})$', r).group(3))
+            except AttributeError:
+                pass
 
     return list_params
 

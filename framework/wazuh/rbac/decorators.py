@@ -2,13 +2,16 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import asyncio
+import glob
 import re
 from collections import defaultdict
 from functools import wraps
+from os.path import join
 
 from api import configuration
 from api.authentication import AuthenticationManager
-from wazuh.common import rbac, broadcast, cluster_nodes
+from wazuh.common import rbac, broadcast, cluster_nodes, ossec_path
 from wazuh.configuration import get_ossec_conf
 from wazuh.core.cdb_list import iterate_lists
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
@@ -16,7 +19,6 @@ from wazuh.core.rule import format_rule_decoder_file, Status
 from wazuh.exception import WazuhError
 from wazuh.rbac.orm import RolesManager, PoliciesManager
 from wazuh.results import AffectedItemsWazuhResult
-import asyncio
 
 mode = configuration.read_api_config()['rbac']['mode']
 
@@ -79,6 +81,15 @@ def _expand_resource(resource):
             return {cdb_list['path'] for cdb_list in iterate_lists(only_names=True)}
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
+        elif resource_type == 'file:path':
+            folders = ['etc/rules', 'etc/decoders', 'etc/lists', 'ruleset/sca', 'ruleset/decoders', 'ruleset/rules']
+            files = set()
+            for folder in folders:
+                for extension in ('*.yml', '*.yml.disabled', '*.xml', '*.cdb'):
+                    files.update({f.replace(ossec_path + '/', "") for f in glob.glob(
+                        join(ossec_path, folder, extension), recursive=True)})
+            files.add('etc/ossec.conf')
+            return files
         return set()
     # We return the value casted to set
     else:
@@ -229,20 +240,35 @@ def _combination_processor(req_resources, user_permissions_for_resource, final_u
             resource = resource.split('&')
             for r in resource:
                 split_resource = r.split(':')
+                identifier = ':'.join(split_resource[:-1])
+                value = split_resource[-1]
                 if mode == 'black':
-                    final_user_permissions[':'.join(split_resource[:-1])].add(split_resource[-1])
+                    if value == '*':
+                        final_user_permissions[identifier].update(_expand_resource(r))
+                    else:
+                        final_user_permissions[identifier].add(split_resource[-1])
         return
 
     for user_resource, user_resource_effect in user_permissions_for_resource.items():
+        # _combination_defined_rbac: This function prevents pairs from being treated individually
         if _combination_defined_rbac(req_resources, user_resource):
-            for resource in req_resources:
-                resource = resource.split('&')
-                for r in resource:
-                    split_resource = r.split(':')
+            resource = user_resource.split('&')
+            for req_resource in req_resources:
+                for r, split_req_resource in zip(resource, req_resource.split('&')):
+                    identifier = ':'.join(r.split(':')[:-1])
+                    value = split_req_resource.split(':')[-1]
+                    expanded_resource = _expand_resource(r)
                     if user_resource_effect == 'allow':
-                        final_user_permissions[':'.join(split_resource[:-1])].add(split_resource[-1])
+                        if value == '*':
+                            final_user_permissions[identifier].update(expanded_resource)
+                        else:
+                            final_user_permissions[identifier].update(expanded_resource.intersection({value}))
                     else:
-                        final_user_permissions[':'.join(split_resource[:-1])].discard(split_resource[-1])
+                        if value == '*':
+                            final_user_permissions[identifier].difference_update(expanded_resource)
+                        else:
+                            final_user_permissions[identifier].difference_update(
+                                expanded_resource.intersection({value}))
 
 
 def _match_permissions(req_permissions: dict = None):
