@@ -534,7 +534,7 @@ def environment_white_ciscat_rbac():
     while values['retries'] < values['max_retries']:
         master_health = check_health()
         if master_health:
-            agents_healthy = check_health(node_type='agent', agents=[1, 2, 3])
+            agents_healthy = check_health(node_type='agent', agents=list(range(1, 9)))
             if agents_healthy:
                 time.sleep(10)
                 yield
@@ -550,7 +550,7 @@ def environment_black_ciscat_rbac():
     while values['retries'] < values['max_retries']:
         master_health = check_health()
         if master_health:
-            agents_healthy = check_health(node_type='agent', agents=[1, 2, 3])
+            agents_healthy = check_health(node_type='agent', agents=list(range(1, 9)))
             if agents_healthy:
                 time.sleep(10)
                 yield
