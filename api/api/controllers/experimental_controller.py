@@ -11,7 +11,6 @@ import wazuh.ciscat as ciscat
 import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
 from api.authentication import get_permissions
-from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
@@ -20,14 +19,15 @@ logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def clear_syscheck_database(pretty=False, wait_for_complete=False):
+def clear_syscheck_database(pretty=False, wait_for_complete=False, list_agents='*'):
     """ Clear the syscheck database for all agents.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :return: Message
+    :param list_agents: List of agent's IDs.
+    :return: AllItemsResponseAgentIDs
     """
-    f_kwargs = {'agent_list': '*'}
+    f_kwargs = {'agent_list': list_agents}
 
     dapi = DistributedAPI(f=syscheck.clear,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -36,7 +36,7 @@ def clear_syscheck_database(pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          broadcasting=True,
+                          broadcasting=list_agents == '*',
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
@@ -45,13 +45,14 @@ def clear_syscheck_database(pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None,
-                        search=None, benchmark=None, profile=None, fail=None, error=None, notchecked=None, unknown=None,
-                        score=None):
-    """ Get ciscat results info from all agents.
+def get_cis_cat_results(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None,
+                        sort=None, search=None, benchmark=None, profile=None, fail=None, error=None, notchecked=None,
+                        unknown=None, score=None):
+    """ Get ciscat results info from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param list_agents: List of agent's IDs.
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param select: Select which fields to return (separated by comma)
@@ -65,9 +66,9 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
     :param notchecked: Filters by not checked
     :param unknown: Filters by unknown results.
     :param score: Filters by final score
-    :return: Data
+    :return: AllItemsResponseCiscatResult
     """
-    f_kwargs = {'agent_list': '*',
+    f_kwargs = {'agent_list': list_agents,
                 'offset': offset,
                 'limit': limit,
                 'select': select,
@@ -92,7 +93,7 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          broadcasting=True,
+                          broadcasting=list_agents == '*',
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
@@ -101,12 +102,13 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
 
 
 @exception_handler
-def get_hardware_info(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
-                      board_serial=None):
-    """ Get hardware info from all agents.
+def get_hardware_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None, 
+                      sort=None, search=None, board_serial=None):
+    """ Get hardware info from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param list_agents: List of agent's IDs.
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param select: Select which fields to return (separated by comma)
@@ -114,7 +116,7 @@ def get_hardware_info(pretty=False, wait_for_complete=False, offset=0, limit=Non
     ascending or descending order.
     :param search: Looks for elements with the specified string
     :param board_serial: Filters by board_serial
-    :return: Data
+    :return: AllItemsResponseSyscollectorHardware
     """
     filters = {
         'board_serial': board_serial
@@ -123,37 +125,40 @@ def get_hardware_info(pretty=False, wait_for_complete=False, offset=0, limit=Non
     nested = ['ram.free', 'ram.total', 'cpu.cores', 'cpu.mhz', 'cpu.name']
     for field in nested:
         filters[field] = connexion.request.args.get(field, None)
-    f_kwargs = {
-        'offset': offset,
-        'limit': limit,
-        'select': select,
-        'sort': parse_api_param(sort, 'sort'),
-        'search': parse_api_param(search, 'search'),
-        'filters': filters,
-        }
+    f_kwargs = {'agent_list': list_agents,
+                'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': filters,
+                'element_type': 'hardware'
+                }
 
-    dapi = DistributedAPI(f=syscollector.get_hardware,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
+                          broadcasting=list_agents == '*',
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
-def get_network_address_info(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None,
-                             search=None, iface_name=None, proto=None, address=None, broadcast=None, netmask=None):
+def get_network_address_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None,
+                             sort=None, search=None, iface_name=None, proto=None, address=None, broadcast=None,
+                             netmask=None):
     """ Get the IPv4 and IPv6 addresses associated to all network interfaces
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param list_agents: List of agent's IDs.
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param select: Select which fields to return (separated by comma)
@@ -165,45 +170,47 @@ def get_network_address_info(pretty=False, wait_for_complete=False, offset=0, li
     :param address: IP address associated with the network interface
     :param broadcast: Filters by broadcast direction
     :param netmask: Filters by netmask
-    :return: Data
+    :return: AllItemsResponseSyscollectorNetwork
     """
-    f_kwargs = {
-        'offset': offset,
-        'limit': limit,
-        'select': select,
-        'sort': parse_api_param(sort, 'sort'),
-        'search': parse_api_param(search, 'search'),
-        'filters': {
-            'iface_name': iface_name,
-            'proto': proto,
-            'address': address,
-            'broadcast': broadcast,
-            'netmask': netmask
+    f_kwargs = {'agent_list': list_agents,
+                'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': {
+                    'iface_name': iface_name,
+                    'proto': proto,
+                    'address': address,
+                    'broadcast': broadcast,
+                    'netmask': netmask
+                        },
+                'element_type': 'netaddr'
                 }
-        }
 
-    dapi = DistributedAPI(f=syscollector.get_netaddr,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
+                          broadcasting=list_agents == '*',
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
-def get_network_interface_info(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None,
-                               search=None, adapter=None, state=None, mtu=None):
-    """ Get all network interfaces from all agents.
+def get_network_interface_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None,
+                               select=None, sort=None, search=None, adapter=None, state=None, mtu=None):
+    """ Get all network interfaces from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param list_agents: List of agent's IDs.
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param select: Select which fields to return (separated by comma)
@@ -213,7 +220,7 @@ def get_network_interface_info(pretty=False, wait_for_complete=False, offset=0, 
     :param adapter: Filters by adapter
     :param state: Filters by state
     :param mtu: Filters by mtu
-    :return: Data
+    :return: AllItemsResponseSyscollectorInterface
     """
     filters = {
         'adapter': adapter,
@@ -226,37 +233,39 @@ def get_network_interface_info(pretty=False, wait_for_complete=False, offset=0, 
     for field in nested:
         filters[field] = connexion.request.args.get(field, None)
 
-    f_kwargs = {
-        'offset': offset,
-        'limit': limit,
-        'select': select,
-        'sort': parse_api_param(sort, 'sort'),
-        'search': parse_api_param(search, 'search'),
-        'filters': filters
-        }
+    f_kwargs = {'agent_list': list_agents,
+                'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': filters,
+                'element_type': 'netiface'
+                }
 
-    dapi = DistributedAPI(f=syscollector.get_netiface,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
+                          broadcasting=list_agents == '*',
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
-def get_network_protocol_info(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None,
-                              search=None, iface=None, gateway=None, dhcp=None):
-    """ Get network protocol info from all agents.
+def get_network_protocol_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None,
+                              sort=None, search=None, iface=None, gateway=None, dhcp=None):
+    """ Get network protocol info from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param list_agents: List of agent's IDs.
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param select: Select which fields to return (separated by comma)
@@ -266,44 +275,46 @@ def get_network_protocol_info(pretty=False, wait_for_complete=False, offset=0, l
     :param iface: Filters by iface
     :param gateway: Filters by gateway
     :param dhcp: Filters by dhcp
-    :return: Data
+    :return: AllItemsResponseSyscollectorProtocol
     """
-    f_kwargs = {
-        'offset': offset,
-        'limit': limit,
-        'select': select,
-        'sort': parse_api_param(sort, 'sort'),
-        'search': parse_api_param(search, 'search'),
-        'filters': {
-            'iface': iface,
-            'type': connexion.request.args.get('type', None),
-            'gateway': gateway,
-            'dhcp': dhcp
-            }
-        }
+    f_kwargs = {'agent_list': list_agents,
+                'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': {
+                    'iface': iface,
+                    'type': connexion.request.args.get('type', None),
+                    'gateway': gateway,
+                    'dhcp': dhcp
+                    },
+                'element_type': 'netproto'
+                }
 
-    dapi = DistributedAPI(f=syscollector.get_netproto,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
+                          broadcasting=list_agents == '*',
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
-def get_os_info(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
-                os_name=None, architecture=None, os_version=None, version=None, release=None):
-    """ Get OS info from all agents.
+def get_os_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None, sort=None,
+                search=None, os_name=None, architecture=None, os_version=None, version=None, release=None):
+    """ Get OS info from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param list_agents: List of agent's IDs.
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param select: Select which fields to return (separated by comma)
@@ -315,45 +326,47 @@ def get_os_info(pretty=False, wait_for_complete=False, offset=0, limit=None, sel
     :param os_version: Filters by os_version
     :param version: Filters by version
     :param release: Filters by release
-    :return: Data
+    :return: AllItemsResponseSyscollectorOS
     """
-    f_kwargs = {
-        'offset': offset,
-        'limit': limit,
-        'select': select,
-        'sort': parse_api_param(sort, 'sort'),
-        'search': parse_api_param(search, 'search'),
-        'filters': {
-            'os_name': os_name,
-            'architecture': architecture,
-            'os_version': os_version,
-            'version': version,
-            'release': release
-            }
-        }
+    f_kwargs = {'agent_list': list_agents,
+                'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': {
+                    'os_name': os_name,
+                    'architecture': architecture,
+                    'os_version': os_version,
+                    'version': version,
+                    'release': release
+                    },
+                'element_type': 'os'
+                }
 
-    dapi = DistributedAPI(f=syscollector.get_os,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
+                          broadcasting=list_agents == '*',
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
-def get_packages_info(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
-                      vendor=None, name=None, architecture=None, version=None):
-    """ Get packages info from all agents.
+def get_packages_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None,
+                      sort=None, search=None, vendor=None, name=None, architecture=None, version=None):
+    """ Get packages info from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param list_agents: List of agent's IDs.
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param select: Select which fields to return (separated by comma)
@@ -364,45 +377,47 @@ def get_packages_info(pretty=False, wait_for_complete=False, offset=0, limit=Non
     :param name: Filters by name
     :param architecture: Filters by architecture
     :param version: Filters by format
-    :return: Data
+    :return: AllItemsResponseSyscollectorPackages
     """
-    f_kwargs = {
-        'offset': offset,
-        'limit': limit,
-        'select': select,
-        'sort': parse_api_param(sort, 'sort'),
-        'search': parse_api_param(search, 'search'),
-        'filters': {
-            'vendor': vendor,
-            'name': name,
-            'architecture': architecture,
-            'format': connexion.request.args.get('format', None),
-            'version': version
-            }
-        }
+    f_kwargs = {'agent_list': list_agents,
+                'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': {
+                    'vendor': vendor,
+                    'name': name,
+                    'architecture': architecture,
+                    'format': connexion.request.args.get('format', None),
+                    'version': version
+                    },
+                'element_type': 'packages'
+                }
 
-    dapi = DistributedAPI(f=syscollector.get_packages,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
+                          broadcasting=list_agents == '*',
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
-def get_ports_info(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
-                   pid=None, protocol=None, tx_queue=None, state=None, process=None):
-    """ Get ports info from all agents.
+def get_ports_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None, sort=None,
+                   search=None, pid=None, protocol=None, tx_queue=None, state=None, process=None):
+    """ Get ports info from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param list_agents: List of agent's IDs.
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param select: Select which fields to return (separated by comma)
@@ -414,7 +429,7 @@ def get_ports_info(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     :param tx_queue: Filters by tx_queue
     :param state: Filters by state
     :param process: Filters by process
-    :return: Data
+    :return: AllItemsResponseSyscollectorPorts
     """
     filters = {
         'pid': pid,
@@ -428,38 +443,41 @@ def get_ports_info(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     for field in nested:
         filters[field] = connexion.request.args.get(field, None)
 
-    f_kwargs = {
-        'offset': offset,
-        'limit': limit,
-        'select': select,
-        'sort': parse_api_param(sort, 'sort'),
-        'search': parse_api_param(search, 'search'),
-        'filters': filters
-         }
+    f_kwargs = {'agent_list': list_agents,
+                'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': filters,
+                'element_type': 'ports'
+                }
 
-    dapi = DistributedAPI(f=syscollector.get_ports,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
+                          broadcasting=list_agents == '*',
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
-def get_processes_info(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
-                       pid=None, state=None, ppid=None, egroup=None, euser=None, fgroup=None, name=None, nlwp=None,
-                       pgrp=None, priority=None, rgroup=None, ruser=None, sgroup=None, suser=None):
-    """ Get processes info from all agents.
+def get_processes_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None,
+                       sort=None, search=None, pid=None, state=None, ppid=None, egroup=None, euser=None, fgroup=None,
+                       name=None, nlwp=None, pgrp=None, priority=None, rgroup=None, ruser=None, sgroup=None,
+                       suser=None):
+    """ Get processes info from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param list_agents: List of agent's IDs.
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param select: Select which fields to return (separated by comma)
@@ -480,42 +498,87 @@ def get_processes_info(pretty=False, wait_for_complete=False, offset=0, limit=No
     :param ruser: Filters by process ruser
     :param sgroup: Filters by process sgroup
     :param suser: Filters by process suser
-    :return: Data
+    :return: AllItemsResponseSyscollectorProcesses
     """
-    f_kwargs = {
-        'offset': offset,
-        'limit': limit,
-        'select': select,
-        'sort': parse_api_param(sort, 'sort'),
-        'search': parse_api_param(search, 'search'),
-        'filters': {
-            'state': state,
-            'pid': pid,
-            'ppid': ppid,
-            'egroup': egroup,
-            'euser': euser,
-            'fgroup': fgroup,
-            'name': name,
-            'nlwp': nlwp,
-            'pgrp': pgrp,
-            'priority': priority,
-            'rgroup': rgroup,
-            'ruser': ruser,
-            'sgroup': sgroup,
-            'suser': suser
-            }
-        }
+    f_kwargs = {'agent_list': list_agents,
+                'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': {
+                    'state': state,
+                    'pid': pid,
+                    'ppid': ppid,
+                    'egroup': egroup,
+                    'euser': euser,
+                    'fgroup': fgroup,
+                    'name': name,
+                    'nlwp': nlwp,
+                    'pgrp': pgrp,
+                    'priority': priority,
+                    'rgroup': rgroup,
+                    'ruser': ruser,
+                    'sgroup': sgroup,
+                    'suser': suser
+                    },
+                'element_type': 'processes'
+                }
 
-    dapi = DistributedAPI(f=syscollector.get_processes,
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
+                          broadcasting=list_agents == '*',
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
+
+
+@exception_handler
+def get_hotfixes_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, sort=None,
+                      search=None, select=None, hotfix=None):
+    """ Get hotfixes info from all agents or a list of them.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param list_agents: List of agent's IDs.
+    :param offset: First element to return in the collection
+    :param limit: Maximum number of elements to return
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/. at the beginning to list in
+    ascending or descending order.
+    :param search: Looks for elements with the specified string
+    :param select: Select which fields to return (separated by comma)
+    :param hotfix: Filters by hotfix in Windows agents
+    :return:AllItemsResponseSyscollectorHotfixes
+    """
+
+    filters = {'hotfix': hotfix}
+
+    f_kwargs = {'agent_list': list_agents,
+                'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': filters,
+                'element_type': 'hotfixes'}
+
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger,
+                          broadcasting=list_agents == '*',
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+
+    return data, 200

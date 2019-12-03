@@ -24,6 +24,46 @@ stages:
     response:
       status_code: 200
       body:
+        data:
+          affected_items:
+            - '000'
+            - '001'
+            - '002'
+            - '003'
+            - '004'
+            - '005'
+            - '006'
+            - '007'
+            - '008'
+            - '009'
+            - '010'
+            - '011'
+            - '012'
+          failed_items: []
+          total_affected_items: 13
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '001,003,005,007'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - '001'
+            - '003'
+            - '005'
+            - '007'
+          failed_items: []
+          total_affected_items: 4
+          total_failed_items: 0
         message: !anystr
 
 ---
@@ -41,8 +81,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          affected_items:
             - &ciscat_response
               agent_id: !anystr
               benchmark: !anystr
@@ -58,6 +97,32 @@ stages:
               unknown: !anyint
             - <<: *ciscat_response
             - <<: *ciscat_response
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '001,003'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - <<: *ciscat_response
+              agent_id: '001'
+            - <<: *ciscat_response
+              agent_id: '003'
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/hardware
@@ -74,8 +139,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          affected_items:
             - &hardware_response
               agent_id: !anystr
               board_serial: !anystr
@@ -98,8 +162,36 @@ stages:
             - <<: *hardware_response
             - <<: *hardware_response
             - <<: *hardware_response
+          failed_items: []
+          total_affected_items: 9
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '001,003,005,007'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
             - <<: *hardware_response
+              agent_id: '001'
             - <<: *hardware_response
+              agent_id: '003'
+            - <<: *hardware_response
+              agent_id: '005'
+            - <<: *hardware_response
+              agent_id: '007'
+          failed_items: []
+          total_affected_items: 4
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netaddr
@@ -116,8 +208,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          affected_items:
             - &netaddr_response
               address: !anystr
               broadcast: !anystr
@@ -134,8 +225,36 @@ stages:
             - <<: *netaddr_response
             - <<: *netaddr_response
             - <<: *netaddr_response
+          failed_items: []
+          total_affected_items: 9
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '001,003,005,007'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
             - <<: *netaddr_response
+              agent_id: '001'
             - <<: *netaddr_response
+              agent_id: '003'
+            - <<: *netaddr_response
+              agent_id: '005'
+            - <<: *netaddr_response
+              agent_id: '007'
+          failed_items: []
+          total_affected_items: 4
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netiface
@@ -152,8 +271,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          affected_items:
             - &netiface_response
               mac: !anystr
               mtu: !anyint
@@ -181,8 +299,36 @@ stages:
             - <<: *netiface_response
             - <<: *netiface_response
             - <<: *netiface_response
+          failed_items: []
+          total_affected_items: 9
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '001,003,005,007'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
             - <<: *netiface_response
+              agent_id: '001'
             - <<: *netiface_response
+              agent_id: '003'
+            - <<: *netiface_response
+              agent_id: '005'
+            - <<: *netiface_response
+              agent_id: '007'
+          failed_items: []
+          total_affected_items: 4
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netproto
@@ -199,8 +345,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          affected_items:
             - &netproto_response
               dhcp: !anystr
               gateway: !anystr
@@ -216,8 +361,36 @@ stages:
             - <<: *netproto_response
             - <<: *netproto_response
             - <<: *netproto_response
+          failed_items: []
+          total_affected_items: 9
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '001,003,005,007'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
             - <<: *netproto_response
+              agent_id: '001'
             - <<: *netproto_response
+              agent_id: '003'
+            - <<: *netproto_response
+              agent_id: '005'
+            - <<: *netproto_response
+              agent_id: '007'
+          failed_items: []
+          total_affected_items: 4
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/os
@@ -234,8 +407,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items:
+          affected_items:
             - &os_response
               architecture: !anystr
               hostname: !anystr
@@ -260,8 +432,36 @@ stages:
             - <<: *os_response
             - <<: *os_response
             - <<: *os_response
+          failed_items: []
+          total_affected_items: 9
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '001,003,005,007'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
             - <<: *os_response
+              agent_id: '001'
             - <<: *os_response
+              agent_id: '003'
+            - <<: *os_response
+              agent_id: '005'
+            - <<: *os_response
+              agent_id: '007'
+          failed_items: []
+          total_affected_items: 4
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/packages
@@ -278,8 +478,29 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items: !anything
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '001,003,005,007'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/ports
@@ -296,8 +517,63 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items: !anything
+          affected_items:
+            - &ports_response
+              agent_id: !anystr
+                inode: !anyint
+                local:
+                  ip: !anystr
+                  port: !anyint
+                protocol: !anystr
+                remote:
+                  ip: !anystr
+                  port: !anyint
+                rx_queue: !anyint
+                scan:
+                  id: !anyint
+                  time: !anystr
+                state: !anystr
+                tx_queue: !anyint
+            - <<: *ports_response
+            - <<: *ports_response
+            - <<: *ports_response
+            - <<: *ports_response
+            - <<: *ports_response
+            - <<: *ports_response
+            - <<: *ports_response
+            - <<: *ports_response
+            - <<: *ports_response
+            - <<: *ports_response
+          failed_items: []
+          total_affected_items: 11
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '001,003,005,007'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - <<: *ports_response
+              agent_id: '001'
+            - <<: *ports_response
+              agent_id: '003'
+            - <<: *ports_response
+              agent_id: '005'
+            - <<: *ports_response
+              agent_id: '007'
+          failed_items: []
+          total_affected_items: 4
+          total_failed_items: 0
+        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/processes
@@ -314,5 +590,68 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items: !anything
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '001,003,005,007'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
+
+---
+test_name: GET /experimental/syscollector/hotfixes
+
+marks:
+  - xfail
+
+stages:
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hotfixes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Request
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hotfixes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '001,003,005,007'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr

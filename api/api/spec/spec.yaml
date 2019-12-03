@@ -408,7 +408,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                $ref: '#/components/schemas/SyscollectorHardware'
+                $ref: '#/components/schemas/SyscollectorHotfix'
 
     AllItemsResponseSyscollectorInterface:
       allOf:
@@ -462,7 +462,7 @@ components:
               items:
                 $ref: '#/components/schemas/SyscollectorPorts'
 
-    AllItemsResponseSyscollectorProcess:
+    AllItemsResponseSyscollectorProcesses:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
         - type: object
@@ -2119,14 +2119,14 @@ components:
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
-    SyscollectorHotfixes:
+    SyscollectorHotfix:
       type: object
       properties:
         scan:
           $ref: '#/components/schemas/ScanIdTime'
         hotfix:
           type: string
-          description: Hotfix filter for Windows Agents.
+          description: Hotfixes for windows agents.
 
     SyscollectorNetwork:
       type: object
@@ -9029,21 +9029,45 @@ paths:
     delete:
       tags:
         - experimental
-      summary: 'Clear syscheck database'
-      description: 'Clears the syscheck database for all agents.'
+      summary: 'Clear agents syscheck database'
+      description: 'Clears the syscheck database for all agents or a list of them'
       operationId: api.controllers.experimental_controller.clear_syscheck_database
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_agents'
       responses:
         '200':
           description: 'Delete syscheck database'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
               example:
-                message: Syscheck database deleted
+                data:
+                  affected_items:
+                    - '000'
+                    - '001'
+                    - '002'
+                    - '003'
+                    - '004'
+                    - '005'
+                    - '006'
+                    - '007'
+                    - '008'
+                    - '009'
+                    - '010'
+                    - '011'
+                    - '012'
+                  failed_items: []
+                  total_affected_items: 13
+                  total_failed_items: 0
+                message: Cleared syscheck database on shown agents
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9052,11 +9076,12 @@ paths:
       tags:
         - experimental
       summary: 'Get CIS-CAT results'
-      description: "Returns the agents ciscat results info."
+      description: "Return CIS-CAT results for all agents or a list of them"
       operationId: api.controllers.experimental_controller.get_cis_cat_results
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -9077,44 +9102,54 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/CiscatResults'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseCiscatResult'
               example:
                 data:
-                  totalItems: 2
-                  items:
-                  - profile: xccdf_org.cisecurity.benchmarks_profile_Level_1_-_Workstation
-                    score: 64
-                    error: 0
-                    scan:
-                      id: 1406741147
-                      time: "2018-09-06T07:50:52.630Z"
-                    fail: 53
-                    benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
-                    pass: 96
-                    notchecked: 71
-                    unknown: 0
-                  - profile: xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server
-                    score: 57
-                    error: 0
-                    scan:
-                      id: 1406741147
-                      time: "2018-09-06T07:50:15.632Z"
-                    fail: 79
-                    benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
-                    pass: 104
-                    notchecked: 36
-                    unknown: 1
+                  affected_items:
+                    - agent_id: '001'
+                      benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
+                      error: 0
+                      fail: 82
+                      notchecked: 36
+                      pass: 102
+                      profile: xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server
+                      scan:
+                        id: 1422619291
+                        time: '2019-12-03T08:38:35.230Z'
+                      score: 55
+                      unknown: 0
+                    - agent_id: '002'
+                      benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
+                      error: 0
+                      fail: 82
+                      notchecked: 36
+                      pass: 102
+                      profile: xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server
+                      scan:
+                        id: 1794774880
+                        time: '2019-12-03T08:38:27.743Z'
+                      score: 55
+                      unknown: 0
+                    - agent_id: '003'
+                      benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
+                      error: 0
+                      fail: 82
+                      notchecked: 36
+                      pass: 102
+                      profile: xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server
+                      scan:
+                        id: 622382213
+                        time: '2019-12-03T08:39:02.569Z'
+                      score: 55
+                      unknown: 0
+                  failed_items: []
+                  total_affected_items: 3
+                  total_failed_items: 0
+                message: All CISCAT results loaded
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9122,12 +9157,13 @@ paths:
     get:
       tags:
         - experimental
-      summary: 'Get hardware info of all agents'
-      description: "Returns the agent's hardware info. This information include cpu, ram, scan info among others of all agents."
+      summary: 'Get hardware info from agents'
+      description: "Returns all agents (or a list of them) hardware info. This information include cpu, ram, scan info among others of all agents."
       operationId: api.controllers.experimental_controller.get_hardware_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -9146,48 +9182,57 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorHardware'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorHardware'
               example:
                 data:
-                  totalItems: 4
-                  items:
-                  - cpu:
-                      core: 2
-                      mhz: 1992.001
-                      name: Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz
-                    ram:
-                      free: 65396
-                      total: 492832
-                      usage: 87
-                    scan:
-                      id: 219248827
-                      time: "2019-02-19T10:22:14Z"
-                    board_serial: "0"
-                    agent_id: "000"
-                  - cpu:
-                      core: 1
-                      mhz: 1992.001
-                      name: Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz
-                    ram:
-                      free: 40372
-                      total: 234968
-                      usage: 83
-                    scan:
-                      id: 257116304
-                      time: "2019-02-19T10:26:20Z"
-                    board_serial: "0"
-                    agent_id: "001"
+                  affected_items:
+                    - agent_id: '000'
+                      board_serial: BSS-0123456789
+                      cpu:
+                        cores: 12
+                        mhz: 3094.875
+                        name: Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz
+                      ram:
+                        free: 6958480
+                        total: 16263580
+                        usage: 58
+                      scan:
+                        id: 1452382474
+                        time: '2019-12-03T08:37:42Z'
+                    - agent_id: '001'
+                      board_serial: BSS-0123456789
+                      cpu:
+                        cores: 12
+                        mhz: 2688.144
+                        name: Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz
+                      ram:
+                        free: 5793604
+                        total: 16263580
+                        usage: 65
+                      scan:
+                        id: 1317471702
+                        time: '2019-12-03T08:38:29Z'
+                    - agent_id: '002'
+                      board_serial: BSS-0123456789
+                      cpu:
+                        cores: 12
+                        mhz: 2896.127
+                        name: Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz
+                      ram:
+                        free: 5844192
+                        total: 16263580
+                        usage: 65
+                      scan:
+                        id: 2069790203
+                        time: '2019-12-03T08:38:21Z'
+                  failed_items: []
+                  total_affected_items: 3
+                  total_failed_items: 0
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9195,12 +9240,13 @@ paths:
     get:
       tags:
         - experimental
-      summary: 'Get the IPv4 and IPv6 addresses associated all network interfaces'
-      description: "Returns the agent's IPv4 and IPv6 addresses associated its network interfaces. This information include used IP protocol, interface, IP address  among others  of all agents."
+      summary: 'Get the IPv4 and IPv6 addresses associated to network interfaces'
+      description: "Returns all agents (or a list of them) IPv4 and IPv6 addresses associated to their network interfaces. This information include used IP protocol, interface, and IP address among others."
       operationId: api.controllers.experimental_controller.get_network_address_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -9217,34 +9263,42 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorNetwork'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorNetwork'
               example:
                 data:
-                  totalItems: 16
-                  items:
-                  - proto: "ipv6"
-                    iface: "enp0s3"
-                    scan_id: 1203337658
-                    address: "fe80::f9:71ff:fed7:9d11"
-                    netmask: "ffff:ffff:ffff:ffff::"
-                    agent_id: "000"
-                  - proto: "ipv6"
-                    iface: "enp0s8"
-                    scan_id: 1203337658
-                    address: "fe80::a00:27ff:fefc:51f5"
-                    netmask: "ffff:ffff:ffff:ffff::"
-                    agent_id: "000"
+                  affected_items:
+                    - address: 172.23.0.3
+                      agent_id: '000'
+                      broadcast: 172.23.255.255
+                      iface: eth0
+                      netmask: 255.255.0.0
+                      proto: ipv4
+                      scan:
+                        id: 1921972007
+                    - address: 172.23.0.6
+                      agent_id: '001'
+                      broadcast: 172.23.255.255
+                      iface: eth0
+                      netmask: 255.255.0.0
+                      proto: ipv4
+                      scan:
+                        id: 1704225423
+                    - address: 172.23.0.7
+                      agent_id: '002'
+                      broadcast: 172.23.255.255
+                      iface: eth0
+                      netmask: 255.255.0.0
+                      proto: ipv4
+                      scan:
+                        id: 1393900138
+                  failed_items: []
+                  total_affected_items: 3
+                  total_failed_items: 0
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9252,12 +9306,13 @@ paths:
     get:
       tags:
         - experimental
-      summary: 'Get all network interfaces from all agents.'
-      description: "Returns the agent's network interfaces. This information include rx, scan, tx info and some network information among others  of all agents."
+      summary: 'Get all network interfaces from agents.'
+      description: "Returns all agents (or a list of them) network interfaces. This information includes rx, scan, tx info and some network information among other."
       operationId: api.controllers.experimental_controller.get_network_interface_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -9283,60 +9338,75 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorInterface'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorInterface'
               example:
                 data:
-                  totalItems: 8
-                  items:
-                  - rx:
-                      bytes: 47319629
-                      dropped: 0
-                      errors: 0
-                      packets: 43889
-                    scan:
-                      id: 1203337658
-                      time: "2019-02-19T10:22:14Z"
-                    tx:
-                      bytes: 843282
-                      dropped: 0
-                      errors: 0
-                      packets: 12505
-                    mac: "02:f9:71:d7:9d:11"
-                    name: "enp0s3"
-                    type: "ethernet"
-                    mtu: 1500
-                    state: "up"
-                    agent_id: "000"
-                  - rx:
-                      bytes: 0
-                      dropped: 0
-                      errors: 0
-                      packets: 0
-                    scan:
-                      id: 1203337658
-                      time: "2019-02-19T10:22:14Z"
-                    tx:
-                      bytes: 3874
-                      dropped: 0
-                      errors: 0
-                      packets: 19
-                    mac: "08:00:27:fc:51:f5"
-                    name: "enp0s8"
-                    type: "ethernet"
-                    mtu: 1500
-                    state: "up"
-                    agent_id: "000"
+                  affected_items:
+                    - agent_id: '000'
+                      mac: 02:42:ac:17:00:03
+                      mtu: 1500
+                      name: eth0
+                      rx:
+                        bytes: 7161
+                        dropped: 0
+                        errors: 0
+                        packets: 58
+                      scan:
+                        id: 1921972007
+                        time: '2019-12-03T09:57:04Z'
+                      state: up
+                      tx:
+                        bytes: 115
+                        dropped: 0
+                        errors: 0
+                        packets: 2
+                      type: ethernet
+                    - agent_id: '001'
+                      mac: 02:42:ac:17:00:06
+                      mtu: 1500
+                      name: eth0
+                      rx:
+                        bytes: 868555
+                        dropped: 0
+                        errors: 0
+                        packets: 1037
+                      scan:
+                        id: 1704225423
+                        time: '2019-12-03T09:57:42Z'
+                      state: up
+                      tx:
+                        bytes: 231924
+                        dropped: 0
+                        errors: 0
+                        packets: 910
+                      type: ethernet
+                    - agent_id: '002'
+                      mac: 02:42:ac:17:00:07
+                      mtu: 1500
+                      name: eth0
+                      rx:
+                        bytes: 876071
+                        dropped: 0
+                        errors: 0
+                        packets: 1152
+                      scan:
+                        id: 1393900138
+                        time: '2019-12-03T09:57:43Z'
+                      state: up
+                      tx:
+                        bytes: 232396
+                        dropped: 0
+                        errors: 0
+                        packets: 906
+                      type: ethernet
+                  failed_items: []
+                  total_affected_items: 3
+                  total_failed_items: 0
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9344,12 +9414,13 @@ paths:
     get:
       tags:
         - experimental
-      summary: 'Get network protocol info of all agents'
-      description: "Returns the agent's routing configuration for each network interface. This information include interface, type protocol information among others of all agents."
+      summary: 'Get network protocol info from agents'
+      description: "Returns all agents (or a list of them) routing configuration for each network interface. This information includes interface, type protocol information among other."
       operationId: api.controllers.experimental_controller.get_network_protocol_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -9366,18 +9437,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorProtocol'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorProtocol'
               example:
                 data:
                   totalItems: 16
@@ -9399,12 +9463,13 @@ paths:
     get:
       tags:
         - experimental
-      summary: 'Get OS info of all agents'
-      description: "Returns the agent's OS info. This information include os information, architecture information among others of all agents."
+      summary: 'Get OS info from agents'
+      description: "Returns all agents (or a list of them) OS info. This information includes os information, architecture information among other."
       operationId: api.controllers.experimental_controller.get_os_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -9422,18 +9487,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorOS'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorOS'
               example:
                 data:
                   totalItems: 4
@@ -9477,12 +9535,13 @@ paths:
     get:
       tags:
         - experimental
-      summary: 'Get packages info of all agents'
-      description: "Returns the agent's packages info. This information include name, section, size, priority information of all packages among others of all agents."
+      summary: 'Get packages info from agents'
+      description: "Returns all agents (or a list of them) packages info. This information includes name, section, size, and priority information of all packages among other."
       operationId: api.controllers.experimental_controller.get_packages_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -9500,18 +9559,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorPackages'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorPackages'
               example:
                 data:
                   totalItems: 2014
@@ -9551,12 +9603,13 @@ paths:
     get:
       tags:
         - experimental
-      summary: 'Get ports info of all agents'
-      description: "Returns the agent's ports info. This information include local IP, Remote IP, protocol information among others of all agents."
+      summary: 'Get ports info from agents'
+      description: "Returns all agents (or a list of them) ports info. This information includes local IP, Remote IP, protocol information among other"
       operationId: api.controllers.experimental_controller.get_ports_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -9577,18 +9630,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorPorts'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorPorts'
               example:
                 data:
                   totalItems: 18
@@ -9628,12 +9674,13 @@ paths:
     get:
       tags:
         - experimental
-      summary: 'Get processes info of all agents'
-      description: "Returns the agent's processes info."
+      summary: 'Get processes info from agents'
+      description: "Returns all agents (or a list of them) processes info."
       operationId: api.controllers.experimental_controller.get_processes_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -9660,18 +9707,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorProcess'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorProcesses'
               example:
                 data:
                   totalItems: 420
@@ -9736,6 +9776,53 @@ paths:
                     start_time: 22
                     tty: 0
                     agent_id: "000"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /experimental/syscollector/hotfixes:
+    get:
+      tags:
+        - experimental
+      summary: 'Get hotfixes info from agents'
+      description: "Returns all agents (or a list of them) hotfixes info."
+      operationId: api.controllers.experimental_controller.get_hotfixes_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/hotfix'
+      responses:
+        '200':
+          description: "Return a list of agent's hotfix results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorHotfixes'
+              example:
+                data:
+                  affected_items:
+                    - hotfix: 'KB2978691'
+                      scan:
+                        id: 1708048540
+                        time: '2019-10-30T16:09:35Z'
+                    - hotfix: 'KC2978693'
+                      scan:
+                        id: 1708048541
+                        time: '2019-10-30T16:19:39Z'
+                  failed_items: []
+                  total_affected_items: 2
+                  total_failed_items: 0
+                message: All specified items were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9804,10 +9891,9 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/hotfix'
-        - $ref: '#/components/parameters/query'
       responses:
         '200':
-          description: "Return a list of agent's hotfix results"
+          description: "Return an agent's hotfix results"
           content:
             application/json:
               schema:
@@ -9816,10 +9902,18 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseSyscollectorHardware'
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorHotfixes'
               example:
                 data:
-                  totalItems: 120
+                  affected_items:
+                    - hotfix: 'KB2978691'
+                      scan:
+                        id: 1708048540
+                        time: '2019-10-30T16:09:35Z'
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: All specified items were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10226,7 +10320,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseSyscollectorProcess'
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorProcesses'
               example:
                 data:
                   totalItems: 120

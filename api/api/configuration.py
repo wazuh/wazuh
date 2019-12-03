@@ -61,7 +61,7 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
         "basic_auth": True,
         "behind_proxy_server": False,
         "rbac": {
-            "mode": "black"
+            "mode": "white"
         },
         "https": {
             "enabled": False,

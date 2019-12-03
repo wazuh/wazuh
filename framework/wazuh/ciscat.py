@@ -7,7 +7,7 @@ from wazuh.core.core_utils import get_agents_info
 from wazuh.core.syscollector import WazuhDBQuerySyscollector
 from wazuh.exception import WazuhError
 from wazuh.rbac.decorators import expose_resources
-from wazuh.results import AffectedItemsWazuhResult
+from wazuh.results import AffectedItemsWazuhResult, merge
 
 
 @expose_resources(actions=["ciscat:read"], resources=["agent:id:{agent_list}"])
@@ -27,9 +27,15 @@ def get_ciscat_results(agent_list=None, offset=0, limit=common.database_limit, s
     :param q: Defines query to filter in DB.
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg='All CISCAT results loaded',
-                                      some_msg='Some CISCAT results were not loaded',
-                                      none_msg='No CISCAT results were loaded')
+    result = AffectedItemsWazuhResult(
+        all_msg='All CISCAT results loaded',
+        some_msg='Some CISCAT results were not loaded',
+        none_msg='No CISCAT results were loaded',
+        sort_fields=['agent_id'] if sort is None else sort['fields'],
+        sort_casting=['str'],
+        sort_ascending=[sort['order'] == 'asc' for _ in sort['fields']] if sort is not None else ['True']
+    )
+
     valid_select_fields = {'scan.id': 'scan_id', 'scan.time': 'scan_time', 'benchmark': 'benchmark',
                            'profile': 'profile', 'pass': 'pass', 'fail': 'fail', 'error': 'error',
                            'notchecked': 'notchecked', 'unknown': 'unknown', 'score': 'score'}
@@ -43,14 +49,18 @@ def get_ciscat_results(agent_list=None, offset=0, limit=common.database_limit, s
                                                 sort=sort, filters=filters, fields=valid_select_fields, table=table,
                                                 array=array, nested=nested, query=q)
             data = db_query.run()
-            result.affected_items.append(data['items'])
-            result.total_affected_items = data['totalItems']
+
+            if len(data['items']) > 0:
+                for item in data['items']:
+                    item['agent_id'] = agent
+                    result.affected_items.append(item)
+                result.total_affected_items += data['totalItems']
         except WazuhError as e:
             result.add_failed_item(id_=agent, error=e)
 
+    result.affected_items = merge(*[[res] for res in result.affected_items],
+                                  criteria=result.sort_fields,
+                                  ascending=result.sort_ascending,
+                                  types=result.sort_casting)
+
     return result
-
-
-def get_ciscat_experimental(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort=None, q=''):
-    return _get_agent_items(func=get_ciscat_results, offset=offset, limit=limit, select=select, filters=filters,
-                            search=search, sort=sort, array=True, query=q)

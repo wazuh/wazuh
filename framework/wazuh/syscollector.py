@@ -2,62 +2,61 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from operator import itemgetter
-
 from wazuh import common
-from wazuh.core.core_agent import Agent
-from wazuh.core.syscollector import WazuhDBQuerySyscollector, get_fields_to_nest, get_valid_fields, Type
+from wazuh.core.core_utils import get_agents_info
+from wazuh.core.syscollector import WazuhDBQuerySyscollector, get_valid_fields, Type
+from wazuh.exception import WazuhError
 from wazuh.rbac.decorators import expose_resources
-from wazuh.utils import plain_dict_to_nested_dict
-from wazuh.results import AffectedItemsWazuhResult
+from wazuh.results import AffectedItemsWazuhResult, merge
 
 
-@expose_resources(actions=['syscollector:read'], resources=['agent:id:{agent_id}'])
-def get_item_agent(agent_id, offset=0, limit=common.database_limit, select=None, search=None, sort=None, filters=None,
-                   query='', array=True, nested=True, element_type='os'):
-    """ Get info about an agent """
-    result = AffectedItemsWazuhResult(none_msg='No items was shown',
-                                      some_msg='Some items could not be shown',
-                                      all_msg='All specified items were shown')
-    table, valid_select_fields = get_valid_fields(Type(element_type), agent_id[0])
-    db_query = WazuhDBQuerySyscollector(agent_id=agent_id[0], offset=offset, limit=limit, select=select, search=search,
-                                        sort=sort, filters=filters, fields=valid_select_fields, table=table,
-                                        array=array, nested=nested, query=query).run()
-    result.affected_items = db_query['items']
-    result.total_affected_items = db_query['totalItems']
+@expose_resources(actions=['syscollector:read'], resources=['agent:id:{agent_list}'])
+def get_item_agent(agent_list, offset=0, limit=common.database_limit, select=None, search=None, sort=None, filters=None,
+                   q='', array=True, nested=True, element_type='os'):
+    """ Get syscollector information about a list of agents.
+
+    :param agent_list: List of agents ID's.
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+    :param q: Defines query to filter in DB.
+    :param filters: Fields to filter by
+    :param nested: Nested fields
+    :param array: Array
+    :param element_type: Type of element to get syscollector information from
+    :return: AffectedItemsWazuhResult
+    """
+    result = AffectedItemsWazuhResult(
+        none_msg='No syscollector information shown',
+        some_msg='Some syscollector information could not be shown',
+        all_msg='All specified syscollector information is shown',
+        sort_fields=['agent_id'] if sort is None else sort['fields'],
+        sort_casting=['str'],
+        sort_ascending=[sort['order'] == 'asc' for _ in sort['fields']] if sort is not None else ['True']
+        )
+
+    for agent in agent_list:
+        try:
+            if agent not in get_agents_info():
+                raise WazuhError(1701)
+            table, valid_select_fields = get_valid_fields(Type(element_type), agent_id=agent)
+            db_query = WazuhDBQuerySyscollector(agent_id=agent, offset=offset, limit=limit, select=select,
+                                                search=search,
+                                                sort=sort, filters=filters, fields=valid_select_fields, table=table,
+                                                array=array, nested=nested, query=q)
+            data = db_query.run()
+            for item in data['items']:
+                item['agent_id'] = agent
+                result.affected_items.append(item)
+                result.total_affected_items += 1
+        except WazuhError as e:
+            result.add_failed_item(id_=agent, error=e)
+
+    result.affected_items = merge(*[[res] for res in result.affected_items],
+                                  criteria=result.sort_fields,
+                                  ascending=result.sort_ascending,
+                                  types=result.sort_casting)
 
     return result
-
-
-def _get_agent_items(func, offset, limit, select, filters, search, sort, array=False, query=''):
-    agents, result = Agent.get_agents_overview(select=['id'])['items'], []
-    total = 0
-
-    for agent in agents:
-        items = func(agent_id=agent['id'], select=select, filters=filters, limit=limit, offset=offset, search=search,
-                     sort=sort, nested=False, q=query)
-        if items == {}:
-            continue
-
-        total += 1 if not array else items['totalItems']
-        items = [items] if not array else items['items']
-
-        for item in items:
-            if 0 < limit <= len(result):
-                break
-            item['agent_id'] = agent['id']
-            result.append(item)
-
-    if result:
-        if sort and sort['fields']:
-            result = sorted(result, key=itemgetter(sort['fields'][0]),
-                            reverse=True if sort['order'] == "desc" else False)
-
-        fields_to_nest, non_nested = get_fields_to_nest(result[0].keys(), '.')
-    else:
-        fields_to_nest, non_nested = None, None
-
-    return {
-        'items': list(
-            map(lambda x: plain_dict_to_nested_dict(x, fields_to_nest, non_nested, WazuhDBQuerySyscollector.nested_fields, '.'), result)
-        ), 'totalItems': total}
