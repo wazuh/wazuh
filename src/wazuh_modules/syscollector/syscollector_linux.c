@@ -27,7 +27,7 @@
 #include "external/procps/readproc.h"
 #include "external/libdb/build_unix/db.h"
 
-hw_info *get_system_linux();                    // Get system information
+void get_system_linux(hw_entry * info);    // Get system information
 char* get_serial_number();                      // Get Motherboard serial number
 char* get_if_type(char *ifa_name);              // Get interface type
 char* get_oper_state(char *ifa_name);           // Get operational state
@@ -133,8 +133,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
             snprintf(laddress, NI_MAXHOST, "%s", inet_ntoa(local));
             snprintf(raddress, NI_MAXHOST, "%s", inet_ntoa(remote));
 
-            os_calloc(1, sizeof(port_entry_data), entry_data);
-            init_port_data_entry(entry_data);
+            entry_data = init_port_data_entry();
 
             os_strdup(protocol, entry_data->protocol);
 
@@ -233,8 +232,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                 &rem.s6_addr32[2], &rem.s6_addr32[3]);
             inet_ntop(AF_INET6, &rem, raddress, sizeof(raddress));
 
-            os_calloc(1, sizeof(port_entry_data), entry_data);
-            init_port_data_entry(entry_data);
+            entry_data = init_port_data_entry();
 
             os_strdup(protocol, entry_data->protocol);
 
@@ -480,8 +478,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
         epoch = 0;
         skip = 0;
 
-        os_calloc(1, sizeof(program_entry_data), entry_data);
-        init_program_data_entry(entry_data);
+        entry_data = init_program_data_entry();
 
         os_strdup(format, entry_data->format);
 
@@ -641,11 +638,9 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
                 if (entry_data) {
                     free_program_data(entry_data);
-                    entry_data = NULL;
                 }
 
-                os_calloc(1, sizeof(program_entry_data), entry_data);
-                init_program_data_entry(entry_data);
+                entry_data = init_program_data_entry();
 
                 os_strdup(format, entry_data->format);
 
@@ -814,9 +809,11 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
 void sys_hw_linux(int queue_fd, const char* LOCATION){
 
-    char *string;
     int random_id = os_random();
     char *timestamp;
+
+    cJSON * json_event = NULL;
+    hw_entry * hw_data = NULL;
 
     timestamp = w_get_timestamp(time(NULL));
 
@@ -825,44 +822,27 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
 
     mtdebug1(WM_SYS_LOGTAG, "Starting Hardware inventory.");
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON *hw_inventory = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "hardware");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    cJSON_AddItemToObject(object, "inventory", hw_inventory);
+    hw_data = init_hw_data();
 
     /* Motherboard serial-number */
     char *serial;
     serial = get_serial_number();
-    cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+    os_strdup(serial, hw_data->board_serial);
     free(serial);
 
     /* Get CPU and memory information */
-    hw_info *sys_info;
-    if (sys_info = get_system_linux(), sys_info){
-        if(sys_info->cpu_name) {
-            cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
-        }
-        cJSON_AddNumberToObject(hw_inventory, "cpu_cores", sys_info->cpu_cores);
-        cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
-        cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
-        cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
-        cJSON_AddNumberToObject(hw_inventory, "ram_usage", sys_info->ram_usage);
+    get_system_linux(hw_data);
 
-        os_free(sys_info->cpu_name);
-        free(sys_info);
+    // Check if it is necessary to create a hardware event
+    if (json_event = analyze_hw(hw_data, random_id, timestamp), json_event) {
+        char * string = cJSON_PrintUnformatted(json_event);
+        mtdebug2(WM_SYS_LOGTAG, "sys_hw_linux() sending '%s'", string);
+        SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+        cJSON_Delete(json_event);
+        free(string);
     }
 
-    /* Send interface data in JSON format */
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_hw_linux() sending '%s'", string);
-    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-
-    free(string);
     free(timestamp);
-
 }
 
 #endif /* __linux__ */
@@ -871,9 +851,11 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
 
 void sys_os_unix(int queue_fd, const char* LOCATION){
 
-    char *string;
     int random_id = os_random();
     char *timestamp;
+
+    cJSON * json_event = NULL;
+    os_entry * os_data = NULL;
 
     timestamp = w_get_timestamp(time(NULL));
 
@@ -882,23 +864,60 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
 
     mtdebug1(WM_SYS_LOGTAG, "Starting Operating System inventory.");
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "OS");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
+    os_data = init_os_data();
 
-    cJSON *os_inventory = getunameJSON();
+    os_info * info = get_unix_version();
+    if (info->nodename && (strcmp(info->nodename, "unknown") != 0)) {
+        os_strdup(info->nodename, os_data->hostname);
+    }
+    if (info->machine && (strcmp(info->machine, "unknown") != 0)) {
+        os_strdup(info->machine, os_data->architecture);
+    }
+    if (info->os_name && (strcmp(info->os_name, "unknown") != 0)) {
+        os_strdup(info->os_name, os_data->os_name);
+    }
+    if (info->os_release) {
+        os_strdup(info->os_release, os_data->os_release);
+    }
+    if (info->os_version && (strcmp(info->os_version, "unknown") != 0)) {
+        os_strdup(info->os_version, os_data->os_version);
+    }
+    if (info->os_codename) {
+        os_strdup(info->os_codename, os_data->os_codename);
+    }
+    if (info->os_major) {
+        os_strdup(info->os_major, os_data->os_major);
+    }
+    if (info->os_minor) {
+        os_strdup(info->os_minor, os_data->os_minor);
+    }
+    if (info->os_build) {
+        os_strdup(info->os_build, os_data->os_build);
+    }
+    if (info->os_platform) {
+        os_strdup(info->os_platform, os_data->os_platform);
+    }
+    if (info->sysname) {
+        os_strdup(info->sysname, os_data->sysname);
+    }
+    if (info->release) {
+        os_strdup(info->release, os_data->release);
+    }
+    if (info->version) {
+        os_strdup(info->version, os_data->version);
+    }
+    free_osinfo(info);
 
-    if (os_inventory != NULL)
-        cJSON_AddItemToObject(object, "inventory", os_inventory);
+    // Check if it is necessary to create a operative system event
+    if (json_event = analyze_os(os_data, random_id, timestamp), json_event) {
+        char * string = cJSON_PrintUnformatted(json_event);
+        mtdebug2(WM_SYS_LOGTAG, "sys_os_unix() sending '%s'", string);
+        SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+        cJSON_Delete(json_event);
+        free(string);
+    }
 
-    /* Send interface data in JSON format */
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_os_unix() sending '%s'", string);
-    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
     free(timestamp);
-    free(string);
 }
 
 #if defined(__linux__)
@@ -1019,16 +1038,12 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 }
 
 /* Get System information */
-hw_info *get_system_linux(){
+void get_system_linux(hw_entry * info) {
 
     FILE *fp;
-    hw_info *info;
     char string[OS_MAXSTR];
     char *saveptr;
     char *end;
-
-    os_calloc(1, sizeof(hw_info), info);
-    init_hw_info(info);
 
     if (!(fp = fopen("/proc/cpuinfo", "r"))) {
         mterror(WM_SYS_LOGTAG, "Unable to read the CPU name.");
@@ -1106,8 +1121,6 @@ hw_info *get_system_linux(){
         }
         fclose(fp);
     }
-
-    return info;
 }
 
 /* Get Motherboard Serial Number */
@@ -1495,8 +1508,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         cJSON * json_event = NULL;
         process_entry_data * entry_data = NULL;
 
-        os_calloc(1, sizeof(process_entry_data), entry_data);
-        init_process_data_entry(entry_data);
+        entry_data = init_process_data_entry(entry_data);
 
         entry_data->pid = proc_info->tid;
         entry_data->ppid = proc_info->ppid;
@@ -1701,10 +1713,7 @@ interface_entry_data * getNetworkIface_linux(char *iface_name, struct ifaddrs *i
     int k = 0;
     int family = 0;
 
-    interface_entry_data * entry_data = NULL;
-
-    os_calloc(1, sizeof(interface_entry_data), entry_data);
-    init_interface_data_entry(entry_data);
+    interface_entry_data * entry_data = init_interface_data_entry();
 
     os_strdup(iface_name, entry_data->name);
 
@@ -1740,15 +1749,13 @@ interface_entry_data * getNetworkIface_linux(char *iface_name, struct ifaddrs *i
         mtdebug1(WM_SYS_LOGTAG, "Unable to read MAC address for interface '%s' from '%s': %s (%d)", iface_name, addr_path, strerror(errno), errno);
     }
 
-    os_calloc(1, sizeof(net_addr), entry_data->ipv4);
-    initialize_net_addr(entry_data->ipv4);
+    entry_data->ipv4 = init_net_addr();
     os_malloc(sizeof(char *), entry_data->ipv4->address);
     os_malloc(sizeof(char *), entry_data->ipv4->netmask);
     os_malloc(sizeof(char *), entry_data->ipv4->broadcast);
     int addr4 = 0, nmask4 = 0, bcast4 = 0;
 
-    os_calloc(1, sizeof(net_addr), entry_data->ipv6);
-    initialize_net_addr(entry_data->ipv6);
+    entry_data->ipv6 = init_net_addr();
     os_malloc(sizeof(char *), entry_data->ipv6->address);
     os_malloc(sizeof(char *), entry_data->ipv6->netmask);
     os_malloc(sizeof(char *), entry_data->ipv6->broadcast);

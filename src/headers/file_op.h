@@ -16,7 +16,6 @@
 #include <stdint.h>
 #include <time.h>
 #include <sys/stat.h>
-#include <external/cJSON/cJSON.h>
 
 #ifdef WIN32
 #include <windows.h>
@@ -39,8 +38,6 @@ typedef struct File {
 
 /* Set the program name - must be done before *anything* else */
 void OS_SetName(const char *name) __attribute__((nonnull));
-
-cJSON* getunameJSON();
 
 time_t File_DateofChange(const char *file) __attribute__((nonnull));
 

@@ -50,7 +50,7 @@
 #endif /* !HAVE_SOCKADDR_SA_LEN */
 #endif /* MACH */
 
-hw_info *get_system_bsd();    // Get system information
+void get_system_bsd(hw_entry * info);    // Get system information
 
 
 #if defined(__MACH__)
@@ -153,8 +153,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             cJSON * json_event = NULL;
             program_entry_data * entry_data = NULL;
 
-            os_calloc(1, sizeof(program_entry_data), entry_data);
-            init_program_data_entry(entry_data);
+            entry_data = init_program_data_entry();
 
             os_strdup(format, entry_data->format);
             os_strdup(de->d_name, entry_data->name);
@@ -242,8 +241,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
 
     if ((fp = fopen(filepath, "r"))) {
 
-        os_calloc(1, sizeof(program_entry_data), entry_data);
-        init_program_data_entry(entry_data);
+        entry_data = init_program_data_entry();
 
         os_strdup(format, entry_data->format);
 
@@ -471,8 +469,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             char ** parts = NULL;
             char ** description = NULL;
 
-            os_calloc(1, sizeof(program_entry_data), entry_data);
-            init_program_data_entry(entry_data);
+            entry_data = init_program_data_entry();
 
             os_strdup(format, entry_data->format);
 
@@ -534,21 +531,18 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
 void sys_hw_bsd(int queue_fd, const char* LOCATION){
 
-    char *string;
     int random_id = os_random();
     char *timestamp = w_get_timestamp(time(NULL));
+
+    cJSON * json_event = NULL;
+    hw_entry * hw_data = NULL;
 
     if (random_id < 0)
         random_id = -random_id;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting Hardware inventory.");
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON *hw_inventory = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "hardware");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    cJSON_AddItemToObject(object, "inventory", hw_inventory);
+    hw_data = init_hw_data();
 
     /* Motherboard serial-number */
 #if defined(__OpenBSD__)
@@ -560,7 +554,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     mib[1] = HW_SERIALNO;
     len = sizeof(serial);
     if (!sysctl(mib, 2, &serial, &len, NULL, 0)){
-        cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+        os_strdup(serial, hw_data->board_serial);
     }else{
         mtdebug1(WM_SYS_LOGTAG, "Fail getting serial number due to (%s)", strerror(errno));
     }
@@ -607,43 +601,28 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
         serial = strdup("unknown");
     }
 
-    cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+    os_strdup(serial, hw_data->board_serial);
     os_free(serial);
 #else
-    cJSON_AddStringToObject(hw_inventory, "board_serial", "unknown");
+    os_strdup("unknown", hw_data->board_serial);
 #endif
 
     /* Get CPU and memory information */
-    hw_info *sys_info;
-    if (sys_info = get_system_bsd(), sys_info){
-        if(sys_info->cpu_name) {
-            cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
-        }
-        cJSON_AddNumberToObject(hw_inventory, "cpu_cores", sys_info->cpu_cores);
-        cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
-        cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
-        cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
-        cJSON_AddNumberToObject(hw_inventory, "ram_usage", sys_info->ram_usage);
+    get_system_bsd(hw_data);
 
-        os_free(sys_info->cpu_name);
-        free(sys_info);
+    // Check if it is necessary to create a hardware event
+    if (json_event = analyze_hw(hw_data, random_id, timestamp), json_event) {
+        char * string = cJSON_PrintUnformatted(json_event);
+        mtdebug2(WM_SYS_LOGTAG, "Sending '%s'", string);
+        SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+        cJSON_Delete(json_event);
+        free(string);
     }
 
-    /* Send interface data in JSON format */
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "Sending '%s'", string);
-    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-
-    free(string);
     free(timestamp);
 }
 
-hw_info *get_system_bsd(){
-
-    hw_info *info;
-    os_calloc(1, sizeof(hw_info), info);
-    init_hw_info(info);
+void get_system_bsd(hw_entry * info) {
 
     int mib[2];
     size_t len;
@@ -776,8 +755,6 @@ hw_info *get_system_bsd(){
 
 #endif
 
-    return info;
-
 }
 
 // Get network inventory
@@ -892,22 +869,17 @@ interface_entry_data * getNetworkIface_bsd(char *iface_name, struct ifaddrs *ifa
     struct ifaddrs *ifa;
     int family = 0;
 
-    interface_entry_data * entry_data = NULL;
-
-    os_calloc(1, sizeof(interface_entry_data), entry_data);
-    init_interface_data_entry(entry_data);
+    interface_entry_data * entry_data = init_interface_data_entry();
 
     os_strdup(iface_name, entry_data->name);
 
-    os_calloc(1, sizeof(net_addr), entry_data->ipv4);
-    initialize_net_addr(entry_data->ipv4);
+    entry_data->ipv4 = init_net_addr();
     os_malloc(sizeof(char *), entry_data->ipv4->address);
     os_malloc(sizeof(char *), entry_data->ipv4->netmask);
     os_malloc(sizeof(char *), entry_data->ipv4->broadcast);
     int addr4 = 0, nmask4 = 0, bcast4 = 0;
 
-    os_calloc(1, sizeof(net_addr), entry_data->ipv6);
-    initialize_net_addr(entry_data->ipv6);
+    entry_data->ipv6 = init_net_addr();
     os_malloc(sizeof(char *), entry_data->ipv6->address);
     os_malloc(sizeof(char *), entry_data->ipv6->netmask);
     os_malloc(sizeof(char *), entry_data->ipv6->broadcast);
@@ -1460,8 +1432,7 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
             int localPort = (int)ntohs(socketInfo.psi.soi_proto.pri_in.insi_lport);
             int remotePort = (int)ntohs(socketInfo.psi.soi_proto.pri_in.insi_fport);
 
-            os_calloc(1, sizeof(port_entry_data), entry_data);
-            init_port_data_entry(entry_data);
+            entry_data = init_port_data_entry();
 
             os_strdup(protocol, entry_data->protocol);
 
@@ -1590,8 +1561,7 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
                 status = "E";
         }
 
-        os_calloc(1, sizeof(process_entry_data), entry_data);
-        init_process_data_entry(entry_data);
+        entry_data = init_process_data_entry();
 
         entry_data->pid = pid;
         entry_data->ppid = task_info.pbsd.pbi_ppid;

@@ -29,7 +29,7 @@ typedef struct _SYSTEM_PROCESS_IMAGE_NAME_INFORMATION
 
 typedef NTSTATUS(WINAPI *tNTQSI)(ULONG SystemInformationClass, PVOID SystemInformation, ULONG SystemInformationLength, PULONG ReturnLength);
 
-hw_info *get_system_windows();
+void get_system_windows(hw_entry * info);
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 
 /* From process ID get its name */
@@ -351,8 +351,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
             listening = 0;
 
-            os_calloc(1, sizeof(port_entry_data), entry_data);
-            init_port_data_entry(entry_data);
+            entry_data = init_port_data_entry();
 
             os_strdup("tcp", entry_data->protocol);
 
@@ -450,8 +449,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             char raddress[128] = {'\0'};
             socklen_t socksize;
 
-            os_calloc(1, sizeof(port_entry_data), entry_data);
-            init_port_data_entry(entry_data);
+            entry_data = init_port_data_entry();
 
             os_strdup("tcp6", entry_data->protocol);
 
@@ -570,8 +568,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             cJSON * json_event = NULL;
             port_entry_data * entry_data = NULL;
 
-            os_calloc(1, sizeof(port_entry_data), entry_data);
-            init_port_data_entry(entry_data);
+            entry_data = init_port_data_entry();
 
             os_strdup("udp", entry_data->protocol);
 
@@ -644,8 +641,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             cJSON * json_event = NULL;
             port_entry_data * entry_data = NULL;
 
-            os_calloc(1, sizeof(port_entry_data), entry_data);
-            init_port_data_entry(entry_data);
+            entry_data = init_port_data_entry();
 
             os_strdup("udp6", entry_data->protocol);
 
@@ -1162,8 +1158,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
         if (ret == ERROR_SUCCESS && program_name[0] != '\0') {
 
-            os_calloc(1, sizeof(program_entry_data), entry_data);
-            init_program_data_entry(entry_data);
+            entry_data = init_program_data_entry();
 
             os_strdup(format, entry_data->format);
             os_strdup(program_name, entry_data->name);
@@ -1289,10 +1284,7 @@ void send_hotfix(const char *hotfix, int usec, const char *timestamp, int ID, co
     }
 
     cJSON * json_event = NULL;
-    hotfix_entry_data * entry_data = NULL;
-
-    os_calloc(1, sizeof(hotfix_entry_data), entry_data);
-    init_hotfix_data_entry(entry_data);
+    hotfix_entry_data * entry_data = init_hotfix_data_entry();
 
     os_strdup(hotfix, entry_data->hotfix);
 
@@ -1314,14 +1306,12 @@ void sys_hw_windows(const char* LOCATION){
 
     int ID = wm_sys_get_random_id();
 
+    cJSON * json_event = NULL;
+    hw_entry * hw_data = NULL;
+
     mtdebug1(WM_SYS_LOGTAG, "Starting hardware inventory.");
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON *hw_inventory = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "hardware");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    cJSON_AddItemToObject(object, "inventory", hw_inventory);
+    hw_data = init_hw_data();
 
     /* Call get_baseboard_serial function through syscollector DLL */
     char *serial = NULL;
@@ -1411,44 +1401,29 @@ void sys_hw_windows(const char* LOCATION){
     }
 
     if (serial) {
-        cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+        os_strdup(serial, hw_data->board_serial);
         free(serial);
     }
 
     /* Get CPU and memory information */
-    hw_info *sys_info;
-    if (sys_info = get_system_windows(), sys_info){
-        if (sys_info->cpu_name)
-            cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
-        if (sys_info->cpu_cores)
-            cJSON_AddNumberToObject(hw_inventory, "cpu_cores", sys_info->cpu_cores);
-        if (sys_info->cpu_MHz)
-            cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
-        if (sys_info->ram_total)
-            cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
-        if (sys_info->ram_free)
-            cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
-        if (sys_info->ram_usage)
-            cJSON_AddNumberToObject(hw_inventory, "ram_usage", sys_info->ram_usage);
+    get_system_windows(hw_data);
 
-        os_free(sys_info->cpu_name);
-        free(sys_info);
+    // Check if it is necessary to create a hardware event
+    if (json_event = analyze_hw(hw_data, ID, timestamp), json_event) {
+        char * string = cJSON_PrintUnformatted(json_event);
+        mtdebug2(WM_SYS_LOGTAG, "sys_hw_windows() sending '%s'", string);
+        SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+        cJSON_Delete(json_event);
+        free(string);
     }
 
-    /* Send interface data in JSON format */
-    char *string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_hw_windows() sending '%s'", string);
-    SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-
-    free(string);
     free(timestamp);
-
 }
 
 void sys_os_windows(const char* LOCATION){
 
-    char *string;
+    cJSON * json_event = NULL;
+    os_entry * os_data = NULL;
 
     // Set timestamp
 
@@ -1460,22 +1435,59 @@ void sys_os_windows(const char* LOCATION){
 
     mtdebug1(WM_SYS_LOGTAG, "Starting Operating System inventory.");
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "OS");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
+    os_data = init_os_data();
 
-    cJSON *os_inventory = getunameJSON();
+    os_info * info = get_win_version();
+    if (info->nodename && (strcmp(info->nodename, "unknown") != 0)) {
+        os_strdup(info->nodename, os_data->hostname);
+    }
+    if (info->machine && (strcmp(info->machine, "unknown") != 0)) {
+        os_strdup(info->machine, os_data->architecture);
+    }
+    if (info->os_name && (strcmp(info->os_name, "unknown") != 0)) {
+        os_strdup(info->os_name, os_data->os_name);
+    }
+    if (info->os_release) {
+        os_strdup(info->os_release, os_data->os_release);
+    }
+    if (info->os_version && (strcmp(info->os_version, "unknown") != 0)) {
+        os_strdup(info->os_version, os_data->os_version);
+    }
+    if (info->os_codename) {
+        os_strdup(info->os_codename, os_data->os_codename);
+    }
+    if (info->os_major) {
+        os_strdup(info->os_major, os_data->os_major);
+    }
+    if (info->os_minor) {
+        os_strdup(info->os_minor, os_data->os_minor);
+    }
+    if (info->os_build) {
+        os_strdup(info->os_build, os_data->os_build);
+    }
+    if (info->os_platform) {
+        os_strdup(info->os_platform, os_data->os_platform);
+    }
+    if (info->sysname) {
+        os_strdup(info->sysname, os_data->sysname);
+    }
+    if (info->release) {
+        os_strdup(info->release, os_data->release);
+    }
+    if (info->version) {
+        os_strdup(info->version, os_data->version);
+    }
+    free_osinfo(info);
 
-    cJSON_AddItemToObject(object, "inventory", os_inventory);
+    // Check if it is necessary to create a operative system event
+    if (json_event = analyze_os(os_data, random_id, timestamp), json_event) {
+        char * string = cJSON_PrintUnformatted(json_event);
+        mtdebug2(WM_SYS_LOGTAG, "sys_os_windows() sending '%s'", string);
+        SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+        cJSON_Delete(json_event);
+        free(string);
+    }
 
-    /* Send interface data in JSON format */
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_os_windows() sending '%s'", string);
-    SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-
-    free(string);
     free(timestamp);
 }
 
@@ -1534,10 +1546,7 @@ interface_entry_data * get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_
     struct sockaddr_in6 *addr6;
     socklen_t socksize;
 
-    interface_entry_data * entry_data = NULL;
-
-    os_calloc(1, sizeof(interface_entry_data), entry_data);
-    init_interface_data_entry(entry_data);
+    interface_entry_data * entry_data = init_interface_data_entry();
 
     /* Iface Name */
     char iface_name[MAXSTR];
@@ -1620,15 +1629,13 @@ interface_entry_data * get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_
     int mtu = (int) pCurrAddresses->Mtu;
     entry_data->mtu = mtu;
 
-    os_calloc(1, sizeof(net_addr), entry_data->ipv4);
-    initialize_net_addr(entry_data->ipv4);
+    entry_data->ipv4 = init_net_addr();
     os_malloc(sizeof(char *), entry_data->ipv4->address);
     os_malloc(sizeof(char *), entry_data->ipv4->netmask);
     os_malloc(sizeof(char *), entry_data->ipv4->broadcast);
     int address4 = 0, nmask4 = 0, bcast4 = 0;
 
-    os_calloc(1, sizeof(net_addr), entry_data->ipv6);
-    initialize_net_addr(entry_data->ipv6);
+    entry_data->ipv6 = init_net_addr();
     os_malloc(sizeof(char *), entry_data->ipv6->address);
     int address6 = 0;
 
@@ -2024,18 +2031,14 @@ void sys_network_windows(const char* LOCATION){
     free(timestamp);
 }
 
-hw_info *get_system_windows(){
+void get_system_windows(hw_entry * info) {
 
-    hw_info *info;
     DWORD retVal;
     HKEY RegistryKey;
     char subkey[KEY_LENGTH];
     TCHAR name[MAX_VALUE_NAME];
     DWORD frequency = 0;
     DWORD dwCount = MAX_VALUE_NAME;
-
-    os_calloc(1,sizeof(hw_info),info);
-    init_hw_info(info);
 
     // Get CPU name and frequency
 
@@ -2295,8 +2298,7 @@ void sys_proc_windows(const char* LOCATION) {
                     }
                 }
 
-                os_calloc(1, sizeof(process_entry_data), entry_data);
-                init_process_data_entry(entry_data);
+                entry_data = init_process_data_entry();
 
                 entry_data->pid = pid;
                 entry_data->ppid = parent_pid;

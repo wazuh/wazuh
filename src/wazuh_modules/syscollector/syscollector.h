@@ -86,22 +86,31 @@
 #define HOMEBREW_APPS   "/usr/local/Cellar"
 #define INFO_FILE       "Contents/Info.plist"
 
-typedef struct rpm_data {
-    char *tag;
-    int type;
-    int offset;
-    int count;
-    struct rpm_data *next;
-} rpm_data;
-
-typedef struct hw_info {
-    char *cpu_name;
+typedef struct hw_entry {
+    char * board_serial;
+    char * cpu_name;
     int cpu_cores;
     double cpu_MHz;
-    uint64_t ram_total;  // kB
-    uint64_t ram_free;   // kB
-    int ram_usage;  // Percentage
-} hw_info;
+    long ram_total;
+    long ram_free;
+    int ram_usage;
+} hw_entry;
+
+typedef struct os_entry {
+    char * hostname;
+    char * architecture;
+    char * os_name;
+    char * os_release;
+    char * os_version;
+    char * os_codename;
+    char * os_major;
+    char * os_minor;
+    char * os_build;
+    char * os_platform;
+    char * sysname;
+    char * release;
+    char * version;
+} os_entry;
 
 typedef struct net_addr {
     char ** address;
@@ -240,11 +249,16 @@ typedef struct wm_sys_t {
     wm_sys_flags_t flags;                   // Flag bitfield
     wm_sys_state_t state;                   // Running state
 
+    hw_entry * hw_data;
+    os_entry * os_data;
     rb_tree * interfaces_entry;
     rb_tree * programs_entry;
     rb_tree * hotfixes_entry;
     rb_tree * ports_entry;
     rb_tree * processes_entry;
+
+    pthread_mutex_t hardware_mutex;
+    pthread_mutex_t os_mutex;
     pthread_mutex_t interfaces_entry_mutex;
     pthread_mutex_t programs_entry_mutex;
     pthread_mutex_t hotfixes_entry_mutex;
@@ -252,8 +266,7 @@ typedef struct wm_sys_t {
     pthread_mutex_t processes_entry_mutex;
 } wm_sys_t;
 
-struct link_stats
-{
+struct link_stats {
     unsigned int rx_packets;    /* total packets received */
     unsigned int tx_packets;    /* total packets transmitted */
     unsigned int rx_bytes;      /* total bytes received */
@@ -268,6 +281,14 @@ typedef struct gateway {
     char *addr;
     int isdefault;
 } gateway;
+
+typedef struct rpm_data {
+    char *tag;
+    int type;
+    int offset;
+    int count;
+    struct rpm_data *next;
+} rpm_data;
 
 extern const wm_context WM_SYS_CONTEXT;     // Context
 extern wm_sys_t *sys;                       // Configuration
@@ -379,25 +400,30 @@ int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr);
 // Generate a random ID
 int wm_sys_get_random_id();
 
-// Initialize hw_info struct values
-void init_hw_info(hw_info *info);
-
 // Initialize datastores
 void sys_initialize_datastores();
 
+// Initialize hardware data
+hw_entry * init_hw_data();
+// Initialize operative system data
+os_entry * init_os_data();
 // Initialize network address
-void initialize_net_addr(net_addr * net);
+net_addr * init_net_addr();
 // Initialize interface data
-void init_interface_data_entry(interface_entry_data * data);
+interface_entry_data * init_interface_data_entry();
 // Initialize process data
-void init_program_data_entry(program_entry_data * data);
+program_entry_data * init_program_data_entry();
 // Initialize hotfix data
-void init_hotfix_data_entry(hotfix_entry_data * data);
+hotfix_entry_data * init_hotfix_data_entry();
 // Initialize port data
-void init_port_data_entry(port_entry_data * data);
+port_entry_data * init_port_data_entry();
 // Initialize process data
-void init_process_data_entry(process_entry_data * data);
+process_entry_data * init_process_data_entry();
 
+// Free hardware data
+void free_hw_data(hw_entry * data);
+// Free operative system data
+void free_os_data(os_entry * data);
 // Free interface data
 void free_interface_data(interface_entry_data * data);
 // Free program data
@@ -409,6 +435,10 @@ void free_port_data(port_entry_data * data);
 // Free process data
 void free_process_data(process_entry_data * data);
 
+// Analyze if update the hardware information
+cJSON * analyze_hw(hw_entry * entry_data, int random_id, const char * timestamp);
+// Analyze if update the operative system information
+cJSON * analyze_os(os_entry * entry_data, int random_id, const char * timestamp);
 // Analyze if insert new interface or update an existing one
 cJSON * analyze_interface(interface_entry_data * entry_data, int random_id, const char * timestamp);
 // Analyze if insert new program or update an existing one
@@ -442,15 +472,19 @@ void delete_entry(rb_tree * tree, const char * key);
 void print_rbtree(rb_tree * tree, pthread_mutex_t mutex);
 
 //
-cJSON * interface_json_event(interface_entry_data * old_data, interface_entry_data * new_data, int random_id, const char * timestamp);
+cJSON * hw_json_event(hw_entry * new_data, int random_id, const char * timestamp);
 //
-cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, int random_id, const char * timestamp);
+cJSON * os_json_event(os_entry * new_data, int random_id, const char * timestamp);
 //
-cJSON * hotfix_json_event(hotfix_entry_data * old_data, hotfix_entry_data * new_data, int random_id, const char * timestamp);
+cJSON * interface_json_event(interface_entry_data * new_data, int random_id, const char * timestamp);
 //
-cJSON * port_json_event(port_entry_data * old_data, port_entry_data * new_data, int random_id, const char * timestamp);
+cJSON * program_json_event(program_entry_data * new_data, int random_id, const char * timestamp);
 //
-cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, int random_id, const char * timestamp);
+cJSON * hotfix_json_event(hotfix_entry_data * new_data, int random_id, const char * timestamp);
+//
+cJSON * port_json_event(port_entry_data * new_data, int random_id, const char * timestamp);
+//
+cJSON * process_json_event(process_entry_data * new_data, int random_id, const char * timestamp);
 
 #endif
 #endif

@@ -283,7 +283,6 @@ void wm_sys_check() {
         sys->interval = WM_SYS_DEF_INTERVAL;
 }
 
-
 // Get read data
 
 cJSON *wm_sys_dump(const wm_sys_t *sys) {
@@ -310,19 +309,6 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     return root;
 }
 
-// Initialize hw_info structure
-
-void init_hw_info(hw_info *info) {
-    if(info != NULL) {
-        info->cpu_name = NULL;
-        info->cpu_cores = 0;
-        info->cpu_MHz = 0.0;
-        info->ram_total = 0;
-        info->ram_free = 0;
-        info->ram_usage = 0;
-    }
-}
-
 void wm_sys_destroy(wm_sys_t *sys) {
     free(sys);
 }
@@ -344,14 +330,16 @@ int wm_sys_get_random_id() {
 
 // Initialize syscollector datastores
 void sys_initialize_datastores() {
+    sys->hw_data = init_hw_data();
+    sys->os_data = init_os_data();
     sys->interfaces_entry = rbtree_init();
     sys->programs_entry = rbtree_init();
     sys->hotfixes_entry = rbtree_init();
     sys->ports_entry = rbtree_init();
     sys->processes_entry = rbtree_init();
 
-    if (!sys->interfaces_entry || !sys->programs_entry || !sys->hotfixes_entry || !sys->ports_entry || !sys->processes_entry) {
-        merror_exit("Error while creating data structure: rb-tree init. Exiting."); // LCOV_EXCL_LINE
+    if (!sys->hw_data || !sys->os_data || !sys->interfaces_entry || !sys->programs_entry || !sys->hotfixes_entry || !sys->ports_entry || !sys->processes_entry) {
+        merror_exit("Error while creating data structures. Exiting."); // LCOV_EXCL_LINE
     }
 
     rbtree_set_dispose(sys->interfaces_entry, (void (*)(void *))free_interface_data);
@@ -360,6 +348,8 @@ void sys_initialize_datastores() {
     rbtree_set_dispose(sys->ports_entry, (void (*)(void *))free_port_data);
     rbtree_set_dispose(sys->processes_entry, (void (*)(void *))free_process_data);
 
+    w_mutex_init(&sys->hardware_mutex, NULL);
+    w_mutex_init(&sys->os_mutex, NULL);
     w_mutex_init(&sys->interfaces_entry_mutex, NULL);
     w_mutex_init(&sys->programs_entry_mutex, NULL);
     w_mutex_init(&sys->hotfixes_entry_mutex, NULL);
@@ -367,18 +357,57 @@ void sys_initialize_datastores() {
     w_mutex_init(&sys->processes_entry_mutex, NULL);
 }
 
+// Initialize hw_entry structure
+hw_entry * init_hw_data() {
+    hw_entry * hw_data = NULL;
+    os_calloc(1, sizeof(hw_entry), hw_data);
+    hw_data->board_serial = NULL;
+    hw_data->cpu_name = NULL;
+    hw_data->cpu_cores = INT_MIN;
+    hw_data->cpu_MHz = 0.0;
+    hw_data->ram_total = LONG_MIN;
+    hw_data->ram_free = LONG_MIN;
+    hw_data->ram_usage = INT_MIN;
+    return hw_data;
+}
+
+// Initialize os_entry structure
+os_entry * init_os_data() {
+    os_entry * os_data = NULL;
+    os_calloc(1, sizeof(os_entry), os_data);
+    os_data->hostname = NULL;
+    os_data->architecture = NULL;
+    os_data->os_name = NULL;
+    os_data->os_release = NULL;
+    os_data->os_version = NULL;
+    os_data->os_codename = NULL;
+    os_data->os_major = NULL;
+    os_data->os_minor = NULL;
+    os_data->os_build = NULL;
+    os_data->os_platform = NULL;
+    os_data->sysname = NULL;
+    os_data->release = NULL;
+    os_data->version = NULL;
+    return os_data;
+}
+
 // Initialize net_addr structure
-void initialize_net_addr(net_addr * net) {
+net_addr * init_net_addr() {
+    net_addr * net = NULL;
+    os_calloc(1, sizeof(net_addr), net);
     net->address = NULL;
     net->netmask = NULL;
     net->broadcast = NULL;
     net->metric = INT_MIN;
     net->gateway = NULL;
     net->dhcp = NULL;
+    return net;
 }
 
 // Initialize interface_entry_data structure
-void init_interface_data_entry(interface_entry_data * data) {
+interface_entry_data * init_interface_data_entry() {
+    interface_entry_data * data = NULL;
+    os_calloc(1, sizeof(interface_entry_data), data);
     data->name = NULL;
     data->adapter = NULL;
     data->type = NULL;
@@ -396,10 +425,13 @@ void init_interface_data_entry(interface_entry_data * data) {
     data->ipv4 = NULL;
     data->ipv6 = NULL;
     data->enabled = 0;
+    return data;
 }
 
 // Initialize program_entry_data structure
-void init_program_data_entry(program_entry_data * data) {
+program_entry_data * init_program_data_entry() {
+    program_entry_data * data = NULL;
+    os_calloc(1, sizeof(program_entry_data), data);
     data->format = NULL;
     data->name = NULL;
     data->priority = NULL;
@@ -414,16 +446,22 @@ void init_program_data_entry(program_entry_data * data) {
     data->description = NULL;
     data->location = NULL;
     data->installed = 0;
+    return data;
 }
 
 // Initialize hotfix_entry_data structure
-void init_hotfix_data_entry(hotfix_entry_data * data) {
+hotfix_entry_data * init_hotfix_data_entry() {
+    hotfix_entry_data * data = NULL;
+    os_calloc(1, sizeof(hotfix_entry_data), data);
     data->hotfix = NULL;
     data->installed = 0;
+    return data;
 }
 
 // Initialize port_entry_data structure
-void init_port_data_entry(port_entry_data * data) {
+port_entry_data * init_port_data_entry() {
+    port_entry_data * data = NULL;
+    os_calloc(1, sizeof(port_entry_data), data);
     data->protocol = NULL;
     data->local_ip = NULL;
     data->local_port = INT_MIN;
@@ -436,10 +474,13 @@ void init_port_data_entry(port_entry_data * data) {
     data->pid = INT_MIN;
     data->process = NULL;
     data->opened = 0;
+    return data;
 }
 
 // Initialize process_entry_data structure
-void init_process_data_entry(process_entry_data * data) {
+process_entry_data * init_process_data_entry() {
+    process_entry_data * data = NULL;
+    os_calloc(1, sizeof(process_entry_data), data);
     data->pid = INT_MIN;
     data->ppid = INT_MIN;
     data->name = NULL;
@@ -469,6 +510,70 @@ void init_process_data_entry(process_entry_data * data) {
     data->tty = INT_MIN;
     data->processor = INT_MIN;
     data->running = 0;
+    return data;
+}
+
+// Free hw_entry structure
+void free_hw_data(hw_entry * data) {
+    if (!data) {
+        return;
+    }
+    if (data->board_serial) {
+        os_free(data->board_serial);
+    }
+    if (data->cpu_name) {
+        os_free(data->cpu_name);
+    }
+
+    os_free(data);
+}
+
+// Free os_entry structure
+void free_os_data(os_entry * data) {
+    if (!data) {
+        return;
+    }
+    if (data->hostname) {
+        os_free(data->hostname);
+    }
+    if (data->architecture) {
+        os_free(data->architecture);
+    }
+    if (data->os_name) {
+        os_free(data->os_name);
+    }
+    if (data->os_release) {
+        os_free(data->os_release);
+    }
+    if (data->os_version) {
+        os_free(data->os_version);
+    }
+    if (data->os_codename) {
+        os_free(data->os_codename);
+    }
+    if (data->os_major) {
+        os_free(data->os_major);
+    }
+    if (data->os_minor) {
+        os_free(data->os_minor);
+    }
+    if (data->os_build) {
+        os_free(data->os_build);
+    }
+    if (data->os_platform) {
+        os_free(data->os_platform);
+    }
+    if (data->sysname) {
+        os_free(data->sysname);
+    }
+    if (data->release) {
+        os_free(data->release);
+    }
+    if (data->version) {
+        os_free(data->version);
+    }
+
+    os_free(data);
 }
 
 // Free interface_entry_data structure
@@ -654,6 +759,54 @@ void free_process_data(process_entry_data * data) {
     os_free(data);
 }
 
+// Analyze if update the hardware information
+cJSON * analyze_hw(hw_entry * entry_data, int random_id, const char * timestamp) {
+    cJSON * json_event = NULL;
+
+    if (!entry_data->board_serial) {
+        free_hw_data(entry_data);
+        mdebug1("Couldn't get the serial number of the board");
+        return NULL;
+    }
+
+    w_mutex_lock(&sys->hardware_mutex);
+
+    ////////////////////////////////////////COMPARE////////////////////////////////////////
+
+    free_hw_data(sys->hw_data);
+    sys->hw_data = entry_data;
+
+    w_mutex_unlock(&sys->hardware_mutex);
+
+    json_event = hw_json_event(entry_data, random_id, timestamp);
+
+    return json_event;
+}
+
+// Analyze if update the operative system information
+cJSON * analyze_os(os_entry * entry_data, int random_id, const char * timestamp) {
+    cJSON * json_event = NULL;
+
+    if (!entry_data->os_name) {
+        free_os_data(entry_data);
+        mdebug1("Couldn't get the name of the operative system");
+        return NULL;
+    }
+
+    w_mutex_lock(&sys->os_mutex);
+
+    ////////////////////////////////////////COMPARE////////////////////////////////////////
+
+    free_os_data(sys->os_data);
+    sys->os_data = entry_data;
+
+    w_mutex_unlock(&sys->os_mutex);
+
+    json_event = os_json_event(entry_data, random_id, timestamp);
+
+    return json_event;
+}
+
 // Analyze if insert new interface or update an existing one
 cJSON * analyze_interface(interface_entry_data * entry_data, int random_id, const char * timestamp) {
     cJSON * json_event = NULL;
@@ -682,12 +835,15 @@ cJSON * analyze_interface(interface_entry_data * entry_data, int random_id, cons
             free(key);
             return NULL;
         }
-        json_event = interface_json_event(NULL, entry_data, random_id, timestamp);
+        json_event = interface_json_event(entry_data, random_id, timestamp);
     }
     else {
         // Checking for changes
         saved_data->enabled = 1;
-        if (json_event = interface_json_event(saved_data, entry_data, random_id, timestamp), json_event) {
+
+        ////////////////////////////////////////COMPARE////////////////////////////////////////
+
+        if (json_event = interface_json_event(entry_data, random_id, timestamp), json_event) {
             if (update_entry(sys->interfaces_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->interfaces_entry_mutex);
                 free_interface_data(entry_data);
@@ -746,12 +902,15 @@ cJSON * analyze_program(program_entry_data * entry_data, int random_id, const ch
             free(key);
             return NULL;
         }
-        json_event = program_json_event(NULL, entry_data, random_id, timestamp);
+        json_event = program_json_event(entry_data, random_id, timestamp);
     }
     else {
         // Checking for changes
         saved_data->installed = 1;
-        if (json_event = program_json_event(saved_data, entry_data, random_id, timestamp), json_event) {
+
+        ////////////////////////////////////////COMPARE////////////////////////////////////////
+
+        if (json_event = program_json_event(entry_data, random_id, timestamp), json_event) {
             if (update_entry(sys->programs_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->programs_entry_mutex);
                 free_program_data(entry_data);
@@ -798,12 +957,15 @@ cJSON * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char
             free(key);
             return NULL;
         }
-        json_event = hotfix_json_event(NULL, entry_data, random_id, timestamp);
+        json_event = hotfix_json_event(entry_data, random_id, timestamp);
     }
     else {
         // Checking for changes
         saved_data->installed = 1;
-        if (json_event = hotfix_json_event(saved_data, entry_data, random_id, timestamp), json_event) {
+
+        ////////////////////////////////////////COMPARE////////////////////////////////////////
+
+        if (json_event = hotfix_json_event(entry_data, random_id, timestamp), json_event) {
             if (update_entry(sys->hotfixes_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->hotfixes_entry_mutex);
                 free_hotfix_data(entry_data);
@@ -856,12 +1018,15 @@ cJSON * analyze_port(port_entry_data * entry_data, int random_id, const char * t
             free(key);
             return NULL;
         }
-        json_event = port_json_event(NULL, entry_data, random_id, timestamp);
+        json_event = port_json_event(entry_data, random_id, timestamp);
     }
     else {
         // Checking for changes
         saved_data->opened = 1;
-        if (json_event = port_json_event(saved_data, entry_data, random_id, timestamp), json_event) {
+
+        ////////////////////////////////////////COMPARE////////////////////////////////////////
+
+        if (json_event = port_json_event(entry_data, random_id, timestamp), json_event) {
             if (update_entry(sys->ports_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->ports_entry_mutex);
                 free_port_data(entry_data);
@@ -909,12 +1074,15 @@ cJSON * analyze_process(process_entry_data * entry_data, int random_id, const ch
             free(key);
             return NULL;
         }
-        json_event = process_json_event(NULL, entry_data, random_id, timestamp);
+        json_event = process_json_event(entry_data, random_id, timestamp);
     }
     else {
         // Checking for changes
         saved_data->running = 1;
-        if (json_event = process_json_event(saved_data, entry_data, random_id, timestamp), json_event) {
+
+        ////////////////////////////////////////COMPARE////////////////////////////////////////
+
+        if (json_event = process_json_event(entry_data, random_id, timestamp), json_event) {
             if (update_entry(sys->processes_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->processes_entry_mutex);
                 free_process_data(entry_data);
@@ -1135,7 +1303,91 @@ void delete_entry(rb_tree * tree, const char * key) {
 }
 
 //
-cJSON * interface_json_event(interface_entry_data * old_data, interface_entry_data * new_data, int random_id, const char * timestamp) {
+cJSON * hw_json_event(hw_entry * new_data, int random_id, const char * timestamp) {
+    cJSON *object = cJSON_CreateObject();
+    cJSON *hw_inventory = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(object, "type", "hardware");
+    cJSON_AddNumberToObject(object, "ID", random_id);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
+    cJSON_AddItemToObject(object, "inventory", hw_inventory);
+
+    cJSON_AddStringToObject(hw_inventory, "board_serial", new_data->board_serial);
+    if (new_data->cpu_name) {
+        cJSON_AddStringToObject(hw_inventory, "cpu_name", new_data->cpu_name);
+    }
+    if (new_data->cpu_cores > INT_MIN) {
+        cJSON_AddNumberToObject(hw_inventory, "cpu_cores", new_data->cpu_cores);
+    }
+    if (new_data->cpu_MHz > 0.0) {
+        cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", new_data->cpu_MHz);
+    }
+    if (new_data->ram_total > LONG_MIN) {
+        cJSON_AddNumberToObject(hw_inventory, "ram_total", new_data->ram_total);
+    }
+    if (new_data->ram_free > LONG_MIN) {
+        cJSON_AddNumberToObject(hw_inventory, "ram_free", new_data->ram_free);
+    }
+    if (new_data->ram_usage > INT_MIN) {
+        cJSON_AddNumberToObject(hw_inventory, "ram_usage", new_data->ram_usage);
+    }
+
+    return object;
+}
+
+//
+cJSON * os_json_event(os_entry * new_data, int random_id, const char * timestamp) {
+    cJSON *object = cJSON_CreateObject();
+    cJSON *os_inventory = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(object, "type", "OS");
+    cJSON_AddNumberToObject(object, "ID", random_id);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
+    cJSON_AddItemToObject(object, "inventory", os_inventory);
+
+    cJSON_AddStringToObject(os_inventory, "os_name", new_data->os_name);
+    if (new_data->os_major) {
+        cJSON_AddStringToObject(os_inventory, "os_major", new_data->os_major);
+    }
+    if (new_data->os_minor) {
+        cJSON_AddStringToObject(os_inventory, "os_minor", new_data->os_minor);
+    }
+    if (new_data->os_build) {
+        cJSON_AddStringToObject(os_inventory, "os_build", new_data->os_build);
+    }
+    if (new_data->os_version) {
+        cJSON_AddStringToObject(os_inventory, "os_version", new_data->os_version);
+    }
+    if (new_data->os_codename) {
+        cJSON_AddStringToObject(os_inventory, "os_codename", new_data->os_codename);
+    }
+    if (new_data->os_platform) {
+        cJSON_AddStringToObject(os_inventory, "os_platform", new_data->os_platform);
+    }
+    if (new_data->sysname) {
+        cJSON_AddStringToObject(os_inventory, "sysname", new_data->sysname);
+    }
+    if (new_data->hostname) {
+        cJSON_AddStringToObject(os_inventory, "hostname", new_data->hostname);
+    }
+    if (new_data->release) {
+        cJSON_AddStringToObject(os_inventory, "release", new_data->release);
+    }
+    if (new_data->version) {
+        cJSON_AddStringToObject(os_inventory, "version", new_data->version);
+    }
+    if (new_data->architecture) {
+        cJSON_AddStringToObject(os_inventory, "architecture", new_data->architecture);
+    }
+    if (new_data->os_release) {
+        cJSON_AddStringToObject(os_inventory, "os_release", new_data->os_release);
+    }
+
+    return object;
+}
+
+//
+cJSON * interface_json_event(interface_entry_data * new_data, int random_id, const char * timestamp) {
     cJSON *object = cJSON_CreateObject();
     cJSON *iface = cJSON_CreateObject();
     int i = 0;
@@ -1292,7 +1544,7 @@ cJSON * interface_json_event(interface_entry_data * old_data, interface_entry_da
 }
 
 //
-cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, int random_id, const char * timestamp) {
+cJSON * program_json_event(program_entry_data * new_data, int random_id, const char * timestamp) {
     cJSON *object = cJSON_CreateObject();
     cJSON *program = cJSON_CreateObject();
 
@@ -1343,7 +1595,7 @@ cJSON * program_json_event(program_entry_data * old_data, program_entry_data * n
 }
 
 //
-cJSON * hotfix_json_event(hotfix_entry_data * old_data, hotfix_entry_data * new_data, int random_id, const char * timestamp) {
+cJSON * hotfix_json_event(hotfix_entry_data * new_data, int random_id, const char * timestamp) {
     cJSON *object = cJSON_CreateObject();
 
     cJSON_AddStringToObject(object, "type", "hotfix");
@@ -1355,7 +1607,7 @@ cJSON * hotfix_json_event(hotfix_entry_data * old_data, hotfix_entry_data * new_
 }
 
 //
-cJSON * port_json_event(port_entry_data * old_data, port_entry_data * new_data, int random_id, const char * timestamp) {
+cJSON * port_json_event(port_entry_data * new_data, int random_id, const char * timestamp) {
     cJSON *object = cJSON_CreateObject();
     cJSON *port = cJSON_CreateObject();
 
@@ -1398,7 +1650,7 @@ cJSON * port_json_event(port_entry_data * old_data, port_entry_data * new_data, 
 }
 
 //
-cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, int random_id, const char * timestamp) {
+cJSON * process_json_event(process_entry_data * new_data, int random_id, const char * timestamp) {
     cJSON *object = cJSON_CreateObject();
     cJSON *process = cJSON_CreateObject();
     int i = 0;

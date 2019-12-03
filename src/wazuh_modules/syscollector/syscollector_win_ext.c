@@ -36,7 +36,7 @@ typedef struct net_addr {
     char * dhcp;
 } net_addr;
 
-typedef struct interface_data {
+typedef struct iface_data {
     char * name;
     char * adapter;
     char * type;
@@ -57,21 +57,26 @@ typedef struct interface_data {
     struct net_addr * ipv6;
 
     int enabled;
-} interface_data;
+} iface_data;
 
-void initialize_net_addr(net_addr * net);
-void init_interface_data_entry(interface_data * data);
+net_addr * init_net_addr();
+iface_data * init_iface_data();
 
-void initialize_net_addr(net_addr * net) {
+net_addr * init_net_addr() {
+    net_addr * net = NULL;
+    net = calloc(1, sizeof(net_addr));
     net->address = NULL;
     net->netmask = NULL;
     net->broadcast = NULL;
     net->metric = INT_MIN;
     net->gateway = NULL;
     net->dhcp = NULL;
+    return net;
 }
 
-void init_interface_data_entry(interface_data * data) {
+iface_data * init_iface_data() {
+    iface_data * data = NULL;
+    data = calloc(1, sizeof(iface_data));
     data->name = NULL;
     data->adapter = NULL;
     data->type = NULL;
@@ -89,6 +94,7 @@ void init_interface_data_entry(interface_data * data) {
     data->ipv4 = NULL;
     data->ipv6 = NULL;
     data->enabled = 0;
+    return data;
 }
 
 __declspec( dllexport ) char* wm_inet_ntop(UCHAR ucLocalAddr[]){
@@ -106,7 +112,7 @@ __declspec( dllexport ) char* wm_inet_ntop(UCHAR ucLocalAddr[]){
 
 }
 
-__declspec( dllexport ) interface_data * get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddresses){
+__declspec( dllexport ) iface_data * get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddresses){
 
     PIP_ADAPTER_UNICAST_ADDRESS pUnicast = NULL;
     PIP_ADAPTER_GATEWAY_ADDRESS_LH pGateway = NULL;
@@ -118,10 +124,7 @@ __declspec( dllexport ) interface_data * get_network_vista(PIP_ADAPTER_ADDRESSES
     struct sockaddr_in *addr4;
     struct sockaddr_in6 *addr6;
 
-    interface_data * data = NULL;
-
-    data = calloc(1, sizeof(interface_data));
-    init_interface_data_entry(data);
+    iface_data * data = init_iface_data();
 
     /* Iface Name */
     char iface_name[MAXSTR];
@@ -204,15 +207,13 @@ __declspec( dllexport ) interface_data * get_network_vista(PIP_ADAPTER_ADDRESSES
     int mtu = (int) pCurrAddresses->Mtu;
     data->mtu = mtu;
 
-    data->ipv4 = calloc(1, sizeof(net_addr));
-    initialize_net_addr(data->ipv4);
+    data->ipv4 = init_net_addr();
     data->ipv4->address = malloc(sizeof(char *));
     data->ipv4->netmask = malloc(sizeof(char *));
     data->ipv4->broadcast = malloc(sizeof(char *));
     int address4 = 0, nmask4 = 0, bcast4 = 0;
 
-    data->ipv6 = calloc(1, sizeof(net_addr));
-    initialize_net_addr(data->ipv6);
+    data->ipv6 = init_net_addr();
     data->ipv6->address = malloc(sizeof(char *));
     data->ipv6->netmask = malloc(sizeof(char *));
     int address6 = 0, nmask6 = 0;
