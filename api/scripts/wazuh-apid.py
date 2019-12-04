@@ -6,15 +6,31 @@
 
 import argparse
 import os
-import subprocess
 import sys
-from signal import SIGABRT, SIGTERM, SIGINT, signal
 import yaml
-
-from api import api
-from api.constants import UWSGI_CONFIG_PATH, UWSGI_EXE
+import connexion
+from aiohttp import web
+import aiohttp_cors
+import aiohttp_cache
+from aiohttp_swagger import setup_swagger
+import ssl
+from api import alogging, configuration, __path__ as api_path
+from api import validator  # To register custom validators (do not remove)
+from api.api_exception import APIException
+from api.constants import CONFIG_FILE_PATH
+from api.util import to_relative_path
+from api.constants import UWSGI_CONFIG_PATH
+from wazuh.core.cluster.utils import read_config
 from wazuh import pyDaemonModule, common
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
+
+
+def set_logging(foreground_mode=False, debug_mode='info'):
+    for logger_name in ('aiohttp.server', 'aiohttp.access'):
+        api_logger = alogging.APILogger(log_path='logs/api.log', foreground_mode=foreground_mode,
+                                        debug_level=debug_mode,
+                                        logger_name=logger_name)
+        api_logger.setup_logger()
 
 
 def print_version():
@@ -54,33 +70,65 @@ if __name__ == '__main__':
         os.setgid(common.ossec_gid())
         os.setuid(common.ossec_uid())
 
-    uwsgi_logger = api.main_logger
+    cluster_config = read_config()
+    configuration = configuration.read_api_config()
+    cache_conf = configuration['cache']
+    cors = configuration['cors']
 
-    proc = subprocess.Popen([UWSGI_EXE,
-                             "--yaml", args.config_file,
-                             "--wsgi-file", api.__file__,
-                             "--callable", "wazuh_api"
-                             ],
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            encoding='utf8'
-                            )
+    set_logging(debug_mode=configuration['logs']['level'], foreground_mode=args.foreground)
 
-    pyDaemonModule.create_pid('wazuh-apid', proc.pid)
+    # set correct permissions on api.log file
+    if os.path.exists('{0}/logs/api.log'.format(common.ossec_path)):
+        os.chown('{0}/logs/api.log'.format(common.ossec_path), common.ossec_uid(), common.ossec_gid())
+        os.chmod('{0}/logs/api.log'.format(common.ossec_path), 0o660)
 
-    # Set termination handlers to kill subprocesses on exit
-    def clean(*args):
-        proc.kill()
+    app = connexion.AioHttpApp(__name__, host=configuration['host'],
+                               port=configuration['port'],
+                               specification_dir=os.path.join(api_path[0], 'spec'),
+                               options={"swagger_ui": False}
+                               )
+    app.add_api('spec.yaml',
+                arguments={'title': 'Wazuh API'},
+                strict_validation=True,
+                validate_responses=True,
+                pass_context_arg_name='request')
+    # Enable CORS
+    if cors:
+        aiohttp_cors.setup(app.app)
 
-    for sig in (SIGABRT, SIGINT, SIGTERM):
-        signal(sig, clean)
+    # Enable cache plugin
+    aiohttp_cache.setup_cache(app.app)
 
-    while True:
-        output = proc.stdout.readline()
-        if output == '' and proc.poll() is not None:
-            break
-        if output:
-            uwsgi_logger.info("[UWSGI]" + output.strip())
-    rc = proc.poll()
+    # Enable swagger UI plugin
+    setup_swagger(app.app,
+                  ui_version=3,
+                  swagger_url='/ui',
+                  swagger_from_file=os.path.join(app.specification_dir, 'spec.yaml'))
 
-    sys.exit(rc)
+    # Configure https
+    if configuration['https']['enabled']:
+        try:
+            ssl_context = ssl.SSLContext()
+            if configuration['https']['use_ca']:
+                ssl_context.verify_mode = ssl.CERT_REQUIRED
+                ssl_context.load_verify_locations(configuration['https']['ca'])
+            ssl_context.load_cert_chain(certfile=configuration['https']['cert'],
+                                        keyfile=configuration['https']['key'])
+        except ssl.SSLError as e:
+            raise APIException(2003, details='Private key does not match with the certificate')
+        except IOError as e:
+            raise APIException(2003, details='Please, ensure '
+                                             'if path to certificates is correct in '
+                                             'the configuration file '
+                                             f'(WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)})')
+    else:
+        ssl_context = None
+
+    # Launch server
+    web.run_app(app.app,
+                port=configuration['port'],
+                host=configuration['host'],
+                access_log_class=alogging.AccessLogger,
+                ssl_context=ssl_context)
+
+    pyDaemonModule.create_pid('wazuh-apid', os.getpid())

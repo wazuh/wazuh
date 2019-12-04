@@ -356,7 +356,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--https', help="Enable https protocol (true/false)", type=str)
     parser.add_argument('-sC', '--sCertificate', help="Set the ssl certificate (path)", type=str)
     parser.add_argument('-sK', '--sKey', help="Set the ssl key (path)", type=str)
-    parser.add_argument('-R', '--restart', help="Restart Wazuh after modifications", action = 'store_true')
+    parser.add_argument('-R', '--restart', help="Restart Wazuh after modifications", action='store_true')
     parser.add_argument('-I', '--interactive', help="Enables guided configuration", action='store_true')
     args = parser.parse_args()
 

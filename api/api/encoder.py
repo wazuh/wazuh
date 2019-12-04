@@ -1,5 +1,7 @@
-from connexion.apps.flask_app import FlaskJSONEncoder
+import json
+
 import six
+from connexion.apps.flask_app import FlaskJSONEncoder
 
 from api.models.base_model_ import Model
 from wazuh.results import AbstractWazuhResult
@@ -21,3 +23,23 @@ class JSONEncoder(FlaskJSONEncoder):
         elif isinstance(o, AbstractWazuhResult):
             return o.render()
         return FlaskJSONEncoder.default(self, o)
+
+
+def dumps(obj: object) -> str:
+    """
+    Get a JSON encoded str from an object
+
+    Parameters
+    ----------
+    obj: object
+        Object to be encoded in a JSON string
+
+    Raises
+    ------
+    TypeError
+
+    Returns
+    -------
+    str
+    """
+    return json.dumps(obj, cls=JSONEncoder)

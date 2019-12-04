@@ -19,12 +19,11 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.common import database_limit
 from wazuh.exception import WazuhError
 
-loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge=False, status='all', older_than="7d"):
+async def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge=False, status='all', older_than="7d"):
     """Delete all agents or a list of them with optional criteria based on the status or time of the last connection.
 
     :param pretty: Show results in human-readable format
@@ -50,7 +49,7 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
     return data, 200
 

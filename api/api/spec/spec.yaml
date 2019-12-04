@@ -14,6 +14,23 @@ info:
     name: 'GPL 2.0'
     url: 'https://github.com/wazuh/wazuh/blob/master/LICENSE'
 
+servers:
+  - url: http://localhost:55000/v1
+
+x-rbac-catalog:
+  resources:
+    'agent:id':
+      description: Reference agents via agent ID (i.e. agent:id:001)
+  actions:
+    'agent:read':
+      description: Access to one or more agents basic information (id, name, group, last keep alive, etc)
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: ['agent:read']
+        resources: ['agent:id:*']
+        effect: allow
+
 components:
   responses:
     ResponseError:
@@ -4256,6 +4273,8 @@ paths:
       summary: 'Get agents'
       description: 'Returns information about all available agents or a list of them'
       operationId: api.controllers.agents_controller.get_agents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
