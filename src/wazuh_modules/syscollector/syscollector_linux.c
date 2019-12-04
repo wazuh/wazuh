@@ -112,7 +112,6 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
         while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL){
 
-            cJSON * json_event = NULL;
             port_entry_data * entry_data = NULL;
 
             listening = 0;
@@ -159,11 +158,10 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
             if (check_all || listening) {
 
                 // Check if it is necessary to create a port event
-                if (json_event = analyze_port(entry_data, random_id, timestamp), json_event) {
-                    char * string = cJSON_PrintUnformatted(json_event);
+                char * string = NULL;
+                if (string = analyze_port(entry_data, random_id, timestamp), string) {
                     mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-                    cJSON_Delete(json_event);
                     free(string);
                 }
 
@@ -207,7 +205,6 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
         while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL){
 
-            cJSON * json_event = NULL;
             port_entry_data * entry_data = NULL;
 
             listening = 0;
@@ -258,11 +255,10 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
             if (check_all || listening) {
 
                 // Check if it is necessary to create a port event
-                if (json_event = analyze_port(entry_data, random_id, timestamp), json_event) {
-                    char * string = cJSON_PrintUnformatted(json_event);
+                char * string = NULL;
+                if (string = analyze_port(entry_data, random_id, timestamp), string) {
                     mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-                    cJSON_Delete(json_event);
                     free(string);
                 }
 
@@ -315,22 +311,10 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
     }
 
     free(protocol);
+    free(timestamp);
 
     // Checking for closed ports
     check_closed_ports();
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "port_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string;
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
-    SendMSG(queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(string);
-    free(timestamp);
 }
 
 // Get installed programs inventory
@@ -339,11 +323,6 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
 
     DIR *dir;
     int random_id = os_random();
-    char * end_dpkg = NULL;
-    char * end_rpm = NULL;
-
-    // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
 
     /* Set positive random ID for each event */
 
@@ -354,33 +333,18 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
 
     if ((dir = opendir("/var/lib/dpkg/"))){
         closedir(dir);
-        if (end_dpkg = sys_deb_packages(queue_fd, LOCATION, random_id), !end_dpkg) {
-            mterror(WM_SYS_LOGTAG, "Unable to get debian packages due to: %s", strerror(errno));
-        }
+        sys_deb_packages(queue_fd, LOCATION, random_id);
     }
     if ((dir = opendir("/var/lib/rpm/"))){
         closedir(dir);
-        if (end_rpm = sys_rpm_packages(queue_fd, LOCATION, random_id), !end_rpm) {
-            mterror(WM_SYS_LOGTAG, "Unable to get rpm packages due to: %s", strerror(errno));
-        }
+        sys_rpm_packages(queue_fd, LOCATION, random_id);
     }
 
-    if (end_rpm) {
-        mtdebug2(WM_SYS_LOGTAG, "sys_packages_linux() sending '%s'", end_rpm);
-        wm_sendmsg(usec, queue_fd, end_rpm, LOCATION, SYSCOLLECTOR_MQ);
-
-        free(end_rpm);
-        if (end_dpkg) {
-            free(end_dpkg);
-        }
-    } else if (end_dpkg) {
-        mtdebug2(WM_SYS_LOGTAG, "sys_packages_linux() sending '%s'", end_dpkg);
-        wm_sendmsg(usec, queue_fd, end_dpkg, LOCATION, SYSCOLLECTOR_MQ);
-        free(end_dpkg);
-    }
+    // Checking for uninstalled programs
+    check_uninstalled_programs();
 }
 
-char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
+void sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
     char *format = "rpm";
     char *timestamp;
@@ -411,7 +375,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "Failed to initialize the DB handler: %s", db_strerror(ret));
         free(timestamp);
-        return NULL;
+        return;
     }
 
     // Set Little-endian order by default
@@ -422,13 +386,13 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     if ((ret = dbp->open(dbp, NULL, RPM_DATABASE, NULL, DB_HASH, DB_RDONLY, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "Failed to open database '%s': %s", RPM_DATABASE, db_strerror(ret));
         free(timestamp);
-        return NULL;
+        return;
     }
 
     if ((ret = dbp->cursor(dbp, NULL, &cursor, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "Error creating cursor: %s", db_strerror(ret));
         free(timestamp);
-        return NULL;
+        return;
     }
 
     memset(&key, 0, sizeof(DBT));
@@ -438,7 +402,6 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
     for (j = 0; ret = cursor->c_get(cursor, &key, &data, DB_NEXT), ret == 0; j++) {
 
-        cJSON * json_event = NULL;
         program_entry_data * entry_data = NULL;
 
         // First header is not a package
@@ -562,11 +525,10 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
             free_program_data(entry_data);
         } else {
             // Check if it is necessary to create a program event
-            if (json_event = analyze_program(entry_data, random_id, timestamp), json_event) {
-                char * string = cJSON_PrintUnformatted(json_event);
+            char * string = NULL;
+            if (string = analyze_program(entry_data, random_id, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_rpm_packages() sending '%s'", string);
                 wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(json_event);
                 free(string);
             }
         }
@@ -587,24 +549,10 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     cursor->c_close(cursor);
     dbp->close(dbp, 0);
 
-    // Checking for uninstalled programs
-    check_uninstalled_programs();
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "program_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *end_msg;
-    end_msg = cJSON_PrintUnformatted(object);
-    cJSON_Delete(object);
     free(timestamp);
-
-    return end_msg;
-
 }
 
-char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
+void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
     const char * format = "deb";
     char file[PATH_LENGTH] = "/var/lib/dpkg/status";
@@ -761,14 +709,12 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
                 // Send message to the queue
 
-                cJSON * json_event = NULL;
                 if (entry_data->installed) {
                     // Check if it is necessary to create a program event
-                    if (json_event = analyze_program(entry_data, random_id, timestamp), json_event) {
-                        char * string = cJSON_PrintUnformatted(json_event);
+                    char * string = NULL;
+                    if (string = analyze_program(entry_data, random_id, timestamp), string) {
                         mtdebug2(WM_SYS_LOGTAG, "sys_deb_packages() sending '%s'", string);
                         wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-                        cJSON_Delete(json_event);
                         free(string);
                     }
                 } else {
@@ -783,26 +729,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
     } else {
 
         mterror(WM_SYS_LOGTAG, "Unable to open the file '%s'", file);
-        free(timestamp);
-        return NULL;
-
     }
-
-    // Checking for uninstalled programs
-    check_uninstalled_programs();
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "program_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *end_msg;
-    end_msg = cJSON_PrintUnformatted(object);
-    cJSON_Delete(object);
-    free(timestamp);
-
-    return end_msg;
-
 }
 
 // Get Hardware inventory
@@ -812,7 +739,6 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
     int random_id = os_random();
     char *timestamp;
 
-    cJSON * json_event = NULL;
     hw_entry * hw_data = NULL;
 
     timestamp = w_get_timestamp(time(NULL));
@@ -834,11 +760,10 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
     get_system_linux(hw_data);
 
     // Check if it is necessary to create a hardware event
-    if (json_event = analyze_hw(hw_data, random_id, timestamp), json_event) {
-        char * string = cJSON_PrintUnformatted(json_event);
+    char * string = NULL;
+    if (string = analyze_hw(hw_data, random_id, timestamp), string) {
         mtdebug2(WM_SYS_LOGTAG, "sys_hw_linux() sending '%s'", string);
         SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-        cJSON_Delete(json_event);
         free(string);
     }
 
@@ -854,7 +779,6 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
     int random_id = os_random();
     char *timestamp;
 
-    cJSON * json_event = NULL;
     os_entry * os_data = NULL;
 
     timestamp = w_get_timestamp(time(NULL));
@@ -909,11 +833,10 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
     free_osinfo(info);
 
     // Check if it is necessary to create a operative system event
-    if (json_event = analyze_os(os_data, random_id, timestamp), json_event) {
-        char * string = cJSON_PrintUnformatted(json_event);
+    char * string = NULL;
+    if (string = analyze_os(os_data, random_id, timestamp), string) {
         mtdebug2(WM_SYS_LOGTAG, "sys_os_unix() sending '%s'", string);
         SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-        cJSON_Delete(json_event);
         free(string);
     }
 
@@ -997,16 +920,14 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     /* Collect all information for each interface */
     for (i=0; i < size_ifaces; i++){
 
-        cJSON * json_event = NULL;
         interface_entry_data * entry_data = NULL;
 
         if (entry_data = getNetworkIface_linux(ifaces_list[i], ifaddr), entry_data) {
             // Check if it is necessary to create an interface event
-            if (json_event = analyze_interface(entry_data, random_id, timestamp), json_event) {
-                char * string = cJSON_PrintUnformatted(json_event);
+            char * string = NULL;
+            if (string = analyze_interface(entry_data, random_id, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
                 wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(json_event);
                 free(string);
             }
         } else {
@@ -1019,22 +940,10 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         free(ifaces_list[i]);
     }
     free(ifaces_list);
+    free(timestamp);
 
     // Checking for disabled interfaces
     check_disabled_interfaces();
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "network_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string;
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
-    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(string);
-    free(timestamp);
 }
 
 /* Get System information */
@@ -1505,7 +1414,6 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         int i;
         int pos = 0;
 
-        cJSON * json_event = NULL;
         process_entry_data * entry_data = NULL;
 
         entry_data = init_process_data_entry(entry_data);
@@ -1584,32 +1492,18 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         freeproc(proc_info);
 
         // Check if it is necessary to create a process event
-        if (json_event = analyze_process(entry_data, random_id, timestamp), json_event) {
-            char * string = cJSON_PrintUnformatted(json_event);
+        char * string = NULL;
+        if (string = analyze_process(entry_data, random_id, timestamp), string) {
             mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", string);
             wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-            cJSON_Delete(json_event);
             free(string);
         }
     }
     closeproc(proc);
+    free(timestamp);
 
     // Checking for terminated processes
     check_terminated_processes();
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "process_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *end_msg;
-    end_msg = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", end_msg);
-    wm_sendmsg(usec, queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(end_msg);
-    free(timestamp);
-
 }
 
 // Read string from a byte array until find a NULL byte

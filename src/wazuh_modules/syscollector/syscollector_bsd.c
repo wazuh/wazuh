@@ -94,7 +94,6 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                 snprintf(path, PATH_LENGTH - 1, "%s/%s", MAC_APPS, de->d_name);
                 char * string = NULL;
                 if (string = sys_parse_pkg(path, timestamp, random_id), string) {
-
                     mtdebug2(WM_SYS_LOGTAG, "Sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                     free(string);
@@ -121,7 +120,6 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                 snprintf(path, PATH_LENGTH - 1, "%s/%s", UTILITIES, de->d_name);
                 char * string = NULL;
                 if (string = sys_parse_pkg(path, timestamp, random_id), string) {
-
                     mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                     free(string);
@@ -150,7 +148,6 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                 continue;
             }
 
-            cJSON * json_event = NULL;
             program_entry_data * entry_data = NULL;
 
             entry_data = init_program_data_entry();
@@ -196,32 +193,20 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             }
 
             // Check if it is necessary to create a program event
-            if (json_event = analyze_program(entry_data, random_id, timestamp), json_event) {
-                char * string = cJSON_PrintUnformatted(json_event);
+            char * string = NULL;
+            if (string = analyze_program(entry_data, random_id, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
                 wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(json_event);
                 free(string);
             }
         }
         closedir(dr);
     }
 
+    free(timestamp);
+
     // Checking for uninstalled programs
     check_uninstalled_programs();
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "program_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string;
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
-    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(string);
-    free(timestamp);
 }
 
 char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_id) {
@@ -233,7 +218,6 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
     int i = 0;
     int invalid = 0;
 
-    cJSON * json_event = NULL;
     program_entry_data * entry_data = NULL;
 
     snprintf(filepath, PATH_LENGTH - 1, "%s/%s", app_folder, INFO_FILE);
@@ -415,12 +399,9 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
             os_strdup(program_name, entry_data->name);
         }
 
-        char * string = NULL;
         // Check if it is necessary to create a program event
-        if (json_event = analyze_program(entry_data, random_id, timestamp), json_event) {
-            string = cJSON_PrintUnformatted(json_event);
-            cJSON_Delete(json_event);
-        }
+        char * string = NULL;
+        string = analyze_program(entry_data, random_id, timestamp);
 
         fclose(fp);
         return string;
@@ -463,7 +444,6 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
         while(fgets(read_buff, OS_MAXSTR, output)){
 
-            cJSON * json_event = NULL;
             program_entry_data * entry_data = NULL;
 
             char ** parts = NULL;
@@ -491,11 +471,10 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             free(parts);
 
             // Check if it is necessary to create a program event
-            if (json_event = analyze_program(entry_data, random_id, timestamp), json_event) {
-                char * string = cJSON_PrintUnformatted(json_event);
+            char * string = NULL;
+            if (string = analyze_program(entry_data, random_id, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
                 wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(json_event);
                 free(string);
             }
         }
@@ -507,22 +486,10 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s' to get software inventory.", command);
     }
     free(command);
+    free(timestamp);
 
     // Checking for uninstalled programs
     check_uninstalled_programs();
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "program_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string;
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
-    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(string);
-    free(timestamp);
 }
 
 #endif
@@ -534,7 +501,6 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     int random_id = os_random();
     char *timestamp = w_get_timestamp(time(NULL));
 
-    cJSON * json_event = NULL;
     hw_entry * hw_data = NULL;
 
     if (random_id < 0)
@@ -611,11 +577,10 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     get_system_bsd(hw_data);
 
     // Check if it is necessary to create a hardware event
-    if (json_event = analyze_hw(hw_data, random_id, timestamp), json_event) {
-        char * string = cJSON_PrintUnformatted(json_event);
+    char * string = NULL;
+    if (string = analyze_hw(hw_data, random_id, timestamp), string) {
         mtdebug2(WM_SYS_LOGTAG, "Sending '%s'", string);
         SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-        cJSON_Delete(json_event);
         free(string);
     }
 
@@ -815,7 +780,6 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
 
     for (i=0; i < size_ifaces; i++){
 
-        cJSON * json_event = NULL;
         interface_entry_data * entry_data = NULL;
 
         gateway *gate = NULL;
@@ -825,11 +789,10 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
 
         if (entry_data = getNetworkIface_bsd(ifaces_list[i], ifaddrs_ptr, gate), entry_data) {
             // Check if it is necessary to create an interface event
-            if (json_event = analyze_interface(entry_data, random_id, timestamp), json_event) {
-                char * string = cJSON_PrintUnformatted(json_event);
+            char * string = NULL;
+            if (string = analyze_interface(entry_data, random_id, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_network_bsd() sending '%s'", string);
                 wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(json_event);
                 free(string);
             }
         } else {
@@ -845,23 +808,10 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
         free(ifaces_list[i]);
     }
     free(ifaces_list);
+    free(timestamp);
 
     // Checking for disabled interfaces
     check_disabled_interfaces();
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "network_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string;
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_network_bsd() sending '%s'", string);
-    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(string);
-    free(timestamp);
-
 }
 
 interface_entry_data * getNetworkIface_bsd(char *iface_name, struct ifaddrs *ifaddrs_ptr, __attribute__((unused)) gateway* gate){
@@ -1394,7 +1344,6 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
                 continue;
             }
 
-            cJSON * json_event = NULL;
             port_entry_data * entry_data = NULL;
 
             char laddr[NI_MAXHOST];
@@ -1456,11 +1405,10 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
             }
 
             // Check if it is necessary to create a port event
-            if (json_event = analyze_port(entry_data, random_id, timestamp), json_event) {
-                char * string = cJSON_PrintUnformatted(json_event);
+            char * string = NULL;
+            if (string = analyze_port(entry_data, random_id, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_ports_mac() sending '%s'", string);
                 wm_sendmsg(usec, queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(json_event);
                 free(string);
             }
         }
@@ -1469,21 +1417,10 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
     }
 
     os_free(pids);
+    os_free(timestamp);
 
     // Checking for closed ports
     check_closed_ports();
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "port_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    os_free(timestamp);
-
-    char *string = cJSON_PrintUnformatted(object);
-    cJSON_Delete(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_ports_mac() sending '%s'", string);
-    SendMSG(queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
-    os_free(string);
 }
 
 void sys_proc_mac(int queue_fd, const char* LOCATION){
@@ -1520,7 +1457,6 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
         pid_t pid;
         struct proc_taskallinfo task_info;
 
-        cJSON * json_event = NULL;
         process_entry_data * entry_data = NULL;
 
         pid = pids[index];
@@ -1590,30 +1526,18 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
         entry_data->vm_size = task_info.ptinfo.pti_virtual_size / 1024;
 
         // Check if it is necessary to create a process event
-        if (json_event = analyze_process(entry_data, random_id, timestamp), json_event) {
-            char * string = cJSON_PrintUnformatted(json_event);
+        char * string = NULL;
+        if (string = analyze_process(entry_data, random_id, timestamp), string) {
             mtdebug2(WM_SYS_LOGTAG, "sys_proc_mac() sending '%s'", string);
             wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-            cJSON_Delete(json_event);
             free(string);
         }
     }
     os_free(pids);
+    os_free(timestamp);
 
     // Checking for terminated processes
     check_terminated_processes();
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "process_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    os_free(timestamp);
-
-    char *end_msg = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_proc_mac() sending '%s'", end_msg);
-    wm_sendmsg(usec, queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    os_free(end_msg);
 }
 
 #endif

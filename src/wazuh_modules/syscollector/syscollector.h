@@ -87,56 +87,56 @@
 #define INFO_FILE       "Contents/Info.plist"
 
 typedef struct hw_entry {
-    char * board_serial;
-    char * cpu_name;
-    int cpu_cores;
-    double cpu_MHz;
-    long ram_total;
-    long ram_free;
-    int ram_usage;
+    char * board_serial;                    // Motherboard serial number
+    char * cpu_name;                        // CPU name
+    int cpu_cores;                          // Number of cores of the CPU
+    double cpu_MHz;                         // Current processor frequency
+    long ram_total;                         // Total RAM (KB)
+    long ram_free;                          // Free RAM (KB)
+    int ram_usage;                          // Percentage of RAM in use
 } hw_entry;
 
 typedef struct os_entry {
-    char * hostname;
-    char * architecture;
-    char * os_name;
-    char * os_release;
-    char * os_version;
-    char * os_codename;
-    char * os_major;
-    char * os_minor;
-    char * os_build;
-    char * os_platform;
-    char * sysname;
-    char * release;
-    char * version;
+    char * hostname;                        // Hostname of the machine
+    char * architecture;                    // OS architecture
+    char * os_name;                         // OS name
+    char * os_release;                      // OS release
+    char * os_version;                      // OS version
+    char * os_codename;                     // OS version codename
+    char * os_major;                        // Major release version
+    char * os_minor;                        // Minor release version
+    char * os_build;                        // Optional build-specific
+    char * os_platform;                     // OS platform
+    char * sysname;                         // System name
+    char * release;                         // Release name
+    char * version;                         // Release version
 } os_entry;
 
 typedef struct net_addr {
-    char ** address;
-    char ** netmask;
-    char ** broadcast;
-    int metric;
-    char * gateway;
-    char * dhcp;
+    char ** address;                        // IPv4/IPv6 address
+    char ** netmask;                        // Netmask address
+    char ** broadcast;                      // Broadcast address
+    int metric;                             // Metric
+    char * gateway;                         // Default gateway
+    char * dhcp;                            // DHCP status
 } net_addr;
 
 typedef struct interface_entry_data {
-    char * name;
-    char * adapter;
-    char * type;
-    char * state;
-    char * mac;
-    int mtu;
+    char * name;                            // Interface name
+    char * adapter;                         // Physical adapter name
+    char * type;                            // Network adapter
+    char * state;                           // State of the interface
+    char * mac;                             // MAC Address
+    int mtu;                                // Maximum Transmission Unit
 
-    int tx_packets;
-    int rx_packets;
-    int tx_bytes;
-    int rx_bytes;
-    int tx_errors;
-    int rx_errors;
-    int tx_dropped;
-    int rx_dropped;
+    int tx_packets;                         // Transmitted packets
+    int rx_packets;                         // Received packets
+    int tx_bytes;                           // Transmitted bytes
+    int rx_bytes;                           // Received bytes
+    int tx_errors;                          // Transmission errors
+    int rx_errors;                          // Reception errors
+    int tx_dropped;                         // Dropped transmission packets
+    int rx_dropped;                         // Dropped reception packets
 
     struct net_addr * ipv4;
     struct net_addr * ipv6;
@@ -145,84 +145,84 @@ typedef struct interface_entry_data {
 } interface_entry_data;
 
 typedef struct program_entry_data {
-    char * format;
-    char * name;
+    char * format;                          // Format of the package
+    char * name;                            // Name of the package
 
-    char * priority;
-    char * group;
-    long size;
-    char * vendor;
-    char * install_time;
-    char * version;
-    char * architecture;
-    char * multi_arch;
-    char * source;
-    char * description;
-    char * location;
+    char * priority;                        // Priority of the package
+    char * group;                           // Section of the package
+    long size;                              // Size of the installed package in bytes
+    char * vendor;                          // Vendor name
+    char * install_time;                    // Date when the package was installed
+    char * version;                         // Version of the package
+    char * architecture;                    // Architecture of the package
+    char * multi_arch;                      // Multiarchitecture support
+    char * source;                          // Source of the package
+    char * description;                     // Description of the package
+    char * location;                        // Location of the package
 
     int installed;
 } program_entry_data;
 
 typedef struct hotfix_entry_data {
-    char * hotfix;
+    char * hotfix;                          // Hotfix name
 
     int installed;
 } hotfix_entry_data;
 
 typedef struct port_entry_data {
-    char * protocol;
+    char * protocol;                        // Protocol of the port
 
-    char * local_ip;
-    int local_port;
-    char * remote_ip;
-    int remote_port;
+    char * local_ip;                        // Local IP
+    int local_port;                         // Local port
+    char * remote_ip;                       // Remote IP
+    int remote_port;                        // Remote port
 
-    int tx_queue;
-    int rx_queue;
-    int inode;
+    int tx_queue;                           // Packets pending to be transmitted
+    int rx_queue;                           // Packets at the receiver queue
+    int inode;                              // Inode of the port
 
-    char * state;
+    char * state;                           // State of the port
 
-    int pid;
-    char * process;
+    int pid;                                // PID owner of the opened port
+    char * process;                         // Name of the PID
 
     int opened;
 } port_entry_data;
 
 typedef struct process_entry_data {
-    int pid;
-    int ppid;
-    char * name;
-    char * cmd;
-    char ** argvs;
-    char * state;
+    int pid;                                // PID of the process
+    int ppid;                               // PPID of the process
+    char * name;                            // Name of the process
+    char * cmd;                             // Command executed
+    char ** argvs;                          // Arguments of the process
+    char * state;                           // State of the process
 
-    char * euser;
-    char * ruser;
-    char * suser;
-    char * egroup;
-    char * rgroup;
-    char * sgroup;
-    char * fgroup;
+    char * euser;                           // Effective user
+    char * ruser;                           // Real user
+    char * suser;                           // Saved-set user
+    char * egroup;                          // Effective group
+    char * rgroup;                          // Real group
+    char * sgroup;                          // Saved-set group
+    char * fgroup;                          // Filesystem group name
 
-    int priority;
-    int nice;
+    int priority;                           // Kernel scheduling priority
+    int nice;                               // Nice value of the process
 
-    long size;
-    long vm_size;
-    long resident;
-    long share;
+    long size;                              // Size of the process
+    long vm_size;                           // Total VM size (KB)
+    long resident;                          // Residen size of the process in bytes
+    long share;                             // Shared memory
 
-    long long start_time;
-    long long utime;
-    long long stime;
+    long long start_time;                   // Time when the process started
+    long long utime;                        // Time spent executing user code
+    long long stime;                        // Time spent executing system code
 
-    int pgrp;
-    int session;
-    int nlwp;
-    int tgid;
-    int tty;
-    int processor;
+    int pgrp;                               // Process group
+    int session;                            // Session of the process
+    int nlwp;                               // Number of light weight processes
+    int tgid;                               // Thread Group ID
+    int tty;                                // Number of TTY of the process
+    int processor;                          // Number of the processor
 
     int running;
 } process_entry_data;
@@ -249,13 +249,13 @@ typedef struct wm_sys_t {
     wm_sys_flags_t flags;                   // Flag bitfield
     wm_sys_state_t state;                   // Running state
 
-    hw_entry * hw_data;
-    os_entry * os_data;
-    rb_tree * interfaces_entry;
-    rb_tree * programs_entry;
-    rb_tree * hotfixes_entry;
-    rb_tree * ports_entry;
-    rb_tree * processes_entry;
+    hw_entry * hw_data;                     // Hardware data store
+    os_entry * os_data;                     // OS data store
+    rb_tree * interfaces_entry;             // Interfaces data store
+    rb_tree * programs_entry;               // Packages data store
+    rb_tree * hotfixes_entry;               // HOtfixes data store
+    rb_tree * ports_entry;                  // Ports data store
+    rb_tree * processes_entry;              // Processes data store
 
     pthread_mutex_t hardware_mutex;
     pthread_mutex_t os_mutex;
@@ -267,14 +267,14 @@ typedef struct wm_sys_t {
 } wm_sys_t;
 
 struct link_stats {
-    unsigned int rx_packets;    /* total packets received */
-    unsigned int tx_packets;    /* total packets transmitted */
-    unsigned int rx_bytes;      /* total bytes received */
-    unsigned int tx_bytes;      /* total bytes transmitted */
-    unsigned int rx_errors;     /* bad packets received */
-    unsigned int tx_errors;     /* packet transmit problems */
-    unsigned int rx_dropped;    /* no space in linux buffers */
-    unsigned int tx_dropped;    /* no space available in linux */
+    unsigned int rx_packets;
+    unsigned int tx_packets;
+    unsigned int rx_bytes;
+    unsigned int tx_bytes;
+    unsigned int rx_errors;
+    unsigned int tx_errors;
+    unsigned int rx_dropped;
+    unsigned int tx_dropped;
 };
 
 typedef struct gateway {
@@ -309,8 +309,8 @@ void sys_ports_windows(const char* LOCATION, int check_all);
 
 // Installed packages inventory for Linux
 void sys_packages_linux(int queue_fd, const char* WM_SYS_LOCATION);
-char * sys_deb_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id);
-char * sys_rpm_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id);
+void sys_deb_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id);
+void sys_rpm_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id);
 
 #ifdef WIN32
 // Installed programs inventory for Windows
@@ -435,20 +435,35 @@ void free_port_data(port_entry_data * data);
 // Free process data
 void free_process_data(process_entry_data * data);
 
+// Compare two hardware structures
+int compare_hw(hw_entry * old_data, hw_entry * new_data);
+// Compare two operative system structures
+int compare_os(os_entry * old_data, os_entry * new_data);
+// Compare two interface structures
+int compare_interface(interface_entry_data * old_data, interface_entry_data * new_data);
+// Compare two program structures
+int compare_program(program_entry_data * old_data, program_entry_data * new_data);
+// Compare two hotfix structures
+int compare_hotfix(hotfix_entry_data * old_data, hotfix_entry_data * new_data);
+// Compare two port structures
+int compare_port(port_entry_data * old_data, port_entry_data * new_data);
+// Compare two process structures
+int compare_process(process_entry_data * old_data, process_entry_data * new_data);
+
 // Analyze if update the hardware information
-cJSON * analyze_hw(hw_entry * entry_data, int random_id, const char * timestamp);
+char * analyze_hw(hw_entry * entry_data, int random_id, const char * timestamp);
 // Analyze if update the operative system information
-cJSON * analyze_os(os_entry * entry_data, int random_id, const char * timestamp);
+char * analyze_os(os_entry * entry_data, int random_id, const char * timestamp);
 // Analyze if insert new interface or update an existing one
-cJSON * analyze_interface(interface_entry_data * entry_data, int random_id, const char * timestamp);
+char * analyze_interface(interface_entry_data * entry_data, int random_id, const char * timestamp);
 // Analyze if insert new program or update an existing one
-cJSON * analyze_program(program_entry_data * entry_data, int random_id, const char * timestamp);
+char * analyze_program(program_entry_data * entry_data, int random_id, const char * timestamp);
 // Analyze if insert new hotfix or update an existing one
-cJSON * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char * timestamp);
+char * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char * timestamp);
 // Analyze if insert new port or update an existing one
-cJSON * analyze_port(port_entry_data * entry_data, int random_id, const char * timestamp);
+char * analyze_port(port_entry_data * entry_data, int random_id, const char * timestamp);
 // Analyze if insert new process or update an existing one
-cJSON * analyze_process(process_entry_data * entry_data, int random_id, const char * timestamp);
+char * analyze_process(process_entry_data * entry_data, int random_id, const char * timestamp);
 
 // Deletes the disabled interfaces from the hash table
 void check_disabled_interfaces();

@@ -346,7 +346,6 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
         for (i=0; i < (int) pTcpTable->dwNumEntries; i++){
 
-            cJSON * json_event = NULL;
             port_entry_data * entry_data = NULL;
 
             listening = 0;
@@ -386,11 +385,10 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             if (check_all || listening) {
 
                 // Check if it is necessary to create a port event
-                if (json_event = analyze_port(entry_data, ID, timestamp), json_event) {
-                    char * string = cJSON_PrintUnformatted(json_event);
+                char * string = NULL;
+                if (string = analyze_port(entry_data, ID, timestamp), string) {
                     mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
                     wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-                    cJSON_Delete(json_event);
                     free(string);
                 }
 
@@ -440,7 +438,6 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
         for (i=0; i < (int) pTcp6Table->dwNumEntries; i++){
 
-            cJSON * json_event = NULL;
             port_entry_data * entry_data = NULL;
 
             listening = 0;
@@ -509,11 +506,10 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             if (check_all || listening) {
 
                 // Check if it is necessary to create a port event
-                if (json_event = analyze_port(entry_data, ID, timestamp), json_event) {
-                    char * string = cJSON_PrintUnformatted(json_event);
+                char * string = NULL;
+                if (string = analyze_port(entry_data, ID, timestamp), string) {
                     mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
                     wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-                    cJSON_Delete(json_event);
                     free(string);
                 }
 
@@ -565,7 +561,6 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
         for (i=0; i < (int) pUdpTable->dwNumEntries; i++){
 
-            cJSON * json_event = NULL;
             port_entry_data * entry_data = NULL;
 
             entry_data = init_port_data_entry();
@@ -587,11 +582,10 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             free(pid_name);
 
             // Check if it is necessary to create a port event
-            if (json_event = analyze_port(entry_data, ID, timestamp), json_event) {
-                char * string = cJSON_PrintUnformatted(json_event);
+            char * string = NULL;
+            if (string = analyze_port(entry_data, ID, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
                 wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(json_event);
                 free(string);
             }
         }
@@ -638,7 +632,6 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             char laddress[128] = {'\0'};
             socklen_t socksize;
 
-            cJSON * json_event = NULL;
             port_entry_data * entry_data = NULL;
 
             entry_data = init_port_data_entry();
@@ -672,11 +665,10 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             free(pid_name);
 
             // Check if it is necessary to create a port event
-            if (json_event = analyze_port(entry_data, ID, timestamp), json_event) {
-                char * string = cJSON_PrintUnformatted(json_event);
+            char * string = NULL;
+            if (string = analyze_port(entry_data, ID, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
                 wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(json_event);
                 free(string);
             }
         }
@@ -709,21 +701,10 @@ end:
     if (pUdpTable != NULL) win_free(pUdpTable);
     if (pUdp6Table != NULL) win_free(pUdp6Table);
 
+    free(timestamp);
+
     // Checking for closed ports
     check_closed_ports();
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "port_end");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string;
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
-    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(string);
-    free(timestamp);
 }
 
 // Get installed programs inventory
@@ -797,22 +778,10 @@ void sys_programs_windows(const char* LOCATION){
     }
     RegCloseKey(main_key);
 
-    // Checking for uninstalled programs
-    check_uninstalled_programs();
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "program_end");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string;
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
-    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(string);
     free(timestamp);
 
+    // Checking for uninstalled programs
+    check_uninstalled_programs();
 }
 
 // Get installed hotfixes inventory
@@ -824,8 +793,6 @@ void sys_hotfixes(const char* LOCATION){
     HKEY main_key;
     long unsigned int result;
     const char *HOTFIXES_REG;
-    cJSON *end_evt;
-    char *end_evt_str;
 
     HOTFIXES_REG = isVista ? "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages" :
                     "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix";
@@ -839,22 +806,11 @@ void sys_hotfixes(const char* LOCATION){
         mterror(WM_SYS_LOGTAG, "Could not open the registry '%s'. Error: %lu.", HOTFIXES_REG, result);
     }
 
-    // Checking for uninstalled hotfixes
-    check_uninstalled_hotfixes();
-
-    end_evt = cJSON_CreateObject();
-    cJSON_AddStringToObject(end_evt, "type", "hotfix_end");
-    cJSON_AddNumberToObject(end_evt, "ID", ID);
-    cJSON_AddStringToObject(end_evt, "timestamp", timestamp);
-
-    end_evt_str = cJSON_PrintUnformatted(end_evt);
-    mtdebug2(WM_SYS_LOGTAG, "sys_hotfixes() sending '%s'", end_evt_str);
-    wm_sendmsg(usec, 0, end_evt_str, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(end_evt);
-
-    free(end_evt_str);
     free(timestamp);
     RegCloseKey(main_key);
+
+    // Checking for uninstalled hotfixes
+    check_uninstalled_hotfixes();
 }
 
 // List installed programs from the registry
@@ -1125,7 +1081,6 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
     char * date;
     char * location;
 
-    cJSON * json_event = NULL;
     program_entry_data * entry_data = NULL;
 
     if (root_key == LM_KEY)
@@ -1260,11 +1215,10 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
             free(location);
 
             // Check if it is necessary to create a program event
-            if (json_event = analyze_program(entry_data, ID, timestamp), json_event) {
-                char * string = cJSON_PrintUnformatted(json_event);
+            char * string = NULL;
+            if (string = analyze_program(entry_data, ID, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
                 wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(json_event);
                 free(string);
             }
 
@@ -1283,17 +1237,15 @@ void send_hotfix(const char *hotfix, int usec, const char *timestamp, int ID, co
         return;
     }
 
-    cJSON * json_event = NULL;
     hotfix_entry_data * entry_data = init_hotfix_data_entry();
 
     os_strdup(hotfix, entry_data->hotfix);
 
     // Check if it is necessary to create a hotfix event
-    if (json_event = analyze_hotfix(entry_data, ID, timestamp), json_event) {
-        char * string = cJSON_PrintUnformatted(json_event);
+    char * string = NULL;
+    if (string = analyze_hotfix(entry_data, ID, timestamp), string) {
         mtdebug2(WM_SYS_LOGTAG, "sys_hotfixes() sending '%s'", string);
         wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-        cJSON_Delete(json_event);
         free(string);
     }
 }
@@ -1306,7 +1258,6 @@ void sys_hw_windows(const char* LOCATION){
 
     int ID = wm_sys_get_random_id();
 
-    cJSON * json_event = NULL;
     hw_entry * hw_data = NULL;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting hardware inventory.");
@@ -1409,11 +1360,10 @@ void sys_hw_windows(const char* LOCATION){
     get_system_windows(hw_data);
 
     // Check if it is necessary to create a hardware event
-    if (json_event = analyze_hw(hw_data, ID, timestamp), json_event) {
-        char * string = cJSON_PrintUnformatted(json_event);
+    char * string = NULL;
+    if (string = analyze_hw(hw_data, ID, timestamp), string) {
         mtdebug2(WM_SYS_LOGTAG, "sys_hw_windows() sending '%s'", string);
         SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
-        cJSON_Delete(json_event);
         free(string);
     }
 
@@ -1422,7 +1372,6 @@ void sys_hw_windows(const char* LOCATION){
 
 void sys_os_windows(const char* LOCATION){
 
-    cJSON * json_event = NULL;
     os_entry * os_data = NULL;
 
     // Set timestamp
@@ -1480,11 +1429,10 @@ void sys_os_windows(const char* LOCATION){
     free_osinfo(info);
 
     // Check if it is necessary to create a operative system event
-    if (json_event = analyze_os(os_data, ID, timestamp), json_event) {
-        char * string = cJSON_PrintUnformatted(json_event);
+    char * string = NULL;
+    if (string = analyze_os(os_data, ID, timestamp), string) {
         mtdebug2(WM_SYS_LOGTAG, "sys_os_windows() sending '%s'", string);
         SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
-        cJSON_Delete(json_event);
         free(string);
     }
 
@@ -1957,7 +1905,6 @@ void sys_network_windows(const char* LOCATION){
                     continue;
                 }
 
-                cJSON * json_event = NULL;
                 interface_entry_data * entry_data = NULL;
 
                 if (checkVista()) {
@@ -1979,11 +1926,10 @@ void sys_network_windows(const char* LOCATION){
                 }
 
                 // Check if it is necessary to create an interface event
-                if (json_event = analyze_interface(entry_data, ID, timestamp), json_event) {
-                    char * string = cJSON_PrintUnformatted(json_event);
+                char * string = NULL;
+                if (string = analyze_interface(entry_data, ID, timestamp), string) {
                     mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
                     wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-                    cJSON_Delete(json_event);
                     free(string);
                 }
 
@@ -2014,21 +1960,10 @@ void sys_network_windows(const char* LOCATION){
         win_free(pAddresses);
     }
 
+    free(timestamp);
+
     // Checking for disabled interfaces
     check_disabled_interfaces();
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "network_end");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string;
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
-    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(string);
-    free(timestamp);
 }
 
 void get_system_windows(hw_entry * info) {
@@ -2204,7 +2139,6 @@ void sys_proc_windows(const char* LOCATION) {
 		if (Process32First(hSnapshot, &pe))
 		{
 			do {
-                cJSON * json_event = NULL;
                 process_entry_data * entry_data = NULL;
 
                 /* Get process ID */
@@ -2323,11 +2257,10 @@ void sys_proc_windows(const char* LOCATION) {
                 entry_data->nlwp = thread_count;
 
                 // Check if it is necessary to create a process event
-                if (json_event = analyze_process(entry_data, ID, timestamp), json_event) {
-                    char * string = cJSON_PrintUnformatted(json_event);
+                char * string = NULL;
+                if (string = analyze_process(entry_data, ID, timestamp), string) {
                     mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
                     wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-                    cJSON_Delete(json_event);
                     free(string);
                 }
 			} while(Process32Next(hSnapshot, &pe));
@@ -2350,21 +2283,10 @@ void sys_proc_windows(const char* LOCATION) {
 
 	if (hdle) CloseHandle(hdle);
 
+    free(timestamp);
+
     // Checking for terminated processes
     check_terminated_processes();
-
-	cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "process_end");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
-    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-
-    cJSON_Delete(object);
-    free(string);
-    free(timestamp);
 }
 
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {

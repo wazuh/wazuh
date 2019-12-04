@@ -759,9 +759,547 @@ void free_process_data(process_entry_data * data) {
     os_free(data);
 }
 
+// Compare two hardware structures
+int compare_hw(hw_entry * old_data, hw_entry * new_data) {
+    if (old_data->board_serial && new_data->board_serial) {
+        if (strcmp(old_data->board_serial, new_data->board_serial)) {
+           return 0;
+        }
+    } else if ((!old_data->board_serial && new_data->board_serial) || (old_data->board_serial && !new_data->board_serial)) {
+        return 0;
+    }
+    if (old_data->cpu_name && new_data->cpu_name) {
+        if (strcmp(old_data->cpu_name, new_data->cpu_name)) {
+           return 0;
+        }
+    } else if ((!old_data->cpu_name && new_data->cpu_name) || (old_data->cpu_name && !new_data->cpu_name)) {
+        return 0;
+    }
+    return (old_data->cpu_cores == new_data->cpu_cores &&
+            old_data->cpu_MHz == new_data->cpu_MHz &&
+            old_data->ram_total == new_data->ram_total &&
+            old_data->ram_free == new_data->ram_free &&
+            old_data->ram_usage == new_data->ram_usage);
+}
+
+// Compare two operative system structures
+int compare_os(os_entry * old_data, os_entry * new_data) {
+    if (old_data->hostname && new_data->hostname) {
+        if (strcmp(old_data->hostname, new_data->hostname)) {
+           return 0;
+        }
+    } else if ((!old_data->hostname && new_data->hostname) || (old_data->hostname && !new_data->hostname)) {
+        return 0;
+    }
+    if (old_data->architecture && new_data->architecture) {
+        if (strcmp(old_data->architecture, new_data->architecture)) {
+           return 0;
+        }
+    } else if ((!old_data->architecture && new_data->architecture) || (old_data->architecture && !new_data->architecture)) {
+        return 0;
+    }
+    if (old_data->os_name && new_data->os_name) {
+        if (strcmp(old_data->os_name, new_data->os_name)) {
+           return 0;
+        }
+    } else if ((!old_data->os_name && new_data->os_name) || (old_data->os_name && !new_data->os_name)) {
+        return 0;
+    }
+    if (old_data->os_release && new_data->os_release) {
+        if (strcmp(old_data->os_release, new_data->os_release)) {
+           return 0;
+        }
+    } else if ((!old_data->os_release && new_data->os_release) || (old_data->os_release && !new_data->os_release)) {
+        return 0;
+    }
+    if (old_data->os_version && new_data->os_version) {
+        if (strcmp(old_data->os_version, new_data->os_version)) {
+           return 0;
+        }
+    } else if ((!old_data->os_version && new_data->os_version) || (old_data->os_version && !new_data->os_version)) {
+        return 0;
+    }
+    if (old_data->os_codename && new_data->os_codename) {
+        if (strcmp(old_data->os_codename, new_data->os_codename)) {
+           return 0;
+        }
+    } else if ((!old_data->os_codename && new_data->os_codename) || (old_data->os_codename && !new_data->os_codename)) {
+        return 0;
+    }
+    if (old_data->os_major && new_data->os_major) {
+        if (strcmp(old_data->os_major, new_data->os_major)) {
+           return 0;
+        }
+    } else if ((!old_data->os_major && new_data->os_major) || (old_data->os_major && !new_data->os_major)) {
+        return 0;
+    }
+    if (old_data->os_minor && new_data->os_minor) {
+        if (strcmp(old_data->os_minor, new_data->os_minor)) {
+           return 0;
+        }
+    } else if ((!old_data->os_minor && new_data->os_minor) || (old_data->os_minor && !new_data->os_minor)) {
+        return 0;
+    }
+    if (old_data->os_build && new_data->os_build) {
+        if (strcmp(old_data->os_build, new_data->os_build)) {
+           return 0;
+        }
+    } else if ((!old_data->os_build && new_data->os_build) || (old_data->os_build && !new_data->os_build)) {
+        return 0;
+    }
+    if (old_data->os_platform && new_data->os_platform) {
+        if (strcmp(old_data->os_platform, new_data->os_platform)) {
+           return 0;
+        }
+    } else if ((!old_data->os_platform && new_data->os_platform) || (old_data->os_platform && !new_data->os_platform)) {
+        return 0;
+    }
+    if (old_data->sysname && new_data->sysname) {
+        if (strcmp(old_data->sysname, new_data->sysname)) {
+           return 0;
+        }
+    } else if ((!old_data->sysname && new_data->sysname) || (old_data->sysname && !new_data->sysname)) {
+        return 0;
+    }
+    if (old_data->release && new_data->release) {
+        if (strcmp(old_data->release, new_data->release)) {
+           return 0;
+        }
+    } else if ((!old_data->release && new_data->release) || (old_data->release && !new_data->release)) {
+        return 0;
+    }
+    if (old_data->version && new_data->version) {
+        if (strcmp(old_data->version, new_data->version)) {
+           return 0;
+        }
+    } else if ((!old_data->version && new_data->version) || (old_data->version && !new_data->version)) {
+        return 0;
+    }
+    return 1;
+}
+
+// Compare two interface structures
+int compare_interface(interface_entry_data * old_data, interface_entry_data * new_data) {
+    if (old_data->name && new_data->name) {
+        if (strcmp(old_data->name, new_data->name)) {
+           return 0;
+        }
+    } else if ((!old_data->name && new_data->name) || (old_data->name && !new_data->name)) {
+        return 0;
+    }
+    if (old_data->adapter && new_data->adapter) {
+        if (strcmp(old_data->adapter, new_data->adapter)) {
+           return 0;
+        }
+    } else if ((!old_data->adapter && new_data->adapter) || (old_data->adapter && !new_data->adapter)) {
+        return 0;
+    }
+    if (old_data->type && new_data->type) {
+        if (strcmp(old_data->type, new_data->type)) {
+           return 0;
+        }
+    } else if ((!old_data->type && new_data->type) || (old_data->type && !new_data->type)) {
+        return 0;
+    }
+    if (old_data->state && new_data->state) {
+        if (strcmp(old_data->state, new_data->state)) {
+           return 0;
+        }
+    } else if ((!old_data->state && new_data->state) || (old_data->state && !new_data->state)) {
+        return 0;
+    }
+    if (old_data->mac && new_data->mac) {
+        if (strcmp(old_data->mac, new_data->mac)) {
+           return 0;
+        }
+    } else if ((!old_data->mac && new_data->mac) || (old_data->mac && !new_data->mac)) {
+        return 0;
+    }
+    if (old_data->ipv4 && new_data->ipv4) {
+        if (old_data->ipv4->address && new_data->ipv4->address) {
+            int i;
+            for (i = 0; old_data->ipv4->address[i] && new_data->ipv4->address[i]; i++) {
+                if (strcmp(old_data->ipv4->address[i], new_data->ipv4->address[i])) {
+                    return 0;
+                }
+            }
+            if ((!old_data->ipv4->address[i] && new_data->ipv4->address[i]) || (old_data->ipv4->address[i] && !new_data->ipv4->address[i])) {
+                return 0;
+            }
+        } else if ((!old_data->ipv4->address && new_data->ipv4->address) || (old_data->ipv4->address && !new_data->ipv4->address)) {
+            return 0;
+        }
+        if (old_data->ipv4->netmask && new_data->ipv4->netmask) {
+            int i;
+            for (i = 0; old_data->ipv4->netmask[i] && new_data->ipv4->netmask[i]; i++) {
+                if (strcmp(old_data->ipv4->netmask[i], new_data->ipv4->netmask[i])) {
+                    return 0;
+                }
+            }
+            if ((!old_data->ipv4->netmask[i] && new_data->ipv4->netmask[i]) || (old_data->ipv4->netmask[i] && !new_data->ipv4->netmask[i])) {
+                return 0;
+            }
+        } else if ((!old_data->ipv4->netmask && new_data->ipv4->netmask) || (old_data->ipv4->netmask && !new_data->ipv4->netmask)) {
+            return 0;
+        }
+        if (old_data->ipv4->broadcast && new_data->ipv4->broadcast) {
+            int i;
+            for (i = 0; old_data->ipv4->broadcast[i] && new_data->ipv4->broadcast[i]; i++) {
+                if (strcmp(old_data->ipv4->broadcast[i], new_data->ipv4->broadcast[i])) {
+                    return 0;
+                }
+            }
+            if ((!old_data->ipv4->broadcast[i] && new_data->ipv4->broadcast[i]) || (old_data->ipv4->broadcast[i] && !new_data->ipv4->broadcast[i])) {
+                return 0;
+            }
+        } else if ((!old_data->ipv4->broadcast && new_data->ipv4->broadcast) || (old_data->ipv4->broadcast && !new_data->ipv4->broadcast)) {
+            return 0;
+        }
+        if (old_data->ipv4->metric != new_data->ipv4->metric) {
+            return 0;
+        }
+        if (old_data->ipv4->gateway && new_data->ipv4->gateway) {
+            if (strcmp(old_data->ipv4->gateway, new_data->ipv4->gateway)) {
+                return 0;
+            }
+        } else if ((!old_data->ipv4->gateway && new_data->ipv4->gateway) || (old_data->ipv4->gateway && !new_data->ipv4->gateway)) {
+            return 0;
+        }
+        if (old_data->ipv4->dhcp && new_data->ipv4->dhcp) {
+            if (strcmp(old_data->ipv4->dhcp, new_data->ipv4->dhcp)) {
+                return 0;
+            }
+        } else if ((!old_data->ipv4->dhcp && new_data->ipv4->dhcp) || (old_data->ipv4->dhcp && !new_data->ipv4->dhcp)) {
+            return 0;
+        }
+    } else if ((!old_data->ipv4 && new_data->ipv4) || (old_data->ipv4 && !new_data->ipv4)) {
+        return 0;
+    }
+    if (old_data->ipv6 && new_data->ipv6) {
+        if (old_data->ipv6->address && new_data->ipv6->address) {
+            int i;
+            for (i = 0; old_data->ipv6->address[i] && new_data->ipv6->address[i]; i++) {
+                if (strcmp(old_data->ipv6->address[i], new_data->ipv6->address[i])) {
+                    return 0;
+                }
+            }
+            if ((!old_data->ipv6->address[i] && new_data->ipv6->address[i]) || (old_data->ipv6->address[i] && !new_data->ipv6->address[i])) {
+                return 0;
+            }
+        } else if ((!old_data->ipv6->address && new_data->ipv6->address) || (old_data->ipv6->address && !new_data->ipv6->address)) {
+            return 0;
+        }
+        if (old_data->ipv6->netmask && new_data->ipv6->netmask) {
+            int i;
+            for (i = 0; old_data->ipv6->netmask[i] && new_data->ipv6->netmask[i]; i++) {
+                if (strcmp(old_data->ipv6->netmask[i], new_data->ipv6->netmask[i])) {
+                    return 0;
+                }
+            }
+            if ((!old_data->ipv6->netmask[i] && new_data->ipv6->netmask[i]) || (old_data->ipv6->netmask[i] && !new_data->ipv6->netmask[i])) {
+                return 0;
+            }
+        } else if ((!old_data->ipv6->netmask && new_data->ipv6->netmask) || (old_data->ipv6->netmask && !new_data->ipv6->netmask)) {
+            return 0;
+        }
+        if (old_data->ipv6->broadcast && new_data->ipv6->broadcast) {
+            int i;
+            for (i = 0; old_data->ipv6->broadcast[i] && new_data->ipv6->broadcast[i]; i++) {
+                if (strcmp(old_data->ipv6->broadcast[i], new_data->ipv6->broadcast[i])) {
+                    return 0;
+                }
+            }
+            if ((!old_data->ipv6->broadcast[i] && new_data->ipv6->broadcast[i]) || (old_data->ipv6->broadcast[i] && !new_data->ipv6->broadcast[i])) {
+                return 0;
+            }
+        } else if ((!old_data->ipv6->broadcast && new_data->ipv6->broadcast) || (old_data->ipv6->broadcast && !new_data->ipv6->broadcast)) {
+            return 0;
+        }
+        if (old_data->ipv6->metric != new_data->ipv6->metric) {
+            return 0;
+        }
+        if (old_data->ipv6->gateway && new_data->ipv6->gateway) {
+            if (strcmp(old_data->ipv6->gateway, new_data->ipv6->gateway)) {
+                return 0;
+            }
+        } else if ((!old_data->ipv6->gateway && new_data->ipv6->gateway) || (old_data->ipv6->gateway && !new_data->ipv6->gateway)) {
+            return 0;
+        }
+        if (old_data->ipv6->dhcp && new_data->ipv6->dhcp) {
+            if (strcmp(old_data->ipv6->dhcp, new_data->ipv6->dhcp)) {
+                return 0;
+            }
+        } else if ((!old_data->ipv6->dhcp && new_data->ipv6->dhcp) || (old_data->ipv6->dhcp && !new_data->ipv6->dhcp)) {
+            return 0;
+        }
+    } else if ((!old_data->ipv6 && new_data->ipv6) || (old_data->ipv6 && !new_data->ipv6)) {
+        return 0;
+    }
+    return (old_data->mtu == new_data->mtu &&
+            old_data->tx_packets == new_data->tx_packets &&
+            old_data->rx_packets == new_data->rx_packets &&
+            old_data->tx_bytes == new_data->tx_bytes &&
+            old_data->rx_bytes == new_data->rx_bytes &&
+            old_data->tx_errors == new_data->tx_errors &&
+            old_data->rx_errors == new_data->rx_errors &&
+            old_data->tx_dropped == new_data->tx_dropped &&
+            old_data->rx_dropped == new_data->rx_dropped);
+}
+
+// Compare two program structures
+int compare_program(program_entry_data * old_data, program_entry_data * new_data) {
+    if (old_data->format && new_data->format) {
+        if (strcmp(old_data->format, new_data->format)) {
+           return 0;
+        }
+    } else if ((!old_data->format && new_data->format) || (old_data->format && !new_data->format)) {
+        return 0;
+    }
+    if (old_data->name && new_data->name) {
+        if (strcmp(old_data->name, new_data->name)) {
+           return 0;
+        }
+    } else if ((!old_data->name && new_data->name) || (old_data->name && !new_data->name)) {
+        return 0;
+    }
+    if (old_data->priority && new_data->priority) {
+        if (strcmp(old_data->priority, new_data->priority)) {
+           return 0;
+        }
+    } else if ((!old_data->priority && new_data->priority) || (old_data->priority && !new_data->priority)) {
+        return 0;
+    }
+    if (old_data->group && new_data->group) {
+        if (strcmp(old_data->group, new_data->group)) {
+           return 0;
+        }
+    } else if ((!old_data->group && new_data->group) || (old_data->group && !new_data->group)) {
+        return 0;
+    }
+    if (old_data->vendor && new_data->vendor) {
+        if (strcmp(old_data->vendor, new_data->vendor)) {
+           return 0;
+        }
+    } else if ((!old_data->vendor && new_data->vendor) || (old_data->vendor && !new_data->vendor)) {
+        return 0;
+    }
+    if (old_data->install_time && new_data->install_time) {
+        if (strcmp(old_data->install_time, new_data->install_time)) {
+           return 0;
+        }
+    } else if ((!old_data->install_time && new_data->install_time) || (old_data->install_time && !new_data->install_time)) {
+        return 0;
+    }
+    if (old_data->version && new_data->version) {
+        if (strcmp(old_data->version, new_data->version)) {
+           return 0;
+        }
+    } else if ((!old_data->version && new_data->version) || (old_data->version && !new_data->version)) {
+        return 0;
+    }
+    if (old_data->architecture && new_data->architecture) {
+        if (strcmp(old_data->architecture, new_data->architecture)) {
+           return 0;
+        }
+    } else if ((!old_data->architecture && new_data->architecture) || (old_data->architecture && !new_data->architecture)) {
+        return 0;
+    }
+    if (old_data->multi_arch && new_data->multi_arch) {
+        if (strcmp(old_data->multi_arch, new_data->multi_arch)) {
+           return 0;
+        }
+    } else if ((!old_data->multi_arch && new_data->multi_arch) || (old_data->multi_arch && !new_data->multi_arch)) {
+        return 0;
+    }
+    if (old_data->source && new_data->source) {
+        if (strcmp(old_data->source, new_data->source)) {
+           return 0;
+        }
+    } else if ((!old_data->source && new_data->source) || (old_data->source && !new_data->source)) {
+        return 0;
+    }
+    if (old_data->description && new_data->description) {
+        if (strcmp(old_data->description, new_data->description)) {
+           return 0;
+        }
+    } else if ((!old_data->description && new_data->description) || (old_data->description && !new_data->description)) {
+        return 0;
+    }
+    if (old_data->location && new_data->location) {
+        if (strcmp(old_data->location, new_data->location)) {
+           return 0;
+        }
+    } else if ((!old_data->location && new_data->location) || (old_data->location && !new_data->location)) {
+        return 0;
+    }
+    return (old_data->size == new_data->size);
+}
+
+// Compare two hotfix structures
+int compare_hotfix(hotfix_entry_data * old_data, hotfix_entry_data * new_data) {
+    if (old_data->hotfix && new_data->hotfix) {
+        if (strcmp(old_data->hotfix, new_data->hotfix)) {
+           return 0;
+        }
+    } else if ((!old_data->hotfix && new_data->hotfix) || (old_data->hotfix && !new_data->hotfix)) {
+        return 0;
+    }
+    return 1;
+}
+
+// Compare two port structures
+int compare_port(port_entry_data * old_data, port_entry_data * new_data) {
+    if (old_data->protocol && new_data->protocol) {
+        if (strcmp(old_data->protocol, new_data->protocol)) {
+           return 0;
+        }
+    } else if ((!old_data->protocol && new_data->protocol) || (old_data->protocol && !new_data->protocol)) {
+        return 0;
+    }
+    if (old_data->local_ip && new_data->local_ip) {
+        if (strcmp(old_data->local_ip, new_data->local_ip)) {
+           return 0;
+        }
+    } else if ((!old_data->local_ip && new_data->local_ip) || (old_data->local_ip && !new_data->local_ip)) {
+        return 0;
+    }
+    if (old_data->remote_ip && new_data->remote_ip) {
+        if (strcmp(old_data->remote_ip, new_data->remote_ip)) {
+           return 0;
+        }
+    } else if ((!old_data->remote_ip && new_data->remote_ip) || (old_data->remote_ip && !new_data->remote_ip)) {
+        return 0;
+    }
+    if (old_data->state && new_data->state) {
+        if (strcmp(old_data->state, new_data->state)) {
+           return 0;
+        }
+    } else if ((!old_data->state && new_data->state) || (old_data->state && !new_data->state)) {
+        return 0;
+    }
+    if (old_data->process && new_data->process) {
+        if (strcmp(old_data->process, new_data->process)) {
+           return 0;
+        }
+    } else if ((!old_data->process && new_data->process) || (old_data->process && !new_data->process)) {
+        return 0;
+    }
+    return (old_data->local_port == new_data->local_port &&
+            old_data->remote_port == new_data->remote_port &&
+            old_data->tx_queue == new_data->tx_queue &&
+            old_data->rx_queue == new_data->rx_queue &&
+            old_data->inode == new_data->inode &&
+            old_data->pid == new_data->pid);
+}
+
+// Compare two process structures
+int compare_process(process_entry_data * old_data, process_entry_data * new_data) {
+    if (old_data->name && new_data->name) {
+        if (strcmp(old_data->name, new_data->name)) {
+           return 0;
+        }
+    } else if ((!old_data->name && new_data->name) || (old_data->name && !new_data->name)) {
+        return 0;
+    }
+    if (old_data->cmd && new_data->cmd) {
+        if (strcmp(old_data->cmd, new_data->cmd)) {
+           return 0;
+        }
+    } else if ((!old_data->cmd && new_data->cmd) || (old_data->cmd && !new_data->cmd)) {
+        return 0;
+    }
+    if (old_data->argvs && new_data->argvs) {
+        int i;
+        for (i = 0; old_data->argvs[i] && new_data->argvs[i]; i++) {
+            if (strcmp(old_data->argvs[i], new_data->argvs[i])) {
+                return 0;
+            }
+        }
+        if ((!old_data->argvs[i] && new_data->argvs[i]) || (old_data->argvs[i] && !new_data->argvs[i])) {
+            return 0;
+        }
+    } else if ((!old_data->argvs && new_data->argvs) || (old_data->argvs && !new_data->argvs)) {
+        return 0;
+    }
+    if (old_data->state && new_data->state) {
+        if (strcmp(old_data->state, new_data->state)) {
+           return 0;
+        }
+    } else if ((!old_data->state && new_data->state) || (old_data->state && !new_data->state)) {
+        return 0;
+    }
+    if (old_data->euser && new_data->euser) {
+        if (strcmp(old_data->euser, new_data->euser)) {
+           return 0;
+        }
+    } else if ((!old_data->euser && new_data->euser) || (old_data->euser && !new_data->euser)) {
+        return 0;
+    }
+    if (old_data->ruser && new_data->ruser) {
+        if (strcmp(old_data->ruser, new_data->ruser)) {
+           return 0;
+        }
+    } else if ((!old_data->ruser && new_data->ruser) || (old_data->ruser && !new_data->ruser)) {
+        return 0;
+    }
+    if (old_data->suser && new_data->suser) {
+        if (strcmp(old_data->suser, new_data->suser)) {
+           return 0;
+        }
+    } else if ((!old_data->suser && new_data->suser) || (old_data->suser && !new_data->suser)) {
+        return 0;
+    }
+    if (old_data->egroup && new_data->egroup) {
+        if (strcmp(old_data->egroup, new_data->egroup)) {
+           return 0;
+        }
+    } else if ((!old_data->egroup && new_data->egroup) || (old_data->egroup && !new_data->egroup)) {
+        return 0;
+    }
+    if (old_data->rgroup && new_data->rgroup) {
+        if (strcmp(old_data->rgroup, new_data->rgroup)) {
+           return 0;
+        }
+    } else if ((!old_data->rgroup && new_data->rgroup) || (old_data->rgroup && !new_data->rgroup)) {
+        return 0;
+    }
+    if (old_data->sgroup && new_data->sgroup) {
+        if (strcmp(old_data->sgroup, new_data->sgroup)) {
+           return 0;
+        }
+    } else if ((!old_data->sgroup && new_data->sgroup) || (old_data->sgroup && !new_data->sgroup)) {
+        return 0;
+    }
+    if (old_data->fgroup && new_data->fgroup) {
+        if (strcmp(old_data->fgroup, new_data->fgroup)) {
+           return 0;
+        }
+    } else if ((!old_data->fgroup && new_data->fgroup) || (old_data->fgroup && !new_data->fgroup)) {
+        return 0;
+    }
+    return (old_data->pid == new_data->pid &&
+            old_data->ppid == new_data->ppid &&
+            old_data->priority == new_data->priority &&
+            old_data->nice == new_data->nice &&
+            old_data->size == new_data->size &&
+            old_data->vm_size == new_data->vm_size &&
+            old_data->resident == new_data->resident &&
+            old_data->share == new_data->share &&
+            old_data->start_time == new_data->start_time &&
+            old_data->utime == new_data->utime &&
+            old_data->stime == new_data->stime &&
+            old_data->pgrp == new_data->pgrp &&
+            old_data->session == new_data->session &&
+            old_data->nlwp == new_data->nlwp &&
+            old_data->tgid == new_data->tgid &&
+            old_data->tty == new_data->tty &&
+            old_data->processor == new_data->processor);
+}
+
 // Analyze if update the hardware information
-cJSON * analyze_hw(hw_entry * entry_data, int random_id, const char * timestamp) {
+char * analyze_hw(hw_entry * entry_data, int random_id, const char * timestamp) {
     cJSON * json_event = NULL;
+    char * string = NULL;
 
     if (!entry_data->board_serial) {
         free_hw_data(entry_data);
@@ -771,21 +1309,27 @@ cJSON * analyze_hw(hw_entry * entry_data, int random_id, const char * timestamp)
 
     w_mutex_lock(&sys->hardware_mutex);
 
-    ////////////////////////////////////////COMPARE////////////////////////////////////////
+    if (!compare_hw(sys->hw_data, entry_data)) {
+        free_hw_data(sys->hw_data);
+        sys->hw_data = entry_data;
 
-    free_hw_data(sys->hw_data);
-    sys->hw_data = entry_data;
+        json_event = hw_json_event(entry_data, random_id, timestamp);
+    }
 
     w_mutex_unlock(&sys->hardware_mutex);
 
-    json_event = hw_json_event(entry_data, random_id, timestamp);
+    if (json_event) {
+        string = cJSON_PrintUnformatted(json_event);
+        cJSON_Delete(json_event);
+    }
 
-    return json_event;
+    return string;
 }
 
 // Analyze if update the operative system information
-cJSON * analyze_os(os_entry * entry_data, int random_id, const char * timestamp) {
+char * analyze_os(os_entry * entry_data, int random_id, const char * timestamp) {
     cJSON * json_event = NULL;
+    char * string = NULL;
 
     if (!entry_data->os_name) {
         free_os_data(entry_data);
@@ -795,23 +1339,29 @@ cJSON * analyze_os(os_entry * entry_data, int random_id, const char * timestamp)
 
     w_mutex_lock(&sys->os_mutex);
 
-    ////////////////////////////////////////COMPARE////////////////////////////////////////
+    if (!compare_os(sys->os_data, entry_data)) {
+        free_os_data(sys->os_data);
+        sys->os_data = entry_data;
 
-    free_os_data(sys->os_data);
-    sys->os_data = entry_data;
+        json_event = os_json_event(entry_data, random_id, timestamp);
+    }
 
     w_mutex_unlock(&sys->os_mutex);
 
-    json_event = os_json_event(entry_data, random_id, timestamp);
+    if (json_event) {
+        string = cJSON_PrintUnformatted(json_event);
+        cJSON_Delete(json_event);
+    }
 
-    return json_event;
+    return string;
 }
 
 // Analyze if insert new interface or update an existing one
-cJSON * analyze_interface(interface_entry_data * entry_data, int random_id, const char * timestamp) {
+char * analyze_interface(interface_entry_data * entry_data, int random_id, const char * timestamp) {
     cJSON * json_event = NULL;
     interface_entry_data * saved_data = NULL;
     char * key = NULL;
+    char * string = NULL;
 
     if (entry_data->name) {
         os_strdup(entry_data->name, key);
@@ -840,10 +1390,7 @@ cJSON * analyze_interface(interface_entry_data * entry_data, int random_id, cons
     else {
         // Checking for changes
         saved_data->enabled = 1;
-
-        ////////////////////////////////////////COMPARE////////////////////////////////////////
-
-        if (json_event = interface_json_event(entry_data, random_id, timestamp), json_event) {
+        if (!compare_interface(saved_data, entry_data)) {
             if (update_entry(sys->interfaces_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->interfaces_entry_mutex);
                 free_interface_data(entry_data);
@@ -851,7 +1398,9 @@ cJSON * analyze_interface(interface_entry_data * entry_data, int random_id, cons
                 free(key);
                 return NULL;
             }
-        } else {
+            json_event = interface_json_event(entry_data, random_id, timestamp);
+        }
+        else {
             free_interface_data(entry_data);
             free(key);
         }
@@ -859,14 +1408,20 @@ cJSON * analyze_interface(interface_entry_data * entry_data, int random_id, cons
 
     w_mutex_unlock(&sys->interfaces_entry_mutex);
 
-    return json_event;
+    if (json_event) {
+        string = cJSON_PrintUnformatted(json_event);
+        cJSON_Delete(json_event);
+    }
+
+    return string;
 }
 
 // Analyze if insert new program or update an existing one
-cJSON * analyze_program(program_entry_data * entry_data, int random_id, const char * timestamp) {
+char * analyze_program(program_entry_data * entry_data, int random_id, const char * timestamp) {
     cJSON * json_event = NULL;
     program_entry_data * saved_data = NULL;
     char * key = NULL;
+    char * string = NULL;
 
     if (entry_data->name) {
         os_calloc(OS_SIZE_128, sizeof(char), key);
@@ -907,10 +1462,7 @@ cJSON * analyze_program(program_entry_data * entry_data, int random_id, const ch
     else {
         // Checking for changes
         saved_data->installed = 1;
-
-        ////////////////////////////////////////COMPARE////////////////////////////////////////
-
-        if (json_event = program_json_event(entry_data, random_id, timestamp), json_event) {
+        if (!compare_program(saved_data, entry_data)) {
             if (update_entry(sys->programs_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->programs_entry_mutex);
                 free_program_data(entry_data);
@@ -918,7 +1470,9 @@ cJSON * analyze_program(program_entry_data * entry_data, int random_id, const ch
                 free(key);
                 return NULL;
             }
-        } else {
+            json_event = program_json_event(entry_data, random_id, timestamp);
+        }
+        else {
             free_program_data(entry_data);
             free(key);
         }
@@ -926,14 +1480,20 @@ cJSON * analyze_program(program_entry_data * entry_data, int random_id, const ch
 
     w_mutex_unlock(&sys->programs_entry_mutex);
 
-    return json_event;
+    if (json_event) {
+        string = cJSON_PrintUnformatted(json_event);
+        cJSON_Delete(json_event);
+    }
+
+    return string;
 }
 
 // Analyze if insert new hotfix or update an existing one
-cJSON * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char * timestamp) {
+char * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char * timestamp) {
     cJSON * json_event = NULL;
     hotfix_entry_data * saved_data = NULL;
     char * key = NULL;
+    char * string = NULL;
 
     if (entry_data->hotfix) {
         os_strdup(entry_data->hotfix, key);
@@ -962,10 +1522,7 @@ cJSON * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char
     else {
         // Checking for changes
         saved_data->installed = 1;
-
-        ////////////////////////////////////////COMPARE////////////////////////////////////////
-
-        if (json_event = hotfix_json_event(entry_data, random_id, timestamp), json_event) {
+        if (!compare_hotfix(saved_data, entry_data)) {
             if (update_entry(sys->hotfixes_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->hotfixes_entry_mutex);
                 free_hotfix_data(entry_data);
@@ -973,7 +1530,9 @@ cJSON * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char
                 free(key);
                 return NULL;
             }
-        } else {
+            json_event = hotfix_json_event(entry_data, random_id, timestamp);
+        }
+        else {
             free_hotfix_data(entry_data);
             free(key);
         }
@@ -981,22 +1540,28 @@ cJSON * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char
 
     w_mutex_unlock(&sys->hotfixes_entry_mutex);
 
-    return json_event;
+    if (json_event) {
+        string = cJSON_PrintUnformatted(json_event);
+        cJSON_Delete(json_event);
+    }
+
+    return string;
 }
 
 // Analyze if insert new port or update an existing one
-cJSON * analyze_port(port_entry_data * entry_data, int random_id, const char * timestamp) {
+char * analyze_port(port_entry_data * entry_data, int random_id, const char * timestamp) {
     cJSON * json_event = NULL;
     port_entry_data * saved_data = NULL;
     char * key = NULL;
+    char * string = NULL;
 
-    if (entry_data->local_ip && entry_data->local_port > INT_MIN) {
+    if (entry_data->protocol && entry_data->local_ip && entry_data->local_port > INT_MIN) {
         os_calloc(OS_SIZE_128, sizeof(char), key);
         if (entry_data->pid > INT_MIN) {
-            sprintf(key, "%s-%d-%d", entry_data->local_ip, entry_data->local_port, entry_data->pid);
+            sprintf(key, "%s-%s-%d-%d", entry_data->protocol, entry_data->local_ip, entry_data->local_port, entry_data->pid);
         }
         else {
-            sprintf(key, "%s-%d", entry_data->local_ip, entry_data->local_port);
+            sprintf(key, "%s-%s-%d", entry_data->protocol, entry_data->local_ip, entry_data->local_port);
         }
     }
     else {
@@ -1023,10 +1588,7 @@ cJSON * analyze_port(port_entry_data * entry_data, int random_id, const char * t
     else {
         // Checking for changes
         saved_data->opened = 1;
-
-        ////////////////////////////////////////COMPARE////////////////////////////////////////
-
-        if (json_event = port_json_event(entry_data, random_id, timestamp), json_event) {
+        if (!compare_port(saved_data, entry_data)) {
             if (update_entry(sys->ports_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->ports_entry_mutex);
                 free_port_data(entry_data);
@@ -1034,7 +1596,9 @@ cJSON * analyze_port(port_entry_data * entry_data, int random_id, const char * t
                 free(key);
                 return NULL;
             }
-        } else {
+            json_event = port_json_event(entry_data, random_id, timestamp);
+        }
+        else {
             free_port_data(entry_data);
             free(key);
         }
@@ -1042,14 +1606,20 @@ cJSON * analyze_port(port_entry_data * entry_data, int random_id, const char * t
 
     w_mutex_unlock(&sys->ports_entry_mutex);
 
-    return json_event;
+    if (json_event) {
+        string = cJSON_PrintUnformatted(json_event);
+        cJSON_Delete(json_event);
+    }
+
+    return string;
 }
 
 // Analyze if insert new process or update an existing one
-cJSON * analyze_process(process_entry_data * entry_data, int random_id, const char * timestamp) {
+char * analyze_process(process_entry_data * entry_data, int random_id, const char * timestamp) {
     cJSON * json_event = NULL;
     process_entry_data * saved_data = NULL;
     char * key = NULL;
+    char * string = NULL;
 
     if (entry_data->pid > INT_MIN && entry_data->name) {
         os_calloc(OS_SIZE_128, sizeof(char), key);
@@ -1079,10 +1649,7 @@ cJSON * analyze_process(process_entry_data * entry_data, int random_id, const ch
     else {
         // Checking for changes
         saved_data->running = 1;
-
-        ////////////////////////////////////////COMPARE////////////////////////////////////////
-
-        if (json_event = process_json_event(entry_data, random_id, timestamp), json_event) {
+        if (!compare_process(saved_data, entry_data)) {
             if (update_entry(sys->processes_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->processes_entry_mutex);
                 free_process_data(entry_data);
@@ -1090,7 +1657,9 @@ cJSON * analyze_process(process_entry_data * entry_data, int random_id, const ch
                 free(key);
                 return NULL;
             }
-        } else {
+            json_event = process_json_event(entry_data, random_id, timestamp);
+        }
+        else {
             free_process_data(entry_data);
             free(key);
         }
@@ -1098,7 +1667,12 @@ cJSON * analyze_process(process_entry_data * entry_data, int random_id, const ch
 
     w_mutex_unlock(&sys->processes_entry_mutex);
 
-    return json_event;
+    if (json_event) {
+        string = cJSON_PrintUnformatted(json_event);
+        cJSON_Delete(json_event);
+    }
+
+    return string;
 }
 
 // Deletes the disabled interfaces from the hash table
