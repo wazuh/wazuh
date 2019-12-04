@@ -8,13 +8,13 @@ import re
 
 import connexion
 
-from api.authentication import generate_token
-from api.authentication import get_permissions
+from api.authentication import get_permissions, generate_token, validation
 from api.models.token_response import TokenResponse
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc, parse_api_param
 from wazuh import security
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
+
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -444,6 +444,24 @@ def remove_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=Fals
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+
+    return data, 200
+
+
+@exception_handler
+def revoke_all_tokens():
+    """ Revoke all tokens """
+
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=security.revoke_tokens,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )

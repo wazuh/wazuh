@@ -229,7 +229,8 @@ def generate_token(user_id):
         "iat": int(timestamp),
         "exp": int(timestamp + JWT_LIFETIME_SECONDS),
         "sub": str(user_id),
-        "rbac_policies": rbac_policies
+        "rbac_policies": rbac_policies,
+        "valid": validation.key
     }
 
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
@@ -242,7 +243,11 @@ def decode_token(token):
     :return: dict payload ot the token
     """
     try:
-        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload['valid'] != validation.key:
+            raise Unauthorized
+        else:
+            return payload
     except JWTError as e:
         raise Unauthorized from e
 
@@ -261,3 +266,19 @@ def get_permissions(header):
     permissions = payload['rbac_policies']
 
     return permissions
+
+
+class TokenValidation:
+    def __init__(self, n=int(time())):
+        self._key = n
+
+    @property
+    def key(self):
+        return self._key
+
+    @key.setter
+    def key(self, value):
+        self._key = value
+
+
+validation = TokenValidation()

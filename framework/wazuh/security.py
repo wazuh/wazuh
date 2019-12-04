@@ -4,14 +4,15 @@
 
 import re
 
-from api.authentication import AuthenticationManager
+from api.authentication import AuthenticationManager, validation
 from wazuh import common
 from wazuh.exception import WazuhError
 from wazuh.rbac import orm
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import SecurityError
-from wazuh.results import AffectedItemsWazuhResult
+from wazuh.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.utils import process_array
+from time import time
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
@@ -420,3 +421,11 @@ def remove_role_policy(role_id, policy_ids):
                 result.total_affected_items += 1
 
     return result
+
+
+@expose_resources(actions=['security:revoke'], resources=['*:*:*'])
+def revoke_tokens():
+    """ Revoke all tokens """
+    validation.key = int(time())
+
+    return WazuhResult({'msg': 'Tokens revoked succesfully'})

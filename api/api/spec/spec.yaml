@@ -10316,6 +10316,19 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
+  /security/user/revoke:
+    put:
+      tags:
+      - security
+      summary: 'Revoke all active JWT tokens'
+      description: 'This method should be called to revoke all JWT tokens.'
+      operationId: api.controllers.security_controller.revoke_all_tokens
+      responses:
+        '200':
+          description: 'Tokens revoked succesfully'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
   /security/roles:
     get:
       tags:

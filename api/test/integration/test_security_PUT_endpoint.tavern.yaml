@@ -4,9 +4,9 @@ test_name: PUT /security/roles
 includes:
   - !include common.yaml
 
-marks:
-  - usefixtures:
-    - security_tests
+#marks:
+#  - usefixtures:
+#    - security_tests
 
 stages:
 
@@ -276,3 +276,26 @@ stages:
             - "agent:id:003"
     response:
       status_code: 400
+
+---
+test_name: PUT /security/user/revoke
+
+stages:
+
+  - name: Revoke all tokens
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+    response:
+      status_code: 200
+
+  - name: Revoke all tokens (Invalid token after previous call)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+    response:
+      status_code: 401
