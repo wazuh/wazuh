@@ -803,11 +803,12 @@ void check_deleted_files() {
             }
 
             json_event = fim_json_event (keys[i], NULL, data, pos, FIM_DELETE, FIM_SCHEDULED, NULL);
-            fim_delete(keys[i]);
 
             if (!strcmp(data->entry_type, "file") && syscheck.opts[pos] & CHECK_SEECHANGES) {
                 delete_target_file(keys[i]);
             }
+
+            fim_delete(keys[i]);
 
             if (json_event && _base_line) {
                 mdebug2(FIM_FILE_MSG_DELETE, keys[i]);
