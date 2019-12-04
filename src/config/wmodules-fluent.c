@@ -14,6 +14,7 @@
 
 static const char *XML_ENABLED = "enabled";
 static const char *XML_TAG = "tag";
+static const char *XML_OBJECT_KEY = "object_key";
 static const char *XML_SOCKET_PATH = "socket_path";
 static const char *XML_ADDRESS = "address";
 static const char *XML_PORT = "port";
@@ -147,6 +148,15 @@ int wm_fluent_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             os_strdup(nodes[i]->content,fluent->tag);
         }
+        else if (!strcmp(nodes[i]->element, XML_OBJECT_KEY))
+        {
+            if (strlen(nodes[i]->content) == 0) {
+                mwarn("Empty value for option <%s> at %s.", nodes[i]->element, WM_FLUENT_CONTEXT.name);
+            } else {
+                free(fluent->object_key);
+                os_strdup(nodes[i]->content, fluent->object_key);
+            }
+        }
         else if (!strcmp(nodes[i]->element, XML_SOCKET_PATH))
         {
             if(strlen(nodes[i]->content) >= PATH_MAX) {
@@ -274,6 +284,10 @@ int wm_fluent_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
     if (!fluent->user_pass) {
         os_strdup("", fluent->user_pass);
+    }
+
+    if (!fluent->object_key) {
+        os_strdup("message", fluent->object_key);
     }
 
     return 0;

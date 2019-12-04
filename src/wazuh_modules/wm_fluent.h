@@ -19,6 +19,7 @@
 typedef struct wm_fluent_t {
     unsigned int enabled:1;
     char * tag;
+    char * object_key;
     char * sock_path;
     char * address;
     unsigned short port;

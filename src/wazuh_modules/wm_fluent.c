@@ -148,6 +148,7 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
 
 // Destroy data
 void wm_fluent_destroy(wm_fluent_t * fluent) {
+    free(fluent->object_key);
     os_free(fluent);
 }
 
@@ -683,6 +684,9 @@ static int wm_fluent_send(wm_fluent_t * fluent, const char * str, size_t size) {
     msgpack_pack_str(&pk, taglen);
     msgpack_pack_str_body(&pk, fluent->tag, taglen);
     msgpack_pack_unsigned_int(&pk, time(NULL));
+    msgpack_pack_map(&pk, 1);
+    msgpack_pack_str(&pk, strlen(fluent->object_key));
+    msgpack_pack_str_body(&pk, fluent->object_key, strlen(fluent->object_key));
     msgpack_pack_str(&pk, size);
     msgpack_pack_str_body(&pk, str, size);
     msgpack_pack_map(&pk, 1);
@@ -805,6 +809,7 @@ cJSON *wm_fluent_dump(const wm_fluent_t *fluent) {
 
     cJSON_AddStringToObject(wm_wd, "enabled", fluent->enabled ? "yes" : "no");
     if (fluent->tag) cJSON_AddStringToObject(wm_wd, "tag", fluent->tag);
+    if (fluent->object_key) cJSON_AddStringToObject(wm_wd, "object_key", fluent->object_key);
     if (fluent->sock_path)cJSON_AddStringToObject(wm_wd, "socket_path", fluent->sock_path);
     if (fluent->address) cJSON_AddStringToObject(wm_wd, "address", fluent->address);
     if (fluent->port) cJSON_AddNumberToObject(wm_wd, "port", fluent->port);
