@@ -261,7 +261,6 @@ int fim_file (char *file, fim_element *item, whodata_evt *w_evt, int report) {
         // New entry. Insert into hash table
         if (fim_insert(file, entry_data, &item->statbuf) == -1) {
             free_entry_data(entry_data);
-            os_free(entry_data);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
@@ -275,13 +274,11 @@ int fim_file (char *file, fim_element *item, whodata_evt *w_evt, int report) {
         if (json_event = fim_json_event(file, saved_data, entry_data, item->index, FIM_MODIFICATION, item->mode, w_evt), json_event) {
             if (fim_update(file, entry_data, saved_data) == -1) {
                 free_entry_data(entry_data);
-                os_free(entry_data);
                 w_mutex_unlock(&syscheck.fim_entry_mutex);
                 return OS_INVALID;
             }
         } else {
             free_entry_data(entry_data);
-            os_free(entry_data);
         }
     }
 
@@ -534,7 +531,6 @@ fim_entry_data * fim_get_data(const char *file, fim_element *item) {
         if (error = w_get_file_permissions(file, perm, OS_SIZE_6144), error) {
             mdebug1(FIM_EXTRACT_PERM_FAIL, file, error);
             free_entry_data(data);
-            os_free(data);
             return NULL;
         } else {
             data->perm = decode_win_permissions(perm);
@@ -600,7 +596,6 @@ fim_entry_data * fim_get_data(const char *file, fim_element *item) {
                                         syscheck.file_max_size) < 0) {
                 mdebug1(FIM_HASHES_FAIL, file);
                 free_entry_data(data);
-                os_free(data);
                 return NULL;
         }
     }
@@ -1179,6 +1174,7 @@ void free_entry_data(fim_entry_data * data) {
         os_free(data->group_name);
     }
 
+    os_free(data);
 }
 
 

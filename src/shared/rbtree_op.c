@@ -505,7 +505,6 @@ void * rbtree_replace(rb_tree * tree, const char * key, void * value) {
 
     if (node->value && tree->dispose) {
         tree->dispose(node->value);
-        os_free(node->value);
     }
 
     node->value = value;
