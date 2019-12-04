@@ -100,7 +100,7 @@ def test_expose_resourcesless(mock_create_engine, mock_declarative_base, mock_se
                               decorator_params, rbac, allowed, mode):
     wazuh.rbac.decorators.switch_mode(mode)
     def mock_expand_resource(resource):
-        return set()
+        return {'*'}
 
     with patch('wazuh.rbac.decorators.rbac') as mock_rbac:
         mock_rbac.get.return_value = rbac
