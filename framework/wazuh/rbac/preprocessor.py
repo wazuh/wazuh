@@ -42,6 +42,12 @@ class PreProcessor:
 
     @staticmethod
     def is_combination(resource):
+        """This function checks whether a given resource is a combination or not.
+
+        :param resource: Resource to be checked
+        :return Tuple with a flag that indicates whether it is a combination or not and if so,
+        the list of separate resources
+        """
         split_resource = resource.split('&')
         if len(split_resource) > 1:
             return True, split_resource

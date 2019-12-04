@@ -97,6 +97,12 @@ def _expand_resource(resource):
 
 
 def _combination_defined_rbac(needed_resources, user_resources):
+    """This function avoids that the combinations of resource will be treat as a individuals resources
+
+    :param needed_resources: These are the needed resources for the framework's function
+    :param user_resources: These are the user's resources for the actions
+    :return: True if the resource combination match with the required resource combination, otherwise False
+    """
     for needed_resource in needed_resources:
         split_needed_resource = needed_resource.split('&')
         split_user_resource = user_resources.split('&')
@@ -124,6 +130,7 @@ def _combination_defined_rbac(needed_resources, user_resources):
 def _use_expanded_resource(effect, final_permissions, expanded_resource, req_resources_value, delete):
     """After expanding the user permissions, depending on the effect of these we will introduce
     them or not in the list of final permissions.
+
     :param effect: This is the effect of these permissions (allow/deny)
     :param final_permissions: Dictionary with the final permissions of the user
     :param expanded_resource: Dictionary with the result of the permissions's expansion
@@ -150,6 +157,7 @@ def _black_mode_expansion(final_user_permissions, identifier, black_negation):
     """We can see the black mode as a white mode in which the first of the policies is all allowed.
     Thus the white mode has become the black mode by allowing everything.
     Basically the black mode is the logical negation of the white mode.
+
     :param final_user_permissions: Dictionary with the final permissions of the user
     :param identifier: Resource identifier. Ex: agent:id
     :param black_negation: Set of already negative resources
@@ -185,6 +193,15 @@ def _black_mode_sanitize(final_user_permissions, req_resources_value):
 
 
 def _optimize_resources(req_resources):
+    """This function creates an optimized data structure for a more easy processing
+    Example:
+        ["node:id:master-node",            {
+        "node:id:worker1",         -->         "node:id": {"master", "worker1", "worker2"}
+        "node:id:worker2"]                 }
+
+    :param req_resources: Resource to be optimized
+    :return expanded_resource: Returns the result of the resource expansion
+    """
     resources_value_odict = dict()
     for element in req_resources:
         if ':'.join(element.split(':')[:-1]) not in resources_value_odict.keys():
@@ -195,8 +212,12 @@ def _optimize_resources(req_resources):
 
 
 def _empty_black_expansion(req_resources, final_user_permissions):
-    # If RBAC policies is empty and the RBAC's mode is black, we have the permission over the required resource
-    # or if we can't expand the resource, the action is resourceless
+    """If RBAC policies is empty and the RBAC's mode is black, we have the permission over the required resource
+    or if we can't expand the resource, the action is resourceless
+
+    :param req_resources: Required resource for the framework's function
+    :param final_user_permissions: Final user's permissions after processing the combinations of resources
+    """
     for req_resource in req_resources:
         identifier = ':'.join(req_resource.split(':')[:-1])
         if identifier == '*:*':
@@ -207,6 +228,13 @@ def _empty_black_expansion(req_resources, final_user_permissions):
 
 
 def _black_white_processor(req_resources, user_permissions_for_resource, final_user_permissions):
+    """This function process the individual resources.
+
+    :param req_resources: Required resource for the framework's function
+    :param user_permissions_for_resource: User's defined resources in his RBAC permissions
+    :param final_user_permissions: Final user's permissions after processing the combinations of resources
+    :return expanded_resource: Returns the result of the resource expansion
+    """
     # With this set we know if a resource is already "deny"
     black_negation = set()
     resources_value = _optimize_resources(req_resources)
@@ -235,27 +263,35 @@ def _black_white_processor(req_resources, user_permissions_for_resource, final_u
 
 
 def _combination_processor(req_resources, user_permissions_for_resource, final_user_permissions):
+    """This function process the combinations of resources.
+    Checks how the API is currently running and depending on the API and
+    the resources defined for the user, will return a dictionary with the final permissions.
+
+    :param req_resources: Required resource for the framework's function
+    :param user_permissions_for_resource: User's defined resources in his RBAC permissions
+    :param final_user_permissions: Final user's permissions after processing the combinations of resources
+    :return expanded_resource: Returns the result of the resource expansion
+    """
     if mode == 'black' and len(user_permissions_for_resource) == 0:
-        for resource in req_resources:
-            resource = resource.split('&')
-            for r in resource:
+        # In this case, we need expand the required permissions for the request
+        for req_resource in req_resources:
+            for r in req_resource.split('&'):
                 split_resource = r.split(':')
                 identifier = ':'.join(split_resource[:-1])
                 value = split_resource[-1]
-                if mode == 'black':
-                    if value == '*':
-                        final_user_permissions[identifier].update(_expand_resource(r))
-                    else:
-                        final_user_permissions[identifier].add(split_resource[-1])
+                if value == '*':
+                    final_user_permissions[identifier].update(_expand_resource(r))
+                else:
+                    final_user_permissions[identifier].add(split_resource[-1])
         return
 
     for user_resource, user_resource_effect in user_permissions_for_resource.items():
         # _combination_defined_rbac: This function prevents pairs from being treated individually
         if _combination_defined_rbac(req_resources, user_resource):
-            resource = user_resource.split('&')
-            for req_resource in req_resources:
-                for r, split_req_resource in zip(resource, req_resource.split('&')):
-                    identifier = ':'.join(r.split(':')[:-1])
+            split_user_resource = user_resource.split('&')
+            for req_resource in req_resources:  # Normally this loop will iterate two times
+                for r, split_req_resource in zip(split_user_resource, req_resource.split('&')):
+                    identifier = ':'.join(split_req_resource.split(':')[:-1])
                     value = split_req_resource.split(':')[-1]
                     expanded_resource = _expand_resource(r)
                     if user_resource_effect == 'allow':
@@ -290,6 +326,7 @@ def _match_permissions(req_permissions: dict = None):
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
     """Resource pairs exposed by the framework function
+
     :param actions: List of exposed actions
     :param resources: List of exposed resources
     :param kwargs: Function kwargs to look for dynamic resources
@@ -348,6 +385,16 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
 
 
 def _get_denied(original, allowed, target_param, res_id, resources=None):
+    """This function compare the original kwargs and the processed kwargs,
+    the difference between both should be the denied resources
+
+    :param original: The original function's kwargs
+    :param allowed: The processed list of resources after RBAC
+    :param target_param: Element of kwargs that was processed
+    :param res_id: Involved resource
+    :param resources: List of the required resources for the function
+    :return:
+    """
     try:
         return {original[target_param]} - allowed[res_id]
     except TypeError:
@@ -357,6 +404,8 @@ def _get_denied(original, allowed, target_param, res_id, resources=None):
 
 
 async def async_list_handler(result: asyncio.coroutine, **kwargs):
+    """This function makes list_handler async
+    """
     result = await result
     return list_handler(result, **kwargs)
 
@@ -393,6 +442,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                      post_proc_kwargs: dict = None):
     """Decorator to apply user permissions on a Wazuh framework function
     based on exposed action:resource pairs.
+
     :param actions: List of actions exposed by the framework function
     :param resources: List of resources exposed by the framework function
     :param post_proc_func: Name of the function to use in response post processing
