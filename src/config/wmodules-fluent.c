@@ -101,7 +101,7 @@ int wm_fluent_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         fluent->enabled = 1;
         fluent->tag = NULL;
         fluent->sock_path = NULL;
-        fluent->address = "localhost";
+        fluent->address = strdup("localhost");
         fluent->port = 24224;
         fluent->shared_key = NULL;
         fluent->certificate = NULL;
@@ -146,6 +146,7 @@ int wm_fluent_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
+            free(fluent->tag);
             os_strdup(nodes[i]->content,fluent->tag);
         }
         else if (!strcmp(nodes[i]->element, XML_OBJECT_KEY))
@@ -167,6 +168,7 @@ int wm_fluent_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
+            free(fluent->sock_path);
             os_strdup(nodes[i]->content,fluent->sock_path);
         }
         else if (!strcmp(nodes[i]->element, XML_ADDRESS))
@@ -179,6 +181,7 @@ int wm_fluent_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
+            free(fluent->address);
             os_strdup(nodes[i]->content,fluent->address);
         }
         else if (!strcmp(nodes[i]->element, XML_PORT))
@@ -204,6 +207,7 @@ int wm_fluent_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
+            free(fluent->shared_key);
             os_strdup(nodes[i]->content,fluent->shared_key);
         }
         else if (!strcmp(nodes[i]->element, XML_CA_FILE))
@@ -216,6 +220,7 @@ int wm_fluent_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
+            free(fluent->certificate);
             os_strdup(nodes[i]->content,fluent->certificate);
         }
         else if (!strcmp(nodes[i]->element, XML_USER))
@@ -227,6 +232,7 @@ int wm_fluent_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 mwarn("Empty user value at '%s'.", WM_FLUENT_CONTEXT.name);
             }
 
+            free(fluent->user_name);
             os_strdup(nodes[i]->content,fluent->user_name);
         }
         else if (!strcmp(nodes[i]->element, XML_PASSWORD))
@@ -238,6 +244,7 @@ int wm_fluent_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 mwarn("Empty pass value at '%s'.", WM_FLUENT_CONTEXT.name);
             }
 
+            free(fluent->user_pass);
             os_strdup(nodes[i]->content,fluent->user_pass);
         }
         else if (!strcmp(nodes[i]->element, XML_TIMEOUT))
