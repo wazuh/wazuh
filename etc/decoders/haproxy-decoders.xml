@@ -1,0 +1,15 @@
+<!--
+  -  haproxy http log decoder
+  -  Author: George Kissandrakis <gkissand@gmail.com>
+-->
+
+<decoder name="haproxy">
+  <program_name>^haproxy</program_name>
+</decoder>
+<decoder name="haproxy-httplog">
+  <parent>haproxy</parent>
+  <type>web-log</type>
+  <prematch>^\S+:\S+ [\S+] \S+ \S+ \S+ \S+ </prematch>
+  <regex>^(\d+.\d+.\d+.\d+):\S+ \S+ \S+ \S+ \S+ (\d+) \.* "(\S+) (\S+)</regex>
+  <order>srcip, id, protocol, url</order>
+</decoder>
