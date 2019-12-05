@@ -121,6 +121,27 @@ class User(_Base):
     def __repr__(self):
         return f"<User(user={self.username})"
 
+    def _get_roles(self):
+        roles = list()
+        for role in self.roles:
+            roles.append(role.get_role()['id'])
+
+        return roles
+
+    def get_user(self):
+        """User's getter
+
+        :return: Dict with the information of the user
+        """
+        return {'username': self.username, 'roles': self._get_roles()}
+
+    def to_dict(self):
+        """Return the information of one policy and the roles that have assigned
+
+        :return: Dict with the information
+        """
+        return {'username': self.username, 'roles': self._get_roles()}
+
 
 class Roles(_Base):
     """
@@ -167,8 +188,11 @@ class Roles(_Base):
         policies = list()
         for policy in self.policies:
             policies.append(policy.get_policy())
+        users = list()
+        for user in self.users:
+            users.append(user.get_user()['username'])
 
-        return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule), 'policies': policies}
+        return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule), 'policies': policies, 'users': users}
 
 
 class Policies(_Base):
@@ -290,21 +314,13 @@ class AuthenticationManager:
         :param username: string Unique user name
         :return: An specified user
         """
-        users = None
         try:
             if username is not None:
-                users = self.session.query(User).filter_by(username=username).first()
+                return self.session.query(User).filter_by(username=username).first().to_dict()
         except IntegrityError:
             self.session.rollback()
             return False
 
-        if users is not None:
-            user_dict = {
-                'username': users.username
-            }
-            return user_dict
-
-        return False
 
     def get_users(self):
         """Get all users in the system
@@ -1151,6 +1167,12 @@ with RolesManager() as rm:
             "r'^auth[a-zA-Z]+$'": ["administrator-app"]
         }
     })
+
+with UserRolesManager() as urm:
+    urm.add_role_to_user_admin(username=auth.get_user(username='wazuh')['username'],
+                               role_id=rm.get_role(name='wazuh').id)
+    urm.add_role_to_user_admin(username=auth.get_user(username='wazuh-app')['username'],
+                               role_id=rm.get_role(name='wazuh').id)
 
 with RolesPoliciesManager() as rpm:
     rpm.add_policy_to_role_admin(role_id=rm.get_role(name='wazuh').id, policy_id=pm.get_policy(name='wazuhPolicy').id)
