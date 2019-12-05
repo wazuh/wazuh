@@ -3149,7 +3149,7 @@ components:
     policy_id_rbac:
       in: path
       name: policy_id
-      description: 'Specified a policy id'
+      description: 'Specify a policy id'
       required: true
       schema:
         $ref: '#/components/schemas/Policy_id'
@@ -3173,7 +3173,7 @@ components:
     policy_name:
       in: query
       name: policy_name
-      description: 'Specified and existent policy name'
+      description: 'Specify and existent policy name'
       required: True
       schema:
         type: string
@@ -3240,7 +3240,7 @@ components:
     role_id:
       in: path
       name: role_id
-      description: 'Specified a role id'
+      description: 'Specify a role id'
       required: true
       schema:
         $ref: '#/components/schemas/Role_id'
@@ -3255,7 +3255,7 @@ components:
     role_name:
       in: query
       name: role_name
-      description: 'Specified and existent role name'
+      description: 'Specify and existent role name'
       required: True
       schema:
         type: string
