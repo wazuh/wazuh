@@ -242,8 +242,21 @@ void test_fim_json_event(void **state)
     free_entry_data(new_data);
 
     assert_non_null(ret);
+    cJSON *type = cJSON_GetObjectItem(ret, "type");
+    assert_string_equal(cJSON_GetStringValue(type), "event");
     cJSON *data = cJSON_GetObjectItem(ret, "data");
     assert_non_null(data);
+    cJSON *path = cJSON_GetObjectItem(data, "path");
+    assert_string_equal(cJSON_GetStringValue(path), "test.file");
+    cJSON *mode = cJSON_GetObjectItem(data, "mode");
+    assert_string_equal(cJSON_GetStringValue(mode), "real-time");
+    cJSON *data_type = cJSON_GetObjectItem(data, "type");
+    assert_string_equal(cJSON_GetStringValue(data_type), "modified");
+    cJSON *timestamp = cJSON_GetObjectItem(data, "timestamp");
+    assert_non_null(timestamp);
+    assert_int_equal(timestamp->valueint, 1570184221);
+    cJSON *tags = cJSON_GetObjectItem(data, "tags");
+    assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
     cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
@@ -343,8 +356,22 @@ void test_fim_json_event_whodata(void **state)
     free_whodata_event(w_evt);
 
     assert_non_null(ret);
+    cJSON *type = cJSON_GetObjectItem(ret, "type");
+    assert_string_equal(cJSON_GetStringValue(type), "event");
     cJSON *data = cJSON_GetObjectItem(ret, "data");
     assert_non_null(data);
+    cJSON *path = cJSON_GetObjectItem(data, "path");
+    assert_string_equal(cJSON_GetStringValue(path), "test.file");
+    cJSON *mode = cJSON_GetObjectItem(data, "mode");
+    assert_string_equal(cJSON_GetStringValue(mode), "whodata");
+    cJSON *data_type = cJSON_GetObjectItem(data, "type");
+    assert_string_equal(cJSON_GetStringValue(data_type), "modified");
+    cJSON *timestamp = cJSON_GetObjectItem(data, "timestamp");
+    assert_non_null(timestamp);
+    assert_int_equal(timestamp->valueint, 1570184221);
+    cJSON *tags = cJSON_GetObjectItem(data, "tags");
+    assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
+    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
     cJSON *audit = cJSON_GetObjectItem(data, "audit");
     assert_non_null(audit);
     assert_int_equal(cJSON_GetArraySize(audit), 12);
@@ -434,6 +461,36 @@ void test_fim_attributes_json(void **state)
 
     assert_non_null(ret);
     assert_int_equal(cJSON_GetArraySize(ret), 13);
+
+    cJSON *type = cJSON_GetObjectItem(ret, "type");
+    assert_string_equal(cJSON_GetStringValue(type), "file");
+    cJSON *size = cJSON_GetObjectItem(ret, "size");
+    assert_non_null(size);
+    assert_int_equal(size->valueint, 1500);
+    cJSON *perm = cJSON_GetObjectItem(ret, "perm");
+    assert_string_equal(cJSON_GetStringValue(perm), "0664");
+    cJSON *uid = cJSON_GetObjectItem(ret, "uid");
+    assert_string_equal(cJSON_GetStringValue(uid), "100");
+    cJSON *gid = cJSON_GetObjectItem(ret, "gid");
+    assert_string_equal(cJSON_GetStringValue(gid), "1000");
+    cJSON *user_name = cJSON_GetObjectItem(ret, "user_name");
+    assert_string_equal(cJSON_GetStringValue(user_name), "test");
+    cJSON *group_name = cJSON_GetObjectItem(ret, "group_name");
+    assert_string_equal(cJSON_GetStringValue(group_name), "testing");
+    cJSON *inode = cJSON_GetObjectItem(ret, "inode");
+    assert_non_null(inode);
+    assert_int_equal(inode->valueint, 606060);
+    cJSON *mtime = cJSON_GetObjectItem(ret, "mtime");
+    assert_non_null(mtime);
+    assert_int_equal(mtime->valueint, 1570184223);
+    cJSON *hash_md5 = cJSON_GetObjectItem(ret, "hash_md5");
+    assert_string_equal(cJSON_GetStringValue(hash_md5), "3691689a513ace7e508297b583d7050d");
+    cJSON *hash_sha1 = cJSON_GetObjectItem(ret, "hash_sha1");
+    assert_string_equal(cJSON_GetStringValue(hash_sha1), "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    cJSON *hash_sha256 = cJSON_GetObjectItem(ret, "hash_sha256");
+    assert_string_equal(cJSON_GetStringValue(hash_sha256), "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    cJSON *checksum = cJSON_GetObjectItem(ret, "checksum");
+    assert_string_equal(cJSON_GetStringValue(checksum), "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
 }
 
 
@@ -544,6 +601,30 @@ void test_fim_json_compare_attrs(void **state)
 
     assert_non_null(ret);
     assert_int_equal(cJSON_GetArraySize(ret), 11);
+
+    cJSON *size = cJSON_GetArrayItem(ret, 0);
+    assert_string_equal(cJSON_GetStringValue(size), "size");
+    cJSON *permission = cJSON_GetArrayItem(ret, 1);
+    assert_string_equal(cJSON_GetStringValue(permission), "permission");
+    cJSON *uid = cJSON_GetArrayItem(ret, 2);
+    assert_string_equal(cJSON_GetStringValue(uid), "uid");
+    cJSON *user_name = cJSON_GetArrayItem(ret, 3);
+    assert_string_equal(cJSON_GetStringValue(user_name), "user_name");
+    cJSON *gid = cJSON_GetArrayItem(ret, 4);
+    assert_string_equal(cJSON_GetStringValue(gid), "gid");
+    cJSON *group_name = cJSON_GetArrayItem(ret, 5);
+    assert_string_equal(cJSON_GetStringValue(group_name), "group_name");
+    cJSON *mtime = cJSON_GetArrayItem(ret, 6);
+    assert_string_equal(cJSON_GetStringValue(mtime), "mtime");
+    cJSON *inode = cJSON_GetArrayItem(ret, 7);
+    assert_string_equal(cJSON_GetStringValue(inode), "inode");
+    cJSON *md5 = cJSON_GetArrayItem(ret, 8);
+    assert_string_equal(cJSON_GetStringValue(md5), "md5");
+    cJSON *sha1 = cJSON_GetArrayItem(ret, 9);
+    assert_string_equal(cJSON_GetStringValue(sha1), "sha1");
+    cJSON *sha256 = cJSON_GetArrayItem(ret, 10);
+    assert_string_equal(cJSON_GetStringValue(sha256), "sha256");
+
 }
 
 
@@ -576,6 +657,33 @@ void test_fim_audit_json(void **state)
 
     assert_non_null(ret);
     assert_int_equal(cJSON_GetArraySize(ret), 12);
+
+    cJSON *path = cJSON_GetObjectItem(ret, "path");
+    assert_string_equal(cJSON_GetStringValue(path), "./test/test.file");
+    cJSON *user_id = cJSON_GetObjectItem(ret, "user_id");
+    assert_string_equal(cJSON_GetStringValue(user_id), "100");
+    cJSON *user_name = cJSON_GetObjectItem(ret, "user_name");
+    assert_string_equal(cJSON_GetStringValue(user_name), "test");
+    cJSON *process_name = cJSON_GetObjectItem(ret, "process_name");
+    assert_string_equal(cJSON_GetStringValue(process_name), "test_proc");
+    cJSON *process_id = cJSON_GetObjectItem(ret, "process_id");
+    assert_non_null(process_id);
+    assert_int_equal(process_id->valueint, 1001);
+    cJSON *group_id = cJSON_GetObjectItem(ret, "group_id");
+    assert_string_equal(cJSON_GetStringValue(group_id), "1000");
+    cJSON *group_name = cJSON_GetObjectItem(ret, "group_name");
+    assert_string_equal(cJSON_GetStringValue(group_name), "testing");
+    cJSON *audit_uid = cJSON_GetObjectItem(ret, "audit_uid");
+    assert_string_equal(cJSON_GetStringValue(audit_uid), "99");
+    cJSON *audit_name = cJSON_GetObjectItem(ret, "audit_name");
+    assert_string_equal(cJSON_GetStringValue(audit_name), "audit_user");
+    cJSON *effective_uid = cJSON_GetObjectItem(ret, "effective_uid");
+    assert_string_equal(cJSON_GetStringValue(effective_uid), "999");
+    cJSON *effective_name = cJSON_GetObjectItem(ret, "effective_name");
+    assert_string_equal(cJSON_GetStringValue(effective_name), "effective_user");
+    cJSON *ppid = cJSON_GetObjectItem(ret, "ppid");
+    assert_non_null(ppid);
+    assert_int_equal(ppid->valueint, 1000);
 }
 
 
@@ -667,6 +775,11 @@ void test_fim_scan_info_json_start(void **state)
     assert_non_null(ret);
     cJSON *type = cJSON_GetObjectItem(ret, "type");;
     assert_string_equal(type->valuestring, "scan_start");
+    cJSON *data = cJSON_GetObjectItem(ret, "data");
+    assert_non_null(data);
+    cJSON *timestamp = cJSON_GetObjectItem(data, "timestamp");
+    assert_non_null(timestamp);
+    assert_int_equal(timestamp->valueint, 1570184220);
 }
 
 
@@ -681,6 +794,11 @@ void test_fim_scan_info_json_end(void **state)
     assert_non_null(ret);
     cJSON *type = cJSON_GetObjectItem(ret, "type");;
     assert_string_equal(type->valuestring, "scan_end");
+    cJSON *data = cJSON_GetObjectItem(ret, "data");
+    assert_non_null(data);
+    cJSON *timestamp = cJSON_GetObjectItem(data, "timestamp");
+    assert_non_null(timestamp);
+    assert_int_equal(timestamp->valueint, 1570184220);
 }
 
 
@@ -781,6 +899,22 @@ void test_fim_check_depth_failure_strlen(void **state)
 
 }
 
+void test_fim_check_depth_failure_null_directory(void **state)
+{
+    (void) state;
+    int ret;
+
+    // Load syscheck default values
+    syscheck_set_internals();
+    Read_Syscheck_Config("test_syscheck.conf");
+
+    char * path = "/usr/bin";
+    // Pos 1 = "/usr/bin"
+    ret = fim_check_depth(path, 6);
+
+    assert_int_equal(ret, -1);
+
+}
 
 void test_fim_insert_success_new(void **state)
 {
@@ -1092,6 +1226,48 @@ void test_fim_update_failure_rbtree(void **state)
 }
 
 
+void test_fim_update_failure_update_inode(void **state)
+{
+    (void) state;
+    int ret;
+
+    char * file = "test-file.tst";
+
+    fim_entry_data *data = fill_entry_struct(
+        1500,
+        "0664",
+        "r--r--r--",
+        "100",
+        "1000",
+        "test",
+        "testing",
+        1570184223,
+        606060,
+        "3691689a513ace7e508297b583d7050d",
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b",
+        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40",
+        FIM_REALTIME,
+        1570184220,
+        "file",
+        12345678,
+        123456,
+        511,
+        "07f05add1049244e7e71ad0f54f24d8094cd8f8b"
+    );
+    *state = data;
+
+    // (fim_update_inode) In hash table
+    // Not in hash table
+    will_return(__wrap_OSHash_Get, NULL);
+    // Errod adding
+    will_return(__wrap_OSHash_Add, 1);
+
+    ret = fim_update(file, data, data);
+
+    assert_int_equal(ret, -1);
+}
+
+
 void test_fim_delete_no_data(void **state)
 {
     (void) state;
@@ -1118,6 +1294,8 @@ void test_fim_update_inode_in_hash(void **state)
     will_return(__wrap_OSHash_Get, inode_data);
 
     ret = fim_update_inode(file, inode_key);
+
+    assert_int_equal(os_IsStrOnArray("test-file.tst", inode_data->paths), 1);
 
     free(inode_data);
 
@@ -1491,7 +1669,7 @@ void test_fim_directory_nodir(void **state)
 
     ret = fim_directory(NULL, NULL, NULL, 1);
 
-    assert_int_equal(ret, -1);
+    assert_int_equal(ret, OS_INVALID);
 }
 
 
@@ -1852,6 +2030,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_get_checksum_wrong_size, delete_entry_data),
         cmocka_unit_test(test_fim_check_depth_success),
         cmocka_unit_test(test_fim_check_depth_failure_strlen),
+        cmocka_unit_test(test_fim_check_depth_failure_null_directory),
         cmocka_unit_test_teardown(test_fim_insert_success_new, delete_entry_data),
         cmocka_unit_test_teardown(test_fim_insert_success_add, delete_entry_data),
         cmocka_unit_test_teardown(test_fim_insert_failure_duplicated, delete_entry_data),
@@ -1859,6 +2038,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_update_success, delete_entry_data),
         cmocka_unit_test_teardown(test_fim_update_failure_nofile, delete_entry_data),
         cmocka_unit_test_teardown(test_fim_update_failure_rbtree, delete_entry_data),
+        cmocka_unit_test_teardown(test_fim_update_failure_update_inode, delete_entry_data),
         cmocka_unit_test(test_fim_delete_no_data),
         cmocka_unit_test(test_fim_update_inode_in_hash),
         cmocka_unit_test(test_fim_update_inode_not_in_hash),
