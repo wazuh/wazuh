@@ -576,6 +576,8 @@ void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
         program_entry_data * entry_data = NULL;
 
+        entry_data = init_program_data_entry();
+
         while(fgets(read_buff, OS_MAXSTR, fp) != NULL) {
 
             // Remove '\n' from the read line
@@ -586,6 +588,7 @@ void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
                 if (entry_data) {
                     free_program_data(entry_data);
+                    entry_data = NULL;
                 }
 
                 entry_data = init_program_data_entry();
@@ -603,12 +606,20 @@ void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             } else if (!strncmp(read_buff, "Status: ", 8)) {
 
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
+
                 if (strstr(read_buff, "install ok installed"))
                     entry_data->installed = 1;
                 else
                     entry_data->installed = 0;
 
             } else if (!strncmp(read_buff, "Priority: ", 10)) {
+
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
@@ -621,6 +632,10 @@ void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             } else if (!strncmp(read_buff, "Section: ", 9)) {
 
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
+
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
                 os_strdup(parts[1], entry_data->group);
@@ -631,6 +646,10 @@ void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
                 free(parts);
 
             } else if (!strncmp(read_buff, "Installed-Size: ", 16)) {
+
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
@@ -643,6 +662,10 @@ void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             } else if (!strncmp(read_buff, "Maintainer: ", 12)) {
 
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
+
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
                 os_strdup(parts[1], entry_data->vendor);
@@ -653,6 +676,10 @@ void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
                 free(parts);
 
             } else if (!strncmp(read_buff, "Architecture: ", 14)) {
+
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
@@ -665,6 +692,10 @@ void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             } else if (!strncmp(read_buff, "Multi-Arch: ", 12)) {
 
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
+
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
                 os_strdup(parts[1], entry_data->multi_arch);
@@ -675,6 +706,10 @@ void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
                 free(parts);
 
             } else if (!strncmp(read_buff, "Source: ", 8)) {
+
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
@@ -687,6 +722,10 @@ void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             } else if (!strncmp(read_buff, "Version: ", 9)) {
 
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
+
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
                 os_strdup(parts[1], entry_data->version);
@@ -697,6 +736,10 @@ void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
                 free(parts);
 
             } else if (!strncmp(read_buff, "Description: ", 13)) {
+
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
@@ -724,12 +767,18 @@ void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
             }
         }
 
+        if (entry_data) {
+            free_program_data(entry_data);
+        }
+
         fclose(fp);
 
     } else {
 
         mterror(WM_SYS_LOGTAG, "Unable to open the file '%s'", file);
     }
+
+    free(timestamp);
 }
 
 // Get Hardware inventory

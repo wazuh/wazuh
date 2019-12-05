@@ -1315,6 +1315,9 @@ char * analyze_hw(hw_entry * entry_data, int random_id, const char * timestamp) 
 
         json_event = hw_json_event(entry_data, random_id, timestamp);
     }
+    else {
+        free_hw_data(entry_data);
+    }
 
     w_mutex_unlock(&sys->hardware_mutex);
 
@@ -1344,6 +1347,9 @@ char * analyze_os(os_entry * entry_data, int random_id, const char * timestamp) 
         sys->os_data = entry_data;
 
         json_event = os_json_event(entry_data, random_id, timestamp);
+    }
+    else {
+        free_os_data(entry_data);
     }
 
     w_mutex_unlock(&sys->os_mutex);
@@ -1402,7 +1408,6 @@ char * analyze_interface(interface_entry_data * entry_data, int random_id, const
         }
         else {
             free_interface_data(entry_data);
-            free(key);
         }
     }
 
@@ -1412,6 +1417,8 @@ char * analyze_interface(interface_entry_data * entry_data, int random_id, const
         string = cJSON_PrintUnformatted(json_event);
         cJSON_Delete(json_event);
     }
+
+    free(key);
 
     return string;
 }
@@ -1474,7 +1481,6 @@ char * analyze_program(program_entry_data * entry_data, int random_id, const cha
         }
         else {
             free_program_data(entry_data);
-            free(key);
         }
     }
 
@@ -1484,6 +1490,8 @@ char * analyze_program(program_entry_data * entry_data, int random_id, const cha
         string = cJSON_PrintUnformatted(json_event);
         cJSON_Delete(json_event);
     }
+
+    free(key);
 
     return string;
 }
@@ -1534,7 +1542,6 @@ char * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char 
         }
         else {
             free_hotfix_data(entry_data);
-            free(key);
         }
     }
 
@@ -1544,6 +1551,8 @@ char * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char 
         string = cJSON_PrintUnformatted(json_event);
         cJSON_Delete(json_event);
     }
+
+    free(key);
 
     return string;
 }
@@ -1600,7 +1609,6 @@ char * analyze_port(port_entry_data * entry_data, int random_id, const char * ti
         }
         else {
             free_port_data(entry_data);
-            free(key);
         }
     }
 
@@ -1610,6 +1618,8 @@ char * analyze_port(port_entry_data * entry_data, int random_id, const char * ti
         string = cJSON_PrintUnformatted(json_event);
         cJSON_Delete(json_event);
     }
+
+    free(key);
 
     return string;
 }
@@ -1661,7 +1671,6 @@ char * analyze_process(process_entry_data * entry_data, int random_id, const cha
         }
         else {
             free_process_data(entry_data);
-            free(key);
         }
     }
 
@@ -1671,6 +1680,8 @@ char * analyze_process(process_entry_data * entry_data, int random_id, const cha
         string = cJSON_PrintUnformatted(json_event);
         cJSON_Delete(json_event);
     }
+
+    free(key);
 
     return string;
 }
