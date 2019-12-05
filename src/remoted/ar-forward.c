@@ -23,9 +23,9 @@ void *AR_Forward(__attribute__((unused)) void *arg)
     int ar_location = 0;
     const char * path = isChroot() ? ARQUEUE : DEFAULTDIR ARQUEUE;
 
-    char msg_to_send[OS_SIZE_1024 + 1];
+    char msg_to_send[OS_SIZE_20480];
 
-    char msg[OS_SIZE_1024 + 1];
+    char msg[OS_SIZE_20480];
     char *location = NULL;
     char *ar_location_str = NULL;
     char *ar_agent_id = NULL;
@@ -37,11 +37,11 @@ void *AR_Forward(__attribute__((unused)) void *arg)
         merror_exit(QUEUE_ERROR, path, strerror(errno));
     }
 
-    memset(msg, '\0', OS_SIZE_1024 + 1);
+    memset(msg, '\0', OS_SIZE_20480 + 1);
 
     /* Daemon loop */
     while (1) {
-        if (OS_RecvUnix(arq, OS_SIZE_1024, msg)) {
+        if (OS_RecvUnix(arq, OS_SIZE_20480, msg)) {
 
             mdebug2("Active response request received: %s", msg);
 
@@ -108,11 +108,11 @@ void *AR_Forward(__attribute__((unused)) void *arg)
 
             /* Create the new message */
             if (ar_location & NO_AR_MSG) {
-                snprintf(msg_to_send, OS_SIZE_1024, "%s%s",
+                snprintf(msg_to_send, OS_SIZE_20480, "%s%s",
                          CONTROL_HEADER,
                          tmp_str);
             } else {
-                snprintf(msg_to_send, OS_SIZE_1024, "%s%s%s",
+                snprintf(msg_to_send, OS_SIZE_20480, "%s%s%s",
                          CONTROL_HEADER,
                          EXECD_HEADER,
                          tmp_str);
