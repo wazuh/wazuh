@@ -282,7 +282,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int pos)
     HKEY oshkey;
 
     if (RegOpenKeyEx(sub_tree, subkey, 0, KEY_READ | (syscheck.registry[pos].arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY), &oshkey) != ERROR_SUCCESS) {
-        mwarn(FIM_REG_OPEN, subkey, syscheck.registry[pos].arch == ARCH_32BIT ? "[x32]" : "[x64]");
+        mdebug1(FIM_REG_OPEN, subkey, syscheck.registry[pos].arch == ARCH_32BIT ? "[x32]" : "[x64]");
         return;
     }
 
