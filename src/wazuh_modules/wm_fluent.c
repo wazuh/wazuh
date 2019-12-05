@@ -148,7 +148,14 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
 
 // Destroy data
 void wm_fluent_destroy(wm_fluent_t * fluent) {
+    free(fluent->tag);
     free(fluent->object_key);
+    free(fluent->sock_path);
+    free(fluent->address);
+    free(fluent->shared_key);
+    free(fluent->certificate);
+    free(fluent->user_name);
+    free(fluent->user_pass);
     os_free(fluent);
 }
 
