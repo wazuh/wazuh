@@ -28,7 +28,6 @@ def login_user(user):
     This method should be called to get an API token. This token will expire at some time. # noqa: E501
     :return: TokenResponse
     """
-
     return TokenResponse(token=generate_token(user)), 200
 
 

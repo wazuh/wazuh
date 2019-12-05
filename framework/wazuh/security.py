@@ -4,12 +4,11 @@
 
 import re
 
-from api.authentication import AuthenticationManager
 from wazuh import common
 from wazuh.exception import WazuhError
 from wazuh.rbac import orm
 from wazuh.rbac.decorators import expose_resources
-from wazuh.rbac.orm import SecurityError
+from wazuh.rbac.orm import SecurityError, AuthenticationManager
 from wazuh.results import AffectedItemsWazuhResult
 from wazuh.utils import process_array
 
