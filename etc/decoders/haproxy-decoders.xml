@@ -10,6 +10,6 @@
   <parent>haproxy</parent>
   <type>web-log</type>
   <prematch>^\S+:\S+ [\S+] \S+ \S+ \S+ \S+ </prematch>
-  <regex>^(\d+.\d+.\d+.\d+):\S+ \S+ \S+ \S+ \S+ (\d+) \.* "(\S+) (\S+)</regex>
-  <order>srcip, id, protocol, url</order>
+  <regex>^(\d+.\d+.\d+.\d+):\S+ \S+ \S+ \S+ \S+ (\d+) \.* {(\S+)\|\.* "(\S+) (\S+)</regex>
+  <order>srcip, id, dstip, protocol, url</order>
 </decoder>
