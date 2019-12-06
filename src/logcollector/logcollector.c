@@ -297,6 +297,9 @@ void LogCollectorStart()
         }
     }
 
+    // Initialize message queue's log builder
+    mq_log_builder_init();
+
     /* Create the output threads */
     w_create_output_threads();
 
@@ -740,6 +743,10 @@ void LogCollectorStart()
         if (!os_iswait()) {
             rand_keepalive_str(keepalive, KEEPALIVE_SIZE);
             w_msg_hash_queues_push(keepalive, "ossec-keepalive", strlen(keepalive) + 1, default_target, LOCALFILE_MQ);
+        }
+
+        if (mq_log_builder_update() == -1) {
+            mdebug1("Output log pattern data could not be updated.");
         }
 
         sleep(1);
