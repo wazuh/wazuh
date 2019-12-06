@@ -241,11 +241,25 @@ typedef struct wm_sys_flags_t {
 } wm_sys_flags_t;
 
 typedef struct wm_sys_state_t {
-    time_t next_time;                       // Absolute time for next scan
+    time_t hw_next_time;                    // Absolute time for next hardware scan
+    time_t os_next_time;                    // Absolute time for next operative system scan
+    time_t interfaces_next_time;            // Absolute time for next interfaces scan
+    time_t programs_next_time;              // Absolute time for next packages/programs scan
+    time_t hotfixes_next_time;              // Absolute time for next hotfixes scan
+    time_t ports_next_time;                 // Absolute time for next ports scan
+    time_t processes_next_time;             // Absolute time for next processes scan
 } wm_sys_state_t;
 
 typedef struct wm_sys_t {
-    unsigned int interval;                  // Time interval between cycles (seconds)
+    unsigned int default_interval;          // Default time interval between cycles (seconds)
+    unsigned int hw_interval;               // Time interval for hardware inventory (seconds)
+    unsigned int os_interval;               // Time interval for operative system inventory (seconds)
+    unsigned int interfaces_interval;       // Time interval for interfaces inventory (seconds)
+    unsigned int programs_interval;         // Time interval for packages/programs inventory (seconds)
+    unsigned int hotfixes_interval;         // Time interval for hotfixes inventory (seconds)
+    unsigned int ports_interval;            // Time interval for ports inventory (seconds)
+    unsigned int processes_interval;        // Time interval for processes inventory (seconds)
+
     wm_sys_flags_t flags;                   // Flag bitfield
     wm_sys_state_t state;                   // Running state
 
@@ -253,7 +267,7 @@ typedef struct wm_sys_t {
     os_entry * os_data;                     // OS data store
     rb_tree * interfaces_entry;             // Interfaces data store
     rb_tree * programs_entry;               // Packages data store
-    rb_tree * hotfixes_entry;               // HOtfixes data store
+    rb_tree * hotfixes_entry;               // Hotfixes data store
     rb_tree * ports_entry;                  // Ports data store
     rb_tree * processes_entry;              // Processes data store
 

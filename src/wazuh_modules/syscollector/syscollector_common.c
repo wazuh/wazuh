@@ -12,6 +12,14 @@
 #include "syscollector.h"
 #include <errno.h>
 
+#define RUN_HW        000000001
+#define RUN_OS        000000002
+#define RUN_IFACE     000000004
+#define RUN_PKG       000000010
+#define RUN_HFIX      000000020
+#define RUN_PORT      000000040
+#define RUN_PROC      000000100
+
 wm_sys_t *sys = NULL;                           // Definition of global config
 
 static void* wm_sys_main(wm_sys_t *sys);        // Module main function. It won't return
@@ -22,7 +30,7 @@ cJSON *wm_sys_dump(const wm_sys_t *sys);
 // Syscollector module context definition
 
 const wm_context WM_SYS_CONTEXT = {
-    "syscollector",
+    "inventory",
     (wm_routine)wm_sys_main,
     (wm_routine)(void *)wm_sys_destroy,
     (cJSON * (*)(const void *))wm_sys_dump
@@ -38,12 +46,15 @@ static void wm_sys_check();                     // Check configuration, disable 
 static void wm_sys_cleanup();                   // Cleanup function, doesn't overwrite wm_cleanup
 #endif
 
+time_t get_sleep_time(int *run);      // Function to get the next inventory scan time
+
 // Module main function. It won't return
 
 void* wm_sys_main(wm_sys_t *sys) {
 
     time_t time_start = 0;
     time_t time_sleep = 0;
+    int run = 0;
 
     // Check configuration and show debug information
 
@@ -53,23 +64,38 @@ void* wm_sys_main(wm_sys_t *sys) {
 
     mtinfo(WM_SYS_LOGTAG, "Module started.");
 
+    time_start = time(NULL);
+    sys->state.hw_next_time = time_start;
+    sys->state.os_next_time = time_start;
+    sys->state.interfaces_next_time = time_start;
+    sys->state.programs_next_time = time_start;
+    sys->state.hotfixes_next_time = time_start;
+    sys->state.ports_next_time = time_start;
+    sys->state.processes_next_time = time_start;
+
     // First sleeping
 
     if (!sys->flags.scan_on_start) {
-        time_start = time(NULL);
-
         // On first run, take into account the interval of time specified
-        if (sys->state.next_time == 0) {
-            sys->state.next_time = time_start + sys->interval;
-        }
+        sys->state.hw_next_time += sys->hw_interval;
+        sys->state.os_next_time += sys->os_interval;
+        sys->state.interfaces_next_time += sys->interfaces_interval;
+        sys->state.programs_next_time += sys->programs_interval;
+        sys->state.hotfixes_next_time += sys->hotfixes_interval;
+        sys->state.ports_next_time += sys->ports_interval;
+        sys->state.processes_next_time += sys->processes_interval;
 
-        if (sys->state.next_time > time_start) {
+        if (time_sleep = get_sleep_time(&run), time_sleep > 0) {
             mtinfo(WM_SYS_LOGTAG, "Waiting for turn to evaluate.");
-            wm_delay(1000 * (sys->state.next_time - time_start));
+            wm_delay(1000 * time_sleep);
+        } else {
+            // Wait for Wazuh DB start
+            wm_delay(1000);
         }
     } else {
         // Wait for Wazuh DB start
         wm_delay(1000);
+        run |= (RUN_HW | RUN_OS | RUN_IFACE | RUN_PKG | RUN_HFIX | RUN_PORT | RUN_PROC);
     }
 
     // Main loop
@@ -78,11 +104,8 @@ void* wm_sys_main(wm_sys_t *sys) {
 
         mtinfo(WM_SYS_LOGTAG, "Starting evaluation.");
 
-        // Get time and execute
-        time_start = time(NULL);
-
         /* Network inventory */
-        if (sys->flags.netinfo){
+        if (sys->flags.netinfo && (run & RUN_IFACE)){
             #ifdef WIN32
                 sys_network_windows(WM_SYS_LOCATION);
             #elif defined(__linux__)
@@ -96,19 +119,23 @@ void* wm_sys_main(wm_sys_t *sys) {
             #ifdef DEBUG
                 print_rbtree(sys->interfaces_entry, sys->interfaces_entry_mutex);
             #endif
+            run &= ~RUN_IFACE;
+            sys->state.interfaces_next_time += sys->interfaces_interval;
         }
 
         /* Operating System inventory */
-        if (sys->flags.osinfo){
+        if (sys->flags.osinfo && (run & RUN_OS)){
             #ifdef WIN32
                 sys_os_windows(WM_SYS_LOCATION);
             #else
                 sys_os_unix(queue_fd, WM_SYS_LOCATION);
             #endif
+            run &= ~RUN_OS;
+            sys->state.os_next_time += sys->os_interval;
         }
 
         /* Hardware inventory */
-        if (sys->flags.hwinfo){
+        if (sys->flags.hwinfo && (run & RUN_HW)){
             #if defined(WIN32)
                 sys_hw_windows(WM_SYS_LOCATION);
             #elif defined(__linux__)
@@ -119,10 +146,12 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys->flags.hwinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Hardware inventory is not available for this OS version.");
             #endif
+            run &= ~RUN_HW;
+            sys->state.hw_next_time += sys->hw_interval;
         }
 
         /* Installed programs inventory */
-        if (sys->flags.programinfo){
+        if (sys->flags.programinfo && (run & RUN_PKG)){
             #if defined(WIN32)
                 sys_programs_windows(WM_SYS_LOCATION);
             #elif defined(__linux__)
@@ -136,19 +165,23 @@ void* wm_sys_main(wm_sys_t *sys) {
             #ifdef DEBUG
                 print_rbtree(sys->programs_entry, sys->programs_entry_mutex);
             #endif
+            run &= ~RUN_PKG;
+            sys->state.programs_next_time += sys->programs_interval;
         }
 
         /* Installed hotfixes inventory */
-        if (sys->flags.hotfixinfo) {
+        if (sys->flags.hotfixinfo && (run & RUN_HFIX)) {
             #ifdef WIN32
                 sys_hotfixes(WM_SYS_LOCATION);
             #endif
             #ifdef DEBUG
                 print_rbtree(sys->hotfixes_entry, sys->hotfixes_entry_mutex);
             #endif
+            run &= ~RUN_HFIX;
+            sys->state.hotfixes_next_time += sys->hotfixes_interval;
         }
         /* Opened ports inventory */
-        if (sys->flags.portsinfo){
+        if (sys->flags.portsinfo && (run & RUN_PORT)){
             #if defined(WIN32)
                 sys_ports_windows(WM_SYS_LOCATION, sys->flags.allports);
             #elif defined(__linux__)
@@ -162,10 +195,12 @@ void* wm_sys_main(wm_sys_t *sys) {
             #ifdef DEBUG
                 print_rbtree(sys->ports_entry, sys->ports_entry_mutex);
             #endif
+            run &= ~RUN_PORT;
+            sys->state.ports_next_time += sys->ports_interval;
         }
 
         /* Running processes inventory */
-        if (sys->flags.procinfo){
+        if (sys->flags.procinfo && (run & RUN_PROC)){
             #if defined(__linux__)
                 sys_proc_linux(queue_fd, WM_SYS_LOCATION);
             #elif defined(WIN32)
@@ -179,28 +214,126 @@ void* wm_sys_main(wm_sys_t *sys) {
             #ifdef DEBUG
                 print_rbtree(sys->processes_entry, sys->processes_entry_mutex);
             #endif
+            run &= ~RUN_PROC;
+            sys->state.processes_next_time += sys->processes_interval;
         }
-
-        time_sleep = time(NULL) - time_start;
 
         mtinfo(WM_SYS_LOGTAG, "Evaluation finished.");
-
-        if ((time_t)sys->interval >= time_sleep) {
-            time_sleep = sys->interval - time_sleep;
-            sys->state.next_time = sys->interval + time_start;
-        } else {
-            mterror(WM_SYS_LOGTAG, "Interval overtaken.");
-            time_sleep = sys->state.next_time = 0;
-        }
 
         if (wm_state_io(WM_SYS_CONTEXT.name, WM_IO_WRITE, &sys->state, sizeof(sys->state)) < 0)
             mterror(WM_SYS_LOGTAG, "Couldn't save running state: %s (%d)", strerror(errno), errno);
 
-        // If time_sleep=0, yield CPU
-        wm_delay(1000 * time_sleep);
+        if (time_sleep = get_sleep_time(&run), time_sleep >= 0) {
+            mtinfo(WM_SYS_LOGTAG, "Waiting for turn to evaluate.");
+            wm_delay(1000 * time_sleep);
+        } else {
+            mterror(WM_SYS_LOGTAG, "Interval overtaken.");
+        }
     }
 
     return NULL;
+}
+
+time_t get_sleep_time(int *run) {
+    time_t seconds_to_sleep = LONG_MAX;
+    time_t time_aux = 0;
+    int modules_expired = 0;
+
+    time_t now = time(NULL);
+
+    // Check hardware time
+    time_aux = sys->state.hw_next_time - now;
+    if (time_aux < 0) {
+        modules_expired |= RUN_HW;
+        seconds_to_sleep = -1;
+    } else if (time_aux == seconds_to_sleep) {
+        *run |= RUN_HW;
+    } else if (time_aux < seconds_to_sleep) {
+        *run |= RUN_HW;
+        *run &= RUN_HW;
+        seconds_to_sleep = time_aux;
+    }
+    // Check operative system time
+    time_aux = sys->state.os_next_time - now;
+    if (time_aux < 0) {
+        modules_expired |= RUN_OS;
+        seconds_to_sleep = -1;
+    } else if (time_aux == seconds_to_sleep) {
+        *run |= RUN_OS;
+    } else if (time_aux < seconds_to_sleep) {
+        *run |= RUN_OS;
+        *run &= RUN_OS;
+        seconds_to_sleep = time_aux;
+    }
+    // Check interfaces time
+    time_aux = sys->state.interfaces_next_time - now;
+    if (time_aux < 0) {
+        modules_expired |= RUN_IFACE;
+        seconds_to_sleep = -1;
+    } else if (time_aux == seconds_to_sleep) {
+        *run |= RUN_IFACE;
+    } else if (time_aux < seconds_to_sleep) {
+        *run |= RUN_IFACE;
+        *run &= RUN_IFACE;
+        seconds_to_sleep = time_aux;
+    }
+    // Check programs/packages time
+    time_aux = sys->state.programs_next_time - now;
+    if (time_aux < 0) {
+        modules_expired |= RUN_PKG;
+        seconds_to_sleep = -1;
+    } else if (time_aux == seconds_to_sleep) {
+        *run |= RUN_PKG;
+    } else if (time_aux < seconds_to_sleep) {
+        *run |= RUN_PKG;
+        *run &= RUN_PKG;
+        seconds_to_sleep = time_aux;
+    }
+#ifdef WIN32
+    // Check hotfixes time
+    time_aux = sys->state.hotfixes_next_time - now;
+    if (time_aux < 0) {
+        modules_expired |= RUN_HFIX;
+        seconds_to_sleep = -1;
+    } else if (time_aux == seconds_to_sleep) {
+        *run |= RUN_HFIX;
+    } else if (time_aux < seconds_to_sleep) {
+        *run |= RUN_HFIX;
+        *run &= RUN_HFIX;
+        seconds_to_sleep = time_aux;
+    }
+#endif
+    // Check ports time
+    time_aux = sys->state.ports_next_time - now;
+    if (time_aux < 0) {
+        modules_expired |= RUN_PORT;
+        seconds_to_sleep = -1;
+    } else if (time_aux == seconds_to_sleep) {
+        *run |= RUN_PORT;
+    } else if (time_aux < seconds_to_sleep) {
+        *run |= RUN_PORT;
+        *run &= RUN_PORT;
+        seconds_to_sleep = time_aux;
+    }
+    // Check processes time
+    time_aux = sys->state.processes_next_time - now;
+    if (time_aux < 0) {
+        modules_expired |= RUN_PROC;
+        seconds_to_sleep = -1;
+    } else if (time_aux == seconds_to_sleep) {
+        *run |= RUN_PROC;
+    } else if (time_aux < seconds_to_sleep) {
+        *run |= RUN_PROC;
+        *run &= RUN_PROC;
+        seconds_to_sleep = time_aux;
+    }
+    // Check if any module time has expired
+    if (modules_expired) {
+        *run |= modules_expired;
+        *run &= modules_expired;
+    }
+
+    return seconds_to_sleep;
 }
 
 // Setup module
@@ -279,8 +412,29 @@ void wm_sys_check() {
 
     // Check if interval
 
-    if (!sys->interval)
-        sys->interval = WM_SYS_DEF_INTERVAL;
+    if (!sys->default_interval)
+        sys->default_interval = WM_SYS_DEF_INTERVAL;
+
+    if (!sys->hw_interval)
+        sys->hw_interval = sys->default_interval;
+
+    if (!sys->os_interval)
+        sys->os_interval = sys->default_interval;
+
+    if (!sys->interfaces_interval)
+        sys->interfaces_interval = sys->default_interval;
+
+    if (!sys->programs_interval)
+        sys->programs_interval = sys->default_interval;
+
+    if (!sys->hotfixes_interval)
+        sys->hotfixes_interval = sys->default_interval;
+
+    if (!sys->ports_interval)
+        sys->ports_interval = sys->default_interval;
+
+    if (!sys->processes_interval)
+        sys->processes_interval = sys->default_interval;
 }
 
 // Get read data
@@ -292,7 +446,15 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
 
     if (sys->flags.enabled) cJSON_AddStringToObject(wm_sys,"disabled","no"); else cJSON_AddStringToObject(wm_sys,"disabled","yes");
     if (sys->flags.scan_on_start) cJSON_AddStringToObject(wm_sys,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_sys,"scan-on-start","no");
-    cJSON_AddNumberToObject(wm_sys,"interval",sys->interval);
+    cJSON_AddNumberToObject(wm_sys,"hw_interval",sys->hw_interval);
+    cJSON_AddNumberToObject(wm_sys,"os_interval",sys->os_interval);
+    cJSON_AddNumberToObject(wm_sys,"interfaces_interval",sys->interfaces_interval);
+    cJSON_AddNumberToObject(wm_sys,"programs_interval",sys->programs_interval);
+#ifdef WIN32
+    cJSON_AddNumberToObject(wm_sys,"hotfixes_interval",sys->hotfixes_interval);
+#endif
+    cJSON_AddNumberToObject(wm_sys,"ports_interval",sys->ports_interval);
+    cJSON_AddNumberToObject(wm_sys,"processes_interval",sys->processes_interval);
     if (sys->flags.netinfo) cJSON_AddStringToObject(wm_sys,"network","yes"); else cJSON_AddStringToObject(wm_sys,"network","no");
     if (sys->flags.osinfo) cJSON_AddStringToObject(wm_sys,"os","yes"); else cJSON_AddStringToObject(wm_sys,"os","no");
     if (sys->flags.hwinfo) cJSON_AddStringToObject(wm_sys,"hardware","yes"); else cJSON_AddStringToObject(wm_sys,"hardware","no");

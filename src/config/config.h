@@ -67,6 +67,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
 int Read_CReports(XML_NODE node, void *config1, void *config2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
+int Read_Inventory(const OS_XML *xml, xml_node *node, void *d1);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
 #ifndef WIN32
 int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1);
