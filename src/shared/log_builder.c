@@ -27,6 +27,16 @@
  */
 static int log_builder_update_hostname(log_builder_t * builder);
 
+/**
+ * @brief Update the host's IP value
+ *
+ * @param builder Pointer to a log builder structure.
+ * @post If the host IP cannot be updated, it's replaced by "0.0.0.0".
+ * @retval 0 If the host IP was updated successfully.
+ * @retval 1 If the host IP failed to be updated.
+ */
+static int log_builder_update_host_ip(log_builder_t * builder);
+
 // Initialize a log builder structure
 log_builder_t * log_builder_init(bool update) {
     log_builder_t * builder;
@@ -51,6 +61,7 @@ log_builder_t * log_builder_init(bool update) {
         log_builder_update(builder);
     } else {
         strncpy(builder->host_name, "localhost", LOG_BUILDER_HOSTNAME_LEN - 1);
+        strncpy(builder->host_ip, "0.0.0.0", INET6_ADDRSTRLEN - 1);
     }
 
     return builder;
@@ -67,6 +78,7 @@ int log_builder_update(log_builder_t * builder) {
     int result = 0;
 
     result = log_builder_update_hostname(builder) == 0 ? result : -1;
+    result = log_builder_update_host_ip(builder) == 0 ? result : -1;
 
     return result;
 }
@@ -156,6 +168,8 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
             }
         } else if (strcmp(param, "hostname") == 0) {
             field = builder->host_name;
+        } else if (strcmp(param, "host_ip") == 0) {
+            field = builder->host_ip;
         } else if (strcmp(param, "json_escaped_log") == 0) {
             field = escaped_log = wstr_escape_json(logmsg);
         } else {
@@ -218,4 +232,54 @@ int log_builder_update_hostname(log_builder_t * builder) {
 
     w_rwlock_unlock(&builder->rwlock);
     return retval;
+}
+
+// Update the host's IP value
+int log_builder_update_host_ip(log_builder_t * builder) {
+    char * host_ip = NULL;
+
+#ifdef WIN32
+    host_ip = get_win_agent_ip();
+
+    if (host_ip == NULL) {
+        mdebug1("Cannot update host IP.");
+    }
+
+#elif defined __linux__ || defined __MACH__
+    const char * REQUEST = "host_ip";
+    int sock = control_check_connection();
+
+    if (sock == -1) {
+        mdebug1("Cannot update host IP: The control module is not available: %s (%d)", strerror(errno), errno);
+    } else {
+        os_calloc(INET6_ADDRSTRLEN, sizeof(char), host_ip);
+
+        if (send(sock, REQUEST, strlen(REQUEST), 0) > 0) {
+            if (recv(sock, host_ip, INET6_ADDRSTRLEN - 1, 0) < 0) {
+                mdebug1("The control module did not respond: %s (%d).", strerror(errno), errno);
+                *host_ip = '\0';
+            }
+        }
+
+        close(sock);
+
+        if (*host_ip == '\0') {
+            os_free(host_ip);
+        }
+    }
+
+#endif
+    w_rwlock_wrlock(&builder->rwlock);
+
+    if (host_ip != NULL) {
+        strncpy(builder->host_ip, host_ip, INET6_ADDRSTRLEN - 1);
+        free(host_ip);
+    } else {
+        strncpy(builder->host_ip, "0.0.0.0", INET6_ADDRSTRLEN - 1);
+    }
+
+    builder->host_ip[INET6_ADDRSTRLEN - 1] = '\0';
+    w_rwlock_unlock(&builder->rwlock);
+
+    return 0;
 }

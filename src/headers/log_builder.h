@@ -28,6 +28,7 @@
  */
 typedef struct {
     char host_name[LOG_BUILDER_HOSTNAME_LEN];   ///< Host name
+    char host_ip[INET6_ADDRSTRLEN];             ///< Host's primary IP
     pthread_rwlock_t rwlock;                    ///< Mutex
 } log_builder_t;
 
@@ -65,6 +66,7 @@ int log_builder_update(log_builder_t * builder);
  * - $(timestamp): Current timestamp in RFC3164 format.
  * - $(timestamp <format>): Current timestamp, in strftime string format.
  * - $(hostname): System's host name.
+ * - $(host_ip): Host's primary IP.
  *
  * @param builder Pointer to a log builder structure.
  * @param pattern String holding the log format.
