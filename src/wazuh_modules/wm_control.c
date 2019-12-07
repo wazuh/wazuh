@@ -9,7 +9,6 @@
  * Foundation.
  */
 
-#ifdef CLIENT
 #if defined (__linux__) || defined (__MACH__)
 #include "wm_control.h"
 #include "syscollector/syscollector.h"
@@ -243,5 +242,5 @@ void *send_ip(){
     close(sock);
     return NULL;
 }
-#endif
+
 #endif
