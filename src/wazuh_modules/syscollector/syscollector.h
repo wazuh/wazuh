@@ -86,6 +86,56 @@
 #define HOMEBREW_APPS   "/usr/local/Cellar"
 #define INFO_FILE       "Contents/Info.plist"
 
+typedef enum sys_scan_event {
+    HW_SCAN,
+    OS_SCAN,
+    IFACE_SCAN,
+    PKG_SCAN,
+    HFIX_SCAN,
+    PORT_SCAN,
+    PROC_SCAN
+} sys_scan_event;
+
+typedef enum hw_event_type {
+    HW_ADD,
+    HW_MODIFY
+} hw_event_type;
+
+typedef enum os_event_type {
+    OS_ADD,
+    OS_MODIFY
+} os_event_type;
+
+typedef enum interface_event_type {
+    IFACE_ADD,
+    IFACE_MODIFY,
+    IFACE_DELETE
+} interface_event_type;
+
+typedef enum program_event_type {
+    PKG_ADD,
+    PKG_MODIFY,
+    PKG_DELETE
+} program_event_type;
+
+typedef enum hotfix_event_type {
+    HFIX_ADD,
+    HFIX_MODIFY,
+    HFIX_DELETE
+} hotfix_event_type;
+
+typedef enum port_event_type {
+    PORT_ADD,
+    PORT_MODIFY,
+    PORT_DELETE
+} port_event_type;
+
+typedef enum process_event_type {
+    PROC_ADD,
+    PROC_MODIFY,
+    PROC_DELETE
+} process_event_type;
+
 typedef struct hw_entry {
     char * board_serial;                    // Motherboard serial number
     char * cpu_name;                        // CPU name
@@ -323,8 +373,8 @@ void sys_ports_windows(const char* LOCATION, int check_all);
 
 // Installed packages inventory for Linux
 void sys_packages_linux(int queue_fd, const char* WM_SYS_LOCATION);
-void sys_deb_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id);
-void sys_rpm_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id);
+void sys_deb_packages(int queue_fd, const char* WM_SYS_LOCATION);
+void sys_rpm_packages(int queue_fd, const char* WM_SYS_LOCATION);
 
 #ifdef WIN32
 // Installed programs inventory for Windows
@@ -337,19 +387,19 @@ void sys_hotfixes(const char* LOCATION);
 interface_entry_data * get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO AdapterInfo);
 
 // Get values about a single program from the registry
-void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
+void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, const char * LOCATION);
 
 // Get values about a single hotfix from the registry
-void send_hotfix(const char *hotfix, int usec, const char *timestamp, int ID, const char *LOCATION);
+void send_hotfix(const char *hotfix, int usec, const char *timestamp, const char *LOCATION);
 
 // List installed programs from the registry
-void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
+void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const char * timestamp, const char * LOCATION);
 
 // List installed hotfixes from the registry
-void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const char *LOCATION);
+void list_hotfixes(HKEY hKey, int usec, const char *timestamp, const char *LOCATION);
 
 // List Windows users from the registry
-void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION);
+void list_users(HKEY hKey, int usec, const char * timestamp, const char * LOCATION);
 #endif
 
 #if defined(__FreeBSD__) || defined(__MACH__)
@@ -449,35 +499,20 @@ void free_port_data(port_entry_data * data);
 // Free process data
 void free_process_data(process_entry_data * data);
 
-// Compare two hardware structures
-int compare_hw(hw_entry * old_data, hw_entry * new_data);
-// Compare two operative system structures
-int compare_os(os_entry * old_data, os_entry * new_data);
-// Compare two interface structures
-int compare_interface(interface_entry_data * old_data, interface_entry_data * new_data);
-// Compare two program structures
-int compare_program(program_entry_data * old_data, program_entry_data * new_data);
-// Compare two hotfix structures
-int compare_hotfix(hotfix_entry_data * old_data, hotfix_entry_data * new_data);
-// Compare two port structures
-int compare_port(port_entry_data * old_data, port_entry_data * new_data);
-// Compare two process structures
-int compare_process(process_entry_data * old_data, process_entry_data * new_data);
-
 // Analyze if update the hardware information
-char * analyze_hw(hw_entry * entry_data, int random_id, const char * timestamp);
+char * analyze_hw(hw_entry * entry_data, const char * timestamp);
 // Analyze if update the operative system information
-char * analyze_os(os_entry * entry_data, int random_id, const char * timestamp);
+char * analyze_os(os_entry * entry_data, const char * timestamp);
 // Analyze if insert new interface or update an existing one
-char * analyze_interface(interface_entry_data * entry_data, int random_id, const char * timestamp);
+char * analyze_interface(interface_entry_data * entry_data, const char * timestamp);
 // Analyze if insert new program or update an existing one
-char * analyze_program(program_entry_data * entry_data, int random_id, const char * timestamp);
+char * analyze_program(program_entry_data * entry_data, const char * timestamp);
 // Analyze if insert new hotfix or update an existing one
-char * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char * timestamp);
+char * analyze_hotfix(hotfix_entry_data * entry_data, const char * timestamp);
 // Analyze if insert new port or update an existing one
-char * analyze_port(port_entry_data * entry_data, int random_id, const char * timestamp);
+char * analyze_port(port_entry_data * entry_data, const char * timestamp);
 // Analyze if insert new process or update an existing one
-char * analyze_process(process_entry_data * entry_data, int random_id, const char * timestamp);
+char * analyze_process(process_entry_data * entry_data, const char * timestamp);
 
 // Deletes the disabled interfaces from the hash table
 void check_disabled_interfaces();
@@ -501,19 +536,47 @@ void delete_entry(rb_tree * tree, const char * key);
 void print_rbtree(rb_tree * tree, pthread_mutex_t mutex);
 
 //
-cJSON * hw_json_event(hw_entry * new_data, int random_id, const char * timestamp);
+cJSON * hw_json_event(hw_entry * old_data, hw_entry * new_data, hw_event_type type, const char * timestamp);
 //
-cJSON * os_json_event(os_entry * new_data, int random_id, const char * timestamp);
+cJSON * hw_json_compare(hw_entry * old_data, hw_entry * new_data);
 //
-cJSON * interface_json_event(interface_entry_data * new_data, int random_id, const char * timestamp);
+cJSON * hw_json_attributes(hw_entry * data);
 //
-cJSON * program_json_event(program_entry_data * new_data, int random_id, const char * timestamp);
+cJSON * os_json_event(os_entry * old_data, os_entry * new_data, os_event_type type, const char * timestamp);
 //
-cJSON * hotfix_json_event(hotfix_entry_data * new_data, int random_id, const char * timestamp);
+cJSON * os_json_compare(os_entry * old_data, os_entry * new_data);
 //
-cJSON * port_json_event(port_entry_data * new_data, int random_id, const char * timestamp);
+cJSON * os_json_attributes(os_entry * data);
 //
-cJSON * process_json_event(process_entry_data * new_data, int random_id, const char * timestamp);
+cJSON * interface_json_event(interface_entry_data * old_data, interface_entry_data * new_data, interface_event_type type, const char * timestamp);
+//
+cJSON * interface_compare(interface_entry_data * old_data, interface_entry_data * new_data);
+//
+cJSON * interface_json_attributes(interface_entry_data * data);
+//
+cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, program_event_type type, const char * timestamp);
+//
+cJSON * program_json_compare(program_entry_data * old_data, program_entry_data * new_data);
+//
+cJSON * program_json_attributes(program_entry_data * data);
+//
+cJSON * hotfix_json_event(hotfix_entry_data * old_data, hotfix_entry_data * new_data, hotfix_event_type type, const char * timestamp);
+//
+cJSON * hotfix_json_compare(hotfix_entry_data * old_data, hotfix_entry_data * new_data);
+//
+cJSON * hotfix_json_attributes(hotfix_entry_data * data);
+//
+cJSON * port_json_event(port_entry_data * old_data, port_entry_data * new_data, port_event_type type, const char * timestamp);
+//
+cJSON * port_json_compare(port_entry_data * old_data, port_entry_data * new_data);
+//
+cJSON * port_json_attributes(port_entry_data * data);
+//
+cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, process_event_type type, const char * timestamp);
+//
+cJSON * process_json_compare(process_entry_data * old_data, process_entry_data * new_data);
+//
+cJSON * process_json_attributes(process_entry_data * data);
 
 #endif
 #endif

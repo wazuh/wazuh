@@ -56,14 +56,13 @@ void get_system_bsd(hw_entry * info);    // Get system information
 #if defined(__MACH__)
 OSHash *gateways;
 
-char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_id);
+char* sys_parse_pkg(const char * app_folder, const char * timestamp);
 
 // Get installed programs inventory
 
 void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
     char *format = "pkg";
-    int random_id = os_random();
     char *timestamp = w_get_timestamp(time(NULL));
     struct dirent *de;
     DIR *dr;
@@ -75,9 +74,6 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
 
     /* Set positive random ID for each event */
-
-    if (random_id < 0)
-        random_id = -random_id;
 
     dr = opendir(MAC_APPS);
 
@@ -93,7 +89,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             } else if (strstr(de->d_name, ".app")) {
                 snprintf(path, PATH_LENGTH - 1, "%s/%s", MAC_APPS, de->d_name);
                 char * string = NULL;
-                if (string = sys_parse_pkg(path, timestamp, random_id), string) {
+                if (string = sys_parse_pkg(path, timestamp), string) {
                     mtdebug2(WM_SYS_LOGTAG, "Sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                     free(string);
@@ -119,7 +115,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             } else if (strstr(de->d_name, ".app")) {
                 snprintf(path, PATH_LENGTH - 1, "%s/%s", UTILITIES, de->d_name);
                 char * string = NULL;
-                if (string = sys_parse_pkg(path, timestamp, random_id), string) {
+                if (string = sys_parse_pkg(path, timestamp), string) {
                     mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                     free(string);
@@ -194,7 +190,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
             // Check if it is necessary to create a program event
             char * string = NULL;
-            if (string = analyze_program(entry_data, random_id, timestamp), string) {
+            if (string = analyze_program(entry_data, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
                 wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                 free(string);
@@ -209,7 +205,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     check_uninstalled_programs();
 }
 
-char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_id) {
+char* sys_parse_pkg(const char * app_folder, const char * timestamp) {
 
     char *format = "pkg";
     char read_buff[OS_MAXSTR];
@@ -401,7 +397,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
 
         // Check if it is necessary to create a program event
         char * string = NULL;
-        string = analyze_program(entry_data, random_id, timestamp);
+        string = analyze_program(entry_data, timestamp);
 
         fclose(fp);
         return string;
@@ -421,7 +417,6 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     char *command;
     FILE *output;
     int i;
-    int random_id = os_random();
     char *timestamp = w_get_timestamp(time(NULL));
     int status;
 
@@ -431,9 +426,6 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
 
     /* Set positive random ID for each event */
-
-    if (random_id < 0)
-        random_id = -random_id;
 
     os_calloc(COMMAND_LENGTH, sizeof(char), command);
     snprintf(command, COMMAND_LENGTH - 1, "%s", "pkg query -a '\%n|%m|%v|%q|\%c'");
@@ -472,7 +464,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
             // Check if it is necessary to create a program event
             char * string = NULL;
-            if (string = analyze_program(entry_data, random_id, timestamp), string) {
+            if (string = analyze_program(entry_data, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
                 wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                 free(string);
@@ -498,13 +490,9 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
 void sys_hw_bsd(int queue_fd, const char* LOCATION){
 
-    int random_id = os_random();
     char *timestamp = w_get_timestamp(time(NULL));
 
     hw_entry * hw_data = NULL;
-
-    if (random_id < 0)
-        random_id = -random_id;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting Hardware inventory.");
 
@@ -578,7 +566,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
 
     // Check if it is necessary to create a hardware event
     char * string = NULL;
-    if (string = analyze_hw(hw_data, random_id, timestamp), string) {
+    if (string = analyze_hw(hw_data, timestamp), string) {
         mtdebug2(WM_SYS_LOGTAG, "Sending '%s'", string);
         SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
         free(string);
@@ -729,14 +717,10 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     char ** ifaces_list;
     int i = 0, size_ifaces = 0;
     struct ifaddrs *ifaddrs_ptr = NULL, *ifa;
-    int random_id = os_random();
     char *timestamp = w_get_timestamp(time(NULL));
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    if (random_id < 0)
-        random_id = -random_id;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
@@ -790,7 +774,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
         if (entry_data = getNetworkIface_bsd(ifaces_list[i], ifaddrs_ptr, gate), entry_data) {
             // Check if it is necessary to create an interface event
             char * string = NULL;
-            if (string = analyze_interface(entry_data, random_id, timestamp), string) {
+            if (string = analyze_interface(entry_data, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_network_bsd() sending '%s'", string);
                 wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                 free(string);
@@ -1291,11 +1275,6 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
 
     char *timestamp = w_get_timestamp(time(NULL));
 
-    int random_id = os_random();
-    if (random_id < 0) {
-        random_id = -random_id;
-    }
-
     // Define time to sleep between messages sent
     const int usec = 1000000 / wm_max_eps;
 
@@ -1406,7 +1385,7 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
 
             // Check if it is necessary to create a port event
             char * string = NULL;
-            if (string = analyze_port(entry_data, random_id, timestamp), string) {
+            if (string = analyze_port(entry_data, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_ports_mac() sending '%s'", string);
                 wm_sendmsg(usec, queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
                 free(string);
@@ -1424,11 +1403,6 @@ void sys_ports_mac(int queue_fd, const char* WM_SYS_LOCATION, int check_all) {
 }
 
 void sys_proc_mac(int queue_fd, const char* LOCATION){
-
-    int random_id = os_random();
-    if(random_id < 0) {
-        random_id = -random_id;
-    }
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -1527,7 +1501,7 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
 
         // Check if it is necessary to create a process event
         char * string = NULL;
-        if (string = analyze_process(entry_data, random_id, timestamp), string) {
+        if (string = analyze_process(entry_data, timestamp), string) {
             mtdebug2(WM_SYS_LOGTAG, "sys_proc_mac() sending '%s'", string);
             wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
             free(string);

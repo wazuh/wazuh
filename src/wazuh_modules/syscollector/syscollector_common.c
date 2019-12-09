@@ -20,6 +20,12 @@
 #define RUN_PORT      000000040
 #define RUN_PROC      000000100
 
+static const char *SYS_EVENT_TYPE[] = {
+    "added",
+    "modified",
+    "deleted"
+};
+
 wm_sys_t *sys = NULL;                           // Definition of global config
 
 static void* wm_sys_main(wm_sys_t *sys);        // Module main function. It won't return
@@ -95,7 +101,10 @@ void* wm_sys_main(wm_sys_t *sys) {
     } else {
         // Wait for Wazuh DB start
         wm_delay(1000);
-        run |= (RUN_HW | RUN_OS | RUN_IFACE | RUN_PKG | RUN_HFIX | RUN_PORT | RUN_PROC);
+        run |= (RUN_HW | RUN_OS | RUN_IFACE | RUN_PKG | RUN_PORT | RUN_PROC);
+    #ifdef WIN32
+        run |= RUN_HFIX;
+    #endif
     }
 
     // Main loop
@@ -921,545 +930,8 @@ void free_process_data(process_entry_data * data) {
     os_free(data);
 }
 
-// Compare two hardware structures
-int compare_hw(hw_entry * old_data, hw_entry * new_data) {
-    if (old_data->board_serial && new_data->board_serial) {
-        if (strcmp(old_data->board_serial, new_data->board_serial)) {
-           return 0;
-        }
-    } else if ((!old_data->board_serial && new_data->board_serial) || (old_data->board_serial && !new_data->board_serial)) {
-        return 0;
-    }
-    if (old_data->cpu_name && new_data->cpu_name) {
-        if (strcmp(old_data->cpu_name, new_data->cpu_name)) {
-           return 0;
-        }
-    } else if ((!old_data->cpu_name && new_data->cpu_name) || (old_data->cpu_name && !new_data->cpu_name)) {
-        return 0;
-    }
-    return (old_data->cpu_cores == new_data->cpu_cores &&
-            old_data->cpu_MHz == new_data->cpu_MHz &&
-            old_data->ram_total == new_data->ram_total &&
-            old_data->ram_free == new_data->ram_free &&
-            old_data->ram_usage == new_data->ram_usage);
-}
-
-// Compare two operative system structures
-int compare_os(os_entry * old_data, os_entry * new_data) {
-    if (old_data->hostname && new_data->hostname) {
-        if (strcmp(old_data->hostname, new_data->hostname)) {
-           return 0;
-        }
-    } else if ((!old_data->hostname && new_data->hostname) || (old_data->hostname && !new_data->hostname)) {
-        return 0;
-    }
-    if (old_data->architecture && new_data->architecture) {
-        if (strcmp(old_data->architecture, new_data->architecture)) {
-           return 0;
-        }
-    } else if ((!old_data->architecture && new_data->architecture) || (old_data->architecture && !new_data->architecture)) {
-        return 0;
-    }
-    if (old_data->os_name && new_data->os_name) {
-        if (strcmp(old_data->os_name, new_data->os_name)) {
-           return 0;
-        }
-    } else if ((!old_data->os_name && new_data->os_name) || (old_data->os_name && !new_data->os_name)) {
-        return 0;
-    }
-    if (old_data->os_release && new_data->os_release) {
-        if (strcmp(old_data->os_release, new_data->os_release)) {
-           return 0;
-        }
-    } else if ((!old_data->os_release && new_data->os_release) || (old_data->os_release && !new_data->os_release)) {
-        return 0;
-    }
-    if (old_data->os_version && new_data->os_version) {
-        if (strcmp(old_data->os_version, new_data->os_version)) {
-           return 0;
-        }
-    } else if ((!old_data->os_version && new_data->os_version) || (old_data->os_version && !new_data->os_version)) {
-        return 0;
-    }
-    if (old_data->os_codename && new_data->os_codename) {
-        if (strcmp(old_data->os_codename, new_data->os_codename)) {
-           return 0;
-        }
-    } else if ((!old_data->os_codename && new_data->os_codename) || (old_data->os_codename && !new_data->os_codename)) {
-        return 0;
-    }
-    if (old_data->os_major && new_data->os_major) {
-        if (strcmp(old_data->os_major, new_data->os_major)) {
-           return 0;
-        }
-    } else if ((!old_data->os_major && new_data->os_major) || (old_data->os_major && !new_data->os_major)) {
-        return 0;
-    }
-    if (old_data->os_minor && new_data->os_minor) {
-        if (strcmp(old_data->os_minor, new_data->os_minor)) {
-           return 0;
-        }
-    } else if ((!old_data->os_minor && new_data->os_minor) || (old_data->os_minor && !new_data->os_minor)) {
-        return 0;
-    }
-    if (old_data->os_build && new_data->os_build) {
-        if (strcmp(old_data->os_build, new_data->os_build)) {
-           return 0;
-        }
-    } else if ((!old_data->os_build && new_data->os_build) || (old_data->os_build && !new_data->os_build)) {
-        return 0;
-    }
-    if (old_data->os_platform && new_data->os_platform) {
-        if (strcmp(old_data->os_platform, new_data->os_platform)) {
-           return 0;
-        }
-    } else if ((!old_data->os_platform && new_data->os_platform) || (old_data->os_platform && !new_data->os_platform)) {
-        return 0;
-    }
-    if (old_data->sysname && new_data->sysname) {
-        if (strcmp(old_data->sysname, new_data->sysname)) {
-           return 0;
-        }
-    } else if ((!old_data->sysname && new_data->sysname) || (old_data->sysname && !new_data->sysname)) {
-        return 0;
-    }
-    if (old_data->release && new_data->release) {
-        if (strcmp(old_data->release, new_data->release)) {
-           return 0;
-        }
-    } else if ((!old_data->release && new_data->release) || (old_data->release && !new_data->release)) {
-        return 0;
-    }
-    if (old_data->version && new_data->version) {
-        if (strcmp(old_data->version, new_data->version)) {
-           return 0;
-        }
-    } else if ((!old_data->version && new_data->version) || (old_data->version && !new_data->version)) {
-        return 0;
-    }
-    return 1;
-}
-
-// Compare two interface structures
-int compare_interface(interface_entry_data * old_data, interface_entry_data * new_data) {
-    if (old_data->name && new_data->name) {
-        if (strcmp(old_data->name, new_data->name)) {
-           return 0;
-        }
-    } else if ((!old_data->name && new_data->name) || (old_data->name && !new_data->name)) {
-        return 0;
-    }
-    if (old_data->adapter && new_data->adapter) {
-        if (strcmp(old_data->adapter, new_data->adapter)) {
-           return 0;
-        }
-    } else if ((!old_data->adapter && new_data->adapter) || (old_data->adapter && !new_data->adapter)) {
-        return 0;
-    }
-    if (old_data->type && new_data->type) {
-        if (strcmp(old_data->type, new_data->type)) {
-           return 0;
-        }
-    } else if ((!old_data->type && new_data->type) || (old_data->type && !new_data->type)) {
-        return 0;
-    }
-    if (old_data->state && new_data->state) {
-        if (strcmp(old_data->state, new_data->state)) {
-           return 0;
-        }
-    } else if ((!old_data->state && new_data->state) || (old_data->state && !new_data->state)) {
-        return 0;
-    }
-    if (old_data->mac && new_data->mac) {
-        if (strcmp(old_data->mac, new_data->mac)) {
-           return 0;
-        }
-    } else if ((!old_data->mac && new_data->mac) || (old_data->mac && !new_data->mac)) {
-        return 0;
-    }
-    if (old_data->ipv4 && new_data->ipv4) {
-        if (old_data->ipv4->address && new_data->ipv4->address) {
-            int i;
-            for (i = 0; old_data->ipv4->address[i] && new_data->ipv4->address[i]; i++) {
-                if (strcmp(old_data->ipv4->address[i], new_data->ipv4->address[i])) {
-                    return 0;
-                }
-            }
-            if ((!old_data->ipv4->address[i] && new_data->ipv4->address[i]) || (old_data->ipv4->address[i] && !new_data->ipv4->address[i])) {
-                return 0;
-            }
-        } else if ((!old_data->ipv4->address && new_data->ipv4->address) || (old_data->ipv4->address && !new_data->ipv4->address)) {
-            return 0;
-        }
-        if (old_data->ipv4->netmask && new_data->ipv4->netmask) {
-            int i;
-            for (i = 0; old_data->ipv4->netmask[i] && new_data->ipv4->netmask[i]; i++) {
-                if (strcmp(old_data->ipv4->netmask[i], new_data->ipv4->netmask[i])) {
-                    return 0;
-                }
-            }
-            if ((!old_data->ipv4->netmask[i] && new_data->ipv4->netmask[i]) || (old_data->ipv4->netmask[i] && !new_data->ipv4->netmask[i])) {
-                return 0;
-            }
-        } else if ((!old_data->ipv4->netmask && new_data->ipv4->netmask) || (old_data->ipv4->netmask && !new_data->ipv4->netmask)) {
-            return 0;
-        }
-        if (old_data->ipv4->broadcast && new_data->ipv4->broadcast) {
-            int i;
-            for (i = 0; old_data->ipv4->broadcast[i] && new_data->ipv4->broadcast[i]; i++) {
-                if (strcmp(old_data->ipv4->broadcast[i], new_data->ipv4->broadcast[i])) {
-                    return 0;
-                }
-            }
-            if ((!old_data->ipv4->broadcast[i] && new_data->ipv4->broadcast[i]) || (old_data->ipv4->broadcast[i] && !new_data->ipv4->broadcast[i])) {
-                return 0;
-            }
-        } else if ((!old_data->ipv4->broadcast && new_data->ipv4->broadcast) || (old_data->ipv4->broadcast && !new_data->ipv4->broadcast)) {
-            return 0;
-        }
-        if (old_data->ipv4->metric != new_data->ipv4->metric) {
-            return 0;
-        }
-        if (old_data->ipv4->gateway && new_data->ipv4->gateway) {
-            if (strcmp(old_data->ipv4->gateway, new_data->ipv4->gateway)) {
-                return 0;
-            }
-        } else if ((!old_data->ipv4->gateway && new_data->ipv4->gateway) || (old_data->ipv4->gateway && !new_data->ipv4->gateway)) {
-            return 0;
-        }
-        if (old_data->ipv4->dhcp && new_data->ipv4->dhcp) {
-            if (strcmp(old_data->ipv4->dhcp, new_data->ipv4->dhcp)) {
-                return 0;
-            }
-        } else if ((!old_data->ipv4->dhcp && new_data->ipv4->dhcp) || (old_data->ipv4->dhcp && !new_data->ipv4->dhcp)) {
-            return 0;
-        }
-    } else if ((!old_data->ipv4 && new_data->ipv4) || (old_data->ipv4 && !new_data->ipv4)) {
-        return 0;
-    }
-    if (old_data->ipv6 && new_data->ipv6) {
-        if (old_data->ipv6->address && new_data->ipv6->address) {
-            int i;
-            for (i = 0; old_data->ipv6->address[i] && new_data->ipv6->address[i]; i++) {
-                if (strcmp(old_data->ipv6->address[i], new_data->ipv6->address[i])) {
-                    return 0;
-                }
-            }
-            if ((!old_data->ipv6->address[i] && new_data->ipv6->address[i]) || (old_data->ipv6->address[i] && !new_data->ipv6->address[i])) {
-                return 0;
-            }
-        } else if ((!old_data->ipv6->address && new_data->ipv6->address) || (old_data->ipv6->address && !new_data->ipv6->address)) {
-            return 0;
-        }
-        if (old_data->ipv6->netmask && new_data->ipv6->netmask) {
-            int i;
-            for (i = 0; old_data->ipv6->netmask[i] && new_data->ipv6->netmask[i]; i++) {
-                if (strcmp(old_data->ipv6->netmask[i], new_data->ipv6->netmask[i])) {
-                    return 0;
-                }
-            }
-            if ((!old_data->ipv6->netmask[i] && new_data->ipv6->netmask[i]) || (old_data->ipv6->netmask[i] && !new_data->ipv6->netmask[i])) {
-                return 0;
-            }
-        } else if ((!old_data->ipv6->netmask && new_data->ipv6->netmask) || (old_data->ipv6->netmask && !new_data->ipv6->netmask)) {
-            return 0;
-        }
-        if (old_data->ipv6->broadcast && new_data->ipv6->broadcast) {
-            int i;
-            for (i = 0; old_data->ipv6->broadcast[i] && new_data->ipv6->broadcast[i]; i++) {
-                if (strcmp(old_data->ipv6->broadcast[i], new_data->ipv6->broadcast[i])) {
-                    return 0;
-                }
-            }
-            if ((!old_data->ipv6->broadcast[i] && new_data->ipv6->broadcast[i]) || (old_data->ipv6->broadcast[i] && !new_data->ipv6->broadcast[i])) {
-                return 0;
-            }
-        } else if ((!old_data->ipv6->broadcast && new_data->ipv6->broadcast) || (old_data->ipv6->broadcast && !new_data->ipv6->broadcast)) {
-            return 0;
-        }
-        if (old_data->ipv6->metric != new_data->ipv6->metric) {
-            return 0;
-        }
-        if (old_data->ipv6->gateway && new_data->ipv6->gateway) {
-            if (strcmp(old_data->ipv6->gateway, new_data->ipv6->gateway)) {
-                return 0;
-            }
-        } else if ((!old_data->ipv6->gateway && new_data->ipv6->gateway) || (old_data->ipv6->gateway && !new_data->ipv6->gateway)) {
-            return 0;
-        }
-        if (old_data->ipv6->dhcp && new_data->ipv6->dhcp) {
-            if (strcmp(old_data->ipv6->dhcp, new_data->ipv6->dhcp)) {
-                return 0;
-            }
-        } else if ((!old_data->ipv6->dhcp && new_data->ipv6->dhcp) || (old_data->ipv6->dhcp && !new_data->ipv6->dhcp)) {
-            return 0;
-        }
-    } else if ((!old_data->ipv6 && new_data->ipv6) || (old_data->ipv6 && !new_data->ipv6)) {
-        return 0;
-    }
-    return (old_data->mtu == new_data->mtu &&
-            old_data->tx_packets == new_data->tx_packets &&
-            old_data->rx_packets == new_data->rx_packets &&
-            old_data->tx_bytes == new_data->tx_bytes &&
-            old_data->rx_bytes == new_data->rx_bytes &&
-            old_data->tx_errors == new_data->tx_errors &&
-            old_data->rx_errors == new_data->rx_errors &&
-            old_data->tx_dropped == new_data->tx_dropped &&
-            old_data->rx_dropped == new_data->rx_dropped);
-}
-
-// Compare two program structures
-int compare_program(program_entry_data * old_data, program_entry_data * new_data) {
-    if (old_data->format && new_data->format) {
-        if (strcmp(old_data->format, new_data->format)) {
-           return 0;
-        }
-    } else if ((!old_data->format && new_data->format) || (old_data->format && !new_data->format)) {
-        return 0;
-    }
-    if (old_data->name && new_data->name) {
-        if (strcmp(old_data->name, new_data->name)) {
-           return 0;
-        }
-    } else if ((!old_data->name && new_data->name) || (old_data->name && !new_data->name)) {
-        return 0;
-    }
-    if (old_data->priority && new_data->priority) {
-        if (strcmp(old_data->priority, new_data->priority)) {
-           return 0;
-        }
-    } else if ((!old_data->priority && new_data->priority) || (old_data->priority && !new_data->priority)) {
-        return 0;
-    }
-    if (old_data->group && new_data->group) {
-        if (strcmp(old_data->group, new_data->group)) {
-           return 0;
-        }
-    } else if ((!old_data->group && new_data->group) || (old_data->group && !new_data->group)) {
-        return 0;
-    }
-    if (old_data->vendor && new_data->vendor) {
-        if (strcmp(old_data->vendor, new_data->vendor)) {
-           return 0;
-        }
-    } else if ((!old_data->vendor && new_data->vendor) || (old_data->vendor && !new_data->vendor)) {
-        return 0;
-    }
-    if (old_data->install_time && new_data->install_time) {
-        if (strcmp(old_data->install_time, new_data->install_time)) {
-           return 0;
-        }
-    } else if ((!old_data->install_time && new_data->install_time) || (old_data->install_time && !new_data->install_time)) {
-        return 0;
-    }
-    if (old_data->version && new_data->version) {
-        if (strcmp(old_data->version, new_data->version)) {
-           return 0;
-        }
-    } else if ((!old_data->version && new_data->version) || (old_data->version && !new_data->version)) {
-        return 0;
-    }
-    if (old_data->architecture && new_data->architecture) {
-        if (strcmp(old_data->architecture, new_data->architecture)) {
-           return 0;
-        }
-    } else if ((!old_data->architecture && new_data->architecture) || (old_data->architecture && !new_data->architecture)) {
-        return 0;
-    }
-    if (old_data->multi_arch && new_data->multi_arch) {
-        if (strcmp(old_data->multi_arch, new_data->multi_arch)) {
-           return 0;
-        }
-    } else if ((!old_data->multi_arch && new_data->multi_arch) || (old_data->multi_arch && !new_data->multi_arch)) {
-        return 0;
-    }
-    if (old_data->source && new_data->source) {
-        if (strcmp(old_data->source, new_data->source)) {
-           return 0;
-        }
-    } else if ((!old_data->source && new_data->source) || (old_data->source && !new_data->source)) {
-        return 0;
-    }
-    if (old_data->description && new_data->description) {
-        if (strcmp(old_data->description, new_data->description)) {
-           return 0;
-        }
-    } else if ((!old_data->description && new_data->description) || (old_data->description && !new_data->description)) {
-        return 0;
-    }
-    if (old_data->location && new_data->location) {
-        if (strcmp(old_data->location, new_data->location)) {
-           return 0;
-        }
-    } else if ((!old_data->location && new_data->location) || (old_data->location && !new_data->location)) {
-        return 0;
-    }
-    return (old_data->size == new_data->size);
-}
-
-// Compare two hotfix structures
-int compare_hotfix(hotfix_entry_data * old_data, hotfix_entry_data * new_data) {
-    if (old_data->hotfix && new_data->hotfix) {
-        if (strcmp(old_data->hotfix, new_data->hotfix)) {
-           return 0;
-        }
-    } else if ((!old_data->hotfix && new_data->hotfix) || (old_data->hotfix && !new_data->hotfix)) {
-        return 0;
-    }
-    return 1;
-}
-
-// Compare two port structures
-int compare_port(port_entry_data * old_data, port_entry_data * new_data) {
-    if (old_data->protocol && new_data->protocol) {
-        if (strcmp(old_data->protocol, new_data->protocol)) {
-           return 0;
-        }
-    } else if ((!old_data->protocol && new_data->protocol) || (old_data->protocol && !new_data->protocol)) {
-        return 0;
-    }
-    if (old_data->local_ip && new_data->local_ip) {
-        if (strcmp(old_data->local_ip, new_data->local_ip)) {
-           return 0;
-        }
-    } else if ((!old_data->local_ip && new_data->local_ip) || (old_data->local_ip && !new_data->local_ip)) {
-        return 0;
-    }
-    if (old_data->remote_ip && new_data->remote_ip) {
-        if (strcmp(old_data->remote_ip, new_data->remote_ip)) {
-           return 0;
-        }
-    } else if ((!old_data->remote_ip && new_data->remote_ip) || (old_data->remote_ip && !new_data->remote_ip)) {
-        return 0;
-    }
-    if (old_data->state && new_data->state) {
-        if (strcmp(old_data->state, new_data->state)) {
-           return 0;
-        }
-    } else if ((!old_data->state && new_data->state) || (old_data->state && !new_data->state)) {
-        return 0;
-    }
-    if (old_data->process && new_data->process) {
-        if (strcmp(old_data->process, new_data->process)) {
-           return 0;
-        }
-    } else if ((!old_data->process && new_data->process) || (old_data->process && !new_data->process)) {
-        return 0;
-    }
-    return (old_data->local_port == new_data->local_port &&
-            old_data->remote_port == new_data->remote_port &&
-            old_data->tx_queue == new_data->tx_queue &&
-            old_data->rx_queue == new_data->rx_queue &&
-            old_data->inode == new_data->inode &&
-            old_data->pid == new_data->pid);
-}
-
-// Compare two process structures
-int compare_process(process_entry_data * old_data, process_entry_data * new_data) {
-    if (old_data->name && new_data->name) {
-        if (strcmp(old_data->name, new_data->name)) {
-           return 0;
-        }
-    } else if ((!old_data->name && new_data->name) || (old_data->name && !new_data->name)) {
-        return 0;
-    }
-    if (old_data->cmd && new_data->cmd) {
-        if (strcmp(old_data->cmd, new_data->cmd)) {
-           return 0;
-        }
-    } else if ((!old_data->cmd && new_data->cmd) || (old_data->cmd && !new_data->cmd)) {
-        return 0;
-    }
-    if (old_data->argvs && new_data->argvs) {
-        int i;
-        for (i = 0; old_data->argvs[i] && new_data->argvs[i]; i++) {
-            if (strcmp(old_data->argvs[i], new_data->argvs[i])) {
-                return 0;
-            }
-        }
-        if ((!old_data->argvs[i] && new_data->argvs[i]) || (old_data->argvs[i] && !new_data->argvs[i])) {
-            return 0;
-        }
-    } else if ((!old_data->argvs && new_data->argvs) || (old_data->argvs && !new_data->argvs)) {
-        return 0;
-    }
-    if (old_data->state && new_data->state) {
-        if (strcmp(old_data->state, new_data->state)) {
-           return 0;
-        }
-    } else if ((!old_data->state && new_data->state) || (old_data->state && !new_data->state)) {
-        return 0;
-    }
-    if (old_data->euser && new_data->euser) {
-        if (strcmp(old_data->euser, new_data->euser)) {
-           return 0;
-        }
-    } else if ((!old_data->euser && new_data->euser) || (old_data->euser && !new_data->euser)) {
-        return 0;
-    }
-    if (old_data->ruser && new_data->ruser) {
-        if (strcmp(old_data->ruser, new_data->ruser)) {
-           return 0;
-        }
-    } else if ((!old_data->ruser && new_data->ruser) || (old_data->ruser && !new_data->ruser)) {
-        return 0;
-    }
-    if (old_data->suser && new_data->suser) {
-        if (strcmp(old_data->suser, new_data->suser)) {
-           return 0;
-        }
-    } else if ((!old_data->suser && new_data->suser) || (old_data->suser && !new_data->suser)) {
-        return 0;
-    }
-    if (old_data->egroup && new_data->egroup) {
-        if (strcmp(old_data->egroup, new_data->egroup)) {
-           return 0;
-        }
-    } else if ((!old_data->egroup && new_data->egroup) || (old_data->egroup && !new_data->egroup)) {
-        return 0;
-    }
-    if (old_data->rgroup && new_data->rgroup) {
-        if (strcmp(old_data->rgroup, new_data->rgroup)) {
-           return 0;
-        }
-    } else if ((!old_data->rgroup && new_data->rgroup) || (old_data->rgroup && !new_data->rgroup)) {
-        return 0;
-    }
-    if (old_data->sgroup && new_data->sgroup) {
-        if (strcmp(old_data->sgroup, new_data->sgroup)) {
-           return 0;
-        }
-    } else if ((!old_data->sgroup && new_data->sgroup) || (old_data->sgroup && !new_data->sgroup)) {
-        return 0;
-    }
-    if (old_data->fgroup && new_data->fgroup) {
-        if (strcmp(old_data->fgroup, new_data->fgroup)) {
-           return 0;
-        }
-    } else if ((!old_data->fgroup && new_data->fgroup) || (old_data->fgroup && !new_data->fgroup)) {
-        return 0;
-    }
-    return (old_data->pid == new_data->pid &&
-            old_data->ppid == new_data->ppid &&
-            old_data->priority == new_data->priority &&
-            old_data->nice == new_data->nice &&
-            old_data->size == new_data->size &&
-            old_data->vm_size == new_data->vm_size &&
-            old_data->resident == new_data->resident &&
-            old_data->share == new_data->share &&
-            old_data->start_time == new_data->start_time &&
-            old_data->utime == new_data->utime &&
-            old_data->stime == new_data->stime &&
-            old_data->pgrp == new_data->pgrp &&
-            old_data->session == new_data->session &&
-            old_data->nlwp == new_data->nlwp &&
-            old_data->tgid == new_data->tgid &&
-            old_data->tty == new_data->tty &&
-            old_data->processor == new_data->processor);
-}
-
 // Analyze if update the hardware information
-char * analyze_hw(hw_entry * entry_data, int random_id, const char * timestamp) {
+char * analyze_hw(hw_entry * entry_data, const char * timestamp) {
     cJSON * json_event = NULL;
     char * string = NULL;
 
@@ -1471,11 +943,12 @@ char * analyze_hw(hw_entry * entry_data, int random_id, const char * timestamp) 
 
     w_mutex_lock(&sys->hardware_mutex);
 
-    if (!compare_hw(sys->hw_data, entry_data)) {
+    if (json_event = hw_json_event(sys->hw_data, entry_data, sys->hw_data ? HW_MODIFY : HW_ADD, timestamp), json_event) {
         free_hw_data(sys->hw_data);
         sys->hw_data = entry_data;
 
-        json_event = hw_json_event(entry_data, random_id, timestamp);
+        string = cJSON_PrintUnformatted(json_event);
+        cJSON_Delete(json_event);
     }
     else {
         free_hw_data(entry_data);
@@ -1483,16 +956,11 @@ char * analyze_hw(hw_entry * entry_data, int random_id, const char * timestamp) 
 
     w_mutex_unlock(&sys->hardware_mutex);
 
-    if (json_event) {
-        string = cJSON_PrintUnformatted(json_event);
-        cJSON_Delete(json_event);
-    }
-
     return string;
 }
 
 // Analyze if update the operative system information
-char * analyze_os(os_entry * entry_data, int random_id, const char * timestamp) {
+char * analyze_os(os_entry * entry_data, const char * timestamp) {
     cJSON * json_event = NULL;
     char * string = NULL;
 
@@ -1504,11 +972,12 @@ char * analyze_os(os_entry * entry_data, int random_id, const char * timestamp) 
 
     w_mutex_lock(&sys->os_mutex);
 
-    if (!compare_os(sys->os_data, entry_data)) {
+    if (json_event = os_json_event(sys->os_data, entry_data, sys->os_data ? OS_MODIFY : OS_ADD, timestamp), json_event) {
         free_os_data(sys->os_data);
         sys->os_data = entry_data;
 
-        json_event = os_json_event(entry_data, random_id, timestamp);
+        string = cJSON_PrintUnformatted(json_event);
+        cJSON_Delete(json_event);
     }
     else {
         free_os_data(entry_data);
@@ -1516,16 +985,11 @@ char * analyze_os(os_entry * entry_data, int random_id, const char * timestamp) 
 
     w_mutex_unlock(&sys->os_mutex);
 
-    if (json_event) {
-        string = cJSON_PrintUnformatted(json_event);
-        cJSON_Delete(json_event);
-    }
-
     return string;
 }
 
 // Analyze if insert new interface or update an existing one
-char * analyze_interface(interface_entry_data * entry_data, int random_id, const char * timestamp) {
+char * analyze_interface(interface_entry_data * entry_data, const char * timestamp) {
     cJSON * json_event = NULL;
     interface_entry_data * saved_data = NULL;
     char * key = NULL;
@@ -1553,12 +1017,12 @@ char * analyze_interface(interface_entry_data * entry_data, int random_id, const
             free(key);
             return NULL;
         }
-        json_event = interface_json_event(entry_data, random_id, timestamp);
+        json_event = interface_json_event(NULL, entry_data, IFACE_ADD, timestamp);
     }
     else {
         // Checking for changes
         saved_data->enabled = 1;
-        if (!compare_interface(saved_data, entry_data)) {
+        if (json_event = interface_json_event(saved_data, entry_data, IFACE_MODIFY, timestamp), json_event) {
             if (update_entry(sys->interfaces_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->interfaces_entry_mutex);
                 free_interface_data(entry_data);
@@ -1566,7 +1030,6 @@ char * analyze_interface(interface_entry_data * entry_data, int random_id, const
                 free(key);
                 return NULL;
             }
-            json_event = interface_json_event(entry_data, random_id, timestamp);
         }
         else {
             free_interface_data(entry_data);
@@ -1586,7 +1049,7 @@ char * analyze_interface(interface_entry_data * entry_data, int random_id, const
 }
 
 // Analyze if insert new program or update an existing one
-char * analyze_program(program_entry_data * entry_data, int random_id, const char * timestamp) {
+char * analyze_program(program_entry_data * entry_data, const char * timestamp) {
     cJSON * json_event = NULL;
     program_entry_data * saved_data = NULL;
     char * key = NULL;
@@ -1626,12 +1089,12 @@ char * analyze_program(program_entry_data * entry_data, int random_id, const cha
             free(key);
             return NULL;
         }
-        json_event = program_json_event(entry_data, random_id, timestamp);
+        json_event = program_json_event(NULL, entry_data, PKG_ADD, timestamp);
     }
     else {
         // Checking for changes
         saved_data->installed = 1;
-        if (!compare_program(saved_data, entry_data)) {
+        if (json_event = program_json_event(saved_data, entry_data, PKG_MODIFY, timestamp), json_event) {
             if (update_entry(sys->programs_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->programs_entry_mutex);
                 free_program_data(entry_data);
@@ -1639,7 +1102,6 @@ char * analyze_program(program_entry_data * entry_data, int random_id, const cha
                 free(key);
                 return NULL;
             }
-            json_event = program_json_event(entry_data, random_id, timestamp);
         }
         else {
             free_program_data(entry_data);
@@ -1659,7 +1121,7 @@ char * analyze_program(program_entry_data * entry_data, int random_id, const cha
 }
 
 // Analyze if insert new hotfix or update an existing one
-char * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char * timestamp) {
+char * analyze_hotfix(hotfix_entry_data * entry_data, const char * timestamp) {
     cJSON * json_event = NULL;
     hotfix_entry_data * saved_data = NULL;
     char * key = NULL;
@@ -1687,12 +1149,12 @@ char * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char 
             free(key);
             return NULL;
         }
-        json_event = hotfix_json_event(entry_data, random_id, timestamp);
+        json_event = hotfix_json_event(NULL, entry_data, HFIX_ADD, timestamp);
     }
     else {
         // Checking for changes
         saved_data->installed = 1;
-        if (!compare_hotfix(saved_data, entry_data)) {
+        if (json_event = hotfix_json_event(saved_data, entry_data, HFIX_MODIFY, timestamp), json_event) {
             if (update_entry(sys->hotfixes_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->hotfixes_entry_mutex);
                 free_hotfix_data(entry_data);
@@ -1700,7 +1162,6 @@ char * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char 
                 free(key);
                 return NULL;
             }
-            json_event = hotfix_json_event(entry_data, random_id, timestamp);
         }
         else {
             free_hotfix_data(entry_data);
@@ -1720,7 +1181,7 @@ char * analyze_hotfix(hotfix_entry_data * entry_data, int random_id, const char 
 }
 
 // Analyze if insert new port or update an existing one
-char * analyze_port(port_entry_data * entry_data, int random_id, const char * timestamp) {
+char * analyze_port(port_entry_data * entry_data, const char * timestamp) {
     cJSON * json_event = NULL;
     port_entry_data * saved_data = NULL;
     char * key = NULL;
@@ -1754,12 +1215,12 @@ char * analyze_port(port_entry_data * entry_data, int random_id, const char * ti
             free(key);
             return NULL;
         }
-        json_event = port_json_event(entry_data, random_id, timestamp);
+        json_event = port_json_event(NULL, entry_data, PORT_ADD, timestamp);
     }
     else {
         // Checking for changes
         saved_data->opened = 1;
-        if (!compare_port(saved_data, entry_data)) {
+        if (json_event = port_json_event(saved_data, entry_data, PORT_MODIFY, timestamp), json_event) {
             if (update_entry(sys->ports_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->ports_entry_mutex);
                 free_port_data(entry_data);
@@ -1767,7 +1228,6 @@ char * analyze_port(port_entry_data * entry_data, int random_id, const char * ti
                 free(key);
                 return NULL;
             }
-            json_event = port_json_event(entry_data, random_id, timestamp);
         }
         else {
             free_port_data(entry_data);
@@ -1787,7 +1247,7 @@ char * analyze_port(port_entry_data * entry_data, int random_id, const char * ti
 }
 
 // Analyze if insert new process or update an existing one
-char * analyze_process(process_entry_data * entry_data, int random_id, const char * timestamp) {
+char * analyze_process(process_entry_data * entry_data, const char * timestamp) {
     cJSON * json_event = NULL;
     process_entry_data * saved_data = NULL;
     char * key = NULL;
@@ -1816,12 +1276,12 @@ char * analyze_process(process_entry_data * entry_data, int random_id, const cha
             free(key);
             return NULL;
         }
-        json_event = process_json_event(entry_data, random_id, timestamp);
+        json_event = process_json_event(NULL, entry_data, PROC_ADD, timestamp);
     }
     else {
         // Checking for changes
         saved_data->running = 1;
-        if (!compare_process(saved_data, entry_data)) {
+        if (json_event = process_json_event(saved_data, entry_data, PROC_MODIFY, timestamp), json_event) {
             if (update_entry(sys->processes_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->processes_entry_mutex);
                 free_process_data(entry_data);
@@ -1829,7 +1289,6 @@ char * analyze_process(process_entry_data * entry_data, int random_id, const cha
                 free(key);
                 return NULL;
             }
-            json_event = process_json_event(entry_data, random_id, timestamp);
         }
         else {
             free_process_data(entry_data);
@@ -2049,459 +1508,6 @@ void delete_entry(rb_tree * tree, const char * key) {
     }
 }
 
-//
-cJSON * hw_json_event(hw_entry * new_data, int random_id, const char * timestamp) {
-    cJSON *object = cJSON_CreateObject();
-    cJSON *hw_inventory = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(object, "type", "hardware");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    cJSON_AddItemToObject(object, "inventory", hw_inventory);
-
-    cJSON_AddStringToObject(hw_inventory, "board_serial", new_data->board_serial);
-    if (new_data->cpu_name) {
-        cJSON_AddStringToObject(hw_inventory, "cpu_name", new_data->cpu_name);
-    }
-    if (new_data->cpu_cores > INT_MIN) {
-        cJSON_AddNumberToObject(hw_inventory, "cpu_cores", new_data->cpu_cores);
-    }
-    if (new_data->cpu_MHz > 0.0) {
-        cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", new_data->cpu_MHz);
-    }
-    if (new_data->ram_total > LONG_MIN) {
-        cJSON_AddNumberToObject(hw_inventory, "ram_total", new_data->ram_total);
-    }
-    if (new_data->ram_free > LONG_MIN) {
-        cJSON_AddNumberToObject(hw_inventory, "ram_free", new_data->ram_free);
-    }
-    if (new_data->ram_usage > INT_MIN) {
-        cJSON_AddNumberToObject(hw_inventory, "ram_usage", new_data->ram_usage);
-    }
-
-    return object;
-}
-
-//
-cJSON * os_json_event(os_entry * new_data, int random_id, const char * timestamp) {
-    cJSON *object = cJSON_CreateObject();
-    cJSON *os_inventory = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(object, "type", "OS");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    cJSON_AddItemToObject(object, "inventory", os_inventory);
-
-    cJSON_AddStringToObject(os_inventory, "os_name", new_data->os_name);
-    if (new_data->os_major) {
-        cJSON_AddStringToObject(os_inventory, "os_major", new_data->os_major);
-    }
-    if (new_data->os_minor) {
-        cJSON_AddStringToObject(os_inventory, "os_minor", new_data->os_minor);
-    }
-    if (new_data->os_build) {
-        cJSON_AddStringToObject(os_inventory, "os_build", new_data->os_build);
-    }
-    if (new_data->os_version) {
-        cJSON_AddStringToObject(os_inventory, "os_version", new_data->os_version);
-    }
-    if (new_data->os_codename) {
-        cJSON_AddStringToObject(os_inventory, "os_codename", new_data->os_codename);
-    }
-    if (new_data->os_platform) {
-        cJSON_AddStringToObject(os_inventory, "os_platform", new_data->os_platform);
-    }
-    if (new_data->sysname) {
-        cJSON_AddStringToObject(os_inventory, "sysname", new_data->sysname);
-    }
-    if (new_data->hostname) {
-        cJSON_AddStringToObject(os_inventory, "hostname", new_data->hostname);
-    }
-    if (new_data->release) {
-        cJSON_AddStringToObject(os_inventory, "release", new_data->release);
-    }
-    if (new_data->version) {
-        cJSON_AddStringToObject(os_inventory, "version", new_data->version);
-    }
-    if (new_data->architecture) {
-        cJSON_AddStringToObject(os_inventory, "architecture", new_data->architecture);
-    }
-    if (new_data->os_release) {
-        cJSON_AddStringToObject(os_inventory, "os_release", new_data->os_release);
-    }
-
-    return object;
-}
-
-//
-cJSON * interface_json_event(interface_entry_data * new_data, int random_id, const char * timestamp) {
-    cJSON *object = cJSON_CreateObject();
-    cJSON *iface = cJSON_CreateObject();
-    int i = 0;
-
-    cJSON_AddStringToObject(object, "type", "network");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    cJSON_AddItemToObject(object, "iface", iface);
-
-    cJSON_AddStringToObject(iface, "name", new_data->name);
-    if (new_data->adapter) {
-        cJSON_AddStringToObject(iface, "adapter", new_data->adapter);
-    }
-    if (new_data->type) {
-        cJSON_AddStringToObject(iface, "type", new_data->type);
-    }
-    if (new_data->state) {
-        cJSON_AddStringToObject(iface, "state", new_data->state);
-    }
-    if (new_data->mac) {
-        cJSON_AddStringToObject(iface, "MAC", new_data->mac);
-    }
-    if (new_data->mtu > INT_MIN) {
-        cJSON_AddNumberToObject(iface, "MTU", new_data->mtu);
-    }
-    if (new_data->tx_packets > INT_MIN) {
-        cJSON_AddNumberToObject(iface, "tx_packets", new_data->tx_packets);
-    }
-    if (new_data->rx_packets > INT_MIN) {
-        cJSON_AddNumberToObject(iface, "rx_packets", new_data->rx_packets);
-    }
-    if (new_data->tx_bytes > INT_MIN) {
-        cJSON_AddNumberToObject(iface, "tx_bytes", new_data->tx_bytes);
-    }
-    if (new_data->rx_bytes > INT_MIN) {
-        cJSON_AddNumberToObject(iface, "rx_bytes", new_data->rx_bytes);
-    }
-    if (new_data->tx_errors > INT_MIN) {
-        cJSON_AddNumberToObject(iface, "tx_errors", new_data->tx_errors);
-    }
-    if (new_data->rx_errors > INT_MIN) {
-        cJSON_AddNumberToObject(iface, "rx_errors", new_data->rx_errors);
-    }
-    if (new_data->tx_dropped > INT_MIN) {
-        cJSON_AddNumberToObject(iface, "tx_dropped", new_data->tx_dropped);
-    }
-    if (new_data->rx_dropped > INT_MIN) {
-        cJSON_AddNumberToObject(iface, "rx_dropped", new_data->rx_dropped);
-    }
-    if (new_data->ipv4 && new_data->ipv4->address) {
-        cJSON *ipv4 = cJSON_CreateObject();
-        cJSON *ipv4_addr = cJSON_CreateArray();
-        for (i = 0; new_data->ipv4->address[i]; i++) {
-            if (strlen(new_data->ipv4->address[i])) {
-                cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(new_data->ipv4->address[i]));
-            }
-        }
-        if (cJSON_GetArraySize(ipv4_addr) > 0) {
-            cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
-            if (new_data->ipv4->netmask) {
-                cJSON *ipv4_netmask = cJSON_CreateArray();
-                for (i = 0; new_data->ipv4->netmask[i]; i++) {
-                    if (strlen(new_data->ipv4->netmask[i])) {
-                        cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(new_data->ipv4->netmask[i]));
-                    }
-                }
-                if (cJSON_GetArraySize(ipv4_netmask) > 0) {
-                    cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
-                } else {
-                    cJSON_Delete(ipv4_netmask);
-                }
-            }
-            if (new_data->ipv4->broadcast) {
-                cJSON *ipv4_broadcast = cJSON_CreateArray();
-                for (i = 0; new_data->ipv4->broadcast[i]; i++) {
-                    if (strlen(new_data->ipv4->broadcast[i])) {
-                        cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(new_data->ipv4->broadcast[i]));
-                    }
-                }
-                if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
-                    cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
-                } else {
-                    cJSON_Delete(ipv4_broadcast);
-                }
-            }
-            if (new_data->ipv4->metric > INT_MIN) {
-                cJSON_AddNumberToObject(ipv4, "metric", new_data->ipv4->metric);
-            }
-            if (new_data->ipv4->gateway) {
-                cJSON_AddStringToObject(ipv4, "gateway", new_data->ipv4->gateway);
-            }
-            if (new_data->ipv4->dhcp) {
-                cJSON_AddStringToObject(ipv4, "DHCP", new_data->ipv4->dhcp);
-            }
-            cJSON_AddItemToObject(iface, "IPv4", ipv4);
-        } else {
-            cJSON_Delete(ipv4_addr);
-            cJSON_Delete(ipv4);
-        }
-    }
-    if (new_data->ipv6 && new_data->ipv6->address) {
-        cJSON *ipv6 = cJSON_CreateObject();
-        cJSON *ipv6_addr = cJSON_CreateArray();
-        for (i = 0; new_data->ipv6->address[i]; i++) {
-            if (strlen(new_data->ipv6->address[i])) {
-                cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(new_data->ipv6->address[i]));
-            }
-        }
-        if (cJSON_GetArraySize(ipv6_addr) > 0) {
-            cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
-            if (new_data->ipv6->netmask) {
-                cJSON *ipv6_netmask = cJSON_CreateArray();
-                for (i = 0; new_data->ipv6->netmask[i]; i++) {
-                    if (strlen(new_data->ipv6->netmask[i])) {
-                        cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(new_data->ipv6->netmask[i]));
-                    }
-                }
-                if (cJSON_GetArraySize(ipv6_netmask) > 0) {
-                    cJSON_AddItemToObject(ipv6, "netmask", ipv6_netmask);
-                } else {
-                    cJSON_Delete(ipv6_netmask);
-                }
-            }
-            if (new_data->ipv6->broadcast) {
-                cJSON *ipv6_broadcast = cJSON_CreateArray();
-                for (i = 0; new_data->ipv6->broadcast[i]; i++) {
-                    if (strlen(new_data->ipv6->broadcast[i])) {
-                        cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(new_data->ipv6->broadcast[i]));
-                    }
-                }
-                if (cJSON_GetArraySize(ipv6_broadcast) > 0) {
-                    cJSON_AddItemToObject(ipv6, "broadcast", ipv6_broadcast);
-                } else {
-                    cJSON_Delete(ipv6_broadcast);
-                }
-            }
-            if (new_data->ipv6->metric > INT_MIN) {
-                cJSON_AddNumberToObject(ipv6, "metric", new_data->ipv6->metric);
-            }
-            if (new_data->ipv6->gateway) {
-                cJSON_AddStringToObject(ipv6, "gateway", new_data->ipv6->gateway);
-            }
-            if (new_data->ipv6->dhcp) {
-                cJSON_AddStringToObject(ipv6, "DHCP", new_data->ipv6->dhcp);
-            }
-            cJSON_AddItemToObject(iface, "IPv6", ipv6);
-        } else {
-            cJSON_Delete(ipv6_addr);
-            cJSON_Delete(ipv6);
-        }
-    }
-
-    return object;
-}
-
-//
-cJSON * program_json_event(program_entry_data * new_data, int random_id, const char * timestamp) {
-    cJSON *object = cJSON_CreateObject();
-    cJSON *program = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(object, "type", "program");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    cJSON_AddItemToObject(object, "program", program);
-
-    cJSON_AddStringToObject(program, "name", new_data->name);
-    if (new_data->format) {
-        cJSON_AddStringToObject(program, "format", new_data->format);
-    }
-    if (new_data->priority) {
-        cJSON_AddStringToObject(program, "priority", new_data->priority);
-    }
-    if (new_data->group) {
-        cJSON_AddStringToObject(program, "group", new_data->group);
-    }
-    if (new_data->size > LONG_MIN) {
-        cJSON_AddNumberToObject(program, "size", new_data->size);
-    }
-    if (new_data->vendor) {
-        cJSON_AddStringToObject(program, "vendor", new_data->vendor);
-    }
-    if (new_data->install_time) {
-        cJSON_AddStringToObject(program, "install_time", new_data->install_time);
-    }
-    if (new_data->version) {
-        cJSON_AddStringToObject(program, "version", new_data->version);
-    }
-    if (new_data->architecture) {
-        cJSON_AddStringToObject(program, "architecture", new_data->architecture);
-    }
-    if (new_data->multi_arch) {
-        cJSON_AddStringToObject(program, "multi-arch", new_data->multi_arch);
-    }
-    if (new_data->source) {
-        cJSON_AddStringToObject(program, "source", new_data->source);
-    }
-    if (new_data->description) {
-        cJSON_AddStringToObject(program, "description", new_data->description);
-    }
-    if (new_data->location) {
-        cJSON_AddStringToObject(program, "location", new_data->location);
-    }
-
-    return object;
-}
-
-//
-cJSON * hotfix_json_event(hotfix_entry_data * new_data, int random_id, const char * timestamp) {
-    cJSON *object = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(object, "type", "hotfix");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    cJSON_AddStringToObject(object, "hotfix", new_data->hotfix);
-
-    return object;
-}
-
-//
-cJSON * port_json_event(port_entry_data * new_data, int random_id, const char * timestamp) {
-    cJSON *object = cJSON_CreateObject();
-    cJSON *port = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(object, "type", "port");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    cJSON_AddItemToObject(object, "port", port);
-
-    cJSON_AddStringToObject(port, "local_ip", new_data->local_ip);
-    cJSON_AddNumberToObject(port, "local_port", new_data->local_port);
-    if (new_data->remote_ip) {
-        cJSON_AddStringToObject(port, "remote_ip", new_data->remote_ip);
-    }
-    if (new_data->remote_port > INT_MIN) {
-        cJSON_AddNumberToObject(port, "remote_port", new_data->remote_port);
-    }
-    if (new_data->protocol) {
-        cJSON_AddStringToObject(port, "protocol", new_data->protocol);
-    }
-    if (new_data->tx_queue > INT_MIN) {
-        cJSON_AddNumberToObject(port, "tx_queue", new_data->tx_queue);
-    }
-    if (new_data->rx_queue > INT_MIN) {
-        cJSON_AddNumberToObject(port, "rx_queue", new_data->rx_queue);
-    }
-    if (new_data->inode > INT_MIN) {
-        cJSON_AddNumberToObject(port, "inode", new_data->inode);
-    }
-    if (new_data->state) {
-        cJSON_AddStringToObject(port, "state", new_data->state);
-    }
-    if (new_data->pid > INT_MIN) {
-        cJSON_AddNumberToObject(port, "PID", new_data->pid);
-    }
-    if (new_data->process) {
-        cJSON_AddStringToObject(port, "process", new_data->process);
-    }
-
-    return object;
-}
-
-//
-cJSON * process_json_event(process_entry_data * new_data, int random_id, const char * timestamp) {
-    cJSON *object = cJSON_CreateObject();
-    cJSON *process = cJSON_CreateObject();
-    int i = 0;
-
-    cJSON_AddStringToObject(object, "type", "process");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    cJSON_AddItemToObject(object, "process", process);
-
-    cJSON_AddNumberToObject(process, "pid", new_data->pid);
-    cJSON_AddStringToObject(process, "name", new_data->name);
-    if (new_data->state) {
-        cJSON_AddStringToObject(process, "state", new_data->state);
-    }
-    if (new_data->ppid > INT_MIN) {
-        cJSON_AddNumberToObject(process, "ppid", new_data->ppid);
-    }
-    if (new_data->utime > LLONG_MIN) {
-        cJSON_AddNumberToObject(process, "utime", new_data->utime);
-    }
-    if (new_data->stime > LLONG_MIN) {
-        cJSON_AddNumberToObject(process, "stime", new_data->stime);
-    }
-    if (new_data->cmd) {
-        cJSON_AddStringToObject(process, "cmd", new_data->cmd);
-        if (new_data->argvs)
-        {
-            cJSON *argvs = cJSON_CreateArray();
-            for (i = 0; new_data->argvs[i]; i++) {
-                if (strlen(new_data->argvs[i])) {
-                    cJSON_AddItemToArray(argvs, cJSON_CreateString(new_data->argvs[i]));
-                }
-            }
-            if (cJSON_GetArraySize(argvs) > 0) {
-                cJSON_AddItemToObject(process, "argvs", argvs);
-            } else {
-                cJSON_Delete(argvs);
-            }
-        }
-    }
-    if (new_data->euser) {
-        cJSON_AddStringToObject(process, "euser", new_data->euser);
-    }
-    if (new_data->ruser) {
-        cJSON_AddStringToObject(process, "ruser", new_data->ruser);
-    }
-    if (new_data->suser) {
-        cJSON_AddStringToObject(process, "suser", new_data->suser);
-    }
-    if (new_data->egroup) {
-        cJSON_AddStringToObject(process, "egroup", new_data->egroup);
-    }
-    if (new_data->rgroup) {
-        cJSON_AddStringToObject(process, "rgroup", new_data->rgroup);
-    }
-    if (new_data->sgroup) {
-        cJSON_AddStringToObject(process, "sgroup", new_data->sgroup);
-    }
-    if (new_data->fgroup) {
-        cJSON_AddStringToObject(process, "fgroup", new_data->fgroup);
-    }
-    if (new_data->priority > INT_MIN) {
-        cJSON_AddNumberToObject(process, "priority", new_data->priority);
-    }
-    if (new_data->nice > INT_MIN) {
-        cJSON_AddNumberToObject(process, "nice", new_data->nice);
-    }
-    if (new_data->size > LONG_MIN) {
-        cJSON_AddNumberToObject(process, "size", new_data->size);
-    }
-    if (new_data->vm_size > LONG_MIN) {
-        cJSON_AddNumberToObject(process, "vm_size", new_data->vm_size);
-    }
-    if (new_data->resident > LONG_MIN) {
-        cJSON_AddNumberToObject(process, "resident", new_data->resident);
-    }
-    if (new_data->share > LONG_MIN) {
-        cJSON_AddNumberToObject(process, "share", new_data->share);
-    }
-    if (new_data->start_time > LLONG_MIN) {
-        cJSON_AddNumberToObject(process, "start_time", new_data->start_time);
-    }
-    if (new_data->pgrp > INT_MIN) {
-        cJSON_AddNumberToObject(process, "pgrp", new_data->pgrp);
-    }
-    if (new_data->session > INT_MIN) {
-        cJSON_AddNumberToObject(process, "session", new_data->session);
-    }
-    if (new_data->nlwp > INT_MIN) {
-        cJSON_AddNumberToObject(process, "nlwp", new_data->nlwp);
-    }
-    if (new_data->tgid > INT_MIN) {
-        cJSON_AddNumberToObject(process, "tgid", new_data->tgid);
-    }
-    if (new_data->tty > INT_MIN) {
-        cJSON_AddNumberToObject(process, "tty", new_data->tty);
-    }
-    if (new_data->processor > INT_MIN) {
-        cJSON_AddNumberToObject(process, "processor", new_data->processor);
-    }
-
-    return object;
-}
-
 // Print keys from hash table
 void print_rbtree(rb_tree * tree, pthread_mutex_t mutex) {
     char **keys;
@@ -2518,4 +1524,1246 @@ void print_rbtree(rb_tree * tree, pthread_mutex_t mutex) {
     free_strarray(keys);
 
     return;
+}
+
+cJSON * hw_json_event(hw_entry * old_data, hw_entry * new_data, hw_event_type type, const char * timestamp) {
+    cJSON * changed_attributes = NULL;
+
+    if (old_data) {
+        changed_attributes = hw_json_compare(old_data, new_data);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            cJSON_Delete(changed_attributes);
+            return NULL;
+        }
+    }
+
+    cJSON * object = cJSON_CreateObject();
+    cJSON * hw_inventory = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(object, "type", "hardware");
+
+    cJSON_AddItemToObject(object, "inventory", hw_inventory);
+    cJSON_AddStringToObject(hw_inventory, "type", SYS_EVENT_TYPE[type]);
+    cJSON_AddStringToObject(hw_inventory, "timestamp", timestamp);
+
+    cJSON_AddItemToObject(hw_inventory, "attributes", hw_json_attributes(new_data));
+
+    if (old_data) {
+        cJSON_AddItemToObject(hw_inventory, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(hw_inventory, "old_attributes", hw_json_attributes(old_data));
+    }
+
+    return object;
+}
+
+cJSON * hw_json_compare(hw_entry * old_data, hw_entry * new_data) {
+    cJSON * changed_attributes = cJSON_CreateArray();
+
+    if (old_data->board_serial && new_data->board_serial) {
+        if (strcmp(old_data->board_serial, new_data->board_serial)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("board_serial"));
+        }
+    } else if ((!old_data->board_serial && new_data->board_serial) || (old_data->board_serial && !new_data->board_serial)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("board_serial"));
+    }
+    if (old_data->cpu_name && new_data->cpu_name) {
+        if (strcmp(old_data->cpu_name, new_data->cpu_name)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("cpu_name"));
+        }
+    } else if ((!old_data->cpu_name && new_data->cpu_name) || (old_data->cpu_name && !new_data->cpu_name)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("cpu_name"));
+    }
+    if (old_data->cpu_cores != new_data->cpu_cores) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("cpu_cores"));
+    }
+    if (old_data->cpu_MHz != new_data->cpu_MHz) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("cpu_MHz"));
+    }
+    if (old_data->ram_total != new_data->ram_total) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ram_total"));
+    }
+    if (old_data->ram_free != new_data->ram_free) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ram_free"));
+    }
+    if (old_data->ram_usage != new_data->ram_usage) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ram_usage"));
+    }
+    return changed_attributes;
+}
+
+cJSON * hw_json_attributes(hw_entry * data) {
+    cJSON * attributes = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(attributes, "board_serial", data->board_serial);
+    if (data->cpu_name) {
+        cJSON_AddStringToObject(attributes, "cpu_name", data->cpu_name);
+    }
+    if (data->cpu_cores > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "cpu_cores", data->cpu_cores);
+    }
+    if (data->cpu_MHz > 0.0) {
+        cJSON_AddNumberToObject(attributes, "cpu_MHz", data->cpu_MHz);
+    }
+    if (data->ram_total > LONG_MIN) {
+        cJSON_AddNumberToObject(attributes, "ram_total", data->ram_total);
+    }
+    if (data->ram_free > LONG_MIN) {
+        cJSON_AddNumberToObject(attributes, "ram_free", data->ram_free);
+    }
+    if (data->ram_usage > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "ram_usage", data->ram_usage);
+    }
+    return attributes;
+}
+
+cJSON * os_json_event(os_entry * old_data, os_entry * new_data, os_event_type type, const char * timestamp) {
+    cJSON * changed_attributes = NULL;
+
+    if (old_data) {
+        changed_attributes = os_json_compare(old_data, new_data);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            cJSON_Delete(changed_attributes);
+            return NULL;
+        }
+    }
+
+    cJSON * object = cJSON_CreateObject();
+    cJSON * os_inventory = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(object, "type", "OS");
+
+    cJSON_AddItemToObject(object, "inventory", os_inventory);
+    cJSON_AddStringToObject(os_inventory, "type", SYS_EVENT_TYPE[type]);
+    cJSON_AddStringToObject(os_inventory, "timestamp", timestamp);
+
+    cJSON_AddItemToObject(os_inventory, "attributes", os_json_attributes(new_data));
+
+    if (old_data) {
+        cJSON_AddItemToObject(os_inventory, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(os_inventory, "old_attributes", os_json_attributes(old_data));
+    }
+
+    return object;
+}
+
+cJSON * os_json_compare(os_entry * old_data, os_entry * new_data) {
+    cJSON * changed_attributes = cJSON_CreateArray();
+
+    if (old_data->hostname && new_data->hostname) {
+        if (strcmp(old_data->hostname, new_data->hostname)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("hostname"));
+        }
+    } else if ((!old_data->hostname && new_data->hostname) || (old_data->hostname && !new_data->hostname)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("hostname"));
+    }
+    if (old_data->architecture && new_data->architecture) {
+        if (strcmp(old_data->architecture, new_data->architecture)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("architecture"));
+        }
+    } else if ((!old_data->architecture && new_data->architecture) || (old_data->architecture && !new_data->architecture)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("architecture"));
+    }
+    if (old_data->os_name && new_data->os_name) {
+        if (strcmp(old_data->os_name, new_data->os_name)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_name"));
+        }
+    } else if ((!old_data->os_name && new_data->os_name) || (old_data->os_name && !new_data->os_name)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_name"));
+    }
+    if (old_data->os_release && new_data->os_release) {
+        if (strcmp(old_data->os_release, new_data->os_release)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_release"));
+        }
+    } else if ((!old_data->os_release && new_data->os_release) || (old_data->os_release && !new_data->os_release)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_release"));
+    }
+    if (old_data->os_version && new_data->os_version) {
+        if (strcmp(old_data->os_version, new_data->os_version)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_version"));
+        }
+    } else if ((!old_data->os_version && new_data->os_version) || (old_data->os_version && !new_data->os_version)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_version"));
+    }
+    if (old_data->os_codename && new_data->os_codename) {
+        if (strcmp(old_data->os_codename, new_data->os_codename)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_codename"));
+        }
+    } else if ((!old_data->os_codename && new_data->os_codename) || (old_data->os_codename && !new_data->os_codename)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_codename"));
+    }
+    if (old_data->os_major && new_data->os_major) {
+        if (strcmp(old_data->os_major, new_data->os_major)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_major"));
+        }
+    } else if ((!old_data->os_major && new_data->os_major) || (old_data->os_major && !new_data->os_major)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_major"));
+    }
+    if (old_data->os_minor && new_data->os_minor) {
+        if (strcmp(old_data->os_minor, new_data->os_minor)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_minor"));
+        }
+    } else if ((!old_data->os_minor && new_data->os_minor) || (old_data->os_minor && !new_data->os_minor)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_minor"));
+    }
+    if (old_data->os_build && new_data->os_build) {
+        if (strcmp(old_data->os_build, new_data->os_build)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_build"));
+        }
+    } else if ((!old_data->os_build && new_data->os_build) || (old_data->os_build && !new_data->os_build)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_build"));
+    }
+    if (old_data->os_platform && new_data->os_platform) {
+        if (strcmp(old_data->os_platform, new_data->os_platform)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_platform"));
+        }
+    } else if ((!old_data->os_platform && new_data->os_platform) || (old_data->os_platform && !new_data->os_platform)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("os_platform"));
+    }
+    if (old_data->sysname && new_data->sysname) {
+        if (strcmp(old_data->sysname, new_data->sysname)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sysname"));
+        }
+    } else if ((!old_data->sysname && new_data->sysname) || (old_data->sysname && !new_data->sysname)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sysname"));
+    }
+    if (old_data->release && new_data->release) {
+        if (strcmp(old_data->release, new_data->release)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("release"));
+        }
+    } else if ((!old_data->release && new_data->release) || (old_data->release && !new_data->release)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("release"));
+    }
+    if (old_data->version && new_data->version) {
+        if (strcmp(old_data->version, new_data->version)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("version"));
+        }
+    } else if ((!old_data->version && new_data->version) || (old_data->version && !new_data->version)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("version"));
+    }
+    return changed_attributes;
+}
+
+cJSON * os_json_attributes(os_entry * data) {
+    cJSON * attributes = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(attributes, "os_name", data->os_name);
+    if (data->os_major) {
+        cJSON_AddStringToObject(attributes, "os_major", data->os_major);
+    }
+    if (data->os_minor) {
+        cJSON_AddStringToObject(attributes, "os_minor", data->os_minor);
+    }
+    if (data->os_build) {
+        cJSON_AddStringToObject(attributes, "os_build", data->os_build);
+    }
+    if (data->os_version) {
+        cJSON_AddStringToObject(attributes, "os_version", data->os_version);
+    }
+    if (data->os_codename) {
+        cJSON_AddStringToObject(attributes, "os_codename", data->os_codename);
+    }
+    if (data->os_platform) {
+        cJSON_AddStringToObject(attributes, "os_platform", data->os_platform);
+    }
+    if (data->sysname) {
+        cJSON_AddStringToObject(attributes, "sysname", data->sysname);
+    }
+    if (data->hostname) {
+        cJSON_AddStringToObject(attributes, "hostname", data->hostname);
+    }
+    if (data->release) {
+        cJSON_AddStringToObject(attributes, "release", data->release);
+    }
+    if (data->version) {
+        cJSON_AddStringToObject(attributes, "version", data->version);
+    }
+    if (data->architecture) {
+        cJSON_AddStringToObject(attributes, "architecture", data->architecture);
+    }
+    if (data->os_release) {
+        cJSON_AddStringToObject(attributes, "os_release", data->os_release);
+    }
+    return attributes;
+}
+
+cJSON * interface_json_event(interface_entry_data * old_data, interface_entry_data * new_data, interface_event_type type, const char * timestamp) {
+    cJSON * changed_attributes = NULL;
+
+    if (old_data) {
+        changed_attributes = interface_compare(old_data, new_data);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            cJSON_Delete(changed_attributes);
+            return NULL;
+        }
+    }
+
+    cJSON * object = cJSON_CreateObject();
+    cJSON * iface = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(object, "type", "network");
+
+    cJSON_AddItemToObject(object, "inventory", iface);
+    cJSON_AddStringToObject(iface, "type", SYS_EVENT_TYPE[type]);
+    cJSON_AddStringToObject(iface, "timestamp", timestamp);
+
+    cJSON_AddItemToObject(iface, "attributes", interface_json_attributes(new_data));
+
+    if (old_data) {
+        cJSON_AddItemToObject(iface, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(iface, "old_attributes", interface_json_attributes(old_data));
+    }
+
+    return object;
+}
+
+cJSON * interface_compare(interface_entry_data * old_data, interface_entry_data * new_data) {
+    cJSON * changed_attributes = cJSON_CreateArray();
+
+    if (old_data->name && new_data->name) {
+        if (strcmp(old_data->name, new_data->name)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("name"));
+        }
+    } else if ((!old_data->name && new_data->name) || (old_data->name && !new_data->name)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("name"));
+    }
+    if (old_data->adapter && new_data->adapter) {
+        if (strcmp(old_data->adapter, new_data->adapter)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("adapter"));
+        }
+    } else if ((!old_data->adapter && new_data->adapter) || (old_data->adapter && !new_data->adapter)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("adapter"));
+    }
+    if (old_data->type && new_data->type) {
+        if (strcmp(old_data->type, new_data->type)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("type"));
+        }
+    } else if ((!old_data->type && new_data->type) || (old_data->type && !new_data->type)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("type"));
+    }
+    if (old_data->state && new_data->state) {
+        if (strcmp(old_data->state, new_data->state)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("state"));
+        }
+    } else if ((!old_data->state && new_data->state) || (old_data->state && !new_data->state)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("state"));
+    }
+    if (old_data->mac && new_data->mac) {
+        if (strcmp(old_data->mac, new_data->mac)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mac"));
+        }
+    } else if ((!old_data->mac && new_data->mac) || (old_data->mac && !new_data->mac)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mac"));
+    }
+    if (old_data->ipv4 && new_data->ipv4) {
+        if (old_data->ipv4->address && new_data->ipv4->address) {
+            int i;
+            for (i = 0; old_data->ipv4->address[i] && new_data->ipv4->address[i]; i++) {
+                if (strcmp(old_data->ipv4->address[i], new_data->ipv4->address[i])) {
+                    cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv4_address"));
+                }
+            }
+            if ((!old_data->ipv4->address[i] && new_data->ipv4->address[i]) || (old_data->ipv4->address[i] && !new_data->ipv4->address[i])) {
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv4_address"));
+            }
+        } else if ((!old_data->ipv4->address && new_data->ipv4->address) || (old_data->ipv4->address && !new_data->ipv4->address)) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv4_address"));
+        }
+        if (old_data->ipv4->netmask && new_data->ipv4->netmask) {
+            int i;
+            for (i = 0; old_data->ipv4->netmask[i] && new_data->ipv4->netmask[i]; i++) {
+                if (strcmp(old_data->ipv4->netmask[i], new_data->ipv4->netmask[i])) {
+                    cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv4_netmask"));
+                }
+            }
+            if ((!old_data->ipv4->netmask[i] && new_data->ipv4->netmask[i]) || (old_data->ipv4->netmask[i] && !new_data->ipv4->netmask[i])) {
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv4_netmask"));
+            }
+        } else if ((!old_data->ipv4->netmask && new_data->ipv4->netmask) || (old_data->ipv4->netmask && !new_data->ipv4->netmask)) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv4_netmask"));
+        }
+        if (old_data->ipv4->broadcast && new_data->ipv4->broadcast) {
+            int i;
+            for (i = 0; old_data->ipv4->broadcast[i] && new_data->ipv4->broadcast[i]; i++) {
+                if (strcmp(old_data->ipv4->broadcast[i], new_data->ipv4->broadcast[i])) {
+                    cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv4_broadcast"));
+                }
+            }
+            if ((!old_data->ipv4->broadcast[i] && new_data->ipv4->broadcast[i]) || (old_data->ipv4->broadcast[i] && !new_data->ipv4->broadcast[i])) {
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv4_broadcast"));
+            }
+        } else if ((!old_data->ipv4->broadcast && new_data->ipv4->broadcast) || (old_data->ipv4->broadcast && !new_data->ipv4->broadcast)) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv4_broadcast"));
+        }
+        if (old_data->ipv4->gateway && new_data->ipv4->gateway) {
+            if (strcmp(old_data->ipv4->gateway, new_data->ipv4->gateway)) {
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv4_gateway"));
+            }
+        } else if ((!old_data->ipv4->gateway && new_data->ipv4->gateway) || (old_data->ipv4->gateway && !new_data->ipv4->gateway)) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv4_gateway"));
+        }
+        if (old_data->ipv4->dhcp && new_data->ipv4->dhcp) {
+            if (strcmp(old_data->ipv4->dhcp, new_data->ipv4->dhcp)) {
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv4_dhcp"));
+            }
+        } else if ((!old_data->ipv4->dhcp && new_data->ipv4->dhcp) || (old_data->ipv4->dhcp && !new_data->ipv4->dhcp)) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv4_dhcp"));
+        }
+        if (old_data->ipv4->metric != new_data->ipv4->metric) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv4_metric"));
+        }
+    } else if ((!old_data->ipv4 && new_data->ipv4) || (old_data->ipv4 && !new_data->ipv4)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv4"));
+    }
+    if (old_data->ipv6 && new_data->ipv6) {
+        if (old_data->ipv6->address && new_data->ipv6->address) {
+            int i;
+            for (i = 0; old_data->ipv6->address[i] && new_data->ipv6->address[i]; i++) {
+                if (strcmp(old_data->ipv6->address[i], new_data->ipv6->address[i])) {
+                    cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv6_address"));
+                }
+            }
+            if ((!old_data->ipv6->address[i] && new_data->ipv6->address[i]) || (old_data->ipv6->address[i] && !new_data->ipv6->address[i])) {
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv6_address"));
+            }
+        } else if ((!old_data->ipv6->address && new_data->ipv6->address) || (old_data->ipv6->address && !new_data->ipv6->address)) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv6_address"));
+        }
+        if (old_data->ipv6->netmask && new_data->ipv6->netmask) {
+            int i;
+            for (i = 0; old_data->ipv6->netmask[i] && new_data->ipv6->netmask[i]; i++) {
+                if (strcmp(old_data->ipv6->netmask[i], new_data->ipv6->netmask[i])) {
+                    cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv6_netmask"));
+                }
+            }
+            if ((!old_data->ipv6->netmask[i] && new_data->ipv6->netmask[i]) || (old_data->ipv6->netmask[i] && !new_data->ipv6->netmask[i])) {
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv6_netmask"));
+            }
+        } else if ((!old_data->ipv6->netmask && new_data->ipv6->netmask) || (old_data->ipv6->netmask && !new_data->ipv6->netmask)) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv6_netmask"));
+        }
+        if (old_data->ipv6->broadcast && new_data->ipv6->broadcast) {
+            int i;
+            for (i = 0; old_data->ipv6->broadcast[i] && new_data->ipv6->broadcast[i]; i++) {
+                if (strcmp(old_data->ipv6->broadcast[i], new_data->ipv6->broadcast[i])) {
+                    cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv6_broadcast"));
+                }
+            }
+            if ((!old_data->ipv6->broadcast[i] && new_data->ipv6->broadcast[i]) || (old_data->ipv6->broadcast[i] && !new_data->ipv6->broadcast[i])) {
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv6_broadcast"));
+            }
+        } else if ((!old_data->ipv6->broadcast && new_data->ipv6->broadcast) || (old_data->ipv6->broadcast && !new_data->ipv6->broadcast)) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv6_broadcast"));
+        }
+        if (old_data->ipv6->gateway && new_data->ipv6->gateway) {
+            if (strcmp(old_data->ipv6->gateway, new_data->ipv6->gateway)) {
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv6_gateway"));
+            }
+        } else if ((!old_data->ipv6->gateway && new_data->ipv6->gateway) || (old_data->ipv6->gateway && !new_data->ipv6->gateway)) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv6_gateway"));
+        }
+        if (old_data->ipv6->dhcp && new_data->ipv6->dhcp) {
+            if (strcmp(old_data->ipv6->dhcp, new_data->ipv6->dhcp)) {
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv6_dhcp"));
+            }
+        } else if ((!old_data->ipv6->dhcp && new_data->ipv6->dhcp) || (old_data->ipv6->dhcp && !new_data->ipv6->dhcp)) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv6_dhcp"));
+        }
+        if (old_data->ipv6->metric != new_data->ipv6->metric) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv6_metric"));
+        }
+    } else if ((!old_data->ipv6 && new_data->ipv6) || (old_data->ipv6 && !new_data->ipv6)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ipv6"));
+    }
+    if (old_data->mtu != new_data->mtu) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtu"));
+    }
+    if (old_data->tx_packets != new_data->tx_packets) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("tx_packets"));
+    }
+    if (old_data->rx_packets != new_data->rx_packets) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("rx_packets"));
+    }
+    if (old_data->tx_bytes != new_data->tx_bytes) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("tx_bytes"));
+    }
+    if (old_data->rx_bytes != new_data->rx_bytes) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("rx_bytes"));
+    }
+    if (old_data->tx_errors != new_data->tx_errors) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("tx_errors"));
+    }
+    if (old_data->rx_errors != new_data->rx_errors) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("rx_errors"));
+    }
+    if (old_data->tx_dropped != new_data->tx_dropped) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("tx_dropped"));
+    }
+    if (old_data->rx_dropped != new_data->rx_dropped) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("rx_dropped"));
+    }
+    return changed_attributes;
+}
+
+cJSON * interface_json_attributes(interface_entry_data * data) {
+    cJSON * attributes = cJSON_CreateObject();
+    int i = 0;
+
+    cJSON_AddStringToObject(attributes, "name", data->name);
+    if (data->adapter) {
+        cJSON_AddStringToObject(attributes, "adapter", data->adapter);
+    }
+    if (data->type) {
+        cJSON_AddStringToObject(attributes, "type", data->type);
+    }
+    if (data->state) {
+        cJSON_AddStringToObject(attributes, "state", data->state);
+    }
+    if (data->mac) {
+        cJSON_AddStringToObject(attributes, "MAC", data->mac);
+    }
+    if (data->mtu > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "MTU", data->mtu);
+    }
+    if (data->tx_packets > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "tx_packets", data->tx_packets);
+    }
+    if (data->rx_packets > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "rx_packets", data->rx_packets);
+    }
+    if (data->tx_bytes > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "tx_bytes", data->tx_bytes);
+    }
+    if (data->rx_bytes > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "rx_bytes", data->rx_bytes);
+    }
+    if (data->tx_errors > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "tx_errors", data->tx_errors);
+    }
+    if (data->rx_errors > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "rx_errors", data->rx_errors);
+    }
+    if (data->tx_dropped > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "tx_dropped", data->tx_dropped);
+    }
+    if (data->rx_dropped > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "rx_dropped", data->rx_dropped);
+    }
+    if (data->ipv4 && data->ipv4->address) {
+        cJSON *ipv4 = cJSON_CreateObject();
+        cJSON *ipv4_addr = cJSON_CreateArray();
+        for (i = 0; data->ipv4->address[i]; i++) {
+            if (strlen(data->ipv4->address[i])) {
+                cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(data->ipv4->address[i]));
+            }
+        }
+        if (cJSON_GetArraySize(ipv4_addr) > 0) {
+            cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
+            if (data->ipv4->netmask) {
+                cJSON *ipv4_netmask = cJSON_CreateArray();
+                for (i = 0; data->ipv4->netmask[i]; i++) {
+                    if (strlen(data->ipv4->netmask[i])) {
+                        cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(data->ipv4->netmask[i]));
+                    }
+                }
+                if (cJSON_GetArraySize(ipv4_netmask) > 0) {
+                    cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
+                } else {
+                    cJSON_Delete(ipv4_netmask);
+                }
+            }
+            if (data->ipv4->broadcast) {
+                cJSON *ipv4_broadcast = cJSON_CreateArray();
+                for (i = 0; data->ipv4->broadcast[i]; i++) {
+                    if (strlen(data->ipv4->broadcast[i])) {
+                        cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(data->ipv4->broadcast[i]));
+                    }
+                }
+                if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
+                    cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
+                } else {
+                    cJSON_Delete(ipv4_broadcast);
+                }
+            }
+            if (data->ipv4->metric > INT_MIN) {
+                cJSON_AddNumberToObject(ipv4, "metric", data->ipv4->metric);
+            }
+            if (data->ipv4->gateway) {
+                cJSON_AddStringToObject(ipv4, "gateway", data->ipv4->gateway);
+            }
+            if (data->ipv4->dhcp) {
+                cJSON_AddStringToObject(ipv4, "DHCP", data->ipv4->dhcp);
+            }
+            cJSON_AddItemToObject(attributes, "IPv4", ipv4);
+        } else {
+            cJSON_Delete(ipv4_addr);
+            cJSON_Delete(ipv4);
+        }
+    }
+    if (data->ipv6 && data->ipv6->address) {
+        cJSON *ipv6 = cJSON_CreateObject();
+        cJSON *ipv6_addr = cJSON_CreateArray();
+        for (i = 0; data->ipv6->address[i]; i++) {
+            if (strlen(data->ipv6->address[i])) {
+                cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(data->ipv6->address[i]));
+            }
+        }
+        if (cJSON_GetArraySize(ipv6_addr) > 0) {
+            cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
+            if (data->ipv6->netmask) {
+                cJSON *ipv6_netmask = cJSON_CreateArray();
+                for (i = 0; data->ipv6->netmask[i]; i++) {
+                    if (strlen(data->ipv6->netmask[i])) {
+                        cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(data->ipv6->netmask[i]));
+                    }
+                }
+                if (cJSON_GetArraySize(ipv6_netmask) > 0) {
+                    cJSON_AddItemToObject(ipv6, "netmask", ipv6_netmask);
+                } else {
+                    cJSON_Delete(ipv6_netmask);
+                }
+            }
+            if (data->ipv6->broadcast) {
+                cJSON *ipv6_broadcast = cJSON_CreateArray();
+                for (i = 0; data->ipv6->broadcast[i]; i++) {
+                    if (strlen(data->ipv6->broadcast[i])) {
+                        cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(data->ipv6->broadcast[i]));
+                    }
+                }
+                if (cJSON_GetArraySize(ipv6_broadcast) > 0) {
+                    cJSON_AddItemToObject(ipv6, "broadcast", ipv6_broadcast);
+                } else {
+                    cJSON_Delete(ipv6_broadcast);
+                }
+            }
+            if (data->ipv6->metric > INT_MIN) {
+                cJSON_AddNumberToObject(ipv6, "metric", data->ipv6->metric);
+            }
+            if (data->ipv6->gateway) {
+                cJSON_AddStringToObject(ipv6, "gateway", data->ipv6->gateway);
+            }
+            if (data->ipv6->dhcp) {
+                cJSON_AddStringToObject(ipv6, "DHCP", data->ipv6->dhcp);
+            }
+            cJSON_AddItemToObject(attributes, "IPv6", ipv6);
+        } else {
+            cJSON_Delete(ipv6_addr);
+            cJSON_Delete(ipv6);
+        }
+    }
+    return attributes;
+}
+
+cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, program_event_type type, const char * timestamp) {
+    cJSON * changed_attributes = NULL;
+
+    if (old_data) {
+        changed_attributes = program_json_compare(old_data, new_data);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            cJSON_Delete(changed_attributes);
+            return NULL;
+        }
+    }
+
+    cJSON * object = cJSON_CreateObject();
+    cJSON * program = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(object, "type", "program");
+
+    cJSON_AddItemToObject(object, "inventory", program);
+    cJSON_AddStringToObject(program, "type", SYS_EVENT_TYPE[type]);
+    cJSON_AddStringToObject(program, "timestamp", timestamp);
+
+    cJSON_AddItemToObject(program, "attributes", program_json_attributes(new_data));
+
+    if (old_data) {
+        cJSON_AddItemToObject(program, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(program, "old_attributes", program_json_attributes(old_data));
+    }
+
+    return object;
+}
+
+cJSON * program_json_compare(program_entry_data * old_data, program_entry_data * new_data) {
+    cJSON * changed_attributes = cJSON_CreateArray();
+
+    if (old_data->format && new_data->format) {
+        if (strcmp(old_data->format, new_data->format)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("format"));
+        }
+    } else if ((!old_data->format && new_data->format) || (old_data->format && !new_data->format)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("format"));
+    }
+    if (old_data->name && new_data->name) {
+        if (strcmp(old_data->name, new_data->name)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("name"));
+        }
+    } else if ((!old_data->name && new_data->name) || (old_data->name && !new_data->name)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("name"));
+    }
+    if (old_data->priority && new_data->priority) {
+        if (strcmp(old_data->priority, new_data->priority)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("priority"));
+        }
+    } else if ((!old_data->priority && new_data->priority) || (old_data->priority && !new_data->priority)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("priority"));
+    }
+    if (old_data->group && new_data->group) {
+        if (strcmp(old_data->group, new_data->group)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group"));
+        }
+    } else if ((!old_data->group && new_data->group) || (old_data->group && !new_data->group)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group"));
+    }
+    if (old_data->vendor && new_data->vendor) {
+        if (strcmp(old_data->vendor, new_data->vendor)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("vendor"));
+        }
+    } else if ((!old_data->vendor && new_data->vendor) || (old_data->vendor && !new_data->vendor)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("vendor"));
+    }
+    if (old_data->install_time && new_data->install_time) {
+        if (strcmp(old_data->install_time, new_data->install_time)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("install_time"));
+        }
+    } else if ((!old_data->install_time && new_data->install_time) || (old_data->install_time && !new_data->install_time)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("install_time"));
+    }
+    if (old_data->version && new_data->version) {
+        if (strcmp(old_data->version, new_data->version)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("version"));
+        }
+    } else if ((!old_data->version && new_data->version) || (old_data->version && !new_data->version)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("version"));
+    }
+    if (old_data->architecture && new_data->architecture) {
+        if (strcmp(old_data->architecture, new_data->architecture)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("architecture"));
+        }
+    } else if ((!old_data->architecture && new_data->architecture) || (old_data->architecture && !new_data->architecture)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("architecture"));
+    }
+    if (old_data->multi_arch && new_data->multi_arch) {
+        if (strcmp(old_data->multi_arch, new_data->multi_arch)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("multi_arch"));
+        }
+    } else if ((!old_data->multi_arch && new_data->multi_arch) || (old_data->multi_arch && !new_data->multi_arch)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("multi_arch"));
+    }
+    if (old_data->source && new_data->source) {
+        if (strcmp(old_data->source, new_data->source)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("source"));
+        }
+    } else if ((!old_data->source && new_data->source) || (old_data->source && !new_data->source)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("source"));
+    }
+    if (old_data->description && new_data->description) {
+        if (strcmp(old_data->description, new_data->description)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("description"));
+        }
+    } else if ((!old_data->description && new_data->description) || (old_data->description && !new_data->description)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("description"));
+    }
+    if (old_data->location && new_data->location) {
+        if (strcmp(old_data->location, new_data->location)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("location"));
+        }
+    } else if ((!old_data->location && new_data->location) || (old_data->location && !new_data->location)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("location"));
+    }
+    if (old_data->size != new_data->size) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
+    }
+    return changed_attributes;
+}
+
+cJSON * program_json_attributes(program_entry_data * data) {
+    cJSON * attributes = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(attributes, "name", data->name);
+    if (data->format) {
+        cJSON_AddStringToObject(attributes, "format", data->format);
+    }
+    if (data->priority) {
+        cJSON_AddStringToObject(attributes, "priority", data->priority);
+    }
+    if (data->group) {
+        cJSON_AddStringToObject(attributes, "group", data->group);
+    }
+    if (data->size > LONG_MIN) {
+        cJSON_AddNumberToObject(attributes, "size", data->size);
+    }
+    if (data->vendor) {
+        cJSON_AddStringToObject(attributes, "vendor", data->vendor);
+    }
+    if (data->install_time) {
+        cJSON_AddStringToObject(attributes, "install_time", data->install_time);
+    }
+    if (data->version) {
+        cJSON_AddStringToObject(attributes, "version", data->version);
+    }
+    if (data->architecture) {
+        cJSON_AddStringToObject(attributes, "architecture", data->architecture);
+    }
+    if (data->multi_arch) {
+        cJSON_AddStringToObject(attributes, "multi-arch", data->multi_arch);
+    }
+    if (data->source) {
+        cJSON_AddStringToObject(attributes, "source", data->source);
+    }
+    if (data->description) {
+        cJSON_AddStringToObject(attributes, "description", data->description);
+    }
+    if (data->location) {
+        cJSON_AddStringToObject(attributes, "location", data->location);
+    }
+    return attributes;
+}
+
+cJSON * hotfix_json_event(hotfix_entry_data * old_data, hotfix_entry_data * new_data, hotfix_event_type type, const char * timestamp) {
+    cJSON * changed_attributes = NULL;
+
+    if (old_data) {
+        changed_attributes = hotfix_json_compare(old_data, new_data);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            cJSON_Delete(changed_attributes);
+            return NULL;
+        }
+    }
+
+    cJSON * object = cJSON_CreateObject();
+    cJSON * hfix = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(object, "type", "program");
+
+    cJSON_AddItemToObject(object, "inventory", hfix);
+    cJSON_AddStringToObject(hfix, "type", SYS_EVENT_TYPE[type]);
+    cJSON_AddStringToObject(hfix, "timestamp", timestamp);
+
+    cJSON_AddItemToObject(hfix, "attributes", hotfix_json_attributes(new_data));
+
+    if (old_data) {
+        cJSON_AddItemToObject(hfix, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(hfix, "old_attributes", hotfix_json_attributes(old_data));
+    }
+
+    return object;
+}
+
+cJSON * hotfix_json_compare(hotfix_entry_data * old_data, hotfix_entry_data * new_data) {
+    cJSON * changed_attributes = cJSON_CreateArray();
+
+    if (old_data->hotfix && new_data->hotfix) {
+        if (strcmp(old_data->hotfix, new_data->hotfix)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("hotfix"));
+        }
+    } else if ((!old_data->hotfix && new_data->hotfix) || (old_data->hotfix && !new_data->hotfix)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("hotfix"));
+    }
+    return changed_attributes;
+}
+
+cJSON * hotfix_json_attributes(hotfix_entry_data * data) {
+    cJSON * attributes = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(attributes, "hotfix", data->hotfix);
+    return attributes;
+}
+
+cJSON * port_json_event(port_entry_data * old_data, port_entry_data * new_data, port_event_type type, const char * timestamp) {
+    cJSON * changed_attributes = NULL;
+
+    if (old_data) {
+        changed_attributes = port_json_compare(old_data, new_data);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            cJSON_Delete(changed_attributes);
+            return NULL;
+        }
+    }
+
+    cJSON * object = cJSON_CreateObject();
+    cJSON * port = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(object, "type", "port");
+
+    cJSON_AddItemToObject(object, "inventory", port);
+    cJSON_AddStringToObject(port, "type", SYS_EVENT_TYPE[type]);
+    cJSON_AddStringToObject(port, "timestamp", timestamp);
+
+    cJSON_AddItemToObject(port, "attributes", port_json_attributes(new_data));
+
+    if (old_data) {
+        cJSON_AddItemToObject(port, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(port, "old_attributes", port_json_attributes(old_data));
+    }
+
+    return object;
+}
+
+cJSON * port_json_compare(port_entry_data * old_data, port_entry_data * new_data) {
+    cJSON * changed_attributes = cJSON_CreateArray();
+
+    if (old_data->protocol && new_data->protocol) {
+        if (strcmp(old_data->protocol, new_data->protocol)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("protocol"));
+        }
+    } else if ((!old_data->protocol && new_data->protocol) || (old_data->protocol && !new_data->protocol)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("protocol"));
+    }
+    if (old_data->local_ip && new_data->local_ip) {
+        if (strcmp(old_data->local_ip, new_data->local_ip)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("local_ip"));
+        }
+    } else if ((!old_data->local_ip && new_data->local_ip) || (old_data->local_ip && !new_data->local_ip)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("local_ip"));
+    }
+    if (old_data->remote_ip && new_data->remote_ip) {
+        if (strcmp(old_data->remote_ip, new_data->remote_ip)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("remote_ip"));
+        }
+    } else if ((!old_data->remote_ip && new_data->remote_ip) || (old_data->remote_ip && !new_data->remote_ip)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("remote_ip"));
+    }
+    if (old_data->state && new_data->state) {
+        if (strcmp(old_data->state, new_data->state)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("state"));
+        }
+    } else if ((!old_data->state && new_data->state) || (old_data->state && !new_data->state)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("state"));
+    }
+    if (old_data->process && new_data->process) {
+        if (strcmp(old_data->process, new_data->process)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("process"));
+        }
+    } else if ((!old_data->process && new_data->process) || (old_data->process && !new_data->process)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("process"));
+    }
+    if (old_data->local_port != new_data->local_port) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("local_port"));
+    }
+    if (old_data->remote_port != new_data->remote_port) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("remote_port"));
+    }
+    if (old_data->tx_queue != new_data->tx_queue) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("tx_queue"));
+    }
+    if (old_data->rx_queue != new_data->rx_queue) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("rx_queue"));
+    }
+    if (old_data->inode != new_data->inode) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
+    }
+    if (old_data->pid != new_data->pid) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("pid"));
+    }
+    return changed_attributes;
+}
+
+cJSON * port_json_attributes(port_entry_data * data) {
+    cJSON * attributes = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(attributes, "local_ip", data->local_ip);
+    cJSON_AddNumberToObject(attributes, "local_port", data->local_port);
+    if (data->remote_ip) {
+        cJSON_AddStringToObject(attributes, "remote_ip", data->remote_ip);
+    }
+    if (data->remote_port > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "remote_port", data->remote_port);
+    }
+    if (data->protocol) {
+        cJSON_AddStringToObject(attributes, "protocol", data->protocol);
+    }
+    if (data->tx_queue > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "tx_queue", data->tx_queue);
+    }
+    if (data->rx_queue > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "rx_queue", data->rx_queue);
+    }
+    if (data->inode > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "inode", data->inode);
+    }
+    if (data->state) {
+        cJSON_AddStringToObject(attributes, "state", data->state);
+    }
+    if (data->pid > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "PID", data->pid);
+    }
+    if (data->process) {
+        cJSON_AddStringToObject(attributes, "process", data->process);
+    }
+    return attributes;
+}
+
+cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, process_event_type type, const char * timestamp) {
+    cJSON * changed_attributes = NULL;
+
+    if (old_data) {
+        changed_attributes = process_json_compare(old_data, new_data);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            cJSON_Delete(changed_attributes);
+            return NULL;
+        }
+    }
+
+    cJSON * object = cJSON_CreateObject();
+    cJSON * process = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(object, "type", "process");
+
+    cJSON_AddItemToObject(object, "inventory", process);
+    cJSON_AddStringToObject(process, "type", SYS_EVENT_TYPE[type]);
+    cJSON_AddStringToObject(process, "timestamp", timestamp);
+
+    cJSON_AddItemToObject(process, "attributes", process_json_attributes(new_data));
+
+    if (old_data) {
+        cJSON_AddItemToObject(process, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(process, "old_attributes", process_json_attributes(old_data));
+    }
+
+    return object;
+}
+
+cJSON * process_json_compare(process_entry_data * old_data, process_entry_data * new_data) {
+    cJSON * changed_attributes = cJSON_CreateArray();
+
+    if (old_data->name && new_data->name) {
+        if (strcmp(old_data->name, new_data->name)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("name"));
+        }
+    } else if ((!old_data->name && new_data->name) || (old_data->name && !new_data->name)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("name"));
+    }
+    if (old_data->cmd && new_data->cmd) {
+        if (strcmp(old_data->cmd, new_data->cmd)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("cmd"));
+        }
+    } else if ((!old_data->cmd && new_data->cmd) || (old_data->cmd && !new_data->cmd)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("cmd"));
+    }
+    if (old_data->argvs && new_data->argvs) {
+        int i;
+        for (i = 0; old_data->argvs[i] && new_data->argvs[i]; i++) {
+            if (strcmp(old_data->argvs[i], new_data->argvs[i])) {
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("argvs"));
+            }
+        }
+        if ((!old_data->argvs[i] && new_data->argvs[i]) || (old_data->argvs[i] && !new_data->argvs[i])) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("argvs"));
+        }
+    } else if ((!old_data->argvs && new_data->argvs) || (old_data->argvs && !new_data->argvs)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("argvs"));
+    }
+    if (old_data->state && new_data->state) {
+        if (strcmp(old_data->state, new_data->state)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("state"));
+        }
+    } else if ((!old_data->state && new_data->state) || (old_data->state && !new_data->state)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("state"));
+    }
+    if (old_data->euser && new_data->euser) {
+        if (strcmp(old_data->euser, new_data->euser)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("euser"));
+        }
+    } else if ((!old_data->euser && new_data->euser) || (old_data->euser && !new_data->euser)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("euser"));
+    }
+    if (old_data->ruser && new_data->ruser) {
+        if (strcmp(old_data->ruser, new_data->ruser)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ruser"));
+        }
+    } else if ((!old_data->ruser && new_data->ruser) || (old_data->ruser && !new_data->ruser)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ruser"));
+    }
+    if (old_data->suser && new_data->suser) {
+        if (strcmp(old_data->suser, new_data->suser)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("suser"));
+        }
+    } else if ((!old_data->suser && new_data->suser) || (old_data->suser && !new_data->suser)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("suser"));
+    }
+    if (old_data->egroup && new_data->egroup) {
+        if (strcmp(old_data->egroup, new_data->egroup)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("egroup"));
+        }
+    } else if ((!old_data->egroup && new_data->egroup) || (old_data->egroup && !new_data->egroup)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("egroup"));
+    }
+    if (old_data->rgroup && new_data->rgroup) {
+        if (strcmp(old_data->rgroup, new_data->rgroup)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("rgroup"));
+        }
+    } else if ((!old_data->rgroup && new_data->rgroup) || (old_data->rgroup && !new_data->rgroup)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("rgroup"));
+    }
+    if (old_data->sgroup && new_data->sgroup) {
+        if (strcmp(old_data->sgroup, new_data->sgroup)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sgroup"));
+        }
+    } else if ((!old_data->sgroup && new_data->sgroup) || (old_data->sgroup && !new_data->sgroup)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sgroup"));
+    }
+    if (old_data->fgroup && new_data->fgroup) {
+        if (strcmp(old_data->fgroup, new_data->fgroup)) {
+           cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("fgroup"));
+        }
+    } else if ((!old_data->fgroup && new_data->fgroup) || (old_data->fgroup && !new_data->fgroup)) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("fgroup"));
+    }
+    if (old_data->pid != new_data->pid) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("pid"));
+    }
+    if (old_data->ppid != new_data->ppid) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("ppid"));
+    }
+    if (old_data->priority != new_data->priority) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("priority"));
+    }
+    if (old_data->nice != new_data->nice) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("nice"));
+    }
+    if (old_data->size != new_data->size) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
+    }
+    if (old_data->vm_size != new_data->vm_size) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("vm_size"));
+    }
+    if (old_data->resident != new_data->resident) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("resident"));
+    }
+    if (old_data->share != new_data->share) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("share"));
+    }
+    if (old_data->start_time != new_data->start_time) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("start_time"));
+    }
+    if (old_data->utime != new_data->utime) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("utime"));
+    }
+    if (old_data->stime != new_data->stime) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("stime"));
+    }
+    if (old_data->pgrp != new_data->pgrp) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("pgrp"));
+    }
+    if (old_data->session != new_data->session) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("session"));
+    }
+    if (old_data->nlwp != new_data->nlwp) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("nlwp"));
+    }
+    if (old_data->tgid != new_data->tgid) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("tgid"));
+    }
+    if (old_data->tty != new_data->tty) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("tty"));
+    }
+    if (old_data->processor != new_data->processor) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("processor"));
+    }
+    return changed_attributes;
+}
+
+cJSON * process_json_attributes(process_entry_data * data) {
+    cJSON * attributes = cJSON_CreateObject();
+    int i = 0;
+
+    cJSON_AddNumberToObject(attributes, "pid", data->pid);
+    cJSON_AddStringToObject(attributes, "name", data->name);
+    if (data->state) {
+        cJSON_AddStringToObject(attributes, "state", data->state);
+    }
+    if (data->ppid > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "ppid", data->ppid);
+    }
+    if (data->utime > LLONG_MIN) {
+        cJSON_AddNumberToObject(attributes, "utime", data->utime);
+    }
+    if (data->stime > LLONG_MIN) {
+        cJSON_AddNumberToObject(attributes, "stime", data->stime);
+    }
+    if (data->cmd) {
+        cJSON_AddStringToObject(attributes, "cmd", data->cmd);
+        if (data->argvs)
+        {
+            cJSON *argvs = cJSON_CreateArray();
+            for (i = 0; data->argvs[i]; i++) {
+                if (strlen(data->argvs[i])) {
+                    cJSON_AddItemToArray(argvs, cJSON_CreateString(data->argvs[i]));
+                }
+            }
+            if (cJSON_GetArraySize(argvs) > 0) {
+                cJSON_AddItemToObject(attributes, "argvs", argvs);
+            } else {
+                cJSON_Delete(argvs);
+            }
+        }
+    }
+    if (data->euser) {
+        cJSON_AddStringToObject(attributes, "euser", data->euser);
+    }
+    if (data->ruser) {
+        cJSON_AddStringToObject(attributes, "ruser", data->ruser);
+    }
+    if (data->suser) {
+        cJSON_AddStringToObject(attributes, "suser", data->suser);
+    }
+    if (data->egroup) {
+        cJSON_AddStringToObject(attributes, "egroup", data->egroup);
+    }
+    if (data->rgroup) {
+        cJSON_AddStringToObject(attributes, "rgroup", data->rgroup);
+    }
+    if (data->sgroup) {
+        cJSON_AddStringToObject(attributes, "sgroup", data->sgroup);
+    }
+    if (data->fgroup) {
+        cJSON_AddStringToObject(attributes, "fgroup", data->fgroup);
+    }
+    if (data->priority > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "priority", data->priority);
+    }
+    if (data->nice > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "nice", data->nice);
+    }
+    if (data->size > LONG_MIN) {
+        cJSON_AddNumberToObject(attributes, "size", data->size);
+    }
+    if (data->vm_size > LONG_MIN) {
+        cJSON_AddNumberToObject(attributes, "vm_size", data->vm_size);
+    }
+    if (data->resident > LONG_MIN) {
+        cJSON_AddNumberToObject(attributes, "resident", data->resident);
+    }
+    if (data->share > LONG_MIN) {
+        cJSON_AddNumberToObject(attributes, "share", data->share);
+    }
+    if (data->start_time > LLONG_MIN) {
+        cJSON_AddNumberToObject(attributes, "start_time", data->start_time);
+    }
+    if (data->pgrp > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "pgrp", data->pgrp);
+    }
+    if (data->session > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "session", data->session);
+    }
+    if (data->nlwp > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "nlwp", data->nlwp);
+    }
+    if (data->tgid > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "tgid", data->tgid);
+    }
+    if (data->tty > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "tty", data->tty);
+    }
+    if (data->processor > INT_MIN) {
+        cJSON_AddNumberToObject(attributes, "processor", data->processor);
+    }
+    return attributes;
 }

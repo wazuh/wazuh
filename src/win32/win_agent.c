@@ -534,7 +534,7 @@ char *get_agent_ip()
                 }
 
                 if (iface_data) {
-                    object = interface_json_event(iface_data, 0, "");
+                    object = interface_json_event(NULL, iface_data, 0, "");
                     free_interface_data(iface_data);
                 } else {
                     mdebug2("Couldn't get the data of the interface: '%S'", pCurrAddresses->FriendlyName);

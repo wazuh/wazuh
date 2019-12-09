@@ -277,12 +277,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
 
-    // Set random ID for each scan
-
-    int ID = wm_sys_get_random_id();
-
     // Set timestamp
-
     char *timestamp = w_get_timestamp(time(NULL));
 
 	HANDLE hdle;
@@ -386,7 +381,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
                 // Check if it is necessary to create a port event
                 char * string = NULL;
-                if (string = analyze_port(entry_data, ID, timestamp), string) {
+                if (string = analyze_port(entry_data, timestamp), string) {
                     mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
                     wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
                     free(string);
@@ -507,7 +502,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
                 // Check if it is necessary to create a port event
                 char * string = NULL;
-                if (string = analyze_port(entry_data, ID, timestamp), string) {
+                if (string = analyze_port(entry_data, timestamp), string) {
                     mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
                     wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
                     free(string);
@@ -583,7 +578,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
             // Check if it is necessary to create a port event
             char * string = NULL;
-            if (string = analyze_port(entry_data, ID, timestamp), string) {
+            if (string = analyze_port(entry_data, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
                 wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
                 free(string);
@@ -666,7 +661,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
             // Check if it is necessary to create a port event
             char * string = NULL;
-            if (string = analyze_port(entry_data, ID, timestamp), string) {
+            if (string = analyze_port(entry_data, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
                 wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
                 free(string);
@@ -717,10 +712,6 @@ void sys_programs_windows(const char* LOCATION){
     // Set timestamp
     char *timestamp = w_get_timestamp(time(NULL));
 
-    // Set random ID for each scan
-
-    int ID = wm_sys_get_random_id();
-
     mtdebug1(WM_SYS_LOGTAG, "Starting installed programs inventory.");
 
     HKEY main_key;
@@ -744,7 +735,7 @@ void sys_programs_windows(const char* LOCATION){
                  &main_key) == ERROR_SUCCESS
                ){
                mtdebug2(WM_SYS_LOGTAG, "Reading 64 bits programs from registry.");
-               list_programs(main_key, arch, NULL, usec, timestamp, ID, LOCATION);
+               list_programs(main_key, arch, NULL, usec, timestamp, LOCATION);
             }
             RegCloseKey(main_key);
         }
@@ -762,7 +753,7 @@ void sys_programs_windows(const char* LOCATION){
          &main_key) == ERROR_SUCCESS
        ){
        mtdebug2(WM_SYS_LOGTAG, "Reading 32 bits programs from registry.");
-       list_programs(main_key, arch, NULL, usec, timestamp, ID, LOCATION);
+       list_programs(main_key, arch, NULL, usec, timestamp, LOCATION);
     }
     RegCloseKey(main_key);
 
@@ -774,7 +765,7 @@ void sys_programs_windows(const char* LOCATION){
          KEY_READ,
          &main_key) == ERROR_SUCCESS
        ){
-       list_users(main_key, usec, timestamp, ID, LOCATION);
+       list_users(main_key, usec, timestamp, LOCATION);
     }
     RegCloseKey(main_key);
 
@@ -789,7 +780,6 @@ void sys_programs_windows(const char* LOCATION){
 void sys_hotfixes(const char* LOCATION){
     int usec = 1000000 / wm_max_eps;
     char *timestamp = w_get_timestamp(time(NULL));
-    int ID = wm_sys_get_random_id();
     HKEY main_key;
     long unsigned int result;
     const char *HOTFIXES_REG;
@@ -801,7 +791,7 @@ void sys_hotfixes(const char* LOCATION){
 
     if(result = RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT(HOTFIXES_REG), 0, KEY_READ | KEY_WOW64_64KEY, &main_key), result == ERROR_SUCCESS) {
         mtdebug2(WM_SYS_LOGTAG, "Reading hotfixes from the registry.");
-        list_hotfixes(main_key,usec, timestamp, ID, LOCATION);
+        list_hotfixes(main_key,usec, timestamp, LOCATION);
     } else {
         mterror(WM_SYS_LOGTAG, "Could not open the registry '%s'. Error: %lu.", HOTFIXES_REG, result);
     }
@@ -814,7 +804,7 @@ void sys_hotfixes(const char* LOCATION){
 }
 
 // List installed programs from the registry
-void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const char * timestamp, int ID, const char * LOCATION) {
+void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const char * timestamp, const char * LOCATION) {
 
     TCHAR    achKey[KEY_LENGTH];   // buffer for subkey name
     DWORD    cbName;                   // size of name string
@@ -866,10 +856,10 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
 
                 if (root_key) {
                     snprintf(full_key, KEY_LENGTH - 1, "%s\\%s", root_key, achKey);
-                    read_win_program(full_key, arch, U_KEY, usec, timestamp, ID, LOCATION);
+                    read_win_program(full_key, arch, U_KEY, usec, timestamp, LOCATION);
                 } else {
                     snprintf(full_key, KEY_LENGTH - 1, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\%s", achKey);
-                    read_win_program(full_key, arch, LM_KEY, usec, timestamp, ID, LOCATION);
+                    read_win_program(full_key, arch, LM_KEY, usec, timestamp, LOCATION);
                 }
 
                 free(full_key);
@@ -880,7 +870,7 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
     }
 }
 
-void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const char *LOCATION) {
+void list_hotfixes(HKEY hKey, int usec, const char *timestamp, const char *LOCATION) {
     static OSRegex *hotfix_regex = NULL;
     // This table is used to discard already reported hotfixes (same key and same timestamp)
     // It does not need to be released between iterations (static variable)
@@ -975,14 +965,14 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
                     }
                 }
 
-                send_hotfix(hotfix, usec, timestamp, ID, LOCATION);
+                send_hotfix(hotfix, usec, timestamp, LOCATION);
             } else {
                 // Ignore the hotfix if it is the same as the previous one
                 if (!strcmp(achKey, prev_hotfix)) {
                     continue;
                 }
                 snprintf(prev_hotfix, KEY_LENGTH, achKey);
-                send_hotfix(achKey, usec, timestamp, ID, LOCATION);
+                send_hotfix(achKey, usec, timestamp, LOCATION);
             }
         } else {
             mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, result);
@@ -991,7 +981,7 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
 }
 
 // List Windows users from the registry
-void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION) {
+void list_users(HKEY hKey, int usec, const char * timestamp, const char * LOCATION) {
 
     TCHAR    achKey[KEY_LENGTH];   // buffer for subkey name
     DWORD    cbName;                   // size of name string
@@ -1054,7 +1044,7 @@ void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char 
                      KEY_READ,
                      &uKey) == ERROR_SUCCESS
                    ){
-                   list_programs(uKey, arch, user_key, usec, timestamp, ID, LOCATION);
+                   list_programs(uKey, arch, user_key, usec, timestamp, LOCATION);
                 }
 
                 RegCloseKey(uKey);
@@ -1068,7 +1058,7 @@ void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char 
 }
 
 // Get values about a single program from the registry
-void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, int ID, const char * LOCATION) {
+void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, const char * LOCATION) {
 
     HKEY primary_key;
     HKEY program_key;
@@ -1216,7 +1206,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
             // Check if it is necessary to create a program event
             char * string = NULL;
-            if (string = analyze_program(entry_data, ID, timestamp), string) {
+            if (string = analyze_program(entry_data, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
                 wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
                 free(string);
@@ -1232,7 +1222,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
     RegCloseKey(program_key);
 }
 
-void send_hotfix(const char *hotfix, int usec, const char *timestamp, int ID, const char *LOCATION) {
+void send_hotfix(const char *hotfix, int usec, const char *timestamp, const char *LOCATION) {
     if (!strcmp(hotfix, "RollupFix")) {
         return;
     }
@@ -1243,7 +1233,7 @@ void send_hotfix(const char *hotfix, int usec, const char *timestamp, int ID, co
 
     // Check if it is necessary to create a hotfix event
     char * string = NULL;
-    if (string = analyze_hotfix(entry_data, ID, timestamp), string) {
+    if (string = analyze_hotfix(entry_data, timestamp), string) {
         mtdebug2(WM_SYS_LOGTAG, "sys_hotfixes() sending '%s'", string);
         wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
         free(string);
@@ -1253,10 +1243,6 @@ void send_hotfix(const char *hotfix, int usec, const char *timestamp, int ID, co
 void sys_hw_windows(const char* LOCATION){
     // Set timestamp
     char *timestamp = w_get_timestamp(time(NULL));
-
-    // Set random ID for each scan
-
-    int ID = wm_sys_get_random_id();
 
     hw_entry * hw_data = NULL;
 
@@ -1361,7 +1347,7 @@ void sys_hw_windows(const char* LOCATION){
 
     // Check if it is necessary to create a hardware event
     char * string = NULL;
-    if (string = analyze_hw(hw_data, ID, timestamp), string) {
+    if (string = analyze_hw(hw_data, timestamp), string) {
         mtdebug2(WM_SYS_LOGTAG, "sys_hw_windows() sending '%s'", string);
         SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
         free(string);
@@ -1377,10 +1363,6 @@ void sys_os_windows(const char* LOCATION){
     // Set timestamp
 
     char *timestamp = w_get_timestamp(time(NULL));
-
-    // Set random ID for each scan
-
-    int ID = wm_sys_get_random_id();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting Operating System inventory.");
 
@@ -1430,7 +1412,7 @@ void sys_os_windows(const char* LOCATION){
 
     // Check if it is necessary to create a operative system event
     char * string = NULL;
-    if (string = analyze_os(os_data, ID, timestamp), string) {
+    if (string = analyze_os(os_data, timestamp), string) {
         mtdebug2(WM_SYS_LOGTAG, "sys_os_windows() sending '%s'", string);
         SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
         free(string);
@@ -1811,10 +1793,6 @@ void sys_network_windows(const char* LOCATION){
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
 
-    // Set random ID and timestamp
-
-    int ID = wm_sys_get_random_id();
-
     char *timestamp = w_get_timestamp(time(NULL));
 
     /* Set the flags to pass to GetAdaptersAddresses() */
@@ -1927,7 +1905,7 @@ void sys_network_windows(const char* LOCATION){
 
                 // Check if it is necessary to create an interface event
                 char * string = NULL;
-                if (string = analyze_interface(entry_data, ID, timestamp), string) {
+                if (string = analyze_interface(entry_data, timestamp), string) {
                     mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
                     wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
                     free(string);
@@ -2098,10 +2076,6 @@ void sys_proc_windows(const char* LOCATION) {
 
     char *timestamp = w_get_timestamp(time(NULL));
 
-    // Set random ID for each scan
-
-    int ID = wm_sys_get_random_id();
-
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
 
 	PROCESSENTRY32 pe = { 0 };
@@ -2258,7 +2232,7 @@ void sys_proc_windows(const char* LOCATION) {
 
                 // Check if it is necessary to create a process event
                 char * string = NULL;
-                if (string = analyze_process(entry_data, ID, timestamp), string) {
+                if (string = analyze_process(entry_data, timestamp), string) {
                     mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
                     wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
                     free(string);

@@ -85,7 +85,7 @@ char* get_port_state(int state){
 
 // Get opened ports related to IPv4 sockets
 
-void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, int random_id, const char* timestamp, int check_all){
+void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, const char* timestamp, int check_all){
 
     unsigned long rxq, txq, time_len, retr, inode;
     int local_port, rem_port, d, state, uid, timer_run, timeout;
@@ -159,7 +159,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
                 // Check if it is necessary to create a port event
                 char * string = NULL;
-                if (string = analyze_port(entry_data, random_id, timestamp), string) {
+                if (string = analyze_port(entry_data, timestamp), string) {
                     mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                     free(string);
@@ -180,7 +180,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
 // Get opened ports related to IPv6 sockets
 
-void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, int random_id, const char * timestamp, int check_all){
+void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, const char * timestamp, int check_all){
 
     unsigned long rxq, txq, time_len, retr, inode;
     int local_port, rem_port, d, state, uid, timer_run, timeout;
@@ -256,7 +256,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
                 // Check if it is necessary to create a port event
                 char * string = NULL;
-                if (string = analyze_port(entry_data, random_id, timestamp), string) {
+                if (string = analyze_port(entry_data, timestamp), string) {
                     mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                     free(string);
@@ -278,13 +278,9 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
 
     char *protocol;
-    int random_id = os_random();
     char *timestamp;
 
     timestamp = w_get_timestamp(time(NULL));
-
-    if (random_id < 0)
-        random_id = -random_id;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting ports inventory.");
 
@@ -292,22 +288,22 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
 
     /* TCP opened ports inventory */
     snprintf(protocol, PROTO_LENGTH, "%s", "tcp");
-    get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, random_id, timestamp, check_all);
+    get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, timestamp, check_all);
 
     if (check_all) {
         /* UDP opened ports inventory */
         snprintf(protocol, PROTO_LENGTH, "%s", "udp");
-        get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, random_id, timestamp, check_all);
+        get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, timestamp, check_all);
     }
 
     /* TCP6 opened ports inventory */
     snprintf(protocol, PROTO_LENGTH, "%s", "tcp6");
-    get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, random_id, timestamp, check_all);
+    get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, timestamp, check_all);
 
     if (check_all) {
         /* UDP6 opened ports inventory */
         snprintf(protocol, PROTO_LENGTH, "%s", "udp6");
-        get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, random_id, timestamp, check_all);
+        get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, timestamp, check_all);
     }
 
     free(protocol);
@@ -322,29 +318,25 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
 void sys_packages_linux(int queue_fd, const char* LOCATION) {
 
     DIR *dir;
-    int random_id = os_random();
 
     /* Set positive random ID for each event */
-
-    if (random_id < 0)
-        random_id = -random_id;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
 
     if ((dir = opendir("/var/lib/dpkg/"))){
         closedir(dir);
-        sys_deb_packages(queue_fd, LOCATION, random_id);
+        sys_deb_packages(queue_fd, LOCATION);
     }
     if ((dir = opendir("/var/lib/rpm/"))){
         closedir(dir);
-        sys_rpm_packages(queue_fd, LOCATION, random_id);
+        sys_rpm_packages(queue_fd, LOCATION);
     }
 
     // Checking for uninstalled programs
     check_uninstalled_programs();
 }
 
-void sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
+void sys_rpm_packages(int queue_fd, const char* LOCATION){
 
     char *format = "rpm";
     char *timestamp;
@@ -526,7 +518,7 @@ void sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
         } else {
             // Check if it is necessary to create a program event
             char * string = NULL;
-            if (string = analyze_program(entry_data, random_id, timestamp), string) {
+            if (string = analyze_program(entry_data, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_rpm_packages() sending '%s'", string);
                 wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                 free(string);
@@ -552,7 +544,7 @@ void sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     free(timestamp);
 }
 
-void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
+void sys_deb_packages(int queue_fd, const char* LOCATION){
 
     const char * format = "deb";
     char file[PATH_LENGTH] = "/var/lib/dpkg/status";
@@ -755,7 +747,7 @@ void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
                 if (entry_data->installed) {
                     // Check if it is necessary to create a program event
                     char * string = NULL;
-                    if (string = analyze_program(entry_data, random_id, timestamp), string) {
+                    if (string = analyze_program(entry_data, timestamp), string) {
                         mtdebug2(WM_SYS_LOGTAG, "sys_deb_packages() sending '%s'", string);
                         wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                         free(string);
@@ -785,15 +777,11 @@ void sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
 void sys_hw_linux(int queue_fd, const char* LOCATION){
 
-    int random_id = os_random();
     char *timestamp;
 
     hw_entry * hw_data = NULL;
 
     timestamp = w_get_timestamp(time(NULL));
-
-    if (random_id < 0)
-        random_id = -random_id;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting Hardware inventory.");
 
@@ -810,7 +798,7 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
 
     // Check if it is necessary to create a hardware event
     char * string = NULL;
-    if (string = analyze_hw(hw_data, random_id, timestamp), string) {
+    if (string = analyze_hw(hw_data, timestamp), string) {
         mtdebug2(WM_SYS_LOGTAG, "sys_hw_linux() sending '%s'", string);
         SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
         free(string);
@@ -825,15 +813,11 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
 
 void sys_os_unix(int queue_fd, const char* LOCATION){
 
-    int random_id = os_random();
     char *timestamp;
 
     os_entry * os_data = NULL;
 
     timestamp = w_get_timestamp(time(NULL));
-
-    if (random_id < 0)
-        random_id = -random_id;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting Operating System inventory.");
 
@@ -883,7 +867,7 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
 
     // Check if it is necessary to create a operative system event
     char * string = NULL;
-    if (string = analyze_os(os_data, random_id, timestamp), string) {
+    if (string = analyze_os(os_data, timestamp), string) {
         mtdebug2(WM_SYS_LOGTAG, "sys_os_unix() sending '%s'", string);
         SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
         free(string);
@@ -920,17 +904,12 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     char ** ifaces_list;
     int i = 0, size_ifaces = 0;
     struct ifaddrs *ifaddr = NULL, *ifa;
-    int random_id = os_random();
     char *timestamp;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
 
     timestamp = w_get_timestamp(time(NULL));
-
-
-    if (random_id < 0)
-        random_id = -random_id;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
@@ -974,7 +953,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         if (entry_data = getNetworkIface_linux(ifaces_list[i], ifaddr), entry_data) {
             // Check if it is necessary to create an interface event
             char * string = NULL;
-            if (string = analyze_interface(entry_data, random_id, timestamp), string) {
+            if (string = analyze_interface(entry_data, timestamp), string) {
                 mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
                 wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                 free(string);
@@ -1437,10 +1416,6 @@ char* get_default_gateway(char *ifa_name){
 void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     char *timestamp;
-    int random_id = os_random();
-
-    if (random_id < 0)
-        random_id = -random_id;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -1542,7 +1517,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
         // Check if it is necessary to create a process event
         char * string = NULL;
-        if (string = analyze_process(entry_data, random_id, timestamp), string) {
+        if (string = analyze_process(entry_data, timestamp), string) {
             mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", string);
             wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
             free(string);

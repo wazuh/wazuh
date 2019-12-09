@@ -87,7 +87,7 @@ char* getPrimaryIP(){
         interface_entry_data * iface = NULL;
 #ifdef __linux__
         if (iface = getNetworkIface_linux(ifaces_list[i], ifaddr), iface) {
-            object = interface_json_event(iface, 0, "");
+            object = interface_json_event(NULL, iface, 0, "");
             free_interface_data(iface);
         } else {
             mdebug2("Couldn't get the data of the interface: '%s'", ifaces_list[i]);
@@ -102,7 +102,7 @@ char* getPrimaryIP(){
                 continue;
             }
             if (iface = getNetworkIface_bsd(ifaces_list[i], ifaddr, gate), iface) {
-                object = interface_json_event(iface, 0, "");
+                object = interface_json_event(NULL, iface, 0, "");
                 free_interface_data(iface);
             } else {
                 mdebug2("Couldn't get the data of the interface: '%s'", ifaces_list[i]);
