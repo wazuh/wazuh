@@ -39,7 +39,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
 
     /* Daemon loop */
     while (1) {
-        if (OS_RecvUnix(arq, OS_MAXSTR, msg)) {
+        if (OS_RecvUnix(arq, OS_MAXSTR - 1, msg)) {
 
             mdebug2("Active response request received: %s", msg);
 
