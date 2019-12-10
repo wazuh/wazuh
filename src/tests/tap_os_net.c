@@ -231,13 +231,13 @@ int test_unix() {
 
     w_assert_int_eq(OS_SendUnix(client_socket, SENDSTRING, 5), 0);
 
-    w_assert_int_eq(OS_RecvUnix(server_socket, BUFFERSIZE, buffer), 5);
+    w_assert_int_eq(OS_RecvUnix(server_socket, BUFFERSIZE - 1, buffer), 5);
 
     w_assert_str_eq(buffer, "Hello");
 
     w_assert_int_eq(OS_SendUnix(client_socket, SENDSTRING, 0), 0);
 
-    w_assert_int_eq(OS_RecvUnix(server_socket, BUFFERSIZE, buffer), strlen(SENDSTRING) + 1);
+    w_assert_int_eq(OS_RecvUnix(server_socket, BUFFERSIZE - 1, buffer), strlen(SENDSTRING) + 1);
 
     w_assert_str_eq(buffer, SENDSTRING);
 
@@ -254,7 +254,7 @@ int test_unix_invalid_sockets() {
 
     w_assert_int_eq(OS_SendUnix(-1, SENDSTRING, strlen(SENDSTRING)), OS_SOCKTERR);
 
-    w_assert_int_eq(OS_RecvUnix(-1, BUFFERSIZE, buffer), 0);
+    w_assert_int_eq(OS_RecvUnix(-1, BUFFERSIZE - 1, buffer), 0);
 
     return 1;
 }
