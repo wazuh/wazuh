@@ -897,10 +897,11 @@ const char *print_agent_status(agent_status_t status)
 int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const char *exec)
 {
     int rc;
-    char agt_msg[OS_SIZE_20480];
+    char *agt_msg;
+    os_malloc(OS_MAXSTR * sizeof(char), agt_msg);
 
     if (!exec) {
-        snprintf(agt_msg, OS_SIZE_20480,
+        snprintf(agt_msg, OS_MAXSTR,
                  "%s %c%c%c %s %s",
                  "(msg_to_agent) []",
                  (agt_id == NULL) ? ALL_AGENTS_C : NONE_C,
@@ -927,10 +928,11 @@ int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const ch
             merror("Remoted socket error.");
         }
         merror("Error communicating with remoted queue (%d).", rc);
-
+        free(agt_msg);
         return (-1);
     }
 
+    free(agt_msg);
     return (0);
 }
 
