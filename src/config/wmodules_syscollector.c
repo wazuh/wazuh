@@ -222,7 +222,7 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
                         }
                     }
                     else if (!strcmp(node[i]->attributes[j], "interval")) {
-                        if (syscollector->processes_interval = get_interval(node[i]->values[j]), !syscollector->processes_interval) {
+                        if (syscollector->ports_interval = get_interval(node[i]->values[j]), !syscollector->ports_interval) {
                             merror("Invalid interval at module '%s'", WM_SYS_CONTEXT.name);
                             return OS_INVALID;
                         }

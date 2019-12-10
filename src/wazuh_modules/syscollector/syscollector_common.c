@@ -934,6 +934,7 @@ void free_process_data(process_entry_data * data) {
 char * analyze_hw(hw_entry * entry_data, const char * timestamp) {
     cJSON * json_event = NULL;
     char * string = NULL;
+    int modify = 0;
 
     if (!entry_data->board_serial) {
         free_hw_data(entry_data);
@@ -943,7 +944,8 @@ char * analyze_hw(hw_entry * entry_data, const char * timestamp) {
 
     w_mutex_lock(&sys->hardware_mutex);
 
-    if (json_event = hw_json_event(sys->hw_data, entry_data, sys->hw_data ? HW_MODIFY : HW_ADD, timestamp), json_event) {
+    modify = (sys->hw_data && sys->hw_data->board_serial);
+    if (json_event = hw_json_event(modify ? sys->hw_data : NULL, entry_data, modify ? SYS_MODIFY : SYS_ADD, timestamp), json_event) {
         free_hw_data(sys->hw_data);
         sys->hw_data = entry_data;
 
@@ -963,6 +965,7 @@ char * analyze_hw(hw_entry * entry_data, const char * timestamp) {
 char * analyze_os(os_entry * entry_data, const char * timestamp) {
     cJSON * json_event = NULL;
     char * string = NULL;
+    int modify = 0;
 
     if (!entry_data->os_name) {
         free_os_data(entry_data);
@@ -972,7 +975,8 @@ char * analyze_os(os_entry * entry_data, const char * timestamp) {
 
     w_mutex_lock(&sys->os_mutex);
 
-    if (json_event = os_json_event(sys->os_data, entry_data, sys->os_data ? OS_MODIFY : OS_ADD, timestamp), json_event) {
+    modify = (sys->os_data && sys->os_data->os_name);
+    if (json_event = os_json_event(modify ? sys->os_data : NULL, entry_data, modify ? SYS_MODIFY : SYS_ADD, timestamp), json_event) {
         free_os_data(sys->os_data);
         sys->os_data = entry_data;
 
@@ -1017,12 +1021,12 @@ char * analyze_interface(interface_entry_data * entry_data, const char * timesta
             free(key);
             return NULL;
         }
-        json_event = interface_json_event(NULL, entry_data, IFACE_ADD, timestamp);
+        json_event = interface_json_event(NULL, entry_data, SYS_ADD, timestamp);
     }
     else {
         // Checking for changes
         saved_data->enabled = 1;
-        if (json_event = interface_json_event(saved_data, entry_data, IFACE_MODIFY, timestamp), json_event) {
+        if (json_event = interface_json_event(saved_data, entry_data, SYS_MODIFY, timestamp), json_event) {
             if (update_entry(sys->interfaces_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->interfaces_entry_mutex);
                 free_interface_data(entry_data);
@@ -1089,12 +1093,12 @@ char * analyze_program(program_entry_data * entry_data, const char * timestamp) 
             free(key);
             return NULL;
         }
-        json_event = program_json_event(NULL, entry_data, PKG_ADD, timestamp);
+        json_event = program_json_event(NULL, entry_data, SYS_ADD, timestamp);
     }
     else {
         // Checking for changes
         saved_data->installed = 1;
-        if (json_event = program_json_event(saved_data, entry_data, PKG_MODIFY, timestamp), json_event) {
+        if (json_event = program_json_event(saved_data, entry_data, SYS_MODIFY, timestamp), json_event) {
             if (update_entry(sys->programs_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->programs_entry_mutex);
                 free_program_data(entry_data);
@@ -1149,12 +1153,12 @@ char * analyze_hotfix(hotfix_entry_data * entry_data, const char * timestamp) {
             free(key);
             return NULL;
         }
-        json_event = hotfix_json_event(NULL, entry_data, HFIX_ADD, timestamp);
+        json_event = hotfix_json_event(NULL, entry_data, SYS_ADD, timestamp);
     }
     else {
         // Checking for changes
         saved_data->installed = 1;
-        if (json_event = hotfix_json_event(saved_data, entry_data, HFIX_MODIFY, timestamp), json_event) {
+        if (json_event = hotfix_json_event(saved_data, entry_data, SYS_MODIFY, timestamp), json_event) {
             if (update_entry(sys->hotfixes_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->hotfixes_entry_mutex);
                 free_hotfix_data(entry_data);
@@ -1215,12 +1219,12 @@ char * analyze_port(port_entry_data * entry_data, const char * timestamp) {
             free(key);
             return NULL;
         }
-        json_event = port_json_event(NULL, entry_data, PORT_ADD, timestamp);
+        json_event = port_json_event(NULL, entry_data, SYS_ADD, timestamp);
     }
     else {
         // Checking for changes
         saved_data->opened = 1;
-        if (json_event = port_json_event(saved_data, entry_data, PORT_MODIFY, timestamp), json_event) {
+        if (json_event = port_json_event(saved_data, entry_data, SYS_MODIFY, timestamp), json_event) {
             if (update_entry(sys->ports_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->ports_entry_mutex);
                 free_port_data(entry_data);
@@ -1276,12 +1280,12 @@ char * analyze_process(process_entry_data * entry_data, const char * timestamp) 
             free(key);
             return NULL;
         }
-        json_event = process_json_event(NULL, entry_data, PROC_ADD, timestamp);
+        json_event = process_json_event(NULL, entry_data, SYS_ADD, timestamp);
     }
     else {
         // Checking for changes
         saved_data->running = 1;
-        if (json_event = process_json_event(saved_data, entry_data, PROC_MODIFY, timestamp), json_event) {
+        if (json_event = process_json_event(saved_data, entry_data, SYS_MODIFY, timestamp), json_event) {
             if (update_entry(sys->processes_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->processes_entry_mutex);
                 free_process_data(entry_data);
@@ -1309,8 +1313,15 @@ char * analyze_process(process_entry_data * entry_data, const char * timestamp) 
 
 // Deletes the disabled interfaces from the hash table
 void check_disabled_interfaces() {
+    cJSON * json_event = NULL;
+    char * string = NULL;
     char ** keys;
     int i;
+
+    char *timestamp = w_get_timestamp(time(NULL));
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
 
     w_mutex_lock(&sys->interfaces_entry_mutex);
     keys = rbtree_keys(sys->interfaces_entry);
@@ -1328,6 +1339,17 @@ void check_disabled_interfaces() {
         }
 
         if (!data->enabled) {
+            if (json_event = interface_json_event(NULL, data, SYS_DELETE, timestamp), json_event) {
+                string = cJSON_PrintUnformatted(json_event);
+                cJSON_Delete(json_event);
+                mtdebug2(WM_SYS_LOGTAG, "check_disabled_interfaces() sending '%s'", string);
+            #ifdef WIN32
+                wm_sendmsg(usec, 0, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+            #else
+                wm_sendmsg(usec, queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+            #endif
+                free(string);
+            }
             delete_entry(sys->interfaces_entry, keys[i]);
         } else {
             // We reset the enabled flag
@@ -1338,14 +1360,22 @@ void check_disabled_interfaces() {
     }
 
     free_strarray(keys);
+    free(timestamp);
 
     return;
 }
 
 // Deletes the uninstalled programs from the hash table
 void check_uninstalled_programs() {
+    cJSON * json_event = NULL;
+    char * string = NULL;
     char ** keys;
     int i;
+
+    char *timestamp = w_get_timestamp(time(NULL));
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
 
     w_mutex_lock(&sys->programs_entry_mutex);
     keys = rbtree_keys(sys->programs_entry);
@@ -1363,6 +1393,17 @@ void check_uninstalled_programs() {
         }
 
         if (!data->installed) {
+            if (json_event = program_json_event(NULL, data, SYS_DELETE, timestamp), json_event) {
+                string = cJSON_PrintUnformatted(json_event);
+                cJSON_Delete(json_event);
+                mtdebug2(WM_SYS_LOGTAG, "check_uninstalled_programs() sending '%s'", string);
+            #ifdef WIN32
+                wm_sendmsg(usec, 0, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+            #else
+                wm_sendmsg(usec, queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+            #endif
+                free(string);
+            }
             delete_entry(sys->programs_entry, keys[i]);
         } else {
             // We reset the installed flag
@@ -1373,14 +1414,22 @@ void check_uninstalled_programs() {
     }
 
     free_strarray(keys);
+    free(timestamp);
 
     return;
 }
 
 // Deletes the uninstalled hotfixes from the hash table
 void check_uninstalled_hotfixes() {
+    cJSON * json_event = NULL;
+    char * string = NULL;
     char ** keys;
     int i;
+
+    char *timestamp = w_get_timestamp(time(NULL));
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
 
     w_mutex_lock(&sys->hotfixes_entry_mutex);
     keys = rbtree_keys(sys->hotfixes_entry);
@@ -1398,6 +1447,17 @@ void check_uninstalled_hotfixes() {
         }
 
         if (!data->installed) {
+            if (json_event = hotfix_json_event(NULL, data, SYS_DELETE, timestamp), json_event) {
+                string = cJSON_PrintUnformatted(json_event);
+                cJSON_Delete(json_event);
+                mtdebug2(WM_SYS_LOGTAG, "check_uninstalled_hotfixes() sending '%s'", string);
+            #ifdef WIN32
+                wm_sendmsg(usec, 0, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+            #else
+                wm_sendmsg(usec, queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+            #endif
+                free(string);
+            }
             delete_entry(sys->hotfixes_entry, keys[i]);
         } else {
             // We reset the installed flag
@@ -1408,14 +1468,22 @@ void check_uninstalled_hotfixes() {
     }
 
     free_strarray(keys);
+    free(timestamp);
 
     return;
 }
 
 // Deletes the closed ports from the hash table
 void check_closed_ports() {
+    cJSON * json_event = NULL;
+    char * string = NULL;
     char ** keys;
     int i;
+
+    char *timestamp = w_get_timestamp(time(NULL));
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
 
     w_mutex_lock(&sys->ports_entry_mutex);
     keys = rbtree_keys(sys->ports_entry);
@@ -1433,6 +1501,17 @@ void check_closed_ports() {
         }
 
         if (!data->opened) {
+            if (json_event = port_json_event(NULL, data, SYS_DELETE, timestamp), json_event) {
+                string = cJSON_PrintUnformatted(json_event);
+                cJSON_Delete(json_event);
+                mtdebug2(WM_SYS_LOGTAG, "check_closed_ports() sending '%s'", string);
+            #ifdef WIN32
+                wm_sendmsg(usec, 0, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+            #else
+                wm_sendmsg(usec, queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+            #endif
+                free(string);
+            }
             delete_entry(sys->ports_entry, keys[i]);
         } else {
             // We reset the opened flag
@@ -1443,14 +1522,22 @@ void check_closed_ports() {
     }
 
     free_strarray(keys);
+    free(timestamp);
 
     return;
 }
 
 // Deletes the terminated processes from the hash table
 void check_terminated_processes() {
+    cJSON * json_event = NULL;
+    char * string = NULL;
     char ** keys;
     int i;
+
+    char *timestamp = w_get_timestamp(time(NULL));
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
 
     w_mutex_lock(&sys->processes_entry_mutex);
     keys = rbtree_keys(sys->processes_entry);
@@ -1468,6 +1555,17 @@ void check_terminated_processes() {
         }
 
         if (!data->running) {
+            if (json_event = process_json_event(NULL, data, SYS_DELETE, timestamp), json_event) {
+                string = cJSON_PrintUnformatted(json_event);
+                cJSON_Delete(json_event);
+                mtdebug2(WM_SYS_LOGTAG, "check_terminated_processes() sending '%s'", string);
+            #ifdef WIN32
+                wm_sendmsg(usec, 0, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+            #else
+                wm_sendmsg(usec, queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+            #endif
+                free(string);
+            }
             delete_entry(sys->processes_entry, keys[i]);
         } else {
             // We reset the running flag
@@ -1478,6 +1576,7 @@ void check_terminated_processes() {
     }
 
     free_strarray(keys);
+    free(timestamp);
 
     return;
 }
@@ -1526,7 +1625,7 @@ void print_rbtree(rb_tree * tree, pthread_mutex_t mutex) {
     return;
 }
 
-cJSON * hw_json_event(hw_entry * old_data, hw_entry * new_data, hw_event_type type, const char * timestamp) {
+cJSON * hw_json_event(hw_entry * old_data, hw_entry * new_data, sys_event_type type, const char * timestamp) {
     cJSON * changed_attributes = NULL;
 
     if (old_data) {
@@ -1543,7 +1642,7 @@ cJSON * hw_json_event(hw_entry * old_data, hw_entry * new_data, hw_event_type ty
 
     cJSON_AddStringToObject(object, "type", "hardware");
 
-    cJSON_AddItemToObject(object, "inventory", hw_inventory);
+    cJSON_AddItemToObject(object, "data", hw_inventory);
     cJSON_AddStringToObject(hw_inventory, "type", SYS_EVENT_TYPE[type]);
     cJSON_AddStringToObject(hw_inventory, "timestamp", timestamp);
 
@@ -1617,7 +1716,7 @@ cJSON * hw_json_attributes(hw_entry * data) {
     return attributes;
 }
 
-cJSON * os_json_event(os_entry * old_data, os_entry * new_data, os_event_type type, const char * timestamp) {
+cJSON * os_json_event(os_entry * old_data, os_entry * new_data, sys_event_type type, const char * timestamp) {
     cJSON * changed_attributes = NULL;
 
     if (old_data) {
@@ -1634,7 +1733,7 @@ cJSON * os_json_event(os_entry * old_data, os_entry * new_data, os_event_type ty
 
     cJSON_AddStringToObject(object, "type", "OS");
 
-    cJSON_AddItemToObject(object, "inventory", os_inventory);
+    cJSON_AddItemToObject(object, "data", os_inventory);
     cJSON_AddStringToObject(os_inventory, "type", SYS_EVENT_TYPE[type]);
     cJSON_AddStringToObject(os_inventory, "timestamp", timestamp);
 
@@ -1788,7 +1887,7 @@ cJSON * os_json_attributes(os_entry * data) {
     return attributes;
 }
 
-cJSON * interface_json_event(interface_entry_data * old_data, interface_entry_data * new_data, interface_event_type type, const char * timestamp) {
+cJSON * interface_json_event(interface_entry_data * old_data, interface_entry_data * new_data, sys_event_type type, const char * timestamp) {
     cJSON * changed_attributes = NULL;
 
     if (old_data) {
@@ -1805,7 +1904,7 @@ cJSON * interface_json_event(interface_entry_data * old_data, interface_entry_da
 
     cJSON_AddStringToObject(object, "type", "network");
 
-    cJSON_AddItemToObject(object, "inventory", iface);
+    cJSON_AddItemToObject(object, "data", iface);
     cJSON_AddStringToObject(iface, "type", SYS_EVENT_TYPE[type]);
     cJSON_AddStringToObject(iface, "timestamp", timestamp);
 
@@ -2156,7 +2255,7 @@ cJSON * interface_json_attributes(interface_entry_data * data) {
     return attributes;
 }
 
-cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, program_event_type type, const char * timestamp) {
+cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, sys_event_type type, const char * timestamp) {
     cJSON * changed_attributes = NULL;
 
     if (old_data) {
@@ -2173,7 +2272,7 @@ cJSON * program_json_event(program_entry_data * old_data, program_entry_data * n
 
     cJSON_AddStringToObject(object, "type", "program");
 
-    cJSON_AddItemToObject(object, "inventory", program);
+    cJSON_AddItemToObject(object, "data", program);
     cJSON_AddStringToObject(program, "type", SYS_EVENT_TYPE[type]);
     cJSON_AddStringToObject(program, "timestamp", timestamp);
 
@@ -2323,7 +2422,7 @@ cJSON * program_json_attributes(program_entry_data * data) {
     return attributes;
 }
 
-cJSON * hotfix_json_event(hotfix_entry_data * old_data, hotfix_entry_data * new_data, hotfix_event_type type, const char * timestamp) {
+cJSON * hotfix_json_event(hotfix_entry_data * old_data, hotfix_entry_data * new_data, sys_event_type type, const char * timestamp) {
     cJSON * changed_attributes = NULL;
 
     if (old_data) {
@@ -2338,9 +2437,9 @@ cJSON * hotfix_json_event(hotfix_entry_data * old_data, hotfix_entry_data * new_
     cJSON * object = cJSON_CreateObject();
     cJSON * hfix = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(object, "type", "program");
+    cJSON_AddStringToObject(object, "type", "hotfix");
 
-    cJSON_AddItemToObject(object, "inventory", hfix);
+    cJSON_AddItemToObject(object, "data", hfix);
     cJSON_AddStringToObject(hfix, "type", SYS_EVENT_TYPE[type]);
     cJSON_AddStringToObject(hfix, "timestamp", timestamp);
 
@@ -2374,7 +2473,7 @@ cJSON * hotfix_json_attributes(hotfix_entry_data * data) {
     return attributes;
 }
 
-cJSON * port_json_event(port_entry_data * old_data, port_entry_data * new_data, port_event_type type, const char * timestamp) {
+cJSON * port_json_event(port_entry_data * old_data, port_entry_data * new_data, sys_event_type type, const char * timestamp) {
     cJSON * changed_attributes = NULL;
 
     if (old_data) {
@@ -2391,7 +2490,7 @@ cJSON * port_json_event(port_entry_data * old_data, port_entry_data * new_data, 
 
     cJSON_AddStringToObject(object, "type", "port");
 
-    cJSON_AddItemToObject(object, "inventory", port);
+    cJSON_AddItemToObject(object, "data", port);
     cJSON_AddStringToObject(port, "type", SYS_EVENT_TYPE[type]);
     cJSON_AddStringToObject(port, "timestamp", timestamp);
 
@@ -2499,7 +2598,7 @@ cJSON * port_json_attributes(port_entry_data * data) {
     return attributes;
 }
 
-cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, process_event_type type, const char * timestamp) {
+cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, sys_event_type type, const char * timestamp) {
     cJSON * changed_attributes = NULL;
 
     if (old_data) {
@@ -2516,7 +2615,7 @@ cJSON * process_json_event(process_entry_data * old_data, process_entry_data * n
 
     cJSON_AddStringToObject(object, "type", "process");
 
-    cJSON_AddItemToObject(object, "inventory", process);
+    cJSON_AddItemToObject(object, "data", process);
     cJSON_AddStringToObject(process, "type", SYS_EVENT_TYPE[type]);
     cJSON_AddStringToObject(process, "timestamp", timestamp);
 

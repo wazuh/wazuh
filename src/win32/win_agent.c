@@ -541,8 +541,9 @@ char *get_agent_ip()
                     continue;
                 }
 
-                cJSON *iface = cJSON_GetObjectItem(object, "iface");
-                cJSON *ipv4 = cJSON_GetObjectItem(iface, "IPv4");
+                cJSON *data = cJSON_GetObjectItem(object, "data");
+                cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
+                cJSON *ipv4 = cJSON_GetObjectItem(attributes, "IPv4");
                 if(ipv4){
                     cJSON * gateway = cJSON_GetObjectItem(ipv4, "gateway");
                     if (gateway) {

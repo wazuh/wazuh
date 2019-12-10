@@ -96,45 +96,11 @@ typedef enum sys_scan_event {
     PROC_SCAN
 } sys_scan_event;
 
-typedef enum hw_event_type {
-    HW_ADD,
-    HW_MODIFY
-} hw_event_type;
-
-typedef enum os_event_type {
-    OS_ADD,
-    OS_MODIFY
-} os_event_type;
-
-typedef enum interface_event_type {
-    IFACE_ADD,
-    IFACE_MODIFY,
-    IFACE_DELETE
-} interface_event_type;
-
-typedef enum program_event_type {
-    PKG_ADD,
-    PKG_MODIFY,
-    PKG_DELETE
-} program_event_type;
-
-typedef enum hotfix_event_type {
-    HFIX_ADD,
-    HFIX_MODIFY,
-    HFIX_DELETE
-} hotfix_event_type;
-
-typedef enum port_event_type {
-    PORT_ADD,
-    PORT_MODIFY,
-    PORT_DELETE
-} port_event_type;
-
-typedef enum process_event_type {
-    PROC_ADD,
-    PROC_MODIFY,
-    PROC_DELETE
-} process_event_type;
+typedef enum sys_event_type {
+    SYS_ADD,
+    SYS_MODIFY,
+    SYS_DELETE
+} sys_event_type;
 
 typedef struct hw_entry {
     char * board_serial;                    // Motherboard serial number
@@ -535,47 +501,528 @@ void delete_entry(rb_tree * tree, const char * key);
 // Print keys from hash table
 void print_rbtree(rb_tree * tree, pthread_mutex_t mutex);
 
-//
-cJSON * hw_json_event(hw_entry * old_data, hw_entry * new_data, hw_event_type type, const char * timestamp);
-//
+/**
+ * @brief Produce a hardware change JSON event
+ *
+ * {
+ *   type:                  "hardware"
+ *   data: {
+ *     type:                "added"|"modified"
+ *     timestamp:           number
+ *     changed_attributes:  array   hw_json_compare()           [Only if old_data]
+ *     old_attributes:      object  hw_json_attributes()        [Only if old_data]
+ *     attributes:          object  hw_json_attributes()
+ *   }
+ * }
+ *
+ * @param old_data Previous hardware state.
+ * @param new_data Current hardware state.
+ * @param type Type of event: added or modified.
+ * @param timestamp Time of the event.
+ * @return Hardware event JSON object.
+ * @retval NULL No changes detected. Do not send an event.
+ */
+cJSON * hw_json_event(hw_entry * old_data, hw_entry * new_data, sys_event_type type, const char * timestamp);
+
+/**
+ * @brief Create hardware attribute comparison JSON object
+ *
+ * Format: array of strings, with the following possible strings:
+ * - board_serial
+ * - cpu_name
+ * - cpu_cores
+ * - cpu_MHz
+ * - ram_total
+ * - ram_free
+ * - ram_usage
+ *
+ * @param old_data
+ * @param new_data
+ * @return cJSON*
+ */
 cJSON * hw_json_compare(hw_entry * old_data, hw_entry * new_data);
-//
+
+/**
+ * @brief Create hardware attribute set JSON from a hw_entry structure
+ *
+ * Format:
+ * {
+ *   board_serial:  string
+ *   cpu_name:      string
+ *   cpu_cores:     number
+ *   cpu_MHz:       number
+ *   ram_total:     number
+ *   ram_free:      number
+ *   ram_usage:     number
+ * }
+ *
+ * @param data Pointer to a hw_entry structure.
+ * @return Pointer to cJSON structure.
+ */
 cJSON * hw_json_attributes(hw_entry * data);
-//
-cJSON * os_json_event(os_entry * old_data, os_entry * new_data, os_event_type type, const char * timestamp);
-//
+
+/**
+ * @brief Produce an operative system change JSON event
+ *
+ * {
+ *   type:                  "OS"
+ *   data: {
+ *     type:                "added"|"modified"
+ *     timestamp:           number
+ *     changed_attributes:  array   os_json_compare()           [Only if old_data]
+ *     old_attributes:      object  os_json_attributes()        [Only if old_data]
+ *     attributes:          object  os_json_attributes()
+ *   }
+ * }
+ *
+ * @param old_data Previous operative system state.
+ * @param new_data Current operative system state.
+ * @param type Type of event: added or modified.
+ * @param timestamp Time of the event.
+ * @return Operative System event JSON object.
+ * @retval NULL No changes detected. Do not send an event.
+ */
+cJSON * os_json_event(os_entry * old_data, os_entry * new_data, sys_event_type type, const char * timestamp);
+
+/**
+ * @brief Create operative system attribute comparison JSON object
+ *
+ * Format: array of strings, with the following possible strings:
+ * - hostname
+ * - architecture
+ * - os_name
+ * - os_release
+ * - os_version
+ * - os_codename
+ * - os_major
+ * - os_minor
+ * - os_build
+ * - os_platform
+ * - sysname
+ * - release
+ * - version
+ *
+ * @param old_data
+ * @param new_data
+ * @return cJSON*
+ */
 cJSON * os_json_compare(os_entry * old_data, os_entry * new_data);
-//
+
+/**
+ * @brief Create operative system attribute set JSON from a os_entry structure
+ *
+ * Format:
+ * {
+ *   hostname:      string
+ *   architecture:  string
+ *   os_name:       string
+ *   os_release:    string
+ *   os_version:    string
+ *   os_codename:   string
+ *   os_major:      string
+ *   os_minor:      string
+ *   os_build:      string
+ *   os_platform:   string
+ *   sysname:       string
+ *   release:       string
+ *   version:       string
+ * }
+ *
+ * @param data Pointer to a os_entry structure.
+ * @return Pointer to cJSON structure.
+ */
 cJSON * os_json_attributes(os_entry * data);
-//
-cJSON * interface_json_event(interface_entry_data * old_data, interface_entry_data * new_data, interface_event_type type, const char * timestamp);
-//
+
+/**
+ * @brief Produce an interface change JSON event
+ *
+ * {
+ *   type:                  "network"
+ *   data: {
+ *     type:                "added"|"modified"|"deleted"
+ *     timestamp:           number
+ *     changed_attributes:  array   interface_compare()         [Only if old_data]
+ *     old_attributes:      object  interface_json_attributes() [Only if old_data]
+ *     attributes:          object  interface_json_attributes()
+ *   }
+ * }
+ *
+ * @param old_data Previous interface state.
+ * @param new_data Current interface state.
+ * @param type Type of event: added, modified or deleted.
+ * @param timestamp Time of the event.
+ * @return Interface event JSON object.
+ * @retval NULL No changes detected. Do not send an event.
+ */
+cJSON * interface_json_event(interface_entry_data * old_data, interface_entry_data * new_data, sys_event_type type, const char * timestamp);
+
+/**
+ * @brief Create interface attribute comparison JSON object
+ *
+ * Format: array of strings, with the following possible strings:
+ * - name
+ * - adapter
+ * - type
+ * - state
+ * - mac
+ * - ipv4
+ * - ipv4_address
+ * - ipv4_netmask
+ * - ipv4_broadcast
+ * - ipv4_gateway
+ * - ipv4_dhcp
+ * - ipv4_metric
+ * - ipv6
+ * - ipv6_address
+ * - ipv6_netmask
+ * - ipv6_broadcast
+ * - ipv6_gateway
+ * - ipv6_dhcp
+ * - ipv6_metric
+ * - mtu
+ * - tx_packets
+ * - rx_packets
+ * - tx_bytes
+ * - rx_bytes
+ * - tx_errors
+ * - rx_errors
+ * - tx_dropped
+ * - rx_dropped
+ *
+ * @param old_data
+ * @param new_data
+ * @return cJSON*
+ */
 cJSON * interface_compare(interface_entry_data * old_data, interface_entry_data * new_data);
-//
+
+/**
+ * @brief Create interface attribute set JSON from a interface_entry_data structure
+ *
+ * Format:
+ * {
+ *   name:          string
+ *   adapter:       string
+ *   type:          string
+ *   state:         string
+ *   mac:           string
+ *   ipv4:          object
+ *    address:      array
+ *    netmask:      array
+ *    broadcast:    array
+ *    gateway:      string
+ *    dhcp:         string
+ *    metric:       number
+ *   ipv6:          object
+ *    address:      array
+ *    netmask:      array
+ *    broadcast:    array
+ *    gateway:      string
+ *    dhcp:         string
+ *    metric:       number
+ *   mtu:           number
+ *   tx_packets:    number
+ *   rx_packets:    number
+ *   tx_bytes:      number
+ *   rx_bytes:      number
+ *   tx_errors:     number
+ *   rx_errors:     number
+ *   tx_dropped:    number
+ *   rx_dropped:    number
+ * }
+ *
+ * @param data Pointer to a interface_entry_data structure.
+ * @return Pointer to cJSON structure.
+ */
 cJSON * interface_json_attributes(interface_entry_data * data);
-//
-cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, program_event_type type, const char * timestamp);
-//
+
+/**
+ * @brief Produce a program change JSON event
+ *
+ * {
+ *   type:                  "program"
+ *   data: {
+ *     type:                "added"|"modified"|"deleted"
+ *     timestamp:           number
+ *     changed_attributes:  array   program_json_compare()      [Only if old_data]
+ *     old_attributes:      object  program_json_attributes()   [Only if old_data]
+ *     attributes:          object  program_json_attributes()
+ *   }
+ * }
+ *
+ * @param old_data Previous program state.
+ * @param new_data Current program state.
+ * @param type Type of event: added, modified or deleted.
+ * @param timestamp Time of the event.
+ * @return Program event JSON object.
+ * @retval NULL No changes detected. Do not send an event.
+ */
+cJSON * program_json_event(program_entry_data * old_data, program_entry_data * new_data, sys_event_type type, const char * timestamp);
+
+/**
+ * @brief Create program attribute comparison JSON object
+ *
+ * Format: array of strings, with the following possible strings:
+ * - format
+ * - name
+ * - priority
+ * - group
+ * - vendor
+ * - install_time
+ * - version
+ * - architecture
+ * - multi_arch
+ * - source
+ * - description
+ * - location
+ * - size
+ *
+ * @param old_data
+ * @param new_data
+ * @return cJSON*
+ */
 cJSON * program_json_compare(program_entry_data * old_data, program_entry_data * new_data);
-//
+
+/**
+ * @brief Create program attribute set JSON from a program_entry_data structure
+ *
+ * Format:
+ * {
+ *   format:        string
+ *   name:          string
+ *   priority:      string
+ *   group:         string
+ *   vendor:        string
+ *   install_time:  string
+ *   version:       string
+ *   architecture:  string
+ *   multi_arch:    string
+ *   source:        string
+ *   description:   string
+ *   location:      string
+ *   size:          number
+ * }
+ *
+ * @param data Pointer to a program_entry_data structure.
+ * @return Pointer to cJSON structure.
+ */
 cJSON * program_json_attributes(program_entry_data * data);
-//
-cJSON * hotfix_json_event(hotfix_entry_data * old_data, hotfix_entry_data * new_data, hotfix_event_type type, const char * timestamp);
-//
+
+/**
+ * @brief Produce a hotfix change JSON event
+ *
+ * {
+ *   type:                  "hotfix"
+ *   data: {
+ *     type:                "added"|"modified"|"deleted"
+ *     timestamp:           number
+ *     changed_attributes:  array   hotfix_json_compare()       [Only if old_data]
+ *     old_attributes:      object  hotfix_json_attributes()    [Only if old_data]
+ *     attributes:          object  hotfix_json_attributes()
+ *   }
+ * }
+ *
+ * @param old_data Previous hotfix state.
+ * @param new_data Current hotfix state.
+ * @param type Type of event: added, modified or deleted.
+ * @param timestamp Time of the event.
+ * @return Hotfix event JSON object.
+ * @retval NULL No changes detected. Do not send an event.
+ */
+cJSON * hotfix_json_event(hotfix_entry_data * old_data, hotfix_entry_data * new_data, sys_event_type type, const char * timestamp);
+
+/**
+ * @brief Create hotfix attribute comparison JSON object
+ *
+ * Format: array of strings, with the following possible strings:
+ * - hotfix
+ *
+ * @param old_data
+ * @param new_data
+ * @return cJSON*
+ */
 cJSON * hotfix_json_compare(hotfix_entry_data * old_data, hotfix_entry_data * new_data);
-//
+
+/**
+ * @brief Create hotfix attribute set JSON from a hotfix_entry_data structure
+ *
+ * Format:
+ * {
+ *   hotfix:        string
+ * }
+ *
+ * @param data Pointer to a hotfix_entry_data structure.
+ * @return Pointer to cJSON structure.
+ */
 cJSON * hotfix_json_attributes(hotfix_entry_data * data);
-//
-cJSON * port_json_event(port_entry_data * old_data, port_entry_data * new_data, port_event_type type, const char * timestamp);
-//
+
+/**
+ * @brief Produce a port change JSON event
+ *
+ * {
+ *   type:                  "port"
+ *   data: {
+ *     type:                "added"|"modified"|"deleted"
+ *     timestamp:           number
+ *     changed_attributes:  array   port_json_compare()         [Only if old_data]
+ *     old_attributes:      object  port_json_attributes()      [Only if old_data]
+ *     attributes:          object  port_json_attributes()
+ *   }
+ * }
+ *
+ * @param old_data Previous port state.
+ * @param new_data Current port state.
+ * @param type Type of event: added, modified or deleted.
+ * @param timestamp Time of the event.
+ * @return Port event JSON object.
+ * @retval NULL No changes detected. Do not send an event.
+ */
+cJSON * port_json_event(port_entry_data * old_data, port_entry_data * new_data, sys_event_type type, const char * timestamp);
+
+/**
+ * @brief Create port attribute comparison JSON object
+ *
+ * Format: array of strings, with the following possible strings:
+ * - protocol
+ * - local_ip
+ * - remote_ip
+ * - state
+ * - process
+ * - local_port
+ * - remote_port
+ * - tx_queue
+ * - rx_queue
+ * - inode
+ * - pid
+ *
+ * @param old_data
+ * @param new_data
+ * @return cJSON*
+ */
 cJSON * port_json_compare(port_entry_data * old_data, port_entry_data * new_data);
-//
+
+/**
+ * @brief Create port attribute set JSON from a port_entry_data structure
+ *
+ * Format:
+ * {
+ *   protocol:      string
+ *   local_ip:      string
+ *   remote_ip:     string
+ *   state:         string
+ *   process:       string
+ *   local_port:    number
+ *   remote_port:   number
+ *   tx_queue:      number
+ *   rx_queue:      number
+ *   inode:         number
+ *   pid:           number
+ * }
+ *
+ * @param data Pointer to a port_entry_data structure.
+ * @return Pointer to cJSON structure.
+ */
 cJSON * port_json_attributes(port_entry_data * data);
-//
-cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, process_event_type type, const char * timestamp);
-//
+
+/**
+ * @brief Produce a process change JSON event
+ *
+ * {
+ *   type:                  "process"
+ *   data: {
+ *     type:                "added"|"modified"|"deleted"
+ *     timestamp:           number
+ *     changed_attributes:  array   process_json_compare()      [Only if old_data]
+ *     old_attributes:      object  process_json_attributes()   [Only if old_data]
+ *     attributes:          object  process_json_attributes()
+ *   }
+ * }
+ *
+ * @param old_data Previous process state.
+ * @param new_data Current process state.
+ * @param type Type of event: added, modified or deleted.
+ * @param timestamp Time of the event.
+ * @return Process event JSON object.
+ * @retval NULL No changes detected. Do not send an event.
+ */
+cJSON * process_json_event(process_entry_data * old_data, process_entry_data * new_data, sys_event_type type, const char * timestamp);
+
+/**
+ * @brief Create process attribute comparison JSON object
+ *
+ * Format: array of strings, with the following possible strings:
+ * - name
+ * - cmd
+ * - argvs
+ * - state
+ * - euser
+ * - ruser
+ * - suser
+ * - egroup
+ * - rgroup
+ * - sgroup
+ * - fgroup
+ * - pid
+ * - ppid
+ * - priority
+ * - nice
+ * - size
+ * - vm_size
+ * - resident
+ * - share
+ * - start_time
+ * - utime
+ * - stime
+ * - pgrp
+ * - session
+ * - nlwp
+ * - tgid
+ * - tty
+ * - processor
+ *
+ * @param old_data
+ * @param new_data
+ * @return cJSON*
+ */
 cJSON * process_json_compare(process_entry_data * old_data, process_entry_data * new_data);
-//
+
+/**
+ * @brief Create process attribute set JSON from a process_entry_data structure
+ *
+ * Format:
+ * {
+ *   name:          string
+ *   cmd:           string
+ *   argvs:         array
+ *   state:         string
+ *   euser:         string
+ *   ruser:         string
+ *   suser:         string
+ *   egroup:        string
+ *   rgroup:        string
+ *   sgroup:        string
+ *   fgroup:        string
+ *   pid:           number
+ *   ppid:          number
+ *   priority:      number
+ *   nice:          number
+ *   size:          number
+ *   vm_size:       number
+ *   resident:      number
+ *   share:         number
+ *   start_time:    number
+ *   utime:         number
+ *   stime:         number
+ *   pgrp:          number
+ *   session:       number
+ *   nlwp:          number
+ *   tgid:          number
+ *   tty:           number
+ *   processor:     number
+ * }
+ *
+ * @param data Pointer to a process_entry_data structure.
+ * @return Pointer to cJSON structure.
+ */
 cJSON * process_json_attributes(process_entry_data * data);
 
 #endif

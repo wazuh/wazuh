@@ -110,8 +110,9 @@ char* getPrimaryIP(){
             }
         }
 #endif
-        cJSON *interface = cJSON_GetObjectItem(object, "iface");
-        cJSON *ipv4 = cJSON_GetObjectItem(interface, "IPv4");
+        cJSON *data = cJSON_GetObjectItem(object, "data");
+        cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
+        cJSON *ipv4 = cJSON_GetObjectItem(attributes, "IPv4");
         if(ipv4){
 #ifdef __linux__
             cJSON * gateway = cJSON_GetObjectItem(ipv4, "gateway");
