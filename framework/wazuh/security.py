@@ -361,6 +361,70 @@ def update_policy(policy_id=None, name=None, policy=None):
     return result
 
 
+@expose_resources(actions=['security:update'], resources=['user:id:{user_id}', 'role:id:{role_ids}'],
+                  post_proc_kwargs={'exclude_codes': [4002, 4017, 4008, 5001]})
+def set_user_role(user_id, role_ids):
+    """Create a relationship between a user and a role
+
+    :param user_id: User id
+    :param role_ids: List of role ids
+    :return User-Roles information
+    """
+    result = AffectedItemsWazuhResult(none_msg=f'No link created to user {user_id[0]}',
+                                      some_msg=f'Some roles could not be linked to user {user_id[0]}',
+                                      all_msg=f'All roles were linked to user {user_id[0]}')
+    with orm.UserRolesManager() as urm:
+        for role_id in role_ids:
+            user_role = urm.add_role_to_user(username=user_id[0], role_id=role_id)
+            if user_role == SecurityError.ALREADY_EXIST:
+                result.add_failed_item(id_=role_id, error=WazuhError(4017))
+            elif user_role == SecurityError.ROLE_NOT_EXIST:
+                result.add_failed_item(id_=role_id, error=WazuhError(4002))
+            elif user_role == SecurityError.USER_NOT_EXIST:
+                result.add_failed_item(id_=user_id[0], error=WazuhError(5001))
+                break
+            elif user_role == SecurityError.ADMIN_RESOURCES:
+                result.add_failed_item(id_=user_id[0], error=WazuhError(4008))
+            else:
+                result.affected_items.append(role_id)
+                result.total_affected_items += 1
+        result.affected_items.sort(key=str)
+
+    return result
+
+
+@expose_resources(actions=['security:delete'], resources=['user:id:{user_id}', 'role:id:{role_ids}'],
+                  post_proc_kwargs={'exclude_codes': [4002, 4016, 4008, 5001]})
+def remove_user_role(user_id, role_ids):
+    """Create a relationship between a user and a role
+
+    :param user_id: User id
+    :param role_ids: List of role ids
+    :return User-Roles information
+    """
+    result = AffectedItemsWazuhResult(none_msg=f'No role unlinked from user {user_id[0]}',
+                                      some_msg=f'Some roles could not be unlinked from user {user_id[0]}',
+                                      all_msg=f'All roles were unlinked from user {user_id[0]}')
+    with orm.UserRolesManager() as urm:
+        for role_id in role_ids:
+            user_role = urm.remove_role_in_user(username=user_id[0], role_id=role_id)
+            if user_role == SecurityError.INVALID:
+                result.add_failed_item(id_=role_id, error=WazuhError(4016))
+            elif user_role == SecurityError.ROLE_NOT_EXIST:
+                result.add_failed_item(id_=role_id, error=WazuhError(4002))
+            elif user_role == SecurityError.USER_NOT_EXIST:
+                result.add_failed_item(id_=user_id[0], error=WazuhError(5001))
+                break
+            elif user_role == SecurityError.ADMIN_RESOURCES:
+                result.add_failed_item(id_=user_id[0], error=WazuhError(4008))
+            else:
+                result.affected_items.append(role_id)
+                result.total_affected_items += 1
+        result.affected_items.sort(key=str)
+
+    return result
+
+
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4007, 4008, 4011]})
 def set_role_policy(role_id, policy_ids):
@@ -387,6 +451,7 @@ def set_role_policy(role_id, policy_ids):
             else:
                 result.affected_items.append(policy_id)
                 result.total_affected_items += 1
+        result.affected_items.sort(key=str)
 
     return result
 
@@ -417,5 +482,6 @@ def remove_role_policy(role_id, policy_ids):
             else:
                 result.affected_items.append(policy_id)
                 result.total_affected_items += 1
+        result.affected_items.sort(key=str)
 
     return result

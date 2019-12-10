@@ -710,6 +710,61 @@ stages:
         <<: *permission_denied
 
 ---
+test_name: CREATE LINK USER-ROLES RBAC
+
+stages:
+
+  - name: Create one specified link between one user and a list of roles (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/normal/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        role_ids: 3,4
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - '3'
+            - '4'
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+
+  - name: Create one specified link between one user and a list of roles (Allow and Deny)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/normal/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        role_ids: 6,5,2,3
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - '6'
+          failed_items:
+            - error:
+                code: 4000
+                message: 'Permission denied: Resource type: policy:id'
+                remediation: !anystr
+              id:
+                - '2'
+                - '5'
+            - error:
+                code: 4017
+                message: !anystr
+                remediation: !anything
+              id:
+                - '3'
+          total_affected_items: 1
+          total_failed_items: 3
+
+---
 test_name: CREATE LINK ROLE-POLICIES RBAC
 
 stages:

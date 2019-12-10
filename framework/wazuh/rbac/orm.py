@@ -321,7 +321,6 @@ class AuthenticationManager:
             self.session.rollback()
             return False
 
-
     def get_users(self):
         """Get all users in the system
 
@@ -427,8 +426,7 @@ class RolesManager:
                     self.session.delete(role_policy)
                 # If the role does not exist we rollback the changes
                 if self.session.query(Roles).filter_by(id=role_id).first() is None:
-                    self.session.rollback()
-                    return False
+                    raise IntegrityError
                 # Finally we delete the role
                 self.session.query(Roles).filter_by(id=role_id).delete()
                 self.session.commit()
@@ -450,8 +448,7 @@ class RolesManager:
                 for role_policy in relations:
                     self.session.delete(role_policy)
                 if self.session.query(Roles).filter_by(name=role_name).first() is None:
-                    self.session.rollback()
-                    return False
+                    raise IntegrityError
                 self.session.query(Roles).filter_by(name=role_name).delete()
                 self.session.commit()
                 return True
@@ -618,8 +615,7 @@ class PoliciesManager:
                 for role_policy in relations:
                     self.session.delete(role_policy)
                 if self.session.query(Policies).filter_by(id=policy_id).first() is None:
-                    self.session.rollback()
-                    return False
+                    raise IntegrityError
                 self.session.query(Policies).filter_by(id=policy_id).delete()
                 self.session.commit()
                 return True
@@ -635,18 +631,17 @@ class PoliciesManager:
         :return: True -> Success | False -> Failure
         """
         try:
-            if self.get_policy(policy_name) is not None:
-                if self.get_policy(name=policy_name).id not in admin_policy_ids:
-                    relations = self.session.query(RolesPolicies).filter_by(
-                        policy_id=self.get_policy(name=policy_name).id).all()
-                    for role_policy in relations:
-                        self.session.delete(role_policy)
-                    if self.session.query(Policies).filter_by(name=policy_name).delete() is None:
-                        self.session.rollback()
-                        return False
-                    self.session.query(Policies).filter_by(name=policy_name).delete()
-                    self.session.commit()
-                    return True
+            if self.get_policy(policy_name) is not None and \
+                    self.get_policy(name=policy_name).id not in admin_policy_ids:
+                relations = self.session.query(RolesPolicies).filter_by(
+                    policy_id=self.get_policy(name=policy_name).id).all()
+                for role_policy in relations:
+                    self.session.delete(role_policy)
+                if self.session.query(Policies).filter_by(name=policy_name).delete() is None:
+                    raise IntegrityError
+                self.session.query(Policies).filter_by(name=policy_name).delete()
+                self.session.commit()
+                return True
             return False
         except IntegrityError:
             self.session.rollback()
@@ -726,7 +721,7 @@ class UserRolesManager:
                 user.roles.append(role)
                 self.session.commit()
                 return True
-            return False
+            raise IntegrityError
         except IntegrityError:
             self.session.rollback()
             return False
@@ -812,7 +807,7 @@ class UserRolesManager:
             role = user.roles.filter_by(id=role_id).first()
             if role is not None:
                 return True
-            return False
+            raise IntegrityError
         except IntegrityError:
             self.session.rollback()
             return False
@@ -905,12 +900,11 @@ class UserRolesManager:
         :param new_role_id: New role ID
         :return: True -> Success | False -> Failure
         """
-        if username not in admin_usernames:
-            if self.exist_user_role(username=username, role_id=actual_role_id) and \
-                    self.session.query(Roles).filter_by(id=new_role_id).first() is not None:
-                self.remove_role_in_user(username=username, role_id=actual_role_id)
-                self.add_user_to_role(username=username, role_id=new_role_id)
-                return True
+        if username not in admin_usernames and self.exist_user_role(username=username, role_id=actual_role_id) and \
+                self.session.query(Roles).filter_by(id=new_role_id).first() is not None:
+            self.remove_role_in_user(username=username, role_id=actual_role_id)
+            self.add_user_to_role(username=username, role_id=new_role_id)
+            return True
 
         return False
 
@@ -1022,7 +1016,7 @@ class RolesPoliciesManager:
             policy = role.policies.filter_by(id=policy_id).first()
             if policy is not None:
                 return True
-            return False
+            raise IntegrityError
         except IntegrityError:
             self.session.rollback()
             return False
@@ -1116,12 +1110,12 @@ class RolesPoliciesManager:
         :param new_policy_id: New policy ID
         :return: True -> Success | False -> Failure
         """
-        if int(role_id) not in admin_role_ids:
-            if self.exist_role_policy(role_id=role_id, policy_id=actual_policy_id) and \
-                    self.session.query(Policies).filter_by(id=new_policy_id).first() is not None:
-                self.remove_policy_in_role(role_id=role_id, policy_id=actual_policy_id)
-                self.add_policy_to_role(role_id=role_id, policy_id=new_policy_id)
-                return True
+        if int(role_id) not in admin_role_ids and \
+                self.exist_role_policy(role_id=role_id, policy_id=actual_policy_id) and \
+                self.session.query(Policies).filter_by(id=new_policy_id).first() is not None:
+            self.remove_policy_in_role(role_id=role_id, policy_id=actual_policy_id)
+            self.add_policy_to_role(role_id=role_id, policy_id=new_policy_id)
+            return True
 
         return False
 
@@ -1141,7 +1135,6 @@ try:
     os.chmod(_auth_db_file, 0o640)
 except PermissionError as e:
     raise e
-
 
 # Create default users if they don't exist yet
 with AuthenticationManager() as auth:

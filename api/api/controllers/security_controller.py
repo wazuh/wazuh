@@ -400,11 +400,63 @@ def update_policy(policy_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
+def set_user_role(username, role_ids, pretty=False, wait_for_complete=False):
+    """Add a list of roles to one specified user
+
+    :param username: User's username
+    :param role_ids: List of role ids
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :return User-Role information
+    """
+    f_kwargs = {'user_id': username, 'role_ids': role_ids}
+
+    dapi = DistributedAPI(f=security.set_user_role,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+
+    return data, 200
+
+
+@exception_handler
+def remove_user_role(username, role_ids, pretty=False, wait_for_complete=False):
+    """Delete a list of roles of one specified user
+
+    :param username: User's username
+    :param role_ids: List of roles ids
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :return Result of the operation
+    """
+    f_kwargs = {'user_id': username, 'role_ids': role_ids}
+
+    dapi = DistributedAPI(f=security.remove_user_role,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+
+    return data, 200
+
+
+@exception_handler
 def set_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=False):
     """Add a list of policies to one specified role
 
     :param role_id: Role id
-    :param policy_ids: List of policies ids
+    :param policy_ids: List of policy ids
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :return Role information
@@ -430,7 +482,7 @@ def remove_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=Fals
     """Delete a list of policies of one specified role
 
     :param role_id: Role id
-    :param policy_ids: List of policies ids
+    :param policy_ids: List of policy ids
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :return Role information
