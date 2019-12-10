@@ -1,9 +1,9 @@
 ---
 test_name: GET /rules
 
-marks:
-  - usefixtures:
-    - base_tests
+#marks:
+#  - usefixtures:
+#    - base_tests
 
 includes:
   - !include common.yaml
@@ -39,6 +39,7 @@ stages:
               gpg13: !anything
               hipaa: !anything
               nist_800_53: !anything
+              mitre: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: !anyint
@@ -257,6 +258,9 @@ stages:
 ---
 test_name: GET /rules filters
 
+marks:
+  - xfail
+
 stages:
 
   - name: Filter group
@@ -385,6 +389,7 @@ stages:
           gpg13_value: data.affected_items.1.gpg13.0
           hipaa_value: data.affected_items.1.hipaa.0
           nist-800-53_value: data.affected_items.1.nist_800_53.0
+          mitre_value: data.affected_items.1.mitre.0
 
   - name: Filter file without limit
     request:
@@ -538,6 +543,34 @@ stages:
       <<: *general_rules_request
       params:
         nist-800-53: "{nist-800-53_value}"
+    response:
+      status_code: 200
+      body:
+        data:
+          total_affected_items: !anyint
+
+  - name: Filter mitre
+    request:
+      <<: *general_rules_request
+      params:
+        mitre: "{mitre_value}"
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - mitre:
+              - "{mitre_value}"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  - name: Filter mitre without limit
+    request:
+      <<: *general_rules_request
+      params:
+        mitre: "{mitre_value}"
     response:
       status_code: 200
       body:
@@ -1028,6 +1061,92 @@ stages:
   - name: Invalid filter
     request:
       <<: *nist-800-53_rules_request
+      params:
+        noexist: True
+    response:
+      status_code: 400
+      body:
+        <<: *error_null
+
+---
+test_name: GET /rules/requirement/mitre
+
+marks:
+  - xfail
+
+stages:
+
+  - name: Try to show the rules by mitre attack IDs
+    request: &mitre_rules_request
+      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/mitre"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  - name: Try to show the rules by mitre attack IDs, limit and offset
+    request:
+      <<: *mitre_rules_request
+      params:
+        limit: 1
+        offset: 0
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  - name: Try to show the rules by mitre attack IDs, limit = 0
+    request:
+      <<: *mitre_rules_request
+      params:
+        limit: 0
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Filter sort
+    request:
+      <<: *mitre_rules_request
+      params:
+        sort: "-"
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  - name: Filter search
+    request:
+      <<: *mitre_rules_request
+      params:
+        search: 10
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  - name: Invalid filter
+    request:
+      <<: *mitre_rules_request
       params:
         noexist: True
     response:

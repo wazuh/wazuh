@@ -25,7 +25,7 @@ stages:
       body:
         data:
           affected_items:
-            - description: Grouping of wazuh rules.
+            - description: !anystr
               details:
                 decoded_as: wazuh
               file: 0016-wazuh_rules.xml
@@ -36,66 +36,62 @@ stages:
               hipaa: []
               id: 200
               level: 0
+              mitre: !anything
               nist_800_53: []
               path: ruleset/rules
               pci: []
               status: enabled
-            - description: Agent event queue rule
+            - description: !anystr
               details:
                 if_sid: '200'
-                match: "^wazuh: Agent buffer: "
+                match: !anystr
               file: 0016-wazuh_rules.xml
               gdpr: []
               gpg13: []
-              groups:
-                - agent_flooding
-                - wazuh
+              groups: !anything
               hipaa: []
               id: 201
               level: 0
+              mitre: !anything
               nist_800_53: []
               path: ruleset/rules
               pci: []
-              status: enabled
-            - description: Agent event queue is $(level) full.
+              status: !anystr
+            - description: !anystr
               details:
                 if_sid: '201'
-                level: "%"
+                level: !anystr
               file: 0016-wazuh_rules.xml
               gdpr:
                 - IV_35.7.d
               gpg13: []
-              groups:
-                - agent_flooding
-                - gdpr_IV_35.7.d
-                - wazuh
+              groups: !anything
               hipaa: []
               id: 202
               level: 7
+              mitre: !anything
               nist_800_53: []
               path: ruleset/rules
               pci: []
               status: enabled
-            - description: Agent event queue is full. Events may be lost.
+            - description: !anystr
               details:
                 if_sid: '201'
-                level: full
+                level: !anystr
               file: 0016-wazuh_rules.xml
               gdpr:
                 - IV_35.7.d
               gpg13: []
-              groups:
-                - agent_flooding
-                - gdpr_IV_35.7.d
-                - wazuh
+              groups: !anything
               hipaa: []
               id: 203
               level: 9
+              mitre: !anything
               nist_800_53: []
               path: ruleset/rules
               pci: []
-              status: enabled
-            - description: Agent event queue is flooded. Check the agent configuration.
+              status: !anystr
+            - description: !anystr
               details:
                 if_sid: '201'
                 level: flooded
@@ -103,21 +99,19 @@ stages:
               gdpr:
                 - IV_35.7.d
               gpg13: []
-              groups:
-                - agent_flooding
-                - gdpr_IV_35.7.d
-                - wazuh
+              groups: !anything
               hipaa: []
               id: 204
               level: 12
+              mitre: !anything
               nist_800_53: []
               path: ruleset/rules
               pci: []
-              status: enabled
+              status: !anystr
           failed_items: []
-          total_affected_items: 2794
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: All selected rules were shown
+        message: !anystr
 
   - name: Try to show the rules of the system (list)
     request:
@@ -143,6 +137,7 @@ stages:
               hipaa: []
               id: 200
               level: 0
+              mitre: !anything
               nist_800_53: []
               path: ruleset/rules
               pci: []
@@ -150,9 +145,8 @@ stages:
           failed_items:
             - error:
                 code: 1208
-                message: The rule doesn't exist or you don't have permission to see it
-                remediation: Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)
-                  to get more information about how to configure the rules
+                message: !anystr
+                remediation: !anystr
               id:
                 - 1
                 - 2
@@ -161,7 +155,7 @@ stages:
                 - 702
           total_affected_items: 1
           total_failed_items: 5
-        message: Some rules could not be shown
+        message: !anystr
 
 ---
 test_name: GET RULES FILES RBAC
@@ -197,7 +191,7 @@ stages:
               path: ruleset/rules
               status: enabled
           failed_items: []
-          total_affected_items: 123
+          total_affected_items: !anyint
           total_failed_items: 0
         message: All rules files were shown
 
@@ -223,7 +217,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        message: All rules files were shown
+        message: !anystr
 
   - name: Try to show the rules files of the system (list)
     request:
@@ -244,15 +238,14 @@ stages:
           failed_items:
             - error:
                 code: 4000
-                message: 'Permission denied: Resource type: rule:file'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
+                message: !anystr'
+                remediation: !anystr
               id:
                 - 0010-rules_config.xml
                 - 0015-ossec_rules.xml
           total_affected_items: 1
           total_failed_items: 2
-        message: Some rules files were shown
+        message: !anystr
 
   - name: Try to show the rules files of the system (no permissions)
     request:
@@ -268,13 +261,12 @@ stages:
         code: 4000
         dapi_errors:
           master-node:
-            error: Permission denied
-        detail: Permission denied
-        remediation: Please, make sure you have permissions to execute current request, for
-          more information on setting up permissions please visit XXXX
+            error: !anystr
+        detail: !anystr
+        remediation: !anystr
         status: 400
-        title: Wazuh Error
-        type: about:blank
+        title: !anystr
+        type: !anystr
 
 ---
 test_name: GET RULES FILES RBAC (Download)
@@ -318,9 +310,9 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 396
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: All groups in rules are shown
+        message: !anystr
 
 ---
 test_name: GET PCI REQUIREMENT RBAC
@@ -339,6 +331,27 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 37
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
+        message: !anystr
+
+---
+test_name: GET MITRE ATTACK IDS RBAC
+
+stages:
+
+  - name: Try to show the mitre attack ids in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/mitre"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr

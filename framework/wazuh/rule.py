@@ -14,7 +14,7 @@ from wazuh.utils import process_array
 
 
 def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
-              path=None, file=None, level=None, offset=0, limit=common.database_limit, sort_by=None,
+              mitre=None, path=None, file=None, level=None, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
     """Gets a list of rules.
 
@@ -26,6 +26,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr
     :param gdpr: Filters the rules by gdpr requirement.
     :param hipaa: Filters the rules by hipaa requirement.
     :param nist_800_53: Filters the rules by nist_800_53 requirement.
+    :param mitre: Filters the rules by mitre attack ID.
     :param path: Filters the rules by path.
     :param file: Filters the rules by file name.
     :param level: Filters the rules by level. level=2 or level=2-5.
@@ -56,7 +57,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr
         rules.extend(load_rules_from_file(rule_file['file'], rule_file['path'], rule_file['status']))
 
     parameters = {'groups': group, 'pci': pci, 'gpg13': gpg13, 'gdpr': gdpr, 'hipaa': hipaa, 'nist_800_53': nist_800_53,
-                  'path': path, 'file': file, 'id': rule_ids, 'level': levels}
+                  'mitre': mitre, 'path': path, 'file': file, 'id': rule_ids, 'level': levels}
     original_rules = list(rules)
     no_existent_ids = rule_ids[:]
     for r in original_rules:
@@ -144,10 +145,15 @@ def get_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascendi
     result = AffectedItemsWazuhResult(none_msg='No groups in rules are shown',
                                       some_msg='Some groups in rules are shown',
                                       all_msg='All groups in rules are shown')
+    requirements = ['pci', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13', 'mitre']
     groups = set()
     for rule in get_rules(limit=None).affected_items:
         for group in rule['groups']:
-            groups.add(group)
+            for req in requirements:
+                if req in group:
+                    break
+            else:
+                groups.add(group)
 
     result.affected_items = process_array(list(groups), search_text=search_text, search_in_fields=search_in_fields,
                                           complementary_search=complementary_search, sort_by=sort_by,
@@ -173,7 +179,7 @@ def get_requirement(requirement=None, offset=0, limit=common.database_limit, sor
     """
     result = AffectedItemsWazuhResult(none_msg='No rule was shown',
                                       all_msg='Selected rules were shown')
-    valid_requirements = ['pci', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13']
+    valid_requirements = ['pci', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13', 'mitre']
 
     if requirement not in valid_requirements:
         result.add_failed_item(id_=requirement,

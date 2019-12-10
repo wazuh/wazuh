@@ -1848,6 +1848,11 @@ components:
               description: HIPAA checks the rule is checking.
               items:
                 type: string
+            mitre:
+              type: array
+              description: Mitre attack IDs the rule is checking.
+              items:
+                type: string
             id:
               type: integer
               format: int32
@@ -3223,7 +3228,7 @@ components:
       required: true
       schema:
         type: string
-        enum: [pci, gdpr, hipaa, nist-800-53, gpg13]
+        enum: [pci, gdpr, hipaa, nist-800-53, gpg13, mitre]
     result:
       in: query
       name: result
@@ -3605,6 +3610,13 @@ components:
       in: query
       name: nist-800-53
       description: Filters by NIST-800-53 requirement.
+      schema:
+        type: string
+        format: alphanumeric
+    mitre:
+      in: query
+      name: mitre
+      description: Filters by MITRE attack ID.
       schema:
         type: string
         format: alphanumeric
@@ -8312,6 +8324,7 @@ paths:
         - $ref: '#/components/parameters/gpg13'
         - $ref: '#/components/parameters/hipaa'
         - $ref: '#/components/parameters/nist-800-53'
+        - $ref: '#/components/parameters/mitre'
       responses:
         '200':
           description: "Rules"
@@ -8340,6 +8353,7 @@ paths:
                       id: 1
                       level: 0
                       nist_800_53: []
+                      mitre: []
                       path: ruleset/rules
                       pci: []
                       status: enabled
@@ -8356,6 +8370,7 @@ paths:
                       id: 5
                       level: 0
                       nist_800_53: []
+                      mitre: []
                       path: ruleset/rules
                       pci: []
                       status: enabled

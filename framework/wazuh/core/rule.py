@@ -57,10 +57,15 @@ def check_status(status):
 
 
 def set_groups(groups, general_groups, rule):
-    pci_groups, gpg13_groups, gdpr_groups, hipaa_groups, nist_800_53_groups, ossec_groups = (list() for i in range(6))
-    requirements = {'pci_dss_': ('pci', pci_groups, 8), 'gpg13_': ('gpg13', gpg13_groups, 6),
-                    'gdpr_': ('gdpr', gdpr_groups, 5), 'hipaa_': ('hipaa', hipaa_groups, 6),
-                    'nist_800_53_': ('nist_800_53', nist_800_53_groups, 12), 'groups': ('groups', ossec_groups)}
+    pci_groups, gpg13_groups, gdpr_groups, hipaa_groups, nist_800_53_groups, mitre_ids, ossec_groups = \
+        (list() for _ in range(7))
+    requirements = {'pci_dss_': ('pci', pci_groups, 8),
+                    'gpg13_': ('gpg13', gpg13_groups, 6),
+                    'gdpr_': ('gdpr', gdpr_groups, 5),
+                    'hipaa_': ('hipaa', hipaa_groups, 6),
+                    'nist_800_53_': ('nist_800_53', nist_800_53_groups, 12),
+                    'mitre_': ('mitre', mitre_ids, 6),
+                    'groups': ('groups', ossec_groups)}
     groups.extend(general_groups)
     for g in groups:
         for key, value in requirements.items():
@@ -77,7 +82,6 @@ def load_rules_from_file(rule_file, rule_path, rule_status):
     try:
         rules = list()
         root = load_wazuh_xml(os.path.join(common.ossec_path, rule_path, rule_file))
-
         for xml_group in list(root):
             if xml_group.tag.lower() == "group":
                 general_groups = xml_group.attrib['name'].split(',')
@@ -88,7 +92,7 @@ def load_rules_from_file(rule_file, rule_path, rule_status):
                         rule = {'file': rule_file, 'path': rule_path, 'id': int(xml_rule.attrib['id']),
                                 'level': int(xml_rule.attrib['level']), 'status': rule_status, 'details': dict(),
                                 'pci': list(), 'gpg13': list(), 'gdpr': list(), 'hipaa': list(), 'nist_800_53': list(),
-                                'groups': list(), 'description': ''}
+                                'mitre': list(), 'groups': list(), 'description': ''}
                         for k in xml_rule.attrib:
                             if k != 'id' and k != 'level':
                                 rule['details'][k] = xml_rule.attrib[k]
@@ -100,6 +104,9 @@ def load_rules_from_file(rule_file, rule_path, rule_status):
                                 value = ''
                             if tag == "group":
                                 groups.extend(value.split(","))
+                            elif tag == "mitre":
+                                for mitre_id in list(xml_rule_tags):
+                                    groups.append(f'mitre_{mitre_id.text}')
                             elif tag == "description":
                                 rule['description'] += value
                             elif tag == "field":
@@ -109,7 +116,7 @@ def load_rules_from_file(rule_file, rule_path, rule_status):
                                 for attrib, attrib_value in xml_rule_tags.attrib.items():
                                     list_detail[attrib] = attrib_value
                                 add_detail(tag, list_detail, rule['details'])
-                            # show rule variables
+                            # Show rule variables
                             elif tag in {'regex', 'match', 'user', 'id'} and value != '' and value[0] == "$":
                                 for variable in filter(lambda x: x.get('name') == value[1:], root.findall('var')):
                                     add_detail(tag, variable.text, rule['details'])
