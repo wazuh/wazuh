@@ -144,10 +144,15 @@ def get_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascendi
     result = AffectedItemsWazuhResult(none_msg='No groups in rules are shown',
                                       some_msg='Some groups in rules are shown',
                                       all_msg='All groups in rules are shown')
+    requirements = ['pci', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13']
     groups = set()
     for rule in get_rules(limit=None).affected_items:
         for group in rule['groups']:
-            groups.add(group)
+            for req in requirements:
+                if req in group:
+                    break
+            else:
+                groups.add(group)
 
     result.affected_items = process_array(list(groups), search_text=search_text, search_in_fields=search_in_fields,
                                           complementary_search=complementary_search, sort_by=sort_by,
