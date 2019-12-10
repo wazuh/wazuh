@@ -263,8 +263,8 @@ class AuthenticationManager:
             return False
 
     def update_user(self, username: str, password: str):
-        """
-        Update the password an existent user
+        """Update the password an existent user
+
         :param username: string Unique user name
         :param password: string Password provided by user. It will be stored hashed
         :return: True if the user has been modify successfuly. False otherwise
@@ -282,15 +282,19 @@ class AuthenticationManager:
             return False
 
     def delete_user(self, username: str):
-        """
-        Update the password an existent user
+        """Update the password an existent user
+
         :param username: string Unique user name
         :return: True if the user has been delete successfuly. False otherwise
         """
         if username == 'wazuh' or username == 'wazuh-app':
-            return 'admin'
+            return SecurityError.ADMIN_RESOURCES
 
         try:
+            relations = self.session.query(UserRoles).filter_by(user_id=username).all()
+            # If the user has one or more roles associated with it, the associations will be eliminated.
+            for user_role in relations:
+                self.session.delete(user_role)
             self.session.delete(self.session.query(User).filter_by(username=username).first())
             self.session.commit()
             return True
@@ -317,7 +321,7 @@ class AuthenticationManager:
         try:
             if username is not None:
                 return self.session.query(User).filter_by(username=username).first().to_dict()
-        except IntegrityError:
+        except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
 

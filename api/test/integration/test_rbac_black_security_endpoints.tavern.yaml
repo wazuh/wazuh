@@ -64,10 +64,8 @@ stages:
       status_code: 400
       body: &permission_denied
         code: 4000
-        dapi_errors:
-          master-node:
-            error: Permission denied
-        detail: Permission denied
+        dapi_errors: !anything
+        detail: !anystr
         remediation: !anystr
         status: 400
         title: Wazuh Error
@@ -684,7 +682,7 @@ stages:
           failed_items:
             - error:
                 code: 4008
-                message: The specified role/policy is required for a correct Wazuh's functionality
+                message: !anystr
                 remediation: !anything
               id:
                 - 1
@@ -766,6 +764,99 @@ stages:
         <<: *permission_denied
 
 ---
+test_name: CREATE LINK USER-ROLES RBAC
+
+stages:
+
+  - name: Create one specified link between one user and a list of roles (Allow and Deny)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/python/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        role_ids: 2,3,4,7
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - '2'
+          failed_items:
+            - error:
+                code: 4000
+                message: !anystr
+                remediation: !anystr
+              id:
+                - '3'
+                - '4'
+            - error:
+                code: 4002
+                message: !anystr
+                remediation: !anystr
+              id:
+                - '7'
+          total_affected_items: 1
+          total_failed_items: 3
+
+  - name: Create one specified link between one user and a list of roles (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/python/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        role_ids: 1,2
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - '1'
+          failed_items:
+            - error:
+                code: 4017
+                message: !anystr
+                remediation: !anything
+              id:
+                - '2'
+          total_affected_items: 1
+          total_failed_items: 1
+
+---
+test_name: DELETE LINK ROLE-POLICIES RBAC
+
+stages:
+
+  - name: Delete one specified link between one user and a list of roles (Allow)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/python/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        role_ids: 1,2,3,4,5,6
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - '1'
+            - '2'
+          failed_items:
+            - error:
+                code: 4016
+                message: !anystr
+                remediation: !anystr
+              id:
+                - '3'
+                - '4'
+                - '5'
+                - '6'
+          total_affected_items: 2
+          total_failed_items: 4
+
+---
 test_name: CREATE LINK ROLE-POLICIES RBAC
 
 stages:
@@ -783,8 +874,8 @@ stages:
       body:
         data:
           affected_items:
-            - '7'
             - '6'
+            - '7'
           failed_items:
             - error:
                 code: 4000
@@ -815,8 +906,8 @@ stages:
       body:
         data:
           affected_items:
-            - '7'
             - '6'
+            - '7'
           failed_items:
             - error:
                 code: 4010
@@ -863,8 +954,8 @@ stages:
       body:
         data:
           affected_items:
-            - username: python
             - username: ossec
+            - username: python
             - username: rbac
           failed_items: []
           total_affected_items: 3
@@ -903,21 +994,24 @@ stages:
           failed_items:
             - error:
                 code: 4000
-                message: 'Permission denied: Resource type: user:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
+                message: !anystr
+                remediation: !anystr
               id:
-                - administrator
                 - guest
             - error:
+                code: 5001
+                message: !anystr
+                remediation: !anystr
+              id:
+                - administrator
+            - error:
                 code: 5004
-                message: The user could not be removed or updated
-                remediation: Administrator users can not be removed or updated
+                message: !anystr
+                remediation: !anystr
               id:
                 - wazuh
           total_affected_items: 0
           total_failed_items: 3
-        message: No user was deleted
 
 ---
 test_name: DELETE ROLES RBAC
@@ -958,25 +1052,7 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items:
-            - id: 6
-              name: ossec
-              policies: []
-              rule:
-                MATCH:
-                  definition: ossecRule
-            - id: 3
-              name: technical
-              policies: []
-              rule:
-                MATCH:
-                  definition: technicalRule
-            - id: 5
-              name: normalUserModified
-              policies: []
-              rule:
-                FIND$:
-                  definition: normalUserRuleModified
+          affected_items: !anything
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
@@ -1026,82 +1102,7 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items:
-            - id: 6
-              name: ossecPolicy
-              policy:
-                actions:
-                  - role:read
-                effect: allow
-                resources:
-                  - role:id:*
-              roles: []
-            - id: 10
-              name: policy4
-              policy:
-                actions:
-                  - policy:delete
-                effect: deny
-                resources:
-                  - policy:id:*
-              roles: []
-            - id: 3
-              name: technicalPolicy
-              policy:
-                actions:
-                  - agent:create
-                effect: allow
-                resources:
-                  - "*:*:*"
-              roles: []
-            - id: 7
-              name: policy1
-              policy:
-                actions:
-                  - role:read
-                effect: deny
-                resources:
-                  - role:id:*
-              roles: []
-            - id: 9
-              name: policy3
-              policy:
-                actions:
-                  - policy:read
-                effect: allow
-                resources:
-                  - policy:id:1
-              roles: []
-            - id: 8
-              name: policy2
-              policy:
-                actions:
-                  - role:read
-                effect: allow
-                resources:
-                  - role:id:1
-              roles: []
-            - id: 2
-              name: wazuh-appPolicy
-              policy:
-                actions:
-                  - agent:create
-                effect: allow
-                resources:
-                  - agent:id:001
-                  - agent:id:002
-                  - agent:id:003
-              roles: []
-            - id: 5
-              name: normalPolicy
-              policy:
-                actions:
-                  - agent:update
-                  - agent:delete
-                effect: deny
-                resources:
-                  - agent:id:*
-              roles: []
+          affected_items: !anything
           failed_items: []
           total_affected_items: 8
           total_failed_items: 0

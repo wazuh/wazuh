@@ -117,11 +117,12 @@ def delete_user(username_list):
             query = auth.delete_user(username)
             if query is False:
                 result.add_failed_item(id_=username, error=WazuhError(5001))
-            elif query == 'admin':
+            elif query == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=username, error=WazuhError(5004))
             elif user:
                 result.affected_items.append(user)
                 result.total_affected_items += 1
+        result.affected_items.sort(key=str)
 
     return result
 
