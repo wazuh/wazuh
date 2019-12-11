@@ -56,7 +56,7 @@ int wm_config() {
 
 #endif
 
-#if defined (__linux__) || (__MACH__)
+#if defined (__linux__) || (__MACH__) || defined (sun)
     wmodule * control_module;
     control_module = wm_control_read();
     wm_add(control_module);
