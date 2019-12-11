@@ -260,13 +260,14 @@ static int seechanges_createpath(const char *filename)
     char *tmpstr = NULL;
     char *newdir = NULL;
     char *next = NULL;
+    char *save_ptr = NULL;
 
     os_strdup(filename, buffer);
     newdir = buffer;
 #ifdef WIN32
-    tmpstr = strtok(buffer + PATH_OFFSET, "/\\");
+    tmpstr = strtok_r(buffer + PATH_OFFSET, "/\\", &save_ptr);
 #else
-    tmpstr = strtok(buffer + PATH_OFFSET, "/");
+    tmpstr = strtok_r(buffer + PATH_OFFSET, "/", &save_ptr);
 #endif
     if (!tmpstr) {
         merror(FIM_ERROR_GENDIFF_INVALID_PATH, filename);
@@ -275,9 +276,9 @@ static int seechanges_createpath(const char *filename)
     }
 
 #ifdef WIN32
-    while (next = strtok(NULL, "/\\"), next) {
+    while (next = strtok_r(NULL, "/\\", &save_ptr), next) {
 #else
-    while (next = strtok(NULL, "/"), next) {
+    while (next = strtok_r(NULL, "/", &save_ptr), next) {
 #endif
         if (IsDir(newdir) != 0) {
 #ifndef WIN32

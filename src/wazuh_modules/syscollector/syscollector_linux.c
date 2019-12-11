@@ -278,9 +278,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, co
 void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
 
     char *protocol;
-    char *timestamp;
-
-    timestamp = w_get_timestamp(time(NULL));
+    char *timestamp = w_get_timestamp(time(NULL));
 
     mtdebug1(WM_SYS_LOGTAG, "Starting ports inventory.");
 
@@ -339,7 +337,7 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
 void sys_rpm_packages(int queue_fd, const char* LOCATION){
 
     char *format = "rpm";
-    char *timestamp;
+    char *timestamp = w_get_timestamp(time(NULL));
 
     DBT key, data;
     DBC *cursor;
@@ -359,10 +357,6 @@ void sys_rpm_packages(int queue_fd, const char* LOCATION){
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    // Set timestamp
-
-    timestamp = w_get_timestamp(time(NULL));
 
     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "Failed to initialize the DB handler: %s", db_strerror(ret));
@@ -552,14 +546,10 @@ void sys_deb_packages(int queue_fd, const char* LOCATION){
     FILE *fp;
     size_t length;
     int i;
-    char *timestamp;
+    char *timestamp = w_get_timestamp(time(NULL));
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    // Set timestamp
-
-    timestamp = w_get_timestamp(time(NULL));
 
     memset(read_buff, 0, OS_MAXSTR);
 
@@ -1415,12 +1405,10 @@ char* get_default_gateway(char *ifa_name){
 
 void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
-    char *timestamp;
+    char *timestamp = w_get_timestamp(time(NULL));
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    timestamp = w_get_timestamp(time(NULL));
 
     PROCTAB* proc = openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV);
 

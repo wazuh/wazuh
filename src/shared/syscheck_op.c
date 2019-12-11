@@ -570,14 +570,44 @@ void sk_sum_clean(sk_sum_t * sum) {
 
 #endif
 
-const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
-    struct passwd *user = getpwuid(uid);
-    return user ? user->pw_name : "";
+char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
+    long int len = sysconf(_SC_GETPW_R_SIZE_MAX);
+    len = len > 0 ? len : 1024;
+    struct passwd pwd = { .pw_name = NULL };
+    struct passwd *result = NULL;
+    char *buffer;
+    os_malloc(len, buffer);
+    char *u_name;
+
+    if (result = w_getpwuid(uid, &pwd, buffer, len), result) {
+        os_strdup(result->pw_name, u_name);
+    } else {
+        mdebug2("Could not find a user by uid (%d): %s (%d)", uid, strerror(errno), errno);
+        os_strdup("", u_name);
+    }
+    os_free(buffer);
+
+    return u_name;
 }
 
-const char *get_group(int gid) {
-    struct group *group = getgrgid(gid);
-    return group ? group->gr_name : "";
+char *get_group(int gid) {
+    long int len = sysconf(_SC_GETGR_R_SIZE_MAX);
+    len = len > 0 ? len : 1024;
+    struct group group = { .gr_name = NULL };
+    struct group *result = NULL;
+    char *buffer;
+    os_malloc(len, buffer);
+    char *gr_name;
+
+    if (result = w_getgrgid(gid, &group, buffer, len), result) {
+        os_strdup(result->gr_name, gr_name);
+    } else {
+        mdebug2("Could not find a group by gid (%d): %s (%d)", gid, strerror(errno), errno);
+        os_strdup("", gr_name);
+    }
+    free(buffer);
+
+    return gr_name;
 }
 
     void decode_win_attributes(char *str, unsigned int attrs) {
