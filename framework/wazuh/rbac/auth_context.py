@@ -272,7 +272,7 @@ class RBAChecker:
     def get_user_roles(self):
         list_roles = list()
         for role in self.roles_list:
-            list_roles.append([role.id, role.name]) if self.check_rule(role.rule) else None
+            list_roles.append(role.id) if self.check_rule(role.rule) else None
 
         return list_roles
 
@@ -281,7 +281,7 @@ class RBAChecker:
         user_policies = list()
         with orm.RolesPoliciesManager() as rpm:
             for role in user_roles:
-                for policy in rpm.get_all_policies_from_role(role[0]):
+                for policy in rpm.get_all_policies_from_role(role):
                     user_policies.append(policy.to_dict()['policy'])
 
         return user_policies

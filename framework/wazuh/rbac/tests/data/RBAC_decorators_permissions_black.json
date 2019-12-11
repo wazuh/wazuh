@@ -269,7 +269,7 @@
   {
     "rbac": {
       "security:read": {
-        "user:id:wazuh-app": "allow",
+        "user:id:wazuh-wui": "allow",
         "user:id:*": "deny"
       }
     },
@@ -280,7 +280,7 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "user_id": ["wazuh", "wazuh-app"]
+      "user_id": ["wazuh", "wazuh-wui"]
     },
     "fake_system_resources": {"user:id:*": ["wazuh"]},
     "allowed_resources": [[]],
@@ -290,7 +290,7 @@
     "rbac": {
       "security:delete": {
         "user:id:wazuh": "deny",
-        "user:id:wazuh-app": "allow"
+        "user:id:wazuh-wui": "allow"
       }
     },
     "decorator_params": {
@@ -300,10 +300,10 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "user_id": ["wazuh", "wazuh-app"]
+      "user_id": ["wazuh", "wazuh-wui"]
     },
     "fake_system_resources": {"user:id:*": ["wazuh"]},
-    "allowed_resources": [["wazuh-app"]]
+    "allowed_resources": [["wazuh-wui"]]
   },
   {
     "rbac": {

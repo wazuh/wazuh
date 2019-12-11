@@ -4,10 +4,11 @@
 
 import json
 import os
+from unittest.mock import patch
 
 import pytest
 
-from wazuh.rbac.auth_context import RBAChecker as checker
+from wazuh.rbac.auth_context import RBAChecker
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data/')
@@ -64,35 +65,27 @@ def values():
 @pytest.fixture(scope='module')
 def import_auth_RBAC():
     db_path = os.path.join(test_data_path, 'rbac.db')
-    assert (os.path.exists(db_path))
+    assert os.path.exists(db_path)
     os.unlink(db_path)
 
 
 def test_load_files():
     authorization_contexts, roles, results = values()
-    assert (len(authorization_contexts) > 0)
-    assert (len(roles))
+    assert len(authorization_contexts) > 0
+    assert len(roles)
     for auth in authorization_contexts:
-        assert (type(auth) == Map)
+        assert type(auth) == Map
     for role in roles:
-        assert (type(role) == Map)
-
-
-def test_simple1_1():
-    authorization_contexts, roles, results = values()
-    test = checker(json.dumps(authorization_contexts[0]),
-                   roles[0])
-    assert (test.run_auth_context() == [roles[0].name])
+        assert type(role) == Map
 
 
 def test_auth_roles():
     authorization_contexts, roles, results = values()
     for index, auth in enumerate(authorization_contexts):
         for role in roles:
-            test = checker(json.dumps(auth.auth),
-                           role)
+            test = RBAChecker(json.dumps(auth.auth), role)
             if role.name in results[index].roles:
-                assert (test.run_auth_context() == [role.name])
+                assert test.get_user_roles()[0] == role.id
             else:
-                assert (len(test.run_auth_context()) == 0)
+                assert len(test.get_user_roles()) == 0
         roles = values()[1]

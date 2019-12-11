@@ -17,15 +17,14 @@ def import_RBAC():
     with patch('api.constants.SECURITY_PATH', new=test_data_path):
         import wazuh.rbac.orm as rbac
         db_path = os.path.join(test_data_path, 'rbac.db')
-        assert (os.path.exists(db_path))
+        assert os.path.exists(db_path)
         yield rbac
-        os.unlink(db_path)
 
 
 def test_database_init(import_RBAC):
     """Checks users db is properly initialized"""
     with import_RBAC.RolesManager() as rm:
-        assert(rm.get_role('wazuh'))
+        assert rm.get_role('wazuh')
 
 
 def test_add_role(import_RBAC):
@@ -33,13 +32,13 @@ def test_add_role(import_RBAC):
     with import_RBAC.RolesManager() as rm:
         # New role
         rm.add_role('newRole', {'Unittest': 'Role'})
-        assert(rm.get_role('newRole'))
+        assert rm.get_role('newRole')
         # New role
         rm.add_role('newRole1', {'Unittest1': 'Role'})
-        assert (rm.get_role('newRole1'))
+        assert rm.get_role('newRole1')
 
         # Obtain not existent role
-        assert(not rm.get_role('noexist'))
+        assert rm.get_role('noexist') == import_RBAC.SecurityError.ROLE_NOT_EXIST
 
 
 def test_add_policy(import_RBAC):
@@ -54,14 +53,14 @@ def test_add_policy(import_RBAC):
             'effect': 'allow'
         }
         pm.add_policy(name='newPolicy', policy=policy)
-        assert(pm.get_policy('newPolicy'))
+        assert pm.get_policy('newPolicy')
         # New policy
         policy['actions'] = ['agents:delete']
         pm.add_policy(name='newPolicy1', policy=policy)
-        assert (pm.get_policy('newPolicy1'))
+        assert pm.get_policy('newPolicy1')
 
         # Obtain not existent policy
-        assert(not pm.get_policy('noexist'))
+        assert pm.get_policy('noexist') == import_RBAC.SecurityError.POLICY_NOT_EXIST
 
 
 def test_get_roles(import_RBAC):
@@ -70,10 +69,10 @@ def test_get_roles(import_RBAC):
         roles = rm.get_roles()
         assert roles
         for rol in roles:
-            assert (isinstance(rol.name, str))
-            assert (isinstance(json.loads(rol.rule), dict))
+            assert isinstance(rol.name, str)
+            assert isinstance(json.loads(rol.rule), dict)
 
-        assert (roles[0].name == 'wazuh')
+        assert roles[0].name == 'wazuh'
 
 
 def test_get_policies(import_RBAC):
@@ -82,10 +81,10 @@ def test_get_policies(import_RBAC):
         policies = pm.get_policies()
         assert policies
         for policy in policies:
-            assert (isinstance(policy.name, str))
-            assert (isinstance(json.loads(policy.policy), dict))
+            assert isinstance(policy.name, str)
+            assert isinstance(json.loads(policy.policy), dict)
 
-        assert (policies[1].name == 'newPolicy')
+        assert policies[1].name == 'wazuh-wuiPolicy'
 
 
 def test_delete_roles(import_RBAC):
@@ -94,7 +93,7 @@ def test_delete_roles(import_RBAC):
         rm.add_role(name='toDelete', rule={'Unittest': 'Role'})
         len_roles = len(rm.get_roles())
         rm.delete_role_by_name(role_name='toDelete')
-        assert (len_roles == (len(rm.get_roles())))
+        assert len_roles == len(rm.get_roles())
 
 
 def test_delete_all_roles(import_RBAC):
@@ -105,7 +104,7 @@ def test_delete_all_roles(import_RBAC):
         rm.add_role(name='toDelete1', rule={'Unittest1': 'Role'})
         len_roles = len(rm.get_roles())
         rm.delete_all_roles()
-        assert (len_roles == (len(rm.get_roles()) + 2))
+        assert len_roles == len(rm.get_roles()) + 2
 
 
 def test_delete_policies(import_RBAC):
@@ -121,7 +120,7 @@ def test_delete_policies(import_RBAC):
         pm.add_policy(name='toDelete', policy=policy)
         len_policies = len(pm.get_policies())
         pm.delete_policy_by_name(policy_name='toDelete')
-        assert (len_policies == (len(pm.get_policies())))
+        assert len_policies == len(pm.get_policies())
 
 
 def test_delete_all_policies(import_RBAC):
@@ -140,7 +139,7 @@ def test_delete_all_policies(import_RBAC):
         pm.add_policy(name='toDelete1', policy=policy)
         len_policies = len(pm.get_policies())
         pm.delete_all_policies()
-        assert (len_policies == (len(pm.get_policies()) + 2))
+        assert len_policies == len(pm.get_policies()) + 2
 
 
 def test_update_role(import_RBAC):
@@ -150,9 +149,9 @@ def test_update_role(import_RBAC):
         tid = rm.get_role(name='toUpdate').id
         tname = rm.get_role(name='toUpdate').name
         rm.update_role(role_id=tid, name='updatedName', rule={'Unittest1': 'Role'})
-        assert (tid == rm.get_role(name='updatedName').id)
-        assert (tname == 'toUpdate')
-        assert (rm.get_role(name='updatedName').name == 'updatedName')
+        assert tid == rm.get_role(name='updatedName').id
+        assert tname == 'toUpdate'
+        assert rm.get_role(name='updatedName').name == 'updatedName'
 
 
 def test_update_policy(import_RBAC):
@@ -170,9 +169,9 @@ def test_update_policy(import_RBAC):
         tname = pm.get_policy(name='toUpdate').name
         policy['effect'] = 'deny'
         pm.update_policy(policy_id=tid, name='updatedName', policy=policy)
-        assert (tid == pm.get_policy(name='updatedName').id)
-        assert (tname == 'toUpdate')
-        assert (pm.get_policy(name='updatedName').name == 'updatedName')
+        assert tid == pm.get_policy(name='updatedName').id
+        assert tname == 'toUpdate'
+        assert pm.get_policy(name='updatedName').name == 'updatedName'
 
 
 def test_add_policy_role(import_RBAC):
@@ -214,7 +213,7 @@ def test_add_policy_role(import_RBAC):
         rpm.get_all_policies_from_role(role_id=roles_ids[0])
         for policy in policies_ids:
             for role in roles_ids:
-                assert(rpm.exist_policy_role(role_id=role, policy_id=policy))
+                assert rpm.exist_policy_role(role_id=role, policy_id=policy)
 
 
 def test_add_role_policy(import_RBAC):
@@ -254,7 +253,7 @@ def test_add_role_policy(import_RBAC):
                 rpm.add_role_to_policy(policy_id=policy, role_id=role)
         for policy in policies_ids:
             for role in roles_ids:
-                assert(rpm.exist_role_policy(policy_id=policy, role_id=role))
+                assert rpm.exist_role_policy(policy_id=policy, role_id=role)
 
         return policies_ids, roles_ids
 
@@ -306,7 +305,7 @@ def test_remove_all_policies_from_role(import_RBAC):
         for role in roles_ids:
             rpm.remove_all_policies_in_role(role_id=role)
         for index, role in enumerate(roles_ids):
-            assert (not rpm.exist_role_policy(role_id=role, policy_id=policies_ids[index]))
+            assert not rpm.exist_role_policy(role_id=role, policy_id=policies_ids[index])
 
 
 def test_remove_all_roles_from_policy(import_RBAC):
@@ -316,7 +315,7 @@ def test_remove_all_roles_from_policy(import_RBAC):
         for policy in policies_ids:
             rpm.remove_all_roles_in_policy(policy_id=policy)
         for index, policy in enumerate(policies_ids):
-            assert (not rpm.exist_role_policy(role_id=roles_ids[index], policy_id=policy))
+            assert not rpm.exist_role_policy(role_id=roles_ids[index], policy_id=policy)
 
 
 def test_remove_policy_from_role(import_RBAC):
@@ -326,7 +325,7 @@ def test_remove_policy_from_role(import_RBAC):
         for policy in policies_ids:
             rpm.remove_policy_in_role(role_id=roles_ids[0], policy_id=policy)
         for policy in policies_ids:
-            assert (not rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policy))
+            assert not rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policy)
 
 
 def test_remove_role_from_policy(import_RBAC):
@@ -336,7 +335,7 @@ def test_remove_role_from_policy(import_RBAC):
         for policy in policies_ids:
             rpm.remove_policy_in_role(role_id=roles_ids[0], policy_id=policy)
         for policy in policies_ids:
-            assert (not rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policy))
+            assert not rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policy)
 
 
 def test_update_policy_from_role(import_RBAC):
@@ -346,5 +345,5 @@ def test_update_policy_from_role(import_RBAC):
         for policy in policies_ids:
             rpm.replace_role_policy(role_id=roles_ids[0], actual_policy_id=policy, new_policy_id=policies_ids[-1])
 
-        assert (not rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[0]))
-        assert (rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[-1]))
+        assert not rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[0])
+        assert rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[-1])

@@ -166,7 +166,7 @@ stages:
                   r'^auth[a-zA-Z]+$':
                     - administrator
             - id: 2
-              name: wazuh-app
+              name: wazuh-wui
               policies:
                 - id: 1
                   name: wazuhPolicy
@@ -192,7 +192,7 @@ stages:
                     resources:
                       - "*:*"
                 - id: 2
-                  name: wazuh-appPolicy
+                  name: wazuh-wuiPolicy
                   policy:
                     actions:
                       - agent:create
@@ -249,7 +249,7 @@ stages:
               name: normalUser
               policies:
                 - id: 2
-                  name: wazuh-appPolicy
+                  name: wazuh-wuiPolicy
                   policy:
                     actions:
                       - agent:create
@@ -289,7 +289,7 @@ stages:
                     resources:
                       - "*:*"
                 - id: 2
-                  name: wazuh-appPolicy
+                  name: wazuh-wuiPolicy
                   policy:
                     actions:
                       - agent:create
@@ -458,7 +458,7 @@ stages:
                   r'^auth[a-zA-Z]+$':
                     - administrator
             - id: 2
-              name: wazuh-app
+              name: wazuh-wui
               policies:
                 - id: 1
                   name: wazuhPolicy
@@ -581,7 +581,7 @@ stages:
                     resources:
                       - "*:*"
                 - id: 2
-                  name: wazuh-appPolicy
+                  name: wazuh-wuiPolicy
                   policy:
                     actions:
                       - agent:create
@@ -622,10 +622,10 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        name: wazuh-appModified
+        name: wazuh-wuiModified
         rule:
           FIND$:
-            definition: wazuh-appRuleModified
+            definition: wazuh-wuiRuleModified
     response:
       status_code: 400
       body:

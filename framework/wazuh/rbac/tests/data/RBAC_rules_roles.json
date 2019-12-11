@@ -1,5 +1,6 @@
 [
   {
+    "id": "1",
     "name": "Initial",
     "rule": {
       "FIND$": {
@@ -8,6 +9,7 @@
     }
   },
   {
+    "id": "2",
     "name": "First",
     "rule": {
       "FIND": {
@@ -18,6 +20,7 @@
     }
   },
   {
+    "id": "3",
     "name": "Second",
     "rule": {
       "OR": [
@@ -40,6 +43,7 @@
     }
   },
   {
+    "id": "4",
     "name": "Third",
     "rule": {
       "AND": [
@@ -86,6 +90,7 @@
     }
   },
   {
+    "id": "5",
     "name": "Fourth",
     "rule": {
       "AND": [
@@ -129,6 +134,7 @@
     }
   },
   {
+    "id": "6",
     "name": "Fifth",
     "rule": {
       "OR": [
@@ -181,6 +187,7 @@
     }
   },
   {
+    "id": "7",
     "name": "Sixth",
     "rule": {
       "AND": [
@@ -241,6 +248,7 @@
     }
   },
   {
+    "id": "8",
     "name": "Seventh",
     "rule": {
       "AND": [
@@ -300,6 +308,7 @@
     }
   },
   {
+    "id": "9",
     "name": "Eighth",
     "rule": {
       "AND": [
@@ -313,6 +322,7 @@
     }
   },
   {
+    "id": "10",
     "name": "Nineth",
     "rule": {
       "AND": [
@@ -326,6 +336,7 @@
     }
   },
   {
+    "id": "11",
     "name": "Tenth",
     "rule": {
       "AND": [
@@ -359,6 +370,7 @@
     }
   },
   {
+    "id": "12",
     "name": "Eleventh",
     "rule": {
       "AND": [
@@ -392,6 +404,7 @@
     }
   },
   {
+    "id": "13",
     "name": "Twelfth",
     "rule": {
       "AND": [
@@ -423,6 +436,7 @@
     }
   },
   {
+    "id": "14",
     "name": "Thirteenth",
     "rule": {
       "AND": [
@@ -466,6 +480,7 @@
     }
   },
   {
+    "id": "15",
     "name": "Fourteenth",
     "rule": {
       "AND": [
@@ -505,6 +520,7 @@
     }
   },
   {
+    "id": "16",
     "name": "Fifteenth",
     "rule": {
       "FIND$": {

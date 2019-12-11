@@ -27,7 +27,7 @@ stages:
             - username: ossec
             - username: rbac
             - username: wazuh
-            - username: wazuh-app
+            - username: wazuh-wui
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
@@ -201,7 +201,7 @@ stages:
                       r'^auth[a-zA-Z]+$':
                         - administrator
                 - id: 2
-                  name: wazuh-app
+                  name: wazuh-wui
                   rule:
                     FIND:
                       r'^auth[a-zA-Z]+$':
@@ -217,7 +217,7 @@ stages:
                     MATCH:
                       definition: ossecRule
             - id: 2
-              name: wazuh-appPolicy
+              name: wazuh-wuiPolicy
               policy:
                 actions:
                   - agent:create
@@ -421,7 +421,7 @@ stages:
                       r'^auth[a-zA-Z]+$':
                         - administrator
                 - id: 2
-                  name: wazuh-app
+                  name: wazuh-wui
                   rule:
                     FIND:
                       r'^auth[a-zA-Z]+$':
@@ -494,7 +494,7 @@ stages:
                       r'^auth[a-zA-Z]+$':
                         - administrator
                 - id: 2
-                  name: wazuh-app
+                  name: wazuh-wui
                   rule:
                     FIND:
                       r'^auth[a-zA-Z]+$':
@@ -510,7 +510,7 @@ stages:
                     MATCH:
                       definition: ossecRule
             - id: 2
-              name: wazuh-appPolicy
+              name: wazuh-wuiPolicy
               policy:
                 actions:
                   - agent:create
@@ -614,7 +614,7 @@ stages:
               name: normalUserModified
               policies:
                 - id: 2
-                  name: wazuh-appPolicy
+                  name: wazuh-wuiPolicy
                   policy:
                     actions:
                       - agent:create
@@ -654,10 +654,10 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        name: wazuh-appModified
+        name: wazuh-wuiModified
         rule:
           FIND$:
-            definition: wazuh-appRuleModified
+            definition: wazuh-wuiRuleModified
     response:
       status_code: 400
       body:

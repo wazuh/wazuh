@@ -22,9 +22,9 @@ inputs = [test_case['no_processed_policies'] for test_case in file]
 outputs = [test_case['processed_policies'] for test_case in file]
 
 
-@pytest.mark.parametrize('input, output', zip(inputs, outputs))
-def test_expose_resources(input, output):
+@pytest.mark.parametrize('input_, output', zip(inputs, outputs))
+def test_expose_resources(input_, output):
 
-    with patch('wazuh.rbac.preprocessor.RBAChecker.run', return_value=input):
+    with patch('wazuh.rbac.preprocessor.RBAChecker.run_user_role_link', return_value=input_):
         preprocessed_policies = optimize_resources()
-        assert (preprocessed_policies == output)
+        assert preprocessed_policies == output

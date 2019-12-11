@@ -26,7 +26,7 @@ _Base = declarative_base()
 _Session = sessionmaker(bind=_engine)
 
 # Usernames reserved for administrator users, these can not be modified or deleted
-admin_usernames = ['wazuh', 'wazuh-app']
+admin_usernames = ['wazuh', 'wazuh-wui']
 
 # IDs reserved for administrator roles and policies, these can not be modified or deleted
 admin_role_ids = [1, 2]
@@ -271,7 +271,7 @@ class AuthenticationManager:
 
         :param username: string Unique user name
         :param password: string Password provided by user. It will be stored hashed
-        :return: True if the user has been modify successfuly. False otherwise
+        :return: True if the user has been modify successfully. False otherwise
         """
         try:
             user = self.session.query(User).filter_by(username=username).first()
@@ -289,9 +289,9 @@ class AuthenticationManager:
         """Update the password an existent user
 
         :param username: string Unique user name
-        :return: True if the user has been delete successfuly. False otherwise
+        :return: True if the user has been delete successfully. False otherwise
         """
-        if username == 'wazuh' or username == 'wazuh-app':
+        if username in admin_usernames:
             return SecurityError.ADMIN_RESOURCES
 
         try:
@@ -447,7 +447,7 @@ class RolesManager:
                     self.session.delete(role_policy)
                 # If the role does not exist we rollback the changes
                 if self.session.query(Roles).filter_by(id=role_id).first() is None:
-                    raise IntegrityError
+                    return False
                 # Finally we delete the role
                 self.session.query(Roles).filter_by(id=role_id).delete()
                 self.session.commit()
@@ -469,12 +469,12 @@ class RolesManager:
                 for role_policy in relations:
                     self.session.delete(role_policy)
                 if self.session.query(Roles).filter_by(name=role_name).first() is None:
-                    raise IntegrityError
+                    return False
                 self.session.query(Roles).filter_by(name=role_name).delete()
                 self.session.commit()
                 return True
             return False
-        except IntegrityError:
+        except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
 
@@ -636,7 +636,7 @@ class PoliciesManager:
                 for role_policy in relations:
                     self.session.delete(role_policy)
                 if self.session.query(Policies).filter_by(id=policy_id).first() is None:
-                    raise IntegrityError
+                    return False
                 self.session.query(Policies).filter_by(id=policy_id).delete()
                 self.session.commit()
                 return True
@@ -659,12 +659,12 @@ class PoliciesManager:
                 for role_policy in relations:
                     self.session.delete(role_policy)
                 if self.session.query(Policies).filter_by(name=policy_name).delete() is None:
-                    raise IntegrityError
+                    return False
                 self.session.query(Policies).filter_by(name=policy_name).delete()
                 self.session.commit()
                 return True
             return False
-        except IntegrityError:
+        except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
 
@@ -742,8 +742,8 @@ class UserRolesManager:
                 user.roles.append(role)
                 self.session.commit()
                 return True
-            raise IntegrityError
-        except IntegrityError:
+            return False
+        except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
 
@@ -793,7 +793,7 @@ class UserRolesManager:
             user = self.session.query(User).filter_by(username=username).first()
             roles = user.roles
             return roles
-        except IntegrityError:
+        except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
 
@@ -807,7 +807,7 @@ class UserRolesManager:
             role = self.session.query(Roles).filter_by(id=role_id).first()
             users = role.users
             return users
-        except IntegrityError:
+        except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
 
@@ -828,7 +828,7 @@ class UserRolesManager:
             role = user.roles.filter_by(id=role_id).first()
             if role is not None:
                 return True
-            raise IntegrityError
+            return False
         except IntegrityError:
             self.session.rollback()
             return False
@@ -892,7 +892,7 @@ class UserRolesManager:
                     if role.id not in admin_role_ids:
                         self.remove_role_in_user(username=username, role_id=role.id)
                 return True
-        except IntegrityError:
+        except (IntegrityError, TypeError):
             self.session.rollback()
             return False
 
@@ -909,7 +909,7 @@ class UserRolesManager:
                     if user.username not in admin_usernames:
                         self.remove_user_in_role(username=user.username, role_id=role_id)
                 return True
-        except IntegrityError:
+        except (IntegrityError, TypeError):
             self.session.rollback()
             return False
 
@@ -952,7 +952,7 @@ class RolesPoliciesManager:
                 self.session.commit()
                 return True
             return False
-        except IntegrityError:
+        except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
 
@@ -1002,7 +1002,7 @@ class RolesPoliciesManager:
             role = self.session.query(Roles).filter_by(id=role_id).first()
             policies = role.policies
             return policies
-        except IntegrityError:
+        except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
 
@@ -1016,7 +1016,7 @@ class RolesPoliciesManager:
             policy = self.session.query(Policies).filter_by(id=policy_id).first()
             roles = policy.roles
             return roles
-        except IntegrityError:
+        except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
 
@@ -1037,7 +1037,7 @@ class RolesPoliciesManager:
             policy = role.policies.filter_by(id=policy_id).first()
             if policy is not None:
                 return True
-            raise IntegrityError
+            return False
         except IntegrityError:
             self.session.rollback()
             return False
@@ -1102,7 +1102,7 @@ class RolesPoliciesManager:
                     if policy.id not in admin_policy_ids:
                         self.remove_policy_in_role(role_id=role_id, policy_id=policy.id)
                 return True
-        except IntegrityError:
+        except (IntegrityError, TypeError):
             self.session.rollback()
             return False
 
@@ -1119,7 +1119,7 @@ class RolesPoliciesManager:
                     if rol.id not in admin_role_ids:
                         self.remove_policy_in_role(role_id=rol.id, policy_id=policy_id)
                 return True
-        except IntegrityError:
+        except (IntegrityError, TypeError):
             self.session.rollback()
             return False
 
@@ -1159,7 +1159,7 @@ except PermissionError as e:
 
 # Create default users if they don't exist yet
 with AuthenticationManager() as auth:
-    auth.add_user(username='wazuh-app', password='wazuh-app', auth_context=True)
+    auth.add_user(username='wazuh-wui', password='wazuh-wui', auth_context=True)
     auth.add_user(username='wazuh', password='wazuh')
 
 # These examples are for RBAC development
@@ -1176,7 +1176,7 @@ with RolesManager() as rm:
             "r'^auth[a-zA-Z]+$'": ["administrator"]
         }
     })
-    rm.add_role('wazuh-app', {
+    rm.add_role('wazuh-wui', {
         "FIND": {
             "r'^auth[a-zA-Z]+$'": ["administrator-app"]
         }
@@ -1185,10 +1185,8 @@ with RolesManager() as rm:
 with UserRolesManager() as urm:
     urm.add_role_to_user_admin(username=auth.get_user(username='wazuh')['username'],
                                role_id=rm.get_role(name='wazuh').id)
-    urm.add_role_to_user_admin(username=auth.get_user(username='wazuh-app')['username'],
-                               role_id=rm.get_role(name='wazuh').id)
 
 with RolesPoliciesManager() as rpm:
     rpm.add_policy_to_role_admin(role_id=rm.get_role(name='wazuh').id, policy_id=pm.get_policy(name='wazuhPolicy').id)
     rpm.add_policy_to_role_admin(
-        role_id=rm.get_role(name='wazuh-app').id, policy_id=pm.get_policy(name='wazuhPolicy').id)
+        role_id=rm.get_role(name='wazuh-wui').id, policy_id=pm.get_policy(name='wazuhPolicy').id)

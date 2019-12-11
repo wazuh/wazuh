@@ -1,6 +1,6 @@
 | Resource    | List                                                         |
 |-------------|--------------------------------------------------------------|
-| user:id     | wazuh,wazuh-app,administrator,normal,ossec,python,rbac,guest |
+| user:id     | wazuh,wazuh-wui,administrator,normal,ossec,python,rbac,guest |
 | role:id     | 1,2,3,4,5,6                                                  |
 | policy:id   | 1,2,3,4,5,6,7,8,9,10                                         |
 | role:policy | (1:1),(2:1),(3:1,2,5,8),(4:4,5),(5:2,3,10),(6:*)             |
@@ -14,7 +14,7 @@
 | security:update      | user:id   | *     |                                   |
 | security:update      | role:id   |       | 3,4,6                             |
 | security:update      | policy:id |       | 5                                 |
-| security:delete      | user:id   |       | guest,normal,wazuh-app            |
+| security:delete      | user:id   |       | guest,normal,wazuh-wui            |
 | security:delete      | role:id   | *     |                                   |
 | security:delete      | policy:id | *     |                                   |
 | security:create      | *         |       | *                                 |

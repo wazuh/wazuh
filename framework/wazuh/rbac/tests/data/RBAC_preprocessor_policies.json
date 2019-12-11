@@ -3,7 +3,7 @@
     "no_processed_policies": [
       {
         "actions": ["security:update"],
-        "resources": ["user:id:wazuh","user:id:wazuh-app", "user:id:rbac"],
+        "resources": ["user:id:wazuh","user:id:wazuh-wui", "user:id:rbac"],
         "effect": "allow"
       },
       {
@@ -25,7 +25,7 @@
     "processed_policies": {
       "security:update": {
         "user:id:wazuh": "allow",
-        "user:id:wazuh-app": "allow",
+        "user:id:wazuh-wui": "allow",
         "role:id:1": "allow",
         "policy:id:2": "allow",
         "policy:id:3": "allow",
