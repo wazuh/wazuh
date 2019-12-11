@@ -1146,6 +1146,8 @@ char* ParseRuleComment(Eventinfo *lf) {
 #endif
         } else if (strcmp(var, "srcport") == 0) {
             field = lf->srcport;
+        } else if (strcmp(var, "dstport") == 0) {
+            field = lf->dstport;
         } else if (strcmp(var, "protocol") == 0) {
             field = lf->protocol;
         } else if (strcmp(var, "action") == 0) {
