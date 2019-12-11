@@ -3,18 +3,16 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-import glob
 import re
 from collections import defaultdict
 from functools import wraps
-from os.path import join
 
 from api import configuration
 from api.authentication import AuthenticationManager
-from wazuh.common import rbac, broadcast, cluster_nodes, ossec_path
+from wazuh.common import rbac, broadcast, cluster_nodes
 from wazuh.configuration import get_ossec_conf
 from wazuh.core.cdb_list import iterate_lists
-from wazuh.core.core_utils import get_agents_info, expand_group, get_groups
+from wazuh.core.core_utils import get_agents_info, expand_group, get_groups, get_files
 from wazuh.core.rule import format_rule_decoder_file, Status
 from wazuh.exception import WazuhError
 from wazuh.rbac.orm import RolesManager, PoliciesManager
@@ -82,14 +80,7 @@ def _expand_resource(resource):
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
         elif resource_type == 'file:path':
-            folders = ['etc/rules', 'etc/decoders', 'etc/lists', 'ruleset/sca', 'ruleset/decoders', 'ruleset/rules']
-            files = set()
-            for folder in folders:
-                for extension in ('*.yml', '*.yml.disabled', '*.xml', '*.cdb'):
-                    files.update({f.replace(ossec_path + '/', "") for f in glob.glob(
-                        join(ossec_path, folder, extension), recursive=True)})
-            files.add('etc/ossec.conf')
-            return files
+            return get_files
         elif resource_type == '*:*':  # Resourceless
             return {'*'}
         return set()
@@ -139,10 +130,8 @@ def _optimize_resources(req_resources):
     :param req_resources: Resource to be optimized
     :return expanded_resource: Returns the result of the resource expansion
     """
-    resources_value_odict = dict()
+    resources_value_odict = defaultdict(set)
     for element in req_resources:
-        if ':'.join(element.split(':')[:-1]) not in resources_value_odict.keys():
-            resources_value_odict[':'.join(element.split(':')[:-1])] = set()
         resources_value_odict[':'.join(element.split(':')[:-1])].add(element.split(':')[-1])
 
     return resources_value_odict
@@ -159,6 +148,7 @@ def _black_expansion(req_resources, final_user_permissions):
         split_combination = req_resource.split('&')
         for chunk in split_combination:
             identifier = ':'.join(chunk.split(':')[:-1])
+            # Modify the identifier agent:group by agent:id in the resources required by the system
             if identifier == 'agent:group':
                 identifier = 'agent:id'
             if identifier == '*:*':
@@ -189,7 +179,7 @@ def _process_effect(effect, identifier, value, final_user_permissions, expanded_
             final_user_permissions[identifier].difference_update(expanded_resource.intersection({value}))
 
 
-def _black_white_processor(req_resources, user_permissions_for_resource, final_user_permissions):
+def _single_processor(req_resources, user_permissions_for_resource, final_user_permissions):
     """This function process the individual resources.
 
     :param req_resources: Required resource for the framework's function
@@ -200,16 +190,14 @@ def _black_white_processor(req_resources, user_permissions_for_resource, final_u
     req_resources = _optimize_resources(req_resources)
     for user_resource, user_resource_effect in user_permissions_for_resource.items():
         user_resource_identifier = ':'.join(user_resource.split(':')[:-1])
+        # Modify the identifier agent:group by agent:id in the user's resources
         if user_resource_identifier == 'agent:group':
             user_resource_identifier = 'agent:id'
-        if user_resource.split(':')[-1] == '*':
-            wildcard_expansion = True
-        else:
-            wildcard_expansion = False
+        wildcard_expansion = user_resource.split(':')[-1] == '*'
         expanded_resource = _expand_resource(user_resource)
         for value in req_resources.get(user_resource_identifier, list()):
             if wildcard_expansion and value != '*':
-                expanded_resource = expanded_resource.union(_expand_resource(user_resource_identifier + ':' + value))
+                expanded_resource |= _expand_resource(user_resource_identifier + ':' + value)
             _process_effect(user_resource_effect, user_resource_identifier,
                             value, final_user_permissions, expanded_resource)
 
@@ -230,11 +218,12 @@ def _combination_processor(req_resources, user_permissions_for_resource, final_u
             split_user_resource = user_resource.split('&')
             for req_resource in req_resources:  # Normally this loop will iterate two times
                 for r, split_req_resource in zip(split_user_resource, req_resource.split('&')):
-                    identifier = ':'.join(split_req_resource.split(':')[:-1])
-                    value = split_req_resource.split(':')[-1]
+                    split_chunk_resource = split_req_resource.split(':')
+                    identifier = ':'.join(split_chunk_resource[:-1])
+                    value = split_chunk_resource[-1]
                     expanded_resource = _expand_resource(r)
                     if r.split(':')[-1] == '*':
-                        expanded_resource = expanded_resource.union(_expand_resource(identifier + ':' + value))
+                        expanded_resource |= _expand_resource(identifier + ':' + value)
                     _process_effect(user_resource_effect, identifier,
                                     value, final_user_permissions, expanded_resource)
 
@@ -250,7 +239,7 @@ def _match_permissions(req_permissions: dict = None):
         is_combination = any('&' in req_resource for req_resource in req_resources)
         mode == 'black' and _black_expansion(req_resources, allow_match)
         if not is_combination or len(req_resources) == 0:
-            _black_white_processor(req_resources, rbac.get().get(req_action, dict()), allow_match)
+            _single_processor(req_resources, rbac.get().get(req_action, dict()), allow_match)
         else:
             _combination_processor(req_resources, rbac.get().get(req_action, dict()), allow_match)
     return allow_match

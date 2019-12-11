@@ -15,9 +15,8 @@ class PreProcessor:
     def remove_previous_elements(self, resource, action):
         """Remove previous incompatible resources
 
-        :param resource: Resource to be deleted
-        :param action: Action that covers the resource
-        :param combination: this flags indicate if the resource is a combination of resources
+        :param resource: New resource that will be compared with the previous ones
+        :param action: Action that covers the new resource
         """
         if len(resource) > 1:  # Combination
             for actual_resource in list(self.odict[action].keys()):
@@ -30,7 +29,7 @@ class PreProcessor:
                             counter += 1
                     if counter == len(actual_split_resource):
                         self.odict[action].pop(actual_resource)
-        else:  # Individual
+        else:  # Single
             self.odict[action].pop(resource[0], None)
             split_resource = resource[0].split(':')
             if split_resource[-1] == '*':
@@ -70,10 +69,10 @@ class PreProcessor:
                 self.odict[action] = dict()
             for resource in policy['resources']:
                 if not re.match(resource_regex, resource):
-                    raise WazuhError(4501)
+                    raise WazuhError(4500)
                 resource_type = PreProcessor.is_combination(resource)
                 if len(resource_type[1]) > 2:
-                    raise WazuhError(4500)
+                    raise WazuhError(4500, extra_remediation="The maximum length for permission combinations is two")
                 resource = resource_type[1] if resource != '*' else ['*:*:*']
                 self.remove_previous_elements(resource, action)
                 self.odict[action]['&'.join(resource)] = policy['effect']
