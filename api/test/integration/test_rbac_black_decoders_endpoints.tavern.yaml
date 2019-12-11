@@ -78,6 +78,24 @@ stages:
           total_failed_items: 0
         message: All selected decoders were shown
 
+  - name: Try to show the decoders of the system (try q parameter to bypass a denied resource)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/decoders"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        q: 'file=0005-wazuh_decoders.xml'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
+
   - name: Try to show the decoders of the system (list)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/decoders"
@@ -211,6 +229,8 @@ stages:
       method: GET
     response:
       status_code: 200
+      headers:
+        content-type: application/xml
 
   - name: Try get one decoder file (no permissions)
     request:

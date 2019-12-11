@@ -816,7 +816,7 @@ test_name: GET /decoders/files/{file}/download
 stages:
 
     # GET /decoders/files/{file}/download
-  - name: Try to download a decoders file
+  - name: Download a decoders file
     request:
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/decoders/files/{returned_file:s}/download"
@@ -824,6 +824,8 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
+      headers:
+        content-type: application/xml
 
     # GET /decoders/files/{wrong_file}/download
   - name: Try to download a decoders file using a wrong filename
