@@ -25,58 +25,25 @@ stages:
       body:
         data:
           affected_items:
-            - details:
-                plugin_decoder: JSON_Decoder
-                prematch: !anystr
+            - &full_item_decoders
+              details: !anything
               file: 0006-json_decoders.xml
-              name: json
-              path: ruleset/decoders
-              position: 0
-              status: enabled
-            - details:
-                prematch: ^\w\w\w \w+\s+\d+ \d\d:\d\d:\d\d \p*\w+ \d+ /\S+/active-response/bin/|^\w\w\w
-                  \d\d/\d\d/\d\d\d\d \.+"active-response/bin/|^\d\d/\d\d/\d\d\d\d \.+"active-response/bin/
+              name: !anystr
+              path: !anystr
+              position: !anyint
+              status: !anystr
+            - <<: *full_item_decoders
               file: 0010-active-response_decoders.xml
-              name: ar_log
-              path: ruleset/decoders
-              position: 0
-              status: enabled
-            - details:
-                order: script, type, srcip, id
-                parent: ar_log
-                regex:
-                  - '^(\S+) (\S+) - (\S+) (\.+) |^(\S+)" (\S+) "-" "(\S+)" "(\.+) '
+            - <<: *full_item_decoders
               file: 0010-active-response_decoders.xml
-              name: ar_log_fields
-              path: ruleset/decoders
-              position: 1
-              status: enabled
-            - details:
-                order: extra_data
-                parent: ar_log
-                regex:
-                  - "^(\\d+)|(\\.+\\))"
+            - <<: *full_item_decoders
               file: 0010-active-response_decoders.xml
-              name: ar_log_fields
-              path: ruleset/decoders
-              position: 2
-              status: enabled
-            - details:
-                order: action,srcip,dstip,protocol,srcport,dstport
-                program_name: "^ipsec_logd"
-                regex:
-                  - " R:(\\w)  \\w:\\S+ S:(\\S+) "
-                  - 'D:(\S+) P:(\S+) SP:(\d+) DP:(\d+) '
-                type: firewall
+            - <<: *full_item_decoders
               file: 0015-aix-ipsec_decoders.xml
-              name: aix-ipsec
-              path: ruleset/decoders
-              position: 0
-              status: enabled
           failed_items: []
-          total_affected_items: 806
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: All selected decoders were shown
+        message: !anystr
 
   - name: Try to show the decoders of the system (try q parameter to bypass a denied resource)
     request:
@@ -112,9 +79,6 @@ stages:
           failed_items:
             - error:
                 code: 1504
-                message: The decoder doesn't exist or you don't have permission to see it
-                remediation: Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)
-                  to get more information about the decoders
               id:
                 - agent-buffer
                 - agent-upgrade
@@ -123,7 +87,7 @@ stages:
                 - wazuh
           total_affected_items: 0
           total_failed_items: 5
-        message: No decoder was shown
+        message: !anystr
 
 ---
 test_name: GET DECODERS FILES RBAC
@@ -159,9 +123,9 @@ stages:
               path: ruleset/decoders
               status: enabled
           failed_items: []
-          total_affected_items: 98
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: All rules files were shown
+        message: !anystr
 
   - name: Try to show the decoders files of the system (list)
     request:
@@ -185,14 +149,11 @@ stages:
           failed_items:
             - error:
                 code: 4000
-                message: 'Permission denied: Resource type: decoder:file'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
               id:
                 - 0005-wazuh_decoders.xml
           total_affected_items: 2
           total_failed_items: 1
-        message: Some rules files were shown
+        message: !anystr
 
   - name: Try to show the decoders files of the system (no permissions)
     request:
@@ -208,13 +169,12 @@ stages:
         code: 4000
         dapi_errors:
           master-node:
-            error: Permission denied
-        detail: Permission denied
-        remediation: Please, make sure you have permissions to execute current request, for
-          more information on setting up permissions please visit XXXX
+            error: !anystr
+        detail: !anystr
+        remediation: !anystr
         status: 400
-        title: Wazuh Error
-        type: about:blank
+        title: !anystr
+        type: !anystr
 
 ---
 test_name: GET DECODERS FILES RBAC (Download)
@@ -248,7 +208,7 @@ test_name: GET DECODERS PARENTS RBAC
 
 stages:
 
-  - name: Try to show the groups of rules in the system
+  - name: Try to show the decoder parents in the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/decoders/parents"
       headers:
@@ -261,49 +221,22 @@ stages:
       body:
         data:
           affected_items:
-            - details:
-                plugin_decoder: JSON_Decoder
-                prematch: !anystr
+            - &full_item_decoders_parent
+              details: !anything
               file: 0006-json_decoders.xml
-              name: json
-              path: ruleset/decoders
-              position: 0
-              status: enabled
-            - details:
-                prematch: ^\w\w\w \w+\s+\d+ \d\d:\d\d:\d\d \p*\w+ \d+ /\S+/active-response/bin/|^\w\w\w
-                  \d\d/\d\d/\d\d\d\d \.+"active-response/bin/|^\d\d/\d\d/\d\d\d\d \.+"active-response/bin/
+              name: !anystr
+              path: !anystr
+              position: !anyint
+              status: !anystr
+            - <<: *full_item_decoders_parent
               file: 0010-active-response_decoders.xml
-              name: ar_log
-              path: ruleset/decoders
-              position: 0
-              status: enabled
-            - details:
-                order: action,srcip,dstip,protocol,srcport,dstport
-                program_name: "^ipsec_logd"
-                regex:
-                  - " R:(\\w)  \\w:\\S+ S:(\\S+) "
-                  - 'D:(\S+) P:(\S+) SP:(\d+) DP:(\d+) '
-                type: firewall
+            - <<: *full_item_decoders_parent
               file: 0015-aix-ipsec_decoders.xml
-              name: aix-ipsec
-              path: ruleset/decoders
-              position: 0
-              status: enabled
-            - details:
-                program_name: "^apache2|^httpd"
+            - <<: *full_item_decoders_parent
               file: 0025-apache_decoders.xml
-              name: apache-errorlog
-              path: ruleset/decoders
-              position: 0
-              status: enabled
-            - details:
-                prematch: "^[warn] |^[notice] |^[error] "
+            - <<: *full_item_decoders_parent
               file: 0025-apache_decoders.xml
-              name: apache-errorlog
-              path: ruleset/decoders
-              position: 1
-              status: enabled
           failed_items: []
-          total_affected_items: 157
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: All selected decoders were shown
+        message: !anystr
