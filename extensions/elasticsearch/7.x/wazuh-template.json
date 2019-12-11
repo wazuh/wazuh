@@ -86,6 +86,8 @@
       "data.aws.errorMessage",
       "data.aws.eventID",
       "data.aws.eventName",
+      "data.aws.eventTime",
+      "data.aws.created-at",
       "data.aws.eventSource",
       "data.aws.eventType",
       "data.aws.id",
@@ -149,6 +151,7 @@
       "data.aws.userIdentity.accessKeyId",
       "data.aws.userIdentity.accountId",
       "data.aws.userIdentity.userName",
+      "data.aws.userIdentity.sessionContext.attributes.creationDate",
       "data.aws.vpcEndpointId",
       "data.command",
       "data.data",
@@ -1745,8 +1748,21 @@
               "createdAt": {
                 "type": "date"
               },
+              "created-at": {
+                "type": "date"
+              },
+              "eventTime": {
+                "type": "date"
+              },
               "updatedAt": {
                 "type": "date"
+              },
+              "userIdentity.sessionContext.attributes": {
+                "properties": {
+                  "creationDate": {
+                    "type": "date"
+                  }
+                }
               },
               "resource.instanceDetails": {
                 "properties": {
