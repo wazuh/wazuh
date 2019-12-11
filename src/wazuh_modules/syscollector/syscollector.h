@@ -501,6 +501,9 @@ void delete_entry(rb_tree * tree, const char * key);
 // Print keys from hash table
 void print_rbtree(rb_tree * tree, pthread_mutex_t mutex);
 
+// Send a sys scan event
+void sys_send_scan_event(sys_scan_event type);
+
 /**
  * @brief Produce a hardware change JSON event
  *
@@ -508,7 +511,7 @@ void print_rbtree(rb_tree * tree, pthread_mutex_t mutex);
  *   type:                  "hardware"
  *   data: {
  *     type:                "added"|"modified"
- *     timestamp:           number
+ *     timestamp:           string
  *     changed_attributes:  array   hw_json_compare()           [Only if old_data]
  *     old_attributes:      object  hw_json_attributes()        [Only if old_data]
  *     attributes:          object  hw_json_attributes()
@@ -568,7 +571,7 @@ cJSON * hw_json_attributes(hw_entry * data);
  *   type:                  "OS"
  *   data: {
  *     type:                "added"|"modified"
- *     timestamp:           number
+ *     timestamp:           string
  *     changed_attributes:  array   os_json_compare()           [Only if old_data]
  *     old_attributes:      object  os_json_attributes()        [Only if old_data]
  *     attributes:          object  os_json_attributes()
@@ -640,7 +643,7 @@ cJSON * os_json_attributes(os_entry * data);
  *   type:                  "network"
  *   data: {
  *     type:                "added"|"modified"|"deleted"
- *     timestamp:           number
+ *     timestamp:           string
  *     changed_attributes:  array   interface_compare()         [Only if old_data]
  *     old_attributes:      object  interface_json_attributes() [Only if old_data]
  *     attributes:          object  interface_json_attributes()
@@ -742,7 +745,7 @@ cJSON * interface_json_attributes(interface_entry_data * data);
  *   type:                  "program"
  *   data: {
  *     type:                "added"|"modified"|"deleted"
- *     timestamp:           number
+ *     timestamp:           string
  *     changed_attributes:  array   program_json_compare()      [Only if old_data]
  *     old_attributes:      object  program_json_attributes()   [Only if old_data]
  *     attributes:          object  program_json_attributes()
@@ -814,7 +817,7 @@ cJSON * program_json_attributes(program_entry_data * data);
  *   type:                  "hotfix"
  *   data: {
  *     type:                "added"|"modified"|"deleted"
- *     timestamp:           number
+ *     timestamp:           string
  *     changed_attributes:  array   hotfix_json_compare()       [Only if old_data]
  *     old_attributes:      object  hotfix_json_attributes()    [Only if old_data]
  *     attributes:          object  hotfix_json_attributes()
@@ -862,7 +865,7 @@ cJSON * hotfix_json_attributes(hotfix_entry_data * data);
  *   type:                  "port"
  *   data: {
  *     type:                "added"|"modified"|"deleted"
- *     timestamp:           number
+ *     timestamp:           string
  *     changed_attributes:  array   port_json_compare()         [Only if old_data]
  *     old_attributes:      object  port_json_attributes()      [Only if old_data]
  *     attributes:          object  port_json_attributes()
@@ -930,7 +933,7 @@ cJSON * port_json_attributes(port_entry_data * data);
  *   type:                  "process"
  *   data: {
  *     type:                "added"|"modified"|"deleted"
- *     timestamp:           number
+ *     timestamp:           string
  *     changed_attributes:  array   process_json_compare()      [Only if old_data]
  *     old_attributes:      object  process_json_attributes()   [Only if old_data]
  *     attributes:          object  process_json_attributes()
@@ -1024,6 +1027,26 @@ cJSON * process_json_compare(process_entry_data * old_data, process_entry_data *
  * @return Pointer to cJSON structure.
  */
 cJSON * process_json_attributes(process_entry_data * data);
+
+/**
+ * @brief Create sys scan JSON event
+ *
+ * Format:
+ * {
+ *   type:          "hardware_scan"|"OS_scan"|"network_scan"|"program_scan"|"hotfix_scan"|"port_scan"|"process_scan"
+ *   data: {
+ *     timestamp:   number
+ *     items:       number
+ *   }
+ * }
+ *
+ * @param type Event type (hardware, OS, network, program, hotfix, port or process).
+ * @param timestamp Datetime in UNIX epoch.
+ * @param items Number of items stored in the inventory.
+ * @return cJSON object pointer.
+ */
+
+cJSON * sys_json_scan_event(sys_scan_event type, time_t timestamp, int items);
 
 #endif
 #endif

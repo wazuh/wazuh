@@ -20,6 +20,16 @@
 #define RUN_PORT      000000040
 #define RUN_PROC      000000100
 
+static const char *SYS_SCAN_EVENT[] = {
+    "hardware_scan",
+    "OS_scan",
+    "network_scan",
+    "program_scan",
+    "hotfix_scan",
+    "port_scan",
+    "process_scan"
+};
+
 static const char *SYS_EVENT_TYPE[] = {
     "added",
     "modified",
@@ -130,6 +140,7 @@ void* wm_sys_main(wm_sys_t *sys) {
             #endif
             run &= ~RUN_IFACE;
             sys->state.interfaces_next_time += sys->interfaces_interval;
+            sys_send_scan_event(IFACE_SCAN);
         }
 
         /* Operating System inventory */
@@ -141,6 +152,7 @@ void* wm_sys_main(wm_sys_t *sys) {
             #endif
             run &= ~RUN_OS;
             sys->state.os_next_time += sys->os_interval;
+            sys_send_scan_event(OS_SCAN);
         }
 
         /* Hardware inventory */
@@ -157,6 +169,7 @@ void* wm_sys_main(wm_sys_t *sys) {
             #endif
             run &= ~RUN_HW;
             sys->state.hw_next_time += sys->hw_interval;
+            sys_send_scan_event(HW_SCAN);
         }
 
         /* Installed programs inventory */
@@ -176,6 +189,7 @@ void* wm_sys_main(wm_sys_t *sys) {
             #endif
             run &= ~RUN_PKG;
             sys->state.programs_next_time += sys->programs_interval;
+            sys_send_scan_event(PKG_SCAN);
         }
 
         /* Installed hotfixes inventory */
@@ -188,6 +202,7 @@ void* wm_sys_main(wm_sys_t *sys) {
             #endif
             run &= ~RUN_HFIX;
             sys->state.hotfixes_next_time += sys->hotfixes_interval;
+            sys_send_scan_event(HFIX_SCAN);
         }
         /* Opened ports inventory */
         if (sys->flags.portsinfo && (run & RUN_PORT)){
@@ -206,6 +221,7 @@ void* wm_sys_main(wm_sys_t *sys) {
             #endif
             run &= ~RUN_PORT;
             sys->state.ports_next_time += sys->ports_interval;
+            sys_send_scan_event(PORT_SCAN);
         }
 
         /* Running processes inventory */
@@ -225,6 +241,7 @@ void* wm_sys_main(wm_sys_t *sys) {
             #endif
             run &= ~RUN_PROC;
             sys->state.processes_next_time += sys->processes_interval;
+            sys_send_scan_event(PROC_SCAN);
         }
 
         mtinfo(WM_SYS_LOGTAG, "Evaluation finished.");
@@ -1625,6 +1642,68 @@ void print_rbtree(rb_tree * tree, pthread_mutex_t mutex) {
     return;
 }
 
+// Send a syscollector scan event to the manager
+void sys_send_scan_event(sys_scan_event type) {
+    cJSON * json_event = NULL;
+    char * string = NULL;
+    char ** keys = NULL;
+    int items = 0;
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
+    switch (type) {
+        case HW_SCAN:
+        case OS_SCAN:
+            items = 1;
+            break;
+        case IFACE_SCAN:
+            w_mutex_lock(&sys->interfaces_entry_mutex);
+            keys = rbtree_keys(sys->interfaces_entry);
+            w_mutex_unlock(&sys->interfaces_entry_mutex);
+            break;
+        case PKG_SCAN:
+            w_mutex_lock(&sys->programs_entry_mutex);
+            keys = rbtree_keys(sys->programs_entry);
+            w_mutex_unlock(&sys->programs_entry_mutex);
+            break;
+        case HFIX_SCAN:
+            w_mutex_lock(&sys->hotfixes_entry_mutex);
+            keys = rbtree_keys(sys->hotfixes_entry);
+            w_mutex_unlock(&sys->hotfixes_entry_mutex);
+            break;
+        case PORT_SCAN:
+            w_mutex_lock(&sys->ports_entry_mutex);
+            keys = rbtree_keys(sys->ports_entry);
+            w_mutex_unlock(&sys->ports_entry_mutex);
+            break;
+        case PROC_SCAN:
+            w_mutex_lock(&sys->processes_entry_mutex);
+            keys = rbtree_keys(sys->processes_entry);
+            w_mutex_unlock(&sys->processes_entry_mutex);
+            break;
+        default:
+            break;
+    }
+
+    if (keys) {
+        for (items = 0; keys[items] != NULL; items++);
+        free_strarray(keys);
+    }
+
+    if (json_event = sys_json_scan_event(type, time(NULL), items), json_event) {
+        string = cJSON_PrintUnformatted(json_event);
+        cJSON_Delete(json_event);
+        mtdebug2(WM_SYS_LOGTAG, "sys_send_scan_event() sending '%s'", string);
+    #ifdef WIN32
+        wm_sendmsg(usec, 0, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+    #else
+        wm_sendmsg(usec, queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+    #endif
+        free(string);
+    }
+}
+
 cJSON * hw_json_event(hw_entry * old_data, hw_entry * new_data, sys_event_type type, const char * timestamp) {
     cJSON * changed_attributes = NULL;
 
@@ -2865,4 +2944,16 @@ cJSON * process_json_attributes(process_entry_data * data) {
         cJSON_AddNumberToObject(attributes, "processor", data->processor);
     }
     return attributes;
+}
+
+cJSON * sys_json_scan_event(sys_scan_event type, time_t timestamp, int items) {
+    cJSON * object = cJSON_CreateObject();
+    cJSON * scan = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(object, "type", SYS_SCAN_EVENT[type]);
+    cJSON_AddItemToObject(object, "data", scan);
+    cJSON_AddNumberToObject(scan, "timestamp", timestamp);
+    cJSON_AddNumberToObject(scan, "items", items);
+
+    return object;
 }
