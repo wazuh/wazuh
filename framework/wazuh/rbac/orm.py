@@ -9,7 +9,7 @@ from datetime import datetime
 from enum import Enum
 from shutil import chown
 
-from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey
+from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean
 from sqlalchemy.dialects.sqlite import TEXT
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
@@ -107,15 +107,17 @@ class User(_Base):
 
     username = Column(String(32), primary_key=True)
     password = Column(String(256))
+    auth_context = Column(Boolean, default=False, nullable=False)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
 
     # Relations
     roles = relationship("Roles", secondary='user_roles',
                          backref=backref("rolesu", cascade="all,delete", order_by=UserRoles.role_id), lazy='dynamic')
 
-    def __init__(self, username, password):
+    def __init__(self, username, password, auth_context=False):
         self.username = username
         self.password = password
+        self.auth_context = auth_context
         self.created_at = datetime.utcnow()
 
     def __repr__(self):
@@ -133,7 +135,7 @@ class User(_Base):
 
         :return: Dict with the information of the user
         """
-        return {'username': self.username, 'roles': self._get_roles()}
+        return {'username': self.username, 'roles': self._get_roles(), 'auth_context': self.auth_context}
 
     def to_dict(self):
         """Return the information of one policy and the roles that have assigned
@@ -247,15 +249,17 @@ class AuthenticationManager:
     It manages users and token generation.
     """
 
-    def add_user(self, username: str, password: str):
+    def add_user(self, username: str, password: str, auth_context: bool = False):
         """Creates a new user if it does not exist.
 
         :param username: string Unique user name
         :param password: string Password provided by user. It will be stored hashed
-        :return: True if the user has been created successfuly. False otherwise (i.e. already exists)
+        :param auth_context: Flag that indicates if the user can log into the API throw an authorization context
+        :return: True if the user has been created successfully. False otherwise (i.e. already exists)
         """
         try:
-            self.session.add(User(username=username, password=generate_password_hash(password)))
+            self.session.add(User(username=username, password=generate_password_hash(password),
+                                  auth_context=auth_context))
             self.session.commit()
             return True
         except IntegrityError:
@@ -321,6 +325,19 @@ class AuthenticationManager:
         try:
             if username is not None:
                 return self.session.query(User).filter_by(username=username).first().to_dict()
+        except (IntegrityError, AttributeError):
+            self.session.rollback()
+            return False
+
+    def user_auth_context(self, username: str = None):
+        """Get the auth_context's flag of specified user in the system
+
+        :param username: string Unique user name
+        :return: An specified user
+        """
+        try:
+            if username is not None:
+                return self.session.query(User).filter_by(username=username).first().get_user()['auth_context']
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
@@ -1142,7 +1159,7 @@ except PermissionError as e:
 
 # Create default users if they don't exist yet
 with AuthenticationManager() as auth:
-    auth.add_user(username='wazuh-app', password='wazuh-app')
+    auth.add_user(username='wazuh-app', password='wazuh-app', auth_context=True)
     auth.add_user(username='wazuh', password='wazuh')
 
 # These examples are for RBAC development

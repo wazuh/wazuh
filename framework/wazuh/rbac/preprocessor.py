@@ -2,8 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from wazuh.exception import WazuhInternalError
 from wazuh.rbac.auth_context import RBAChecker
-
 
 need_clean = dict()
 
@@ -49,12 +49,20 @@ class PreProcessor:
         return self.odict
 
 
-def optimize_resources():
+def optimize_resources(auth_context=None, user_id=None):
     """This function preprocess the policies of the user for a more easy treatment in the decorator of the RBAC
+
+    :param auth_context: Authorization context of the current user
+    :param user_id: Username of the current user
     """
     # For production
-    rbac = RBAChecker(auth_context='{}')
-    policies = rbac.run()
+    rbac = RBAChecker(auth_context=auth_context)
+    # Authorization Context method
+    if auth_context:
+        policies = rbac.run_auth_context()
+    # User-role link method
+    else:
+        policies = rbac.run_user_role_link(user_id)
 
     # Testing
     # policies = RBAChecker.run_testing()

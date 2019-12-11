@@ -15,6 +15,7 @@ from api.util import remove_nones_to_dict, exception_handler, raise_if_exc, pars
 from wazuh import security
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
+from wazuh.rbac.orm import AuthenticationManager
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -22,17 +23,21 @@ auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 
 @exception_handler
-def login_user(user):
+def login_user(user, auth_context=None):
     """User/password authentication to get an access token
 
     This method should be called to get an API token. This token will expire at some time. # noqa: E501
     :return: TokenResponse
     """
-    return TokenResponse(token=generate_token(user)), 200
+    with AuthenticationManager() as auth:
+        if auth.user_auth_context(user):
+            return TokenResponse(token=generate_token(user_id=user, auth_context=auth_context)), 200
+    return TokenResponse(token=generate_token(user_id=user)), 200
 
 
 @exception_handler
-def get_users(usernames: list = None, pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
+def get_users(usernames: list = None, pretty=False, wait_for_complete=False,
+              offset=0, limit=None, search=None, sort=None):
     """Returns information from all system roles
 
     :param usernames: List of users to be obtained

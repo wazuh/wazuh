@@ -82,7 +82,7 @@ def test_simple1_1():
     authorization_contexts, roles, results = values()
     test = checker(json.dumps(authorization_contexts[0]),
                    roles[0])
-    assert (test.run() == [roles[0].name])
+    assert (test.run_auth_context() == [roles[0].name])
 
 
 def test_auth_roles():
@@ -92,7 +92,7 @@ def test_auth_roles():
             test = checker(json.dumps(auth.auth),
                            role)
             if role.name in results[index].roles:
-                assert (test.run() == [role.name])
+                assert (test.run_auth_context() == [role.name])
             else:
-                assert (len(test.run()) == 0)
+                assert (len(test.run_auth_context()) == 0)
         roles = values()[1]
