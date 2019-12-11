@@ -225,9 +225,10 @@ end:
 }
 
 void DispatchDBSync(dbsync_context_t * ctx, Eventinfo * lf) {
+    const char *jsonErrPtr;
     ctx->agent_id = lf->agent_id;
 
-    cJSON * root = cJSON_Parse(lf->log);
+    cJSON * root = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0);
 
     if (root == NULL) {
         merror("dbsync: Cannot parse JSON: %s", lf->log);

@@ -366,7 +366,9 @@ end:
 }
 int wdb_syscheck_save2(wdb_t * wdb, const char * payload) {
     int retval = -1;
-    cJSON * data = cJSON_Parse(payload);
+    const char *jsonErrPtr;
+
+    cJSON * data = cJSON_ParseWithOpts(payload, &jsonErrPtr, 0);
 
     if (data == NULL) {
         mdebug1("DB(%s): cannot parse FIM payload: '%s'", wdb->agent_id, payload);

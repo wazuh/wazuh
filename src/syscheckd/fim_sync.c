@@ -197,6 +197,7 @@ void fim_sync_send_list(const char * start, const char * top) {
 void fim_sync_dispatch(char * payload) {
     assert(payload != NULL);
 
+    const char *jsonErrPtr;
     char * command = payload;
     char * json_arg = strchr(payload, ' ');
 
@@ -206,7 +207,7 @@ void fim_sync_dispatch(char * payload) {
     }
 
     *json_arg++ = '\0';
-    cJSON * root = cJSON_Parse(json_arg);
+    cJSON * root = cJSON_ParseWithOpts(json_arg, &jsonErrPtr, 0);
 
     if (root == NULL) {
         mdebug1(FIM_DBSYNC_INVALID_ARGUMENT, json_arg);

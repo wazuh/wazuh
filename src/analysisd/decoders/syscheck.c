@@ -1120,8 +1120,9 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
 
     cJSON *root_json = NULL;
     int retval = 0;
+    const char *jsonErrPtr;
 
-    if (root_json = cJSON_Parse(lf->log), !root_json) {
+    if (root_json = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0), !root_json) {
         merror("Malformed FIM JSON event");
         return retval;
     }

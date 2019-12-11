@@ -182,7 +182,8 @@ static void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long 
 // Query the checksum of a data range
 int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * command, const char * payload) {
     int retval = -1;
-    cJSON * data = cJSON_Parse(payload);
+    const char *jsonErrPtr;
+    cJSON * data = cJSON_ParseWithOpts(payload, &jsonErrPtr, 0);
 
     if (data == NULL) {
         mdebug1("DB(%s): cannot parse checksum range payload: '%s'", wdb->agent_id, payload);
@@ -272,7 +273,8 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
     assert(component < sizeof(INDEXES) / sizeof(int));
 
     int retval = -1;
-    cJSON * data = cJSON_Parse(payload);
+    const char *jsonErrPtr;
+    cJSON * data = cJSON_ParseWithOpts(payload, &jsonErrPtr, 0);
 
     if (data == NULL) {
         mdebug1("DB(%s): cannot parse checksum range payload: '%s'", wdb->agent_id, payload);
