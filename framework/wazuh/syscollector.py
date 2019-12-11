@@ -50,7 +50,7 @@ def get_item_agent(agent_list, offset=0, limit=common.database_limit, select=Non
             for item in data['items']:
                 item['agent_id'] = agent
                 result.affected_items.append(item)
-                result.total_affected_items += 1
+            result.total_affected_items += data['totalItems']
         except WazuhError as e:
             result.add_failed_item(id_=agent, error=e)
 
