@@ -64,7 +64,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
     char *format = "pkg";
     char *timestamp = w_get_timestamp(time(NULL));
-    struct dirent *de;
+    struct dirent *dep;
     DIR *dr;
     char path[PATH_LENGTH];
 
