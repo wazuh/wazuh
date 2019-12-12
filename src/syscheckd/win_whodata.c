@@ -23,7 +23,6 @@
 #define WLIST_ALERT_THRESHOLD 80 // 80%
 #define WLIST_REMOVE_MAX 10 // 10%
 #define WCLIST_MAX_SIZE OS_SIZE_1024
-#define WRLIST_MAX_TIME 5
 #define WPOL_BACKUP_COMMAND "auditpol /backup /file:\"%s\""
 #define WPOL_RESTORE_COMMAND "auditpol /restore /file:\"%s\""
 #define WPOL_BACKUP_FILE "tmp\\backup-policies"
@@ -73,17 +72,13 @@ int whodata_check_arch();
 
 // Whodata list operations
 whodata_event_node *whodata_list_add(char *id);
-int whodata_check_removed(char *file);
-void whodata_rlist_add(char *path);
 void whodata_clist_remove(whodata_event_node *node);
-void whodata_rlist_remove(whodata_event_node *node);
 void whodata_list_set_values();
 void whodata_list_remove_multiple(size_t quantity);
 int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time);
 int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2);
 void free_win_whodata_evt(whodata_evt *evt);
 char *get_whodata_path(const short unsigned int *win_path);
-void whodata_clean_rlist();
 
 // Get volumes and paths of Windows system
 int get_volume_names();
@@ -574,8 +569,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             mask = buffer[6].UInt32Val;
         }
 
-        whodata_clean_rlist();
-
         if (buffer[7].Type != EvtVarTypeSid) {
             mwarn(FIM_WHODATA_PARAMETER, buffer[7].Type, "user_id");
             user_id = NULL;
@@ -616,7 +609,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 } else if (device_type == 0) {
                     // If the device could not be found, it was monitored by Syscheck, has not recently been removed,
                     // and had never been entered in the hash table before, we can deduce that it is a removed directory
-                    if (mask & DELETE && !whodata_check_removed(path)) {
+                    if (mask & DELETE) {
                         mdebug2(FIM_WHODATA_REMOVE_FOLDEREVENT, path);
                         is_directory = 1;
                     } else {
@@ -815,7 +808,6 @@ int whodata_audit_start() {
     OSHash_SetFreeDataPointer(syscheck.wdata.fd, (void (*)(void *))free_win_whodata_evt);
 
     memset(&syscheck.w_clist, 0, sizeof(whodata_event_list));
-    memset(&syscheck.w_rlist, 0, sizeof(whodata_event_list));
     whodata_list_set_values();
 
     minfo(FIM_WHODATA_VOLUMES);
@@ -968,33 +960,6 @@ void whodata_clist_remove(whodata_event_node *node) {
     }
 }
 
-void whodata_rlist_remove(whodata_event_node *node) {
-    if (!(node->next || node->prev)) {
-        syscheck.w_rlist.first = syscheck.w_rlist.last = NULL;
-    } else {
-        if (node->next) {
-            if (node->prev) {
-                node->next->prev = node->prev;
-            } else {
-                node->next->prev = NULL;
-                syscheck.w_rlist.first = node->next;
-            }
-        }
-
-        if (node->prev) {
-            if (node->next) {
-                node->prev->next = node->next;
-            } else {
-                node->prev->next = NULL;
-                syscheck.w_rlist.last = node->prev;
-            }
-        }
-    }
-
-    free(node->id);
-    free(node);
-}
-
 void whodata_list_set_values() {
     // Cached events list
     syscheck.w_clist.max_size = WCLIST_MAX_SIZE;
@@ -1002,9 +967,6 @@ void whodata_list_set_values() {
     syscheck.w_clist.alert_threshold = syscheck.w_clist.max_size * WLIST_ALERT_THRESHOLD * 0.01;
     mdebug1(FIM_WHODATA_EVENTQUEUE_VALUES
     syscheck.w_clist.max_size, syscheck.w_clist.max_remove, syscheck.w_clist.alert_threshold);
-
-    // Removed events list
-    syscheck.w_rlist.queue_time = WRLIST_MAX_TIME;
 }
 
 int set_policies() {
@@ -1632,52 +1594,6 @@ end:
     }
 
     return retval;
-}
-
-void whodata_rlist_add(char *id) {
-    whodata_event_node *node = NULL;
-
-    os_calloc(sizeof(whodata_event_node), 1, node);
-
-    if (syscheck.w_rlist.last) {
-        syscheck.w_rlist.last->next = node;
-        node->prev = syscheck.w_rlist.last;
-    } else {
-        syscheck.w_rlist.first = node;
-    }
-
-    os_strdup(id, node->id);
-    node->insert_time = time(NULL);
-    syscheck.w_rlist.last = node;
-}
-
-int whodata_check_removed(char *file) {
-    whodata_event_node *node_it;
-    time_t now = time(NULL);
-
-    for (node_it = syscheck.w_rlist.last; node_it && node_it->insert_time + syscheck.w_rlist.queue_time >= now; node_it = node_it->prev) {
-        if (!strcmp(node_it->id, file)) {
-            mdebug2(FIM_WHODATA_IGNORE_FILEEVENT, file);
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-void whodata_clean_rlist() {
-    whodata_event_node *node_it;
-    time_t now = time(NULL);
-
-    for (node_it = syscheck.w_rlist.first; node_it && node_it->insert_time + syscheck.w_rlist.queue_time < now;) {
-        whodata_event_node *next = node_it->next;
-        whodata_rlist_remove(node_it);
-        node_it = next;
-        syscheck.w_rlist.first = node_it;
-    }
-    if (!syscheck.w_rlist.first) {
-        syscheck.w_rlist.last = NULL;
-    }
 }
 
 #endif
