@@ -3,13 +3,16 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import re
+from time import time
 
+from api.authentication import validation
 from wazuh import common
 from wazuh.exception import WazuhError
 from wazuh.rbac import orm
 from wazuh.rbac.decorators import expose_resources
-from wazuh.rbac.orm import SecurityError, AuthenticationManager
-from wazuh.results import AffectedItemsWazuhResult
+from wazuh.rbac.orm import AuthenticationManager
+from wazuh.rbac.orm import SecurityError
+from wazuh.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.utils import process_array
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
@@ -486,3 +489,11 @@ def remove_role_policy(role_id, policy_ids):
         result.affected_items.sort(key=str)
 
     return result
+
+
+@expose_resources(actions=['security:revoke'], resources=['*:*:*'])
+def revoke_tokens():
+    """ Revoke all tokens """
+    validation.key = int(time())
+
+    return WazuhResult({'msg': 'Tokens revoked succesfully'})

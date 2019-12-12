@@ -168,6 +168,14 @@ FROM wazuh-env-cluster AS wazuh-env-cluster_black_rbac
 ADD configurations/rbac/cluster/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
+FROM base AS wazuh-env-experimental_black_rbac
+ADD configurations/rbac/experimental/black_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
+FROM base AS wazuh-env-experimental_white_rbac
+ADD configurations/rbac/experimental/white_configuration_rbac.sh /scripts/configuration_rbac.sh
+RUN /scripts/configuration_rbac.sh
+
 FROM wazuh-env-${ENVIRONMENT}
 
 HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python3 /tmp/healthcheck.py || exit 1

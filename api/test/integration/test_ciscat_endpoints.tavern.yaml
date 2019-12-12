@@ -725,7 +725,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
         data:
@@ -764,7 +764,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
         data:
@@ -801,7 +801,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
         data:

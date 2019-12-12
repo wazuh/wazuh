@@ -254,6 +254,22 @@ stages:
       body:
         <<: *error_response
 
+  - name: Test q
+    request:
+      <<: *general_rules_request
+      params:
+        q: 'id=200'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - <<: *rules_response
+              id: 200
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
 ---
 test_name: GET /rules filters
 
@@ -1213,16 +1229,23 @@ stages:
           total_affected_items: !anyint
           total_failed_items: !anyint
 
-  - name: Filter download
+---
+test_name: GET /rules/files/{file}/download
+
+stages:
+
+  - name: Download rule
     request:
       url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
+      headers:
+        content-type: application/xml
 
 ---
-test_name: GET /rules/{rule_ids}
+test_name: GET /rules?rule_ids
 
 stages:
 

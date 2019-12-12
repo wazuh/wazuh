@@ -18,7 +18,8 @@ logger = logging.getLogger('wazuh')
 
 @exception_handler
 def get_decoders(decoder_names: list = None, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
-                 limit: int = None, sort: str = None, search: str = None, file: str = None, path: str = None, status: str = None):
+                 limit: int = None, sort: str = None, search: str = None, q: str = None, file: str = None,
+                 path: str = None, status: str = None):
     """Get all decoders
 
     Returns information about all decoders included in ossec.conf. This information include decoder's route,
@@ -32,16 +33,23 @@ def get_decoders(decoder_names: list = None, pretty: bool = False, wait_for_comp
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
+    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :param file: Filters by filename.
     :param path: Filters by path
     :param status: Filters by list status.
     :return: Data object
     """
-    f_kwargs = {'names': decoder_names, 'offset': offset, 'limit': limit, 'file': file, 'status': status, 'path': path,
+    f_kwargs = {'names': decoder_names,
+                'offset': offset,
+                'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['file', 'position'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None}
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'q': q,
+                'file': file,
+                'status': status,
+                'path': path}
 
     dapi = DistributedAPI(f=decoder_framework.get_decoders,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -124,7 +132,7 @@ def get_download_file(pretty: bool = False, wait_for_complete: bool = False, fil
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = connexion.lifecycle.ConnexionResponse(body=data["message"], mimetype='application/xml')
 
-    return data
+    return response
 
 
 @exception_handler

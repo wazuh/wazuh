@@ -25,59 +25,39 @@ stages:
       body:
         data:
           affected_items:
-            - details:
-                prematch: "^wazuh: "
+            - &full_item_decoders
+              details: !anything
               file: 0005-wazuh_decoders.xml
-              name: wazuh
-              path: ruleset/decoders
-              position: 0
-              status: enabled
-            - details:
-                order: level
-                parent: wazuh
-                prematch: "^Agent buffer:"
-                regex:
-                  - "^ '(\\S+)'."
-              file: 0005-wazuh_decoders.xml
-              name: agent-buffer
-              path: ruleset/decoders
-              position: 1
-              status: enabled
-            - details:
-                order: agent.id, agent.name, status
-                parent: wazuh
-                prematch: "^Upgrade procedure |^Custom installation "
-                regex:
-                  - on agent (\d\d\d)\s\((\S+)\):\s(\w+)
-              file: 0005-wazuh_decoders.xml
-              name: agent-upgrade
-              path: ruleset/decoders
-              position: 2
-              status: enabled
-            - details:
-                order: error
-                parent: wazuh
-                regex:
-                  - aborted:\s(\.+)$|failed:\s(\.+)$|lost:\s(\.+)$
-              file: 0005-wazuh_decoders.xml
-              name: agent-upgrade
-              path: ruleset/decoders
-              position: 3
-              status: enabled
-            - details:
-                order: agent.cur_version
-                parent: wazuh
-                regex:
-                  - started.\sCurrent\sversion:\sWazuh\s(\.+)$
-              file: 0005-wazuh_decoders.xml
-              name: agent-upgrade
-              path: ruleset/decoders
-              position: 4
-              status: enabled
+              name: !anystr
+              path: !anystr
+              position: !anyint
+              status: !anystr
+            - <<: *full_item_decoders
+            - <<: *full_item_decoders
+            - <<: *full_item_decoders
+            - <<: *full_item_decoders
           failed_items: []
-          total_affected_items: 21
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: All selected decoders were shown
+        message: !anystr
+
+  - name: Try to show the decoders of the system (try q parameter to bypass a denied resource)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/decoders"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        q: 'file=0006-json_decoders.xml'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the decoders of the system (list)
     request:
@@ -92,72 +72,14 @@ stages:
       body:
         data:
           affected_items:
-            - details:
-                prematch: "^wazuh: "
-              file: 0005-wazuh_decoders.xml
-              name: wazuh
-              path: ruleset/decoders
-              position: 0
-              status: enabled
-            - details:
-                order: level
-                parent: wazuh
-                prematch: "^Agent buffer:"
-                regex:
-                  - "^ '(\\S+)'."
-              file: 0005-wazuh_decoders.xml
-              name: agent-buffer
-              path: ruleset/decoders
-              position: 1
-              status: enabled
-            - details:
-                order: agent.id, agent.name, status
-                parent: wazuh
-                prematch: "^Upgrade procedure |^Custom installation "
-                regex:
-                  - on agent (\d\d\d)\s\((\S+)\):\s(\w+)
-              file: 0005-wazuh_decoders.xml
-              name: agent-upgrade
-              path: ruleset/decoders
-              position: 2
-              status: enabled
-            - details:
-                order: error
-                parent: wazuh
-                regex:
-                  - aborted:\s(\.+)$|failed:\s(\.+)$|lost:\s(\.+)$
-              file: 0005-wazuh_decoders.xml
-              name: agent-upgrade
-              path: ruleset/decoders
-              position: 3
-              status: enabled
-            - details:
-                order: agent.cur_version
-                parent: wazuh
-                regex:
-                  - started.\sCurrent\sversion:\sWazuh\s(\.+)$
-              file: 0005-wazuh_decoders.xml
-              name: agent-upgrade
-              path: ruleset/decoders
-              position: 4
-              status: enabled
-            - details:
-                order: agent.new_version
-                parent: wazuh
-                regex:
-                  - succeeded.\sNew\sversion:\sWazuh\s(\.+)$
-              file: 0005-wazuh_decoders.xml
-              name: agent-upgrade
-              path: ruleset/decoders
-              position: 5
-              status: enabled
-            - details:
-                prematch: "\\d\\d/\\d\\d/\\d\\d\\d\\d:\\s*\\d\\d:\\d\\d:\\d\\d\\s+GMT\\s+\\S+\\.+PPE\\.+:\\s|\\d\\d/\\d\\d/\\d\\d\\d\\d:\\s*\\d\\d:\\d\\d:\\d\\d\\s+GMT\\s+ns\\.+:\\s"
+            - <<: *full_item_decoders
+            - <<: *full_item_decoders
+            - <<: *full_item_decoders
+            - <<: *full_item_decoders
+            - <<: *full_item_decoders
+            - <<: *full_item_decoders
+            - <<: *full_item_decoders
               file: 0160-netscaler_decoders.xml
-              name: netscaler
-              path: ruleset/decoders
-              position: 0
-              status: enabled
           failed_items:
             - error:
                 code: 1504
@@ -165,9 +87,9 @@ stages:
                 remediation: !anystr
               id:
                 - netinfo
-          total_affected_items: 7
+          total_affected_items: !anyint
           total_failed_items: 1
-        message: Some decoders could not be shown
+        message: !anystr
 
 ---
 test_name: GET DECODERS FILES RBAC
@@ -192,9 +114,9 @@ stages:
               path: ruleset/decoders
               status: enabled
           failed_items: []
-          total_affected_items: 2
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: All rules files were shown
+        message: !anystr
 
   - name: Try to show the decoders files of the system (list)
     request:
@@ -216,9 +138,9 @@ stages:
               path: ruleset/decoders
               status: enabled
           failed_items: []
-          total_affected_items: 2
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: All rules files were shown
+        message: !anystr
 
   - name: Try to show the decoders files of the system (no permissions)
     request:
@@ -234,13 +156,12 @@ stages:
         code: 4000
         dapi_errors:
           master-node:
-            error: Permission denied
-        detail: Permission denied
-        remediation: Please, make sure you have permissions to execute current request, for
-          more information on setting up permissions please visit XXXX
+            error: !anystr
+        detail: !anystr
+        remediation: !anystr
         status: 400
-        title: Wazuh Error
-        type: about:blank
+        title: !anystr
+        type: !anystr
 
 ---
 test_name: GET DECODERS FILES RBAC (Download)
@@ -255,6 +176,8 @@ stages:
       method: GET
     response:
       status_code: 200
+      headers:
+        content-type: application/xml
 
   - name: Try get one decoder file (no permissions)
     request:
@@ -284,6 +207,6 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 2
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: All selected decoders were shown
+        message: !anystr

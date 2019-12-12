@@ -42,7 +42,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All specified items were shown
+        message: !anystr
 
   - name: Get os from an agent (Deny)
     request:
@@ -55,11 +55,11 @@ stages:
       body: &permission_denied
         code: 4000
         dapi_errors: !anything
-        detail: Permission denied
+        detail: !anystr
         remediation: !anystr
         status: 400
-        title: Wazuh Error
-        type: about:blank
+        title: !anystr
+        type: !anystr
 
 ---
 test_name: GET HARDWARE SYSCOLLECTOR RBAC
@@ -92,7 +92,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All specified items were shown
+        message: !anystr
 
   - name: Get hardware from an agent (Deny)
     request:
@@ -256,7 +256,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All specified items were shown
+        message: !anystr
 
   - name: Get netiface from an agent (Deny)
     request:
@@ -302,7 +302,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All specified items were shown
+        message: !anystr
 
   - name: Get netiface from an agent (Deny)
     request:
@@ -366,7 +366,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All specified items were shown
+        message: !anystr
 
   - name: Get netiface from an agent (Deny)
     request:
@@ -404,7 +404,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All specified items were shown
+        message: !anystr
       save:
         body:
           hotfix_filter: data.affected_items.0.hotfix
