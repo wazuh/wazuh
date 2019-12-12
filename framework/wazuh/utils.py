@@ -894,7 +894,7 @@ class WazuhDBQuery(object):
                 # check every element in sort['fields'] is in allowed_sort_fields
                 if not sort_fields.issubset(allowed_sort_fields):
                     raise WazuhError(1403, "Allowerd sort fields: {}. Fields: {}".format(
-                        allowed_sort_fields, ', '.join(sort_fields - allowed_sort_fields)
+                        sorted(allowed_sort_fields, key=str), ', '.join(sort_fields - allowed_sort_fields)
                     ))
                 self.query += ' ORDER BY ' + ','.join([self._sort_query(i) for i in sort_fields])
             else:

@@ -41,7 +41,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All specified items were shown
+        message: !anystr
       save:
         body:
           os.version: data.affected_items.0.os.version
@@ -53,16 +53,19 @@ stages:
       <<: *os_request_000
       params:
         select: wrongParam
-    response: &error_response
-      status_code: 400
+    response: &error_response_1724
+      status_code: 200
       body:
-        code: !anyint
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1724
+              id:
+                - '000'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
 ---
 test_name: GET /syscollector/{agent_id}/os?{select}
@@ -97,7 +100,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
 
@@ -132,7 +135,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All specified items were shown
+        message: !anystr
       save:
         body:
           board_serial: data.affected_items.0.board_serial
@@ -145,7 +148,7 @@ stages:
       params:
         select: wrongParam
     response:
-      <<: *error_response
+      <<: *error_response_1724
 
 ---
 test_name: GET /syscollector/{agent_id}/hardware?{select}
@@ -176,7 +179,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
 
@@ -213,7 +216,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All specified items were shown
+        message: !anystr
       save:
         body:
           expected_scan_id: data.affected_items.0.scan.id
@@ -239,7 +242,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All specified items were shown
+        message: !anystr
 
   - name: Not allowed selector
     request:
@@ -247,7 +250,7 @@ stages:
       params:
         select: wrongParam
     response:
-      <<: *error_response
+      <<: *error_response_1724
 
   - name: Limit and offset
     request:
@@ -363,16 +366,19 @@ stages:
       <<: *packages_request_000
       params:
         sort: wronParam
-    response:
-      status_code: 400
-      body: &error_remediation_response
-        code: !anyint
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
+    response: &error_response_1403
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1403
+              id:
+                - '000'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
   - name: Search an expected name
     request:
@@ -531,7 +537,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
 
@@ -586,7 +592,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All specified items were shown
+        message: !anystr
       save:
         body:
           expected_tty: data.affected_items.0.tty
@@ -814,9 +820,7 @@ stages:
       params:
         select: wrongParam
     response:
-      status_code: 400
-      body:
-        <<: *error_remediation_response
+      <<: *error_response_1724
 
   - name: offset and limit
     request:
@@ -980,7 +984,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
 
@@ -1127,7 +1131,7 @@ stages:
       params:
         select: wrong
     response:
-      <<: *error_response
+      <<: *error_response_1724
 
   - name: Wrong limit
     request:
@@ -1147,13 +1151,13 @@ stages:
     response:
       status_code: 400
 
-  - name: Invalid sort
+  - name: Invalid select
     request:
       <<: *port_request_000
       params:
         select: wrong
     response:
-      <<: *error_response
+      <<: *error_response_1724
 
 ---
 test_name: GET /syscollector/{agent_id}/port?{sort,select}
@@ -1187,7 +1191,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
         data:
@@ -1439,9 +1443,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      status_code: 400
-      body:
-        <<: *error_remediation_response
+      <<: *error_response_1724
 
   - name: Pagination
     request:
@@ -1493,7 +1495,7 @@ stages:
       params:
         sort: -wrong
     response:
-      <<: *error_response
+      <<: *error_response_1403
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
@@ -1523,7 +1525,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
         data:
@@ -1749,9 +1751,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      status_code: 400
-      body:
-        <<: *error_remediation_response
+      <<: *error_response_1724
 
   - name: Wrong limit
     request:
@@ -1790,7 +1790,7 @@ stages:
       params:
         sort: -wrong
     response:
-      <<: *error_response
+      <<: *error_response_1403
 
 ---
 test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
@@ -1818,7 +1818,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
         data:
@@ -1970,9 +1970,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      status_code: 400
-      body:
-        <<: *error_remediation_response
+      <<: *error_response_1724
 
   - name: Wrong limit
     request:
@@ -2011,7 +2009,7 @@ stages:
       params:
         sort: -wrong
     response:
-      <<: *error_response
+      <<: *error_response_1403
 
   - name: Offset and limit
     request:
@@ -2417,7 +2415,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
         data:
@@ -2477,8 +2475,19 @@ stages:
       <<: *os_request
       params:
         select: wrongParam
-    response:
-      <<: *error_response
+    response: &error_response_1724_002
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1724
+              id:
+                - '002'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
 ---
 test_name: GET /syscollector/{agent_id}/os?{select}
@@ -2515,7 +2524,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
 
@@ -2559,7 +2568,7 @@ stages:
       params:
         select: wrongParam
     response:
-      <<: *error_response
+      <<: *error_response_1724_002
 
 ---
 test_name: GET /syscollector/{agent_id}/hardware?{select}
@@ -2590,7 +2599,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
 
@@ -2822,9 +2831,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      status_code: 400
-      body:
-        <<: *error_remediation_response
+      <<: *error_response_1724_002
 
   - name: Pagination
     request:
@@ -2875,8 +2882,19 @@ stages:
       <<: *netaddr_request
       params:
         sort: -wrong
-    response:
-      <<: *error_response
+    response: &error_response_1403_002
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1403
+              id:
+                - '002'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
@@ -2905,7 +2923,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
         data:
@@ -3131,9 +3149,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      status_code: 400
-      body:
-        <<: *error_remediation_response
+      <<: *error_response_1724_002
 
   - name: Wrong limit
     request:
@@ -3172,7 +3188,7 @@ stages:
       params:
         sort: -wrong
     response:
-      <<: *error_response
+      <<: *error_response_1403_002
 
 ---
 test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
@@ -3200,7 +3216,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
         data:
@@ -3350,9 +3366,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      status_code: 400
-      body:
-        <<: *error_remediation_response
+      <<: *error_response_1724_002
 
   - name: Wrong limit
     request:
@@ -3391,7 +3405,7 @@ stages:
       params:
         sort: -wrong
     response:
-      <<: *error_response
+      <<: *error_response_1403_002
 
   - name: Offset and limit
     request:
@@ -3797,7 +3811,7 @@ stages:
       body:
         $ext:
           # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
+          function: tavern_utils:test_select_key_affected_items_with_agent_id
           extra_kwargs:
             select_key: "{field:s}"
         data:
@@ -3816,6 +3830,9 @@ stages:
           total_affected_items: !anyint
 ---
 test_name: GET /syscollector/{agent_id}/hotfixes
+
+marks:
+  - xfail
 
 stages:
 

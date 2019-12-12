@@ -9,8 +9,8 @@ from typing import Dict, List, Tuple
 
 
 def dict_to_lowercase(mydict: Dict):
-    """
-    Turns all str values to lowercase. Supports nested dictionaries.
+    """Turns all str values to lowercase. Supports nested dictionaries.
+
     :param mydict: Dictionary to lowercase
     :return: None (the dictionary's reference is modified)
     """
@@ -22,8 +22,8 @@ def dict_to_lowercase(mydict: Dict):
 
 
 def append_ossec_path(dictionary: Dict, path_fields: List[Tuple[str, str]]):
-    """
-    Appends ossec path to all path fields in a dictionary
+    """Appends ossec path to all path fields in a dictionary
+
     :param dictionary: dictionary to append ossec path
     :param path_fields: List of tuples containing path fields
     :return: None (the dictionary's reference is modified)
@@ -33,13 +33,13 @@ def append_ossec_path(dictionary: Dict, path_fields: List[Tuple[str, str]]):
 
 
 def fill_dict(default: Dict, config: Dict) -> Dict:
-    """
-    Fills a dictionary's missing values using default ones.
+    """Fills a dictionary's missing values using default ones.
+
     :param default: Dictionary with default values
     :param config: Dictionary to fill
     :return: Filled dictionary
     """
-    # check there aren't extra configuration values in user's configuration:
+    # Check there aren't extra configuration values in user's configuration:
     for k in config.keys():
         if k not in default.keys():
             raise APIException(2000, details=', '.join(config.keys() - default.keys()))
@@ -51,8 +51,8 @@ def fill_dict(default: Dict, config: Dict) -> Dict:
 
 
 def read_api_config(config_file=common.api_config_path) -> Dict:
-    """
-    Reads user API configuration and merges it with the default one
+    """Reads user API configuration and merges it with the default one
+
     :return: API configuration
     """
     default_configuration = {
@@ -94,14 +94,14 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
     else:
         configuration = None
 
-    # if any value is missing from user's cluster configuration, add the default one:
+    # If any value is missing from user's cluster configuration, add the default one:
     if configuration is None:
         configuration = default_configuration
     else:
         dict_to_lowercase(configuration)
         configuration = fill_dict(default_configuration, configuration)
 
-    # append ossec_path to all paths in configuration
+    # Append ossec_path to all paths in configuration
     append_ossec_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
 
     return configuration
