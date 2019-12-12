@@ -3190,7 +3190,7 @@ components:
       description: Query to filter results by. For example q=&quot;status=active&quot;
       schema:
         type: string
-#        format: query
+        format: query
     rationale:
       in: query
       name: rationale
@@ -8302,6 +8302,7 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/statusRLDParam'
         - $ref: '#/components/parameters/group'
         - $ref: '#/components/parameters/level'
@@ -8869,10 +8870,10 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/file'
         - $ref: '#/components/parameters/etc_and_ruleset_path'
         - $ref: '#/components/parameters/statusRLDParam'
-
       responses:
         '200':
           description: 'List of decoders included in ossec.conf'

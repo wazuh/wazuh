@@ -193,6 +193,24 @@ stages:
       body:
         code: 1403
 
+    # GET /decoders?q=name=agent-upgrade;position=2
+  - name: Get decoders using query parameter
+    request:
+      <<: *get_decoders
+      params:
+        q: 'name=agent-upgrade;position=2'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - <<: *full_items_array
+              name: 'agent-upgrade'
+              position: 2
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
 ---
 test_name: GET /decoders
 
@@ -798,7 +816,7 @@ test_name: GET /decoders/files/{file}/download
 stages:
 
     # GET /decoders/files/{file}/download
-  - name: Try to download a decoders file
+  - name: Download a decoders file
     request:
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/decoders/files/{returned_file:s}/download"
@@ -806,6 +824,8 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
+      headers:
+        content-type: application/xml
 
     # GET /decoders/files/{wrong_file}/download
   - name: Try to download a decoders file using a wrong filename

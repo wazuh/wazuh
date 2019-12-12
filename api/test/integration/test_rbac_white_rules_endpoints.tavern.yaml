@@ -25,90 +25,46 @@ stages:
       body:
         data:
           affected_items:
-            - description: Generic template for all syslog rules.
-              details:
-                category: syslog
-                noalert: '1'
+            - &full_item_rules
+              description: !anystr
+              details: !anything
               file: 0010-rules_config.xml
-              gdpr: []
-              gpg13: []
-              groups:
-                - syslog
-              hipaa: []
-              id: 1
-              level: 0
-              nist_800_53: []
-              path: ruleset/rules
-              pci: []
-              status: enabled
-            - description: Generic template for all firewall rules.
-              details:
-                category: firewall
-                noalert: '1'
-              file: 0010-rules_config.xml
-              gdpr: []
-              gpg13: []
-              groups:
-                - firewall
-              hipaa: []
-              id: 2
-              level: 0
-              nist_800_53: []
-              path: ruleset/rules
-              pci: []
-              status: enabled
-            - description: Generic template for all ids rules.
-              details:
-                category: ids
-                noalert: '1'
-              file: 0010-rules_config.xml
-              gdpr: []
-              gpg13: []
-              groups:
-                - ids
-              hipaa: []
-              id: 3
-              level: 0
-              nist_800_53: []
-              path: ruleset/rules
-              pci: []
-              status: enabled
-            - description: Generic template for all web rules.
-              details:
-                category: web-log
-                noalert: '1'
-              file: 0010-rules_config.xml
-              gdpr: []
-              gpg13: []
-              groups:
-                - web-log
-              hipaa: []
-              id: 4
-              level: 0
-              nist_800_53: []
-              path: ruleset/rules
-              pci: []
-              status: enabled
-            - description: Generic template for all web proxy rules.
-              details:
-                category: squid
-                noalert: '1'
-              file: 0010-rules_config.xml
-              gdpr: []
-              gpg13: []
-              groups:
-                - squid
-              hipaa: []
-              id: 5
-              level: 0
-              nist_800_53: []
-              path: ruleset/rules
-              pci: []
-              status: enabled
+              gdpr: !anything
+              gpg13: !anything
+              groups: !anything
+              hipaa: !anything
+              id: !anyint
+              level: !anyint
+              nist_800_53: !anything
+              path: !anystr
+              pci: !anything
+              status: !anystr
+            - <<: *full_item_rules
+            - <<: *full_item_rules
+            - <<: *full_item_rules
+            - <<: *full_item_rules
           failed_items: []
-          total_affected_items: 54
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: All selected rules were shown
+        message: !anystr
+
+  - name: Try to show the rules of the system (try q parameter to bypass a denied resource)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        q: 'file=0020-syslog_rules.xml'
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
 
   - name: Try to show the rules of the system (list)
     request:
@@ -123,82 +79,25 @@ stages:
       body:
         data:
           affected_items:
-            - description: Generic template for all syslog rules.
-              details:
-                category: syslog
-                noalert: '1'
-              file: 0010-rules_config.xml
-              gdpr: []
-              gpg13: []
-              groups:
-                - syslog
-              hipaa: []
+            - <<: *full_item_rules
               id: 1
-              level: 0
-              nist_800_53: []
-              path: ruleset/rules
-              pci: []
-              status: enabled
-            - description: Generic template for all firewall rules.
-              details:
-                category: firewall
-                noalert: '1'
-              file: 0010-rules_config.xml
-              gdpr: []
-              gpg13: []
-              groups:
-                - firewall
-              hipaa: []
+            - <<: *full_item_rules
               id: 2
-              level: 0
-              nist_800_53: []
-              path: ruleset/rules
-              pci: []
-              status: enabled
-            - description: Grouping of ossec rules.
-              details:
-                category: ossec
-                decoded_as: ossec
+            - <<: *full_item_rules
               file: 0015-ossec_rules.xml
-              gdpr: []
-              gpg13: []
-              groups:
-                - ossec
-              hipaa: []
               id: 500
-              level: 0
-              nist_800_53: []
-              path: ruleset/rules
-              pci: []
-              status: enabled
-            - description: Logcollector Messages Grouped
-              details:
-                category: ossec
-                decoded_as: ossec-logcollector
+            - <<: *full_item_rules
               file: 0015-ossec_rules.xml
-              gdpr: []
-              gpg13: []
-              groups:
-                - ossec
-              hipaa: []
               id: 700
-              level: 0
-              nist_800_53: []
-              path: ruleset/rules
-              pci: []
-              status: enabled
           failed_items:
             - error:
                 code: 1208
-                message: The rule doesn't exist or you don't have permission to see it
-                remediation: Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)
-                  to get more information about how to configure the rules
               id:
                 - 200
                 - 702
           total_affected_items: 4
           total_failed_items: 2
-        message: Some rules could not be shown
+        message: !anystr
 
 ---
 test_name: GET RULES FILES RBAC
@@ -216,16 +115,16 @@ stages:
       body:
         data:
           affected_items:
-            - file: 0010-rules_config.xml
+            - &full_item_rules_files
+              file: 0010-rules_config.xml
               path: ruleset/rules
               status: enabled
-            - file: 0015-ossec_rules.xml
-              path: ruleset/rules
-              status: enabled
+            - <<: *full_item_rules_files
+              file: 0015-ossec_rules.xml
           failed_items: []
-          total_affected_items: 2
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: All rules files were shown
+        message: !anystr
 
   - name: Try to show the rules files of the system (list)
     request:
@@ -240,16 +139,14 @@ stages:
       body:
         data:
           affected_items:
-            - file: 0010-rules_config.xml
-              path: ruleset/rules
-              status: enabled
-            - file: 0015-ossec_rules.xml
-              path: ruleset/rules
-              status: enabled
+            - <<: *full_item_rules_files
+              file: 0010-rules_config.xml
+            - <<: *full_item_rules_files
+              file: 0015-ossec_rules.xml
           failed_items: []
-          total_affected_items: 2
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: All rules files were shown
+        message: !anystr
 
   - name: Try to show the rules files of the system (no permissions)
     request:
@@ -265,13 +162,12 @@ stages:
         code: 4000
         dapi_errors:
           master-node:
-            error: Permission denied
-        detail: Permission denied
-        remediation: Please, make sure you have permissions to execute current request, for
-          more information on setting up permissions please visit XXXX
+            error: !anystr
+        detail: !anystr
+        remediation: !anystr
         status: 400
-        title: Wazuh Error
-        type: about:blank
+        title: !anystr
+        type: !anystr
 
 ---
 test_name: GET RULES FILES RBAC (Download)
@@ -286,6 +182,8 @@ stages:
       method: GET
     response:
       status_code: 200
+      headers:
+        content-type: application/xml
 
   - name: Try get one rule file (no permissions)
     request:
@@ -315,9 +213,9 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 39
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: All groups in rules are shown
+        message: !anystr
 
 ---
 test_name: GET PCI REQUIREMENT RBAC
@@ -336,6 +234,6 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 7
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: Selected rules were shown
+        message: !anystr

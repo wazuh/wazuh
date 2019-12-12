@@ -19,7 +19,8 @@ logger = logging.getLogger('wazuh')
 @exception_handler
 @flask_cached
 def get_rules(rule_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
-              status=None, group=None, level=None, file=None, path=None, pci=None, gdpr=None, gpg13=None, hipaa=None):
+              q=None, status=None, group=None, level=None, file=None, path=None, pci=None, gdpr=None, gpg13=None,
+              hipaa=None):
     """Get information about all Wazuh rules.
 
     :param rule_ids: Filters by rule ID
@@ -30,6 +31,7 @@ def get_rules(rule_ids=None, pretty=False, wait_for_complete=False, offset=0, li
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
+    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :param status: Filters by rules status.
     :param group: Filters by rule group.
     :param level: Filters by rule level. Can be a single level (4) or an interval (2-4)
@@ -46,8 +48,17 @@ def get_rules(rule_ids=None, pretty=False, wait_for_complete=False, offset=0, li
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-                'status': status, 'group': group, 'level': level, 'file': file, 'path': path, 'pci': pci, 'gdpr': gdpr,
-                'gpg13': gpg13, 'hipaa': hipaa, 'nist_800_53': connexion.request.args.get('nist-800-53', None)}
+                'q': q,
+                'status': status,
+                'group': group,
+                'level': level,
+                'file': file,
+                'path': path,
+                'pci': pci,
+                'gdpr': gdpr,
+                'gpg13': gpg13,
+                'hipaa': hipaa,
+                'nist_800_53': connexion.request.args.get('nist-800-53', None)}
 
     dapi = DistributedAPI(f=rule_framework.get_rules,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
