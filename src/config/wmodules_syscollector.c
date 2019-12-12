@@ -14,6 +14,7 @@
 
 static const char *XML_INTERVAL = "interval";
 static const char *XML_SCAN_ON_START = "scan_on_start";
+static const char *XML_DISABLED = "disabled";
 static const char *XML_ENABLED = "enabled";
 static const char *XML_NETWORK = "network";
 static const char *XML_OS_SCAN = "os";
@@ -81,6 +82,16 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
                 syscollector->flags.enabled = 0;
             else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(node[i]->element, XML_DISABLED)) {
+            mwarn("'%s' option at module syscollector is deprecated. Use '%s' instead.", node[i]->element, XML_ENABLED);
+            if (!strcmp(node[i]->content, "yes"))
+                syscollector->flags.enabled = 0;
+            else if (!strcmp(node[i]->content, "no"))
+                syscollector->flags.enabled = 1;
+            else {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_NETWORK)) {
