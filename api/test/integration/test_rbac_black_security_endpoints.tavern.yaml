@@ -1172,3 +1172,26 @@ stages:
       status_code: 400
       body:
         <<: *permission_denied
+
+---
+test_name: REVOKE TOKENS RBAC
+
+stages:
+
+  - name: Revoke all tokens (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+    response:
+      status_code: 200
+
+  - name: Revoke all tokens (Invalid token after previous call)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+    response:
+      status_code: 401

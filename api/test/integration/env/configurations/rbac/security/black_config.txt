@@ -19,3 +19,4 @@
 | security:delete      | policy:id | *     |                                   |
 | security:create      | *         |       | *                                 |
 | security:create_user | *         | *     |                                   |
+| security:revoke      | *         | *     |                                   |
