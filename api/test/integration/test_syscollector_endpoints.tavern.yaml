@@ -2475,8 +2475,19 @@ stages:
       <<: *os_request
       params:
         select: wrongParam
-    response:
-      <<: *error_response_1724
+    response: &error_response_1724_002
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1724
+              id:
+                - '002'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
 ---
 test_name: GET /syscollector/{agent_id}/os?{select}
@@ -2557,7 +2568,7 @@ stages:
       params:
         select: wrongParam
     response:
-      <<: *error_response_1724
+      <<: *error_response_1724_002
 
 ---
 test_name: GET /syscollector/{agent_id}/hardware?{select}
@@ -2820,7 +2831,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      <<: *error_response_1724
+      <<: *error_response_1724_002
 
   - name: Pagination
     request:
@@ -2871,8 +2882,19 @@ stages:
       <<: *netaddr_request
       params:
         sort: -wrong
-    response:
-      <<: *error_response_1403
+    response: &error_response_1403_002
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1403
+              id:
+                - '002'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
@@ -3127,7 +3149,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      <<: *error_response_1724
+      <<: *error_response_1724_002
 
   - name: Wrong limit
     request:
@@ -3166,7 +3188,7 @@ stages:
       params:
         sort: -wrong
     response:
-      <<: *error_response_1403
+      <<: *error_response_1403_002
 
 ---
 test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
@@ -3344,7 +3366,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      <<: *error_response_1724
+      <<: *error_response_1724_002
 
   - name: Wrong limit
     request:
@@ -3383,7 +3405,7 @@ stages:
       params:
         sort: -wrong
     response:
-      <<: *error_response_1403
+      <<: *error_response_1403_002
 
   - name: Offset and limit
     request:
@@ -3808,6 +3830,9 @@ stages:
           total_affected_items: !anyint
 ---
 test_name: GET /syscollector/{agent_id}/hotfixes
+
+marks:
+  - xfail
 
 stages:
 
