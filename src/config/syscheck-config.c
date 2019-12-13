@@ -834,7 +834,7 @@ static void parse_inventory(syscheck_config * syscheck, XML_NODE node) {
             } else {
                 syscheck->sync_interval = t;
             }
-        } else if (strcmp(node[i]->element, max_xml_sync_interval) == 0) {
+        } else if (strcmp(node[i]->element, xml_max_sync_interval) == 0) {
             long t = w_parse_time(node[i]->content);
 
             if (t <= 0) {
