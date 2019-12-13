@@ -50,7 +50,4 @@
 #define FIM_LINKCHECK_CHANGED               "(6034): Updating the symbolic link from '%s': '%s' to '%s'."
 #define FIM_WHODATA_VOLUMES                 "(6036): Analyzing Windows volumes"
 
-#define FIM_INTEGRITY_SYNC_START            "(6037): Initializing FIM Integrity Synchronization check. Sync interval is %li seconds."
-#define FIM_INTEGRITY_SYNC_FAILED           "(6038): FIM Integrity Synchronization check failed. Adjusting sync interval for next run."
-
 #endif /* INFO_MESSAGES_H */
