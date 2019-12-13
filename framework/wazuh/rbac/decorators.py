@@ -90,7 +90,7 @@ def _expand_resource(resource):
 
 
 def _combination_defined_rbac(needed_resources, user_resources):
-    """This function avoids that the combinations of resource will be treat as a individuals resources
+    """This function avoids that the combinations of resources are processed as a individuals resources
 
     :param needed_resources: These are the needed resources for the framework's function
     :param user_resources: These are the user's resources for the actions
