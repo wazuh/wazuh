@@ -34,7 +34,7 @@ void * fim_run_integrity(void * args) {
     while (1) {
         bool sync_successful = true;
         
-        mdebug2("Performing synchronization check.");
+        minfo(FIM_INTEGRITY_SYNC_START, sync_interval);
         fim_sync_checksum();
 
         struct timespec timeout = { .tv_sec = time(NULL) + sync_interval };
@@ -59,7 +59,9 @@ void * fim_run_integrity(void * args) {
         }
         else {
             // Duplicate for every failure
+            minfo(FIM_INTEGRITY_SYNC_FAILED);
             sync_interval *= 2;
+            sync_interval = ((!syscheck.max_sync_interval) || (sync_interval < syscheck.max_sync_interval)) ? sync_interval : syscheck.max_sync_interval;
         } 
     }
 
