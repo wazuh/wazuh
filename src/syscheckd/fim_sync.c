@@ -61,7 +61,7 @@ void * fim_run_integrity(void * args) {
             // Duplicate for every failure
             minfo("FIM Integrity Synchronization check failed. Adjusting sync interval for next run.");
             sync_interval *= 2;
-            sync_interval = ((!syscheck.max_sync_interval) || (sync_interval < syscheck.max_sync_interval)) ? sync_interval : syscheck.max_sync_interval;
+            sync_interval = (sync_interval < syscheck.max_sync_interval) ? sync_interval : syscheck.max_sync_interval;
         } 
     }
 
