@@ -79,6 +79,11 @@ list(APPEND tests_flags "-Wl,--wrap,rbtree_keys -Wl,--wrap,rbtree_get -Wl,--wrap
 list(APPEND tests_names "test_run_check")
 list(APPEND tests_flags "-Wl,--wrap,_minfo")
 
+list(APPEND tests_names "test_syscheck_op")
+list(APPEND tests_flags "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
+                         -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,getpwuid_r -Wl,--wrap,getgrgid \
+                         -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,wstr_split \
+                         -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP")
 
 # Config files
 configure_file("test_syscheck.conf" "test_syscheck.conf" COPYONLY)
