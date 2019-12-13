@@ -33,7 +33,7 @@ class RBAChecker:
     _regex_prefix = "r'"
 
     # If we don't pass it the role to check, it will take all of the system.
-    def __init__(self, auth_context='{}', role=None):
+    def __init__(self, auth_context=None, role=None):
         """Class constructor to match the roles of the system with a given authorization context
 
         :param auth_context: Authorization context to be checked
@@ -268,8 +268,8 @@ class RBAChecker:
 
         return False
 
-    # A list will be filled with the names of the roles that the user has.
     def get_user_roles(self):
+        """This function will return a list of role IDs, if these match with the authorization context"""
         list_roles = list()
         for role in self.roles_list:
             list_roles.append(role.id) if self.check_rule(role.rule) else None
@@ -277,6 +277,8 @@ class RBAChecker:
         return list_roles
 
     def run_auth_context(self):
+        """This function will return the final policies of an user according to the roles matching the authorization
+        context"""
         user_roles = self.get_user_roles()
         user_policies = list()
         with orm.RolesPoliciesManager() as rpm:
@@ -288,6 +290,7 @@ class RBAChecker:
 
     @staticmethod
     def run_user_role_link(user_id):
+        """This function will return the final policies of an user according to its roles in the RBAC database"""
         with orm.UserRolesManager() as urm:
             user_roles = list(role for role in urm.get_all_roles_from_user(username=user_id))
         user_policies = list()
@@ -298,9 +301,9 @@ class RBAChecker:
 
         return user_policies
 
-    # This is for TESTING. This method returns a list of hardcoded policies for testing
     @staticmethod
     def run_testing():
+        """This is for TESTING. This method returns a list of hardcoded policies for testing"""
         testing_policies = []
 
         return testing_policies
