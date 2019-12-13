@@ -243,7 +243,7 @@ typedef struct _config {
     int *recursion_level;
 
     char **tag;                     /* array of tags for each directory */
-
+    long max_sync_interval;         /* Maximum Synchronization interval (seconds) */
     long sync_interval;             /* Synchronization interval (seconds) */
     long sync_response_timeout;     /* Minimum time between receiving a sync response and starting a new sync session */
     long sync_queue_size;           /* Data synchronization message queue size */
