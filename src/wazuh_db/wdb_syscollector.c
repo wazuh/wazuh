@@ -306,6 +306,61 @@ int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id) {
     return 0;
 }
 
+// Function to delete a network entry from DB. Return 0 on success or -1 on error.
+int wdb_netinfo_delete2(wdb_t * wdb, const char * name) {
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_netinfo_delete2(): cannot begin transaction");
+        return -1;
+    }
+
+    // Delete 'sys_netiface' table
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_NETINFO_DEL2) < 0) {
+        mdebug1("at wdb_netinfo_delete2(): cannot cache statement");
+        return -1;
+    }
+    stmt = wdb->stmt[WDB_STMT_NETINFO_DEL2];
+    sqlite3_bind_text(stmt, 1, name, -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Deleting old entry from 'sys_netiface' table: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    // Delete 'sys_netproto' table
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROTO_DEL2) < 0) {
+        mdebug1("at wdb_netinfo_delete2(): cannot cache statement");
+        return -1;
+    }
+    stmt = wdb->stmt[WDB_STMT_PROTO_DEL2];
+    sqlite3_bind_text(stmt, 1, name, -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Deleting old entry from 'sys_netproto' table: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    // Delete 'sys_netaddr' table
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_ADDR_DEL2) < 0) {
+        mdebug1("at wdb_netinfo_delete2(): cannot cache statement");
+        return -1;
+    }
+    stmt = wdb->stmt[WDB_STMT_ADDR_DEL2];
+    sqlite3_bind_text(stmt, 1, name, -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Deleting old entry from 'sys_netaddr' table: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    return 0;
+}
+
 // Function to delete old Hotfix information from DB. Return 0 on success or -1 on error.
 int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id) {
 
@@ -327,6 +382,33 @@ int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id) {
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_hotfixes' table: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    return 0;
+}
+
+// Function to delete a hotfix entry from DB. Return 0 on success or -1 on error.
+int wdb_hotfix_delete2(wdb_t * wdb, const char * hotfix) {
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("at wdb_hotfix_delete2(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_HOTFIX_DEL2) < 0) {
+        mdebug1("at wdb_hotfix_delete2(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_HOTFIX_DEL2];
+
+    sqlite3_bind_text(stmt, 1, hotfix, -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Deleting old hotfix entry 'sys_hotfixes' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -620,6 +702,105 @@ error:
     return -1;
 }
 
+// Function to insert and update the new package entry with the previous scan into DB. Return 0 on success or -1 on error.
+int wdb_package_update2(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location) {
+    sqlite3_stmt *stmt_get = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_package_update2(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_GET2) < 0) {
+        mdebug1("at wdb_package_update2(): cannot cache get statement");
+        return -1;
+    }
+
+    stmt_get = wdb->stmt[WDB_STMT_PROGRAM_GET2];
+    sqlite3_bind_text(stmt_get, 1, name, -1, NULL);
+    sqlite3_bind_text(stmt_get, 2, version, -1, NULL);
+    sqlite3_bind_text(stmt_get, 3, architecture, -1, NULL);
+
+    if (sqlite3_step(stmt_get) == SQLITE_ROW) {
+        const char *cpe = (const char *) sqlite3_column_text(stmt_get, 0);
+        const char *msu_name = (const char *) sqlite3_column_text(stmt_get, 1);
+        const int triaged = sqlite3_column_int(stmt_get, 2);
+        const char *format = (const char *) sqlite3_column_text(stmt_get, 3);
+        const char *name = (const char *) sqlite3_column_text(stmt_get, 4);
+        const char *vendor = (const char *) sqlite3_column_text(stmt_get, 5);
+        const char *version = (const char *) sqlite3_column_text(stmt_get, 6);
+        const char *arch = (const char *) sqlite3_column_text(stmt_get, 7);
+
+        if (wdb_package_insert(wdb,
+            scan_id,
+            scan_time,
+            format,
+            name,
+            priority,
+            section,
+            size,
+            vendor,
+            install_time,
+            version,
+            architecture,
+            multiarch,
+            source,
+            description,
+            location,
+            0) < 0) {
+
+            merror("Unable to insert into the 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
+            return -1;
+        }
+
+        sqlite3_stmt *stmt_update = NULL;
+        if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_UPD2) < 0) {
+            mdebug1("at wdb_package_update2(): cannot cache update statement");
+            return -1;
+        }
+
+        stmt_update = wdb->stmt[WDB_STMT_PROGRAM_UPD2];
+        sqlite3_bind_text(stmt_update, 1, cpe, -1, NULL);
+        sqlite3_bind_text(stmt_update, 2, msu_name, -1, NULL);
+        sqlite3_bind_int(stmt_update, 3, triaged);
+        sqlite3_bind_text(stmt_update, 4, format, -1, NULL);
+        sqlite3_bind_text(stmt_update, 5, name, -1, NULL);
+        sqlite3_bind_text(stmt_update, 6, vendor, -1, NULL);
+        sqlite3_bind_text(stmt_update, 7, version, -1, NULL);
+        sqlite3_bind_text(stmt_update, 8, arch, -1, NULL);
+
+        if (sqlite3_step(stmt_update) != SQLITE_DONE) {
+            merror("Unable to update into the 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
+            return -1;
+        }
+    }
+    else {
+        if (wdb_package_insert(wdb,
+            scan_id,
+            scan_time,
+            format,
+            name,
+            priority,
+            section,
+            size,
+            vendor,
+            install_time,
+            version,
+            architecture,
+            multiarch,
+            source,
+            description,
+            location,
+            0) < 0) {
+
+            merror("Unable to insert into the 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
 // Function to delete old Package information from DB. Return 0 on success or -1 on error.
 int wdb_package_delete(wdb_t * wdb, const char * scan_id) {
 
@@ -641,6 +822,35 @@ int wdb_package_delete(wdb_t * wdb, const char * scan_id) {
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    return 0;
+}
+
+// Function to delete a package entry from DB. Return 0 on success or -1 on error.
+int wdb_package_delete2(wdb_t * wdb, const char * name, const char * version, const char * architecture) {
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_package_delete2(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_DEL) < 0) {
+        mdebug1("at wdb_package_delete2(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PROGRAM_DEL];
+
+    sqlite3_bind_text(stmt, 1, name, -1, NULL);
+    sqlite3_bind_text(stmt, 2, version, -1, NULL);
+    sqlite3_bind_text(stmt, 3, architecture, -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Deleting old entry from 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -869,6 +1079,44 @@ int wdb_port_delete(wdb_t * wdb, const char * scan_id) {
     return 0;
 }
 
+// Function to delete port entry from DB. Return 0 on success or -1 on error.
+int wdb_port_delete2(wdb_t * wdb, const char * protocol, const char * local_ip, const int local_port, const int pid) {
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_port_delete2(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PORT_DEL2) < 0) {
+        mdebug1("at wdb_port_delete2(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PORT_DEL2];
+
+    sqlite3_bind_text(stmt, 1, protocol, -1, NULL);
+    sqlite3_bind_text(stmt, 2, local_ip, -1, NULL);
+    if (local_port >= 0) {
+        sqlite3_bind_int(stmt, 3, local_port);
+    } else {
+        sqlite3_bind_null(stmt, 3);
+    }
+    if (pid >= 0) {
+        sqlite3_bind_int(stmt, 4, pid);
+    } else {
+        sqlite3_bind_null(stmt, 4);
+    }
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Deleting old port entry from 'sys_ports' table: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    return 0;
+}
+
 // Function to save process info into the DB. Return 0 on success or -1 on error.
 int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor) {
 
@@ -1036,6 +1284,39 @@ int wdb_process_delete(wdb_t * wdb, const char * scan_id) {
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_processes' table: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    return 0;
+}
+
+// Function to delete a process entry from DB. Return 0 on success or -1 on error.
+int wdb_process_delete2(wdb_t * wdb, const int pid, const char * name) {
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_process_delete2(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROC_DEL2) < 0) {
+        mdebug1("at wdb_process_delete2(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PROC_DEL2];
+
+    if (pid >= 0) {
+        sqlite3_bind_int(stmt, 1, pid);
+    }
+    else {
+        sqlite3_bind_null(stmt, 3);
+    }
+    sqlite3_bind_text(stmt, 2, name, -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Deleting old process entry from 'sys_processes' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 

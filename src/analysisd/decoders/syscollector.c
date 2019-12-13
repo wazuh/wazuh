@@ -28,13 +28,16 @@ static int prev_port_id = 0;
 static int error_process = 0;
 static int prev_process_id = 0;
 
-static int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket);
-static int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket);
-static int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket);
-static int decode_package( Eventinfo *lf, cJSON * logJSON,int *socket);
+static int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_osinfo(Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_hardware(Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_package(Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket);
-static int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket);
-static int decode_process( Eventinfo *lf, cJSON * logJSON,int *socket);
+static int decode_port(Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_process(Eventinfo *lf, cJSON * logJSON, int *socket);
+
+static int decode_inventory_event(Eventinfo *lf, char * msg_type, cJSON * data, int *socket);
+static int decode_scan_event(Eventinfo *lf, char * msg_type, cJSON * data, int *socket);
 
 static OSDecoderInfo *sysc_decoder = NULL;
 
@@ -54,6 +57,7 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
 {
     cJSON *logJSON;
     cJSON *json_type;
+    cJSON *data;
     char *msg_type = NULL;
 
     lf->decoder_info = sysc_decoder;
@@ -93,52 +97,167 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
         return (0);
     }
 
+    // If the JSON event has the object 'data', we decode, alert and update DB entry.
+    data = cJSON_GetObjectItem(logJSON, "data");
+
     fillData(lf,"type",msg_type);
     if (strcmp(msg_type, "port") == 0 || strcmp(msg_type, "port_end") == 0) {
-        if (decode_port(lf, logJSON,socket) < 0) {
-            mdebug1("Unable to send ports information to Wazuh DB.");
-            cJSON_Delete (logJSON);
-            return (0);
+        if (data) {
+            if (decode_inventory_event(lf, msg_type, data, socket) < 0) {
+                mdebug1("Unable to send ports information to Wazuh DB.");
+                cJSON_Delete (logJSON);
+                return (0);
+            }
+        }
+        else {
+            if (decode_port(lf, logJSON, socket) < 0) {
+                mdebug1("Unable to send ports information to Wazuh DB.");
+                cJSON_Delete (logJSON);
+                return (0);
+            }
         }
     }
     else if (strcmp(msg_type, "program") == 0 || strcmp(msg_type, "program_end") == 0) {
-        if (decode_package(lf, logJSON,socket) < 0) {
-            mdebug1("Unable to send packages information to Wazuh DB.");
-            cJSON_Delete (logJSON);
-            return (0);
+        if (data) {
+            if (decode_inventory_event(lf, msg_type, data, socket) < 0) {
+                mdebug1("Unable to send packages information to Wazuh DB.");
+                cJSON_Delete (logJSON);
+                return (0);
+            }
+        }
+        else {
+            if (decode_package(lf, logJSON, socket) < 0) {
+                mdebug1("Unable to send packages information to Wazuh DB.");
+                cJSON_Delete (logJSON);
+                return (0);
+            }
         }
     }
     else if (strcmp(msg_type, "hotfix") == 0 || strcmp(msg_type, "hotfix_end") == 0) {
-        if (decode_hotfix(lf, logJSON, socket) < 0) {
-            mdebug1("Unable to send hotfixes information to Wazuh DB.");
-            cJSON_Delete (logJSON);
-            return (0);
+        if (data) {
+            if (decode_inventory_event(lf, msg_type, data, socket) < 0) {
+                mdebug1("Unable to send hotfixes information to Wazuh DB.");
+                cJSON_Delete (logJSON);
+                return (0);
+            }
+        }
+        else {
+            if (decode_hotfix(lf, logJSON, socket) < 0) {
+                mdebug1("Unable to send hotfixes information to Wazuh DB.");
+                cJSON_Delete (logJSON);
+                return (0);
+            }
         }
     }
     else if (strcmp(msg_type, "hardware") == 0) {
-        if (decode_hardware(lf, logJSON,socket) < 0) {
-            mdebug1("Unable to send hardware information to Wazuh DB.");
-            cJSON_Delete (logJSON);
-            return (0);
+        if (data) {
+            if (decode_inventory_event(lf, msg_type, data, socket) < 0) {
+                mdebug1("Unable to send hardware information to Wazuh DB.");
+                cJSON_Delete (logJSON);
+                return (0);
+            }
+        }
+        else {
+            if (decode_hardware(lf, logJSON, socket) < 0) {
+                mdebug1("Unable to send hardware information to Wazuh DB.");
+                cJSON_Delete (logJSON);
+                return (0);
+            }
         }
     }
     else if (strcmp(msg_type, "OS") == 0) {
-        if (decode_osinfo(lf, logJSON,socket) < 0) {
-            mdebug1("Unable to send osinfo message to Wazuh DB.");
-            cJSON_Delete (logJSON);
-            return (0);
+        if (data) {
+            if (decode_inventory_event(lf, msg_type, data, socket) < 0) {
+                mdebug1("Unable to send osinfo message to Wazuh DB.");
+                cJSON_Delete (logJSON);
+                return (0);
+            }
+        }
+        else {
+            if (decode_osinfo(lf, logJSON, socket) < 0) {
+                mdebug1("Unable to send osinfo message to Wazuh DB.");
+                cJSON_Delete (logJSON);
+                return (0);
+            }
         }
     }
     else if (strcmp(msg_type, "network") == 0 || strcmp(msg_type, "network_end") == 0) {
-        if (decode_netinfo(lf, logJSON, socket) < 0) {
-            merror("Unable to send netinfo message to Wazuh DB.");
+        if (data) {
+            if (decode_inventory_event(lf, msg_type, data, socket) < 0) {
+                merror("Unable to send netinfo message to Wazuh DB.");
+                cJSON_Delete (logJSON);
+                return (0);
+            }
+        }
+        else {
+            if (decode_netinfo(lf, logJSON, socket) < 0) {
+                merror("Unable to send netinfo message to Wazuh DB.");
+                cJSON_Delete (logJSON);
+                return (0);
+            }
+        }
+    }
+    else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_end") == 0) {
+        if (data) {
+            if (decode_inventory_event(lf, msg_type, data, socket) < 0) {
+                mdebug1("Unable to send processes information to Wazuh DB.");
+                cJSON_Delete (logJSON);
+                return (0);
+            }
+        }
+        else {
+            if (decode_process(lf, logJSON, socket) < 0) {
+                mdebug1("Unable to send processes information to Wazuh DB.");
+                cJSON_Delete (logJSON);
+                return (0);
+            }
+        }
+    }
+    else if (strcmp(msg_type, "port_scan") == 0) {
+        if (decode_scan_event(lf, msg_type, data, socket) < 0) {
+            mdebug1("Unable to send port scan information to Wazuh DB.");
             cJSON_Delete (logJSON);
             return (0);
         }
     }
-    else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_end") == 0) {
-        if (decode_process(lf, logJSON,socket) < 0) {
-            mdebug1("Unable to send processes information to Wazuh DB.");
+    else if (strcmp(msg_type, "program_scan") == 0) {
+        if (decode_scan_event(lf, msg_type, data, socket) < 0) {
+            mdebug1("Unable to send program scan information to Wazuh DB.");
+            cJSON_Delete (logJSON);
+            return (0);
+        }
+    }
+    else if (strcmp(msg_type, "hotfix_scan") == 0) {
+        if (decode_scan_event(lf, msg_type, data, socket) < 0) {
+            mdebug1("Unable to send hotfix scan information to Wazuh DB.");
+            cJSON_Delete (logJSON);
+            return (0);
+        }
+    }
+    else if (strcmp(msg_type, "hardware_scan") == 0) {
+        if (decode_scan_event(lf, msg_type, data, socket) < 0) {
+            mdebug1("Unable to send hardware scan information to Wazuh DB.");
+            cJSON_Delete (logJSON);
+            return (0);
+        }
+    }
+    else if (strcmp(msg_type, "OS_scan") == 0) {
+        if (decode_scan_event(lf, msg_type, data, socket) < 0) {
+            mdebug1("Unable to send OS scan information to Wazuh DB.");
+            cJSON_Delete (logJSON);
+            return (0);
+        }
+    }
+    else if (strcmp(msg_type, "network_scan") == 0) {
+        if (decode_scan_event(lf, msg_type, data, socket) < 0) {
+            mdebug1("Unable to send network scan information to Wazuh DB.");
+            cJSON_Delete (logJSON);
+            return (0);
+        }
+    }
+    else if (strcmp(msg_type, "process_scan") == 0) {
+        if (decode_scan_event(lf, msg_type, data, socket) < 0) {
+            mdebug1("Unable to send process scan information to Wazuh DB.");
             cJSON_Delete (logJSON);
             return (0);
         }
@@ -153,7 +272,7 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     return (1);
 }
 
-int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
+int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
 
     char *msg = NULL;
     cJSON * iface;
@@ -632,7 +751,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
     return 0;
 }
 
-int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
+int decode_osinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
 
     cJSON * inventory;
 
@@ -773,184 +892,7 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
     return 0;
 }
 
-int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
-
-    char * msg = NULL;
-    cJSON * scan_id;
-
-    if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
-        return -1;
-    }
-
-    os_calloc(OS_SIZE_6144, sizeof(char), msg);
-
-    cJSON * inventory;
-
-    if (inventory = cJSON_GetObjectItem(logJSON, "port"), inventory) {
-        if (error_port) {
-            if (scan_id->valueint == prev_port_id) {
-                free(msg);
-                return 0;
-            } else {
-                error_port = 0;
-            }
-        }
-        cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
-        cJSON * protocol = cJSON_GetObjectItem(inventory, "protocol");
-        cJSON * local_ip = cJSON_GetObjectItem(inventory, "local_ip");
-        cJSON * local_port = cJSON_GetObjectItem(inventory, "local_port");
-        cJSON * remote_ip = cJSON_GetObjectItem(inventory, "remote_ip");
-        cJSON * remote_port = cJSON_GetObjectItem(inventory, "remote_port");
-        cJSON * tx_queue = cJSON_GetObjectItem(inventory, "tx_queue");
-        cJSON * rx_queue = cJSON_GetObjectItem(inventory, "rx_queue");
-        cJSON * inode = cJSON_GetObjectItem(inventory, "inode");
-        cJSON * state = cJSON_GetObjectItem(inventory, "state");
-        cJSON * pid = cJSON_GetObjectItem(inventory, "PID");
-        cJSON * process = cJSON_GetObjectItem(inventory, "process");
-
-        snprintf(msg, OS_SIZE_6144 - 1, "agent %s port save", lf->agent_id);
-
-        char id[OS_SIZE_1024];
-        snprintf(id, OS_SIZE_1024 - 1, "%d", scan_id->valueint);
-        wm_strcat(&msg, id, ' ');
-
-        if (scan_time) {
-            wm_strcat(&msg, scan_time->valuestring, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (protocol) {
-            wm_strcat(&msg, protocol->valuestring, '|');
-            fillData(lf,"port.protocol",protocol->valuestring);
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (local_ip) {
-            wm_strcat(&msg, local_ip->valuestring, '|');
-            fillData(lf,"port.local_ip",local_ip->valuestring);
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (local_port) {
-            char lport[OS_SIZE_128];
-            snprintf(lport, OS_SIZE_128 - 1, "%d", local_port->valueint);
-            fillData(lf,"port.local_port",lport);
-            wm_strcat(&msg, lport, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (remote_ip) {
-            wm_strcat(&msg, remote_ip->valuestring, '|');
-            fillData(lf,"port.remote_ip",remote_ip->valuestring);
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (remote_port) {
-            char rport[OS_SIZE_128];
-            snprintf(rport, OS_SIZE_128 - 1, "%d", remote_port->valueint);
-            fillData(lf,"port.remote_port",rport);
-            wm_strcat(&msg, rport, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (tx_queue) {
-            char txq[OS_SIZE_512];
-            snprintf(txq, OS_SIZE_512 - 1, "%d", tx_queue->valueint);
-            fillData(lf,"port.tx_queue",txq);
-            wm_strcat(&msg, txq, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (rx_queue) {
-            char rxq[OS_SIZE_512];
-            snprintf(rxq, OS_SIZE_512 - 1, "%d", rx_queue->valueint);
-            fillData(lf,"port.rx_queue",rxq);
-            wm_strcat(&msg, rxq, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (inode) {
-            char _inode[OS_SIZE_512];
-            snprintf(_inode, OS_SIZE_512 - 1, "%d", inode->valueint);
-            fillData(lf,"port.inode",_inode);
-            wm_strcat(&msg, _inode, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (state) {
-            wm_strcat(&msg, state->valuestring, '|');
-            fillData(lf,"port.state",state->valuestring);
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (pid) {
-            char _pid[OS_SIZE_512];
-            snprintf(_pid, OS_SIZE_512 - 1, "%d", pid->valueint);
-            fillData(lf,"port.pid",_pid);
-            wm_strcat(&msg, _pid, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (process) {
-            wm_strcat(&msg, process->valuestring, '|');
-            fillData(lf,"port.process",process->valuestring);
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (sc_send_db(msg,socket) < 0) {
-            error_port = 1;
-            prev_port_id = scan_id->valueint;
-            return -1;
-        }
-
-    } else {
-        // Looking for 'end' message.
-        char * msg_type = NULL;
-
-        msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
-
-        if (!msg_type) {
-            merror("Invalid message. Type not found.");
-            free(msg);
-            return -1;
-        } else if (strcmp(msg_type, "port_end") == 0) {
-            if (error_port) {
-                if (scan_id->valueint == prev_port_id) {
-                    free(msg);
-                    return 0;
-                } else {
-                    error_port = 0;
-                }
-            }
-
-            snprintf(msg, OS_SIZE_6144 - 1, "agent %s port del %d", lf->agent_id, scan_id->valueint);
-
-            if (sc_send_db(msg,socket) < 0) {
-                error_port = 1;
-                prev_port_id = scan_id->valueint;
-                return -1;
-            }
-        } else {
-            free(msg);
-        }
-    }
-
-    return 0;
-}
-
-int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
+int decode_hardware(Eventinfo *lf, cJSON * logJSON, int *socket) {
 
     cJSON * inventory;
 
@@ -1052,7 +994,7 @@ int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
     return 0;
 }
 
-int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
+int decode_package(Eventinfo *lf,cJSON * logJSON, int *socket) {
 
     char * msg = NULL;
     cJSON * package;
@@ -1228,7 +1170,9 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
                 return -1;
             }
         } else {
+            merror("at decode_package(): unknown type found.");
             free(msg);
+            return -1;
         }
     }
 
@@ -1277,14 +1221,195 @@ int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
                 return -1;
             }
         } else {
+            merror("at decode_hotfix(): unknown type found.");
             free(msg);
+            return -1;
         }
     }
 
     return 0;
 }
 
-int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
+int decode_port(Eventinfo *lf, cJSON * logJSON, int *socket) {
+
+    char * msg = NULL;
+    cJSON * scan_id;
+
+    if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
+        return -1;
+    }
+
+    os_calloc(OS_SIZE_6144, sizeof(char), msg);
+
+    cJSON * inventory;
+
+    if (inventory = cJSON_GetObjectItem(logJSON, "port"), inventory) {
+        if (error_port) {
+            if (scan_id->valueint == prev_port_id) {
+                free(msg);
+                return 0;
+            } else {
+                error_port = 0;
+            }
+        }
+        cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
+        cJSON * protocol = cJSON_GetObjectItem(inventory, "protocol");
+        cJSON * local_ip = cJSON_GetObjectItem(inventory, "local_ip");
+        cJSON * local_port = cJSON_GetObjectItem(inventory, "local_port");
+        cJSON * remote_ip = cJSON_GetObjectItem(inventory, "remote_ip");
+        cJSON * remote_port = cJSON_GetObjectItem(inventory, "remote_port");
+        cJSON * tx_queue = cJSON_GetObjectItem(inventory, "tx_queue");
+        cJSON * rx_queue = cJSON_GetObjectItem(inventory, "rx_queue");
+        cJSON * inode = cJSON_GetObjectItem(inventory, "inode");
+        cJSON * state = cJSON_GetObjectItem(inventory, "state");
+        cJSON * pid = cJSON_GetObjectItem(inventory, "PID");
+        cJSON * process = cJSON_GetObjectItem(inventory, "process");
+
+        snprintf(msg, OS_SIZE_6144 - 1, "agent %s port save", lf->agent_id);
+
+        char id[OS_SIZE_1024];
+        snprintf(id, OS_SIZE_1024 - 1, "%d", scan_id->valueint);
+        wm_strcat(&msg, id, ' ');
+
+        if (scan_time) {
+            wm_strcat(&msg, scan_time->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (protocol) {
+            wm_strcat(&msg, protocol->valuestring, '|');
+            fillData(lf,"port.protocol",protocol->valuestring);
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (local_ip) {
+            wm_strcat(&msg, local_ip->valuestring, '|');
+            fillData(lf,"port.local_ip",local_ip->valuestring);
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (local_port) {
+            char lport[OS_SIZE_128];
+            snprintf(lport, OS_SIZE_128 - 1, "%d", local_port->valueint);
+            fillData(lf,"port.local_port",lport);
+            wm_strcat(&msg, lport, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (remote_ip) {
+            wm_strcat(&msg, remote_ip->valuestring, '|');
+            fillData(lf,"port.remote_ip",remote_ip->valuestring);
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (remote_port) {
+            char rport[OS_SIZE_128];
+            snprintf(rport, OS_SIZE_128 - 1, "%d", remote_port->valueint);
+            fillData(lf,"port.remote_port",rport);
+            wm_strcat(&msg, rport, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (tx_queue) {
+            char txq[OS_SIZE_512];
+            snprintf(txq, OS_SIZE_512 - 1, "%d", tx_queue->valueint);
+            fillData(lf,"port.tx_queue",txq);
+            wm_strcat(&msg, txq, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (rx_queue) {
+            char rxq[OS_SIZE_512];
+            snprintf(rxq, OS_SIZE_512 - 1, "%d", rx_queue->valueint);
+            fillData(lf,"port.rx_queue",rxq);
+            wm_strcat(&msg, rxq, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (inode) {
+            char _inode[OS_SIZE_512];
+            snprintf(_inode, OS_SIZE_512 - 1, "%d", inode->valueint);
+            fillData(lf,"port.inode",_inode);
+            wm_strcat(&msg, _inode, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (state) {
+            wm_strcat(&msg, state->valuestring, '|');
+            fillData(lf,"port.state",state->valuestring);
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (pid) {
+            char _pid[OS_SIZE_512];
+            snprintf(_pid, OS_SIZE_512 - 1, "%d", pid->valueint);
+            fillData(lf,"port.pid",_pid);
+            wm_strcat(&msg, _pid, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (process) {
+            wm_strcat(&msg, process->valuestring, '|');
+            fillData(lf,"port.process",process->valuestring);
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (sc_send_db(msg,socket) < 0) {
+            error_port = 1;
+            prev_port_id = scan_id->valueint;
+            return -1;
+        }
+
+    } else {
+        // Looking for 'end' message.
+        char * msg_type = NULL;
+
+        msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
+
+        if (!msg_type) {
+            merror("Invalid message. Type not found.");
+            free(msg);
+            return -1;
+        } else if (strcmp(msg_type, "port_end") == 0) {
+            if (error_port) {
+                if (scan_id->valueint == prev_port_id) {
+                    free(msg);
+                    return 0;
+                } else {
+                    error_port = 0;
+                }
+            }
+
+            snprintf(msg, OS_SIZE_6144 - 1, "agent %s port del %d", lf->agent_id, scan_id->valueint);
+
+            if (sc_send_db(msg,socket) < 0) {
+                error_port = 1;
+                prev_port_id = scan_id->valueint;
+                return -1;
+            }
+        } else {
+            merror("at decode_port(): unknown type found.");
+            free(msg);
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+int decode_process(Eventinfo *lf, cJSON * logJSON, int *socket) {
 
     int i;
     char * msg = NULL;
@@ -1621,7 +1746,9 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
                 return -1;
             }
         } else {
+            merror("at decode_process(): unknown type found.");
             free(msg);
+            return -1;
         }
     }
 
@@ -1712,4 +1839,65 @@ int sc_send_db(char *msg, int *sock) {
 end:
     free(msg);
     return retval;
+}
+
+int decode_inventory_event(Eventinfo *lf, char * msg_type, cJSON * data, int *socket) {
+    char * query = NULL;
+
+    char * event_type = cJSON_GetObjectItem(data, "type")->valuestring;
+
+    if (event_type) {
+        if (strcmp("added", event_type) == 0 || strcmp("modified", event_type) == 0) {
+
+            char * data_plain = cJSON_PrintUnformatted(data);
+
+            os_calloc(OS_SIZE_6144, sizeof(char), query);
+
+            snprintf(query, OS_SIZE_6144 - 1, "agent %s inventory %s save %s", lf->agent_id, msg_type, data_plain);
+
+            free(data_plain);
+
+            if (sc_send_db(query, socket) < 0) {
+                return -1;
+            }
+        } else if (strcmp("deleted", event_type) == 0) {
+
+            char * data_plain = cJSON_PrintUnformatted(data);
+
+            os_calloc(OS_SIZE_6144, sizeof(char), query);
+
+            snprintf(query, OS_SIZE_6144 - 1, "agent %s inventory %s delete %s", lf->agent_id, msg_type, data_plain);
+
+            free(data_plain);
+
+            if (sc_send_db(query, socket) < 0) {
+                return -1;
+            }
+        } else {
+            mdebug1("Invalid 'type' value '%s' in JSON payload.", event_type);
+            return -1;
+        }
+    } else {
+        mdebug1("No member 'type' in JSON payload.");
+        return -1;
+    }
+
+    return 0;
+}
+
+int decode_scan_event(Eventinfo *lf, char * msg_type, cJSON * data, int *socket) {
+    char * query = NULL;
+    char * data_plain = cJSON_PrintUnformatted(data);
+
+    os_calloc(OS_SIZE_6144, sizeof(char), query);
+
+    snprintf(query, OS_SIZE_6144 - 1, "agent %s inventory %s update %s", lf->agent_id, msg_type, data_plain);
+
+    free(data_plain);
+
+    if (sc_send_db(query, socket) < 0) {
+        return -1;
+    }
+
+    return 0;
 }

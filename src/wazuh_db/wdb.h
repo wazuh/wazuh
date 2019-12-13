@@ -57,23 +57,32 @@ typedef enum wdb_stmt {
     WDB_STMT_OSINFO_DEL,
     WDB_STMT_PROGRAM_INSERT,
     WDB_STMT_PROGRAM_DEL,
+    WDB_STMT_PROGRAM_DEL2,
     WDB_STMT_PROGRAM_GET,
+    WDB_STMT_PROGRAM_GET2,
     WDB_STMT_PROGRAM_UPD,
+    WDB_STMT_PROGRAM_UPD2,
     WDB_STMT_HWINFO_INSERT,
     WDB_STMT_HOTFIX_INSERT,
     WDB_STMT_HWINFO_DEL,
     WDB_STMT_HOTFIX_DEL,
+    WDB_STMT_HOTFIX_DEL2,
     WDB_STMT_SET_HOTFIX_MET,
     WDB_STMT_PORT_INSERT,
     WDB_STMT_PORT_DEL,
+    WDB_STMT_PORT_DEL2,
     WDB_STMT_PROC_INSERT,
     WDB_STMT_PROC_DEL,
+    WDB_STMT_PROC_DEL2,
     WDB_STMT_NETINFO_INSERT,
     WDB_STMT_PROTO_INSERT,
     WDB_STMT_ADDR_INSERT,
     WDB_STMT_NETINFO_DEL,
+    WDB_STMT_NETINFO_DEL2,
     WDB_STMT_PROTO_DEL,
+    WDB_STMT_PROTO_DEL2,
     WDB_STMT_ADDR_DEL,
+    WDB_STMT_ADDR_DEL2,
     WDB_STMT_CISCAT_INSERT,
     WDB_STMT_CISCAT_DEL,
     WDB_STMT_SCAN_INFO_FIND,
@@ -200,6 +209,31 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
 int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum);
 
 int wdb_fim_delete(wdb_t * wdb, const char * file);
+
+/* Inventory functions to get the information to save / delete entries in the DB. */
+int wdb_inventory_save_hw(wdb_t * wdb, const char * payload);
+
+int wdb_inventory_save_os(wdb_t * wdb, const char * payload);
+
+int wdb_inventory_save_network(wdb_t * wdb, const char * payload);
+
+int wdb_inventory_delete_network(wdb_t * wdb, const char * payload);
+
+int wdb_inventory_save_program(wdb_t * wdb, const char * payload);
+
+int wdb_inventory_delete_program(wdb_t * wdb, const char * payload);
+
+int wdb_inventory_save_hotfix(wdb_t * wdb, const char * payload);
+
+int wdb_inventory_delete_hotfix(wdb_t * wdb, const char * payload);
+
+int wdb_inventory_save_port(wdb_t * wdb, const char * payload);
+
+int wdb_inventory_delete_port(wdb_t * wdb, const char * payload);
+
+int wdb_inventory_save_process(wdb_t * wdb, const char * payload);
+
+int wdb_inventory_delete_process(wdb_t * wdb, const char * payload);
 
 /* Insert configuration assessment entry. Returns ID on success or -1 on error. */
 int wdb_insert_pm(sqlite3 *db, const rk_event_t *event);
@@ -414,8 +448,14 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 // Delete Network info from DB.
 int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id);
 
+// Delete a network entry from DB.
+int wdb_netinfo_delete2(wdb_t * wdb, const char * name);
+
 // Delete Hotfix info from DB.
 int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id);
+
+// Delete a hotfix entry from DB.
+int wdb_hotfix_delete2(wdb_t * wdb, const char * hotfix);
 
 // Set hotfix metadata.
 int wdb_set_hotfix_metadata(wdb_t * wdb, const char * scan_id);
@@ -459,8 +499,14 @@ int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 // Update the new Package info with the previous scan.
 int wdb_package_update(wdb_t * wdb, const char * scan_id);
 
+// Insert and update the new package entry with the previous scan into DB.
+int wdb_package_update2(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location);
+
 // Delete Packages info about previous scan from DB.
 int wdb_package_delete(wdb_t * wdb, const char * scan_id);
+
+// Delete a package entry from DB.
+int wdb_package_delete2(wdb_t * wdb, const char * name, const char * version, const char * architecture);
 
 // Insert process info tuple. Return 0 on success or -1 on error.
 int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor);
@@ -471,6 +517,9 @@ int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 // Delete Process info about previous scan from DB.
 int wdb_process_delete(wdb_t * wdb, const char * scan_id);
 
+// Delete a process entry from DB.
+int wdb_process_delete2(wdb_t * wdb, const int pid, const char * name);
+
 // Insert port info tuple. Return 0 on success or -1 on error.
 int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process);
 
@@ -479,6 +528,9 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
 
 // Delete port info about previous scan from DB.
 int wdb_port_delete(wdb_t * wdb, const char * scan_id);
+
+// Delete a port entry from DB.
+int wdb_port_delete2(wdb_t * wdb, const char * protocol, const char * local_ip, const int local_port, const int pid);
 
 // Save CIS-CAT scan results.
 int wdb_ciscat_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * benchmark, const char * profile, int pass, int fail, int error, int notchecked, int unknown, int score);
@@ -521,6 +573,8 @@ int wdb_stmt_cache(wdb_t * wdb, int index);
 int wdb_parse(char * input, char * output);
 
 int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_inventory(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output);
 
