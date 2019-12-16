@@ -815,7 +815,7 @@ static void parse_inventory(syscheck_config * syscheck, XML_NODE node) {
     const char *xml_sync_interval = "interval";
     const char *xml_max_sync_interval = "max_sync_interval";
     const char *xml_response_timeout = "response_timeout";
-    const char *xml_sync_queue_size = "sync_queue_size";
+    const char *xml_sync_queue_size = "queue_size";
 
     for (int i = 0; node[i]; i++) {
         if (strcmp(node[i]->element, xml_enabled) == 0) {
