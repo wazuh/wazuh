@@ -308,7 +308,7 @@ cJSON *getSyscheckConfig(void) {
 
     cJSON * inventory = cJSON_CreateObject();
     cJSON_AddStringToObject(inventory, "enabled", syscheck.enable_inventory ? "yes" : "no");
-    cJSON_AddNumberToObject(inventory, "max_sync_interval", syscheck.max_sync_interval);
+    cJSON_AddNumberToObject(inventory, "max_interval", syscheck.max_sync_interval);
     cJSON_AddNumberToObject(inventory, "interval", syscheck.sync_interval);
     cJSON_AddNumberToObject(inventory, "response_timeout", syscheck.sync_response_timeout);
     cJSON_AddNumberToObject(inventory, "queue_size", syscheck.sync_queue_size);
