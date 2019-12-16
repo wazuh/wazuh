@@ -40,7 +40,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.scan_time      = NULL;
     syscheck.dir            = NULL;
     syscheck.opts           = NULL;
-    syscheck.enable_inventory = 1;
+    syscheck.enable_synchronization = 1;
     syscheck.restart_audit  = 1;
     syscheck.enable_whodata = 0;
     syscheck.realtime       = NULL;
@@ -57,6 +57,7 @@ int Read_Syscheck_Config(const char *cfgfile)
 #endif
     syscheck.prefilter_cmd  = NULL;
     syscheck.sync_interval  = 300;
+    syscheck.max_sync_interval = 3600;
     syscheck.sync_response_timeout = 30;
     syscheck.sync_queue_size = 16384;
     syscheck.max_eps        = 200;
@@ -306,13 +307,13 @@ cJSON *getSyscheckConfig(void) {
         cJSON_AddStringToObject(syscfg,"prefilter_cmd",syscheck.prefilter_cmd);
     }
 
-    cJSON * inventory = cJSON_CreateObject();
-    cJSON_AddStringToObject(inventory, "enabled", syscheck.enable_inventory ? "yes" : "no");
-    cJSON_AddNumberToObject(inventory, "max_interval", syscheck.max_sync_interval);
-    cJSON_AddNumberToObject(inventory, "interval", syscheck.sync_interval);
-    cJSON_AddNumberToObject(inventory, "response_timeout", syscheck.sync_response_timeout);
-    cJSON_AddNumberToObject(inventory, "queue_size", syscheck.sync_queue_size);
-    cJSON_AddItemToObject(syscfg, "inventory", inventory);
+    cJSON * synchronization = cJSON_CreateObject();
+    cJSON_AddStringToObject(synchronization, "enabled", syscheck.enable_synchronization ? "yes" : "no");
+    cJSON_AddNumberToObject(synchronization, "max_interval", syscheck.max_sync_interval);
+    cJSON_AddNumberToObject(synchronization, "interval", syscheck.sync_interval);
+    cJSON_AddNumberToObject(synchronization, "response_timeout", syscheck.sync_response_timeout);
+    cJSON_AddNumberToObject(synchronization, "queue_size", syscheck.sync_queue_size);
+    cJSON_AddItemToObject(syscfg, "synchronization", synchronization);
 
     cJSON_AddNumberToObject(syscfg, "max_eps", syscheck.max_eps);
     cJSON_AddNumberToObject(syscfg, "process_priority", syscheck.process_priority);
