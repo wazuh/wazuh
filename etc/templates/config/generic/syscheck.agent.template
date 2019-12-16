@@ -46,7 +46,6 @@
     <inventory>
       <interval>5m</interval>
       <max_sync_interval>1h</max_sync_interval>
-      <response_timeout>30</response_timeout>
       <queue_size>16384</queue_size>
     </inventory>
   </syscheck>
