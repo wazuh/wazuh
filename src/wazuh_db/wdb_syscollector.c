@@ -12,6 +12,190 @@
 #include "wdb.h"
 
 
+// Function to save OS info into the DB. Return 0 on success or -1 on error.
+int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage) {
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_hardware_save(): cannot begin transaction");
+        return -1;
+    }
+
+    /* Delete old OS information before insert the new scan */
+    if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_DEL) < 0) {
+        mdebug1("at wdb_hardware_save(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_HWINFO_DEL];
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Deleting old information from 'sys_hwinfo' table: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    if (wdb_hardware_insert(wdb,
+        scan_id,
+        scan_time,
+        serial,
+        cpu_name,
+        cpu_cores,
+        cpu_mhz,
+        ram_total,
+        ram_free,
+        ram_usage) < 0) {
+
+        return -1;
+    }
+
+    return 0;
+}
+
+// Insert HW info tuple. Return 0 on success or -1 on error.
+int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_INSERT) < 0) {
+        mdebug1("at wdb_hardware_insert(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_HWINFO_INSERT];
+
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
+    sqlite3_bind_text(stmt, 3, serial, -1, NULL);
+    sqlite3_bind_text(stmt, 4, cpu_name, -1, NULL);
+
+    if (cpu_cores > 0) {
+        sqlite3_bind_int(stmt, 5, cpu_cores);
+    } else {
+        sqlite3_bind_null(stmt, 5);
+    }
+
+    double cpumhz = 0;
+    if (cpu_mhz == NULL || strlen(cpu_mhz) == 0) {
+        cpumhz = 0;
+    } else {
+        cpumhz = atof(cpu_mhz);
+    }
+    if (cpumhz > 0) {
+        sqlite3_bind_double(stmt, 6, cpumhz);
+    } else {
+        sqlite3_bind_null(stmt, 6);
+    }
+
+    if (ram_total > 0) {
+        sqlite3_bind_int64(stmt, 7, ram_total);
+    } else {
+        sqlite3_bind_null(stmt, 7);
+    }
+
+    if (ram_free > 0) {
+        sqlite3_bind_int64(stmt, 8, ram_free);
+    } else {
+        sqlite3_bind_null(stmt, 8);
+    }
+
+    if (ram_usage > 0) {
+        sqlite3_bind_int(stmt, 9, ram_usage);
+    } else {
+        sqlite3_bind_null(stmt, 9);
+    }
+
+    if (sqlite3_step(stmt) == SQLITE_DONE){
+        return 0;
+    }
+    else {
+        merror("at wdb_hardware_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+// Function to save OS info into the DB. Return 0 on success or -1 on error.
+int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release) {
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_osinfo_save(): cannot begin transaction");
+        return -1;
+    }
+
+    /* Delete old OS information before insert the new scan */
+    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_DEL) < 0) {
+        mdebug1("at wdb_osinfo_save(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_OSINFO_DEL];
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Deleting old information from 'sys_osinfo' table: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    if (wdb_osinfo_insert(wdb,
+        scan_id,
+        scan_time,
+        hostname,
+        architecture,
+        os_name,
+        os_version,
+        os_codename,
+        os_major,
+        os_minor,
+        os_build,
+        os_platform,
+        sysname,
+        release,
+        version,
+        os_release) < 0) {
+
+        return -1;
+    }
+
+    return 0;
+}
+
+// Insert OS info tuple. Return 0 on success or -1 on error. (v2)
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_INSERT) < 0) {
+        mdebug1("at wdb_osinfo_insert(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_OSINFO_INSERT];
+
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
+    sqlite3_bind_text(stmt, 3, hostname, -1, NULL);
+    sqlite3_bind_text(stmt, 4, architecture, -1, NULL);
+    sqlite3_bind_text(stmt, 5, os_name, -1, NULL);
+    sqlite3_bind_text(stmt, 6, os_version, -1, NULL);
+    sqlite3_bind_text(stmt, 7, os_codename, -1, NULL);
+    sqlite3_bind_text(stmt, 8, os_major, -1, NULL);
+    sqlite3_bind_text(stmt, 9, os_minor, -1, NULL);
+    sqlite3_bind_text(stmt, 10, os_build, -1, NULL);
+    sqlite3_bind_text(stmt, 11, os_platform, -1, NULL);
+    sqlite3_bind_text(stmt, 12, sysname, -1, NULL);
+    sqlite3_bind_text(stmt, 13, release, -1, NULL);
+    sqlite3_bind_text(stmt, 14, version, -1, NULL);
+    sqlite3_bind_text(stmt, 15, os_release, -1, NULL);
+
+    if (sqlite3_step(stmt) == SQLITE_DONE){
+        return 0;
+    }
+    else {
+        merror("at wdb_osinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+}
+
 // Function to save Network info into the DB. Return 0 on success or -1 on error.
 int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped) {
 
@@ -361,6 +545,275 @@ int wdb_netinfo_delete2(wdb_t * wdb, const char * name) {
     return 0;
 }
 
+// Function to save Package info into the DB. Return 0 on success or -1 on error.
+int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_package_save(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_package_insert(wdb,
+        scan_id,
+        scan_time,
+        format,
+        name,
+        priority,
+        section,
+        size,
+        vendor,
+        install_time,
+        version,
+        architecture,
+        multiarch,
+        source,
+        description,
+        location,
+        0) < 0) {
+
+        return -1;
+    }
+
+    return 0;
+}
+
+// Insert Package info tuple. Return 0 on success or -1 on error.
+int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_INSERT) < 0) {
+        mdebug1("at wdb_package_insert(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PROGRAM_INSERT];
+
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
+    sqlite3_bind_text(stmt, 3, format, -1, NULL);
+    sqlite3_bind_text(stmt, 4, name, -1, NULL);
+    sqlite3_bind_text(stmt, 5, priority, -1, NULL);
+    sqlite3_bind_text(stmt, 6, section, -1, NULL);
+    if (size >= 0) {
+        sqlite3_bind_int64(stmt, 7, size);
+    } else {
+        sqlite3_bind_null(stmt, 7);
+    }
+    sqlite3_bind_text(stmt, 8, vendor, -1, NULL);
+    sqlite3_bind_text(stmt, 9, install_time, -1, NULL);
+    sqlite3_bind_text(stmt, 10, version, -1, NULL);
+    sqlite3_bind_text(stmt, 11, architecture, -1, NULL);
+    sqlite3_bind_text(stmt, 12, multiarch, -1, NULL);
+    sqlite3_bind_text(stmt, 13, source, -1, NULL);
+    sqlite3_bind_text(stmt, 14, description, -1, NULL);
+    sqlite3_bind_text(stmt, 15, location, -1, NULL);
+    sqlite3_bind_int(stmt, 16, triaged);
+
+    switch (sqlite3_step(stmt)) {
+        case SQLITE_DONE:
+            return 0;
+        case SQLITE_CONSTRAINT:
+            if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
+                mdebug1("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                return 0;
+            } else {
+                merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                return -1;
+            }
+        default:
+            merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            return -1;
+    }
+}
+
+// Function to update old Package information from DB. Return 0 on success or -1 on error.
+int wdb_package_update(wdb_t * wdb, const char * scan_id) {
+    sqlite3_stmt *stmt_get = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_package_update(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_GET) < 0) {
+        mdebug1("at wdb_package_update(): cannot cache get statement");
+        return -1;
+    }
+
+    stmt_get = wdb->stmt[WDB_STMT_PROGRAM_GET];
+    sqlite3_bind_text(stmt_get, 1, scan_id, -1, NULL);
+
+    int result;
+    while (result = sqlite3_step(stmt_get), result == SQLITE_ROW) {
+        const char *cpe = (const char *) sqlite3_column_text(stmt_get, 0);
+        const char *msu_name = (const char *) sqlite3_column_text(stmt_get, 1);
+        const int triaged = sqlite3_column_int(stmt_get, 2);
+        const char *format = (const char *) sqlite3_column_text(stmt_get, 3);
+        const char *name = (const char *) sqlite3_column_text(stmt_get, 4);
+        const char *vendor = (const char *) sqlite3_column_text(stmt_get, 5);
+        const char *version = (const char *) sqlite3_column_text(stmt_get, 6);
+        const char *arch = (const char *) sqlite3_column_text(stmt_get, 7);
+
+        sqlite3_stmt *stmt_update = NULL;
+        if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_UPD) < 0) {
+            mdebug1("at wdb_package_update(): cannot cache update statement");
+            return -1;
+        }
+
+        stmt_update = wdb->stmt[WDB_STMT_PROGRAM_UPD];
+        sqlite3_bind_text(stmt_update, 1, cpe, -1, NULL);
+        sqlite3_bind_text(stmt_update, 2, msu_name, -1, NULL);
+        sqlite3_bind_int(stmt_update, 3, triaged);
+        sqlite3_bind_text(stmt_update, 4, scan_id, -1, NULL);
+        sqlite3_bind_text(stmt_update, 5, format, -1, NULL);
+        sqlite3_bind_text(stmt_update, 6, name, -1, NULL);
+        sqlite3_bind_text(stmt_update, 7, vendor, -1, NULL);
+        sqlite3_bind_text(stmt_update, 8, version, -1, NULL);
+        sqlite3_bind_text(stmt_update, 9, arch, -1, NULL);
+
+        if (sqlite3_step(stmt_update) != SQLITE_DONE) {
+            goto error;
+        }
+    }
+
+    if (result != SQLITE_DONE) {
+        goto error;
+    }
+
+    return 0;
+error:
+    merror("Unable to update the 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
+    return -1;
+}
+
+// Function to delete old Package information from DB. Return 0 on success or -1 on error.
+int wdb_package_delete(wdb_t * wdb, const char * scan_id) {
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_package_delete(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_DEL) < 0) {
+        mdebug1("at wdb_package_delete(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PROGRAM_DEL];
+
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Deleting old information from 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    return 0;
+}
+
+// Function to delete a package entry from DB. Return 0 on success or -1 on error.
+int wdb_package_delete2(wdb_t * wdb, const char * name, const char * version, const char * architecture) {
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_package_delete2(): cannot begin transaction");
+        return -1;
+    }
+
+    if (version && architecture) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_DEL2_VER_ARCH) < 0) {
+            mdebug1("at wdb_package_delete2(): cannot cache statement");
+            return -1;
+        }
+
+        stmt = wdb->stmt[WDB_STMT_PROGRAM_DEL2_VER_ARCH];
+
+        sqlite3_bind_text(stmt, 1, name, -1, NULL);
+        sqlite3_bind_text(stmt, 2, version, -1, NULL);
+        sqlite3_bind_text(stmt, 3, architecture, -1, NULL);
+    }
+    else if (version) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_DEL2_VER) < 0) {
+            mdebug1("at wdb_package_delete2(): cannot cache statement");
+            return -1;
+        }
+
+        stmt = wdb->stmt[WDB_STMT_PROGRAM_DEL2_VER];
+
+        sqlite3_bind_text(stmt, 1, name, -1, NULL);
+        sqlite3_bind_text(stmt, 2, version, -1, NULL);
+    }
+    else if (architecture) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_DEL2_ARCH) < 0) {
+            mdebug1("at wdb_package_delete2(): cannot cache statement");
+            return -1;
+        }
+
+        stmt = wdb->stmt[WDB_STMT_PROGRAM_DEL2_ARCH];
+
+        sqlite3_bind_text(stmt, 1, name, -1, NULL);
+        sqlite3_bind_text(stmt, 2, architecture, -1, NULL);
+    }
+    else {
+        if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_DEL2) < 0) {
+            mdebug1("at wdb_package_delete2(): cannot cache statement");
+            return -1;
+        }
+
+        stmt = wdb->stmt[WDB_STMT_PROGRAM_DEL2];
+
+        sqlite3_bind_text(stmt, 1, name, -1, NULL);
+    }
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Deleting old entry from 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    return 0;
+}
+
+// Function to save Hotfix info into the DB. Return 0 on success or -1 on error.
+int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix) {
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_hotfix_save(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_hotfix_insert(wdb, scan_id, scan_time, hotfix) < 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
+// Insert hotfix info tuple. Return 0 on success or -1 on error.
+int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_HOTFIX_INSERT) < 0) {
+        mdebug1("at wdb_hotfix_insert(): cannot cache statement");
+    }
+
+    stmt = wdb->stmt[WDB_STMT_HOTFIX_INSERT];
+
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
+    sqlite3_bind_text(stmt, 3, hotfix, -1, NULL);
+
+
+    if (sqlite3_step(stmt) == SQLITE_DONE){
+        return 0;
+    }
+    else {
+        merror("at wdb_hotfix_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
 // Function to delete old Hotfix information from DB. Return 0 on success or -1 on error.
 int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id) {
 
@@ -438,524 +891,6 @@ int wdb_set_hotfix_metadata(wdb_t * wdb, const char * scan_id) {
     }
 
     return 0;
-}
-
-// Function to save OS info into the DB. Return 0 on success or -1 on error.
-int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release) {
-
-    sqlite3_stmt *stmt = NULL;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_osinfo_save(): cannot begin transaction");
-        return -1;
-    }
-
-    /* Delete old OS information before insert the new scan */
-    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_DEL) < 0) {
-        mdebug1("at wdb_osinfo_save(): cannot cache statement");
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_OSINFO_DEL];
-
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Deleting old information from 'sys_osinfo' table: %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-
-    if (wdb_osinfo_insert(wdb,
-        scan_id,
-        scan_time,
-        hostname,
-        architecture,
-        os_name,
-        os_version,
-        os_codename,
-        os_major,
-        os_minor,
-        os_build,
-        os_platform,
-        sysname,
-        release,
-        version,
-        os_release) < 0) {
-
-        return -1;
-    }
-
-    return 0;
-}
-
-// Insert OS info tuple. Return 0 on success or -1 on error. (v2)
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release) {
-    sqlite3_stmt *stmt = NULL;
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_INSERT) < 0) {
-        mdebug1("at wdb_osinfo_insert(): cannot cache statement");
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_OSINFO_INSERT];
-
-    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
-    sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
-    sqlite3_bind_text(stmt, 3, hostname, -1, NULL);
-    sqlite3_bind_text(stmt, 4, architecture, -1, NULL);
-    sqlite3_bind_text(stmt, 5, os_name, -1, NULL);
-    sqlite3_bind_text(stmt, 6, os_version, -1, NULL);
-    sqlite3_bind_text(stmt, 7, os_codename, -1, NULL);
-    sqlite3_bind_text(stmt, 8, os_major, -1, NULL);
-    sqlite3_bind_text(stmt, 9, os_minor, -1, NULL);
-    sqlite3_bind_text(stmt, 10, os_build, -1, NULL);
-    sqlite3_bind_text(stmt, 11, os_platform, -1, NULL);
-    sqlite3_bind_text(stmt, 12, sysname, -1, NULL);
-    sqlite3_bind_text(stmt, 13, release, -1, NULL);
-    sqlite3_bind_text(stmt, 14, version, -1, NULL);
-    sqlite3_bind_text(stmt, 15, os_release, -1, NULL);
-
-    if (sqlite3_step(stmt) == SQLITE_DONE){
-        return 0;
-    }
-    else {
-        merror("at wdb_osinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-
-}
-
-// Function to save Package info into the DB. Return 0 on success or -1 on error.
-int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location) {
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_package_save(): cannot begin transaction");
-        return -1;
-    }
-
-    if (wdb_package_insert(wdb,
-        scan_id,
-        scan_time,
-        format,
-        name,
-        priority,
-        section,
-        size,
-        vendor,
-        install_time,
-        version,
-        architecture,
-        multiarch,
-        source,
-        description,
-        location,
-        0) < 0) {
-
-        return -1;
-    }
-
-    return 0;
-}
-
-// Function to save Hotfix info into the DB. Return 0 on success or -1 on error.
-int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix) {
-    if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_hotfix_save(): cannot begin transaction");
-        return -1;
-    }
-
-    if (wdb_hotfix_insert(wdb, scan_id, scan_time, hotfix) < 0) {
-        return -1;
-    }
-
-    return 0;
-}
-
-// Insert Package info tuple. Return 0 on success or -1 on error.
-int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged) {
-    sqlite3_stmt *stmt = NULL;
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_INSERT) < 0) {
-        mdebug1("at wdb_package_insert(): cannot cache statement");
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_PROGRAM_INSERT];
-
-    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
-    sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
-    sqlite3_bind_text(stmt, 3, format, -1, NULL);
-    sqlite3_bind_text(stmt, 4, name, -1, NULL);
-    sqlite3_bind_text(stmt, 5, priority, -1, NULL);
-    sqlite3_bind_text(stmt, 6, section, -1, NULL);
-    if (size >= 0) {
-        sqlite3_bind_int64(stmt, 7, size);
-    } else {
-        sqlite3_bind_null(stmt, 7);
-    }
-    sqlite3_bind_text(stmt, 8, vendor, -1, NULL);
-    sqlite3_bind_text(stmt, 9, install_time, -1, NULL);
-    sqlite3_bind_text(stmt, 10, version, -1, NULL);
-    sqlite3_bind_text(stmt, 11, architecture, -1, NULL);
-    sqlite3_bind_text(stmt, 12, multiarch, -1, NULL);
-    sqlite3_bind_text(stmt, 13, source, -1, NULL);
-    sqlite3_bind_text(stmt, 14, description, -1, NULL);
-    sqlite3_bind_text(stmt, 15, location, -1, NULL);
-    sqlite3_bind_int(stmt, 16, triaged);
-
-    switch (sqlite3_step(stmt)) {
-        case SQLITE_DONE:
-            return 0;
-        case SQLITE_CONSTRAINT:
-            if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
-                mdebug1("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-                return 0;
-            } else {
-                merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-                return -1;
-            }
-        default:
-            merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-            return -1;
-    }
-}
-
-// Insert hotfix info tuple. Return 0 on success or -1 on error.
-int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix) {
-    sqlite3_stmt *stmt = NULL;
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_HOTFIX_INSERT) < 0) {
-        mdebug1("at wdb_hotfix_insert(): cannot cache statement");
-    }
-
-    stmt = wdb->stmt[WDB_STMT_HOTFIX_INSERT];
-
-    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
-    sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
-    sqlite3_bind_text(stmt, 3, hotfix, -1, NULL);
-
-
-    if (sqlite3_step(stmt) == SQLITE_DONE){
-        return 0;
-    }
-    else {
-        merror("at wdb_hotfix_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-}
-
-// Function to update old Package information from DB. Return 0 on success or -1 on error.
-int wdb_package_update(wdb_t * wdb, const char * scan_id) {
-    sqlite3_stmt *stmt_get = NULL;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_package_update(): cannot begin transaction");
-        return -1;
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_GET) < 0) {
-        mdebug1("at wdb_package_update(): cannot cache get statement");
-        return -1;
-    }
-
-    stmt_get = wdb->stmt[WDB_STMT_PROGRAM_GET];
-    sqlite3_bind_text(stmt_get, 1, scan_id, -1, NULL);
-
-    int result;
-    while (result = sqlite3_step(stmt_get), result == SQLITE_ROW) {
-        const char *cpe = (const char *) sqlite3_column_text(stmt_get, 0);
-        const char *msu_name = (const char *) sqlite3_column_text(stmt_get, 1);
-        const int triaged = sqlite3_column_int(stmt_get, 2);
-        const char *format = (const char *) sqlite3_column_text(stmt_get, 3);
-        const char *name = (const char *) sqlite3_column_text(stmt_get, 4);
-        const char *vendor = (const char *) sqlite3_column_text(stmt_get, 5);
-        const char *version = (const char *) sqlite3_column_text(stmt_get, 6);
-        const char *arch = (const char *) sqlite3_column_text(stmt_get, 7);
-
-        sqlite3_stmt *stmt_update = NULL;
-        if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_UPD) < 0) {
-            mdebug1("at wdb_package_update(): cannot cache update statement");
-            return -1;
-        }
-
-        stmt_update = wdb->stmt[WDB_STMT_PROGRAM_UPD];
-        sqlite3_bind_text(stmt_update, 1, cpe, -1, NULL);
-        sqlite3_bind_text(stmt_update, 2, msu_name, -1, NULL);
-        sqlite3_bind_int(stmt_update, 3, triaged);
-        sqlite3_bind_text(stmt_update, 4, scan_id, -1, NULL);
-        sqlite3_bind_text(stmt_update, 5, format, -1, NULL);
-        sqlite3_bind_text(stmt_update, 6, name, -1, NULL);
-        sqlite3_bind_text(stmt_update, 7, vendor, -1, NULL);
-        sqlite3_bind_text(stmt_update, 8, version, -1, NULL);
-        sqlite3_bind_text(stmt_update, 9, arch, -1, NULL);
-
-        if (sqlite3_step(stmt_update) != SQLITE_DONE) {
-            goto error;
-        }
-    }
-
-    if (result != SQLITE_DONE) {
-        goto error;
-    }
-
-    return 0;
-error:
-    merror("Unable to update the 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
-    return -1;
-}
-
-// Function to insert and update the new package entry with the previous scan into DB. Return 0 on success or -1 on error.
-int wdb_package_update2(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location) {
-    sqlite3_stmt *stmt_get = NULL;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_package_update2(): cannot begin transaction");
-        return -1;
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_GET2) < 0) {
-        mdebug1("at wdb_package_update2(): cannot cache get statement");
-        return -1;
-    }
-
-    stmt_get = wdb->stmt[WDB_STMT_PROGRAM_GET2];
-    sqlite3_bind_text(stmt_get, 1, name, -1, NULL);
-    sqlite3_bind_text(stmt_get, 2, version, -1, NULL);
-    sqlite3_bind_text(stmt_get, 3, architecture, -1, NULL);
-
-    if (sqlite3_step(stmt_get) == SQLITE_ROW) {
-        const char *cpe = (const char *) sqlite3_column_text(stmt_get, 0);
-        const char *msu_name = (const char *) sqlite3_column_text(stmt_get, 1);
-        const int triaged = sqlite3_column_int(stmt_get, 2);
-        const char *format = (const char *) sqlite3_column_text(stmt_get, 3);
-        const char *name = (const char *) sqlite3_column_text(stmt_get, 4);
-        const char *vendor = (const char *) sqlite3_column_text(stmt_get, 5);
-        const char *version = (const char *) sqlite3_column_text(stmt_get, 6);
-        const char *arch = (const char *) sqlite3_column_text(stmt_get, 7);
-
-        if (wdb_package_insert(wdb,
-            scan_id,
-            scan_time,
-            format,
-            name,
-            priority,
-            section,
-            size,
-            vendor,
-            install_time,
-            version,
-            architecture,
-            multiarch,
-            source,
-            description,
-            location,
-            0) < 0) {
-
-            merror("Unable to insert into the 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
-            return -1;
-        }
-
-        sqlite3_stmt *stmt_update = NULL;
-        if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_UPD2) < 0) {
-            mdebug1("at wdb_package_update2(): cannot cache update statement");
-            return -1;
-        }
-
-        stmt_update = wdb->stmt[WDB_STMT_PROGRAM_UPD2];
-        sqlite3_bind_text(stmt_update, 1, cpe, -1, NULL);
-        sqlite3_bind_text(stmt_update, 2, msu_name, -1, NULL);
-        sqlite3_bind_int(stmt_update, 3, triaged);
-        sqlite3_bind_text(stmt_update, 4, format, -1, NULL);
-        sqlite3_bind_text(stmt_update, 5, name, -1, NULL);
-        sqlite3_bind_text(stmt_update, 6, vendor, -1, NULL);
-        sqlite3_bind_text(stmt_update, 7, version, -1, NULL);
-        sqlite3_bind_text(stmt_update, 8, arch, -1, NULL);
-
-        if (sqlite3_step(stmt_update) != SQLITE_DONE) {
-            merror("Unable to update into the 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
-            return -1;
-        }
-    }
-    else {
-        if (wdb_package_insert(wdb,
-            scan_id,
-            scan_time,
-            format,
-            name,
-            priority,
-            section,
-            size,
-            vendor,
-            install_time,
-            version,
-            architecture,
-            multiarch,
-            source,
-            description,
-            location,
-            0) < 0) {
-
-            merror("Unable to insert into the 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
-            return -1;
-        }
-    }
-
-    return 0;
-}
-
-// Function to delete old Package information from DB. Return 0 on success or -1 on error.
-int wdb_package_delete(wdb_t * wdb, const char * scan_id) {
-
-    sqlite3_stmt *stmt = NULL;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_package_delete(): cannot begin transaction");
-        return -1;
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_DEL) < 0) {
-        mdebug1("at wdb_package_delete(): cannot cache statement");
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_PROGRAM_DEL];
-
-    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
-
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Deleting old information from 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-
-    return 0;
-}
-
-// Function to delete a package entry from DB. Return 0 on success or -1 on error.
-int wdb_package_delete2(wdb_t * wdb, const char * name, const char * version, const char * architecture) {
-
-    sqlite3_stmt *stmt = NULL;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_package_delete2(): cannot begin transaction");
-        return -1;
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_DEL) < 0) {
-        mdebug1("at wdb_package_delete2(): cannot cache statement");
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_PROGRAM_DEL];
-
-    sqlite3_bind_text(stmt, 1, name, -1, NULL);
-    sqlite3_bind_text(stmt, 2, version, -1, NULL);
-    sqlite3_bind_text(stmt, 3, architecture, -1, NULL);
-
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Deleting old entry from 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-
-    return 0;
-}
-
-// Function to save OS info into the DB. Return 0 on success or -1 on error.
-int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage) {
-
-    sqlite3_stmt *stmt = NULL;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_hardware_save(): cannot begin transaction");
-        return -1;
-    }
-
-    /* Delete old OS information before insert the new scan */
-    if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_DEL) < 0) {
-        mdebug1("at wdb_hardware_save(): cannot cache statement");
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_HWINFO_DEL];
-
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Deleting old information from 'sys_hwinfo' table: %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-
-    if (wdb_hardware_insert(wdb,
-        scan_id,
-        scan_time,
-        serial,
-        cpu_name,
-        cpu_cores,
-        cpu_mhz,
-        ram_total,
-        ram_free,
-        ram_usage) < 0) {
-
-        return -1;
-    }
-
-    return 0;
-}
-
-// Insert HW info tuple. Return 0 on success or -1 on error.
-int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage) {
-    sqlite3_stmt *stmt = NULL;
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_INSERT) < 0) {
-        mdebug1("at wdb_hardware_insert(): cannot cache statement");
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_HWINFO_INSERT];
-
-    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
-    sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
-    sqlite3_bind_text(stmt, 3, serial, -1, NULL);
-    sqlite3_bind_text(stmt, 4, cpu_name, -1, NULL);
-
-    if (cpu_cores > 0) {
-        sqlite3_bind_int(stmt, 5, cpu_cores);
-    } else {
-        sqlite3_bind_null(stmt, 5);
-    }
-
-    double cpumhz = 0;
-    if (cpu_mhz == NULL || strlen(cpu_mhz) == 0) {
-        cpumhz = 0;
-    } else {
-        cpumhz = atof(cpu_mhz);
-    }
-    if (cpumhz > 0) {
-        sqlite3_bind_double(stmt, 6, cpumhz);
-    } else {
-        sqlite3_bind_null(stmt, 6);
-    }
-
-    if (ram_total > 0) {
-        sqlite3_bind_int64(stmt, 7, ram_total);
-    } else {
-        sqlite3_bind_null(stmt, 7);
-    }
-
-    if (ram_free > 0) {
-        sqlite3_bind_int64(stmt, 8, ram_free);
-    } else {
-        sqlite3_bind_null(stmt, 8);
-    }
-
-    if (ram_usage > 0) {
-        sqlite3_bind_int(stmt, 9, ram_usage);
-    } else {
-        sqlite3_bind_null(stmt, 9);
-    }
-
-    if (sqlite3_step(stmt) == SQLITE_DONE){
-        return 0;
-    }
-    else {
-        merror("at wdb_hardware_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
 }
 
 // Function to save Port info into the DB. Return 0 on success or -1 on error.
@@ -1089,24 +1024,38 @@ int wdb_port_delete2(wdb_t * wdb, const char * protocol, const char * local_ip, 
         return -1;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PORT_DEL2) < 0) {
-        mdebug1("at wdb_port_delete2(): cannot cache statement");
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_PORT_DEL2];
-
-    sqlite3_bind_text(stmt, 1, protocol, -1, NULL);
-    sqlite3_bind_text(stmt, 2, local_ip, -1, NULL);
-    if (local_port >= 0) {
-        sqlite3_bind_int(stmt, 3, local_port);
-    } else {
-        sqlite3_bind_null(stmt, 3);
-    }
     if (pid >= 0) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_PORT_DEL2_PID) < 0) {
+            mdebug1("at wdb_port_delete2(): cannot cache statement");
+            return -1;
+        }
+
+        stmt = wdb->stmt[WDB_STMT_PORT_DEL2_PID];
+
+        sqlite3_bind_text(stmt, 1, protocol, -1, NULL);
+        sqlite3_bind_text(stmt, 2, local_ip, -1, NULL);
+        if (local_port >= 0) {
+            sqlite3_bind_int(stmt, 3, local_port);
+        } else {
+            sqlite3_bind_null(stmt, 3);
+        }
         sqlite3_bind_int(stmt, 4, pid);
-    } else {
-        sqlite3_bind_null(stmt, 4);
+    }
+    else {
+        if (wdb_stmt_cache(wdb, WDB_STMT_PORT_DEL2) < 0) {
+            mdebug1("at wdb_port_delete2(): cannot cache statement");
+            return -1;
+        }
+
+        stmt = wdb->stmt[WDB_STMT_PORT_DEL2];
+
+        sqlite3_bind_text(stmt, 1, protocol, -1, NULL);
+        sqlite3_bind_text(stmt, 2, local_ip, -1, NULL);
+        if (local_port >= 0) {
+            sqlite3_bind_int(stmt, 3, local_port);
+        } else {
+            sqlite3_bind_null(stmt, 3);
+        }
     }
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
@@ -1311,7 +1260,7 @@ int wdb_process_delete2(wdb_t * wdb, const int pid, const char * name) {
         sqlite3_bind_int(stmt, 1, pid);
     }
     else {
-        sqlite3_bind_null(stmt, 3);
+        sqlite3_bind_null(stmt, 1);
     }
     sqlite3_bind_text(stmt, 2, name, -1, NULL);
 

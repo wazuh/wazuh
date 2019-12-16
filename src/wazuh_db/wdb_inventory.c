@@ -22,9 +22,9 @@ int wdb_inventory_save_hw(wdb_t * wdb, const char * payload) {
         return -1;
     }
 
-    cJSON * timestamp = cJSON_GetObjectItem(data, "timestamp");
+    char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
-    if (!cJSON_IsNumber(timestamp)) {
+    if (scan_time == NULL) {
         merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
         return -1;
     }
@@ -35,9 +35,6 @@ int wdb_inventory_save_hw(wdb_t * wdb, const char * payload) {
         merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
         return -1;
     }
-
-    char * scan_id = "0";
-    char * scan_time = timestamp->valuestring;
 
     cJSON * attribute = NULL;
     attribute = cJSON_GetObjectItem(attributes, "board_serial");
@@ -55,7 +52,7 @@ int wdb_inventory_save_hw(wdb_t * wdb, const char * payload) {
     attribute = cJSON_GetObjectItem(attributes, "ram_usage");
     int ram_usage = attribute ? attribute->valueint : -1;
 
-    if (result = wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage), result < 0) {
+    if (result = wdb_hardware_save(wdb, "0", scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage), result < 0) {
         mdebug1("wdb_inventory_save_hw(): Cannot save HW information.");
     }
 
@@ -74,9 +71,9 @@ int wdb_inventory_save_os(wdb_t * wdb, const char * payload) {
         return -1;
     }
 
-    cJSON * timestamp = cJSON_GetObjectItem(data, "timestamp");
+    char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
-    if (!cJSON_IsNumber(timestamp)) {
+    if (scan_time == NULL) {
         merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
         return -1;
     }
@@ -87,9 +84,6 @@ int wdb_inventory_save_os(wdb_t * wdb, const char * payload) {
         merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
         return -1;
     }
-
-    char * scan_id = "0";
-    char * scan_time = timestamp->valuestring;
 
     cJSON * attribute = NULL;
     attribute = cJSON_GetObjectItem(attributes, "hostname");
@@ -119,7 +113,7 @@ int wdb_inventory_save_os(wdb_t * wdb, const char * payload) {
     attribute = cJSON_GetObjectItem(attributes, "version");
     char * version = attribute ? attribute->valuestring : NULL;
 
-    if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version, os_release), result < 0) {
+    if (result = wdb_osinfo_save(wdb, "0", scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version, os_release), result < 0) {
         mdebug1("Cannot save OS information.");
     }
 
@@ -138,9 +132,9 @@ int wdb_inventory_save_network(wdb_t * wdb, const char * payload) {
         return -1;
     }
 
-    cJSON * timestamp = cJSON_GetObjectItem(data, "timestamp");
+    char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
-    if (!cJSON_IsNumber(timestamp)) {
+    if (scan_time == NULL) {
         merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
         return -1;
     }
@@ -151,9 +145,6 @@ int wdb_inventory_save_network(wdb_t * wdb, const char * payload) {
         merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
         return -1;
     }
-
-    char * scan_id = "0";
-    char * scan_time = timestamp->valuestring;
 
     cJSON * attribute = NULL;
     attribute = cJSON_GetObjectItem(attributes, "name");
@@ -185,7 +176,7 @@ int wdb_inventory_save_network(wdb_t * wdb, const char * payload) {
     attribute = cJSON_GetObjectItem(attributes, "rx_dropped");
     long rx_dropped = attribute ? (long)attribute->valuedouble : -1;
 
-    if (result = wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped), result < 0) {
+    if (result = wdb_netinfo_save(wdb, "0", scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped), result < 0) {
         mdebug1("Cannot save netinfo information.");
     }
     else {
@@ -199,7 +190,7 @@ int wdb_inventory_save_network(wdb_t * wdb, const char * payload) {
             attribute = cJSON_GetObjectItem(ip, "dhcp");
             char * dhcp = attribute ? attribute->valuestring : NULL;
 
-            if (result = wdb_netproto_save(wdb, scan_id, name, proto, gateway, dhcp, metric), result < 0) {
+            if (result = wdb_netproto_save(wdb, "0", name, proto, gateway, dhcp, metric), result < 0) {
                 mdebug1("Cannot save netproto information.");
             }
             else {
@@ -217,7 +208,7 @@ int wdb_inventory_save_network(wdb_t * wdb, const char * payload) {
                         attribute = cJSON_GetArrayItem(bcast, i);
                         char * broadcast = attribute ? attribute->valuestring : NULL;
 
-                        if (result = wdb_netaddr_save(wdb, scan_id, name, proto, address, netmask, broadcast), result < 0) {
+                        if (result = wdb_netaddr_save(wdb, "0", name, proto, address, netmask, broadcast), result < 0) {
                             mdebug1("Cannot save netaddr information.");
                         }
                     }
@@ -233,7 +224,7 @@ int wdb_inventory_save_network(wdb_t * wdb, const char * payload) {
             attribute = cJSON_GetObjectItem(ip, "dhcp");
             char * dhcp = attribute ? attribute->valuestring : NULL;
 
-            if (result = wdb_netproto_save(wdb, scan_id, name, proto, gateway, dhcp, metric), result < 0) {
+            if (result = wdb_netproto_save(wdb, "0", name, proto, gateway, dhcp, metric), result < 0) {
                 mdebug1("Cannot save netproto information.");
             }
             else {
@@ -251,7 +242,7 @@ int wdb_inventory_save_network(wdb_t * wdb, const char * payload) {
                         attribute = cJSON_GetArrayItem(bcast, i);
                         char * broadcast = attribute ? attribute->valuestring : NULL;
 
-                        if (result = wdb_netaddr_save(wdb, scan_id, name, proto, address, netmask, broadcast), result < 0) {
+                        if (result = wdb_netaddr_save(wdb, "0", name, proto, address, netmask, broadcast), result < 0) {
                             mdebug1("Cannot save netaddr information.");
                         }
                     }
@@ -286,7 +277,7 @@ int wdb_inventory_delete_network(wdb_t * wdb, const char * payload) {
     char * name = attribute ? attribute->valuestring : NULL;
     attribute = cJSON_GetObjectItem(attributes, "adapter");
 
-    if (result = wdb_netinfo_delete(wdb, name), result < 0) {
+    if (result = wdb_netinfo_delete2(wdb, name), result < 0) {
         mdebug1("Cannot delete old network entry.");
     }
 
@@ -305,9 +296,9 @@ int wdb_inventory_save_program(wdb_t * wdb, const char * payload) {
         return -1;
     }
 
-    cJSON * timestamp = cJSON_GetObjectItem(data, "timestamp");
+    char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
-    if (!cJSON_IsNumber(timestamp)) {
+    if (scan_time == NULL) {
         merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
         return -1;
     }
@@ -318,9 +309,6 @@ int wdb_inventory_save_program(wdb_t * wdb, const char * payload) {
         merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
         return -1;
     }
-
-    char * scan_id = "0";
-    char * scan_time = timestamp->valuestring;
 
     cJSON * attribute = NULL;
     attribute = cJSON_GetObjectItem(attributes, "format");
@@ -350,7 +338,7 @@ int wdb_inventory_save_program(wdb_t * wdb, const char * payload) {
     attribute = cJSON_GetObjectItem(attributes, "location");
     char * location = attribute ? attribute->valuestring : NULL;
 
-    if (result = wdb_package_update2(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location), result < 0) {
+    if (result = wdb_package_save(wdb, "0", scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location), result < 0) {
         mdebug1("Cannot save Package information.");
     }
 
@@ -403,9 +391,9 @@ int wdb_inventory_save_hotfix(wdb_t * wdb, const char * payload) {
         return -1;
     }
 
-    cJSON * timestamp = cJSON_GetObjectItem(data, "timestamp");
+    char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
-    if (!cJSON_IsNumber(timestamp)) {
+    if (scan_time == NULL) {
         merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
         return -1;
     }
@@ -417,14 +405,11 @@ int wdb_inventory_save_hotfix(wdb_t * wdb, const char * payload) {
         return -1;
     }
 
-    char * scan_id = "0";
-    char * scan_time = timestamp->valuestring;
-
     cJSON * attribute = NULL;
     attribute = cJSON_GetObjectItem(attributes, "hotfix");
     char * hotfix = attribute ? attribute->valuestring : NULL;
 
-    if (result = wdb_hotfix_save(wdb, scan_id, scan_time, hotfix), result < 0) {
+    if (result = wdb_hotfix_save(wdb, "0", scan_time, hotfix), result < 0) {
         mdebug1("Cannot save Hotfix information.");
     }
 
@@ -475,9 +460,9 @@ int wdb_inventory_save_port(wdb_t * wdb, const char * payload) {
         return -1;
     }
 
-    cJSON * timestamp = cJSON_GetObjectItem(data, "timestamp");
+    char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
-    if (!cJSON_IsNumber(timestamp)) {
+    if (scan_time == NULL) {
         merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
         return -1;
     }
@@ -488,9 +473,6 @@ int wdb_inventory_save_port(wdb_t * wdb, const char * payload) {
         merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
         return -1;
     }
-
-    char * scan_id = "0";
-    char * scan_time = timestamp->valuestring;
 
     cJSON * attribute = NULL;
     attribute = cJSON_GetObjectItem(attributes, "protocol");
@@ -516,7 +498,7 @@ int wdb_inventory_save_port(wdb_t * wdb, const char * payload) {
     attribute = cJSON_GetObjectItem(attributes, "process");
     char * process = attribute ? attribute->valuestring : NULL;
 
-    if (result = wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process), result < 0) {
+    if (result = wdb_port_save(wdb, "0", scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process), result < 0) {
         mdebug1("Cannot save Port information.");
     }
 
@@ -571,9 +553,9 @@ int wdb_inventory_save_process(wdb_t * wdb, const char * payload) {
         return -1;
     }
 
-    cJSON * timestamp = cJSON_GetObjectItem(data, "timestamp");
+    char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
-    if (!cJSON_IsNumber(timestamp)) {
+    if (scan_time == NULL) {
         merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
         return -1;
     }
@@ -584,9 +566,6 @@ int wdb_inventory_save_process(wdb_t * wdb, const char * payload) {
         merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
         return -1;
     }
-
-    char * scan_id = "0";
-    char * scan_time = timestamp->valuestring;
 
     cJSON * attribute = NULL;
     attribute = cJSON_GetObjectItem(attributes, "pid");
@@ -646,7 +625,7 @@ int wdb_inventory_save_process(wdb_t * wdb, const char * payload) {
     attribute = cJSON_GetObjectItem(attributes, "fgroup");
     char * fgroup = attribute ? attribute->valuestring : NULL;
 
-    if (result = wdb_process_save(wdb, scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor), result < 0) {
+    if (result = wdb_process_save(wdb, "0", scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor), result < 0) {
         mdebug1("Cannot save Process information.");
     }
 

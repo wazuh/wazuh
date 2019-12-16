@@ -540,7 +540,7 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                 result = -1;
             }
         }
-    } else if (strcmp(curr, "os") == 0) {
+    } else if (strcmp(curr, "OS") == 0) {
         if (!next) {
             mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
@@ -567,7 +567,7 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                 result = -1;
             }
         }
-    } else if (strcmp(curr, "hw") == 0) {
+    } else if (strcmp(curr, "hardware") == 0) {
         if (!next) {
             mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
@@ -696,7 +696,7 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                 result = -1;
             }
         }
-    } else if (strcmp(curr, "   process") == 0) {
+    } else if (strcmp(curr, "process") == 0) {
         if (!next) {
             mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
