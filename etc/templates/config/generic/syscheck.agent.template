@@ -44,7 +44,7 @@
 
     <!-- Database synchronization settings -->
     <inventory>
-      <sync_interval>5m</sync_interval>
+      <interval>5m</interval>
       <max_sync_interval>1h</max_sync_interval>
       <response_timeout>30</response_timeout>
       <sync_queue_size>16384</sync_queue_size>
