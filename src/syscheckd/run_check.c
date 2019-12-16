@@ -165,7 +165,7 @@ void start_daemon()
     w_create_thread(fim_run_realtime, &syscheck);
 
     // Launch inventory synchronization thread, if enabled
-    if (syscheck.enable_inventory) {
+    if (syscheck.enable_synchronization) {
         w_create_thread(fim_run_integrity, &syscheck);
     }
 
