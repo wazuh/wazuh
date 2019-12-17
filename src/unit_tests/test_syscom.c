@@ -22,43 +22,22 @@
 
 
 cJSON * __wrap_getSyscheckConfig() {
-    int option = mock_type(int);
-    if (option) {
-        cJSON * root = cJSON_CreateObject();
-        cJSON_AddStringToObject(root, "test", "syscheck");
-        return root;
-    } else {
-        return NULL;
-    }
+    return mock_type(cJSON*);
 }
 
 
 cJSON * __wrap_getRootcheckConfig() {
-    int option = mock_type(int);
-    if (option) {
-        cJSON * root = cJSON_CreateObject();
-        cJSON_AddStringToObject(root, "test", "rootcheck");
-        return root;
-    } else {
-        return NULL;
-    }
+    return mock_type(cJSON*);
 }
 
 
 cJSON * __wrap_getSyscheckInternalOptions() {
-    int option = mock_type(int);
-    if (option) {
-        cJSON * root = cJSON_CreateObject();
-        cJSON_AddStringToObject(root, "test", "internal");
-        return root;
-    } else {
-        return NULL;
-    }
+    return mock_type(cJSON*);
 }
 
-int __wrap__mwarn()
+void __wrap_fim_sync_push_msg(const char * msg)
 {
-    return 0;
+    check_expected(msg);
 }
 
 static int delete_string(void **state)
@@ -111,6 +90,8 @@ void test_syscom_dispatch_dbsync(void **state)
 
     char command[] = "dbsync args";
 
+    expect_string(__wrap_fim_sync_push_msg, msg, "args");
+
     ret = syscom_dispatch(command, NULL);
 
     assert_int_equal(ret, 0);
@@ -158,6 +139,31 @@ void test_syscom_dispatch_getconfig_unrecognized(void **state)
     assert_int_equal(ret, 24);
 }
 
+void test_syscom_dispatch_null_command(void **state)
+{
+    (void) state;
+    size_t ret;
+
+    char * output;
+
+    ret = syscom_dispatch(NULL, &output);
+    *state = output;
+
+    assert_string_equal(output, "err Unrecognized command");
+    assert_int_equal(ret, 24);
+}
+
+void test_syscom_dispatch_null_output(void **state)
+{
+    (void) state;
+    size_t ret;
+
+    char command[] = "invalid";
+
+    ret = syscom_dispatch(command, NULL);
+
+    assert_int_equal(ret, 24);
+}
 
 void test_syscom_getconfig_syscheck(void **state)
 {
@@ -167,7 +173,10 @@ void test_syscom_getconfig_syscheck(void **state)
     char * section = "syscheck";
     char * output;
 
-    will_return(__wrap_getSyscheckConfig, 1);
+    cJSON * root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "test", "syscheck");
+
+    will_return(__wrap_getSyscheckConfig, root);
     ret = syscom_getconfig(section, &output);
     *state = output;
 
@@ -184,7 +193,7 @@ void test_syscom_getconfig_syscheck_failure(void **state)
     char * section = "syscheck";
     char * output;
 
-    will_return(__wrap_getSyscheckConfig, 0);
+    will_return(__wrap_getSyscheckConfig, NULL);
     ret = syscom_getconfig(section, &output);
     *state = output;
 
@@ -201,7 +210,10 @@ void test_syscom_getconfig_rootcheck(void **state)
     char * section = "rootcheck";
     char * output;
 
-    will_return(__wrap_getRootcheckConfig, 1);
+    cJSON * root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "test", "rootcheck");
+
+    will_return(__wrap_getRootcheckConfig, root);
     ret = syscom_getconfig(section, &output);
     *state = output;
 
@@ -218,7 +230,7 @@ void test_syscom_getconfig_rootcheck_failure(void **state)
     char * section = "rootcheck";
     char * output;
 
-    will_return(__wrap_getRootcheckConfig, 0);
+    will_return(__wrap_getRootcheckConfig, NULL);
     ret = syscom_getconfig(section, &output);
     *state = output;
 
@@ -235,7 +247,10 @@ void test_syscom_getconfig_internal(void **state)
     char * section = "internal";
     char * output;
 
-    will_return(__wrap_getSyscheckInternalOptions, 1);
+    cJSON * root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "test", "internal");
+
+    will_return(__wrap_getSyscheckInternalOptions, root);
     ret = syscom_getconfig(section, &output);
     *state = output;
 
@@ -252,11 +267,39 @@ void test_syscom_getconfig_internal_failure(void **state)
     char * section = "internal";
     char * output;
 
-    will_return(__wrap_getSyscheckInternalOptions, 0);
+    will_return(__wrap_getSyscheckInternalOptions, NULL);
     ret = syscom_getconfig(section, &output);
     *state = output;
 
     assert_string_equal(output, "err Could not get requested section");
+    assert_int_equal(ret, 35);
+}
+
+void test_syscom_getconfig_null_section(void **state)
+{
+    (void) state;
+    size_t ret;
+
+    char * output;
+
+    will_return(__wrap_getSyscheckInternalOptions, NULL);
+    ret = syscom_getconfig(NULL, &output);
+    *state = output;
+
+    assert_string_equal(output, "err Could not get requested section");
+    assert_int_equal(ret, 35);
+}
+
+void test_syscom_getconfig_null_output(void **state)
+{
+    (void) state;
+    size_t ret;
+
+    char * section = "internal";
+
+    will_return(__wrap_getSyscheckInternalOptions, NULL);
+    ret = syscom_getconfig(section, NULL);
+
     assert_int_equal(ret, 35);
 }
 
@@ -269,12 +312,16 @@ int main(void) {
         cmocka_unit_test(test_syscom_dispatch_dbsync_noargs),
         cmocka_unit_test(test_syscom_dispatch_restart),
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_unrecognized, delete_string),
+        cmocka_unit_test_teardown(test_syscom_dispatch_null_command, delete_string),
+        cmocka_unit_test(test_syscom_dispatch_null_output),
         cmocka_unit_test_teardown(test_syscom_getconfig_syscheck, delete_string),
         cmocka_unit_test_teardown(test_syscom_getconfig_syscheck_failure, delete_string),
         cmocka_unit_test_teardown(test_syscom_getconfig_rootcheck, delete_string),
         cmocka_unit_test_teardown(test_syscom_getconfig_rootcheck_failure, delete_string),
         cmocka_unit_test_teardown(test_syscom_getconfig_internal, delete_string),
         cmocka_unit_test_teardown(test_syscom_getconfig_internal_failure, delete_string),
+        cmocka_unit_test(test_syscom_getconfig_null_section),
+        cmocka_unit_test_teardown(test_syscom_getconfig_null_output, delete_string),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
