@@ -15,6 +15,10 @@
 
 
 #include "../syscheckd/syscheck.h"
+#include "../external/procps/readproc.h"
+
+
+extern volatile int audit_health_check_deletion;
 
 /* redefinitons/wrapping */
 
@@ -67,16 +71,35 @@ int __wrap__mwarn()
     return 0;
 }
 
+void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...)
+{
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    check_expected(msg);
+
+    va_start(args, msg);
+
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+
+    check_expected(formatted_msg);
+
+    va_end(args);
+
+    return;
+}
+
+
 int __wrap_fopen(const char *filename, const char *mode)
 {
     check_expected(filename);
+    check_expected(mode);
     return mock();
 }
 
 size_t __real_fwrite(const void * ptr, size_t size, size_t count, FILE * stream);
 size_t __wrap_fwrite(const void * ptr, size_t size, size_t count, FILE * stream)
 {
-    FILE * str = 0;
     if ((void*)stream > (void*)ptr) {
         return __real_fwrite(ptr, size, count, stream);
     }
@@ -160,6 +183,31 @@ int __wrap_fim_whodata_event(whodata_evt * w_evt)
     return 1;
 }
 
+PROCTAB* __wrap_openproc(int flags, ...)
+{
+    check_expected(flags);
+    return mock_type(PROCTAB*);
+}
+
+proc_t* __wrap_readproc(PROCTAB *restrict const PT, proc_t *restrict p)
+{
+    check_expected(PT);
+    check_expected(p);
+
+    return mock_type(proc_t*);
+}
+
+void __wrap_freeproc(proc_t* p)
+{
+    check_expected(p);
+}
+
+void __wrap_closeproc(PROCTAB* PT)
+{
+    check_expected(PT);
+}
+
+/* setup/teardown */
 static int free_string(void **state)
 {
     char * string = *state;
@@ -170,13 +218,71 @@ static int free_string(void **state)
 /* tests */
 
 
-void test_check_auditd_enabled(void **state)
+void test_check_auditd_enabled_success(void **state)
 {
     (void) state;
     int ret;
 
+    proc_t *mock_proc;
+
+    mock_proc = calloc(3, sizeof(proc_t));
+
+    snprintf(mock_proc[0].cmd, 16, "not-auditd");
+    mock_proc[0].tid = 20;
+
+    snprintf(mock_proc[1].cmd, 16, "something");
+    mock_proc[1].tid = 25;
+
+    snprintf(mock_proc[2].cmd, 16, "auditd");
+    mock_proc[2].tid = 15;
+
+    expect_value(__wrap_openproc, flags, PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM);
+    will_return(__wrap_openproc, 1234);
+
+    expect_value_count(__wrap_readproc, PT, 1234, 3);
+    expect_value_count(__wrap_readproc, p, NULL, 3);
+    will_return(__wrap_readproc, &mock_proc[0]);
+    will_return(__wrap_readproc, &mock_proc[1]);
+    will_return(__wrap_readproc, &mock_proc[2]);
+
+    expect_value(__wrap_freeproc, p, &mock_proc[0]);
+    expect_value(__wrap_freeproc, p, &mock_proc[1]);
+    expect_value(__wrap_freeproc, p, &mock_proc[2]);
+
+    expect_value(__wrap_closeproc, PT, 1234);
+
     ret = check_auditd_enabled();
     assert_return_code(ret, 0);
+}
+
+void test_check_auditd_enabled_openproc_error(void **state)
+{
+    (void) state;
+    int ret;
+
+    expect_value(__wrap_openproc, flags, PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM);
+    will_return(__wrap_openproc, NULL);
+
+    ret = check_auditd_enabled();
+    assert_int_equal(ret, -1);
+}
+
+void test_check_auditd_enabled_readproc_error(void **state)
+{
+    (void) state;
+    int ret;
+
+    expect_value(__wrap_openproc, flags, PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM);
+    will_return(__wrap_openproc, 1234);
+
+    expect_value(__wrap_readproc, PT, 1234);
+    expect_value(__wrap_readproc, p, NULL);
+    will_return(__wrap_readproc, NULL);
+
+    expect_value(__wrap_closeproc, PT, 1234);
+
+    ret = check_auditd_enabled();
+    assert_int_equal(ret, -1);
 }
 
 
@@ -305,6 +411,7 @@ void test_set_auditd_config_audit_plugin_not_created(void **state)
     will_return(__wrap_IsLink, 1);
 
     expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
     // Create plugin
@@ -338,6 +445,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink(void **sta
     will_return(__wrap_IsLink, 1);
 
     expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
     // Create plugin
@@ -376,6 +484,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void
     will_return(__wrap_IsLink, 1);
 
     expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
     // Create plugin
@@ -523,14 +632,17 @@ void test_add_audit_rules_syscheck_max(void **state)
 void test_filterkey_audit_events_custom(void **state)
 {
     (void) state;
-
+    int ret;
+    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=test_key";
     char *key = "test_key";
+
     syscheck.audit_key = calloc(2, sizeof(char *));
     syscheck.audit_key[0] = calloc(strlen(key) + 2, sizeof(char));
     snprintf(syscheck.audit_key[0], strlen(key) + 1, "%s", key);
 
-    int ret;
-    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=test_key";
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"test_key\"'");
+
     ret = filterkey_audit_events(event);
 
     free(syscheck.audit_key[0]);
@@ -566,6 +678,10 @@ void test_filterkey_audit_events_hc(void **state)
 
     int ret;
     char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=\"wazuh_hc\"";
+
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_hc\"'");
+
     ret = filterkey_audit_events(event);
 
     assert_int_equal(ret, 3);
@@ -578,6 +694,10 @@ void test_filterkey_audit_events_fim(void **state)
 
     int ret;
     char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=\"wazuh_fim\"";
+
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+
     ret = filterkey_audit_events(event);
 
     assert_int_equal(ret, 1);
@@ -705,6 +825,13 @@ void test_audit_parse(void **state)
         type=PROCTITLE msg=audit(1571914029.306:3004254): proctitle=726D0074657374 \
     ";
 
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+    expect_string(__wrap__mdebug2, msg,
+        "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, path=/root/test/test, pname=74657374C3B1");
+
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 44082);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
@@ -732,6 +859,17 @@ void test_audit_parse_hex(void **state)
         type=PATH msg=audit(1571923546.947:3004294): item=3 name=2E2E2F74657374C3B1322F66696C655FC3B163 inode=29 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=CREATE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
         type=PROCTITLE msg=audit(1571923546.947:3004294): proctitle=6D760066696C655FC3B1002E2E2F74657374C3B1322F66696C655FC3B163 \
     ";
+
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+    expect_string(__wrap__mdebug2, msg,
+        "(6248): audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
+    expect_string(__wrap__mdebug2, msg,
+        "(6249): audit_event_2/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6248): audit_event_1/2: uid=root, auid=root, euid=root, gid=root, pid=51452, ppid=3212, inode=29, path=/root/test/testñ/file_ñ, pname=file_ñ");
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6249): audit_event_2/2: uid=root, auid=root, euid=root, gid=root, pid=51452, ppid=3212, inode=29, path=/root/test/testñ2/file_ñc, pname=file_ñ");
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 51452);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
@@ -772,6 +910,9 @@ void test_audit_parse_delete(void **state)
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 5);
 
@@ -809,6 +950,9 @@ void test_audit_parse_delete_recursive(void **state)
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
+    expect_string_count(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY, 4);
+    expect_string_count(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'", 4);
+
     // Read loaded rules in Audit
     will_return_count(__wrap_audit_get_rule_list, 5, -1);
 
@@ -844,6 +988,17 @@ void test_audit_parse_mv(void **state)
         type=PROCTITLE msg=audit(1571925844.299:3004308): proctitle=6D76002E2F7465737400666F6C646572 \
     ";
 
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+    expect_string_count(__wrap__mdebug2, msg, "User with uid '%d' not found.\n", 3);
+    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '30' not found.\n");
+    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '20' not found.\n");
+    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '50' not found.\n");
+    expect_string(__wrap__mdebug2, msg,
+        "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6247): audit_event: uid=, auid=, euid=, gid=, pid=52277, ppid=3210, inode=28, path=/root/test/folder/test, pname=/usr/bin/mv");
+
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 52277);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "30");
     expect_string(__wrap_fim_whodata_event, w_evt->group_id, "40");
@@ -873,6 +1028,17 @@ void test_audit_parse_mv_hex(void **state)
         type=PROCTITLE msg=audit(1571925844.299:3004308): proctitle=6D76002E2F7465737400666F6C646572 \
     ";
 
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+    expect_string_count(__wrap__mdebug2, msg, "User with uid '%d' not found.\n", 3);
+    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '30' not found.\n");
+    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '20' not found.\n");
+    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '50' not found.\n");
+    expect_string(__wrap__mdebug2, msg,
+        "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6247): audit_event: uid=, auid=, euid=, gid=, pid=52277, ppid=3210, inode=28, path=/root/test/folder/test, pname=/usr/bin/mv");
+
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 52277);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "30");
     expect_string(__wrap_fim_whodata_event, w_evt->group_id, "40");
@@ -900,6 +1066,15 @@ void test_audit_parse_rm(void **state)
         type=PROCTITLE msg=audit(1571988027.797:3004340): proctitle=726D002D726600666F6C6465722F \
     ";
 
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+    expect_string(__wrap__mdebug2, msg, "User with uid '%d' not found.\n");
+    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '30' not found.\n");
+    expect_string(__wrap__mdebug2, msg,
+        "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6247): audit_event: uid=, auid=daemon, euid=daemon, gid=tty, pid=56650, ppid=3211, inode=24, path=/root/test/, pname=/usr/bin/rm");
+
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 56650);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "30");
     expect_string(__wrap_fim_whodata_event, w_evt->group_id, "5");
@@ -924,6 +1099,17 @@ void test_audit_parse_chmod(void **state)
         type=PATH msg=audit(1571992092.822:3004348): item=0 name=\"/root/test/file\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
         type=PROCTITLE msg=audit(1571992092.822:3004348): proctitle=63686D6F6400373737002F726F6F742F746573742F66696C65 \
     ";
+
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+    expect_string_count(__wrap__mdebug2, msg, "User with uid '%d' not found.\n", 2);
+    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '99' not found.\n");
+    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '29' not found.\n");
+    expect_string(__wrap__mdebug2, msg,
+        "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6247): audit_event: uid=, auid=lp, euid=, gid=, pid=58280, ppid=3211, inode=19, path=/root/test/file, pname=/usr/bin/chmod");
+
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 58280);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "99");
@@ -952,7 +1138,16 @@ void test_audit_parse_rm_hc(void **state)
         type=PROCTITLE msg=audit(1571988027.797:3004340): proctitle=726D002D726600666F6C6465722F \
     ";
 
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_hc\"'");
+    expect_string(__wrap__mdebug2, msg, FIM_HEALTHCHECK_DELETE);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6253): Whodata health-check: Detected file deletion event (263).");
+
+    audit_health_check_deletion = 0;
+
     audit_parse(buffer);
+
+    assert_int_equal(audit_health_check_deletion, 1);
 }
 
 
@@ -968,6 +1163,11 @@ void test_audit_parse_add_hc(void **state)
         type=PATH msg=audit(1571988027.797:3004340): item=2 name=(null) inode=24 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
         type=PROCTITLE msg=audit(1571988027.797:3004340): proctitle=726D002D726600666F6C6465722F \
     ";
+
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_hc\"'");
+    expect_string(__wrap__mdebug2, msg, FIM_HEALTHCHECK_CREATE);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6252): Whodata health-check: Detected file creation event (257).");
 
     audit_parse(buffer);
 }
@@ -986,6 +1186,11 @@ void test_audit_parse_unknown_hc(void **state)
         type=PROCTITLE msg=audit(1571988027.797:3004340): proctitle=726D002D726600666F6C6465722F \
     ";
 
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_hc\"'");
+    expect_string(__wrap__mdebug2, msg, FIM_HEALTHCHECK_UNRECOGNIZED_EVENT);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6254): Whodata health-check: Unrecognized event (90)");
+
     audit_parse(buffer);
 }
 
@@ -1002,6 +1207,12 @@ void test_audit_parse_delete_folder(void **state)
         type=PATH msg=audit(1572878838.610:220): item=1 name=\"test\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
         type=PROCTITLE msg=audit(1572878838.610:220): proctitle=726D002D72660074657374 \
     ";
+
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+    expect_string(__wrap__mdebug2, msg, "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
+
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 62845);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
@@ -1032,6 +1243,11 @@ void test_audit_parse_delete_folder_hex(void **state)
         type=PROCTITLE msg=audit(1572878838.610:220): proctitle=726D002D72660074657374 \
     ";
 
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+    expect_string(__wrap__mdebug2, msg, "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
+
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 62845);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
     expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
@@ -1050,7 +1266,9 @@ void test_audit_parse_delete_folder_hex(void **state)
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_check_auditd_enabled),
+        cmocka_unit_test(test_check_auditd_enabled_success),
+        cmocka_unit_test(test_check_auditd_enabled_openproc_error),
+        cmocka_unit_test(test_check_auditd_enabled_readproc_error),
         cmocka_unit_test(test_init_auditd_socket_success),
         cmocka_unit_test(test_init_auditd_socket_failure),
         cmocka_unit_test(test_set_auditd_config_audit2_plugin_created),

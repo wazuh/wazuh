@@ -84,7 +84,7 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
 
     va_start(args, msg);
 
-    while(aux = strchr(aux, '%')) {
+    while(aux = strchr(aux, '%'), aux) {
         i++;
         aux++;
     }
@@ -195,21 +195,6 @@ int __wrap_getpwuid_r(uid_t uid, struct passwd *pwd,
 /* setup/teardown */
 static int teardown_string(void **state) {
     free(*state);
-    return 0;
-}
-
-static int teardown_strarray(void **state) {
-    free_strarray(*state);
-    return 0;
-}
-
-static int teardown_free_array(void **state) {
-    int i;
-
-    for(i = 0; state[i]; i++) {
-        free(state[i]);
-    }
-
     return 0;
 }
 
@@ -1910,7 +1895,7 @@ static void test_sk_sum_clean_shortest_valid_message(void **state) {
     sk_decode_data_t *data = *state;
     int ret;
 
-    char *c_sum = strdup("size:1234:uid:gid:"
+    data->c_sum = strdup("size:1234:uid:gid:"
                          "3691689a513ace7e508297b583d7050d:"
                          "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
                          "uname:gname:2345:3456");
@@ -1933,7 +1918,7 @@ static void test_sk_sum_clean_invalid_message(void **state) {
     sk_decode_data_t *data = *state;
     int ret;
 
-    char *c_sum = strdup("This is not a valid syscheck message");
+    data->c_sum = strdup("This is not a valid syscheck message");
 
     // Fill sum with as many info as possible
     ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
@@ -2083,9 +2068,9 @@ static void test_ag_send_syscheck_success(void **state) {
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
 
-    will_return(__wrap_OS_ConnectUnixDomain, 1);
+    will_return(__wrap_OS_ConnectUnixDomain, 1234);
 
-    expect_value(__wrap_OS_SendSecureTCP, sock, 1);
+    expect_value(__wrap_OS_SendSecureTCP, sock, 1234);
     expect_value(__wrap_OS_SendSecureTCP, size, 48);
     expect_string(__wrap_OS_SendSecureTCP, msg, input);
 
@@ -2110,6 +2095,8 @@ static void test_ag_send_syscheck_unable_to_connect(void **state) {
     expect_value(__wrap__merror, param2, EADDRNOTAVAIL);
 
     ag_send_syscheck(input);
+
+    errno = 0;
 }
 static void test_ag_send_syscheck_error_sending_message(void **state) {
     char *input = "This is a mock message, it wont be sent anywhere";
@@ -2118,9 +2105,9 @@ static void test_ag_send_syscheck_error_sending_message(void **state) {
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
 
-    will_return(__wrap_OS_ConnectUnixDomain, 1);
+    will_return(__wrap_OS_ConnectUnixDomain, 1234);
 
-    expect_value(__wrap_OS_SendSecureTCP, sock, 1);
+    expect_value(__wrap_OS_SendSecureTCP, sock, 1234);
     expect_value(__wrap_OS_SendSecureTCP, size, 48);
     expect_string(__wrap_OS_SendSecureTCP, msg, input);
 
@@ -2133,6 +2120,8 @@ static void test_ag_send_syscheck_error_sending_message(void **state) {
     expect_value(__wrap__merror, param2, EWOULDBLOCK);
 
     ag_send_syscheck(input);
+
+    errno = 0;
 }
 
 /* decode_win_attributes tests */
@@ -2204,7 +2193,7 @@ static void test_decode_win_permissions_success_all_permissions(void **state) {
     char *output;
 
     snprintf(raw_perm, OS_MAXSTR,  "|account,0,%ld",
-        GENERIC_READ |
+        (long int)(GENERIC_READ |
         GENERIC_WRITE |
         GENERIC_EXECUTE |
         GENERIC_ALL |
@@ -2220,7 +2209,7 @@ static void test_decode_win_permissions_success_all_permissions(void **state) {
         FILE_WRITE_EA |
         FILE_EXECUTE |
         FILE_READ_ATTRIBUTES |
-        FILE_WRITE_ATTRIBUTES);
+        FILE_WRITE_ATTRIBUTES));
 
     output = decode_win_permissions(raw_perm);
 
@@ -2236,7 +2225,7 @@ static void test_decode_win_permissions_success_no_permissions(void **state) {
     char *raw_perm = calloc(OS_MAXSTR, sizeof(char));
     char *output;
 
-    snprintf(raw_perm, OS_MAXSTR,  "|account,0,%ld", 0);
+    snprintf(raw_perm, OS_MAXSTR,  "|account,0,%ld", (long int)0);
 
     output = decode_win_permissions(raw_perm);
 
@@ -2251,7 +2240,7 @@ static void test_decode_win_permissions_success_some_permissions(void **state) {
     char *output;
 
     snprintf(raw_perm, OS_MAXSTR,  "|account,0,%ld",
-        GENERIC_READ |
+        (long int)(GENERIC_READ |
         GENERIC_EXECUTE |
         DELETE |
         WRITE_DAC |
@@ -2259,7 +2248,7 @@ static void test_decode_win_permissions_success_some_permissions(void **state) {
         FILE_WRITE_DATA |
         FILE_READ_EA |
         FILE_EXECUTE |
-        FILE_WRITE_ATTRIBUTES);
+        FILE_WRITE_ATTRIBUTES));
 
     output = decode_win_permissions(raw_perm);
 
@@ -2274,7 +2263,7 @@ static void test_decode_win_permissions_success_multiple_accounts(void **state) 
     char *raw_perm = calloc(OS_MAXSTR, sizeof(char));
     char *output;
 
-    snprintf(raw_perm, OS_MAXSTR,  "|first,0,%ld|second,1,%ld", GENERIC_READ, GENERIC_EXECUTE);
+    snprintf(raw_perm, OS_MAXSTR,  "|first,0,%ld|second,1,%ld", (long int)GENERIC_READ, (long int)GENERIC_EXECUTE);
 
     output = decode_win_permissions(raw_perm);
 
@@ -2364,7 +2353,6 @@ static void test_attrs_to_json_multiple_attributes(void **state) {
 static void test_attrs_to_json_unable_to_create_json_array(void **state)  {
     char *input = "attr1, attr2, attr3";
     cJSON *output;
-    char *attr1, *attr2, *attr3;
 
     will_return(__wrap_cJSON_CreateArray, NULL);
 
@@ -2378,7 +2366,6 @@ static void test_attrs_to_json_unable_to_create_json_array(void **state)  {
 // TODO: Validate this condition is required to be tested
 static void test_attrs_to_json_null_attributes(void **state)  {
     cJSON *output;
-    char *attr1, *attr2, *attr3;
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
@@ -2506,8 +2493,6 @@ static void test_win_perm_to_json_some_permissions(void **state) {
 static void test_win_perm_to_json_no_permissions(void **state) {
     char *input = "account (allowed)";
     cJSON *output;
-    cJSON *user, *permissions_array;
-    char *string;
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
@@ -2726,8 +2711,6 @@ static void test_win_perm_to_json_fragmented_acl(void **state) {
 // TODO: Validate this condition is required to be tested
 static void test_win_perm_to_json_null_input(void **state) {
     cJSON *output;
-    cJSON *user, *permissions_array;
-    char *string;
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
@@ -2852,6 +2835,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_remove_empty_folders_error_removing_dir),
 
         /* sk_decode_sum tests */
+        cmocka_unit_test(test_sk_decode_sum_no_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_deleted_file, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_perm, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_missing_separator, setup_sk_decode, teardown_sk_decode),

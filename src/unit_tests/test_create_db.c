@@ -371,7 +371,6 @@ void test_fim_json_event_whodata(void **state)
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
-    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
     cJSON *audit = cJSON_GetObjectItem(data, "audit");
     assert_non_null(audit);
     assert_int_equal(cJSON_GetArraySize(audit), 12);
@@ -763,6 +762,31 @@ void test_fim_check_restrict_failure(void **state)
     assert_int_equal(ret, 1);
 }
 
+void test_fim_check_restrict_null_filename(void **state)
+{
+    (void) state;
+    int ret;
+
+    OSMatch *restriction;
+    restriction = calloc(1, sizeof(OSMatch));
+    OSMatch_Compile("test$", restriction, 0);
+
+    ret = fim_check_restrict(NULL, restriction);
+    OSMatch_FreePattern(restriction);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_fim_check_restrict_null_restriction(void **state)
+{
+    (void) state;
+    int ret;
+
+    ret = fim_check_restrict("my_test", NULL);
+
+    assert_int_equal(ret, 0);
+}
+
 
 void test_fim_scan_info_json_start(void **state)
 {
@@ -920,7 +944,6 @@ void test_fim_insert_success_new(void **state)
 {
     (void) state;
     int ret;
-    int status;
 
     char * file = "test-file.tst";
     struct stat file_stat;
@@ -960,7 +983,6 @@ void test_fim_insert_success_new(void **state)
     ret = fim_insert(file, data, &file_stat);
 
     assert_int_equal(ret, 0);
-
 }
 
 
@@ -968,7 +990,6 @@ void test_fim_insert_success_add(void **state)
 {
     (void) state;
     int ret;
-    int status;
 
     char * file = "test-file.tst";
     struct stat file_stat;
@@ -1016,7 +1037,6 @@ void test_fim_insert_failure_new(void **state)
 {
     (void) state;
     int ret;
-    int status;
 
     char * file = "test-file.tst";
     struct stat file_stat;
@@ -1063,7 +1083,6 @@ void test_fim_insert_failure_duplicated(void **state)
 {
     (void) state;
     int ret;
-    int status;
 
     char * file = "test-file.tst";
     struct stat file_stat;
@@ -1150,8 +1169,6 @@ void test_fim_update_failure_nofile(void **state)
 {
     (void) state;
     int ret;
-
-    char * file = "test-file.tst";
 
     fim_entry_data *data = fill_entry_struct(
         1500,
@@ -1271,7 +1288,6 @@ void test_fim_update_failure_update_inode(void **state)
 void test_fim_delete_no_data(void **state)
 {
     (void) state;
-    int ret;
 
     char * file_name = "test-file.tst";
     will_return(__wrap_rbtree_get, NULL);
@@ -1513,6 +1529,9 @@ void test_fim_checker_file(void **state)
     will_return(__wrap_lstat, 0);
 
     fim_checker(path, item, w_evt, 1);
+
+    assert_int_equal(item->configuration, 33279);
+    assert_int_equal(item->index, 3);
 
     free(item);
     free_whodata_event(w_evt);
@@ -2024,6 +2043,8 @@ int main(void) {
         cmocka_unit_test(test_fim_check_ignore_failure),
         cmocka_unit_test(test_fim_check_restrict_success),
         cmocka_unit_test(test_fim_check_restrict_failure),
+        cmocka_unit_test(test_fim_check_restrict_null_filename),
+        cmocka_unit_test(test_fim_check_restrict_null_restriction),
         cmocka_unit_test_teardown(test_fim_scan_info_json_start, delete_json),
         cmocka_unit_test_teardown(test_fim_scan_info_json_end, delete_json),
         cmocka_unit_test_teardown(test_fim_get_checksum, delete_entry_data),
