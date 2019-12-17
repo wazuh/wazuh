@@ -93,9 +93,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                     mtdebug2(WM_SYS_LOGTAG, "Sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                     free(string);
-
-                } else
-                    mterror(WM_SYS_LOGTAG, "Unable to get package information for '%s'", dep->d_name);
+                }
             }
         }
         closedir(dr);
@@ -119,9 +117,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                     mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                     free(string);
-
-                } else
-                    mterror(WM_SYS_LOGTAG, "Unable to get package information for '%s'", dep->d_name);
+                }
             }
         }
         closedir(dr);
