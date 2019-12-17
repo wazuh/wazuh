@@ -11,60 +11,6 @@
 
 #include "wdb.h"
 
-// Find scan_info entry: returns 1 if found, 0 if not, or -1 on error.
-int wdb_scan_info_find (wdb_t * wdb, const char * module) {
-    sqlite3_stmt *stmt = NULL;
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_FIND) < 0) {
-        merror("DB(%s) Cannot cache statement", wdb->agent_id);
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_SCAN_INFO_FIND];
-
-    sqlite3_bind_text(stmt, 1, module, -1, NULL);
-
-    switch (sqlite3_step(stmt)) {
-    case SQLITE_ROW:
-        return 1;
-        break;
-    case SQLITE_DONE:
-        return 0;
-        break;
-    default:
-        mdebug1("DB(%s) at sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-}
-
-// Initialize to 0 all data in a row into scan_info: returns -1 on error, 0 success
-int wdb_scan_info_insert (wdb_t * wdb, const char *module) {
-    sqlite3_stmt *stmt = NULL;
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_INSERT) < 0) {
-        merror("DB(%s) Cannot cache statement", wdb->agent_id);
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_SCAN_INFO_INSERT];
-
-    sqlite3_bind_text(stmt, 1, module, -1, NULL);
-    sqlite3_bind_int64(stmt, 2, 0);
-    sqlite3_bind_int64(stmt, 3, 0);
-    sqlite3_bind_int64(stmt, 4, 0);
-    sqlite3_bind_int64(stmt, 5, 0);
-    sqlite3_bind_int64(stmt, 6, 0);
-    sqlite3_bind_int64(stmt, 7, 0);
-    sqlite3_bind_int64(stmt, 8, 0);
-
-    if (sqlite3_step(stmt) == SQLITE_DONE) {
-        return 0;
-    } else {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-}
-
 // Update field from scan_info table: return -1 on error 0 success
 int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, long value) {
     sqlite3_stmt *stmt = NULL;

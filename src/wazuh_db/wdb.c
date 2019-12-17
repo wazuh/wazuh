@@ -58,8 +58,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_ADDR_DEL] = "DELETE FROM sys_netaddr WHERE scan_id != ?;",
     [WDB_STMT_CISCAT_INSERT] = "INSERT INTO ciscat_results (scan_id, scan_time, benchmark, profile, pass, fail, error, notchecked, unknown, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_CISCAT_DEL] = "DELETE FROM ciscat_results WHERE scan_id != ?;",
-    [WDB_STMT_SCAN_INFO_FIND] = "SELECT first_start, first_end, start_scan, end_scan, first_check, second_check, third_check FROM scan_info WHERE module = ?;",
-    [WDB_STMT_SCAN_INFO_INSERT] = "INSERT INTO scan_info (module, first_start, first_end, start_scan, end_scan, fim_first_check, fim_second_check, fim_third_check) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_SCAN_INFO_UPDATEFS] = "UPDATE scan_info SET first_start = ?, start_scan = ? WHERE module = ?;",
     [WDB_STMT_SCAN_INFO_UPDATEFE] = "UPDATE scan_info SET first_end = ?, end_scan = ? WHERE module = ?;",
     [WDB_STMT_SCAN_INFO_UPDATESS] = "UPDATE scan_info SET start_scan = ? WHERE module = ?;",
