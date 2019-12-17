@@ -702,7 +702,6 @@ void DecodeEventchannelTestRule(Eventinfo *lf)
     cJSON *event = NULL;
     cJSON *json_event = NULL;
     const char *jsonErrPtr;
-    OS_XML xml;
 
     print_out("\n**Phase 2: Completed decoding.\n");
     print_out("       decoder: 'windows_eventchannel'");
@@ -727,7 +726,7 @@ void DecodeEventchannelTestRule(Eventinfo *lf)
     /* Obtain event in XML format */
     else if (!strncmp(lf->log, "<Event", 6))
     {
-        if (OS_ReadXMLString(lf->log, &xml) < 0 || DecodeWinevt(lf))
+        if (DecodeWinevt(lf))
         { print_out("\nMalformed eventchannel XML event.\n"); }
     }
     else
@@ -742,23 +741,20 @@ static int printArrayEvent (Eventinfo *lf, cJSON *event, char *name)
     int json_size, i;
     cJSON *item = NULL;
     cJSON *obj = NULL;
-    size_t array_size = 300;
+    size_t array_size = 150;
     char name_item[array_size];
 
     if(obj = cJSON_GetObjectItem(event, name), !obj)
     { return result; }
 
-    json_size = cJSON_GetArraySize(obj);
+    if(json_size = cJSON_GetArraySize(obj), json_size <= 0)
+    { return result; }
 
     for (i = 0; i < json_size; i++)
     {
         item = cJSON_GetArrayItem(obj, i);
-
-        if(item && strlen(item->string) + strlen(name) + 6 <= array_size)
-        {
-            snprintf(name_item, strlen(item->string) + strlen(name) + 6, "win.%s.%s", name, item->string);
-            fillData(lf, name_item, item->valuestring);
-        }
+        snprintf(name_item, array_size, "win.%s.%s", name, item->string);
+        fillData(lf, name_item, item->valuestring);
     }
 
     result = 0;
