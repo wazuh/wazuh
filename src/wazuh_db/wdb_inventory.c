@@ -575,23 +575,23 @@ int wdb_inventory_save_process(wdb_t * wdb, const char * payload) {
     attribute = cJSON_GetObjectItem(attributes, "ppid");
     int ppid = attribute ? attribute->valueint : -1;
     attribute = cJSON_GetObjectItem(attributes, "utime");
-    int utime = attribute ? attribute->valueint : -1;
+    long utime = attribute ? (long)attribute->valuedouble : -1;
     attribute = cJSON_GetObjectItem(attributes, "stime");
-    int stime = attribute ? attribute->valueint : -1;
+    long stime = attribute ? (long)attribute->valuedouble : -1;
     attribute = cJSON_GetObjectItem(attributes, "priority");
     int priority = attribute ? attribute->valueint : -1;
     attribute = cJSON_GetObjectItem(attributes, "nice");
     int nice = attribute ? attribute->valueint : -1;
     attribute = cJSON_GetObjectItem(attributes, "size");
-    int size = attribute ? attribute->valueint : -1;
+    long size = attribute ? (long)attribute->valuedouble : -1;
     attribute = cJSON_GetObjectItem(attributes, "vm_size");
-    int vm_size = attribute ? attribute->valueint : -1;
+    long vm_size = attribute ? (long)attribute->valuedouble : -1;
     attribute = cJSON_GetObjectItem(attributes, "resident");
-    int resident = attribute ? attribute->valueint : -1;
+    long resident = attribute ? (long)attribute->valuedouble : -1;
     attribute = cJSON_GetObjectItem(attributes, "share");
-    int share = attribute ? attribute->valueint : -1;
+    long share = attribute ? (long)attribute->valuedouble : -1;
     attribute = cJSON_GetObjectItem(attributes, "start_time");
-    int start_time = attribute ? attribute->valueint : -1;
+    long start_time = attribute ? (long)attribute->valuedouble : -1;
     attribute = cJSON_GetObjectItem(attributes, "pgrp");
     int pgrp = attribute ? attribute->valueint : -1;
     attribute = cJSON_GetObjectItem(attributes, "session");
@@ -661,6 +661,31 @@ int wdb_inventory_delete_process(wdb_t * wdb, const char * payload) {
 
     if (result = wdb_process_delete2(wdb, pid, name), result < 0) {
         mdebug1("Cannot delete old Process entry.");
+    }
+
+    cJSON_Delete(data);
+    return result;
+}
+
+/* Get the information to save a scan entry in the DB. */
+int wdb_inventory_save_scan_info(wdb_t * wdb, const char * inventory, const char * payload) {
+    int result = 0;
+
+    cJSON * data = cJSON_Parse(payload);
+
+    if (data == NULL) {
+        mdebug1("DB(%s): cannot parse inventory scan info payload: '%s'", wdb->agent_id, payload);
+        return -1;
+    }
+
+    cJSON * attribute = NULL;
+    attribute = cJSON_GetObjectItem(data, "timestamp");
+    long timestamp = attribute ? (long)attribute->valuedouble : -1;
+    attribute = cJSON_GetObjectItem(data, "items");
+    int items = attribute ? attribute->valueint : -1;
+
+    if (result = wdb_sys_scan_info_save(wdb, inventory, timestamp, items), result < 0) {
+        mdebug1("Cannot save scan information.");
     }
 
     cJSON_Delete(data);

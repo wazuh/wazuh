@@ -64,6 +64,7 @@ static const char *SQL_STMT[] = {
     "DELETE FROM sys_netproto WHERE iface = ?;",
     "DELETE FROM sys_netaddr WHERE scan_id != ?;",
     "DELETE FROM sys_netaddr WHERE iface = ?;",
+    "INSERT OR REPLACE INTO sys_scan_info (inventory, timestamp, items) VALUES (?, ?, ?);",
     "INSERT INTO ciscat_results (scan_id, scan_time, benchmark, profile, pass, fail, error, notchecked, unknown, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM ciscat_results WHERE scan_id != ?;",
     "SELECT first_start, first_end, start_scan, end_scan, first_check, second_check, third_check FROM scan_info WHERE module = ?;",

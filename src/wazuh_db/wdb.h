@@ -85,6 +85,7 @@ typedef enum wdb_stmt {
     WDB_STMT_PROTO_DEL2,
     WDB_STMT_ADDR_DEL,
     WDB_STMT_ADDR_DEL2,
+    WDB_STMT_SYS_SCAN_INFO_INSERT,
     WDB_STMT_CISCAT_INSERT,
     WDB_STMT_CISCAT_DEL,
     WDB_STMT_SCAN_INFO_FIND,
@@ -153,6 +154,7 @@ extern char *schema_agents_sql;
 extern char *schema_upgrade_v1_sql;
 extern char *schema_upgrade_v2_sql;
 extern char *schema_upgrade_v3_sql;
+extern char *schema_upgrade_v4_sql;
 
 extern wdb_config config;
 extern pthread_mutex_t pool_mutex;
@@ -236,6 +238,8 @@ int wdb_inventory_delete_port(wdb_t * wdb, const char * payload);
 int wdb_inventory_save_process(wdb_t * wdb, const char * payload);
 
 int wdb_inventory_delete_process(wdb_t * wdb, const char * payload);
+
+int wdb_inventory_save_scan_info(wdb_t * wdb, const char * inventory, const char * payload);
 
 /* Insert configuration assessment entry. Returns ID on success or -1 on error. */
 int wdb_insert_pm(sqlite3 *db, const rk_event_t *event);
@@ -493,10 +497,10 @@ int wdb_package_delete(wdb_t * wdb, const char * scan_id);
 int wdb_package_delete2(wdb_t * wdb, const char * name, const char * version, const char * architecture);
 
 // Insert hotfix info tuple. Return 0 on success or -1 on error.
-int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix);
+int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hotfix);
 
 // Save Hotfixes info into DB.
-int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix);
+int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hotfix);
 
 // Delete Hotfix info from DB.
 int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id);
@@ -530,6 +534,12 @@ int wdb_process_delete(wdb_t * wdb, const char * scan_id);
 
 // Delete a process entry from DB.
 int wdb_process_delete2(wdb_t * wdb, const int pid, const char * name);
+
+// Insert inventory scan info. Return 0 on success or -1 on error.
+int wdb_sys_scan_info_insert(wdb_t * wdb, const char * inventory, time_t timestamp, int items);
+
+// Save inventory scan info into DB.
+int wdb_sys_scan_info_save(wdb_t * wdb, const char * inventory, time_t timestamp, int items);
 
 // Save CIS-CAT scan results.
 int wdb_ciscat_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * benchmark, const char * profile, int pass, int fail, int error, int notchecked, int unknown, int score);

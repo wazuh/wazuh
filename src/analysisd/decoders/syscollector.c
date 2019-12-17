@@ -97,7 +97,7 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
         return (0);
     }
 
-    // If the JSON event has the object 'data', we decode, alert and update DB entry.
+    // If the JSON event has the object 'data', agent is version >= 3.12. We decode, alert and update the DB entry.
     data = cJSON_GetObjectItem(logJSON, "data");
 
     fillData(lf,"type",msg_type);

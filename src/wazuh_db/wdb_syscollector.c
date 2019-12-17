@@ -1271,3 +1271,50 @@ int wdb_process_delete2(wdb_t * wdb, const int pid, const char * name) {
 
     return 0;
 }
+
+// Function to save scan metadata information into the DB. Return 0 on success or -1 on error.
+int wdb_sys_scan_info_save(wdb_t * wdb, const char * inventory, time_t timestamp, int items) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_sys_scan_info_save(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_sys_scan_info_insert(wdb, inventory, timestamp, items) < 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
+// Insert inventory scan info. Return 0 on success or -1 on error.
+int wdb_sys_scan_info_insert(wdb_t * wdb, const char * inventory, time_t timestamp, int items) {
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_SYS_SCAN_INFO_INSERT) < 0) {
+        mdebug1("at wdb_sys_scan_info_insert(): cannot cache statement");
+    }
+
+    stmt = wdb->stmt[WDB_STMT_SYS_SCAN_INFO_INSERT];
+
+    sqlite3_bind_text(stmt, 1, inventory, -1, NULL);
+    if (timestamp >= 0) {
+        sqlite3_bind_int64(stmt, 2, timestamp);
+    } else {
+        sqlite3_bind_null(stmt, 2);
+    }
+    if (items >= 0) {
+        sqlite3_bind_int(stmt, 3, items);
+    } else {
+        sqlite3_bind_null(stmt, 3);
+    }
+
+    if (sqlite3_step(stmt) == SQLITE_DONE){
+        return 0;
+    }
+    else {
+        merror("at wdb_sys_scan_info_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}

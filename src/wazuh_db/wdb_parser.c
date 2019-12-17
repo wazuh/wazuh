@@ -730,6 +730,195 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                 result = -1;
             }
         }
+    } else if (strcmp(curr, "network_scan") == 0) {
+        if (!next) {
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+            result = -1;
+        } else {
+            curr = next;
+            if (next = wstr_chr(curr, ' '), !next) {
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+                return -1;
+            }
+            *next++ = '\0';
+
+            if (strcmp(curr, "update") == 0) {
+                if (result = wdb_inventory_save_scan_info(wdb, "network", next), result < 0) {
+                    mdebug1("Cannot save network scan information.");
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot save network scan information.");
+                } else {
+                    snprintf(output, OS_MAXSTR + 1, "ok");
+                }
+            } else {
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+                result = -1;
+            }
+        }
+    } else if (strcmp(curr, "OS_scan") == 0) {
+        if (!next) {
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+            result = -1;
+        } else {
+            curr = next;
+            if (next = wstr_chr(curr, ' '), !next) {
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+                return -1;
+            }
+            *next++ = '\0';
+
+            if (strcmp(curr, "update") == 0) {
+                if (result = wdb_inventory_save_scan_info(wdb, "OS", next), result < 0) {
+                    mdebug1("Cannot save OS scan information.");
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot save OS scan information.");
+                } else {
+                    snprintf(output, OS_MAXSTR + 1, "ok");
+                }
+            } else {
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+                result = -1;
+            }
+        }
+    } else if (strcmp(curr, "hardware_scan") == 0) {
+        if (!next) {
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+            result = -1;
+        } else {
+            curr = next;
+            if (next = wstr_chr(curr, ' '), !next) {
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+                return -1;
+            }
+            *next++ = '\0';
+
+            if (strcmp(curr, "update") == 0) {
+                if (result = wdb_inventory_save_scan_info(wdb, "hardware", next), result < 0) {
+                    mdebug1("Cannot save hardware scan information.");
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot save hardware scan information.");
+                } else {
+                    snprintf(output, OS_MAXSTR + 1, "ok");
+                }
+            } else {
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+                result = -1;
+            }
+        }
+    } else if (strcmp(curr, "program_scan") == 0) {
+        if (!next) {
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+            result = -1;
+        } else {
+            curr = next;
+            if (next = wstr_chr(curr, ' '), !next) {
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+                return -1;
+            }
+            *next++ = '\0';
+
+            if (strcmp(curr, "update") == 0) {
+                if (result = wdb_inventory_save_scan_info(wdb, "program", next), result < 0) {
+                    mdebug1("Cannot save program scan information.");
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot save program scan information.");
+                } else {
+                    snprintf(output, OS_MAXSTR + 1, "ok");
+                }
+            } else {
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+                result = -1;
+            }
+        }
+    } else if (strcmp(curr, "hotfix_scan") == 0) {
+        if (!next) {
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+            result = -1;
+        } else {
+            curr = next;
+            if (next = wstr_chr(curr, ' '), !next) {
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+                return -1;
+            }
+            *next++ = '\0';
+
+            if (strcmp(curr, "update") == 0) {
+                if (result = wdb_inventory_save_scan_info(wdb, "hotfix", next), result < 0) {
+                    mdebug1("Cannot save hotfix scan information.");
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot save hotfix scan information.");
+                } else {
+                    snprintf(output, OS_MAXSTR + 1, "ok");
+                }
+            } else {
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+                result = -1;
+            }
+        }
+    } else if (strcmp(curr, "port_scan") == 0) {
+        if (!next) {
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+            result = -1;
+        } else {
+            curr = next;
+            if (next = wstr_chr(curr, ' '), !next) {
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+                return -1;
+            }
+            *next++ = '\0';
+
+            if (strcmp(curr, "update") == 0) {
+                if (result = wdb_inventory_save_scan_info(wdb, "port", next), result < 0) {
+                    mdebug1("Cannot save port scan information.");
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot save port scan information.");
+                } else {
+                    snprintf(output, OS_MAXSTR + 1, "ok");
+                }
+            } else {
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+                result = -1;
+            }
+        }
+    } else if (strcmp(curr, "process_scan") == 0) {
+        if (!next) {
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+            result = -1;
+        } else {
+            curr = next;
+            if (next = wstr_chr(curr, ' '), !next) {
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+                return -1;
+            }
+            *next++ = '\0';
+
+            if (strcmp(curr, "update") == 0) {
+                if (result = wdb_inventory_save_scan_info(wdb, "process", next), result < 0) {
+                    mdebug1("Cannot save process scan information.");
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot save process scan information.");
+                } else {
+                    snprintf(output, OS_MAXSTR + 1, "ok");
+                }
+            } else {
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
+                result = -1;
+            }
+        }
     } else {
         mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
