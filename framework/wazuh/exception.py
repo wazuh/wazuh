@@ -493,6 +493,9 @@ class WazuhException(Exception):
                'remediation': 'Please, create the specified user-role relation with the endpoint '
                               'POST /security/user/{username}/roles/{role_id}'},
         4017: {'message': 'The specified user-role link already exist'},
+        4500: {'message': 'The specified resources are invalid',
+               'remediation': 'Please, make sure permissions are properly defined, '
+                              'for more information on setting up permissions please visit XXXX'},
 
         # User management
         5000: {'message': 'The user could not be created',

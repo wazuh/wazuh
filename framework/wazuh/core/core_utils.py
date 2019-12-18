@@ -3,8 +3,10 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from glob import glob
+from os.path import join
 
 from wazuh import common
+from wazuh.common import ossec_path
 from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryMultigroups
 from wazuh.database import Connection
 from wazuh.exception import WazuhInternalError
@@ -41,6 +43,19 @@ def get_groups():
         groups_list.add(group['name'])
 
     return groups_list
+
+
+@common.context_cached('system_files')
+def get_files():
+    folders = ['etc/rules', 'etc/decoders', 'etc/lists', 'ruleset/sca', 'ruleset/decoders', 'ruleset/rules']
+    files = set()
+    for folder in folders:
+        for extension in '*.yml', '*.yml.disabled', '*.xml', '*.cdb':
+            files.update({f.replace(ossec_path + '/', "") for f in glob(
+                join(ossec_path, folder, extension), recursive=True)})
+    files.add('etc/ossec.conf')
+
+    return files
 
 
 def expand_group(group_name):
