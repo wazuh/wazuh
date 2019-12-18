@@ -311,9 +311,14 @@ class Agent:
             if self.status.lower() != 'active':
                 raise WazuhException(1707, '{0} - {1}'.format(self.id, self.status))
 
-            oq = OssecQueue(common.ARQUEUE)
-            ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS, self.id)
-            oq.close()
+            # Check if agent has active-response disabled
+            agent_conf = self.get_config(self.id, 'com', 'active-response')
+            if agent_conf['active-response']['disabled'] == 'yes':
+                raise WazuhException(1750)
+            else:
+                oq = OssecQueue(common.ARQUEUE)
+                ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS, self.id)
+                oq.close()
 
         return ret_msg
 
@@ -863,21 +868,6 @@ class Agent:
                 final_dict = {'msg': message, 'affected_agents': affected_agents}
 
             return final_dict
-
-    @staticmethod
-    def restart_agents_by_group(group_id: str) -> Dict:
-        """Restart all the agents which belong to a group.
-
-        :param group_id: Name of the group
-        :return: Confirmation message
-        """
-        # list with agent IDs to restart. Contains key-value pairs.
-        agent_list = Agent.get_agent_group(group_id=group_id,
-                                           select={'fields': ['id']}).get('items')
-        # format agent_list as a list with strings of agent IDs
-        agent_list = [elem.get('id') for elem in agent_list]
-
-        return Agent.restart_agents(agent_id=agent_list)
 
     @staticmethod
     def get_agent_by_name(agent_name, select=None):

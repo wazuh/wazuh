@@ -366,6 +366,9 @@ int main(int argc, char **argv)
             exit(1);
         }
     }
+    else {
+        mwarn("Registering agent to unverified manager.");
+    }
 
     minfo("Using agent name as: %s", agentname);
 

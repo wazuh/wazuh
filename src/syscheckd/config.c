@@ -51,6 +51,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.max_fd_win_rt  = 0;
 #endif
     syscheck.prefilter_cmd  = NULL;
+    syscheck.allow_remote_prefilter_cmd  = false;
 
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
 
@@ -301,6 +302,9 @@ cJSON *getSyscheckConfig(void) {
         cJSON_AddItemToObject(syscfg,"registry_ignore_sregex",rgi);
     }
 #endif
+
+    cJSON_AddStringToObject(syscfg, "allow_remote_prefilter_cmd", syscheck.allow_remote_prefilter_cmd ? "yes" : "no");
+
     if (syscheck.prefilter_cmd) {
         cJSON_AddStringToObject(syscfg,"prefilter_cmd",syscheck.prefilter_cmd);
     }

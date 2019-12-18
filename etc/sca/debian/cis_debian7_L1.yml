@@ -439,7 +439,7 @@ checks:
       - http://www.openldap.org
     condition: none
     rules:
-      - 'c:dpkg -s slapd -> install ok installed'
+      - 'c:dpkg -s slapd -> r:install ok installed'
 
   - id: 1034
     title: "Ensure NFS and RPC are not enabled"
@@ -550,7 +550,7 @@ checks:
       - cis: ["6.16"]
     condition: none
     rules:
-      - 'c:dpkg -s rsync -> install ok installed'
+      - 'c:dpkg -s rsync -> r:install ok installed'
       - 'not f:/etc/default/rsync -> !r:^# && r:RSYNC_ENABLE\s*\t*=\s*\t*false'
 
 # 7 Network Configuration and Firewall
@@ -870,7 +870,7 @@ checks:
       - cis: ["9.2.1"]
     condition: all
     rules:
-      - 'c:dpkg -s libpam-cracklib -> install ok installed'
+      - 'c:dpkg -s libpam-cracklib -> r:install ok installed'
       - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_cracklib.so && r:retry=\d && n:minlen=(\d+) compare >= 14 && r:dcredit=-\d+ && r:ucredit=-\d+ && r:ocredit=-\d+ && r:lcredit=-\d+'
 
   - id: 1070

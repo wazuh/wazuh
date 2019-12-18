@@ -261,7 +261,7 @@ checks:
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale'
-      - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/sysconfig/network && r:-p wa && r:-k system-locale'
+      - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale'
 
   - id: 3516
     title: "Ensure events that modify the system's Mandatory Access Controls are collected (SELinux)"

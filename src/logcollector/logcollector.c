@@ -47,6 +47,7 @@ static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
 int OUTPUT_QUEUE_SIZE = OUTPUT_MIN_QUEUE_SIZE;
 logsocket default_agent = { .name = "agent" };
+logtarget default_target[2] = { { .log_socket = &default_agent } };
 
 /* Output thread variables */
 static pthread_mutex_t mutex;
@@ -61,26 +62,6 @@ static pthread_rwlock_t files_update_rwlock;
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
 
-static char *rand_keepalive_str(char *dst, int size)
-{
-    static const char text[] = "abcdefghijklmnopqrstuvwxyz"
-                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                               "0123456789"
-                               "!@#$%^&*()_+-=;'[],./?";
-    int i;
-    int len;
-    srandom_init();
-    len = os_random() % (size - 10);
-    len = len >= 0 ? len : -len;
-
-    strncpy(dst, "--MARK--: ", 12);
-    for ( i = 10; i < len; ++i ) {
-        dst[i] = text[(unsigned int)os_random() % (sizeof text - 1)];
-    }
-    dst[i] = '\0';
-    return dst;
-}
-
 /* Handle file management */
 void LogCollectorStart()
 {
@@ -90,7 +71,6 @@ void LogCollectorStart()
     int f_free_excluded = 0;
     IT_control f_control = 0;
     IT_control duplicates_removed = 0;
-    char keepalive[1024];
     logreader *current;
 
     /* Create store data */
@@ -190,7 +170,7 @@ void LogCollectorStart()
 
 #ifdef EVENTCHANNEL_SUPPORT
             minfo(READING_EVTLOG, current->file);
-            win_start_event_channel(current->file, current->future, current->query);
+            win_start_event_channel(current->file, current->future, current->query, current->reconnect_time);
 #else
             mwarn("eventchannel not available on this version of Windows");
 #endif
@@ -558,8 +538,7 @@ void LogCollectorStart()
                                  current->file);
 
                         /* Send message about log rotated */
-                        SendMSG(logr_queue, msg_alert,
-                                "ossec-logcollector", LOCALFILE_MQ);
+                        w_msg_hash_queues_push(msg_alert, "ossec-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
 
                         mdebug1("File inode changed. %s",
                                current->file);
@@ -589,8 +568,7 @@ void LogCollectorStart()
                                  current->file);
 
                         /* Send message about log rotated */
-                        SendMSG(logr_queue, msg_alert,
-                                "ossec-logcollector", LOCALFILE_MQ);
+                        w_msg_hash_queues_push(msg_alert, "ossec-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
 
                         mdebug1("File size reduced. %s",
                                 current->file);
@@ -738,8 +716,6 @@ void LogCollectorStart()
             f_check = 0;
         }
 
-        rand_keepalive_str(keepalive, KEEPALIVE_SIZE);
-        SendMSG(logr_queue, keepalive, "ossec-keepalive", LOCALFILE_MQ);
         sleep(1);
 
         f_check++;
@@ -749,11 +725,11 @@ void LogCollectorStart()
 
 int update_fname(int i, int j)
 {
-    struct tm *p;
     time_t __ctime = time(0);
     char lfile[OS_FLSIZE + 1];
     size_t ret;
     logreader *lf;
+    struct tm tm_result = { .tm_sec = 0 };
 
     if (j < 0) {
         lf = &logff[i];
@@ -761,15 +737,15 @@ int update_fname(int i, int j)
         lf = &globs[j].gfiles[i];
     }
 
-    p = localtime(&__ctime);
+    localtime_r(&__ctime, &tm_result);
 
     /* Handle file */
-    if (p->tm_mday == _cday) {
+    if (tm_result.tm_mday == _cday) {
         return (0);
     }
 
     lfile[OS_FLSIZE] = '\0';
-    ret = strftime(lfile, OS_FLSIZE, lf->ffile, p);
+    ret = strftime(lfile, OS_FLSIZE, lf->ffile, &tm_result);
     if (ret == 0) {
         merror_exit(PARSE_ERROR, lf->ffile);
     }
@@ -787,7 +763,7 @@ int update_fname(int i, int j)
         return (1);
     }
 
-    _cday = p->tm_mday;
+    _cday = tm_result.tm_mday;
     return (0);
 }
 
@@ -1332,7 +1308,7 @@ int check_pattern_expand(int do_seek) {
             if ( wildcard ) {
 
                 DIR *dir = NULL;
-                struct dirent *dirent;
+                struct dirent *dirent = NULL;
 
                 *wildcard = '\0';
                 wildcard++;
@@ -2241,7 +2217,7 @@ static void check_pattern_expand_excluded() {
             if (wildcard) {
 
                 DIR *dir = NULL;
-                struct dirent *dirent;
+                struct dirent *dirent = NULL;
 
                 *wildcard = '\0';
                 wildcard++;

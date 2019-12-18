@@ -773,7 +773,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
     FILE *finalfp;
     char newpath[PATH_MAX];
     DIR *dir;
-    struct dirent *ent;
+    struct dirent *ent = NULL;
 
     /* Create a new entry */
 
@@ -1168,26 +1168,6 @@ int checkVista()
     }
 
     return (isVista);
-}
-
-int get_creation_date(char *dir, SYSTEMTIME *utc) {
-    HANDLE hdle;
-    FILETIME creation_date;
-    int retval = 1;
-
-    if (hdle = CreateFile(dir, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL), hdle == INVALID_HANDLE_VALUE) {
-        return retval;
-    }
-
-    if (!GetFileTime(hdle, &creation_date, NULL, NULL)) {
-        goto end;
-    }
-
-    FileTimeToSystemTime(&creation_date, utc);
-    retval = 0;
-end:
-    CloseHandle(hdle);
-    return retval;
 }
 
 /* Get basename of path */
@@ -1964,7 +1944,7 @@ int cldir_ex(const char *name) {
 
 int cldir_ex_ignore(const char * name, const char ** ignore) {
     DIR *dir;
-    struct dirent *dirent;
+    struct dirent *dirent = NULL;
     char path[PATH_MAX + 1];
 
     // Erase content
@@ -2356,6 +2336,9 @@ cJSON* getunameJSON()
         if (read_info->machine && (strcmp(read_info->machine, "unknown") != 0)){
             cJSON_AddStringToObject(root, "architecture", read_info->machine);
         }
+        if (read_info->os_release){
+            cJSON_AddStringToObject(root, "os_release", read_info->os_release);
+        }
 
         free_osinfo(read_info);
         return root;
@@ -2426,7 +2409,7 @@ static int qsort_strcmp(const void *s1, const void *s2) {
 // Read directory and return an array of contained files, sorted alphabetically.
 char ** wreaddir(const char * name) {
     DIR * dir;
-    struct dirent * dirent;
+    struct dirent * dirent = NULL;
     char ** files;
     unsigned int i = 0;
 
