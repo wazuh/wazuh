@@ -49,10 +49,12 @@ with open(test_data_path + 'RBAC_decorators_resourceless_black.json') as f:
 def get_identifier(resources):
     list_params = list()
     for resource in resources:
-        try:
-            list_params.append(re.search(r'^([a-z*]+:[a-z*]+:)(\w+|\*|{(\w+)})$', resource).group(3))
-        except:
-            list_params.append(re.search(r'^([a-z*]+:[a-z*]+:)(\w+|\*|{(\w+)})$', resource).group(2))
+        resource = resource.split('&')
+        for r in resource:
+            try:
+                list_params.append(re.search(r'^([a-z*]+:[a-z*]+:)(\*|{(\w+)})$', r).group(3))
+            except AttributeError:
+                pass
 
     return list_params
 
@@ -85,7 +87,6 @@ def test_expose_resources(mock_create_engine, mock_declarative_base, mock_sessio
             except WazuhError as e:
                 assert (result is None or result == "deny")
                 for allowed_resource in allowed_resources:
-                    print(allowed_resource)
                     assert (len(allowed_resource) == 0)
                 assert (e.code == 4000)
 
@@ -99,7 +100,7 @@ def test_expose_resourcesless(mock_create_engine, mock_declarative_base, mock_se
                               decorator_params, rbac, allowed, mode):
     wazuh.rbac.decorators.switch_mode(mode)
     def mock_expand_resource(resource):
-        return set()
+        return {'*'}
 
     with patch('wazuh.rbac.decorators.rbac') as mock_rbac:
         mock_rbac.get.return_value = rbac

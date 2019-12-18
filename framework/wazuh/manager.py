@@ -28,7 +28,7 @@ cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else 'manager'
 
 
-@expose_resources(actions=['cluster:read_config' if cluster_enabled else 'manager:read_config'],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_status():
     """Wrapper for status().
@@ -179,7 +179,8 @@ def ossec_log_summary(months=3):
     return result
 
 
-@expose_resources(actions=['cluster:upload_file'], resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:upload_file"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def upload_file(path=None, content=None, overwrite=False):
     """Upload a new file
 
@@ -214,7 +215,7 @@ def upload_file(path=None, content=None, overwrite=False):
 
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_file"],
-                  resources=[f'node:id:{node_id}', 'file:path:{path}'] if cluster_enabled else ['file:path:{path}'],
+                  resources=[f'node:id:{node_id}&file:path:{{path}}'] if cluster_enabled else ['file:path:{path}'],
                   post_proc_func=None)
 def get_file(path, validate=False):
     """Returns the content of a file.
@@ -247,7 +248,7 @@ def get_file(path, validate=False):
 
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:delete_file"],
-                  resources=[f'node:id:{node_id}', 'file:path:{path}'] if cluster_enabled else ['file:path:{path}'])
+                  resources=[f'node:id:{node_id}&file:path:{{path}}'] if cluster_enabled else ['file:path:{path}'])
 def delete_file(path):
     """Deletes a file.
 
