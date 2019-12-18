@@ -268,90 +268,104 @@ time_t get_sleep_time(int *run) {
     time_t now = time(NULL);
 
     // Check hardware time
-    time_aux = sys->state.hw_next_time - now;
-    if (time_aux < 0) {
-        modules_expired |= RUN_HW;
-        seconds_to_sleep = -1;
-    } else if (time_aux == seconds_to_sleep) {
-        *run |= RUN_HW;
-    } else if (time_aux < seconds_to_sleep) {
-        *run |= RUN_HW;
-        *run &= RUN_HW;
-        seconds_to_sleep = time_aux;
+    if (sys->flags.hwinfo) {
+        time_aux = sys->state.hw_next_time - now;
+        if (time_aux < 0) {
+            modules_expired |= RUN_HW;
+            seconds_to_sleep = -1;
+        } else if (time_aux == seconds_to_sleep) {
+            *run |= RUN_HW;
+        } else if (time_aux < seconds_to_sleep) {
+            *run |= RUN_HW;
+            *run &= RUN_HW;
+            seconds_to_sleep = time_aux;
+        }
     }
     // Check operative system time
-    time_aux = sys->state.os_next_time - now;
-    if (time_aux < 0) {
-        modules_expired |= RUN_OS;
-        seconds_to_sleep = -1;
-    } else if (time_aux == seconds_to_sleep) {
-        *run |= RUN_OS;
-    } else if (time_aux < seconds_to_sleep) {
-        *run |= RUN_OS;
-        *run &= RUN_OS;
-        seconds_to_sleep = time_aux;
+    if (sys->flags.osinfo) {
+        time_aux = sys->state.os_next_time - now;
+        if (time_aux < 0) {
+            modules_expired |= RUN_OS;
+            seconds_to_sleep = -1;
+        } else if (time_aux == seconds_to_sleep) {
+            *run |= RUN_OS;
+        } else if (time_aux < seconds_to_sleep) {
+            *run |= RUN_OS;
+            *run &= RUN_OS;
+            seconds_to_sleep = time_aux;
+        }
     }
     // Check interfaces time
-    time_aux = sys->state.interfaces_next_time - now;
-    if (time_aux < 0) {
-        modules_expired |= RUN_IFACE;
-        seconds_to_sleep = -1;
-    } else if (time_aux == seconds_to_sleep) {
-        *run |= RUN_IFACE;
-    } else if (time_aux < seconds_to_sleep) {
-        *run |= RUN_IFACE;
-        *run &= RUN_IFACE;
-        seconds_to_sleep = time_aux;
+    if (sys->flags.netinfo) {
+        time_aux = sys->state.interfaces_next_time - now;
+        if (time_aux < 0) {
+            modules_expired |= RUN_IFACE;
+            seconds_to_sleep = -1;
+        } else if (time_aux == seconds_to_sleep) {
+            *run |= RUN_IFACE;
+        } else if (time_aux < seconds_to_sleep) {
+            *run |= RUN_IFACE;
+            *run &= RUN_IFACE;
+            seconds_to_sleep = time_aux;
+        }
     }
     // Check programs/packages time
-    time_aux = sys->state.programs_next_time - now;
-    if (time_aux < 0) {
-        modules_expired |= RUN_PKG;
-        seconds_to_sleep = -1;
-    } else if (time_aux == seconds_to_sleep) {
-        *run |= RUN_PKG;
-    } else if (time_aux < seconds_to_sleep) {
-        *run |= RUN_PKG;
-        *run &= RUN_PKG;
-        seconds_to_sleep = time_aux;
+    if (sys->flags.programinfo) {
+        time_aux = sys->state.programs_next_time - now;
+        if (time_aux < 0) {
+            modules_expired |= RUN_PKG;
+            seconds_to_sleep = -1;
+        } else if (time_aux == seconds_to_sleep) {
+            *run |= RUN_PKG;
+        } else if (time_aux < seconds_to_sleep) {
+            *run |= RUN_PKG;
+            *run &= RUN_PKG;
+            seconds_to_sleep = time_aux;
+        }
     }
 #ifdef WIN32
     // Check hotfixes time
-    time_aux = sys->state.hotfixes_next_time - now;
-    if (time_aux < 0) {
-        modules_expired |= RUN_HFIX;
-        seconds_to_sleep = -1;
-    } else if (time_aux == seconds_to_sleep) {
-        *run |= RUN_HFIX;
-    } else if (time_aux < seconds_to_sleep) {
-        *run |= RUN_HFIX;
-        *run &= RUN_HFIX;
-        seconds_to_sleep = time_aux;
+    if (sys->flags.hotfixinfo) {
+        time_aux = sys->state.hotfixes_next_time - now;
+        if (time_aux < 0) {
+            modules_expired |= RUN_HFIX;
+            seconds_to_sleep = -1;
+        } else if (time_aux == seconds_to_sleep) {
+            *run |= RUN_HFIX;
+        } else if (time_aux < seconds_to_sleep) {
+            *run |= RUN_HFIX;
+            *run &= RUN_HFIX;
+            seconds_to_sleep = time_aux;
+        }
     }
 #endif
     // Check ports time
-    time_aux = sys->state.ports_next_time - now;
-    if (time_aux < 0) {
-        modules_expired |= RUN_PORT;
-        seconds_to_sleep = -1;
-    } else if (time_aux == seconds_to_sleep) {
-        *run |= RUN_PORT;
-    } else if (time_aux < seconds_to_sleep) {
-        *run |= RUN_PORT;
-        *run &= RUN_PORT;
-        seconds_to_sleep = time_aux;
+    if (sys->flags.portsinfo) {
+        time_aux = sys->state.ports_next_time - now;
+        if (time_aux < 0) {
+            modules_expired |= RUN_PORT;
+            seconds_to_sleep = -1;
+        } else if (time_aux == seconds_to_sleep) {
+            *run |= RUN_PORT;
+        } else if (time_aux < seconds_to_sleep) {
+            *run |= RUN_PORT;
+            *run &= RUN_PORT;
+            seconds_to_sleep = time_aux;
+        }
     }
     // Check processes time
-    time_aux = sys->state.processes_next_time - now;
-    if (time_aux < 0) {
-        modules_expired |= RUN_PROC;
-        seconds_to_sleep = -1;
-    } else if (time_aux == seconds_to_sleep) {
-        *run |= RUN_PROC;
-    } else if (time_aux < seconds_to_sleep) {
-        *run |= RUN_PROC;
-        *run &= RUN_PROC;
-        seconds_to_sleep = time_aux;
+    if (sys->flags.procinfo) {
+        time_aux = sys->state.processes_next_time - now;
+        if (time_aux < 0) {
+            modules_expired |= RUN_PROC;
+            seconds_to_sleep = -1;
+        } else if (time_aux == seconds_to_sleep) {
+            *run |= RUN_PROC;
+        } else if (time_aux < seconds_to_sleep) {
+            *run |= RUN_PROC;
+            *run &= RUN_PROC;
+            seconds_to_sleep = time_aux;
+        }
     }
     // Check if any module time has expired
     if (modules_expired) {
