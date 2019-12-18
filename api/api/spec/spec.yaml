@@ -2656,7 +2656,7 @@ components:
 
   parameters:
     auth_context:
-      in: query
+      in: body
       name: Authorization context
       description: 'Authorization context'
       required: False
