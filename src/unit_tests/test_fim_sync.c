@@ -44,9 +44,28 @@ int __wrap_time(){
     return 1572521857;
 }
 
-int __wrap__mwarn()
+void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...)
 {
-    return 0;
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
+void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...)
+{
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
 }
 
 /* tests */
@@ -55,9 +74,11 @@ void test_fim_sync_push_msg_no_response(void **state)
 {
     (void) state;
 
+    expect_string(__wrap__mwarn, formatted_msg,
+        "A data synchronization response was received before sending the first message.");
+
     fim_sync_push_msg("test");
 }
-
 
 void test_fim_sync_checksum(void **state)
 {
@@ -189,6 +210,8 @@ void test_fim_sync_dispatch_noarg(void **state)
 {
     (void) state;
 
+    expect_string(__wrap__mdebug1, formatted_msg, "(6312): Data synchronization command 'payload' with no argument.");
+
     fim_sync_dispatch("payload");
 }
 
@@ -198,12 +221,16 @@ void test_fim_sync_dispatch_invalidarg(void **state)
     (void) state;
     char payload[] = "test payload";
 
+    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: payload.");
+
     fim_sync_dispatch(payload);
 }
 
 void test_fim_sync_dispatch_invalid_id(void **state)
 {
     (void) state;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: {\"id\":\"1\"}.");
 
     char payload[] = "msg {\"id\":\"1\"}";
 
@@ -215,6 +242,9 @@ void test_fim_sync_dispatch_id(void **state)
     (void) state;
 
     char payload[] = "msg {\"id\":1}";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6315): Setting global ID back to lower message ID (1).");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: {\"id\":1}.");
 
     fim_sync_dispatch(payload);
 }
@@ -273,7 +303,16 @@ void test_fim_sync_dispatch_unknown(void **state)
 
     char payload[] = "unknown {\"id\":1,\"begin\":\"test_begin\",\"end\":\"test_end\"}";
 
+    expect_string(__wrap__mdebug1, formatted_msg, "(6313): Unknown data synchronization command: unknown.");
+
     fim_sync_dispatch(payload);
+}
+
+void test_fim_sync_dispatch_null_payload(void **state)
+{
+    (void) state;
+
+    fim_sync_dispatch(NULL);
 }
 
 
@@ -293,6 +332,7 @@ int main(void) {
         cmocka_unit_test(test_fim_sync_dispatch_checksum),
         cmocka_unit_test(test_fim_sync_dispatch_no_data),
         cmocka_unit_test(test_fim_sync_dispatch_unknown),
+        // cmocka_unit_test(test_fim_sync_dispatch_null_payload),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
