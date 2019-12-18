@@ -148,7 +148,7 @@ def ossec_log_summary(months=3):
 
     first_date = previous_month(months)
 
-    with open(common.ossec_log) as f:
+    with open(common.ossec_log, errors='ignore') as f:
         lines_count = 0
         for line in f:
             if lines_count > 50000:

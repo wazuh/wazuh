@@ -442,6 +442,6 @@ size_t rem_getconfig(const char * section, char ** output) {
     }
 error:
     merror("At request getconfig: Could not get '%s' section", section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }

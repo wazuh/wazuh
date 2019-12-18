@@ -182,7 +182,7 @@ int main(int argc, char **argv)
 {
     int i = 0;
     time_t tm;
-    struct tm *p;
+    struct tm tm_result = { .tm_sec = 0 };
     char win_dir[2048];
 
     if (argc >= 2) {
@@ -200,7 +200,7 @@ int main(int argc, char **argv)
 
     /* Get today's day */
     tm = time(NULL);
-    p = localtime(&tm);
+    localtime_r(&tm, &tm_result);
 
     total = 0;
 
@@ -224,7 +224,7 @@ int main(int argc, char **argv)
         snprintf(lfile,
                  OS_MAXSTR,
                  "%s\\System32\\LogFiles\\W3SVC%d\\nc%02d%02d%02d.log",
-                 win_dir, i, (p->tm_year + 1900) - 2000, p->tm_mon + 1, p->tm_mday);
+                 win_dir, i, (tm_result.tm_year + 1900) - 2000, tm_result.tm_mon + 1, tm_result.tm_mday);
         snprintf(vfile,
                  OS_MAXSTR,
                  "%s\\System32\\LogFiles\\W3SVC%d\\nc%%y%%m%%d.log",
@@ -237,7 +237,7 @@ int main(int argc, char **argv)
         snprintf(lfile,
                  OS_MAXSTR,
                  "%s\\System32\\LogFiles\\W3SVC%d\\ex%02d%02d%02d.log",
-                 win_dir, i, (p->tm_year + 1900) - 2000, p->tm_mon + 1, p->tm_mday);
+                 win_dir, i, (tm_result.tm_year + 1900) - 2000, tm_result.tm_mon + 1, tm_result.tm_mday);
 
         snprintf(vfile,
                  OS_MAXSTR,
@@ -256,7 +256,7 @@ int main(int argc, char **argv)
         snprintf(lfile,
                  OS_MAXSTR,
                  "%s\\System32\\LogFiles\\MSFTPSVC%d\\ex%02d%02d%02d.log",
-                 win_dir, i, (p->tm_year + 1900) - 2000, p->tm_mon + 1, p->tm_mday);
+                 win_dir, i, (tm_result.tm_year + 1900) - 2000, tm_result.tm_mon + 1, tm_result.tm_mday);
 
         snprintf(vfile,
                  OS_MAXSTR,
@@ -273,7 +273,7 @@ int main(int argc, char **argv)
         snprintf(lfile,
                  OS_MAXSTR,
                  "%s\\System32\\LogFiles\\SMTPSVC%d\\ex%02d%02d%02d.log",
-                 win_dir, i, (p->tm_year + 1900) - 2000, p->tm_mon + 1, p->tm_mday);
+                 win_dir, i, (tm_result.tm_year + 1900) - 2000, tm_result.tm_mon + 1, tm_result.tm_mday);
 
         snprintf(vfile,
                  OS_MAXSTR,

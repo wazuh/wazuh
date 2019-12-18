@@ -142,8 +142,9 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
             }
             cJSON_AddItemToObject(file,"labels",label);
         }
-        if (list[i].ign) cJSON_AddNumberToObject(file,"frequency",list[i].ign);
-        if (list[i].future) cJSON_AddStringToObject(file,"only-future-events","yes");
+        if (list[i].ign && (strcmp(list[i].logformat,"command")==0 || strcmp(list[i].logformat,"full_command")==0)) cJSON_AddNumberToObject(file,"frequency",list[i].ign);
+        if (list[i].future && strcmp(list[i].logformat,"eventchannel")==0) cJSON_AddStringToObject(file,"only-future-events","yes");
+        if (list[i].reconnect_time && strcmp(list[i].logformat,"eventchannel")==0) cJSON_AddNumberToObject(file,"reconnect_time",list[i].reconnect_time);
 
         cJSON_AddItemToArray(array, file);
         i++;

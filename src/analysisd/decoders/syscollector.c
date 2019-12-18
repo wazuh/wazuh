@@ -1256,6 +1256,8 @@ int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
                 scan_time->valuestring,
                 hotfix->valuestring);
 
+        fillData(lf, "hotfix", hotfix->valuestring);
+
         if (sc_send_db(msg, socket) < 0) {
             return -1;
         }

@@ -86,6 +86,9 @@ int send_msg(const char *msg, ssize_t msg_length);
 /* Extract the shared files */
 char *getsharedfiles(void);
 
+/* Get agent IP */
+char *get_agent_ip();
+
 /* Initialize handshake to server */
 void start_agent(int is_startup);
 

@@ -1988,7 +1988,8 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
     }
 
     int result_accumulator = RETURN_NOT_FOUND;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
+
     while ((entry = readdir(dp)) != NULL) {
         /* Ignore . and ..  */
         if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
@@ -2016,7 +2017,7 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
 
         if (S_ISDIR(statbuf_local.st_mode)) {
             result = wm_sca_check_dir(f_name, file, pattern, reason);
-        } else if (((strncasecmp(file, "r:", 2) == 0) && OS_Regex(file + 2, entry->d_name))
+        } else if (((file && strncasecmp(file, "r:", 2) == 0) && OS_Regex(file + 2, entry->d_name))
                 || OS_Match2(file, entry->d_name))
         {
             result = wm_sca_check_file_list(f_name, pattern, reason);

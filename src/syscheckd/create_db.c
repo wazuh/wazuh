@@ -43,7 +43,7 @@ static int read_dir_diff(char *dir_name) {
     snprintf(local_dir, PATH_MAX - 1, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
 
     DIR *dp;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
 
     /* Directory should be valid */
     if ((dir_name == NULL) || ((dir_size = strlen(dir_name)) > PATH_MAX)) {
@@ -403,7 +403,6 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                     opts & CHECK_INODE ? str_inode : "",
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
                     opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0);
-
 #else
             if (opts & CHECK_SIZE) {
                 sprintf(str_size, "%ld", (long)statbuf.st_size);
@@ -437,6 +436,8 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 
             sprintf(str_inode, "%ld", (long)statbuf.st_ino);
 
+            char *user = get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL);
+            char *group = get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid);
             snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%c%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
                     opts & CHECK_SIZE ? '+' : '-',
                     opts & CHECK_PERM ? '+' : '-',
@@ -455,8 +456,8 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                     str_group,
                     opts & CHECK_MD5SUM ? mf_sum : "",
                     opts & CHECK_SHA1SUM ? sf_sum : "",
-                    opts & CHECK_OWNER ? get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL) : "",
-                    opts & CHECK_GROUP ? get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
+                    opts & CHECK_OWNER ? user : "",
+                    opts & CHECK_GROUP ? group : "",
                     str_mtime,
                     opts & CHECK_INODE ? str_inode : "",
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
@@ -537,8 +538,8 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 str_group,
                 opts & CHECK_MD5SUM ? mf_sum : "",
                 opts & CHECK_SHA1SUM ? sf_sum : "",
-                opts & CHECK_OWNER ? get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL) : "",
-                opts & CHECK_GROUP ? get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
+                opts & CHECK_OWNER ? user : "",
+                opts & CHECK_GROUP ? group : "",
                 str_mtime,
                 opts & CHECK_INODE ? str_inode : "",
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
@@ -550,6 +551,9 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
+
+            os_free(user);
+            os_free(group);
 #endif
             if(max_depth <= syscheck.max_depth){
                 send_syscheck_msg(alert_msg);
@@ -643,7 +647,7 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
     char *f_name;
     short is_nfs;
     DIR *dp;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     size_t dir_size;
     int pos;
     char linked_read_file[PATH_MAX + 1] = {'\0'};
