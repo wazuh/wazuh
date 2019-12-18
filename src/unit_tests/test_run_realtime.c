@@ -56,9 +56,16 @@ OSHash * __wrap_OSHash_Create() {
     return NULL;
 }
 
-int __wrap__merror()
+void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
 {
-    return 0;
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
 }
 
 ssize_t __real_read(int fildes, void *buf, size_t nbyte);
@@ -75,8 +82,26 @@ ssize_t __wrap_read(int fildes, void *buf, size_t nbyte) {
         memcpy(buf, event, 32);
         return mock_type(ssize_t);
     }
+    // We should never reach this point
+    return __real_read(fildes, buf, nbyte);
 }
 
+/* setup/teardown */
+static int setup_w_vector(void **state)
+{
+    audit_added_dirs = W_Vector_init(2);
+    if(!audit_added_dirs)
+        return -1;
+
+    return 0;
+}
+
+static int teardown_w_vector(void **state)
+{
+    W_Vector_free(audit_added_dirs);
+
+    return 0;
+}
 
 /* tests */
 
@@ -107,8 +132,13 @@ void test_realtime_start_failure_hash(void **state)
 
     will_return(__wrap_OSHash_Create, 0);
 
+    errno = ENOMEM;
+    expect_string(__wrap__merror, formatted_msg,
+        "(1102): Could not acquire memory due to [(12)-(Cannot allocate memory)].");
+
     ret = realtime_start();
 
+    errno = 0;
     assert_int_equal(ret, -1);
 }
 
@@ -124,6 +154,8 @@ void test_realtime_start_failure_inotify(void **state)
     will_return(__wrap_inotify_init, -1);
     will_return(__wrap_read, 0); // Use real
     will_return(__wrap_read, 0);
+
+    expect_string(__wrap__merror, formatted_msg, FIM_ERROR_INOTIFY_INITIALIZE);
 
     ret = realtime_start();
 
@@ -143,6 +175,7 @@ void test_realtime_adddir_whodata(void **state)
     ret = realtime_adddir(path, 1);
 
     assert_int_equal(ret, 1);
+    assert_string_equal(W_Vector_get(audit_added_dirs, 0), "/etc/folder");
 }
 
 
@@ -223,6 +256,8 @@ void test_realtime_adddir_realtime_update_failure(void **state)
     will_return(__wrap_OSHash_Get_ex, 1);
     will_return(__wrap_OSHash_Update_ex, 0);
 
+    expect_string(__wrap__merror, formatted_msg, "Unable to update 'dirtb'. Directory not found: '/etc/folder'");
+
     ret = realtime_adddir(path, 0);
 
     free(syscheck.realtime);
@@ -242,6 +277,8 @@ void test_realtime_process_failure(void **state)
 
     will_return(__wrap_read, 1); // Use wrap
     will_return(__wrap_read, -1);
+
+    expect_string(__wrap__merror, formatted_msg, FIM_ERROR_REALTIME_READ_BUFFER);
 
     realtime_process();
 
@@ -310,7 +347,7 @@ int main(void) {
         cmocka_unit_test(test_realtime_start_success),
         cmocka_unit_test(test_realtime_start_failure_hash),
         cmocka_unit_test(test_realtime_start_failure_inotify),
-        cmocka_unit_test(test_realtime_adddir_whodata),
+        cmocka_unit_test_setup_teardown(test_realtime_adddir_whodata, setup_w_vector, teardown_w_vector),
         cmocka_unit_test(test_realtime_adddir_realtime_failure),
         cmocka_unit_test(test_realtime_adddir_realtime_add),
         cmocka_unit_test(test_realtime_adddir_realtime_update),

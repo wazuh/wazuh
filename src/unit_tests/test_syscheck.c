@@ -27,9 +27,16 @@ int __wrap_OSHash_setSize() {
     return mock();
 }
 
-int __wrap__mwarn()
+void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...)
 {
-    return 0;
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
 }
 
 
@@ -38,22 +45,28 @@ int __wrap__mwarn()
 void test_fim_initialize(void **state)
 {
     (void) state;
-    int ret;
 
     will_return(__wrap_OSHash_setSize, 1);
 
     fim_initialize();
+
+    assert_non_null(syscheck.fim_entry);
+    assert_non_null(syscheck.fim_inode);
 }
 
 
 void test_fim_initialize_warn(void **state)
 {
     (void) state;
-    int ret;
 
     will_return(__wrap_OSHash_setSize, 0);
 
+    expect_string(__wrap__mwarn, formatted_msg, LIST_ERROR);
+
     fim_initialize();
+
+    assert_non_null(syscheck.fim_entry);
+    assert_non_null(syscheck.fim_inode);
 }
 
 
