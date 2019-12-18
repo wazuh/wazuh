@@ -169,4 +169,14 @@ long w_parse_time(const char * string);
  */
 size_t strcspn_escaped(const char * s, char reject);
 
+/**
+ * @brief Escape JSON reserved characters
+ *
+ * Add an escape to the following bytes: \b \t \n \f \r " \
+ *
+ * @param string Input string
+ * @return Pointer to a new string containg an escaped copy of "string"
+ */
+char * wstr_escape_json(const char * string);
+
 #endif
