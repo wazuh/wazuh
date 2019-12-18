@@ -109,7 +109,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
-    time_t mtime = time(NULL);
+    time_t mtime;
     char * _message = NULL;
 
     _message = log_builder_build(mq_log_builder, target->format, message, locmsg);
