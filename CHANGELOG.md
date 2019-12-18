@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Display a warning message when registering to an unverified manager. ([#4207](https://github.com/wazuh/wazuh/pull/4207))
 - Allow JSON escaping for logs on Logcollector's output format. ([#4273](https://github.com/wazuh/wazuh/pull/4273))
 - Add TCP keepalive support for Fluent Forwarder. ([#4274](https://github.com/wazuh/wazuh/pull/4274))
+- Add the host's primary IP to Logcollector's output format. ([#4380](https://github.com/wazuh/wazuh/pull/4380))
 
 ### Changed
 
