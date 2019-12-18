@@ -59,7 +59,7 @@ void* wm_gcp_main(wm_gcp *data) {
                     time_sleep = get_time_to_hour("00:00");
                 }
 
-                mdebug2("Sleeping for %d seconds.", (int)time_sleep);
+                mtdebug2(WM_GCP_LOGTAG, "Sleeping for %d seconds.", (int)time_sleep);
                 wm_delay(1000 * time_sleep);
 
             } while (status < 0);
@@ -67,15 +67,15 @@ void* wm_gcp_main(wm_gcp *data) {
         } else if (data->scan_wday >= 0) {
 
             time_sleep = get_time_to_day(data->scan_wday, data->scan_time);
-            minfo("Waiting for turn to evaluate.");
-            mdebug2("Sleeping for %d seconds.", (int)time_sleep);
+            mtinfo(WM_GCP_LOGTAG, "Waiting for turn to evaluate.");
+            mtdebug2(WM_GCP_LOGTAG, "Sleeping for %d seconds.", (int)time_sleep);
             wm_delay(1000 * time_sleep);
 
         } else if (data->scan_time) {
 
             time_sleep = get_time_to_hour(data->scan_time);
-            minfo("Waiting for turn to evaluate.");
-            mdebug2("Sleeping for %d seconds.", (int)time_sleep);
+            mtinfo(WM_GCP_LOGTAG, "Waiting for turn to evaluate.");
+            mtdebug2(WM_GCP_LOGTAG, "Sleeping for %d seconds.", (int)time_sleep);
             wm_delay(1000 * time_sleep);
 
         } else if (data->next_time == 0 || data->next_time > time_start) {
@@ -85,8 +85,8 @@ void* wm_gcp_main(wm_gcp *data) {
                         (time_t)data->interval :
                         data->next_time - time_start;
 
-            minfo("Waiting for turn to evaluate.");
-            mdebug2("Sleeping for %ld seconds.", (long)time_sleep);
+            mtinfo(WM_GCP_LOGTAG, "Waiting for turn to evaluate.");
+            mtdebug2(WM_GCP_LOGTAG, "Sleeping for %ld seconds.", (long)time_sleep);
             wm_delay(1000 * time_sleep);
 
         }
