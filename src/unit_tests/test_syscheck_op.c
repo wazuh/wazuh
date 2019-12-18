@@ -16,8 +16,6 @@
 #include "../headers/syscheck_op.h"
 #include "../analysisd/eventinfo.h"
 
-extern int example_main(int argc, char *argv[]);
-
 /* Auxiliar structs */
 
 typedef struct __sk_decode_data_s {
@@ -1401,6 +1399,7 @@ static void test_sk_decode_sum_extra_data_null_sum(void **state) {
 
     ret = sk_decode_sum(NULL, data->c_sum, NULL);
 
+    assert_int_equal(ret, 0);
 }
 
 // TODO: Validate this condition is required to be tested
@@ -1410,6 +1409,7 @@ static void test_sk_decode_sum_extra_data_null_c_sum(void **state) {
 
     ret = sk_decode_sum(&data->sum, NULL, NULL);
 
+    assert_int_equal(ret, 0);
 }
 
 /* sk_decode_extradata tests */
@@ -1852,6 +1852,8 @@ static void test_sk_build_sum_null_sum(void **state) {
     int ret;
 
     ret = sk_build_sum(NULL, data->output, OS_MAXSTR);
+
+    assert_int_equal(ret, 0);
 }
 
 // TODO: Validate this condition is required to be tested
@@ -1860,6 +1862,8 @@ static void test_sk_build_sum_null_output(void **state) {
     int ret;
 
     ret = sk_build_sum(&data->sum, NULL, OS_MAXSTR);
+
+    assert_int_equal(ret, 0);
 }
 
 /* sk_sum_clean tests */
@@ -1879,6 +1883,7 @@ static void test_sk_sum_clean_full_message(void **state) {
 
     // Fill sum with as many info as possible
     ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+    assert_int_equal(ret, 0);
 
     // And free it
     sk_sum_clean(&data->sum);
@@ -1902,6 +1907,7 @@ static void test_sk_sum_clean_shortest_valid_message(void **state) {
 
     // Fill sum with as many info as possible
     ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+    assert_int_equal(ret, 0);
 
     // And free it
     sk_sum_clean(&data->sum);
@@ -1922,6 +1928,7 @@ static void test_sk_sum_clean_invalid_message(void **state) {
 
     // Fill sum with as many info as possible
     ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+    assert_int_equal(ret, 0);
 
     // And free it
     sk_sum_clean(&data->sum);
