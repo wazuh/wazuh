@@ -474,12 +474,12 @@ class WazuhException(Exception):
                               'and "effect". The actions and resources must be splitted by ":". Example: agent:id:001'},
         4007: {'message': 'The specified policy does not exist',
                'remediation': 'Please, create the specified policy with the endpoint POST /security/policies'},
-        4008: {'message': 'The specified role/policy is required for a correct Wazuh\'s functionality'},
+        4008: {'message': 'The specified resource is required for a correct Wazuh\'s functionality'},
         4009: {'message': 'The specified name or policy already exist'},
         4010: {'message': 'The specified role-policy does not exist',
                'remediation': 'Please, create the specified role-policy relation with the endpoint '
                               'POST /security/roles/{role_id}/policies/{policy_id}'},
-        4011: {'message': 'The specified role-policy already exist'},
+        4011: {'message': 'The specified role-policy link already exist'},
         4012: {'message': 'The specified actions or resources '
                           'are invalid',
                'remediation': 'The actions and resources must be splitted by ":". Example: agent:id:001'},
@@ -489,6 +489,10 @@ class WazuhException(Exception):
         4015: {'message': 'Permission denied, could not remove agents from group before deleting it',
                'remediation': 'Please, make sure you have the right permissions for actions: agent:modify_group and '
                               'group:modify_assignments before attempting to delete the group'},
+        4016: {'message': 'The specified user-role does not exist',
+               'remediation': 'Please, create the specified user-role relation with the endpoint '
+                              'POST /security/user/{username}/roles/{role_id}'},
+        4017: {'message': 'The specified user-role link already exist'},
         4500: {'message': 'The specified resources are invalid',
                'remediation': 'Please, make sure permissions are properly defined, '
                               'for more information on setting up permissions please visit XXXX'},

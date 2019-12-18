@@ -143,6 +143,57 @@ stages:
         <<: *error
 
 ---
+test_name: DELETE /security/user/{user_id}/roles/{role_id}
+
+stages:
+
+  # DELETE /security/user/{user_id}/roles/{role_id}
+  - name: Try to delete a existent user-role
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/new_user/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        role_ids: 5,4
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+
+  # DELETE /security/user/{user_id}/roles/{role_id}
+  - name: Try to delete a non-existent user-role
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/no_user/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        role_ids: 5
+    response:
+      status_code: 200
+      body:
+        <<: *error
+
+  # DELETE /security/user/{user_id}/roles/{role_id}
+  - name: Try to delete a non-existent user-role (role non-existent)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/new_user/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        role_ids: 99
+    response:
+      status_code: 200
+      body:
+        <<: *error
+
+---
 test_name: DELETE /security/policies/{policy_id}
 
 includes:

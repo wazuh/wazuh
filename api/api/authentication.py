@@ -9,166 +9,12 @@ from shutil import chown
 from time import time
 
 from jose import JWTError, jwt
-from sqlalchemy import create_engine, Column, String
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from wazuh.rbac import preprocessor
 from werkzeug.exceptions import Unauthorized
-from werkzeug.security import check_password_hash, generate_password_hash
-from sqlalchemy.orm.exc import UnmappedInstanceError
 
 from api.api_exception import APIException
 from api.constants import SECURITY_PATH
-
-# Set authentication database
-_auth_db_file = os.path.join(SECURITY_PATH, 'rbac.db')
-_engine = create_engine(f'sqlite:///{_auth_db_file}', echo=False)
-_Base = declarative_base()
-
-
-# Declare tables
-class _User(_Base):
-    __tablename__ = 'users'
-
-    username = Column(String(32), primary_key=True)
-    password = Column(String(256))
-
-    def __repr__(self):
-        return f"<User(user={self.username})"
-
-
-# This is the actual sqlite database creation
-_Base.metadata.create_all(_engine)
-# Only if executing as root
-try:
-    chown(_auth_db_file, 'ossec', 'ossec')
-except PermissionError:
-    pass
-os.chmod(_auth_db_file, 0o640)
-_Session = sessionmaker(bind=_engine)
-
-
-class AuthenticationManager:
-    """Class for dealing with authentication stuff without worrying about database.
-    It manages users and token generation.
-    """
-
-    def add_user(self, username, password):
-        """Creates a new user if it does not exist.
-
-        :param username: string Unique user name
-        :param password: string Password provided by user. It will be stored hashed
-        :return: True if the user has been created successfuly. False otherwise (i.e. already exists)
-        """
-        try:
-            self.session.add(_User(username=username, password=generate_password_hash(password)))
-            self.session.commit()
-            return True
-        except IntegrityError:
-            self.session.rollback()
-            return False
-
-    def update_user(self, username: str, password: str):
-        """
-        Update the password an existent user
-        :param username: string Unique user name
-        :param password: string Password provided by user. It will be stored hashed
-        :return: True if the user has been modify successfuly. False otherwise
-        """
-        try:
-            user = self.session.query(_User).filter_by(username=username).first()
-            if user is not None:
-                user.password = generate_password_hash(password)
-                self.session.commit()
-                return True
-            else:
-                return False
-        except IntegrityError:
-            self.session.rollback()
-            return False
-
-    def delete_user(self, username: str):
-        """
-        Update the password an existent user
-        :param username: string Unique user name
-        :return: True if the user has been delete successfuly. False otherwise
-        """
-        if username == 'wazuh' or username == 'wazuh-app':
-            return 'admin'
-
-        try:
-            self.session.delete(self.session.query(_User).filter_by(username=username).first())
-            self.session.commit()
-            return True
-        except UnmappedInstanceError:
-            # User already deleted
-            return False
-
-    def check_user(self, username, password):
-        """Validates a username-password pair.
-
-        :param username: string Unique user name
-        :param password: string Password to be checked against the one saved in the database
-        :return: True if username and password matches. False otherwise.
-        """
-        user = self.session.query(_User).filter_by(username=username).first()
-        return check_password_hash(user.password, password) if user else False
-
-    def get_user(self, username: str = None):
-        """Get an specified user in the system
-
-        :param username: string Unique user name
-        :return: An specified user
-        """
-        users = None
-        try:
-            if username is not None:
-                users = self.session.query(_User).filter_by(username=username).first()
-        except IntegrityError:
-            self.session.rollback()
-            return False
-
-        if users is not None:
-            user_dict = {
-                'username': users.username
-            }
-            return user_dict
-
-        return False
-
-    def get_users(self):
-        """Get all users in the system
-
-        :return: All users
-        """
-        try:
-            users = self.session.query(_User).all()
-        except IntegrityError:
-            self.session.rollback()
-            return False
-
-        usernames = list()
-        for user in users:
-            if user is not None:
-                user_dict = {
-                    'username': user.username
-                }
-                usernames.append(user_dict)
-        return usernames
-
-    def __enter__(self):
-        self.session = _Session()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
-
-
-# Create default users if they don't exist yet
-with AuthenticationManager() as auth:
-    auth.add_user('wazuh-app', 'wazuh-app')
-    auth.add_user('wazuh', 'wazuh')
+from wazuh.rbac import preprocessor
+from wazuh.rbac.orm import AuthenticationManager
 
 
 def check_user(user, password, required_scopes=None):
@@ -179,8 +25,8 @@ def check_user(user, password, required_scopes=None):
     :param required_scopes:
     :return:
     """
-    with AuthenticationManager() as auth:
-        if auth.check_user(user, password):
+    with AuthenticationManager() as auth_:
+        if auth_.check_user(user, password):
             return {'sub': user,
                     'active': True
                     }
@@ -192,7 +38,6 @@ def check_user(user, password, required_scopes=None):
 JWT_ISSUER = 'wazuh'
 JWT_LIFETIME_SECONDS = 36000
 JWT_ALGORITHM = 'HS256'
-
 
 # Generate secret file to keep safe or load existing secret
 _secret_file_path = os.path.join(SECURITY_PATH, 'jwt_secret')
@@ -214,14 +59,18 @@ except IOError as e:
     raise APIException(2002)
 
 
-def generate_token(user_id):
+def generate_token(user_id=None, auth_context=None):
     """Generates an encoded jwt token. This method should be called once a user is properly logged on.
 
-    :param user_id: string Unique user name
+    :param user_id: Unique username
+    :param auth_context: Authorization context of the current user
     :return: string jwt formatted string
     """
     # Add dummy rbac_policies for developing here
-    rbac_policies = preprocessor.optimize_resources()
+    if auth_context:
+        rbac_policies = preprocessor.optimize_resources(auth_context=auth_context)
+    else:
+        rbac_policies = preprocessor.optimize_resources(user_id=user_id)
 
     timestamp = int(time())
     payload = {

@@ -8,14 +8,13 @@ from collections import defaultdict
 from functools import wraps
 
 from api import configuration
-from api.authentication import AuthenticationManager
 from wazuh.common import rbac, broadcast, cluster_nodes
 from wazuh.configuration import get_ossec_conf
 from wazuh.core.cdb_list import iterate_lists
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups, get_files
 from wazuh.core.rule import format_rule_decoder_file, Status
 from wazuh.exception import WazuhError
-from wazuh.rbac.orm import RolesManager, PoliciesManager
+from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager
 from wazuh.results import AffectedItemsWazuhResult
 
 mode = configuration.read_api_config()['rbac']['mode']

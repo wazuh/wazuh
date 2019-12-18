@@ -29,7 +29,7 @@ def test_database_init(import_api_auth):
     """
     with import_api_auth.AuthenticationManager() as am:
         assert (am.check_user('wazuh', 'wazuh'))
-        assert (am.check_user('wazuh-app', 'wazuh-app'))
+        assert (am.check_user('wazuh-wui', 'wazuh-wui'))
 
 
 def test_add_user(import_api_auth):

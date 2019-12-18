@@ -190,7 +190,7 @@ def environment_black_security_rbac():
 
 
 @pytest.fixture(name="agents_white_rbac_tests", scope="session")
-def environment_white_security_rbac():
+def environment_white_agents_rbac():
     values = build_and_up("agents_white_rbac")
     while values['retries'] < values['max_retries']:
         health = check_health()
@@ -204,7 +204,7 @@ def environment_white_security_rbac():
 
 
 @pytest.fixture(name="agents_black_rbac_tests", scope="session")
-def environment_black_security_rbac():
+def environment_black_agents_rbac():
     values = build_and_up("agents_black_rbac")
     while values['retries'] < values['max_retries']:
         health = check_health()

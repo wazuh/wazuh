@@ -14,6 +14,7 @@ from api.util import remove_nones_to_dict, exception_handler, raise_if_exc, pars
 from wazuh import security
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
+from wazuh.rbac.orm import AuthenticationManager
 
 
 loop = asyncio.get_event_loop()
@@ -22,18 +23,21 @@ auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 
 @exception_handler
-def login_user(user):
+def login_user(user, auth_context=None):
     """User/password authentication to get an access token
 
     This method should be called to get an API token. This token will expire at some time. # noqa: E501
     :return: TokenResponse
     """
-
-    return TokenResponse(token=generate_token(user)), 200
+    with AuthenticationManager() as auth:
+        if auth.user_auth_context(user):
+            return TokenResponse(token=generate_token(user_id=user, auth_context=auth_context)), 200
+    return TokenResponse(token=generate_token(user_id=user)), 200
 
 
 @exception_handler
-def get_users(usernames: list = None, pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
+def get_users(usernames: list = None, pretty=False, wait_for_complete=False,
+              offset=0, limit=None, search=None, sort=None):
     """Returns information from all system roles
 
     :param usernames: List of users to be obtained
@@ -401,11 +405,63 @@ def update_policy(policy_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
+def set_user_role(username, role_ids, pretty=False, wait_for_complete=False):
+    """Add a list of roles to one specified user
+
+    :param username: User's username
+    :param role_ids: List of role ids
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :return User-Role information
+    """
+    f_kwargs = {'user_id': username, 'role_ids': role_ids}
+
+    dapi = DistributedAPI(f=security.set_user_role,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+
+    return data, 200
+
+
+@exception_handler
+def remove_user_role(username, role_ids, pretty=False, wait_for_complete=False):
+    """Delete a list of roles of one specified user
+
+    :param username: User's username
+    :param role_ids: List of roles ids
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :return Result of the operation
+    """
+    f_kwargs = {'user_id': username, 'role_ids': role_ids}
+
+    dapi = DistributedAPI(f=security.remove_user_role,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger,
+                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+
+    return data, 200
+
+
+@exception_handler
 def set_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=False):
     """Add a list of policies to one specified role
 
     :param role_id: Role id
-    :param policy_ids: List of policies ids
+    :param policy_ids: List of policy ids
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :return Role information
@@ -431,7 +487,7 @@ def remove_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=Fals
     """Delete a list of policies of one specified role
 
     :param role_id: Role id
-    :param policy_ids: List of policies ids
+    :param policy_ids: List of policy ids
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :return Role information

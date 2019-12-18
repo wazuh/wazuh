@@ -2655,6 +2655,13 @@ components:
       x-bearerInfoFunc: api.authentication.decode_token
 
   parameters:
+    auth_context:
+      in: body
+      name: Authorization context
+      description: 'Authorization context'
+      required: False
+      schema:
+        type: object
     agent_id:
       in: path
       name: agent_id
@@ -3149,7 +3156,7 @@ components:
     policy_id_rbac:
       in: path
       name: policy_id
-      description: 'Specified a policy id'
+      description: 'Specify a policy id'
       required: true
       schema:
         $ref: '#/components/schemas/Policy_id'
@@ -3173,7 +3180,7 @@ components:
     policy_name:
       in: query
       name: policy_name
-      description: 'Specified and existent policy name'
+      description: 'Specify and existent policy name'
       required: True
       schema:
         type: string
@@ -3240,7 +3247,7 @@ components:
     role_id:
       in: path
       name: role_id
-      description: 'Specified a role id'
+      description: 'Specify a role id'
       required: true
       schema:
         $ref: '#/components/schemas/Role_id'
@@ -3252,10 +3259,19 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Role_id'
+    role_ids_required:
+      in: query
+      name: 'role_ids'
+      description: 'List of role ids'
+      required: True
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Role_id'
     role_name:
       in: query
       name: role_name
-      description: 'Specified and existent role name'
+      description: 'Specify and existent role name'
       required: True
       schema:
         type: string
@@ -10396,6 +10412,8 @@ paths:
       summary: 'User/password authentication to get an access token'
       description: 'This method should be called to get an API token. This token will expire at some time.'
       operationId: api.controllers.security_controller.login_user
+      parameters:
+        - $ref: '#/components/parameters/auth_context'
       security:
         - basicAuth: []
       responses:
@@ -10806,8 +10824,8 @@ paths:
     post:
       tags:
         - security
-      summary: 'Create a specified relation role-policy'
-      description: 'Create a specified relation role-policy, one role may have multiples policies'
+      summary: 'Create a relation between one role and one or more policies'
+      description: 'Create a specify relation role-policy, one role may have multiples policies'
       operationId: api.controllers.security_controller.set_role_policy
       parameters:
         - $ref: '#/components/parameters/role_id'
@@ -10841,12 +10859,77 @@ paths:
     delete:
       tags:
         - security
-      summary: 'Delete a specified relation role-policy'
-      description: 'Delete a specified relation role-policy'
+      summary: 'Delete a specify relation role-policy'
+      description: 'Delete a specify relation role-policy'
       operationId: api.controllers.security_controller.remove_role_policy
       parameters:
         - $ref: '#/components/parameters/role_id'
         - $ref: '#/components/parameters/policy_ids_rbac_required'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Role information'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  id: 2
+                  name: 'normal'
+                  rule:
+                    normal: 'normal'
+                  policies: []
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /security/user/{username}/roles:
+    post:
+      tags:
+        - security
+      summary: 'Create a specify relation between one user and one or more roles'
+      description: 'Create a specify relation role-policy, one user may have multiples roles'
+      operationId: api.controllers.security_controller.set_user_role
+      parameters:
+        - $ref: '#/components/parameters/username'
+        - $ref: '#/components/parameters/role_ids_required'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Role information'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  id: 1
+                  name: 'wazuh'
+                  rule:
+                    MATCH:
+                      administrator: 'administrator'
+                  policies:
+                    - id: 1
+                      name: 'wazuhPolicy'
+                      policy:
+                        administrator: 'total_access'
+
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    delete:
+      tags:
+        - security
+      summary: 'Delete a specify relation user-roles'
+      description: 'Delete a specify relation user-roles'
+      operationId: api.controllers.security_controller.remove_user_role
+      parameters:
+        - $ref: '#/components/parameters/username'
+        - $ref: '#/components/parameters/role_ids_required'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
