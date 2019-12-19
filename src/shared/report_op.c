@@ -666,14 +666,19 @@ void os_ReportdStart(report_filter *r_filter){
             l_print_out("Log dump:");
             l_print_out("------------------------------------------------");
         }
+        
         while (data_to_clean[i]) {
             alert_data *md = data_to_clean[i];
-            if (r_filter->show_alerts) {
+            
+            if (r_filter->show_alerts && md->log) {
                 l_print_out("%s %s\nRule: %d (level %d) -> '%s'\n%s\n\n", md->date, md->location, md->rule, md->level, md->comment, md->log[0]);
             }
+            
             FreeAlertData(md);
+            
             i++;
         }
+
         free(data_to_clean);
         data_to_clean = NULL;
     }
