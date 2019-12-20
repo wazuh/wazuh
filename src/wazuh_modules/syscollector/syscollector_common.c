@@ -63,6 +63,7 @@ static void wm_sys_cleanup();                   // Cleanup function, doesn't ove
 #endif
 
 time_t get_sleep_time(int *run);      // Function to get the next inventory scan time
+void update_next_time(int *run);      // Update the next scan time of the inventories
 
 // Module main function. It won't return
 
@@ -138,8 +139,6 @@ void* wm_sys_main(wm_sys_t *sys) {
             #ifdef DEBUG
                 print_rbtree(sys->interfaces_entry, sys->interfaces_entry_mutex);
             #endif
-            run &= ~RUN_IFACE;
-            sys->state.interfaces_next_time += sys->interfaces_interval;
             sys_send_scan_event(IFACE_SCAN);
         }
 
@@ -150,8 +149,6 @@ void* wm_sys_main(wm_sys_t *sys) {
             #else
                 sys_os_unix(queue_fd, WM_SYS_LOCATION);
             #endif
-            run &= ~RUN_OS;
-            sys->state.os_next_time += sys->os_interval;
             sys_send_scan_event(OS_SCAN);
         }
 
@@ -167,8 +164,6 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys->flags.hwinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Hardware inventory is not available for this OS version.");
             #endif
-            run &= ~RUN_HW;
-            sys->state.hw_next_time += sys->hw_interval;
             sys_send_scan_event(HW_SCAN);
         }
 
@@ -187,8 +182,6 @@ void* wm_sys_main(wm_sys_t *sys) {
             #ifdef DEBUG
                 print_rbtree(sys->programs_entry, sys->programs_entry_mutex);
             #endif
-            run &= ~RUN_PKG;
-            sys->state.programs_next_time += sys->programs_interval;
             sys_send_scan_event(PKG_SCAN);
         }
 
@@ -200,8 +193,6 @@ void* wm_sys_main(wm_sys_t *sys) {
             #ifdef DEBUG
                 print_rbtree(sys->hotfixes_entry, sys->hotfixes_entry_mutex);
             #endif
-            run &= ~RUN_HFIX;
-            sys->state.hotfixes_next_time += sys->hotfixes_interval;
             sys_send_scan_event(HFIX_SCAN);
         }
         /* Opened ports inventory */
@@ -219,8 +210,6 @@ void* wm_sys_main(wm_sys_t *sys) {
             #ifdef DEBUG
                 print_rbtree(sys->ports_entry, sys->ports_entry_mutex);
             #endif
-            run &= ~RUN_PORT;
-            sys->state.ports_next_time += sys->ports_interval;
             sys_send_scan_event(PORT_SCAN);
         }
 
@@ -239,8 +228,6 @@ void* wm_sys_main(wm_sys_t *sys) {
             #ifdef DEBUG
                 print_rbtree(sys->processes_entry, sys->processes_entry_mutex);
             #endif
-            run &= ~RUN_PROC;
-            sys->state.processes_next_time += sys->processes_interval;
             sys_send_scan_event(PROC_SCAN);
         }
 
@@ -248,6 +235,8 @@ void* wm_sys_main(wm_sys_t *sys) {
 
         if (wm_state_io(WM_SYS_CONTEXT.name, WM_IO_WRITE, &sys->state, sizeof(sys->state)) < 0)
             mterror(WM_SYS_LOGTAG, "Couldn't save running state: %s (%d)", strerror(errno), errno);
+
+        update_next_time(&run);
 
         if (time_sleep = get_sleep_time(&run), time_sleep >= 0) {
             mtinfo(WM_SYS_LOGTAG, "Waiting for turn to evaluate.");
@@ -374,6 +363,37 @@ time_t get_sleep_time(int *run) {
     }
 
     return seconds_to_sleep;
+}
+
+void update_next_time(int *run) {
+    if (sys->flags.netinfo && (*run & RUN_IFACE)){
+        *run &= ~RUN_IFACE;
+        sys->state.interfaces_next_time += sys->interfaces_interval;
+    }
+    if (sys->flags.osinfo && (*run & RUN_OS)){
+        *run &= ~RUN_OS;
+        sys->state.os_next_time += sys->os_interval;
+    }
+    if (sys->flags.hwinfo && (*run & RUN_HW)){
+        *run &= ~RUN_HW;
+        sys->state.hw_next_time += sys->hw_interval;
+    }
+    if (sys->flags.programinfo && (*run & RUN_PKG)){
+        *run &= ~RUN_PKG;
+        sys->state.programs_next_time += sys->programs_interval;
+    }
+    if (sys->flags.hotfixinfo && (*run & RUN_HFIX)){
+        *run &= ~RUN_HFIX;
+        sys->state.hotfixes_next_time += sys->hotfixes_interval;
+    }
+    if (sys->flags.portsinfo && (*run & RUN_PORT)){
+        *run &= ~RUN_PORT;
+        sys->state.ports_next_time += sys->ports_interval;
+    }
+    if (sys->flags.procinfo && (*run & RUN_PROC)){
+        *run &= ~RUN_PROC;
+        sys->state.processes_next_time += sys->processes_interval;
+    }
 }
 
 // Setup module
@@ -512,6 +532,14 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
 }
 
 void wm_sys_destroy(wm_sys_t *sys) {
+    free_hw_data(sys->hw_data);
+    free_os_data(sys->os_data);
+    rbtree_destroy(sys->interfaces_entry);
+    rbtree_destroy(sys->programs_entry);
+    rbtree_destroy(sys->hotfixes_entry);
+    rbtree_destroy(sys->ports_entry);
+    rbtree_destroy(sys->processes_entry);
+
     free(sys);
 }
 
