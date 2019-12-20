@@ -50,6 +50,7 @@
 
     <!-- Database synchronization settings -->
     <synchronization>
+      <enabled>yes</enabled>
       <interval>5m</interval>
       <max_interval>1h</max_interval>
     </synchronization>
