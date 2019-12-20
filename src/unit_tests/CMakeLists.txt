@@ -5,7 +5,7 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.10)
 
 set(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../)
 
@@ -86,6 +86,12 @@ list(APPEND tests_flags "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,_mde
                          -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,getpwuid_r -Wl,--wrap,getgrgid \
                          -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,wstr_split \
                          -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP")
+
+list(APPEND tests_names "test_wdb_fim")
+list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,cJSON_Parse -Wl,--wrap,wdb_begin2 \
+                         -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_GetStringValue -Wl,--wrap,cJSON_IsNumber \
+                         -Wl,--wrap,cJSON_IsObject -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text \
+                         -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_step")
 
 # Config files
 configure_file("test_syscheck.conf" "test_syscheck.conf" COPYONLY)
