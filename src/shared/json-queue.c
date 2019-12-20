@@ -313,8 +313,7 @@ alert_data *GetAlertJSONData(file_queue *fileq) {
     full_log = cJSON_GetObjectItem(al_json, "full_log");
 
     if (full_log) {
-        os_realloc(al_data->log, sizeof(char *), al_data->log);
-        os_malloc(strlen(full_log->valuestring) * sizeof(char), al_data->log[0]);
+        os_realloc(al_data->log, 2 * sizeof(char *), al_data->log);
         os_strdup(full_log->valuestring, al_data->log[0]);
 
         /*
