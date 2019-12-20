@@ -18,7 +18,7 @@ static const char *(s_month[]) = {
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 };
 
-static void file_sleep(){
+static void file_sleep() {
 #ifndef WIN32
     struct timeval fp_timeout;
 
@@ -98,7 +98,6 @@ cJSON * jqueue_next(file_queue * queue) {
 
         return cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0);
     } else {
-
         if (stat(queue->file_name, &buf) < 0) {
             merror(FSTAT_ERROR, queue->file_name, errno, strerror(errno));
             fclose(queue->fp);
@@ -132,7 +131,7 @@ cJSON * jqueue_next(file_queue * queue) {
 }
 
 /* Re Handle the file queue */
-static int Handle_JQueue(file_queue *fileq, int flags){
+static int Handle_JQueue(file_queue *fileq, int flags) {
     /* Close if it is open */
     if (!(flags & CRALERT_FP_SET)) {
         if (fileq->fp) {
@@ -140,7 +139,7 @@ static int Handle_JQueue(file_queue *fileq, int flags){
             fileq->fp = NULL;
         }
 
-        /* 
+        /*
             We must be able to open the file, fseek and get the
             time of change from it.
         */
@@ -187,12 +186,12 @@ void jqueue_close(file_queue * queue) {
 }
 
 /* Set queue flags */
-void jqueue_flags(file_queue *fileq, int flags){
+void jqueue_flags(file_queue *fileq, int flags) {
     fileq->flags = flags;
 }
 
 /* Return alert data for the next file in the queue */
-alert_data *GetAlertJSONData(file_queue *fileq){
+alert_data *GetAlertJSONData(file_queue *fileq) {
     alert_data *al_data;
     cJSON *al_json;
     char *groups;
@@ -210,7 +209,7 @@ alert_data *GetAlertJSONData(file_queue *fileq){
 
     /* Get message if available */
     al_json = jqueue_next(fileq);
-    
+
     if (!al_json || !fileq->fp) {
         cJSON_Delete(al_json);
         FreeAlertData(al_data);
@@ -226,7 +225,7 @@ alert_data *GetAlertJSONData(file_queue *fileq){
 
     /* Rule */
     rule = cJSON_GetObjectItem(al_json, "rule");
-    
+
     if (!rule) {
         cJSON_Delete(al_json);
         FreeAlertData(al_data);
@@ -246,7 +245,7 @@ alert_data *GetAlertJSONData(file_queue *fileq){
     if (json_object) {
         os_strdup(json_object->valuestring, al_data->comment);
     }
-    
+
     // Groups
     json_object = cJSON_GetObjectItem(rule, "groups");
 
@@ -259,7 +258,7 @@ alert_data *GetAlertJSONData(file_queue *fileq){
         os_calloc(1, strlen(cJSON_GetArrayItem(json_object, 0)->valuestring) + 1, groups);
         strcpy(groups, cJSON_GetArrayItem(json_object, 0)->valuestring);
 
-        for (i = 1; i < cJSON_GetArraySize(json_object); i++){
+        for (i = 1; i < cJSON_GetArraySize(json_object); i++) {
             os_realloc(groups, strlen(groups) + strlen(cJSON_GetArrayItem(json_object, i)->valuestring) + 2, groups);
             strcat(groups, ",");
             strcat(groups, cJSON_GetArrayItem(json_object, i)->valuestring);
@@ -287,7 +286,7 @@ alert_data *GetAlertJSONData(file_queue *fileq){
         if (json_object) {
             os_strdup(json_object->valuestring, al_data->filename);
         }
-        
+
         // User
         json_object = cJSON_GetObjectItem(syscheck, "uname_after");
 
@@ -317,6 +316,14 @@ alert_data *GetAlertJSONData(file_queue *fileq){
         os_realloc(al_data->log, sizeof(char *), al_data->log);
         os_malloc(strlen(full_log->valuestring) * sizeof(char), al_data->log[0]);
         os_strdup(full_log->valuestring, al_data->log[0]);
+
+        /*
+            Because of the format of the full_log field in the json file, the entire log is stored in a single line,
+            meanwhile, in the log file, the full log is stored in several lines.
+            When freeing memory of an alert we try to free several lines, but in this case there is only one, this is
+            why the second element of this array is set to NULL, to prevent a segmentation fault.
+        */
+        al_data->log[1] = NULL;
     }
 
     /* Free memory */
@@ -327,7 +334,7 @@ alert_data *GetAlertJSONData(file_queue *fileq){
 }
 
 /* Read from monitored file in JSON format */
-alert_data *Read_JSON_Mon(file_queue *fileq, const struct tm *p, unsigned int timeout){
+alert_data *Read_JSON_Mon(file_queue *fileq, const struct tm *p, unsigned int timeout) {
     unsigned int i = 0;
     alert_data *al_data;
 
@@ -339,7 +346,7 @@ alert_data *Read_JSON_Mon(file_queue *fileq, const struct tm *p, unsigned int ti
         }
     }
 
-    if(!fileq->fp){
+    if (!fileq->fp) {
         return NULL;
     }
 
