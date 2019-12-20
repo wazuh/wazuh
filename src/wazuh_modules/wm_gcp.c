@@ -15,10 +15,12 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include "shared.h"
 
-static void* wm_gcp_main(wm_gcp *gcp_config);                        // Module main function. It won't return
-void wm_gcp_run(wm_gcp *data);                                       // Running python script
+static void* wm_gcp_main(const wm_gcp *gcp_config);                        // Module main function. It won't return
+static void wm_gcp_run(const wm_gcp *data);                                // Running python script
 static void wm_gcp_destroy(wm_gcp *gcp_config);                      // Destroy data
 cJSON *wm_gcp_dump(const wm_gcp *gcp_config);                        // Read config
+static time_t wm_gcp_get_next_run_time(const wm_gcp *data);          // Calculate next fetch time
+
 
 /* Context definition */
 
@@ -29,9 +31,10 @@ const wm_context WM_GCP_CONTEXT = {
     (cJSON * (*)(const void *))wm_gcp_dump
 };
 
+static time_t time_start = 0; // Last fetch time
+
 // Module main function. It won't return
-void* wm_gcp_main(wm_gcp *data) {
-    time_t time_start;
+void* wm_gcp_main(const wm_gcp *data) {
     time_t time_sleep = 0;
 
     // If module is disabled, exit
@@ -42,68 +45,13 @@ void* wm_gcp_main(wm_gcp *data) {
         pthread_exit(NULL);
     }
 
-    if (!data->pull_on_start) {
-        time_start = time(NULL);
+    do {
+        time_sleep = wm_gcp_get_next_run_time(data);
 
-        int status = 0;
-        time_t time_start = 0;
-        time_t time_sleep = 0;
-
-        if (data->scan_day) {
-            do {
-                status = check_day_to_scan(data->scan_day, data->scan_time);
-                if (status == 0) {
-                    time_sleep = get_time_to_hour(data->scan_time);
-                } else {
-                    wm_delay(1000); // Sleep one second to avoid an infinite loop
-                    time_sleep = get_time_to_hour("00:00");
-                }
-
-                mtdebug2(WM_GCP_LOGTAG, "Sleeping for %d seconds.", (int)time_sleep);
-                wm_delay(1000 * time_sleep);
-
-            } while (status < 0);
-
-        } else if (data->scan_wday >= 0) {
-
-            time_sleep = get_time_to_day(data->scan_wday, data->scan_time);
-            mtinfo(WM_GCP_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_GCP_LOGTAG, "Sleeping for %d seconds.", (int)time_sleep);
-            wm_delay(1000 * time_sleep);
-
-        } else if (data->scan_time) {
-
-            time_sleep = get_time_to_hour(data->scan_time);
-            mtinfo(WM_GCP_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_GCP_LOGTAG, "Sleeping for %d seconds.", (int)time_sleep);
-            wm_delay(1000 * time_sleep);
-
-        } else if (data->next_time == 0 || data->next_time > time_start) {
-
-            // On first run, take into account the interval of time specified
-            time_sleep = data->next_time == 0 ?
-                        (time_t)data->interval :
-                        data->next_time - time_start;
-
-            mtinfo(WM_GCP_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_GCP_LOGTAG, "Sleeping for %ld seconds.", (long)time_sleep);
-            wm_delay(1000 * time_sleep);
-
-        }
-
-        // On first run, take into account the interval of time specified
-        if (data->time_interval == 0) {
-            data->time_interval = time_start + data->interval;
-        }
-
-        if (data->time_interval > time_start) {
-            mtinfo(WM_GCP_LOGTAG, "Waiting for turn to start fetching.");
-            time_sleep = data->time_interval - time_start;
+        if (time_sleep) {
+            mtdebug1(WM_GCP_LOGTAG, "Sleeping for %li seconds", time_sleep);
             wm_delay(1000 * time_sleep);
         }
-    }
-
-    while (1) {
         mtdebug1(WM_GCP_LOGTAG, "Starting fetching of logs.");
 
         // Get time and execute
@@ -112,27 +60,66 @@ void* wm_gcp_main(wm_gcp *data) {
         wm_gcp_run(data);
 
         mtdebug1(WM_GCP_LOGTAG, "Fetching logs finished.");
-
-        if (data->interval) {
-            time_sleep = time(NULL) - time_start;
-
-            if ((time_t)data->interval >= time_sleep) {
-                time_sleep = data->interval - time_sleep;
-                data->time_interval = data->interval + time_start;
-            } else {
-                mtwarn(WM_GCP_LOGTAG, "Interval overtaken.");
-                time_sleep = data->time_interval = 0;
-            }
-        }
-
-        // If time_sleep=0, yield CPU
-        wm_delay(1000 * time_sleep);
-    }
+    } while(1);
 
     return NULL;
 }
 
-void wm_gcp_run(wm_gcp *data) {
+time_t wm_gcp_get_next_run_time(const wm_gcp *data){
+    if (data->pull_on_start && !time_start){
+        // If pull on start then initial waiting time is 0
+        return 0;
+    }
+
+    if (data->scan_day) {
+        // Option 1: Day of the month
+        int status = -1;
+        
+        while (status < 0) {
+            status = check_day_to_scan(data->scan_day, data->scan_time);
+            if (status == 0) {
+                // Correct day, sleep until scan_time and then run
+                return (time_t) get_time_to_hour(data->scan_time);
+            } else {
+                // Sleep until next day and re-evaluate
+                wm_delay(1000); // Sleep one second to avoid an infinite loop
+                const time_t sleep_until_tomorrow = get_time_to_hour("00:00"); 
+
+                mtdebug2(WM_GCP_LOGTAG, "Sleeping for %d seconds.", (int)sleep_until_tomorrow);
+                wm_delay(1000 * sleep_until_tomorrow);
+            }
+        }
+    } else if (data->scan_wday >= 0) {
+        // Option 2: Day of the week
+        return (time_t) get_time_to_day(data->scan_wday, data->scan_time);
+
+    } else if (data->scan_time) {
+        // Option 3: Time of the day [hh:mm]
+        return (time_t) get_time_to_hour(data->scan_time);
+    } else if (data->interval) {
+        // Option 4: Interval of time
+        
+        if(!time_start){
+            // First time
+            return 0;
+        }
+        const time_t last_run_time = time(NULL) - time_start;
+
+        if ((time_t)data->interval >= last_run_time) {
+            return  (time_t)data->interval - last_run_time;
+        } else {
+            mtwarn(WM_GCP_LOGTAG, "Interval overtaken.");
+            return 0;
+        }
+    } else {
+        mtinfo(WM_GCP_LOGTAG, "Invalid Scheduling option. Exiting.");
+        pthread_exit(NULL);
+        
+    }
+    return 0;
+}
+
+void wm_gcp_run(const wm_gcp *data) {
     int status;
     char *output = NULL;
     char *command = NULL;

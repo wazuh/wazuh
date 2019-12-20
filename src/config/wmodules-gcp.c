@@ -46,7 +46,6 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
         gcp->pull_on_start = 1;
         gcp->logging = 2;
         gcp->interval = WM_DEF_INTERVAL / 2;
-        gcp->time_interval = 0;
         module->context = &WM_GCP_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = gcp;
@@ -120,8 +119,8 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
             char *endptr;
             gcp->interval = strtoul(nodes[i]->content, &endptr, 0);
 
-            if (gcp->interval == 0 || gcp->interval == UINT_MAX) {
-                merror("Invalid interval value.");
+            if (gcp->interval <= 0 || gcp->interval >= UINT_MAX) {
+                merror("Invalid interval value at module '%s'", WM_GCP_CONTEXT.name);
                 return OS_INVALID;
             }
 
@@ -146,7 +145,7 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
                 case '\0':
                     break;
                 default:
-                    merror("Invalid interval value.");
+                    merror("Invalid interval value at module '%s'", WM_GCP_CONTEXT.name);
                     return OS_INVALID;
             }
         }
@@ -207,7 +206,7 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
                 return (OS_INVALID);
             } else {
                 gcp->scan_day = atoi(nodes[i]->content);
-                if (gcp->scan_day < 1 || gcp    ->scan_day > 31) {
+                if (gcp->scan_day < 1 || gcp->scan_day > 31) {
                     merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                     return (OS_INVALID);
                 }

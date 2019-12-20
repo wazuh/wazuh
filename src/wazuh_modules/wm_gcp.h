@@ -17,8 +17,8 @@
 #define WM_GCP_SCRIPT_PATH WM_GCP_DEFAULT_DIR "/gcloud.py"
 
 typedef struct wm_gcp {
-    int enabled:1;
-    int pull_on_start:1;
+    int enabled;
+    int pull_on_start;
     int logging;
     int max_messages;
     int scan_day;
@@ -29,7 +29,6 @@ typedef struct wm_gcp {
     char *subscription_name;
     char *credentials_file;
     unsigned int interval;
-    time_t time_interval;
 } wm_gcp;
 
 extern const wm_context WM_GCP_CONTEXT;   // Context
