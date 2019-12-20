@@ -164,7 +164,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     return (OS_INVALID);
                 }
             }
-            if(time < 1 ||  time == UINT_MAX){
+            if(time < 1 ||  time == INT_MAX){
                 mwarn("Invalid reconnection time value. Changed to %d seconds.", DEFAULT_EVENTCHANNEL_REC_TIME);
                 time = DEFAULT_EVENTCHANNEL_REC_TIME;
             }
