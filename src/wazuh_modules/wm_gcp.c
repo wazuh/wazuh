@@ -19,8 +19,6 @@ static void* wm_gcp_main(const wm_gcp *gcp_config);                        // Mo
 static void wm_gcp_run(const wm_gcp *data);                                // Running python script
 static void wm_gcp_destroy(wm_gcp *gcp_config);                      // Destroy data
 cJSON *wm_gcp_dump(const wm_gcp *gcp_config);                        // Read config
-static time_t wm_gcp_get_next_run_time(const wm_gcp *data);          // Calculate next fetch time
-
 
 /* Context definition */
 
@@ -30,8 +28,6 @@ const wm_context WM_GCP_CONTEXT = {
     (wm_routine)(void *)wm_gcp_destroy,
     (cJSON * (*)(const void *))wm_gcp_dump
 };
-
-static time_t time_start = 0; // Last fetch time
 
 // Module main function. It won't return
 void* wm_gcp_main(const wm_gcp *data) {
@@ -46,7 +42,7 @@ void* wm_gcp_main(const wm_gcp *data) {
     }
 
     do {
-        time_sleep = wm_gcp_get_next_run_time(data);
+        time_sleep = sched_scan_get_next_time(data->scan_config);
 
         if (time_sleep) {
             mtdebug1(WM_GCP_LOGTAG, "Sleeping for %li seconds", time_sleep);
@@ -63,60 +59,6 @@ void* wm_gcp_main(const wm_gcp *data) {
     } while(1);
 
     return NULL;
-}
-
-time_t wm_gcp_get_next_run_time(const wm_gcp *data){
-    if (data->pull_on_start && !time_start){
-        // If pull on start then initial waiting time is 0
-        return 0;
-    }
-
-    if (data->scan_day) {
-        // Option 1: Day of the month
-        int status = -1;
-        
-        while (status < 0) {
-            status = check_day_to_scan(data->scan_day, data->scan_time);
-            if (status == 0) {
-                // Correct day, sleep until scan_time and then run
-                return (time_t) get_time_to_hour(data->scan_time);
-            } else {
-                // Sleep until next day and re-evaluate
-                wm_delay(1000); // Sleep one second to avoid an infinite loop
-                const time_t sleep_until_tomorrow = get_time_to_hour("00:00"); 
-
-                mtdebug2(WM_GCP_LOGTAG, "Sleeping for %d seconds.", (int)sleep_until_tomorrow);
-                wm_delay(1000 * sleep_until_tomorrow);
-            }
-        }
-    } else if (data->scan_wday >= 0) {
-        // Option 2: Day of the week
-        return (time_t) get_time_to_day(data->scan_wday, data->scan_time);
-
-    } else if (data->scan_time) {
-        // Option 3: Time of the day [hh:mm]
-        return (time_t) get_time_to_hour(data->scan_time);
-    } else if (data->interval) {
-        // Option 4: Interval of time
-        
-        if(!time_start){
-            // First time
-            return 0;
-        }
-        const time_t last_run_time = time(NULL) - time_start;
-
-        if ((time_t)data->interval >= last_run_time) {
-            return  (time_t)data->interval - last_run_time;
-        } else {
-            mtwarn(WM_GCP_LOGTAG, "Interval overtaken.");
-            return 0;
-        }
-    } else {
-        mtinfo(WM_GCP_LOGTAG, "Invalid Scheduling option. Exiting.");
-        pthread_exit(NULL);
-        
-    }
-    return 0;
 }
 
 void wm_gcp_run(const wm_gcp *data) {

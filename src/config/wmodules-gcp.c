@@ -38,14 +38,14 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
         gcp->enabled = 1;
         gcp->max_messages = 100;
         gcp->project_id = NULL;
-        gcp->scan_wday = -1;
-        gcp->scan_day = 0;
-        gcp->scan_time = NULL;
+        gcp->scan_config.scan_wday = -1;
+        gcp->scan_config.scan_day = 0;
+        gcp->scan_config.scan_time = NULL;
+        gcp->scan_config.scan_on_start = true;
+        gcp->scan_config.interval = WM_DEF_INTERVAL / 2;
         gcp->subscription_name = NULL;
         gcp->credentials_file = NULL;
-        gcp->pull_on_start = 1;
         gcp->logging = 2;
-        gcp->interval = WM_DEF_INTERVAL / 2;
         module->context = &WM_GCP_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = gcp;
@@ -117,9 +117,9 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
         }
         else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
             char *endptr;
-            gcp->interval = strtoul(nodes[i]->content, &endptr, 0);
+            gcp->scan_config.interval = strtoul(nodes[i]->content, &endptr, 0);
 
-            if (gcp->interval <= 0 || gcp->interval >= UINT_MAX) {
+            if (gcp->scan_config.interval <= 0 || gcp->scan_config.interval >= UINT_MAX) {
                 merror("Invalid interval value at module '%s'", WM_GCP_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -127,19 +127,19 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
             switch (*endptr) {
                 case 'M':
                     month_interval = 1;
-                    gcp->interval *= 60; // We can`t calculate seconds of a month
+                    gcp->scan_config.interval *= 60; // We can`t calculate seconds of a month
                     break;
                 case 'w':
-                    gcp->interval *= 604800;
+                    gcp->scan_config.interval *= 604800;
                     break;
                 case 'd':
-                    gcp->interval *= 86400;
+                    gcp->scan_config.interval *= 86400;
                     break;
                 case 'h':
-                    gcp->interval *= 3600;
+                    gcp->scan_config.interval *= 3600;
                     break;
                 case 'm':
-                    gcp->interval *= 60;
+                    gcp->scan_config.interval *= 60;
                     break;
                 case 's':
                 case '\0':
@@ -174,7 +174,7 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
 
-            gcp->pull_on_start = pull_on_start;
+            gcp->scan_config.scan_on_start = ((pull_on_start == 1);
         }
         else if (!strcmp(nodes[i]->element, XML_LOGGING)) {
             if (!strcmp(nodes[i]->content, "disabled")) {
@@ -194,8 +194,8 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_WEEK_DAY)) {
-            gcp->scan_wday = w_validate_wday(nodes[i]->content);
-            if (gcp->scan_wday < 0 || gcp->scan_wday > 6) {
+            gcp->scan_config.scan_wday = w_validate_wday(nodes[i]->content);
+            if (gcp->scan_config.scan_wday < 0 || gcp->scan_config.scan_wday > 6) {
                 merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                 return (OS_INVALID);
             }
@@ -205,8 +205,8 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
                 merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                 return (OS_INVALID);
             } else {
-                gcp->scan_day = atoi(nodes[i]->content);
-                if (gcp->scan_day < 1 || gcp->scan_day > 31) {
+                gcp->scan_config.scan_day = atoi(nodes[i]->content);
+                if (gcp->scan_config.scan_day < 1 || gcp->scan_config.scan_day > 31) {
                     merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                     return (OS_INVALID);
                 }
@@ -214,8 +214,8 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
         }
         else if (!strcmp(nodes[i]->element, XML_TIME))
         {
-            gcp->scan_time = w_validate_time(nodes[i]->content);
-            if (!gcp->scan_time) {
+            gcp->scan_config.scan_time = w_validate_time(nodes[i]->content);
+            if (!gcp->scan_config.scan_time) {
                 merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                 return (OS_INVALID);
             }
@@ -226,28 +226,28 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
 
     // Validate scheduled scan parameters and interval value
 
-    if (gcp->scan_day && (gcp->scan_wday >= 0)) {
+    if (gcp->scan_config.scan_day && (gcp->scan_config.scan_wday >= 0)) {
         merror("Options 'day' and 'wday' are not compatible.");
         return OS_INVALID;
-    } else if (gcp->scan_day) {
+    } else if (gcp->scan_config.scan_day) {
         if (!month_interval) {
             mwarn("Interval must be a multiple of one month. New interval value: 1M");
-            gcp->interval = 60; // 1 month
+            gcp->scan_config.interval = 60; // 1 month
         }
-        if (!gcp->scan_time)
-            gcp->scan_time = strdup("00:00");
-    } else if (gcp->scan_wday >= 0) {
-        if (w_validate_interval(gcp->interval, 1) != 0) {
-            gcp->interval = 604800;  // 1 week
+        if (!gcp->scan_config.scan_time)
+            gcp->scan_config.scan_time = strdup("00:00");
+    } else if (gcp->scan_config.scan_wday >= 0) {
+        if (w_validate_interval(gcp->scan_config.interval, 1) != 0) {
+            gcp->scan_config.interval = 604800;  // 1 week
             mwarn("Interval must be a multiple of one week. New interval value: 1w");
         }
-        if (gcp->interval == 0)
-            gcp->interval = 604800;
-        if (!gcp->scan_time)
-            gcp->scan_time = strdup("00:00");
-    } else if (gcp->scan_time) {
-        if (w_validate_interval(gcp->interval, 0) != 0) {
-            gcp->interval = WM_DEF_INTERVAL;  // 1 day
+        if (gcp->scan_config.interval == 0)
+            gcp->scan_config.interval = 604800;
+        if (!gcp->scan_config.scan_time)
+            gcp->scan_config.scan_time = strdup("00:00");
+    } else if (gcp->scan_config.scan_time) {
+        if (w_validate_interval(gcp->scan_config.interval, 0) != 0) {
+            gcp->scan_config.interval = WM_DEF_INTERVAL;  // 1 day
             mwarn("Interval must be a multiple of one day. New interval value: 1d");
         }
     }
