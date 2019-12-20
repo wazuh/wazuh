@@ -93,6 +93,13 @@ list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,cJSON
                          -Wl,--wrap,cJSON_IsObject -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text \
                          -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_step")
 
+list(APPEND tests_names "test_wdb_parser")
+list(APPEND tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mwarn \
+                         -Wl,--wrap,wdb_scan_info_get -Wl,--wrap,wdb_fim_update_date_entry -Wl,--wrap,wdb_fim_clean_old_entries \
+                         -Wl,--wrap,wdb_scan_info_update -Wl,--wrap,wdb_scan_info_fim_checks_control -Wl,--wrap,wdb_syscheck_load \
+                         -Wl,--wrap,wdb_fim_delete -Wl,--wrap,wdb_syscheck_save -Wl,--wrap,wdb_syscheck_save2 \
+                         -Wl,--wrap,wdbi_query_checksum -Wl,--wrap,wdbi_query_clear")
+
 # Config files
 configure_file("test_syscheck.conf" "test_syscheck.conf" COPYONLY)
 
