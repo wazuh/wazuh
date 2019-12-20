@@ -462,7 +462,7 @@ void os_ReportdStart(report_filter *r_filter){
             minfo("Getting alerts in JSON format.");
             jqueue_init(fileq);
             jqueue_flags(fileq, CRALERT_READ_ALL | CRALERT_FP_SET);
-            
+
             if (jqueue_open(fileq, 1) < 0) {
                 merror("Could not open JSON alerts file.");
             }
@@ -589,6 +589,11 @@ void os_ReportdStart(report_filter *r_filter){
             minfo("Report '%s' completed and zero alerts post-filter.", r_filter->report_name);
         }
 
+        minfo("'%s' is configured to be the source of the report.",
+                r_filter->report_log_source == REPORT_SOURCE_LOG ? "alerts.log" : "alerts.json");
+
+        minfo("Please, check that the provided file is the correct one.");
+
         goto cleanup;
     }
 
@@ -666,16 +671,17 @@ void os_ReportdStart(report_filter *r_filter){
             l_print_out("Log dump:");
             l_print_out("------------------------------------------------");
         }
-        
+
         while (data_to_clean[i]) {
             alert_data *md = data_to_clean[i];
-            
+
             if (r_filter->show_alerts && md->log) {
-                l_print_out("%s %s\nRule: %d (level %d) -> '%s'\n%s\n\n", md->date, md->location, md->rule, md->level, md->comment, md->log[0]);
+                l_print_out("%s %s\nRule: %d (level %d) -> '%s'\n%s\n\n",
+                            md->date, md->location, md->rule, md->level, md->comment, md->log[0]);
             }
-            
+
             FreeAlertData(md);
-            
+
             i++;
         }
 
