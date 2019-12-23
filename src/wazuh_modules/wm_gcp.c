@@ -202,42 +202,14 @@ cJSON *wm_gcp_dump(const wm_gcp *data) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
 
+    sched_scan_dump(&(data->scan_config), wm_wd);
+
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
-    cJSON_AddStringToObject(wm_wd, "scan-on-start", data->scan_config.scan_on_start ? "yes" : "no");
-    if (data->scan_config.interval) cJSON_AddNumberToObject(wm_wd, "interval", data->scan_config.interval);
     if (data->max_messages) cJSON_AddNumberToObject(wm_wd, "max_messages", data->max_messages);
     if (data->project_id) cJSON_AddStringToObject(wm_wd, "project_id", data->project_id);
     if (data->subscription_name) cJSON_AddStringToObject(wm_wd, "subscription_name", data->subscription_name);
     if (data->credentials_file) cJSON_AddStringToObject(wm_wd, "credentials_file", data->credentials_file);
-    if (data->scan_config.scan_day) cJSON_AddNumberToObject(wm_wd, "day", data->scan_config.scan_day);
-
-    switch (data->scan_config.scan_wday) {
-        case 0:
-            cJSON_AddStringToObject(wm_wd, "wday", "sunday");
-            break;
-        case 1:
-            cJSON_AddStringToObject(wm_wd, "wday", "monday");
-            break;
-        case 2:
-            cJSON_AddStringToObject(wm_wd, "wday", "tuesday");
-            break;
-        case 3:
-            cJSON_AddStringToObject(wm_wd, "wday", "wednesday");
-            break;
-        case 4:
-            cJSON_AddStringToObject(wm_wd, "wday", "thursday");
-            break;
-        case 5:
-            cJSON_AddStringToObject(wm_wd, "wday", "friday");
-            break;
-        case 6:
-            cJSON_AddStringToObject(wm_wd, "wday", "saturday");
-            break;
-        default:
-            break;
-    }
-    if (data->scan_config.scan_time) cJSON_AddStringToObject(wm_wd, "time", data->scan_config.scan_time);
-
+    
     switch (data->logging) {
         case 0:
             cJSON_AddStringToObject(wm_wd, "logging", "disabled");

@@ -216,3 +216,36 @@ int _sched_scan_validate_parameters(sched_scan_config *scan_config) {
 
     return 0;
 }
+
+void sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object){
+    cJSON_AddStringToObject(cjson_object, "scan-on-start", scan_config->scan_on_start ? "yes" : "no");
+    if (scan_config->interval) cJSON_AddNumberToObject(cjson_object, "interval", scan_config->interval);
+    if (scan_config->scan_day) cJSON_AddNumberToObject(cjson_object, "day", scan_config->scan_day);
+    switch (scan_config->scan_wday) {
+        case 0:
+            cJSON_AddStringToObject(cjson_object, "wday", "sunday");
+            break;
+        case 1:
+            cJSON_AddStringToObject(cjson_object, "wday", "monday");
+            break;
+        case 2:
+            cJSON_AddStringToObject(cjson_object, "wday", "tuesday");
+            break;
+        case 3:
+            cJSON_AddStringToObject(cjson_object, "wday", "wednesday");
+            break;
+        case 4:
+            cJSON_AddStringToObject(cjson_object, "wday", "thursday");
+            break;
+        case 5:
+            cJSON_AddStringToObject(cjson_object, "wday", "friday");
+            break;
+        case 6:
+            cJSON_AddStringToObject(cjson_object, "wday", "saturday");
+            break;
+        default:
+            break;
+    }
+    if (scan_config->scan_time) cJSON_AddStringToObject(cjson_object, "time", scan_config->scan_time);
+
+}
