@@ -43,7 +43,6 @@ const wm_context WM_AZURE_CONTEXT = {
 
 void* wm_azure_main(wm_azure_t *azure_config) {
 
-    time_t time_sleep = 0;
     wm_azure_api_t *curr_api = NULL;
     wm_azure_storage_t *curr_storage = NULL;
     char msg[OS_SIZE_6144];
@@ -56,7 +55,7 @@ void* wm_azure_main(wm_azure_t *azure_config) {
     // Main loop
 
     do {
-        time_sleep = sched_scan_get_next_time(&(azure_config->scan_config), WM_AZURE_LOGTAG);
+        const time_t time_sleep = sched_scan_get_next_time(&(azure_config->scan_config), WM_AZURE_LOGTAG);
         azure_config->state.next_time = azure_config->scan_config.time_start + time_sleep;
 
         if (time_sleep) {

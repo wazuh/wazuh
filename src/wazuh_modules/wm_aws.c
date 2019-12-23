@@ -39,7 +39,6 @@ const wm_context WM_AWS_CONTEXT = {
 void* wm_aws_main(wm_aws *aws_config) {
     wm_aws_bucket *cur_bucket;
     wm_aws_service *cur_service;
-    time_t time_sleep = 0;
     char *log_info;
 
 
@@ -50,7 +49,7 @@ void* wm_aws_main(wm_aws *aws_config) {
 
     do {
 
-        time_sleep = sched_scan_get_next_time(&(aws_config->scan_config), WM_AWS_LOGTAG);
+        const time_t time_sleep = sched_scan_get_next_time(&(aws_config->scan_config), WM_AWS_LOGTAG);
         
         aws_config->state.next_time = aws_config->scan_config.time_start + time_sleep;
         if (wm_state_io(WM_AWS_CONTEXT.name, WM_IO_WRITE, &aws_config->state, sizeof(aws_config->state)) < 0)

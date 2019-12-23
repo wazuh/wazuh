@@ -52,7 +52,6 @@ const wm_context WM_CISCAT_CONTEXT = {
 
 void* wm_ciscat_main(wm_ciscat *ciscat) {
     wm_ciscat_eval *eval;
-    time_t time_sleep = 0;
     int skip_java = 0;
     char *cis_path = NULL;
     char java_fullpath[OS_MAXSTR];
@@ -151,7 +150,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
     do {
 
-        time_sleep = sched_scan_get_next_time(&(ciscat->scan_config), WM_CISCAT_LOGTAG);
+        const time_t time_sleep = sched_scan_get_next_time(&(ciscat->scan_config), WM_CISCAT_LOGTAG);
 
         if (time_sleep) {
             mtdebug1(WM_CISCAT_LOGTAG, "Sleeping for %li seconds", time_sleep);

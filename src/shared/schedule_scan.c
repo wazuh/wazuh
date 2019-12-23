@@ -13,6 +13,7 @@ static short eval_bool(const char *str) {
 }
 
 static int _sched_scan_validate_parameters(sched_scan_config *scan_config);
+static time_t _get_next_time(const sched_scan_config *config, const char *MODULE_TAG);
 
 /**
  * Initializes sched_scan_config structure with 
@@ -122,7 +123,13 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
  * @param MODULE_TAG String to identify module
  * @return remaining time until next scan
  * */
-time_t sched_scan_get_next_time(const sched_scan_config *config, const char *MODULE_TAG) {
+time_t sched_scan_get_next_time(sched_scan_config *config, const char *MODULE_TAG) {
+    const time_t next_time = _get_next_time(config, MODULE_TAG);
+    config->time_start = time(NULL);
+    return next_time;
+}
+
+static time_t _get_next_time(const sched_scan_config *config, const char *MODULE_TAG) {
     if (config->scan_on_start && !config->time_start) {
         // If scan on start then initial waiting time is 0
         return 0;
