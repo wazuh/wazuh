@@ -14,11 +14,6 @@
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_TIMEOUT = "timeout";
-static const char *XML_INTERVAL = "interval";
-static const char *XML_RUN_DAY = "day";
-static const char *XML_RUN_WDAY = "wday";
-static const char *XML_RUN_TIME = "time";
-static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_DISABLED = "disabled";
 
 static const char *XML_LOG_ANALYTICS = "log_analytics";
@@ -63,16 +58,12 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     wm_azure_api_t *api_config_prev = NULL;
     wm_azure_storage_t *storage = NULL;
     wm_azure_storage_t *storage_prev = NULL;
-    int month_interval = 0;
 
     // Create module
 
     os_calloc(1, sizeof(wm_azure_t), azure);
     azure->flags.enabled = 1;
-    azure->flags.run_on_start = 1;
-    azure->scan_wday = -1;
-    azure->scan_time = NULL;
-    azure->timeout = WM_AZURE_DEF_TIMEOUT;
+    sched_scan_init(&(azure->scan_config));
     module->context = &WM_AZURE_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = azure;
@@ -95,76 +86,6 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             if (azure->timeout <= 0 || azure->timeout >= UINT_MAX) {
                 merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            char *endptr;
-            azure->interval = strtoul(nodes[i]->content, &endptr, 0);
-
-            if (azure->interval <= 0 || azure->interval >= UINT_MAX) {
-                merror("At module '%s': Invalid interval.", WM_AZURE_CONTEXT.name);
-                return OS_INVALID;
-            }
-
-            switch (*endptr) {
-            case 'M':
-                month_interval = 1;
-                azure->interval *= 60; // We can`t calculate seconds of a month
-                break;
-            case 'w':
-                azure->interval *= 604800;
-                break;
-            case 'd':
-                azure->interval *= 86400;
-                break;
-            case 'h':
-                azure->interval *= 3600;
-                break;
-            case 'm':
-                azure->interval *= 60;
-                break;
-            case 's':
-            case '\0':
-                break;
-            default:
-                merror("At module '%s': Invalid interval.", WM_AZURE_CONTEXT.name);
-                return OS_INVALID;
-            }
-
-            if (azure->interval < 60) {
-                merror("At module '%s': Interval must be greater than 60 seconds. New interval value: 60s.", WM_AZURE_CONTEXT.name);
-                azure->interval = 60;
-            }
-        } else if (!strcmp(nodes[i]->element, XML_RUN_DAY)) {
-            if (!OS_StrIsNum(nodes[i]->content)) {
-                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-                return OS_INVALID;
-            } else {
-                azure->scan_day = atoi(nodes[i]->content);
-                if (azure->scan_day < 1 || azure->scan_day > 31) {
-                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-                    return OS_INVALID;
-                }
-            }
-        } else if (!strcmp(nodes[i]->element, XML_RUN_WDAY)) {
-            azure->scan_wday = w_validate_wday(nodes[i]->content);
-            if (azure->scan_wday < 0 || azure->scan_wday > 6) {
-                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(nodes[i]->element, XML_RUN_TIME)) {
-            azure->scan_time = w_validate_time(nodes[i]->content);
-            if (!azure->scan_time) {
-                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
-            if (!strcmp(nodes[i]->content, "yes"))
-                azure->flags.run_on_start = 1;
-            else if (!strcmp(nodes[i]->content, "no"))
-                azure->flags.run_on_start = 0;
-            else {
-                merror("At module '%s': Invalid content for tag '%s'.", WM_AZURE_CONTEXT.name, XML_RUN_ON_START);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_DISABLED)) {
@@ -271,35 +192,14 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         }
     }
 
-    // Validate scheduled scan parameters and interval value
-
-    if (azure->scan_day && (azure->scan_wday >= 0)) {
-        merror("At module '%s': 'day' is not compatible with 'wday'.", WM_AZURE_CONTEXT.name);
+    const int sched_read = sched_scan_read(&(azure->scan_config), nodes, module->context->name);
+    if ( sched_read != 0 ) {
         return OS_INVALID;
-    } else if (azure->scan_day) {
-        if (!month_interval) {
-            mwarn("At module '%s': Interval must be a multiple of one month. New interval value: 1M.", WM_AZURE_CONTEXT.name);
-            azure->interval = 60; // 1 month
-        }
-        if (!azure->scan_time)
-            azure->scan_time = strdup("00:00");
-    } else if (azure->scan_wday >= 0) {
-        if (w_validate_interval(azure->interval, 1) != 0) {
-            azure->interval = 604800;  // 1 week
-            mwarn("At module '%s': Interval must be a multiple of one week. New interval value: 1w.", WM_AZURE_CONTEXT.name);
-        }
-        if (azure->interval == 0)
-            azure->interval = 604800;
-        if (!azure->scan_time)
-            azure->scan_time = strdup("00:00");
-    } else if (azure->scan_time) {
-        if (w_validate_interval(azure->interval, 0) != 0) {
-            azure->interval = WM_DEF_INTERVAL;  // 1 day
-            mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_AZURE_CONTEXT.name);
-        }
     }
-    if (!azure->interval)
-        azure->interval = WM_DEF_INTERVAL;
+
+
+    if (!azure->scan_config.interval)
+        azure->scan_config.interval = WM_DEF_INTERVAL;
 
     return 0;
 }
