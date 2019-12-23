@@ -2687,6 +2687,7 @@ cJSON * port_json_compare(port_entry_data * old_data, port_entry_data * new_data
 cJSON * port_json_attributes(port_entry_data * data) {
     cJSON * attributes = cJSON_CreateObject();
 
+    cJSON_AddStringToObject(attributes, "protocol", data->protocol);
     cJSON_AddStringToObject(attributes, "local_ip", data->local_ip);
     cJSON_AddNumberToObject(attributes, "local_port", data->local_port);
     if (data->remote_ip) {
@@ -2694,9 +2695,6 @@ cJSON * port_json_attributes(port_entry_data * data) {
     }
     if (data->remote_port > INT_MIN) {
         cJSON_AddNumberToObject(attributes, "remote_port", data->remote_port);
-    }
-    if (data->protocol) {
-        cJSON_AddStringToObject(attributes, "protocol", data->protocol);
     }
     if (data->tx_queue > INT_MIN) {
         cJSON_AddNumberToObject(attributes, "tx_queue", data->tx_queue);
