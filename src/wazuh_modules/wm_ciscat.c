@@ -52,10 +52,8 @@ const wm_context WM_CISCAT_CONTEXT = {
 
 void* wm_ciscat_main(wm_ciscat *ciscat) {
     wm_ciscat_eval *eval;
-    time_t time_start = 0;
     time_t time_sleep = 0;
     int skip_java = 0;
-    int status = 0;
     char *cis_path = NULL;
     char java_fullpath[OS_MAXSTR];
     char bench_fullpath[OS_MAXSTR];
@@ -149,60 +147,16 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         ciscat->flags.error = 1;
     }
 
-    // First sleeping
-
-    if (!ciscat->flags.scan_on_start) {
-        time_start = time(NULL);
-
-        if (ciscat->scan_day) {
-            do {
-                status = check_day_to_scan(ciscat->scan_day, ciscat->scan_time);
-                if (status == 0) {
-                    time_sleep = get_time_to_hour(ciscat->scan_time);
-                } else {
-                    wm_delay(1000); // Sleep one second to avoid an infinite loop
-                    time_sleep = get_time_to_hour("00:00");
-                }
-
-                mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-                wm_delay(1000 * time_sleep);
-
-            } while (status < 0);
-
-        } else if (ciscat->scan_wday >= 0) {
-
-            time_sleep = get_time_to_day(ciscat->scan_wday, ciscat->scan_time);
-            mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-            wm_delay(1000 * time_sleep);
-
-        } else if (ciscat->scan_time) {
-
-            time_sleep = get_time_to_hour(ciscat->scan_time);
-            mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-            wm_delay(1000 * time_sleep);
-
-        } else if (ciscat->state.next_time == 0 || ciscat->state.next_time > time_start) {
-
-            // On first run, take into account the interval of time specified
-            time_sleep = ciscat->state.next_time == 0 ?
-                         (time_t)ciscat->interval :
-                         ciscat->state.next_time - time_start;
-
-            mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %ld seconds", (long)time_sleep);
-            wm_delay(1000 * time_sleep);
-
-        }
-    }
-
     // Main loop
 
-    while (1) {
+    do {
 
-        // Get time and execute
-        time_start = time(NULL);
+        time_sleep = sched_scan_get_next_time(&(ciscat->scan_config), WM_CISCAT_LOGTAG);
+
+        if (time_sleep) {
+            mtdebug1(WM_CISCAT_LOGTAG, "Sleeping for %li seconds", time_sleep);
+            wm_delay(1000 * time_sleep);
+        }
 
         if (!ciscat->flags.error) {
             mtinfo(WM_CISCAT_LOGTAG, "Starting evaluation.");
@@ -246,55 +200,8 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
             }
         }
 
-        wm_delay(1000); // Avoid infinite loop when execution fails
-        time_sleep = time(NULL) - time_start;
-
         mtinfo(WM_CISCAT_LOGTAG, "Evaluation finished.");
-
-        if (ciscat->scan_day) {
-            int interval = 0, i = 0;
-            interval = ciscat->interval / 60;   // interval in num of months
-
-            do {
-                status = check_day_to_scan(ciscat->scan_day, ciscat->scan_time);
-                if (status == 0) {
-                    time_sleep = get_time_to_hour(ciscat->scan_time);
-                    i++;
-                } else {
-                    wm_delay(1000);
-                    time_sleep = get_time_to_hour("00:00");     // Sleep until the start of the next day
-                }
-
-                mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-                wm_delay(1000 * time_sleep);
-
-            } while ((status < 0) && (i < interval));
-
-        } else {
-
-            if (ciscat->scan_wday >= 0) {
-                time_sleep = get_time_to_day(ciscat->scan_wday, ciscat->scan_time);
-                time_sleep += WEEK_SEC * ((ciscat->interval / WEEK_SEC) - 1);
-                ciscat->state.next_time = (time_t)time_sleep + time_start;
-            } else if (ciscat->scan_time) {
-                time_sleep = get_time_to_hour(ciscat->scan_time);
-                time_sleep += DAY_SEC * ((ciscat->interval / DAY_SEC) - 1);
-                ciscat->state.next_time = (time_t)time_sleep + time_start;
-            } else if ((time_t)ciscat->interval >= time_sleep) {
-                time_sleep = ciscat->interval - time_sleep;
-                ciscat->state.next_time = ciscat->interval + time_start;
-            } else {
-                mterror(WM_CISCAT_LOGTAG, "Interval overtaken.");
-                time_sleep = ciscat->state.next_time = 0;
-            }
-
-            if (wm_state_io(WM_CISCAT_CONTEXT.name, WM_IO_WRITE, &ciscat->state, sizeof(ciscat->state)) < 0)
-                mterror(WM_CISCAT_LOGTAG, "Couldn't save running state.");
-
-            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-            wm_delay(1000 * time_sleep);
-        }
-    }
+    } while(1);
 
     free(cis_path);
 #ifdef WIN32
@@ -1507,11 +1414,6 @@ void wm_ciscat_check() {
         pthread_exit(NULL);
     }
 
-    // Check if interval
-
-    if (!ciscat->interval)
-        ciscat->interval = WM_DEF_INTERVAL;
-
     // Check timeout and flags for evals
 
     for (eval = ciscat->evals; eval; eval = eval->next) {
@@ -1548,10 +1450,10 @@ cJSON *wm_ciscat_dump(const wm_ciscat * ciscat) {
     cJSON *wm_cscat = cJSON_CreateObject();
 
     if (ciscat->flags.enabled) cJSON_AddStringToObject(wm_cscat,"disabled","no"); else cJSON_AddStringToObject(wm_cscat,"disabled","yes");
-    if (ciscat->flags.scan_on_start) cJSON_AddStringToObject(wm_cscat,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_cscat,"scan-on-start","no");
-    if (ciscat->interval) cJSON_AddNumberToObject(wm_cscat, "interval", ciscat->interval);
-    if (ciscat->scan_day) cJSON_AddNumberToObject(wm_cscat, "day", ciscat->scan_day);
-    switch (ciscat->scan_wday) {
+    if (ciscat->scan_config.scan_on_start) cJSON_AddStringToObject(wm_cscat,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_cscat,"scan-on-start","no");
+    if (ciscat->scan_config.interval) cJSON_AddNumberToObject(wm_cscat, "interval", ciscat->scan_config.interval);
+    if (ciscat->scan_config.scan_day) cJSON_AddNumberToObject(wm_cscat, "day", ciscat->scan_config.scan_day);
+    switch (ciscat->scan_config.scan_wday) {
         case 0:
             cJSON_AddStringToObject(wm_cscat, "wday", "sunday");
             break;
@@ -1576,7 +1478,7 @@ cJSON *wm_ciscat_dump(const wm_ciscat * ciscat) {
         default:
             break;
     }
-    if (ciscat->scan_time) cJSON_AddStringToObject(wm_cscat, "time", ciscat->scan_time);
+    if (ciscat->scan_config.scan_time) cJSON_AddStringToObject(wm_cscat, "time", ciscat->scan_config.scan_time);
     if (ciscat->java_path) cJSON_AddStringToObject(wm_cscat,"java_path",ciscat->java_path);
     if (ciscat->ciscat_path) cJSON_AddStringToObject(wm_cscat,"ciscat_path",ciscat->ciscat_path);
     cJSON_AddNumberToObject(wm_cscat,"timeout",ciscat->timeout);

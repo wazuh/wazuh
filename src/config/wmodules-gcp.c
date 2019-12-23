@@ -141,10 +141,12 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
             }
         } 
 
-        const int sched_read = sched_scan_read(&(gcp->scan_config), nodes, module->context->name);
-        if ( sched_read != 0 ) {
-            return OS_INVALID;
-        }
+        
+    }
+
+    const int sched_read = sched_scan_read(&(gcp->scan_config), nodes, module->context->name);
+    if ( sched_read != 0 ) {
+        return OS_INVALID;
     }
 
     if (!gcp->project_id) {

@@ -49,7 +49,6 @@ typedef enum wm_ciscat_eval_t { WM_CISCAT_XCCDF = 1, WM_CISCAT_OVAL } wm_ciscat_
 
 typedef struct wm_ciscat_flags {
     unsigned int enabled:1;
-    unsigned int scan_on_start:1;
     unsigned int error:1;
 } wm_ciscat_flags;
 
@@ -67,10 +66,7 @@ typedef struct wm_ciscat_state {
 } wm_ciscat_state;
 
 typedef struct wm_ciscat {
-    unsigned int interval;          // Default time interval between cycles
-    int scan_day;                   // Day of month to run the CIS-CAT scan
-    int scan_wday;                  // Day of the week to run the CIS-CAT scan
-    char *scan_time;                // Time of the day to run the CIS-CAT scan
+    sched_scan_config scan_config;
     unsigned int timeout;           // Default execution time limit (seconds)
     char *java_path;                // Path to Java Runtime Environment
     char *ciscat_path;              // Path to CIS-CAT scanner tool
