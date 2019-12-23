@@ -55,13 +55,12 @@ typedef struct wm_aws_service {
 } wm_aws_service;
 
 typedef struct wm_aws {
+    sched_scan_config scan_config;
     char *bucket;                       // DEPRECATE
     char *access_key;                   // DEPRECATE
     char *secret_key;                   // DEPRECATE
-    unsigned long interval;
     int queue_fd;
     unsigned int enabled:1;
-    unsigned int run_on_start:1;
     unsigned int remove_from_bucket:1;  // DEPRECATE
     unsigned int skip_on_error:1;
     wm_aws_state_t state;

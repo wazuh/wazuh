@@ -39,7 +39,6 @@ const wm_context WM_AWS_CONTEXT = {
 void* wm_aws_main(wm_aws *aws_config) {
     wm_aws_bucket *cur_bucket;
     wm_aws_service *cur_service;
-    time_t time_start;
     time_t time_sleep = 0;
     char *log_info;
 
@@ -47,31 +46,21 @@ void* wm_aws_main(wm_aws *aws_config) {
     wm_aws_setup(aws_config);
     mtinfo(WM_AWS_LOGTAG, "Module AWS started");
 
-    // First sleeping
-
-    if (!aws_config->run_on_start) {
-        time_start = time(NULL);
-
-        // On first run, take into account the interval of time specified
-        if (aws_config->state.next_time == 0) {
-            aws_config->state.next_time = time_start + aws_config->interval;
-        }
-
-        if (aws_config->state.next_time > time_start) {
-            mtinfo(WM_AWS_LOGTAG, "Waiting interval to start fetching.");
-            time_sleep = aws_config->state.next_time - time_start;
-            wm_delay(1000 * time_sleep);
-        }
-    }
-
     // Main loop
 
-    while (1) {
+    do {
 
+        time_sleep = sched_scan_get_next_time(&(aws_config->scan_config), WM_AWS_LOGTAG);
+        
+        aws_config->state.next_time = aws_config->scan_config.time_start + time_sleep;
+        if (wm_state_io(WM_AWS_CONTEXT.name, WM_IO_WRITE, &aws_config->state, sizeof(aws_config->state)) < 0)
+            mterror(WM_AWS_LOGTAG, "Couldn't save running state.");
+
+        if (time_sleep) {
+            mtdebug1(WM_AWS_LOGTAG, "Sleeping for %li seconds", time_sleep);
+            wm_delay(1000 * time_sleep);
+        }
         mtinfo(WM_AWS_LOGTAG, "Starting fetching of logs.");
-
-        // Get time and execute
-        time_start = time(NULL);
 
         for (cur_bucket = aws_config->buckets; cur_bucket; cur_bucket = cur_bucket->next) {
 
@@ -160,24 +149,7 @@ void* wm_aws_main(wm_aws *aws_config) {
 
         mtinfo(WM_AWS_LOGTAG, "Fetching logs finished.");
 
-        if (aws_config->interval) {
-            time_sleep = time(NULL) - time_start;
-
-            if ((time_t)aws_config->interval >= time_sleep) {
-                time_sleep = aws_config->interval - time_sleep;
-                aws_config->state.next_time = aws_config->interval + time_start;
-            } else {
-                mtwarn(WM_AWS_LOGTAG, "Interval overtaken.");
-                time_sleep = aws_config->state.next_time = 0;
-            }
-
-            if (wm_state_io(WM_AWS_CONTEXT.name, WM_IO_WRITE, &aws_config->state, sizeof(aws_config->state)) < 0)
-                mterror(WM_AWS_LOGTAG, "Couldn't save running state.");
-        }
-
-        // If time_sleep=0, yield CPU
-        wm_delay(1000 * time_sleep);
-    }
+    } while (1);
 
     return NULL;
 }
@@ -190,10 +162,10 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_aws = cJSON_CreateObject();
 
+    sched_scan_dump(&(aws_config->scan_config), wm_aws);
+
     if (aws_config->enabled) cJSON_AddStringToObject(wm_aws,"disabled","no"); else cJSON_AddStringToObject(wm_aws,"disabled","yes");
-    if (aws_config->run_on_start) cJSON_AddStringToObject(wm_aws,"run_on_start","yes"); else cJSON_AddStringToObject(wm_aws,"run_on_start","no");
     if (aws_config->skip_on_error) cJSON_AddStringToObject(wm_aws,"skip_on_error","yes"); else cJSON_AddStringToObject(wm_aws,"skip_on_error","no");
-    cJSON_AddNumberToObject(wm_aws,"interval",aws_config->interval);
     if (aws_config->buckets) {
         wm_aws_bucket *iter;
         cJSON *arr_buckets = cJSON_CreateArray();
@@ -301,8 +273,8 @@ void wm_aws_check() {
 
     // Check if interval defined; otherwise set default
 
-    if (!aws_config->interval)
-        aws_config->interval = WM_AWS_DEFAULT_INTERVAL;
+    if (!aws_config->scan_config.interval)
+        aws_config->scan_config.interval = WM_AWS_DEFAULT_INTERVAL;
 
 }
 
