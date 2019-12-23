@@ -188,7 +188,7 @@ static void test_wdb_syscheck_save2_success(void **state)
 }
 
 
-static void wdb_fim_insert_entry2_wdb_null(void **state)
+static void test_wdb_fim_insert_entry2_wdb_null(void **state)
 {
     (void) state; /* unused */
     int ret;
@@ -199,7 +199,7 @@ static void wdb_fim_insert_entry2_wdb_null(void **state)
     assert_int_equal(ret, -1);    
 }
 
-static void wdb_fim_insert_entry2_data_null(void **state)
+static void test_wdb_fim_insert_entry2_data_null(void **state)
 {
     int ret;
 
@@ -210,7 +210,7 @@ static void wdb_fim_insert_entry2_data_null(void **state)
     assert_int_equal(ret, -1);    
 }
 
-static void wdb_fim_insert_entry2_path_null(void **state)
+static void test_wdb_fim_insert_entry2_path_null(void **state)
 {
     int ret;
 
@@ -223,7 +223,7 @@ static void wdb_fim_insert_entry2_path_null(void **state)
     assert_int_equal(ret, -1);    
 }
 
-static void wdb_fim_insert_entry2_timestamp_null(void **state)
+static void test_wdb_fim_insert_entry2_timestamp_null(void **state)
 {
     int ret;
 
@@ -237,7 +237,7 @@ static void wdb_fim_insert_entry2_timestamp_null(void **state)
     assert_int_equal(ret, -1);  
 }
 
-static void wdb_fim_insert_entry2_attributes_null(void **state)
+static void test_wdb_fim_insert_entry2_attributes_null(void **state)
 {
     int ret;
 
@@ -252,7 +252,7 @@ static void wdb_fim_insert_entry2_attributes_null(void **state)
     assert_int_equal(ret, -1);
 }
 
-static void wdb_fim_insert_entry2_fail_cache(void **state)
+static void test_wdb_fim_insert_entry2_fail_cache(void **state)
 {
     int ret;
 
@@ -268,7 +268,7 @@ static void wdb_fim_insert_entry2_fail_cache(void **state)
     assert_int_equal(ret, -1);
 }
 
-static void wdb_fim_insert_entry2_fail_element_string(void **state)
+static void test_wdb_fim_insert_entry2_fail_element_string(void **state)
 {
     int ret;
 
@@ -294,7 +294,7 @@ static void wdb_fim_insert_entry2_fail_element_string(void **state)
     assert_int_equal(ret, -1);
 }
 
-static void wdb_fim_insert_entry2_fail_sqlite3_stmt(void **state)
+static void test_wdb_fim_insert_entry2_fail_sqlite3_stmt(void **state)
 {
     int ret;
 
@@ -314,7 +314,7 @@ static void wdb_fim_insert_entry2_fail_sqlite3_stmt(void **state)
     assert_int_equal(ret, -1);
 }
 
-static void wdb_fim_insert_entry2_success(void **state)
+static void test_wdb_fim_insert_entry2_success(void **state)
 {
     int ret;
 
@@ -345,16 +345,16 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdb_syscheck_save2_success, setup_wdb_t, teardown_wdb_t),
 
         //Test wdb_fim_insert_entry2
-        cmocka_unit_test_setup_teardown(wdb_fim_insert_entry2_wdb_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(wdb_fim_insert_entry2_data_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(wdb_fim_insert_entry2_path_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(wdb_fim_insert_entry2_timestamp_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(wdb_fim_insert_entry2_attributes_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(wdb_fim_insert_entry2_fail_cache, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(wdb_fim_insert_entry2_fail_element_string, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(wdb_fim_insert_entry2_fail_sqlite3_stmt, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(wdb_fim_insert_entry2_success, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_wdb_null, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_data_null, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_path_null, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_timestamp_null, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_attributes_null, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_fail_cache, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_fail_element_string, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_fail_sqlite3_stmt, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_success, setup_wdb_t, teardown_wdb_t),
     };
-    
+
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -35,7 +35,7 @@ static const char * COMPONENT_NAMES[] = {
  * @retval 0 If no files were found in that range.
  * @retval -1 On error.
  */
-static int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest) {
+int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest) {
     const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM_RANGE };
     assert(component < sizeof(INDEXES) / sizeof(int));
 
@@ -96,7 +96,7 @@ static int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const cha
  * @retval 0 On success.
  * @retval -1 On error.
  */
-static int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail) {
+int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail) {
     const int INDEXES_AROUND[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_AROUND };
     const int INDEXES_RANGE[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_RANGE };
     assert(component < sizeof(INDEXES_AROUND) / sizeof(int));
@@ -137,7 +137,7 @@ static int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begi
  * @param timestamp Synchronization event timestamp (field "id");
  */
 
-static void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp) {
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp) {
     if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_UPDATE_ATTEMPT) == -1) {
         return;
     }
