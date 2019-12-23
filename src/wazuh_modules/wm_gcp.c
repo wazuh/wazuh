@@ -203,7 +203,7 @@ cJSON *wm_gcp_dump(const wm_gcp *data) {
     cJSON *wm_wd = cJSON_CreateObject();
 
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
-    cJSON_AddStringToObject(wm_wd, "pull_on_start", data->scan_config.scan_on_start ? "yes" : "no");
+    cJSON_AddStringToObject(wm_wd, "scan_on_start", data->scan_config.scan_on_start ? "yes" : "no");
     if (data->scan_config.interval) cJSON_AddNumberToObject(wm_wd, "interval", data->scan_config.interval);
     if (data->max_messages) cJSON_AddNumberToObject(wm_wd, "max_messages", data->max_messages);
     if (data->project_id) cJSON_AddStringToObject(wm_wd, "project_id", data->project_id);
