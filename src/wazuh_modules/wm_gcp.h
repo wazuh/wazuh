@@ -18,17 +18,13 @@
 
 typedef struct wm_gcp {
     int enabled;
-    int pull_on_start;
     int logging;
     int max_messages;
-    int scan_day;
-    int scan_wday;
     time_t next_time;
-    char* scan_time;
     char *project_id;
     char *subscription_name;
     char *credentials_file;
-    unsigned int interval;
+    sched_scan_config scan_config;
 } wm_gcp;
 
 extern const wm_context WM_GCP_CONTEXT;   // Context
