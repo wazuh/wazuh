@@ -134,10 +134,14 @@ time_t sched_scan_get_next_time(const sched_scan_config *config, const char *MOD
         int month_counter = config->interval; // To check correct month
         while (status < 0) {
             status = check_day_to_scan(config->scan_day, config->scan_time);
-            if ( (status == 0) && ((--month_counter) == 0) ) {
+            if ( (status == 0) && (month_counter <= 1) ) {
                 // Correct day, sleep until scan_time and then run
                 return (time_t) get_time_to_hour(config->scan_time);
             } else {
+                if (status == 0) {
+                    // Correct day, but incorrect month
+                    month_counter--;
+                }
                 // Sleep until next day and re-evaluate
                 wm_delay(1000); // Sleep one second to avoid an infinite loop
                 const time_t sleep_until_tomorrow = get_time_to_hour("00:00"); 
