@@ -42,14 +42,9 @@ typedef struct wm_sca_policy_t {
 
 typedef struct wm_sca_t {
     int enabled:1;
-    int scan_on_start:1;
     int skip_nfs:1;
-    unsigned int interval;
-    int scan_day;
-    int scan_wday;
     int msg_delay;
     unsigned int summary_delay;
-    time_t next_time;
     unsigned int request_db_interval;
     char* scan_time;
     wm_sca_policy_t** policies;
@@ -57,6 +52,7 @@ typedef struct wm_sca_t {
     int queue;
     int remote_commands:1;
     int commands_timeout;
+    sched_scan_config scan_config;
 } wm_sca_t;
 
 extern const wm_context WM_SCA_CONTEXT;

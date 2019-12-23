@@ -165,8 +165,8 @@ void * wm_sca_main(wm_sca_t * data) {
 #endif
 
     /* Maximum request interval is the scan interval */
-    if(data->request_db_interval > data->interval) {
-       data->request_db_interval = data->interval;
+    if(data->request_db_interval > data->scan_config.interval) {
+       data->request_db_interval = data->scan_config.interval;
        minfo("The request_db_interval option cannot be higher than the scan interval. It will be redefined to that value.");
     }
 
@@ -298,61 +298,14 @@ static void wm_sca_send_policies_scanned(wm_sca_t * data) {
 
 static int wm_sca_start(wm_sca_t * data) {
 
-    int status = 0;
-    time_t time_start = 0;
-    time_t time_sleep = 0;
-
-    if (!data->scan_on_start) {
-        time_start = time(NULL);
-
-        if (data->scan_day) {
-            do {
-                status = check_day_to_scan(data->scan_day, data->scan_time);
-                if (status == 0) {
-                    time_sleep = get_time_to_hour(data->scan_time);
-                } else {
-                    wm_delay(1000); // Sleep one second to avoid an infinite loop
-                    time_sleep = get_time_to_hour("00:00");
-                }
-
-                mdebug2("Sleeping for %d seconds.", (int)time_sleep);
-                wm_delay(1000 * time_sleep);
-
-            } while (status < 0);
-
-        } else if (data->scan_wday >= 0) {
-
-            time_sleep = get_time_to_day(data->scan_wday, data->scan_time);
-            minfo("Waiting for turn to evaluate.");
-            mdebug2("Sleeping for %d seconds.", (int)time_sleep);
+    do {
+        const time_t time_sleep = sched_scan_get_next_time(&(data->scan_config), WM_GCP_LOGTAG);
+        
+        if (time_sleep) {
+            mtdebug1(WM_SCA_LOGTAG, "Sleeping for %li seconds", time_sleep);
             wm_delay(1000 * time_sleep);
-
-        } else if (data->scan_time) {
-
-            time_sleep = get_time_to_hour(data->scan_time);
-            minfo("Waiting for turn to evaluate.");
-            mdebug2("Sleeping for %d seconds.", (int)time_sleep);
-            wm_delay(1000 * time_sleep);
-
-        } else if (data->next_time == 0 || data->next_time > time_start) {
-
-            // On first run, take into account the interval of time specified
-            time_sleep = data->next_time == 0 ?
-                         (time_t)data->interval :
-                         data->next_time - time_start;
-
-            minfo("Waiting for turn to evaluate.");
-            mdebug2("Sleeping for %ld seconds.", (long)time_sleep);
-            wm_delay(1000 * time_sleep);
-
         }
-    }
-
-    while(1) {
-        // Get time and execute
-        time_start = time(NULL);
-
-        minfo("Starting Security Configuration Assessment scan.");
+        mtdebug1(WM_SCA_LOGTAG,"Starting Security Configuration Assessment scan.");
 
         /* Do scan for every policy file */
         wm_sca_read_files(data);
@@ -360,52 +313,9 @@ static int wm_sca_start(wm_sca_t * data) {
         /* Send policies scanned for database purge on manager side */
         wm_sca_send_policies_scanned(data);
 
-        wm_delay(1000); // Avoid infinite loop when execution fails
-        time_sleep = time(NULL) - time_start;
+        mtdebug1(WM_SCA_LOGTAG, "Security Configuration Assessment scan finished. Duration: %d seconds.", (int)time_sleep);
 
-        minfo("Security Configuration Assessment scan finished. Duration: %d seconds.", (int)time_sleep);
-
-        if (data->scan_day) {
-            int interval = 0, i = 0;
-            interval = data->interval / 60;   // interval in num of months
-
-            do {
-                status = check_day_to_scan(data->scan_day, data->scan_time);
-                if (status == 0) {
-                    time_sleep = get_time_to_hour(data->scan_time);
-                    i++;
-                } else {
-                    wm_delay(1000);
-                    time_sleep = get_time_to_hour("00:00");     // Sleep until the start of the next day
-                }
-
-                mdebug2("Sleeping for %d seconds.", (int)time_sleep);
-                wm_delay(1000 * time_sleep);
-
-            } while ((status < 0) && (i < interval));
-
-        } else {
-
-            if (data->scan_wday >= 0) {
-                time_sleep = get_time_to_day(data->scan_wday, data->scan_time);
-                time_sleep += WEEK_SEC * ((data->interval / WEEK_SEC) - 1);
-                data->next_time = (time_t)time_sleep + time_start;
-            } else if (data->scan_time) {
-                time_sleep = get_time_to_hour(data->scan_time);
-                time_sleep += DAY_SEC * ((data->interval / DAY_SEC) - 1);
-                data->next_time = (time_t)time_sleep + time_start;
-            } else if ((time_t)data->interval >= time_sleep) {
-                time_sleep = data->interval - time_sleep;
-                data->next_time = data->interval + time_start;
-            } else {
-                merror("Interval overtaken.");
-                time_sleep = data->next_time = 0;
-            }
-
-            mdebug2("Sleeping for %d seconds.", (int)time_sleep);
-            wm_delay(1000 * time_sleep);
-        }
-    }
+    } while(1);
 
     return 0;
 }
@@ -3127,39 +3037,11 @@ cJSON *wm_sca_dump(const wm_sca_t *data) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
 
+    sched_scan_dump(&(data->scan_config), wm_wd);
+
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
-    cJSON_AddStringToObject(wm_wd, "scan_on_start", data->scan_on_start ? "yes" : "no");
     cJSON_AddStringToObject(wm_wd, "skip_nfs", data->skip_nfs ? "yes" : "no");
-    if (data->interval) cJSON_AddNumberToObject(wm_wd, "interval", data->interval);
-    if (data->scan_day) cJSON_AddNumberToObject(wm_wd, "day", data->scan_day);
-
-    switch (data->scan_wday) {
-        case 0:
-            cJSON_AddStringToObject(wm_wd, "wday", "sunday");
-            break;
-        case 1:
-            cJSON_AddStringToObject(wm_wd, "wday", "monday");
-            break;
-        case 2:
-            cJSON_AddStringToObject(wm_wd, "wday", "tuesday");
-            break;
-        case 3:
-            cJSON_AddStringToObject(wm_wd, "wday", "wednesday");
-            break;
-        case 4:
-            cJSON_AddStringToObject(wm_wd, "wday", "thursday");
-            break;
-        case 5:
-            cJSON_AddStringToObject(wm_wd, "wday", "friday");
-            break;
-        case 6:
-            cJSON_AddStringToObject(wm_wd, "wday", "saturday");
-            break;
-        default:
-            break;
-    }
-    if (data->scan_time) cJSON_AddStringToObject(wm_wd, "time", data->scan_time);
-
+    
     if (data->policies && *data->policies) {
         cJSON *policies = cJSON_CreateArray();
         int i;
