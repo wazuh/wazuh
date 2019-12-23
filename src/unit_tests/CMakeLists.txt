@@ -100,6 +100,9 @@ list(APPEND tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_mer
                          -Wl,--wrap,wdb_fim_delete -Wl,--wrap,wdb_syscheck_save -Wl,--wrap,wdb_syscheck_save2 \
                          -Wl,--wrap,wdbi_query_checksum -Wl,--wrap,wdbi_query_clear")
 
+list(APPEND tests_names "test_analysisd_syscheck")
+list(APPEND tests_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
+
 # Config files
 configure_file("test_syscheck.conf" "test_syscheck.conf" COPYONLY)
 
@@ -131,8 +134,11 @@ target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 
 # Generate analysisd library
-file(GLOB analysisd_files ../analysisd/*.o)
-list(REMOVE_ITEM analysisd_files ../analysisd/main.o)
+file(GLOB analysisd_files
+  ../analysisd/*.o
+  ../analysisd/cdb/*.o
+  ../analysisd/decoders/*.o
+  ../analysisd/decoders/plugins/*.o)
 
 add_library(ANALYSISD_O STATIC ${analysisd_files})
 

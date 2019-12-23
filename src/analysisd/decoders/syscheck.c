@@ -20,6 +20,18 @@
 #include "os_net/os_net.h"
 #include "wazuhdb_op.h"
 
+#ifdef UNIT_TESTING
+/* Remove static qualifier when testing */
+#define static
+
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#endif
+
 // Add events into sqlite DB for FIM
 static int fim_db_search (char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *sdb);
 
