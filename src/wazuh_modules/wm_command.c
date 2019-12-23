@@ -27,7 +27,6 @@ const wm_context WM_COMMAND_CONTEXT = {
 // Module module main function. It won't return.
 
 void * wm_command_main(wm_command_t * command) {
-    time_t time_start;
     time_t time_sleep = 0;
     size_t extag_len;
     char * extag;
@@ -160,28 +159,16 @@ void * wm_command_main(wm_command_t * command) {
     }
 #endif
 
-    // First sleeping
+    do {
+        time_sleep = sched_scan_get_next_time(&(command->scan_config), WM_COMMAND_LOGTAG);
+        command->state.next_time = command->scan_config.time_start + time_sleep;
 
-    if (!command->run_on_start) {
-        time_start = time(NULL);
-
-        // On first run, take into account the interval of time specified
-        if (command->interval && command->state.next_time == 0) {
-            command->state.next_time = time_start + command->interval;
-        }
-
-        if (command->state.next_time > time_start) {
-            mtinfo(WM_COMMAND_LOGTAG, "%s: Waiting for turn to evaluate.", command->tag);
-            time_sleep = command->state.next_time - time_start;
+        if (time_sleep) {
+            mtdebug1(WM_GCP_LOGTAG, "Sleeping for %li seconds", time_sleep);
             wm_delay(1000 * time_sleep);
         }
-    }
-
-    while (1) {
         mtdebug1(WM_COMMAND_LOGTAG, "Starting command '%s'.", command->tag);
-        // Get time and execute
-        time_start = time(NULL);
-
+        
         int status = 0;
         char *output = NULL;
         switch (wm_exec(command->full_command, command->ignore_output ? NULL : &output, &status, command->timeout, NULL)) {
@@ -219,25 +206,7 @@ void * wm_command_main(wm_command_t * command) {
 
 
         mtdebug1(WM_COMMAND_LOGTAG, "Command '%s' finished.", command->tag);
-
-        if (command->interval) {
-            time_sleep = time(NULL) - time_start;
-
-            if ((time_t)command->interval >= time_sleep) {
-                time_sleep = command->interval - time_sleep;
-                command->state.next_time = command->interval + time_start;
-            } else {
-                mtwarn(WM_COMMAND_LOGTAG, "%s: Interval overtaken.", command->tag);
-                time_sleep = command->state.next_time = 0;
-            }
-
-            if (wm_state_io(extag, WM_IO_WRITE, &command->state, sizeof(command->state)) < 0)
-                mterror(WM_COMMAND_LOGTAG, "%s: Couldn't save running state.", command->tag);
-        }
-
-        // If time_sleep=0, yield CPU
-        wm_delay(1000 * time_sleep);
-    }
+    } while (1);
 
     return NULL;
 }
@@ -250,11 +219,11 @@ cJSON *wm_command_dump(const wm_command_t * command) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_comm = cJSON_CreateObject();
 
+    sched_scan_dump(&(command->scan_config), wm_comm);
+
     if (command->enabled) cJSON_AddStringToObject(wm_comm,"disabled","no"); else cJSON_AddStringToObject(wm_comm,"disabled","yes");
-    if (command->run_on_start) cJSON_AddStringToObject(wm_comm,"run_on_start","yes"); else cJSON_AddStringToObject(wm_comm,"run_on_start","no");
     if (command->ignore_output) cJSON_AddStringToObject(wm_comm,"ignore_output","yes"); else cJSON_AddStringToObject(wm_comm,"ignore_output","no");
     if (command->skip_verification) cJSON_AddStringToObject(wm_comm,"skip_verification","yes"); else cJSON_AddStringToObject(wm_comm,"skip_verification","no");
-    cJSON_AddNumberToObject(wm_comm,"interval",command->interval);
     if (command->tag) cJSON_AddStringToObject(wm_comm,"tag",command->tag);
     if (command->command) cJSON_AddStringToObject(wm_comm,"command",command->command);
     if (command->md5_hash) cJSON_AddStringToObject(wm_comm,"verify_md5",command->md5_hash);

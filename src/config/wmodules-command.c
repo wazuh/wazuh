@@ -14,9 +14,7 @@
 static const char *XML_DISABLED = "disabled";
 static const char *XML_TAG = "tag";
 static const char *XML_COMMAND = "command";
-static const char *XML_INTERVAL = "interval";
 static const char *XML_IGNORE_OUTPUT = "ignore_output";
-static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_TIMEOUT = "timeout";
 static const char *XML_VERIFY_MD5 = "verify_md5";
 static const char *XML_VERIFY_SHA1 = "verify_sha1";
@@ -42,9 +40,9 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
 
     os_calloc(1, sizeof(wm_command_t), command);
     command->enabled = 1;
-    command->run_on_start = 1;
     command->skip_verification = 0;
-    command->interval = WM_COMMAND_DEFAULT_INTERVAL;
+    sched_scan_init(&(command->scan_config));
+    command->scan_config.interval = WM_COMMAND_DEFAULT_INTERVAL;
     command->agent_cfg = agent_cfg;
     command->md5_hash = NULL;
     command->sha1_hash = NULL;
@@ -97,41 +95,6 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
 
             free(command->command);
             os_strdup(nodes[i]->content, command->command);
-        } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            char *endptr;
-            command->interval = strtoul(nodes[i]->content, &endptr, 0);
-
-            if ((command->interval == 0 && endptr == nodes[i]->content) || command->interval == ULONG_MAX) {
-                merror("Invalid interval at module '%s'", WM_COMMAND_CONTEXT.name);
-                return OS_INVALID;
-            }
-
-            switch (*endptr) {
-            case 'd':
-                command->interval *= 86400;
-                break;
-            case 'h':
-                command->interval *= 3600;
-                break;
-            case 'm':
-                command->interval *= 60;
-                break;
-            case 's':
-            case '\0':
-                break;
-            default:
-                merror("Invalid interval at module '%s'", WM_COMMAND_CONTEXT.name);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
-            if (!strcmp(nodes[i]->content, "yes"))
-                command->run_on_start = 1;
-            else if (!strcmp(nodes[i]->content, "no"))
-                command->run_on_start = 0;
-            else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_ON_START, WM_COMMAND_CONTEXT.name);
-                return OS_INVALID;
-            }
         } else if (!strcmp(nodes[i]->element, XML_IGNORE_OUTPUT)) {
             if (!strcmp(nodes[i]->content, "yes"))
                 command->ignore_output = 1;
@@ -186,6 +149,11 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_COMMAND_CONTEXT.name);
             return OS_INVALID;
         }
+    }
+
+    const int sched_read = sched_scan_read(&(command->scan_config), nodes, module->context->name);
+    if ( sched_read != 0 ) {
+        return OS_INVALID;
     }
 
     if (!command->tag) {
