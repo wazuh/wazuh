@@ -42,7 +42,7 @@ void* wm_gcp_main(wm_gcp *data) {
     }
 
     do {
-        time_sleep = sched_scan_get_next_time(&(data->scan_config));
+        time_sleep = sched_scan_get_next_time(&(data->scan_config), WM_GCP_LOGTAG);
 
         if (time_sleep) {
             mtdebug1(WM_GCP_LOGTAG, "Sleeping for %li seconds", time_sleep);
