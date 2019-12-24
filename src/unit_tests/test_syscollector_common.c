@@ -1719,61 +1719,936 @@ void test_send_scan_event(void **state)
     sys_send_scan_event(PROC_SCAN);
 }
 
+void test_hw_json_event(void **state)
+{
+    (void) state;
+
+    hw_entry *old_hw = get_hw_entry("2345678901", "processor234", 3, 3.0, 30000, 700, 90);
+    hw_entry *hw = get_hw_entry("1234567890", "processor123", 4, 2.5, 22222, 595, 80);
+
+    cJSON *hw_added = hw_json_event(NULL, hw, SYS_ADD, "12345");
+
+    assert_string_equal(cJSON_GetObjectItem(hw_added, "type")->valuestring, "hardware");
+
+    cJSON *data = cJSON_GetObjectItem(hw_added, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "added");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "12345");
+    assert_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(hw_added);
+
+    cJSON *hw_modified = hw_json_event(old_hw, hw, SYS_MODIFY, "23456");
+
+    assert_string_equal(cJSON_GetObjectItem(hw_modified, "type")->valuestring, "hardware");
+
+    data = cJSON_GetObjectItem(hw_modified, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "modified");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "23456");
+    assert_non_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(hw_modified);
+
+    free_hw_data(old_hw);
+    free_hw_data(hw);
+}
+
+void test_hw_json_compare(void **state)
+{
+    (void) state;
+
+    hw_entry *old_hw = get_hw_entry("2345678901", "processor234", 3, 3.0, 30000, 700, 90);
+    hw_entry *hw = get_hw_entry("1234567890", "processor123", 4, 2.5, 22222, 595, 80);
+
+    cJSON *hw_compare = hw_json_compare(old_hw, hw);
+
+    assert_int_equal(cJSON_GetArraySize(hw_compare), 7);
+    assert_string_equal(cJSON_GetArrayItem(hw_compare, 0)->valuestring, "board_serial");
+    assert_string_equal(cJSON_GetArrayItem(hw_compare, 1)->valuestring, "cpu_name");
+    assert_string_equal(cJSON_GetArrayItem(hw_compare, 2)->valuestring, "cpu_cores");
+    assert_string_equal(cJSON_GetArrayItem(hw_compare, 3)->valuestring, "cpu_MHz");
+    assert_string_equal(cJSON_GetArrayItem(hw_compare, 4)->valuestring, "ram_total");
+    assert_string_equal(cJSON_GetArrayItem(hw_compare, 5)->valuestring, "ram_free");
+    assert_string_equal(cJSON_GetArrayItem(hw_compare, 6)->valuestring, "ram_usage");
+
+    cJSON_Delete(hw_compare);
+
+    free_hw_data(old_hw);
+    free_hw_data(hw);
+}
+
+void test_hw_json_attributes(void **state)
+{
+    (void) state;
+
+    hw_entry *hw = get_hw_entry("1234567890", "processor123", 4, 2.5, 22222, 595, 80);
+
+    cJSON *hw_attributes = hw_json_attributes(hw);
+
+    assert_string_equal(cJSON_GetObjectItem(hw_attributes, "board_serial")->valuestring, "1234567890");
+    assert_string_equal(cJSON_GetObjectItem(hw_attributes, "cpu_name")->valuestring, "processor123");
+    assert_int_equal(cJSON_GetObjectItem(hw_attributes, "cpu_cores")->valueint, 4);
+    assert_int_equal(cJSON_GetObjectItem(hw_attributes, "cpu_MHz")->valuedouble, 2.5);
+    assert_int_equal(cJSON_GetObjectItem(hw_attributes, "ram_total")->valuedouble, 22222);
+    assert_int_equal(cJSON_GetObjectItem(hw_attributes, "ram_free")->valuedouble, 595);
+    assert_int_equal(cJSON_GetObjectItem(hw_attributes, "ram_usage")->valueint, 80);
+
+    cJSON_Delete(hw_attributes);
+
+    free_hw_data(hw);
+}
+
+void test_os_json_event(void **state)
+{
+    (void) state;
+
+    os_entry *old_os = get_os_entry("Centos", "7", "5", "2564", "Server", "KK", "LNX", "OSLinux", "system", "3.1", "2", "x86", "x21");
+    os_entry *os = get_os_entry("Ubuntu", "18", "4", "1515", "Desktop", "UU", "Linux", "UbuntuOS", "wazuh", "1.5", "5", "x86_64", "x23");
+
+    cJSON *os_added = os_json_event(NULL, os, SYS_ADD, "12345");
+
+    assert_string_equal(cJSON_GetObjectItem(os_added, "type")->valuestring, "OS");
+
+    cJSON *data = cJSON_GetObjectItem(os_added, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "added");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "12345");
+    assert_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(os_added);
+
+    cJSON *os_modified = os_json_event(old_os, os, SYS_MODIFY, "23456");
+
+    assert_string_equal(cJSON_GetObjectItem(os_modified, "type")->valuestring, "OS");
+
+    data = cJSON_GetObjectItem(os_modified, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "modified");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "23456");
+    assert_non_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(os_modified);
+
+    free_os_data(old_os);
+    free_os_data(os);
+}
+
+void test_os_json_compare(void **state)
+{
+    (void) state;
+
+    os_entry *old_os = get_os_entry("Centos", "7", "5", "2564", "Server", "KK", "LNX", "OSLinux", "system", "3.1", "2", "x86", "x21");
+    os_entry *os = get_os_entry("Ubuntu", "18", "4", "1515", "Desktop", "UU", "Linux", "UbuntuOS", "wazuh", "1.5", "5", "x86_64", "x23");
+
+    cJSON *os_compare = os_json_compare(old_os, os);
+
+    assert_int_equal(cJSON_GetArraySize(os_compare), 13);
+    assert_string_equal(cJSON_GetArrayItem(os_compare, 0)->valuestring, "hostname");
+    assert_string_equal(cJSON_GetArrayItem(os_compare, 1)->valuestring, "architecture");
+    assert_string_equal(cJSON_GetArrayItem(os_compare, 2)->valuestring, "os_name");
+    assert_string_equal(cJSON_GetArrayItem(os_compare, 3)->valuestring, "os_release");
+    assert_string_equal(cJSON_GetArrayItem(os_compare, 4)->valuestring, "os_version");
+    assert_string_equal(cJSON_GetArrayItem(os_compare, 5)->valuestring, "os_codename");
+    assert_string_equal(cJSON_GetArrayItem(os_compare, 6)->valuestring, "os_major");
+    assert_string_equal(cJSON_GetArrayItem(os_compare, 7)->valuestring, "os_minor");
+    assert_string_equal(cJSON_GetArrayItem(os_compare, 8)->valuestring, "os_build");
+    assert_string_equal(cJSON_GetArrayItem(os_compare, 9)->valuestring, "os_platform");
+    assert_string_equal(cJSON_GetArrayItem(os_compare, 10)->valuestring, "sysname");
+    assert_string_equal(cJSON_GetArrayItem(os_compare, 11)->valuestring, "release");
+    assert_string_equal(cJSON_GetArrayItem(os_compare, 12)->valuestring, "version");
+
+    cJSON_Delete(os_compare);
+
+    free_os_data(old_os);
+    free_os_data(os);
+}
+
+void test_os_json_attributes(void **state)
+{
+    (void) state;
+
+    os_entry *os = get_os_entry("Ubuntu", "18", "4", "1515", "Desktop", "UU", "Linux", "UbuntuOS", "wazuh", "1.5", "5", "x86_64", "x23");
+
+    cJSON *os_attributes = os_json_attributes(os);
+
+    assert_string_equal(cJSON_GetObjectItem(os_attributes, "os_name")->valuestring, "Ubuntu");
+    assert_string_equal(cJSON_GetObjectItem(os_attributes, "os_major")->valuestring, "18");
+    assert_string_equal(cJSON_GetObjectItem(os_attributes, "os_minor")->valuestring, "4");
+    assert_string_equal(cJSON_GetObjectItem(os_attributes, "os_build")->valuestring, "1515");
+    assert_string_equal(cJSON_GetObjectItem(os_attributes, "os_version")->valuestring, "Desktop");
+    assert_string_equal(cJSON_GetObjectItem(os_attributes, "os_codename")->valuestring, "UU");
+    assert_string_equal(cJSON_GetObjectItem(os_attributes, "os_platform")->valuestring, "Linux");
+    assert_string_equal(cJSON_GetObjectItem(os_attributes, "sysname")->valuestring, "UbuntuOS");
+    assert_string_equal(cJSON_GetObjectItem(os_attributes, "hostname")->valuestring, "wazuh");
+    assert_string_equal(cJSON_GetObjectItem(os_attributes, "release")->valuestring, "1.5");
+    assert_string_equal(cJSON_GetObjectItem(os_attributes, "version")->valuestring, "5");
+    assert_string_equal(cJSON_GetObjectItem(os_attributes, "architecture")->valuestring, "x86_64");
+    assert_string_equal(cJSON_GetObjectItem(os_attributes, "os_release")->valuestring, "x23");
+
+    cJSON_Delete(os_attributes);
+
+    free_os_data(os);
+}
+
+void test_interface_json_event(void **state)
+{
+    (void) state;
+
+    interface_entry_data *old_iface = get_interface_entry("ensp1", "wifi", "1", "down", "fa-54-a2-e1", 1200, 800, 550, 430, 540, 4, 13, 33, 21, "10.0.1.2", "255.255.0.0", "10.0.255.255", 300, "10.0.1.1", "false", "f800::3", "ffff::3", "ff20::3", 5, "ff10::3", "true");
+    interface_entry_data *iface = get_interface_entry("ensp0", "eth", "2", "up", "fa-48-e4-80", 1500, 1000, 990, 800, 750, 2, 5, 23, 12, "10.0.0.2", "255.0.0.0", "10.255.255.255", 500, "10.0.0.1", "true", "f800::1", "ffff::1", "ff20::1", 10, "ff10::1", "false");
+
+    cJSON *iface_added = interface_json_event(NULL, iface, SYS_ADD, "12345");
+
+    assert_string_equal(cJSON_GetObjectItem(iface_added, "type")->valuestring, "network");
+
+    cJSON *data = cJSON_GetObjectItem(iface_added, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "added");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "12345");
+    assert_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(iface_added);
+
+    cJSON *iface_modified = interface_json_event(old_iface, iface, SYS_MODIFY, "23456");
+
+    assert_string_equal(cJSON_GetObjectItem(iface_modified, "type")->valuestring, "network");
+
+    data = cJSON_GetObjectItem(iface_modified, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "modified");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "23456");
+    assert_non_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(iface_modified);
+
+    cJSON *iface_deleted = interface_json_event(NULL, iface, SYS_DELETE, "34567");
+
+    assert_string_equal(cJSON_GetObjectItem(iface_deleted, "type")->valuestring, "network");
+
+    data = cJSON_GetObjectItem(iface_deleted, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "deleted");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "34567");
+    assert_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(iface_deleted);
+
+    free_interface_data(old_iface);
+    free_interface_data(iface);
+}
+
+void test_interface_json_compare(void **state)
+{
+    (void) state;
+
+    interface_entry_data *old_iface = get_interface_entry("ensp1", "wifi", "1", "down", "fa-54-a2-e1", 1200, 800, 550, 430, 540, 4, 13, 33, 21, "10.0.1.2", "255.255.0.0", "10.0.255.255", 300, "10.0.1.1", "false", "f800::3", "ffff::3", "ff20::3", 5, "ff10::3", "true");
+    interface_entry_data *iface = get_interface_entry("ensp0", "eth", "2", "up", "fa-48-e4-80", 1500, 1000, 990, 800, 750, 2, 5, 23, 12, "10.0.0.2", "255.0.0.0", "10.255.255.255", 500, "10.0.0.1", "true", "f800::1", "ffff::1", "ff20::1", 10, "ff10::1", "false");
+
+    cJSON *iface_compare = interface_json_compare(old_iface, iface);
+
+    assert_int_equal(cJSON_GetArraySize(iface_compare), 26);
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 0)->valuestring, "name");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 1)->valuestring, "adapter");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 2)->valuestring, "type");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 3)->valuestring, "state");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 4)->valuestring, "mac");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 5)->valuestring, "ipv4_address");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 6)->valuestring, "ipv4_netmask");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 7)->valuestring, "ipv4_broadcast");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 8)->valuestring, "ipv4_gateway");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 9)->valuestring, "ipv4_dhcp");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 10)->valuestring, "ipv4_metric");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 11)->valuestring, "ipv6_address");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 12)->valuestring, "ipv6_netmask");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 13)->valuestring, "ipv6_broadcast");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 14)->valuestring, "ipv6_gateway");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 15)->valuestring, "ipv6_dhcp");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 16)->valuestring, "ipv6_metric");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 17)->valuestring, "mtu");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 18)->valuestring, "tx_packets");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 19)->valuestring, "rx_packets");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 20)->valuestring, "tx_bytes");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 21)->valuestring, "rx_bytes");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 22)->valuestring, "tx_errors");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 23)->valuestring, "rx_errors");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 24)->valuestring, "tx_dropped");
+    assert_string_equal(cJSON_GetArrayItem(iface_compare, 25)->valuestring, "rx_dropped");
+
+    cJSON_Delete(iface_compare);
+
+    free_interface_data(old_iface);
+    free_interface_data(iface);
+}
+
+void test_interface_json_attributes(void **state)
+{
+    (void) state;
+
+    interface_entry_data *iface = get_interface_entry("ensp0", "eth", "2", "up", "fa-48-e4-80", 1500, 1000, 990, 800, 750, 2, 5, 23, 12, "10.0.0.2", "255.0.0.0", "10.255.255.255", 500, "10.0.0.1", "true", "f800::1", "ffff::1", "ff20::1", 10, "ff10::1", "false");
+
+    cJSON *iface_attributes = interface_json_attributes(iface);
+
+    assert_string_equal(cJSON_GetObjectItem(iface_attributes, "name")->valuestring, "ensp0");
+    assert_string_equal(cJSON_GetObjectItem(iface_attributes, "adapter")->valuestring, "eth");
+    assert_string_equal(cJSON_GetObjectItem(iface_attributes, "type")->valuestring, "2");
+    assert_string_equal(cJSON_GetObjectItem(iface_attributes, "state")->valuestring, "up");
+    assert_string_equal(cJSON_GetObjectItem(iface_attributes, "MAC")->valuestring, "fa-48-e4-80");
+    assert_int_equal(cJSON_GetObjectItem(iface_attributes, "MTU")->valueint, 1500);
+    assert_int_equal(cJSON_GetObjectItem(iface_attributes, "tx_packets")->valueint, 1000);
+    assert_int_equal(cJSON_GetObjectItem(iface_attributes, "rx_packets")->valueint, 990);
+    assert_int_equal(cJSON_GetObjectItem(iface_attributes, "tx_bytes")->valueint, 800);
+    assert_int_equal(cJSON_GetObjectItem(iface_attributes, "rx_bytes")->valueint, 750);
+    assert_int_equal(cJSON_GetObjectItem(iface_attributes, "tx_errors")->valueint, 2);
+    assert_int_equal(cJSON_GetObjectItem(iface_attributes, "rx_errors")->valueint, 5);
+    assert_int_equal(cJSON_GetObjectItem(iface_attributes, "tx_dropped")->valueint, 23);
+    assert_int_equal(cJSON_GetObjectItem(iface_attributes, "rx_dropped")->valueint, 12);
+
+    cJSON *iface_ipv4 = cJSON_GetObjectItem(iface_attributes, "IPv4");
+    assert_non_null(iface_ipv4);
+    assert_string_equal(cJSON_GetArrayItem(cJSON_GetObjectItem(iface_ipv4, "address"), 0)->valuestring, "10.0.0.2");
+    assert_null(cJSON_GetArrayItem(cJSON_GetObjectItem(iface_ipv4, "address"), 1));
+    assert_string_equal(cJSON_GetArrayItem(cJSON_GetObjectItem(iface_ipv4, "netmask"), 0)->valuestring, "255.0.0.0");
+    assert_null(cJSON_GetArrayItem(cJSON_GetObjectItem(iface_ipv4, "netmask"), 1));
+    assert_string_equal(cJSON_GetArrayItem(cJSON_GetObjectItem(iface_ipv4, "broadcast"), 0)->valuestring, "10.255.255.255");
+    assert_null(cJSON_GetArrayItem(cJSON_GetObjectItem(iface_ipv4, "broadcast"), 1));
+    assert_int_equal(cJSON_GetObjectItem(iface_ipv4, "metric")->valueint, 500);
+    assert_string_equal(cJSON_GetObjectItem(iface_ipv4, "gateway")->valuestring, "10.0.0.1");
+    assert_string_equal(cJSON_GetObjectItem(iface_ipv4, "DHCP")->valuestring, "true");
+
+    cJSON *iface_ipv6 = cJSON_GetObjectItem(iface_attributes, "IPv6");
+    assert_non_null(iface_ipv6);
+    assert_string_equal(cJSON_GetArrayItem(cJSON_GetObjectItem(iface_ipv6, "address"), 0)->valuestring, "f800::1");
+    assert_null(cJSON_GetArrayItem(cJSON_GetObjectItem(iface_ipv6, "address"), 1));
+    assert_string_equal(cJSON_GetArrayItem(cJSON_GetObjectItem(iface_ipv6, "netmask"), 0)->valuestring, "ffff::1");
+    assert_null(cJSON_GetArrayItem(cJSON_GetObjectItem(iface_ipv6, "netmask"), 1));
+    assert_string_equal(cJSON_GetArrayItem(cJSON_GetObjectItem(iface_ipv6, "broadcast"), 0)->valuestring, "ff20::1");
+    assert_null(cJSON_GetArrayItem(cJSON_GetObjectItem(iface_ipv6, "broadcast"), 1));
+    assert_int_equal(cJSON_GetObjectItem(iface_ipv6, "metric")->valueint, 10);
+    assert_string_equal(cJSON_GetObjectItem(iface_ipv6, "gateway")->valuestring, "ff10::1");
+    assert_string_equal(cJSON_GetObjectItem(iface_ipv6, "DHCP")->valuestring, "false");
+
+    cJSON_Delete(iface_attributes);
+
+    free_interface_data(iface);
+}
+
+void test_program_json_event(void **state)
+{
+    (void) state;
+
+    program_entry_data *old_pkg = get_program_entry("deb", "Wazuh-api", "medium", "005", 12500, "Wazuh LLC", "012345678", "3.10", "x86", "x86", "D", "Wazuh api package", "/usr/bin");
+    program_entry_data *pkg = get_program_entry("pkg", "Wazuh", "high", "000", 15000, "Wazuh Inc", "123456789", "3.12", "x64", "x64_86", "C", "Wazuh agent package", "/var/bin");
+
+    cJSON *pkg_added = program_json_event(NULL, pkg, SYS_ADD, "12345");
+
+    assert_string_equal(cJSON_GetObjectItem(pkg_added, "type")->valuestring, "program");
+
+    cJSON *data = cJSON_GetObjectItem(pkg_added, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "added");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "12345");
+    assert_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(pkg_added);
+
+    cJSON *pkg_modified = program_json_event(old_pkg, pkg, SYS_MODIFY, "23456");
+
+    assert_string_equal(cJSON_GetObjectItem(pkg_modified, "type")->valuestring, "program");
+
+    data = cJSON_GetObjectItem(pkg_modified, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "modified");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "23456");
+    assert_non_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(pkg_modified);
+
+    cJSON *pkg_deleted = program_json_event(NULL, pkg, SYS_DELETE, "34567");
+
+    assert_string_equal(cJSON_GetObjectItem(pkg_deleted, "type")->valuestring, "program");
+
+    data = cJSON_GetObjectItem(pkg_deleted, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "deleted");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "34567");
+    assert_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(pkg_deleted);
+
+    free_program_data(old_pkg);
+    free_program_data(pkg);
+}
+
+void test_program_json_compare(void **state)
+{
+    (void) state;
+
+    program_entry_data *old_pkg = get_program_entry("deb", "Wazuh-api", "medium", "005", 12500, "Wazuh LLC", "012345678", "3.10", "x86", "x86", "D", "Wazuh api package", "/usr/bin");
+    program_entry_data *pkg = get_program_entry("pkg", "Wazuh", "high", "000", 15000, "Wazuh Inc", "123456789", "3.12", "x64", "x64_86", "C", "Wazuh agent package", "/var/bin");
+
+    cJSON *pkg_compare = program_json_compare(old_pkg, pkg);
+
+    assert_int_equal(cJSON_GetArraySize(pkg_compare), 13);
+    assert_string_equal(cJSON_GetArrayItem(pkg_compare, 0)->valuestring, "format");
+    assert_string_equal(cJSON_GetArrayItem(pkg_compare, 1)->valuestring, "name");
+    assert_string_equal(cJSON_GetArrayItem(pkg_compare, 2)->valuestring, "priority");
+    assert_string_equal(cJSON_GetArrayItem(pkg_compare, 3)->valuestring, "group");
+    assert_string_equal(cJSON_GetArrayItem(pkg_compare, 4)->valuestring, "vendor");
+    assert_string_equal(cJSON_GetArrayItem(pkg_compare, 5)->valuestring, "install_time");
+    assert_string_equal(cJSON_GetArrayItem(pkg_compare, 6)->valuestring, "version");
+    assert_string_equal(cJSON_GetArrayItem(pkg_compare, 7)->valuestring, "architecture");
+    assert_string_equal(cJSON_GetArrayItem(pkg_compare, 8)->valuestring, "multi_arch");
+    assert_string_equal(cJSON_GetArrayItem(pkg_compare, 9)->valuestring, "source");
+    assert_string_equal(cJSON_GetArrayItem(pkg_compare, 10)->valuestring, "description");
+    assert_string_equal(cJSON_GetArrayItem(pkg_compare, 11)->valuestring, "location");
+    assert_string_equal(cJSON_GetArrayItem(pkg_compare, 12)->valuestring, "size");
+
+    cJSON_Delete(pkg_compare);
+
+    free_program_data(old_pkg);
+    free_program_data(pkg);
+}
+
+void test_program_json_attributes(void **state)
+{
+    (void) state;
+
+    program_entry_data *pkg = get_program_entry("pkg", "Wazuh", "high", "000", 15000, "Wazuh Inc", "123456789", "3.12", "x64", "x64_86", "C", "Wazuh agent package", "/var/bin");
+
+    cJSON *pkg_attributes = program_json_attributes(pkg);
+
+    assert_string_equal(cJSON_GetObjectItem(pkg_attributes, "name")->valuestring, "Wazuh");
+    assert_string_equal(cJSON_GetObjectItem(pkg_attributes, "format")->valuestring, "pkg");
+    assert_string_equal(cJSON_GetObjectItem(pkg_attributes, "priority")->valuestring, "high");
+    assert_string_equal(cJSON_GetObjectItem(pkg_attributes, "group")->valuestring, "000");
+    assert_int_equal(cJSON_GetObjectItem(pkg_attributes, "size")->valuedouble, 15000);
+    assert_string_equal(cJSON_GetObjectItem(pkg_attributes, "vendor")->valuestring, "Wazuh Inc");
+    assert_string_equal(cJSON_GetObjectItem(pkg_attributes, "install_time")->valuestring, "123456789");
+    assert_string_equal(cJSON_GetObjectItem(pkg_attributes, "version")->valuestring, "3.12");
+    assert_string_equal(cJSON_GetObjectItem(pkg_attributes, "architecture")->valuestring, "x64");
+    assert_string_equal(cJSON_GetObjectItem(pkg_attributes, "multi-arch")->valuestring, "x64_86");
+    assert_string_equal(cJSON_GetObjectItem(pkg_attributes, "source")->valuestring, "C");
+    assert_string_equal(cJSON_GetObjectItem(pkg_attributes, "description")->valuestring, "Wazuh agent package");
+    assert_string_equal(cJSON_GetObjectItem(pkg_attributes, "location")->valuestring, "/var/bin");
+
+    cJSON_Delete(pkg_attributes);
+
+    free_program_data(pkg);
+}
+
+void test_hotfix_json_event(void **state)
+{
+    (void) state;
+
+    hotfix_entry_data *old_hfix = get_hotfix_entry("KB11547");
+    hotfix_entry_data *hfix = get_hotfix_entry("KB12345");
+
+    cJSON *hfix_added = hotfix_json_event(NULL, hfix, SYS_ADD, "12345");
+
+    assert_string_equal(cJSON_GetObjectItem(hfix_added, "type")->valuestring, "hotfix");
+
+    cJSON *data = cJSON_GetObjectItem(hfix_added, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "added");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "12345");
+    assert_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(hfix_added);
+
+    cJSON *hfix_modified = hotfix_json_event(old_hfix, hfix, SYS_MODIFY, "23456");
+
+    assert_string_equal(cJSON_GetObjectItem(hfix_modified, "type")->valuestring, "hotfix");
+
+    data = cJSON_GetObjectItem(hfix_modified, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "modified");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "23456");
+    assert_non_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(hfix_modified);
+
+    cJSON *hfix_deleted = hotfix_json_event(NULL, hfix, SYS_DELETE, "34567");
+
+    assert_string_equal(cJSON_GetObjectItem(hfix_deleted, "type")->valuestring, "hotfix");
+
+    data = cJSON_GetObjectItem(hfix_deleted, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "deleted");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "34567");
+    assert_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(hfix_deleted);
+
+    free_hotfix_data(old_hfix);
+    free_hotfix_data(hfix);
+}
+
+void test_hotfix_json_compare(void **state)
+{
+    (void) state;
+
+    hotfix_entry_data *old_hfix = get_hotfix_entry("KB11547");
+    hotfix_entry_data *hfix = get_hotfix_entry("KB12345");
+
+    cJSON *hfix_compare = hotfix_json_compare(old_hfix, hfix);
+
+    assert_int_equal(cJSON_GetArraySize(hfix_compare), 1);
+    assert_string_equal(cJSON_GetArrayItem(hfix_compare, 0)->valuestring, "hotfix");
+
+    cJSON_Delete(hfix_compare);
+
+    free_hotfix_data(old_hfix);
+    free_hotfix_data(hfix);
+}
+
+void test_hotfix_json_attributes(void **state)
+{
+    (void) state;
+
+    hotfix_entry_data *hfix = get_hotfix_entry("KB12345");
+
+    cJSON *hfix_attributes = hotfix_json_attributes(hfix);
+
+    assert_string_equal(cJSON_GetObjectItem(hfix_attributes, "hotfix")->valuestring, "KB12345");
+
+    cJSON_Delete(hfix_attributes);
+
+    free_hotfix_data(hfix);
+}
+
+void test_port_json_event(void **state)
+{
+    (void) state;
+
+    port_entry_data *old_port = get_port_entry("udp", "10.0.2.8", 4444, "10.0.2.7", 53, 450, 310, 1, "-", 2345, "dns");
+    port_entry_data *port = get_port_entry("tcp", "10.0.2.9", 5555, "10.0.2.6", 22, 500, 200, 0, "listening", 1234, "ssh");
+
+    cJSON *port_added = port_json_event(NULL, port, SYS_ADD, "12345");
+
+    assert_string_equal(cJSON_GetObjectItem(port_added, "type")->valuestring, "port");
+
+    cJSON *data = cJSON_GetObjectItem(port_added, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "added");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "12345");
+    assert_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(port_added);
+
+    cJSON *port_modified = port_json_event(old_port, port, SYS_MODIFY, "23456");
+
+    assert_string_equal(cJSON_GetObjectItem(port_modified, "type")->valuestring, "port");
+
+    data = cJSON_GetObjectItem(port_modified, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "modified");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "23456");
+    assert_non_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(port_modified);
+
+    cJSON *port_deleted = port_json_event(NULL, port, SYS_DELETE, "34567");
+
+    assert_string_equal(cJSON_GetObjectItem(port_deleted, "type")->valuestring, "port");
+
+    data = cJSON_GetObjectItem(port_deleted, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "deleted");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "34567");
+    assert_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(port_deleted);
+
+    free_port_data(old_port);
+    free_port_data(port);
+}
+
+void test_port_json_compare(void **state)
+{
+    (void) state;
+
+    port_entry_data *old_port = get_port_entry("udp", "10.0.2.8", 4444, "10.0.2.7", 53, 450, 310, 1, "-", 2345, "dns");
+    port_entry_data *port = get_port_entry("tcp", "10.0.2.9", 5555, "10.0.2.6", 22, 500, 200, 0, "listening", 1234, "ssh");
+
+    cJSON *port_compare = port_json_compare(old_port, port);
+
+    assert_int_equal(cJSON_GetArraySize(port_compare), 11);
+    assert_string_equal(cJSON_GetArrayItem(port_compare, 0)->valuestring, "protocol");
+    assert_string_equal(cJSON_GetArrayItem(port_compare, 1)->valuestring, "local_ip");
+    assert_string_equal(cJSON_GetArrayItem(port_compare, 2)->valuestring, "remote_ip");
+    assert_string_equal(cJSON_GetArrayItem(port_compare, 3)->valuestring, "state");
+    assert_string_equal(cJSON_GetArrayItem(port_compare, 4)->valuestring, "process");
+    assert_string_equal(cJSON_GetArrayItem(port_compare, 5)->valuestring, "local_port");
+    assert_string_equal(cJSON_GetArrayItem(port_compare, 6)->valuestring, "remote_port");
+    assert_string_equal(cJSON_GetArrayItem(port_compare, 7)->valuestring, "tx_queue");
+    assert_string_equal(cJSON_GetArrayItem(port_compare, 8)->valuestring, "rx_queue");
+    assert_string_equal(cJSON_GetArrayItem(port_compare, 9)->valuestring, "inode");
+    assert_string_equal(cJSON_GetArrayItem(port_compare, 10)->valuestring, "pid");
+
+    cJSON_Delete(port_compare);
+
+    free_port_data(old_port);
+    free_port_data(port);
+}
+
+void test_port_json_attributes(void **state)
+{
+    (void) state;
+
+    port_entry_data *port = get_port_entry("tcp", "10.0.2.9", 5555, "10.0.2.6", 22, 500, 200, 0, "listening", 1234, "ssh");
+
+    cJSON *port_attributes = port_json_attributes(port);
+
+    assert_string_equal(cJSON_GetObjectItem(port_attributes, "protocol")->valuestring, "tcp");
+    assert_string_equal(cJSON_GetObjectItem(port_attributes, "local_ip")->valuestring, "10.0.2.9");
+    assert_int_equal(cJSON_GetObjectItem(port_attributes, "local_port")->valueint, 5555);
+    assert_string_equal(cJSON_GetObjectItem(port_attributes, "remote_ip")->valuestring, "10.0.2.6");
+    assert_int_equal(cJSON_GetObjectItem(port_attributes, "remote_port")->valueint, 22);
+    assert_int_equal(cJSON_GetObjectItem(port_attributes, "tx_queue")->valueint, 500);
+    assert_int_equal(cJSON_GetObjectItem(port_attributes, "rx_queue")->valueint, 200);
+    assert_int_equal(cJSON_GetObjectItem(port_attributes, "inode")->valueint, 0);
+    assert_string_equal(cJSON_GetObjectItem(port_attributes, "state")->valuestring, "listening");
+    assert_int_equal(cJSON_GetObjectItem(port_attributes, "PID")->valueint, 1234);
+    assert_string_equal(cJSON_GetObjectItem(port_attributes, "process")->valuestring, "ssh");
+
+    cJSON_Delete(port_attributes);
+
+    free_port_data(port);
+}
+
+void test_process_json_event(void **state)
+{
+    (void) state;
+
+    process_entry_data *old_proc = get_process_entry(123, 25, "sh", "sh -c", "nc", "R", "user", "user", "user", "users", "users", "users", "users", 15, -5, 500, 200, 100, 50, 112345678, 235, 85, 24, 10, 22, 3, 11, 0);
+    process_entry_data *proc = get_process_entry(1234, 123, "bash", "bash -c", "python", "S", "root", "root", "root", "admin", "admin", "admin", "admin", 10, 0, 1000, 500, 200, 100, 123456789, 456, 123, 75, 12, 33, 5, 15, 2);
+
+    cJSON *proc_added = process_json_event(NULL, proc, SYS_ADD, "12345");
+
+    assert_string_equal(cJSON_GetObjectItem(proc_added, "type")->valuestring, "process");
+
+    cJSON *data = cJSON_GetObjectItem(proc_added, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "added");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "12345");
+    assert_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(proc_added);
+
+    cJSON *proc_modified = process_json_event(old_proc, proc, SYS_MODIFY, "23456");
+
+    assert_string_equal(cJSON_GetObjectItem(proc_modified, "type")->valuestring, "process");
+
+    data = cJSON_GetObjectItem(proc_modified, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "modified");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "23456");
+    assert_non_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(proc_modified);
+
+    cJSON *proc_deleted = process_json_event(NULL, proc, SYS_DELETE, "34567");
+
+    assert_string_equal(cJSON_GetObjectItem(proc_deleted, "type")->valuestring, "process");
+
+    data = cJSON_GetObjectItem(proc_deleted, "data");
+    assert_non_null(data);
+    assert_string_equal(cJSON_GetObjectItem(data, "type")->valuestring, "deleted");
+    assert_string_equal(cJSON_GetObjectItem(data, "timestamp")->valuestring, "34567");
+    assert_null(cJSON_GetObjectItem(data, "changed_attributes"));
+    assert_null(cJSON_GetObjectItem(data, "old_attributes"));
+    assert_non_null(cJSON_GetObjectItem(data, "attributes"));
+
+    cJSON_Delete(proc_deleted);
+
+    free_process_data(old_proc);
+    free_process_data(proc);
+}
+
+void test_process_json_compare(void **state)
+{
+    (void) state;
+
+    process_entry_data *old_proc = get_process_entry(123, 25, "sh", "sh -c", "nc", "R", "user", "user", "user", "users", "users", "users", "users", 15, -5, 500, 200, 100, 50, 112345678, 235, 85, 24, 10, 22, 3, 11, 0);
+    process_entry_data *proc = get_process_entry(1234, 123, "bash", "bash -c", "python", "S", "root", "root", "root", "admin", "admin", "admin", "admin", 10, 0, 1000, 500, 200, 100, 123456789, 456, 123, 75, 12, 33, 5, 15, 2);
+
+    cJSON *proc_compare = process_json_compare(old_proc, proc);
+
+    assert_int_equal(cJSON_GetArraySize(proc_compare), 28);
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 0)->valuestring, "name");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 1)->valuestring, "cmd");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 2)->valuestring, "argvs");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 3)->valuestring, "state");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 4)->valuestring, "euser");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 5)->valuestring, "ruser");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 6)->valuestring, "suser");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 7)->valuestring, "egroup");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 8)->valuestring, "rgroup");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 9)->valuestring, "sgroup");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 10)->valuestring, "fgroup");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 11)->valuestring, "pid");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 12)->valuestring, "ppid");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 13)->valuestring, "priority");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 14)->valuestring, "nice");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 15)->valuestring, "size");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 16)->valuestring, "vm_size");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 17)->valuestring, "resident");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 18)->valuestring, "share");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 19)->valuestring, "start_time");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 20)->valuestring, "utime");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 21)->valuestring, "stime");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 22)->valuestring, "pgrp");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 23)->valuestring, "session");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 24)->valuestring, "nlwp");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 25)->valuestring, "tgid");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 26)->valuestring, "tty");
+    assert_string_equal(cJSON_GetArrayItem(proc_compare, 27)->valuestring, "processor");
+
+    cJSON_Delete(proc_compare);
+
+    free_process_data(old_proc);
+    free_process_data(proc);
+}
+
+void test_process_json_attributes(void **state)
+{
+    (void) state;
+
+    process_entry_data *proc = get_process_entry(1234, 123, "bash", "bash -c", "python", "S", "root", "root", "root", "admin", "admin", "admin", "admin", 10, 0, 1000, 500, 200, 100, 123456789, 456, 123, 75, 12, 33, 5, 15, 2);
+
+    cJSON *proc_attributes = process_json_attributes(proc);
+
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "pid")->valueint, 1234);
+    assert_string_equal(cJSON_GetObjectItem(proc_attributes, "name")->valuestring, "bash");
+    assert_string_equal(cJSON_GetObjectItem(proc_attributes, "state")->valuestring, "S");
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "ppid")->valueint, 123);
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "utime")->valuedouble, 456);
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "stime")->valuedouble, 123);
+    assert_string_equal(cJSON_GetObjectItem(proc_attributes, "cmd")->valuestring, "bash -c");
+    assert_string_equal(cJSON_GetArrayItem(cJSON_GetObjectItem(proc_attributes, "argvs"), 0)->valuestring, "python");
+    assert_null(cJSON_GetArrayItem(cJSON_GetObjectItem(proc_attributes, "argvs"), 1));
+    assert_string_equal(cJSON_GetObjectItem(proc_attributes, "euser")->valuestring, "root");
+    assert_string_equal(cJSON_GetObjectItem(proc_attributes, "ruser")->valuestring, "root");
+    assert_string_equal(cJSON_GetObjectItem(proc_attributes, "suser")->valuestring, "root");
+    assert_string_equal(cJSON_GetObjectItem(proc_attributes, "egroup")->valuestring, "admin");
+    assert_string_equal(cJSON_GetObjectItem(proc_attributes, "rgroup")->valuestring, "admin");
+    assert_string_equal(cJSON_GetObjectItem(proc_attributes, "sgroup")->valuestring, "admin");
+    assert_string_equal(cJSON_GetObjectItem(proc_attributes, "fgroup")->valuestring, "admin");
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "priority")->valueint, 10);
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "nice")->valueint, 0);
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "size")->valuedouble, 1000);
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "vm_size")->valuedouble, 500);
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "resident")->valuedouble, 200);
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "share")->valuedouble, 100);
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "start_time")->valuedouble, 123456789);
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "pgrp")->valueint, 75);
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "session")->valueint, 12);
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "nlwp")->valueint, 33);
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "tgid")->valueint, 5);
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "tty")->valueint, 15);
+    assert_int_equal(cJSON_GetObjectItem(proc_attributes, "processor")->valueint, 2);
+
+    cJSON_Delete(proc_attributes);
+
+    free_process_data(proc);
+}
+
+void test_json_scan_event(void **state)
+{
+    (void) state;
+
+    cJSON *hw_scan = sys_json_scan_event(HW_SCAN, 123456789, 1);
+
+    assert_string_equal(cJSON_GetObjectItem(hw_scan, "type")->valuestring, "hardware_scan");
+
+    cJSON *data = cJSON_GetObjectItem(hw_scan, "data");
+    assert_non_null(data);
+    assert_int_equal(cJSON_GetObjectItem(data, "timestamp")->valuedouble, 123456789);
+    assert_int_equal(cJSON_GetObjectItem(data, "items")->valueint, 1);
+
+    cJSON_Delete(hw_scan);
+
+    cJSON *os_scan = sys_json_scan_event(OS_SCAN, 234567891, 1);
+
+    assert_string_equal(cJSON_GetObjectItem(os_scan, "type")->valuestring, "OS_scan");
+
+    data = cJSON_GetObjectItem(os_scan, "data");
+    assert_non_null(data);
+    assert_int_equal(cJSON_GetObjectItem(data, "timestamp")->valuedouble, 234567891);
+    assert_int_equal(cJSON_GetObjectItem(data, "items")->valueint, 1);
+
+    cJSON_Delete(os_scan);
+
+    cJSON *iface_scan = sys_json_scan_event(IFACE_SCAN, 345678912, 3);
+
+    assert_string_equal(cJSON_GetObjectItem(iface_scan, "type")->valuestring, "network_scan");
+
+    data = cJSON_GetObjectItem(iface_scan, "data");
+    assert_non_null(data);
+    assert_int_equal(cJSON_GetObjectItem(data, "timestamp")->valuedouble, 345678912);
+    assert_int_equal(cJSON_GetObjectItem(data, "items")->valueint, 3);
+
+    cJSON_Delete(iface_scan);
+
+    cJSON *pkg_scan = sys_json_scan_event(PKG_SCAN, 456789123, 150);
+
+    assert_string_equal(cJSON_GetObjectItem(pkg_scan, "type")->valuestring, "program_scan");
+
+    data = cJSON_GetObjectItem(pkg_scan, "data");
+    assert_non_null(data);
+    assert_int_equal(cJSON_GetObjectItem(data, "timestamp")->valuedouble, 456789123);
+    assert_int_equal(cJSON_GetObjectItem(data, "items")->valueint, 150);
+
+    cJSON_Delete(pkg_scan);
+
+    cJSON *hfix_scan = sys_json_scan_event(HFIX_SCAN, 567891234, 54);
+
+    assert_string_equal(cJSON_GetObjectItem(hfix_scan, "type")->valuestring, "hotfix_scan");
+
+    data = cJSON_GetObjectItem(hfix_scan, "data");
+    assert_non_null(data);
+    assert_int_equal(cJSON_GetObjectItem(data, "timestamp")->valuedouble, 567891234);
+    assert_int_equal(cJSON_GetObjectItem(data, "items")->valueint, 54);
+
+    cJSON_Delete(hfix_scan);
+
+    cJSON *port_scan = sys_json_scan_event(PORT_SCAN, 678912345, 15);
+
+    assert_string_equal(cJSON_GetObjectItem(port_scan, "type")->valuestring, "port_scan");
+
+    data = cJSON_GetObjectItem(port_scan, "data");
+    assert_non_null(data);
+    assert_int_equal(cJSON_GetObjectItem(data, "timestamp")->valuedouble, 678912345);
+    assert_int_equal(cJSON_GetObjectItem(data, "items")->valueint, 15);
+
+    cJSON_Delete(port_scan);
+
+    cJSON *proc_scan = sys_json_scan_event(PROC_SCAN, 789123456, 255);
+
+    assert_string_equal(cJSON_GetObjectItem(proc_scan, "type")->valuestring, "process_scan");
+
+    data = cJSON_GetObjectItem(proc_scan, "data");
+    assert_non_null(data);
+    assert_int_equal(cJSON_GetObjectItem(data, "timestamp")->valuedouble, 789123456);
+    assert_int_equal(cJSON_GetObjectItem(data, "items")->valueint, 255);
+
+    cJSON_Delete(proc_scan);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_scan_rotation, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_initialize_datastores, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_hw_added, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_hw_modified, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_hw_not_modified, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_hw_invalid, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_os_added, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_os_modified, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_os_not_modified, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_os_invalid, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_interface_added, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_interface_added_failure, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_interface_modified, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_interface_modified_failure, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_interface_not_modified, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_interface_invalid, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_check_disabled_interfaces_deleted, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_check_disabled_interfaces_not_deleted, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_check_disabled_interfaces_no_data, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_program_added, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_program_added_failure, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_program_modified, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_program_modified_failure, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_program_not_modified, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_program_invalid, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_check_uninstalled_programs_deleted, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_check_uninstalled_programs_not_deleted, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_check_uninstalled_programs_no_data, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_hotfix_added, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_hotfix_added_failure, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_hotfix_invalid, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_check_uninstalled_hotfixes_deleted, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_check_uninstalled_hotfixes_not_deleted, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_check_uninstalled_hotfixes_no_data, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_port_added, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_port_added_failure, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_port_modified, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_port_modified_failure, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_port_not_modified, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_port_invalid, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_check_closed_ports_deleted, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_check_closed_ports_not_deleted, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_check_closed_ports_no_data, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_process_added, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_process_added_failure, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_process_modified, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_process_modified_failure, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_process_not_modified, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_analyze_process_invalid, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_check_terminated_processes_deleted, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_check_terminated_processes_not_deleted, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_check_terminated_processes_no_data, init_sys_config, delete_sys_config),
-        cmocka_unit_test_setup_teardown(test_send_scan_event, init_sys_config, delete_sys_config)
+        cmocka_unit_test(test_scan_rotation),
+        cmocka_unit_test(test_initialize_datastores),
+        cmocka_unit_test(test_analyze_hw_added),
+        cmocka_unit_test(test_analyze_hw_modified),
+        cmocka_unit_test(test_analyze_hw_not_modified),
+        cmocka_unit_test(test_analyze_hw_invalid),
+        cmocka_unit_test(test_analyze_os_added),
+        cmocka_unit_test(test_analyze_os_modified),
+        cmocka_unit_test(test_analyze_os_not_modified),
+        cmocka_unit_test(test_analyze_os_invalid),
+        cmocka_unit_test(test_analyze_interface_added),
+        cmocka_unit_test(test_analyze_interface_added_failure),
+        cmocka_unit_test(test_analyze_interface_modified),
+        cmocka_unit_test(test_analyze_interface_modified_failure),
+        cmocka_unit_test(test_analyze_interface_not_modified),
+        cmocka_unit_test(test_analyze_interface_invalid),
+        cmocka_unit_test(test_check_disabled_interfaces_deleted),
+        cmocka_unit_test(test_check_disabled_interfaces_not_deleted),
+        cmocka_unit_test(test_check_disabled_interfaces_no_data),
+        cmocka_unit_test(test_analyze_program_added),
+        cmocka_unit_test(test_analyze_program_added_failure),
+        cmocka_unit_test(test_analyze_program_modified),
+        cmocka_unit_test(test_analyze_program_modified_failure),
+        cmocka_unit_test(test_analyze_program_not_modified),
+        cmocka_unit_test(test_analyze_program_invalid),
+        cmocka_unit_test(test_check_uninstalled_programs_deleted),
+        cmocka_unit_test(test_check_uninstalled_programs_not_deleted),
+        cmocka_unit_test(test_check_uninstalled_programs_no_data),
+        cmocka_unit_test(test_analyze_hotfix_added),
+        cmocka_unit_test(test_analyze_hotfix_added_failure),
+        cmocka_unit_test(test_analyze_hotfix_invalid),
+        cmocka_unit_test(test_check_uninstalled_hotfixes_deleted),
+        cmocka_unit_test(test_check_uninstalled_hotfixes_not_deleted),
+        cmocka_unit_test(test_check_uninstalled_hotfixes_no_data),
+        cmocka_unit_test(test_analyze_port_added),
+        cmocka_unit_test(test_analyze_port_added_failure),
+        cmocka_unit_test(test_analyze_port_modified),
+        cmocka_unit_test(test_analyze_port_modified_failure),
+        cmocka_unit_test(test_analyze_port_not_modified),
+        cmocka_unit_test(test_analyze_port_invalid),
+        cmocka_unit_test(test_check_closed_ports_deleted),
+        cmocka_unit_test(test_check_closed_ports_not_deleted),
+        cmocka_unit_test(test_check_closed_ports_no_data),
+        cmocka_unit_test(test_analyze_process_added),
+        cmocka_unit_test(test_analyze_process_added_failure),
+        cmocka_unit_test(test_analyze_process_modified),
+        cmocka_unit_test(test_analyze_process_modified_failure),
+        cmocka_unit_test(test_analyze_process_not_modified),
+        cmocka_unit_test(test_analyze_process_invalid),
+        cmocka_unit_test(test_check_terminated_processes_deleted),
+        cmocka_unit_test(test_check_terminated_processes_not_deleted),
+        cmocka_unit_test(test_check_terminated_processes_no_data),
+        cmocka_unit_test(test_send_scan_event),
+        cmocka_unit_test(test_hw_json_event),
+        cmocka_unit_test(test_hw_json_compare),
+        cmocka_unit_test(test_hw_json_attributes),
+        cmocka_unit_test(test_os_json_event),
+        cmocka_unit_test(test_os_json_compare),
+        cmocka_unit_test(test_os_json_attributes),
+        cmocka_unit_test(test_interface_json_event),
+        cmocka_unit_test(test_interface_json_compare),
+        cmocka_unit_test(test_interface_json_attributes),
+        cmocka_unit_test(test_program_json_event),
+        cmocka_unit_test(test_program_json_compare),
+        cmocka_unit_test(test_program_json_attributes),
+        cmocka_unit_test(test_hotfix_json_event),
+        cmocka_unit_test(test_hotfix_json_compare),
+        cmocka_unit_test(test_hotfix_json_attributes),
+        cmocka_unit_test(test_port_json_event),
+        cmocka_unit_test(test_port_json_compare),
+        cmocka_unit_test(test_port_json_attributes),
+        cmocka_unit_test(test_process_json_event),
+        cmocka_unit_test(test_process_json_compare),
+        cmocka_unit_test(test_process_json_attributes),
+        cmocka_unit_test(test_json_scan_event)
     };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, init_sys_config, delete_sys_config);
 }

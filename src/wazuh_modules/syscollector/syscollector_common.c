@@ -2012,7 +2012,7 @@ cJSON * interface_json_event(interface_entry_data * old_data, interface_entry_da
     cJSON * changed_attributes = NULL;
 
     if (old_data) {
-        changed_attributes = interface_compare(old_data, new_data);
+        changed_attributes = interface_json_compare(old_data, new_data);
 
         if (cJSON_GetArraySize(changed_attributes) == 0) {
             cJSON_Delete(changed_attributes);
@@ -2039,7 +2039,7 @@ cJSON * interface_json_event(interface_entry_data * old_data, interface_entry_da
     return object;
 }
 
-cJSON * interface_compare(interface_entry_data * old_data, interface_entry_data * new_data) {
+cJSON * interface_json_compare(interface_entry_data * old_data, interface_entry_data * new_data) {
     cJSON * changed_attributes = cJSON_CreateArray();
 
     if (old_data->name && new_data->name) {

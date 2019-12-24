@@ -644,7 +644,7 @@ cJSON * os_json_attributes(os_entry * data);
  *   data: {
  *     type:                "added"|"modified"|"deleted"
  *     timestamp:           string
- *     changed_attributes:  array   interface_compare()         [Only if old_data]
+ *     changed_attributes:  array   interface_json_compare()    [Only if old_data]
  *     old_attributes:      object  interface_json_attributes() [Only if old_data]
  *     attributes:          object  interface_json_attributes()
  *   }
@@ -696,7 +696,7 @@ cJSON * interface_json_event(interface_entry_data * old_data, interface_entry_da
  * @param new_data
  * @return cJSON*
  */
-cJSON * interface_compare(interface_entry_data * old_data, interface_entry_data * new_data);
+cJSON * interface_json_compare(interface_entry_data * old_data, interface_entry_data * new_data);
 
 /**
  * @brief Create interface attribute set JSON from a interface_entry_data structure
