@@ -4,6 +4,9 @@
 
 static const char *XML_INTERVAL = "interval";
 static const char *XML_SCAN_ON_START = "scan-on-start";
+static const char *XML_SCAN_ON_START_2 = "scan_on_start";
+static const char *XML_RUN_ON_START = "run_on_start";
+static const char *XML_PULL_ON_START = "pull_on_start";
 static const char *XML_SCAN_DAY = "day";
 static const char *XML_WEEK_DAY = "wday";
 static const char *XML_TIME = "time";
@@ -35,7 +38,10 @@ void sched_scan_init(sched_scan_config *scan_config){
  * <day></day>
  * <wday></wday>
  * <time></time>
- * <scan-on-start></scan-on-start>
+ * <scan-on-start></scan-on-start> 
+ *      or <scan_on_start></scan_on_start>
+ *      or <run_on_start></run_on_start> 
+ *      or <pull_on_start></pull_on_start>
  * <interval></interval>
  * ´´´
  * */
@@ -64,7 +70,10 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
                 merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                 return (OS_INVALID);
             }
-        }else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START)) { // <scan-on-start></scan-on-start>
+        }else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START) || // <scan-on-start></scan-on-start>
+            !strcmp(nodes[i]->element, XML_SCAN_ON_START) || // <scan_on_start></scan_on_start>
+            !strcmp(nodes[i]->element, XML_RUN_ON_START)  || // <run_on_start></run_on_start>
+            !strcmp(nodes[i]->element, XML_PULL_ON_START) ) { // <pull_on_start></pull_on_start>
             int pull_on_start = eval_bool(nodes[i]->content);
 
             if(pull_on_start == OS_INVALID){
