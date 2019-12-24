@@ -547,8 +547,8 @@ char *adapt_win_fc_output(char *command_output) {
     size_t written = 0;
 
     if (line = strchr(command_output, '\n'), !line) {
-        merror(FIM_ERROR_GENDIFF_SECONDLINE_MISSING);
-        return NULL;
+        mdebug2("%s: %s", FIM_ERROR_GENDIFF_SECONDLINE_MISSING, command_output);
+        return strdup(command_output);
     }
 
     os_calloc(OS_MAXSTR + 1, sizeof(char), adapted_output);
