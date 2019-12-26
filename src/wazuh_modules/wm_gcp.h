@@ -18,7 +18,6 @@
 
 typedef struct wm_gcp {
     int enabled;
-    int pull_on_start;
     int logging;
     int max_messages;
     time_t next_time;

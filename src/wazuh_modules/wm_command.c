@@ -27,6 +27,7 @@ const wm_context WM_COMMAND_CONTEXT = {
 // Module module main function. It won't return.
 
 void * wm_command_main(wm_command_t * command) {
+    time_t time_sleep = 0;
     size_t extag_len;
     char * extag;
     int usec = 1000000 / wm_max_eps;
@@ -159,7 +160,7 @@ void * wm_command_main(wm_command_t * command) {
 #endif
 
     do {
-        const time_t time_sleep = sched_scan_get_next_time(&(command->scan_config), WM_COMMAND_LOGTAG, command->run_on_start);
+        time_sleep = sched_scan_get_next_time(&(command->scan_config), WM_COMMAND_LOGTAG);
         command->state.next_time = command->scan_config.time_start + time_sleep;
 
         if (time_sleep) {
@@ -221,7 +222,6 @@ cJSON *wm_command_dump(const wm_command_t * command) {
     sched_scan_dump(&(command->scan_config), wm_comm);
 
     if (command->enabled) cJSON_AddStringToObject(wm_comm,"disabled","no"); else cJSON_AddStringToObject(wm_comm,"disabled","yes");
-    if (command->run_on_start) cJSON_AddStringToObject(wm_comm,"run_on_start","yes"); else cJSON_AddStringToObject(wm_comm,"run_on_start","no");
     if (command->ignore_output) cJSON_AddStringToObject(wm_comm,"ignore_output","yes"); else cJSON_AddStringToObject(wm_comm,"ignore_output","no");
     if (command->skip_verification) cJSON_AddStringToObject(wm_comm,"skip_verification","yes"); else cJSON_AddStringToObject(wm_comm,"skip_verification","no");
     if (command->tag) cJSON_AddStringToObject(wm_comm,"tag",command->tag);

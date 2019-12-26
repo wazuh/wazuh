@@ -42,7 +42,6 @@ typedef struct wm_sca_policy_t {
 
 typedef struct wm_sca_t {
     int enabled:1;
-    int scan_on_start:1;
     int skip_nfs:1;
     int msg_delay;
     unsigned int summary_delay;

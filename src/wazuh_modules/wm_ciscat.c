@@ -149,8 +149,9 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     // Main loop
 
     do {
-        const time_t time_sleep = sched_scan_get_next_time(&(ciscat->scan_config), WM_CISCAT_LOGTAG, ciscat->flags.scan_on_start);
-        
+
+        const time_t time_sleep = sched_scan_get_next_time(&(ciscat->scan_config), WM_CISCAT_LOGTAG);
+
         if (time_sleep) {
             mtdebug1(WM_CISCAT_LOGTAG, "Sleeping for %li seconds", time_sleep);
             wm_delay(1000 * time_sleep);
@@ -1448,9 +1449,7 @@ cJSON *wm_ciscat_dump(const wm_ciscat * ciscat) {
     cJSON *wm_cscat = cJSON_CreateObject();
 
     if (ciscat->flags.enabled) cJSON_AddStringToObject(wm_cscat,"disabled","no"); else cJSON_AddStringToObject(wm_cscat,"disabled","yes");
-    if (ciscat->flags.scan_on_start) cJSON_AddStringToObject(wm_cscat,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_cscat,"scan-on-start","no");
-
-
+    
     sched_scan_dump(&(ciscat->scan_config), wm_cscat);
     
     if (ciscat->java_path) cJSON_AddStringToObject(wm_cscat,"java_path",ciscat->java_path);

@@ -20,7 +20,6 @@
 
 typedef struct wm_docker_flags_t {
     unsigned int enabled:1;
-    unsigned int run_on_start:1;
 } wm_docker_flags_t;
 
 typedef struct wm_docker_t {
