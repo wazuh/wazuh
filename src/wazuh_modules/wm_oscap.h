@@ -28,7 +28,6 @@ typedef struct wm_oscap_profile {
 
 typedef struct wm_oscap_flags {
     unsigned int enabled:1;
-    unsigned int scan_on_start:1;
     unsigned int error:1;
 } wm_oscap_flags;
 
@@ -50,7 +49,7 @@ typedef struct wm_oscap_state {
 } wm_oscap_state;
 
 typedef struct wm_oscap {
-    unsigned int interval;          // Default time interval between cycles
+    sched_scan_config scan_config;
     unsigned int timeout;           // Default execution time limit (seconds)
     wm_oscap_flags flags;           // Default flags
     wm_oscap_state state;           // Running state
