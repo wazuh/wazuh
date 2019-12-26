@@ -71,7 +71,7 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
                 return (OS_INVALID);
             }
         }else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START) || // <scan-on-start></scan-on-start>
-            !strcmp(nodes[i]->element, XML_SCAN_ON_START) || // <scan_on_start></scan_on_start>
+            !strcmp(nodes[i]->element, XML_SCAN_ON_START_2) || // <scan_on_start></scan_on_start>
             !strcmp(nodes[i]->element, XML_RUN_ON_START)  || // <run_on_start></run_on_start>
             !strcmp(nodes[i]->element, XML_PULL_ON_START) ) { // <pull_on_start></pull_on_start>
             int pull_on_start = eval_bool(nodes[i]->content);

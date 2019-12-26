@@ -20,13 +20,13 @@
 
 typedef struct wm_docker_flags_t {
     unsigned int enabled:1;
-    unsigned int run_on_start:1;
 } wm_docker_flags_t;
 
 typedef struct wm_docker_t {
     unsigned int interval;             // Time interval to retry to run the listener
     int attempts;                      // Maximum attempts to run the module after fails
     wm_docker_flags_t flags;           // Default flags
+    sched_scan_config scan_config;
 } wm_docker_t;
 
 extern const wm_context WM_DOCKER_CONTEXT;   // Context

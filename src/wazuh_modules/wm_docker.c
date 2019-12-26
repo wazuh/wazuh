@@ -34,7 +34,6 @@ const wm_context WM_DOCKER_CONTEXT = {
 // Module module main function. It won't return.
 
 void* wm_docker_main(wm_docker_t *docker_conf) {
-
     int status = 0;
     char * command = WM_DOCKER_SCRIPT_PATH;
     int attempts = 0;
@@ -42,17 +41,14 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
     wm_docker_setup(docker_conf);
     mtinfo(WM_DOCKER_LOGTAG, "Module docker-listener started.");
 
-    // First sleeping
-
-    if (!docker_conf->flags.run_on_start) {
-        mtinfo(WM_DOCKER_LOGTAG, "Waiting the interval (%u seconds) to run the listener.", docker_conf->interval);
-        sleep(docker_conf->interval);
-    }
-
-    // Main loop
-
-    while (1) {
-
+    // Main 
+    do {
+        const time_t time_sleep = sched_scan_get_next_time(&(docker_conf->scan_config), WM_DOCKER_LOGTAG);
+        
+        if (time_sleep) {
+            mtdebug1(WM_DOCKER_LOGTAG, "Sleeping for %li seconds", time_sleep);
+            wm_delay(1000 * time_sleep);
+        }
         mtinfo(WM_DOCKER_LOGTAG, "Starting to listening Docker events.");
 
         // Running the docker listener script
@@ -92,11 +88,9 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
                 mterror(WM_DOCKER_LOGTAG, "Maximum attempts reached to run the listener. Exiting...");
                 pthread_exit(NULL);
             }
-
-            mtwarn(WM_DOCKER_LOGTAG, "Docker-listener finished unexpectedly (code %d). Retrying to run it in %u seconds...", exitcode, docker_conf->interval);
-            sleep(docker_conf->interval);
+            mtwarn(WM_DOCKER_LOGTAG, "Docker-listener finished unexpectedly (code %d). Retrying to run in next scheduled time...", exitcode);
         }
-    }
+    } while (1);
 
     return NULL;
 }
@@ -109,9 +103,9 @@ cJSON *wm_docker_dump(const wm_docker_t *docker_conf) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_docker = cJSON_CreateObject();
 
+    sched_scan_dump(&(docker_conf->scan_config), wm_docker);
+
     if (docker_conf->flags.enabled) cJSON_AddStringToObject(wm_docker,"disabled","no"); else cJSON_AddStringToObject(wm_docker,"disabled","yes");
-    if (docker_conf->flags.run_on_start) cJSON_AddStringToObject(wm_docker,"run_on_start","yes"); else cJSON_AddStringToObject(wm_docker,"run_on_start","no");
-    cJSON_AddNumberToObject(wm_docker,"interval",docker_conf->interval);
     cJSON_AddNumberToObject(wm_docker, "attempts", docker_conf->attempts);
     cJSON_AddItemToObject(root,"docker-listener",wm_docker);
 
