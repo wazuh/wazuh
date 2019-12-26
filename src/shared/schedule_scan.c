@@ -3,20 +3,13 @@
 
 
 static const char *XML_INTERVAL = "interval";
-static const char *XML_SCAN_ON_START = "scan-on-start";
-static const char *XML_SCAN_ON_START_2 = "scan_on_start";
-static const char *XML_RUN_ON_START = "run_on_start";
-static const char *XML_PULL_ON_START = "pull_on_start";
 static const char *XML_SCAN_DAY = "day";
 static const char *XML_WEEK_DAY = "wday";
 static const char *XML_TIME = "time";
 
-static short eval_bool(const char *str) {
-    return !str ? OS_INVALID : !strcmp(str, "yes") ? 1 : !strcmp(str, "no") ? 0 : OS_INVALID;
-}
 
 static int _sched_scan_validate_parameters(sched_scan_config *scan_config);
-static time_t _get_next_time(const sched_scan_config *config, const char *MODULE_TAG);
+static time_t _get_next_time(const sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start);
 
 /**
  * Initializes sched_scan_config structure with 
@@ -26,7 +19,6 @@ void sched_scan_init(sched_scan_config *scan_config){
     scan_config->scan_wday = -1;
     scan_config->scan_day = 0;
     scan_config->scan_time = NULL;
-    scan_config->scan_on_start = true;
     scan_config->interval = WM_DEF_INTERVAL / 2;
     scan_config->month_interval = false;
 }
@@ -38,10 +30,6 @@ void sched_scan_init(sched_scan_config *scan_config){
  * <day></day>
  * <wday></wday>
  * <time></time>
- * <scan-on-start></scan-on-start> 
- *      or <scan_on_start></scan_on_start>
- *      or <run_on_start></run_on_start> 
- *      or <pull_on_start></pull_on_start>
  * <interval></interval>
  * ´´´
  * */
@@ -70,18 +58,6 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
                 merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                 return (OS_INVALID);
             }
-        }else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START) || // <scan-on-start></scan-on-start>
-            !strcmp(nodes[i]->element, XML_SCAN_ON_START_2) || // <scan_on_start></scan_on_start>
-            !strcmp(nodes[i]->element, XML_RUN_ON_START)  || // <run_on_start></run_on_start>
-            !strcmp(nodes[i]->element, XML_PULL_ON_START) ) { // <pull_on_start></pull_on_start>
-            int pull_on_start = eval_bool(nodes[i]->content);
-
-            if(pull_on_start == OS_INVALID){
-                merror("Invalid content for tag '%s' at module '%s'", XML_SCAN_ON_START, MODULE_NAME);
-                return OS_INVALID;
-            }
-
-            scan_config->scan_on_start = (pull_on_start == 1);
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) { //<interval></interval>
             char *endptr;
             scan_config->interval = strtoul(nodes[i]->content, &endptr, 0);
@@ -130,16 +106,17 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
  * 4. Set up a scan between intervals
  * @param config Scheduling configuration
  * @param MODULE_TAG String to identify module
+ * @param run_on_start forces first time run
  * @return remaining time until next scan
  * */
-time_t sched_scan_get_next_time(sched_scan_config *config, const char *MODULE_TAG) {
-    const time_t next_time = _get_next_time(config, MODULE_TAG);
+time_t sched_scan_get_next_time(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
+    const time_t next_time = _get_next_time(config, MODULE_TAG, run_on_start);
     config->time_start = time(NULL);
     return next_time;
 }
 
-static time_t _get_next_time(const sched_scan_config *config, const char *MODULE_TAG) {
-    if (config->scan_on_start && !config->time_start) {
+static time_t _get_next_time(const sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
+    if (run_on_start && !config->time_start) {
         // If scan on start then initial waiting time is 0
         return 0;
     }
@@ -234,7 +211,6 @@ int _sched_scan_validate_parameters(sched_scan_config *scan_config) {
 }
 
 void sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object){
-    cJSON_AddStringToObject(cjson_object, "scan-on-start", scan_config->scan_on_start ? "yes" : "no");
     if (scan_config->interval) cJSON_AddNumberToObject(cjson_object, "interval", scan_config->interval);
     if (scan_config->scan_day) cJSON_AddNumberToObject(cjson_object, "day", scan_config->scan_day);
     switch (scan_config->scan_wday) {

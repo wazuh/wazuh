@@ -55,7 +55,7 @@ void* wm_azure_main(wm_azure_t *azure_config) {
     // Main loop
 
     do {
-        const time_t time_sleep = sched_scan_get_next_time(&(azure_config->scan_config), WM_AZURE_LOGTAG);
+        const time_t time_sleep = sched_scan_get_next_time(&(azure_config->scan_config), WM_AZURE_LOGTAG, azure_config->flags.run_on_start);
         azure_config->state.next_time = azure_config->scan_config.time_start + time_sleep;
 
         if (time_sleep) {
@@ -457,6 +457,7 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
     cJSON *wm_azure = cJSON_CreateObject();
 
     if (azure->flags.enabled) cJSON_AddStringToObject(wm_azure,"disabled","no"); else cJSON_AddStringToObject(wm_azure,"disabled","yes");
+    if (azure->flags.run_on_start) cJSON_AddStringToObject(wm_azure,"run_on_start","yes"); else cJSON_AddStringToObject(wm_azure,"run_on_start","no");
     sched_scan_dump(&(azure->scan_config), wm_azure);
     cJSON_AddNumberToObject(wm_azure,"timeout",azure->timeout);
 

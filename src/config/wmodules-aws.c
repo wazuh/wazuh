@@ -16,6 +16,7 @@ static const char *XML_BUCKET = "bucket";
 static const char *XML_SERVICE = "service";
 static const char *XML_ACCESS_KEY = "access_key";
 static const char *XML_SECRET_KEY = "secret_key";
+static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_REMOVE_FORM_BUCKET = "remove_from_bucket";
 static const char *XML_SKIP_ON_ERROR = "skip_on_error";
 static const char *XML_AWS_PROFILE = "aws_profile";
@@ -61,6 +62,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
     os_calloc(1, sizeof(wm_aws), aws_config);
     aws_config->enabled = 1;
+    aws_config->run_on_start = 1;
     aws_config->remove_from_bucket = 0;
     sched_scan_init(&(aws_config->scan_config));
     aws_config->scan_config.interval = WM_AWS_DEFAULT_INTERVAL;
@@ -81,6 +83,15 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 aws_config->enabled = 1;
             else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_AWS_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
+            if (!strcmp(nodes[i]->content, "yes"))
+                aws_config->run_on_start = 1;
+            else if (!strcmp(nodes[i]->content, "no"))
+                aws_config->run_on_start = 0;
+            else {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_ON_START, WM_AWS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_SKIP_ON_ERROR)) {
@@ -361,9 +372,6 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             OS_ClearNode(children);
 
-        } else {
-            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_AWS_CONTEXT.name);
-            return OS_INVALID;
         }
     }
 

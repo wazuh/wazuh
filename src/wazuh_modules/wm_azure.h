@@ -24,6 +24,7 @@
 
 typedef struct wm_azure_flags_t {
     unsigned int enabled:1;
+    unsigned int run_on_start:1;
 } wm_azure_flags_t;
 
 typedef struct wm_azure_state_t {

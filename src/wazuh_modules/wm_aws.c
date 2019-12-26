@@ -49,8 +49,8 @@ void* wm_aws_main(wm_aws *aws_config) {
 
     do {
 
-        const time_t time_sleep = sched_scan_get_next_time(&(aws_config->scan_config), WM_AWS_LOGTAG);
-        
+        const time_t time_sleep = sched_scan_get_next_time(&(aws_config->scan_config), WM_AWS_LOGTAG, aws_config->run_on_start);
+
         aws_config->state.next_time = aws_config->scan_config.time_start + time_sleep;
         if (wm_state_io(WM_AWS_CONTEXT.name, WM_IO_WRITE, &aws_config->state, sizeof(aws_config->state)) < 0)
             mterror(WM_AWS_LOGTAG, "Couldn't save running state.");
@@ -164,6 +164,7 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
     sched_scan_dump(&(aws_config->scan_config), wm_aws);
 
     if (aws_config->enabled) cJSON_AddStringToObject(wm_aws,"disabled","no"); else cJSON_AddStringToObject(wm_aws,"disabled","yes");
+    if (aws_config->run_on_start) cJSON_AddStringToObject(wm_aws,"run_on_start","yes"); else cJSON_AddStringToObject(wm_aws,"run_on_start","no");
     if (aws_config->skip_on_error) cJSON_AddStringToObject(wm_aws,"skip_on_error","yes"); else cJSON_AddStringToObject(wm_aws,"skip_on_error","no");
     if (aws_config->buckets) {
         wm_aws_bucket *iter;

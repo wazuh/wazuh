@@ -29,6 +29,7 @@ typedef struct wm_command_t {
     int queue_fd;
     wm_command_state_t state;
     unsigned int enabled:1;
+    unsigned int run_on_start:1;
     unsigned int ignore_output:1;
     unsigned int agent_cfg:1;
     unsigned int skip_verification:1;

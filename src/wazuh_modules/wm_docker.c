@@ -43,7 +43,7 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
     // Main 
     do {
-        const time_t time_sleep = sched_scan_get_next_time(&(docker_conf->scan_config), WM_DOCKER_LOGTAG);
+        const time_t time_sleep = sched_scan_get_next_time(&(docker_conf->scan_config), WM_DOCKER_LOGTAG, docker_conf->flags.run_on_start);
         
         if (time_sleep) {
             mtdebug1(WM_DOCKER_LOGTAG, "Sleeping for %li seconds", time_sleep);
@@ -106,6 +106,7 @@ cJSON *wm_docker_dump(const wm_docker_t *docker_conf) {
     sched_scan_dump(&(docker_conf->scan_config), wm_docker);
 
     if (docker_conf->flags.enabled) cJSON_AddStringToObject(wm_docker,"disabled","no"); else cJSON_AddStringToObject(wm_docker,"disabled","yes");
+    if (docker_conf->flags.run_on_start) cJSON_AddStringToObject(wm_docker,"run_on_start","yes"); else cJSON_AddStringToObject(wm_docker,"run_on_start","no");
     cJSON_AddNumberToObject(wm_docker, "attempts", docker_conf->attempts);
     cJSON_AddItemToObject(root,"docker-listener",wm_docker);
 

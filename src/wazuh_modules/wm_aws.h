@@ -61,6 +61,7 @@ typedef struct wm_aws {
     char *secret_key;                   // DEPRECATE
     int queue_fd;
     unsigned int enabled:1;
+    unsigned int run_on_start:1;
     unsigned int remove_from_bucket:1;  // DEPRECATE
     unsigned int skip_on_error:1;
     wm_aws_state_t state;

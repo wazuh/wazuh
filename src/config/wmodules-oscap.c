@@ -17,6 +17,7 @@ static const char *XML_XCCDF = "xccdf";
 static const char *XML_OVAL = "oval";
 static const char *XML_PATH = "path";
 static const char *XML_TIMEOUT = "timeout";
+static const char *XML_SCAN_ON_START = "scan-on-start";
 static const char *XML_PROFILE = "profile";
 static const char *XML_XCCDF_ID = "xccdf-id";
 static const char *XML_DS_ID = "datastream-id";
@@ -39,6 +40,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
     os_calloc(1, sizeof(wm_oscap), oscap);
     oscap->flags.enabled = 1;
+    oscap->flags.scan_on_start = 1;
     sched_scan_init(&(oscap->scan_config));
     oscap->scan_config.interval = WM_OSCAP_DEF_INTERVAL;
     module->context = &WM_OSCAP_CONTEXT;
@@ -211,6 +213,15 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             OS_ClearNode(children);
 
+        } else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START)) {
+            if (!strcmp(nodes[i]->content, "yes"))
+                oscap->flags.scan_on_start = 1;
+            else if (!strcmp(nodes[i]->content, "no"))
+                oscap->flags.scan_on_start = 0;
+            else {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_SCAN_ON_START, WM_OSCAP_CONTEXT.name);
+                return OS_INVALID;
+            }
         } else if (!strcmp(nodes[i]->element, XML_DISABLED)) {
             if (!strcmp(nodes[i]->content, "yes"))
                 oscap->flags.enabled = 0;

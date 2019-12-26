@@ -13,6 +13,7 @@
 #include <stdio.h>
 
 static const char *XML_ENABLED = "enabled";
+static const char *XML_SCAN_ON_START= "scan_on_start";
 static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
 static const char *XML_SKIP_NFS = "skip_nfs";
@@ -80,6 +81,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
     if(!module->data) {
         os_calloc(1, sizeof(wm_sca_t), sca);
         sca->enabled = 1;
+        sca->scan_on_start = 1;
         sched_scan_init(&(sca->scan_config));
         sca->skip_nfs = 1;
         sca->alert_msg = NULL;
@@ -199,6 +201,18 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
 
             sca->enabled = enabled;
+        }
+        else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START))
+        {
+            int scan_on_start = eval_bool(nodes[i]->content);
+
+            if(scan_on_start == OS_INVALID)
+            {
+                merror("Invalid content for tag '%s'", XML_ENABLED);
+                return OS_INVALID;
+            }
+
+            sca->scan_on_start = scan_on_start;
         }
         else if (!strcmp(nodes[i]->element, XML_POLICIES))
         {

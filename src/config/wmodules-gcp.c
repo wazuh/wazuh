@@ -15,6 +15,7 @@ static const char *XML_PROJECT_ID = "project_id";
 static const char *XML_SUBSCRIPTION_NAME = "subscription_name";
 static const char *XML_CREDENTIALS_FILE = "credentials_file";
 static const char *XML_MAX_MESSAGES = "max_messages";
+static const char *XML_PULL_ON_START = "pull_on_start";
 static const char *XML_LOGGING = "logging";
 
 static short eval_bool(const char *str) {
@@ -35,6 +36,7 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
         sched_scan_init(&(gcp->scan_config));
         gcp->subscription_name = NULL;
         gcp->credentials_file = NULL;
+        gcp->pull_on_start = 1;
         gcp->logging = 2;
         module->context = &WM_GCP_CONTEXT;
         module->tag = strdup(module->context->name);
@@ -121,6 +123,16 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
 
             char *endptr;
             gcp->max_messages = strtoul(nodes[i]->content, &endptr, 0);
+        }
+        else if (!strcmp(nodes[i]->element, XML_PULL_ON_START)) {
+            int pull_on_start = eval_bool(nodes[i]->content);
+
+            if(pull_on_start == OS_INVALID){
+                merror("Invalid content for tag '%s'", XML_PULL_ON_START);
+                return OS_INVALID;
+            }
+
+            gcp->pull_on_start = pull_on_start;
         }
         else if (!strcmp(nodes[i]->element, XML_LOGGING)) {
             if (!strcmp(nodes[i]->content, "disabled")) {

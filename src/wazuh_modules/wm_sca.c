@@ -299,7 +299,7 @@ static void wm_sca_send_policies_scanned(wm_sca_t * data) {
 static int wm_sca_start(wm_sca_t * data) {
 
     do {
-        const time_t time_sleep = sched_scan_get_next_time(&(data->scan_config), WM_GCP_LOGTAG);
+        const time_t time_sleep = sched_scan_get_next_time(&(data->scan_config), WM_GCP_LOGTAG, data->scan_on_start);
         
         if (time_sleep) {
             mtdebug1(WM_SCA_LOGTAG, "Sleeping for %li seconds", time_sleep);
@@ -3040,6 +3040,7 @@ cJSON *wm_sca_dump(const wm_sca_t *data) {
     sched_scan_dump(&(data->scan_config), wm_wd);
 
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
+    cJSON_AddStringToObject(wm_wd, "scan_on_start", data->scan_on_start ? "yes" : "no");
     cJSON_AddStringToObject(wm_wd, "skip_nfs", data->skip_nfs ? "yes" : "no");
     
     if (data->policies && *data->policies) {

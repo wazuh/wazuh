@@ -49,6 +49,7 @@ typedef enum wm_ciscat_eval_t { WM_CISCAT_XCCDF = 1, WM_CISCAT_OVAL } wm_ciscat_
 
 typedef struct wm_ciscat_flags {
     unsigned int enabled:1;
+    unsigned int scan_on_start:1;
     unsigned int error:1;
 } wm_ciscat_flags;
 

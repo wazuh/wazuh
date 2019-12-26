@@ -40,7 +40,7 @@ void* wm_gcp_main(wm_gcp *data) {
     }
 
     do {
-        const time_t time_sleep = sched_scan_get_next_time(&(data->scan_config), WM_GCP_LOGTAG);
+        const time_t time_sleep = sched_scan_get_next_time(&(data->scan_config), WM_GCP_LOGTAG, data->pull_on_start);
         
         if (time_sleep) {
             mtdebug1(WM_GCP_LOGTAG, "Sleeping for %li seconds", time_sleep);
@@ -200,6 +200,7 @@ cJSON *wm_gcp_dump(const wm_gcp *data) {
     sched_scan_dump(&(data->scan_config), wm_wd);
 
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
+    cJSON_AddStringToObject(wm_wd, "pull_on_start", data->pull_on_start ? "yes" : "no");
     if (data->max_messages) cJSON_AddNumberToObject(wm_wd, "max_messages", data->max_messages);
     if (data->project_id) cJSON_AddStringToObject(wm_wd, "project_id", data->project_id);
     if (data->subscription_name) cJSON_AddStringToObject(wm_wd, "subscription_name", data->subscription_name);

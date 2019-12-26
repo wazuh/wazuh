@@ -14,6 +14,7 @@
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_TIMEOUT = "timeout";
+static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_DISABLED = "disabled";
 
 static const char *XML_LOG_ANALYTICS = "log_analytics";
@@ -63,6 +64,7 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
     os_calloc(1, sizeof(wm_azure_t), azure);
     azure->flags.enabled = 1;
+    azure->flags.run_on_start = 1;
     sched_scan_init(&(azure->scan_config));
     module->context = &WM_AZURE_CONTEXT;
     module->tag = strdup(module->context->name);
@@ -86,6 +88,15 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             if (azure->timeout <= 0 || azure->timeout >= UINT_MAX) {
                 merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
+            if (!strcmp(nodes[i]->content, "yes"))
+                azure->flags.run_on_start = 1;
+            else if (!strcmp(nodes[i]->content, "no"))
+                azure->flags.run_on_start = 0;
+            else {
+                merror("At module '%s': Invalid content for tag '%s'.", WM_AZURE_CONTEXT.name, XML_RUN_ON_START);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_DISABLED)) {
@@ -186,9 +197,6 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             OS_ClearNode(children);
 
-        } else {
-            merror("At module '%s': No such tag '%s'.", WM_AZURE_CONTEXT.name, nodes[i]->element);
-            return OS_INVALID;
         }
     }
 

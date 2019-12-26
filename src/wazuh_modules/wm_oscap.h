@@ -28,6 +28,7 @@ typedef struct wm_oscap_profile {
 
 typedef struct wm_oscap_flags {
     unsigned int enabled:1;
+    unsigned int scan_on_start:1;
     unsigned int error:1;
 } wm_oscap_flags;
 

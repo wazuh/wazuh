@@ -50,7 +50,7 @@ void* wm_oscap_main(wm_oscap *oscap) {
     // Main loop
 
     do {
-        const time_t time_sleep = sched_scan_get_next_time(&(oscap->scan_config), WM_OSCAP_LOGTAG);
+        const time_t time_sleep = sched_scan_get_next_time(&(oscap->scan_config), WM_OSCAP_LOGTAG, oscap->flags.scan_on_start);
         
         oscap->state.next_time = oscap->scan_config.time_start + time_sleep;
         if (wm_state_io(WM_OSCAP_CONTEXT.name, WM_IO_WRITE, &oscap->state, sizeof(oscap->state)) < 0)
@@ -296,6 +296,7 @@ cJSON *wm_oscap_dump(const wm_oscap *oscap) {
     sched_scan_dump(&(oscap->scan_config), wm_scp);
     
     if (oscap->flags.enabled) cJSON_AddStringToObject(wm_scp,"disabled","no"); else cJSON_AddStringToObject(wm_scp,"disabled","yes");
+    if (oscap->flags.scan_on_start) cJSON_AddStringToObject(wm_scp,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_scp,"scan-on-start","no");
     cJSON_AddNumberToObject(wm_scp,"timeout",oscap->timeout);
     if (oscap->evals) {
         cJSON *evals = cJSON_CreateArray();

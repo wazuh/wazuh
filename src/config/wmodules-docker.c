@@ -13,6 +13,7 @@
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_ATTEMPTS = "attempts";
+static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_DISABLED = "disabled";
 
 // Parse XML
@@ -49,6 +50,15 @@ int wm_docker_read(xml_node **nodes, wmodule *module)
 
             if (docker->attempts <= 0 || docker->attempts >= INT_MAX) {
                 merror("At module '%s': Invalid content for tag '%s'.", WM_DOCKER_CONTEXT.name, XML_ATTEMPTS);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
+            if (!strcmp(nodes[i]->content, "yes"))
+                docker->flags.run_on_start = 1;
+            else if (!strcmp(nodes[i]->content, "no"))
+                docker->flags.run_on_start = 0;
+            else {
+                merror("At module '%s': Invalid content for tag '%s'.", WM_DOCKER_CONTEXT.name, XML_RUN_ON_START);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_DISABLED)) {
