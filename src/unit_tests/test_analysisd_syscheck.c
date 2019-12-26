@@ -230,47 +230,81 @@ static int setup_fim_data(void **state) {
                 "\"ppid\":12345,"
                 "\"process_id\":23456}}}";
 
-    os_calloc(1, sizeof(fim_data_t), data);
+    if(data = calloc(1, sizeof(fim_data_t)), data == NULL)
+        return -1;
 
     data->event = cJSON_Parse(plain_event);
 
     if(data->event == NULL)
         return -1;
 
-    os_calloc(1, sizeof(Eventinfo), data->lf);
-    os_calloc(FIM_NFIELDS, sizeof(DynamicField), data->lf->fields);
-    os_calloc(1, sizeof(OSDecoderInfo), data->lf->decoder_info);
-    os_calloc(FIM_NFIELDS, sizeof(char*), data->lf->decoder_info->fields);
-    os_calloc(OS_MAXSTR, sizeof(char), data->lf->full_log);
+    if(data->lf = calloc(1, sizeof(Eventinfo)), data->lf == NULL)
+        return -1;
+    if(data->lf->fields = calloc(FIM_NFIELDS, sizeof(DynamicField)), data->lf->fields == NULL)
+        return -1;
+    if(data->lf->decoder_info = calloc(1, sizeof(OSDecoderInfo)), data->lf->decoder_info == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields = calloc(FIM_NFIELDS, sizeof(char*)), data->lf->decoder_info->fields == NULL)
+        return -1;
+    if(data->lf->full_log = calloc(OS_MAXSTR, sizeof(char)), data->lf->full_log == NULL)
+        return -1;
 
-    os_strdup("file", data->lf->decoder_info->fields[FIM_FILE]);
-    os_strdup("size", data->lf->decoder_info->fields[FIM_SIZE]);
-    os_strdup("perm", data->lf->decoder_info->fields[FIM_PERM]);
-    os_strdup("uid", data->lf->decoder_info->fields[FIM_UID]);
-    os_strdup("gid", data->lf->decoder_info->fields[FIM_GID]);
-    os_strdup("md5", data->lf->decoder_info->fields[FIM_MD5]);
-    os_strdup("sha1", data->lf->decoder_info->fields[FIM_SHA1]);
-    os_strdup("uname", data->lf->decoder_info->fields[FIM_UNAME]);
-    os_strdup("gname", data->lf->decoder_info->fields[FIM_GNAME]);
-    os_strdup("mtime", data->lf->decoder_info->fields[FIM_MTIME]);
-    os_strdup("inode", data->lf->decoder_info->fields[FIM_INODE]);
-    os_strdup("sha256", data->lf->decoder_info->fields[FIM_SHA256]);
-    os_strdup("diff", data->lf->decoder_info->fields[FIM_DIFF]);
-    os_strdup("attrs", data->lf->decoder_info->fields[FIM_ATTRS]);
-    os_strdup("chfields", data->lf->decoder_info->fields[FIM_CHFIELDS]);
-    os_strdup("user_id", data->lf->decoder_info->fields[FIM_USER_ID]);
-    os_strdup("user_name", data->lf->decoder_info->fields[FIM_USER_NAME]);
-    os_strdup("group_id", data->lf->decoder_info->fields[FIM_GROUP_ID]);
-    os_strdup("group_name", data->lf->decoder_info->fields[FIM_GROUP_NAME]);
-    os_strdup("proc_name", data->lf->decoder_info->fields[FIM_PROC_NAME]);
-    os_strdup("audit_id", data->lf->decoder_info->fields[FIM_AUDIT_ID]);
-    os_strdup("audit_name", data->lf->decoder_info->fields[FIM_AUDIT_NAME]);
-    os_strdup("effective_uid", data->lf->decoder_info->fields[FIM_EFFECTIVE_UID]);
-    os_strdup("effective_name", data->lf->decoder_info->fields[FIM_EFFECTIVE_NAME]);
-    os_strdup("ppid", data->lf->decoder_info->fields[FIM_PPID]);
-    os_strdup("proc_id", data->lf->decoder_info->fields[FIM_PROC_ID]);
-    os_strdup("tag", data->lf->decoder_info->fields[FIM_TAG]);
-    os_strdup("sym_path", data->lf->decoder_info->fields[FIM_SYM_PATH]);
+    if(data->lf->decoder_info->fields[FIM_FILE] = strdup("file"), data->lf->decoder_info->fields[FIM_FILE] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_SIZE] = strdup("size"), data->lf->decoder_info->fields[FIM_SIZE] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_PERM] = strdup("perm"), data->lf->decoder_info->fields[FIM_PERM] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_UID] = strdup("uid"), data->lf->decoder_info->fields[FIM_UID] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_GID] = strdup("gid"), data->lf->decoder_info->fields[FIM_GID] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_MD5] = strdup("md5"), data->lf->decoder_info->fields[FIM_MD5] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_SHA1] = strdup("sha1"), data->lf->decoder_info->fields[FIM_SHA1] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_UNAME] = strdup("uname"), data->lf->decoder_info->fields[FIM_UNAME] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_GNAME] = strdup("gname"), data->lf->decoder_info->fields[FIM_GNAME] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_MTIME] = strdup("mtime"), data->lf->decoder_info->fields[FIM_MTIME] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_INODE] = strdup("inode"), data->lf->decoder_info->fields[FIM_INODE] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_SHA256] = strdup("sha256"), data->lf->decoder_info->fields[FIM_SHA256] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_DIFF] = strdup("diff"), data->lf->decoder_info->fields[FIM_DIFF] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_ATTRS] = strdup("attrs"), data->lf->decoder_info->fields[FIM_ATTRS] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_CHFIELDS] = strdup("chfields"), data->lf->decoder_info->fields[FIM_CHFIELDS] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_USER_ID] = strdup("user_id"), data->lf->decoder_info->fields[FIM_USER_ID] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_USER_NAME] = strdup("user_name"), data->lf->decoder_info->fields[FIM_USER_NAME] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_GROUP_ID] = strdup("group_id"), data->lf->decoder_info->fields[FIM_GROUP_ID] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_GROUP_NAME] = strdup("group_name"), data->lf->decoder_info->fields[FIM_GROUP_NAME] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_PROC_NAME] = strdup("proc_name"), data->lf->decoder_info->fields[FIM_PROC_NAME] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_AUDIT_ID] = strdup("audit_id"), data->lf->decoder_info->fields[FIM_AUDIT_ID] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_AUDIT_NAME] = strdup("audit_name"), data->lf->decoder_info->fields[FIM_AUDIT_NAME] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_EFFECTIVE_UID] = strdup("effective_uid"), data->lf->decoder_info->fields[FIM_EFFECTIVE_UID] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_EFFECTIVE_NAME] = strdup("effective_name"), data->lf->decoder_info->fields[FIM_EFFECTIVE_NAME] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_PPID] = strdup("ppid"), data->lf->decoder_info->fields[FIM_PPID] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_PROC_ID] = strdup("proc_id"), data->lf->decoder_info->fields[FIM_PROC_ID] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_TAG] = strdup("tag"), data->lf->decoder_info->fields[FIM_TAG] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_SYM_PATH] = strdup("sym_path"), data->lf->decoder_info->fields[FIM_SYM_PATH] == NULL)
+        return -1;
 
     *state = data;
 
@@ -346,43 +380,77 @@ static int setup_decode_fim_event(void **state) {
                 "\"ppid\":12345,"
                 "\"process_id\":23456}}}";
 
-    os_calloc(1, sizeof(Eventinfo), data);
+    if(data = calloc(1, sizeof(Eventinfo)), data == NULL)
+        return -1;
 
-    os_calloc(FIM_NFIELDS, sizeof(DynamicField), data->fields);
-    os_calloc(1, sizeof(OSDecoderInfo), data->decoder_info);
-    os_calloc(FIM_NFIELDS, sizeof(char*), data->decoder_info->fields);
-    os_calloc(OS_MAXSTR, sizeof(char), data->full_log);
+    if(data->fields = calloc(FIM_NFIELDS, sizeof(DynamicField)), data->fields == NULL)
+        return -1;
+    if(data->decoder_info = calloc(1, sizeof(OSDecoderInfo)), data->decoder_info == NULL)
+        return -1;
+    if(data->decoder_info->fields = calloc(FIM_NFIELDS, sizeof(char*)), data->decoder_info->fields == NULL)
+        return -1;
+    if(data->full_log = calloc(OS_MAXSTR, sizeof(char)), data->full_log == NULL)
+        return -1;
 
-    os_strdup("file", data->decoder_info->fields[FIM_FILE]);
-    os_strdup("size", data->decoder_info->fields[FIM_SIZE]);
-    os_strdup("perm", data->decoder_info->fields[FIM_PERM]);
-    os_strdup("uid", data->decoder_info->fields[FIM_UID]);
-    os_strdup("gid", data->decoder_info->fields[FIM_GID]);
-    os_strdup("md5", data->decoder_info->fields[FIM_MD5]);
-    os_strdup("sha1", data->decoder_info->fields[FIM_SHA1]);
-    os_strdup("uname", data->decoder_info->fields[FIM_UNAME]);
-    os_strdup("gname", data->decoder_info->fields[FIM_GNAME]);
-    os_strdup("mtime", data->decoder_info->fields[FIM_MTIME]);
-    os_strdup("inode", data->decoder_info->fields[FIM_INODE]);
-    os_strdup("sha256", data->decoder_info->fields[FIM_SHA256]);
-    os_strdup("diff", data->decoder_info->fields[FIM_DIFF]);
-    os_strdup("attrs", data->decoder_info->fields[FIM_ATTRS]);
-    os_strdup("chfields", data->decoder_info->fields[FIM_CHFIELDS]);
-    os_strdup("user_id", data->decoder_info->fields[FIM_USER_ID]);
-    os_strdup("user_name", data->decoder_info->fields[FIM_USER_NAME]);
-    os_strdup("group_id", data->decoder_info->fields[FIM_GROUP_ID]);
-    os_strdup("group_name", data->decoder_info->fields[FIM_GROUP_NAME]);
-    os_strdup("proc_name", data->decoder_info->fields[FIM_PROC_NAME]);
-    os_strdup("audit_id", data->decoder_info->fields[FIM_AUDIT_ID]);
-    os_strdup("audit_name", data->decoder_info->fields[FIM_AUDIT_NAME]);
-    os_strdup("effective_uid", data->decoder_info->fields[FIM_EFFECTIVE_UID]);
-    os_strdup("effective_name", data->decoder_info->fields[FIM_EFFECTIVE_NAME]);
-    os_strdup("ppid", data->decoder_info->fields[FIM_PPID]);
-    os_strdup("proc_id", data->decoder_info->fields[FIM_PROC_ID]);
-    os_strdup("tag", data->decoder_info->fields[FIM_TAG]);
-    os_strdup("sym_path", data->decoder_info->fields[FIM_SYM_PATH]);
+    if(data->decoder_info->fields[FIM_FILE] = strdup("file"), data->decoder_info->fields[FIM_FILE] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_SIZE] = strdup("size"), data->decoder_info->fields[FIM_SIZE] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_PERM] = strdup("perm"), data->decoder_info->fields[FIM_PERM] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_UID] = strdup("uid"), data->decoder_info->fields[FIM_UID] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_GID] = strdup("gid"), data->decoder_info->fields[FIM_GID] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_MD5] = strdup("md5"), data->decoder_info->fields[FIM_MD5] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_SHA1] = strdup("sha1"), data->decoder_info->fields[FIM_SHA1] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_UNAME] = strdup("uname"), data->decoder_info->fields[FIM_UNAME] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_GNAME] = strdup("gname"), data->decoder_info->fields[FIM_GNAME] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_MTIME] = strdup("mtime"), data->decoder_info->fields[FIM_MTIME] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_INODE] = strdup("inode"), data->decoder_info->fields[FIM_INODE] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_SHA256] = strdup("sha256"), data->decoder_info->fields[FIM_SHA256] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_DIFF] = strdup("diff"), data->decoder_info->fields[FIM_DIFF] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_ATTRS] = strdup("attrs"), data->decoder_info->fields[FIM_ATTRS] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_CHFIELDS] = strdup("chfields"), data->decoder_info->fields[FIM_CHFIELDS] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_USER_ID] = strdup("user_id"), data->decoder_info->fields[FIM_USER_ID] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_USER_NAME] = strdup("user_name"), data->decoder_info->fields[FIM_USER_NAME] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_GROUP_ID] = strdup("group_id"), data->decoder_info->fields[FIM_GROUP_ID] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_GROUP_NAME] = strdup("group_name"), data->decoder_info->fields[FIM_GROUP_NAME] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_PROC_NAME] = strdup("proc_name"), data->decoder_info->fields[FIM_PROC_NAME] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_AUDIT_ID] = strdup("audit_id"), data->decoder_info->fields[FIM_AUDIT_ID] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_AUDIT_NAME] = strdup("audit_name"), data->decoder_info->fields[FIM_AUDIT_NAME] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_EFFECTIVE_UID] = strdup("effective_uid"), data->decoder_info->fields[FIM_EFFECTIVE_UID] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_EFFECTIVE_NAME] = strdup("effective_name"), data->decoder_info->fields[FIM_EFFECTIVE_NAME] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_PPID] = strdup("ppid"), data->decoder_info->fields[FIM_PPID] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_PROC_ID] = strdup("proc_id"), data->decoder_info->fields[FIM_PROC_ID] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_TAG] = strdup("tag"), data->decoder_info->fields[FIM_TAG] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_SYM_PATH] = strdup("sym_path"), data->decoder_info->fields[FIM_SYM_PATH] == NULL)
+        return -1;
 
-    os_strdup(plain_event, data->log);
+    if(data->log = strdup(plain_event), data->log == NULL)
+        return -1;
 
     *state = data;
 
@@ -392,7 +460,10 @@ static int setup_decode_fim_event(void **state) {
 static int teardown_decode_fim_event(void **state) {
     Eventinfo *data = *state;
 
-    os_free(data->log);
+    if(data->log){
+        free(data->log);
+        data->log = NULL;
+    }
 
     Free_Eventinfo(data);
 
@@ -402,9 +473,12 @@ static int teardown_decode_fim_event(void **state) {
 static int setup_fim_adjust_checksum(void **state) {
     fim_adjust_checksum_data_t *data;
 
-    os_calloc(1, sizeof(fim_adjust_checksum_data_t), data);
-    os_calloc(1, sizeof(sk_sum_t), data->newsum);
-    os_calloc(1, sizeof(char*), data->checksum);
+    if(data = calloc(1, sizeof(fim_adjust_checksum_data_t)), data == NULL)
+        return -1;
+    if(data->newsum = calloc(1, sizeof(sk_sum_t)), data->newsum == NULL)
+        return -1;
+    if(data->checksum = calloc(1, sizeof(char*)), data->checksum == NULL)
+        return -1;
 
     *state = data;
 
@@ -415,9 +489,18 @@ static int teardown_fim_adjust_checksum(void **state) {
     fim_adjust_checksum_data_t *data = *state;
 
     sk_sum_clean(data->newsum);
-    os_free(*data->checksum);
-    os_free(data->checksum);
-    os_free(data);
+
+    if(*data->checksum) {
+        free(data->checksum);
+    }
+    if(data->checksum) {
+        free(data->checksum);
+    }
+
+    if(data) {
+        free(data);
+        data = NULL;
+    }
 
     return 0;
 }
@@ -897,7 +980,8 @@ static void test_fim_fetch_attributes_state_item_with_no_key(void **state) {
     cJSON *attr = cJSON_GetObjectItem(data, "attributes");
 
     cJSON *corrupted_element = cJSON_GetObjectItem(attr, "mtime");
-    os_free(corrupted_element->string);
+    free(corrupted_element->string);
+    corrupted_element->string = NULL;
 
     expect_string(__wrap__mdebug1, formatted_msg, "FIM attribute set contains an item with no key.");
 
@@ -1006,7 +1090,8 @@ static void test_fim_fetch_attributes_invalid_attribute(void **state) {
     cJSON *old_attrs = cJSON_GetObjectItem(data, "old_attributes");
 
     cJSON *corrupted_element = cJSON_GetObjectItem(new_attrs, "mtime");
-    os_free(corrupted_element->string);
+    free(corrupted_element->string);
+    corrupted_element->string = NULL;
 
     expect_string(__wrap__mdebug1, formatted_msg, "FIM attribute set contains an item with no key.");
 
@@ -1213,7 +1298,8 @@ static void test_fim_generate_alert_full_alert(void **state) {
 
     input->lf->event_type = FIM_MODIFIED;
 
-    os_strdup("/a/file", input->lf->fields[FIM_FILE].value);
+    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
+        fail();
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
@@ -1303,7 +1389,8 @@ static void test_fim_generate_alert_type_not_modified(void **state) {
 
     input->lf->event_type = FIM_ADDED;
 
-    os_strdup("/a/file", input->lf->fields[FIM_FILE].value);
+    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
+        fail();
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
@@ -1376,7 +1463,8 @@ static void test_fim_generate_alert_invalid_element_in_attributes(void **state) 
     cJSON *audit = cJSON_GetObjectItem(data, "audit");
 
     cJSON *corrupted_element = cJSON_GetObjectItem(attributes, "mtime");
-    os_free(corrupted_element->string);
+    free(corrupted_element->string);
+    corrupted_element->string = NULL;
 
     expect_string(__wrap__mdebug1, formatted_msg, "FIM attribute set contains an item with no key.");
 
@@ -1398,7 +1486,8 @@ static void test_fim_generate_alert_invalid_element_in_audit(void **state) {
     cJSON *audit = cJSON_GetObjectItem(data, "audit");
 
     cJSON *corrupted_element = cJSON_GetObjectItem(audit, "ppid");
-    os_free(corrupted_element->string);
+    free(corrupted_element->string);
+    corrupted_element->string = NULL;
 
     expect_string(__wrap__mdebug1, formatted_msg, "FIM audit set contains an item with no key.");
 
@@ -1436,7 +1525,8 @@ static void test_fim_generate_alert_null_mode(void **state) {
 
     input->lf->event_type = FIM_ADDED;
 
-    os_strdup("/a/file", input->lf->fields[FIM_FILE].value);
+    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL);
+        fail();
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
@@ -1511,7 +1601,8 @@ static void test_fim_generate_alert_null_event_type(void **state) {
 
     input->lf->event_type = FIM_ADDED;
 
-    os_strdup("/a/file", input->lf->fields[FIM_FILE].value);
+    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL);
+        fail();
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
@@ -1586,7 +1677,8 @@ static void test_fim_generate_alert_null_attributes(void **state) {
 
     input->lf->event_type = FIM_MODIFIED;
 
-    os_strdup("/a/file", input->lf->fields[FIM_FILE].value);
+    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL);
+        fail();
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
@@ -1675,7 +1767,8 @@ static void test_fim_generate_alert_null_old_attributes(void **state) {
 
     input->lf->event_type = FIM_MODIFIED;
 
-    os_strdup("/a/file", input->lf->fields[FIM_FILE].value);
+    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL);
+        fail();
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
@@ -1765,7 +1858,8 @@ static void test_fim_generate_alert_null_audit(void **state) {
 
     input->lf->event_type = FIM_MODIFIED;
 
-    os_strdup("/a/file", input->lf->fields[FIM_FILE].value);
+    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL);
+        fail();
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
@@ -1849,7 +1943,8 @@ static void test_fim_process_alert_added_success(void **state) {
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_save */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
@@ -1946,7 +2041,8 @@ static void test_fim_process_alert_modified_success(void **state) {
     cJSON_DeleteItemFromObject(data, "type");
     cJSON_AddStringToObject(data, "type", "modified");
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_save */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
@@ -2057,7 +2153,8 @@ static void test_fim_process_alert_deleted_success(void **state) {
     cJSON_DeleteItemFromObject(data, "type");
     cJSON_AddStringToObject(data, "type", "deleted");
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_delete */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck delete /a/path");
@@ -2134,7 +2231,8 @@ static void test_fim_process_alert_no_event_type(void **state) {
 
     cJSON_DeleteItemFromObject(data, "type");
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_delete */
     expect_string(__wrap__mdebug1, formatted_msg, "No member 'type' in Syscheck JSON payload");
@@ -2154,7 +2252,8 @@ static void test_fim_process_alert_invalid_event_type(void **state) {
     cJSON_DeleteItemFromObject(data, "type");
     cJSON_AddStringToObject(data, "type", "invalid");
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_delete */
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid 'type' value 'invalid' in JSON payload.");
@@ -2172,9 +2271,11 @@ static void test_fim_process_alert_invalid_object(void **state) {
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
 
     cJSON *corrupted_object = cJSON_GetObjectItem(data, "type");
-    os_free(corrupted_object->string);
+    free(corrupted_object->string);
+    corrupted_object->string = NULL;
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_delete */
     expect_string(__wrap__mdebug1, formatted_msg, "FIM event contains an item with no key.");
@@ -2194,7 +2295,8 @@ static void test_fim_process_alert_no_path(void **state) {
 
     cJSON_DeleteItemFromObject(data, "path");
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_save */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
@@ -2288,7 +2390,8 @@ static void test_fim_process_alert_no_mode(void **state) {
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
     cJSON_DeleteItemFromObject(data, "mode");
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_save */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
@@ -2383,7 +2486,8 @@ static void test_fim_process_alert_no_tags(void **state) {
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
     cJSON_DetachItemFromObject(data, "tags");
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_save */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
@@ -2480,7 +2584,8 @@ static void test_fim_process_alert_no_content_changes(void **state) {
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
     cJSON_DeleteItemFromObject(data, "content_changes");
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_save */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
@@ -2576,7 +2681,8 @@ static void test_fim_process_alert_no_changed_attributes(void **state) {
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
     cJSON_DetachItemFromObject(data, "changed_attributes");
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_save */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
@@ -2673,7 +2779,8 @@ static void test_fim_process_alert_no_attributes(void **state) {
     cJSON_DeleteItemFromObject(data, "type");
     cJSON_AddStringToObject(data, "type", "modified");
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_save */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
@@ -2768,7 +2875,8 @@ static void test_fim_process_alert_no_old_attributes(void **state) {
     cJSON_DeleteItemFromObject(data, "type");
     cJSON_AddStringToObject(data, "type", "modified");
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_save */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
@@ -2877,7 +2985,8 @@ static void test_fim_process_alert_no_audit(void **state) {
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
     cJSON_DeleteItemFromObject(data, "audit");
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_save */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
@@ -2970,7 +3079,8 @@ static void test_fim_process_alert_null_sdb(void **state) {
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_save */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
@@ -3011,7 +3121,8 @@ static void test_fim_process_alert_null_eventinfo(void **state) {
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_save */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
@@ -3049,7 +3160,8 @@ static void test_fim_process_alert_null_event(void **state) {
     _sdb sdb = {.socket = 10};
     int ret;
 
-    os_strdup("007", input->lf->agent_id);
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_send_db_save */
     expect_string(__wrap__mdebug1, formatted_msg, "No member 'type' in Syscheck JSON payload");
@@ -3066,7 +3178,8 @@ static void test_decode_fim_event_type_event(void **state) {
     const char *result = "This is a mock query result, it wont go anywhere";
     int ret;
 
-    os_strdup("007", lf->agent_id);
+    if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
+        fail();
 
     /* Inside fim_process_alert */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
@@ -3162,10 +3275,11 @@ static void test_decode_fim_event_type_scan_start(void **state) {
     cJSON_DeleteItemFromObject(event, "type");
     cJSON_AddStringToObject(event, "type", "scan_start");
 
-    os_free(lf->log);
+    free(lf->log);
     lf->log = cJSON_PrintUnformatted(event);
 
-    os_strdup("007", lf->agent_id);
+    if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
+        fail();
 
     /* inside fim_process_scan_info */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck scan_info_update start_scan 123456789");
@@ -3190,10 +3304,11 @@ static void test_decode_fim_event_type_scan_end(void **state) {
     cJSON_DeleteItemFromObject(event, "type");
     cJSON_AddStringToObject(event, "type", "scan_end");
 
-    os_free(lf->log);
+    free(lf->log);
     lf->log = cJSON_PrintUnformatted(event);
 
-    os_strdup("007", lf->agent_id);
+    if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
+        fail();
 
     /* inside fim_process_scan_info */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck scan_info_update end_scan 123456789");
@@ -3217,10 +3332,11 @@ static void test_decode_fim_event_type_invalid(void **state) {
     cJSON_DeleteItemFromObject(event, "type");
     cJSON_AddStringToObject(event, "type", "invalid");
 
-    os_free(lf->log);
+    free(lf->log);
     lf->log = cJSON_PrintUnformatted(event);
 
-    os_strdup("007", lf->agent_id);
+    if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
+        fail();
 
     ret = decode_fim_event(&sdb, lf);
 
@@ -3235,10 +3351,11 @@ static void test_decode_fim_event_no_data(void **state) {
     cJSON *event = cJSON_Parse(lf->log);
     cJSON_DeleteItemFromObject(event, "data");
 
-    os_free(lf->log);
+    free(lf->log);
     lf->log = cJSON_PrintUnformatted(event);
 
-    os_strdup("007", lf->agent_id);
+    if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
+        fail();
 
     /* inside fim_process_scan_info */
     expect_string(__wrap__merror, formatted_msg, "Invalid FIM event");
@@ -3256,10 +3373,11 @@ static void test_decode_fim_event_no_type(void **state) {
     cJSON *event = cJSON_Parse(lf->log);
     cJSON_DeleteItemFromObject(event, "type");
 
-    os_free(lf->log);
+    free(lf->log);
     lf->log = cJSON_PrintUnformatted(event);
 
-    os_strdup("007", lf->agent_id);
+    if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
+        fail();
 
     /* inside fim_process_scan_info */
     expect_string(__wrap__merror, formatted_msg, "Invalid FIM event");
@@ -3274,9 +3392,11 @@ static void test_decode_fim_event_invalid_json(void **state) {
     _sdb sdb = {.socket = 10};
     int ret;
 
-    os_free(lf->log);
+    free(lf->log);
+    lf->log = NULL;
 
-    os_strdup("007", lf->agent_id);
+    if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
+        fail();
 
     /* inside fim_process_scan_info */
     expect_string(__wrap__merror, formatted_msg, "Malformed FIM JSON event");
@@ -3295,10 +3415,11 @@ static void test_decode_fim_event_null_sdb(void **state) {
     cJSON_DeleteItemFromObject(event, "type");
     cJSON_AddStringToObject(event, "type", "scan_start");
 
-    os_free(lf->log);
+    free(lf->log);
     lf->log = cJSON_PrintUnformatted(event);
 
-    os_strdup("007", lf->agent_id);
+    if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
+        fail();
 
     /* inside fim_process_scan_info */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck scan_info_update start_scan 123456789");
