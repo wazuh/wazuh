@@ -150,7 +150,7 @@ void start_daemon()
 
     snprintf(diff_dir, PATH_MAX, "%s/local/", DIFF_DIR_PATH);
 
-    if (cldir_ex(diff_dir) == -1) {
+    if (cldir_ex(diff_dir) == -1 && errno != ENOENT) {
         merror("Unable to clear directory '%s': %s (%d)", diff_dir, strerror(errno), errno);
     }
 
