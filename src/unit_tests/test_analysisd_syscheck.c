@@ -242,6 +242,8 @@ static int setup_fim_data(void **state) {
         return -1;
     if(data->lf->fields = calloc(FIM_NFIELDS, sizeof(DynamicField)), data->lf->fields == NULL)
         return -1;
+    data->lf->nfields = FIM_NFIELDS;
+
     if(data->lf->decoder_info = calloc(1, sizeof(OSDecoderInfo)), data->lf->decoder_info == NULL)
         return -1;
     if(data->lf->decoder_info->fields = calloc(FIM_NFIELDS, sizeof(char*)), data->lf->decoder_info->fields == NULL)
@@ -313,10 +315,19 @@ static int setup_fim_data(void **state) {
 
 static int teardown_fim_data(void **state) {
     fim_data_t *data = *state;
+    int i;
+
+    for(i = 0; i < FIM_NFIELDS; i++) {
+        free(data->lf->decoder_info->fields[i]);
+    }
+    free(data->lf->decoder_info->fields);
+    free(data->lf->decoder_info);
 
     cJSON_Delete(data->event);
 
     Free_Eventinfo(data->lf);
+
+    free(data);
 
     return 0;
 }
@@ -459,11 +470,18 @@ static int setup_decode_fim_event(void **state) {
 
 static int teardown_decode_fim_event(void **state) {
     Eventinfo *data = *state;
+    int i;
 
     if(data->log){
         free(data->log);
         data->log = NULL;
     }
+
+    for(i = 0; i < FIM_NFIELDS; i++) {
+        free(data->decoder_info->fields[i]);
+    }
+    free(data->decoder_info->fields);
+    free(data->decoder_info);
 
     Free_Eventinfo(data);
 
@@ -489,9 +507,10 @@ static int teardown_fim_adjust_checksum(void **state) {
     fim_adjust_checksum_data_t *data = *state;
 
     sk_sum_clean(data->newsum);
+    free(data->newsum);
 
     if(*data->checksum) {
-        free(data->checksum);
+        free(*data->checksum);
     }
     if(data->checksum) {
         free(data->checksum);
@@ -1525,7 +1544,7 @@ static void test_fim_generate_alert_null_mode(void **state) {
 
     input->lf->event_type = FIM_ADDED;
 
-    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL);
+    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
@@ -1601,7 +1620,7 @@ static void test_fim_generate_alert_null_event_type(void **state) {
 
     input->lf->event_type = FIM_ADDED;
 
-    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL);
+    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
@@ -1677,7 +1696,7 @@ static void test_fim_generate_alert_null_attributes(void **state) {
 
     input->lf->event_type = FIM_MODIFIED;
 
-    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL);
+    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
@@ -1767,7 +1786,7 @@ static void test_fim_generate_alert_null_old_attributes(void **state) {
 
     input->lf->event_type = FIM_MODIFIED;
 
-    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL);
+    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
@@ -1858,7 +1877,7 @@ static void test_fim_generate_alert_null_audit(void **state) {
 
     input->lf->event_type = FIM_MODIFIED;
 
-    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL);
+    if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
@@ -2292,7 +2311,6 @@ static void test_fim_process_alert_no_path(void **state) {
     int ret;
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
-
     cJSON_DeleteItemFromObject(data, "path");
 
     if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
@@ -2484,7 +2502,7 @@ static void test_fim_process_alert_no_tags(void **state) {
     int ret;
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
-    cJSON_DetachItemFromObject(data, "tags");
+    cJSON_DeleteItemFromObject(data, "tags");
 
     if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
         fail();
@@ -2679,7 +2697,7 @@ static void test_fim_process_alert_no_changed_attributes(void **state) {
     int ret;
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
-    cJSON_DetachItemFromObject(data, "changed_attributes");
+    cJSON_DeleteItemFromObject(data, "changed_attributes");
 
     if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
         fail();
@@ -3278,6 +3296,8 @@ static void test_decode_fim_event_type_scan_start(void **state) {
     free(lf->log);
     lf->log = cJSON_PrintUnformatted(event);
 
+    cJSON_Delete(event);
+
     if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
         fail();
 
@@ -3307,6 +3327,8 @@ static void test_decode_fim_event_type_scan_end(void **state) {
     free(lf->log);
     lf->log = cJSON_PrintUnformatted(event);
 
+    cJSON_Delete(event);
+
     if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
         fail();
 
@@ -3335,6 +3357,8 @@ static void test_decode_fim_event_type_invalid(void **state) {
     free(lf->log);
     lf->log = cJSON_PrintUnformatted(event);
 
+    cJSON_Delete(event);
+
     if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
         fail();
 
@@ -3353,6 +3377,8 @@ static void test_decode_fim_event_no_data(void **state) {
 
     free(lf->log);
     lf->log = cJSON_PrintUnformatted(event);
+
+    cJSON_Delete(event);
 
     if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
         fail();
@@ -3375,6 +3401,8 @@ static void test_decode_fim_event_no_type(void **state) {
 
     free(lf->log);
     lf->log = cJSON_PrintUnformatted(event);
+
+    cJSON_Delete(event);
 
     if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
         fail();
