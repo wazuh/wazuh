@@ -192,13 +192,28 @@ static void test_time_of_day(void **state){
     assert_int_equal(date.tm_min, 18);
 }
 
+/**
+ * Test Parsing and dumping of configurations
+ * */
+static void test_parse_xml_and_dump(void **state){
+    const char *string = 
+    "<wday>friday</wday>\n"
+    "<time>13:14</time>";
+    sched_scan_config scan_config = init_config_from_string(string);
+    cJSON *data = cJSON_CreateObject();
+    sched_scan_dump(&scan_config, data);
+    assert_string_equal(cJSON_PrintUnformatted(data), "{\"interval\":604800,\"wday\":\"friday\",\"time\":\"13:14\"}");
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_interval_mode),
         cmocka_unit_test(test_day_of_the_month_mode),
         cmocka_unit_test(test_day_of_the_month_consecutive),
         cmocka_unit_test(test_day_of_the_week),
-        cmocka_unit_test(test_time_of_day)
+        cmocka_unit_test(test_time_of_day),
+        cmocka_unit_test(test_parse_xml_and_dump)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
