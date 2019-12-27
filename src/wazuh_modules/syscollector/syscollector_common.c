@@ -12,6 +12,11 @@
 #include "syscollector.h"
 #include <errno.h>
 
+#ifdef UNIT_TESTING
+/* Remove static qualifier when testing */
+#define static
+#endif
+
 #define RUN_HW        000000001
 #define RUN_OS        000000002
 #define RUN_IFACE     000000004

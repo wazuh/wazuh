@@ -264,6 +264,9 @@ static void help_analysisd(void)
 }
 
 #ifndef TESTRULE
+#ifdef UNIT_TESTING
+__attribute((weak))
+#endif
 int main(int argc, char **argv)
 #else
 __attribute__((noreturn))

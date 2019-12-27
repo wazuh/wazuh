@@ -184,14 +184,14 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     else if (strcmp(msg_type, "network") == 0 || strcmp(msg_type, "network_end") == 0) {
         if (data) {
             if (decode_inventory_event(lf, msg_type, data, socket) < 0) {
-                merror("Unable to send netinfo message to Wazuh DB.");
+                mdebug1("Unable to send netinfo message to Wazuh DB.");
                 cJSON_Delete (logJSON);
                 return (0);
             }
         }
         else {
             if (decode_netinfo(lf, logJSON, socket) < 0) {
-                merror("Unable to send netinfo message to Wazuh DB.");
+                mdebug1("Unable to send netinfo message to Wazuh DB.");
                 cJSON_Delete (logJSON);
                 return (0);
             }
@@ -1844,9 +1844,10 @@ end:
 int decode_inventory_event(Eventinfo *lf, char * msg_type, cJSON * data, int *socket) {
     char * query = NULL;
 
-    char * event_type = cJSON_GetObjectItem(data, "type")->valuestring;
+    cJSON * type = cJSON_GetObjectItem(data, "type");
 
-    if (event_type) {
+    if (type && type->valuestring) {
+        char * event_type = type->valuestring;
         if (strcmp("added", event_type) == 0 || strcmp("modified", event_type) == 0) {
 
             char * data_plain = cJSON_PrintUnformatted(data);

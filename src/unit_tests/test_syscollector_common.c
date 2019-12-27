@@ -17,6 +17,7 @@
 
 #include "../wazuh_modules/wmodules.h"
 
+void wm_sys_check();
 time_t get_sleep_time(int *run);
 void update_next_time(int *run);
 
@@ -83,15 +84,17 @@ static int init_sys_config(void **state)
     ReadConfig(CWMODULE, "test_syscollector.conf", &sys_module, NULL);
 
     sys = sys_module->data;
-    
-    if (!sys->default_interval) sys->default_interval = WM_SYS_DEF_INTERVAL;
-    if (!sys->hw_interval) sys->hw_interval = sys->default_interval;
-    if (!sys->os_interval) sys->os_interval = sys->default_interval;
-    if (!sys->interfaces_interval) sys->interfaces_interval = sys->default_interval;
-    if (!sys->programs_interval) sys->programs_interval = sys->default_interval;
-    if (!sys->hotfixes_interval) sys->hotfixes_interval = sys->default_interval;
-    if (!sys->ports_interval) sys->ports_interval = sys->default_interval;
-    if (!sys->processes_interval) sys->processes_interval = sys->default_interval;
+
+    *state = sys_module;
+
+    return 0;
+}
+
+static int init_sys_scan_config(void **state)
+{
+    init_sys_config(state);
+
+    wm_sys_check();
 
     time_t time_start = time(NULL);
     sys->state.hw_next_time = time_start + sys->hw_interval;
@@ -102,7 +105,12 @@ static int init_sys_config(void **state)
     sys->state.ports_next_time = time_start + sys->ports_interval;
     sys->state.processes_next_time = time_start + sys->processes_interval;
 
-    *state = sys_module;
+    return 0;
+}
+
+static int init_sys_deleted_config(void **state)
+{
+    init_sys_config(state);
 
     wm_max_eps = 1;
 
@@ -2574,59 +2582,59 @@ void test_json_scan_event(void **state)
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_scan_rotation),
-        cmocka_unit_test(test_initialize_datastores),
-        cmocka_unit_test(test_analyze_hw_added),
-        cmocka_unit_test(test_analyze_hw_modified),
-        cmocka_unit_test(test_analyze_hw_not_modified),
-        cmocka_unit_test(test_analyze_hw_invalid),
-        cmocka_unit_test(test_analyze_os_added),
-        cmocka_unit_test(test_analyze_os_modified),
-        cmocka_unit_test(test_analyze_os_not_modified),
-        cmocka_unit_test(test_analyze_os_invalid),
-        cmocka_unit_test(test_analyze_interface_added),
-        cmocka_unit_test(test_analyze_interface_added_failure),
-        cmocka_unit_test(test_analyze_interface_modified),
-        cmocka_unit_test(test_analyze_interface_modified_failure),
-        cmocka_unit_test(test_analyze_interface_not_modified),
-        cmocka_unit_test(test_analyze_interface_invalid),
-        cmocka_unit_test(test_check_disabled_interfaces_deleted),
-        cmocka_unit_test(test_check_disabled_interfaces_not_deleted),
-        cmocka_unit_test(test_check_disabled_interfaces_no_data),
-        cmocka_unit_test(test_analyze_program_added),
-        cmocka_unit_test(test_analyze_program_added_failure),
-        cmocka_unit_test(test_analyze_program_modified),
-        cmocka_unit_test(test_analyze_program_modified_failure),
-        cmocka_unit_test(test_analyze_program_not_modified),
-        cmocka_unit_test(test_analyze_program_invalid),
-        cmocka_unit_test(test_check_uninstalled_programs_deleted),
-        cmocka_unit_test(test_check_uninstalled_programs_not_deleted),
-        cmocka_unit_test(test_check_uninstalled_programs_no_data),
-        cmocka_unit_test(test_analyze_hotfix_added),
-        cmocka_unit_test(test_analyze_hotfix_added_failure),
-        cmocka_unit_test(test_analyze_hotfix_invalid),
-        cmocka_unit_test(test_check_uninstalled_hotfixes_deleted),
-        cmocka_unit_test(test_check_uninstalled_hotfixes_not_deleted),
-        cmocka_unit_test(test_check_uninstalled_hotfixes_no_data),
-        cmocka_unit_test(test_analyze_port_added),
-        cmocka_unit_test(test_analyze_port_added_failure),
-        cmocka_unit_test(test_analyze_port_modified),
-        cmocka_unit_test(test_analyze_port_modified_failure),
-        cmocka_unit_test(test_analyze_port_not_modified),
-        cmocka_unit_test(test_analyze_port_invalid),
-        cmocka_unit_test(test_check_closed_ports_deleted),
-        cmocka_unit_test(test_check_closed_ports_not_deleted),
-        cmocka_unit_test(test_check_closed_ports_no_data),
-        cmocka_unit_test(test_analyze_process_added),
-        cmocka_unit_test(test_analyze_process_added_failure),
-        cmocka_unit_test(test_analyze_process_modified),
-        cmocka_unit_test(test_analyze_process_modified_failure),
-        cmocka_unit_test(test_analyze_process_not_modified),
-        cmocka_unit_test(test_analyze_process_invalid),
-        cmocka_unit_test(test_check_terminated_processes_deleted),
-        cmocka_unit_test(test_check_terminated_processes_not_deleted),
-        cmocka_unit_test(test_check_terminated_processes_no_data),
-        cmocka_unit_test(test_send_scan_event),
+        cmocka_unit_test_setup_teardown(test_scan_rotation, init_sys_scan_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_initialize_datastores, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_hw_added, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_hw_modified, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_hw_not_modified, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_hw_invalid, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_os_added, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_os_modified, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_os_not_modified, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_os_invalid, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_interface_added, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_interface_added_failure, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_interface_modified, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_interface_modified_failure, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_interface_not_modified, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_interface_invalid, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_check_disabled_interfaces_deleted, init_sys_deleted_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_check_disabled_interfaces_not_deleted, init_sys_deleted_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_check_disabled_interfaces_no_data, init_sys_deleted_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_program_added, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_program_added_failure, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_program_modified, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_program_modified_failure, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_program_not_modified, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_program_invalid, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_check_uninstalled_programs_deleted, init_sys_deleted_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_check_uninstalled_programs_not_deleted, init_sys_deleted_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_check_uninstalled_programs_no_data, init_sys_deleted_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_hotfix_added, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_hotfix_added_failure, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_hotfix_invalid, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_check_uninstalled_hotfixes_deleted, init_sys_deleted_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_check_uninstalled_hotfixes_not_deleted, init_sys_deleted_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_check_uninstalled_hotfixes_no_data, init_sys_deleted_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_port_added, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_port_added_failure, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_port_modified, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_port_modified_failure, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_port_not_modified, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_port_invalid, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_check_closed_ports_deleted, init_sys_deleted_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_check_closed_ports_not_deleted, init_sys_deleted_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_check_closed_ports_no_data, init_sys_deleted_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_process_added, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_process_added_failure, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_process_modified, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_process_modified_failure, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_process_not_modified, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_analyze_process_invalid, init_sys_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_check_terminated_processes_deleted, init_sys_deleted_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_check_terminated_processes_not_deleted, init_sys_deleted_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_check_terminated_processes_no_data, init_sys_deleted_config, delete_sys_config),
+        cmocka_unit_test_setup_teardown(test_send_scan_event, init_sys_deleted_config, delete_sys_config),
         cmocka_unit_test(test_hw_json_event),
         cmocka_unit_test(test_hw_json_compare),
         cmocka_unit_test(test_hw_json_attributes),
@@ -2650,5 +2658,5 @@ int main(void) {
         cmocka_unit_test(test_process_json_attributes),
         cmocka_unit_test(test_json_scan_event)
     };
-    return cmocka_run_group_tests(tests, init_sys_config, delete_sys_config);
+    return cmocka_run_group_tests(tests, NULL, NULL);
 }

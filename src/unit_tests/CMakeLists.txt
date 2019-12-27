@@ -42,21 +42,24 @@ list(APPEND tests_names "test_syscollector_common")
 list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_replace \
                          -Wl,--wrap,rbtree_delete -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_keys -Wl,--wrap,w_get_timestamp -Wl,--wrap,wm_sendmsg")
 
+list(APPEND tests_names "test_decoder_syscollector")
+list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,fillData \
+                         -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
+
 # Config files
 configure_file("test_syscollector.conf" "test_syscollector.conf" COPYONLY)
 
 
 # Generate modulesd library
-file(GLOB modulesd_files ../wazuh_modules/*.o)
+file(GLOB modulesd_files
+  ../wazuh_modules/*.o
+  ../wazuh_modules/syscollector/*.o)
 list(REMOVE_ITEM modulesd_files ../wazuh_modules/main.o)
-file(GLOB syscollector_files ../wazuh_modules/syscollector/*.o)
 
 add_library(MODULESD_O STATIC ${modulesd_files})
-add_library(SYSCOLLECTOR_O STATIC ${syscollector_files})
 
 set_source_files_properties(
   ${modulesd_files}
-  ${syscollector_files}
   PROPERTIES
   EXTERNAL_OBJECT true
   GENERATED true
@@ -64,12 +67,40 @@ set_source_files_properties(
 
 set_target_properties(
   MODULESD_O
-  SYSCOLLECTOR_O
   PROPERTIES
   LINKER_LANGUAGE C
   )
 
-target_link_libraries(MODULESD_O SYSCOLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+target_link_libraries(MODULESD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+
+
+# Generate analysisd library
+file(GLOB analysisd_files
+  ../analysisd/*.o
+  ../analysisd/alerts/*.o
+  ../analysisd/cdb/*.o
+  ../analysisd/compiled_rules/*.o
+  ../analysisd/decoders/*.o
+  ../analysisd/decoders/plugins/*.o
+  ../analysisd/format/*.o
+  ../analysisd/output/*.o)
+
+add_library(ANALYSISD_O STATIC ${analysisd_files})
+
+set_source_files_properties(
+  ${analysisd_files}
+  PROPERTIES
+  EXTERNAL_OBJECT true
+  GENERATED true
+  )
+
+set_target_properties(
+  ANALYSISD_O
+  PROPERTIES
+  LINKER_LANGUAGE C
+  )
+
+target_link_libraries(ANALYSISD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 
 # Compiling tests
@@ -86,7 +117,7 @@ foreach(counter RANGE ${count})
         ${WAZUHLIB}
         ${WAZUHEXT}
         MODULESD_O
-        SYSCOLLECTOR_O
+        ANALYSISD_O
         -lcmocka
         -fprofile-arcs
         -ftest-coverage
