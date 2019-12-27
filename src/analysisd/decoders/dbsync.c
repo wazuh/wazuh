@@ -18,6 +18,11 @@
 #include "../eventinfo.h"
 #include "wazuhdb_op.h"
 
+#ifdef UNIT_TESTING
+/* Remove static qualifier when unit testing */
+#define static
+#endif
+
 static void dispatch_send_local(dbsync_context_t * ctx, const char * query) {
     int sock;
 
