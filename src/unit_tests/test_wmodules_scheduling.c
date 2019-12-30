@@ -16,59 +16,11 @@
 #include <time.h> 
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
+#include "wmodules_scheduling_helpers.h"
 
 static const int TEST_INTERVAL = 5 * 60;
 static const int TEST_DELAY    = 5;
 static const int TEST_DAY_MONTHS[] =  {3, 8, 15, 21};
-
-/**     Mocked functions       **/
-static time_t current_time = 0;
-
-time_t __wrap_time(time_t *_time){
-    if(!current_time){
-        current_time = __real_time(NULL);
-    }
-    return current_time;
-}
-
-void __wrap_wm_delay(unsigned int msec){
-    current_time += (msec/1000);
-}
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...)
-{
-    return ;
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
-{
-    return ;
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...)
-{
-    return ;
-}
-
-/****************************/
-
-static const XML_NODE string_to_xml_node(const char * string){
-    OS_XML _lxml;
-    XML_NODE nodes;
-    OS_ReadXMLString(string, &_lxml);
-    nodes = OS_GetElementsbyNode(&_lxml, NULL);
-    return nodes;
-}
-
-static sched_scan_config init_config_from_string(const char* string){
-    XML_NODE nodes = string_to_xml_node(string);
-
-    sched_scan_config scan_config;
-    sched_scan_init(&scan_config);
-    sched_scan_read(&scan_config, nodes, "");
-
-    return scan_config;
-}
 
 /**
  * Test caclulated time for an INTERVAL with a sleep in 

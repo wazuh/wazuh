@@ -16,6 +16,7 @@
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_aws.h"
+#include "wmodules_scheduling_helpers.h"
 
 #define MAX_DATES 5
 
@@ -29,46 +30,7 @@ static struct tm test_aws_date_storage[MAX_DATES];
 static void (*check_function_ptr)() = 0;
 
 /**     Mocked functions       **/
-static time_t current_time = 0; 
 static int FOREVER_LOOP = 1;
-
-time_t __wrap_time(time_t *_time){
-    if(!current_time){
-        current_time = __real_time(NULL);
-    }
-    return current_time;
-}
-
-void __wrap_wm_delay(unsigned int msec){
-    current_time += (msec/1000);
-}
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...)
-{
-    return ;
-}
-
-void __wrap__mtinfo(const char *tag, const char * file, int line, const char * func, const char *msg, ...){
-    return;
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
-{
-    return ;
-}
-
-void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...){
-    return;
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...)
-{
-    return ;
-}
-
-void __wrap__mtwarn(const char *tag, const char * file, int line, const char * func, const char *msg, ...){
-    return;
-}
 
 //Function that defines the ending of the module main loop
 int __wrap_FOREVER(){
@@ -95,12 +57,6 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
 /****************************************************************/
 
 /******* Helpers **********/
-static const XML_NODE string_to_xml_node(const char * string, OS_XML *_lxml){
-    XML_NODE nodes;
-    OS_ReadXMLString(string, _lxml);
-    nodes = OS_GetElementsbyNode(_lxml, NULL);
-    return nodes;
-}
 
 static void set_up_test(void (*ptr)()) {
     FOREVER_LOOP = 1;
