@@ -18,16 +18,16 @@
 #include "wazuh_modules/wm_aws.h"
 #include "wmodules_scheduling_helpers.h"
 
-#define MAX_DATES 5
+#define TEST_MAX_DATES 5
 
 static wmodule aws_module;
 static unsigned test_aws_date_counter = 0;
-static struct tm test_aws_date_storage[MAX_DATES];
+static struct tm test_aws_date_storage[TEST_MAX_DATES];
 /**
  *  Since module run is in a loop we pass a function ptr 
  * to use when cut condition is met in wrapped funcion
  * */
-static void (*check_function_ptr)() = 0;
+static void (*check_function_ptr)(const sched_scan_config *scan_config, const struct tm *date_array, unsigned int MAX_DATES) = 0;
 
 /**     Mocked functions       **/
 static int FOREVER_LOOP = 1;
@@ -47,8 +47,9 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
     time_t current_time = time(NULL);
     struct tm *date = localtime(&current_time);
     test_aws_date_storage[test_aws_date_counter++] = *date;
-    if(test_aws_date_counter >= MAX_DATES){
-        check_function_ptr();
+    if(test_aws_date_counter >= TEST_MAX_DATES){
+        const wm_aws *ptr = (wm_aws *) aws_module.data;
+        check_function_ptr( &ptr->scan_config, &test_aws_date_storage[0], TEST_MAX_DATES);
         // Break infinite loop
         FOREVER_LOOP = 0;
     }
@@ -58,73 +59,11 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
 
 /******* Helpers **********/
 
-static void set_up_test(void (*ptr)()) {
+static void set_up_test(void (*ptr)(const sched_scan_config *scan_config, const struct tm *date_array, unsigned int MAX_DATES)) {
     FOREVER_LOOP = 1;
     wm_max_eps = 1;
     test_aws_date_counter = 0;
     check_function_ptr = ptr;
-}
-
-/**
- * Test interval between consecutive runs matches configuration
- * */
-static void check_time_interval() {
-    const wm_aws *ptr = (wm_aws *) aws_module.data;
-    time_t current = mktime(&test_aws_date_storage[0]);
-    int i=1;
-    while(i < MAX_DATES) {
-        time_t next = mktime(&test_aws_date_storage[i]);
-        assert_int_equal( ptr->scan_config.interval, next - current);
-        current = mktime(&test_aws_date_storage[i++]);
-    }
-}
-
-/**
- * Test that all executions matches day of the month configuration 
- * */
-static void check_day_of_month() {
-    const wm_aws *ptr = (wm_aws *) aws_module.data;
-    for (int i = 0; i < MAX_DATES; i++) {
-        assert_int_equal( ptr->scan_config.scan_day, test_aws_date_storage[i].tm_mday);
-        if(i > 0){
-            // Assert that months are consecutives
-            assert_int_equal((test_aws_date_storage[i-1].tm_mon + 1) % 12, test_aws_date_storage[i].tm_mon);
-        }
-    }
-}
-
-/**
- * Test that all executions matches day of the month configuration 
- * */
-static void check_day_of_week() {
-    const wm_aws *ptr = (wm_aws *) aws_module.data;
-    for (int i = 0; i < MAX_DATES; i++) {
-        assert_int_equal( ptr->scan_config.scan_wday, test_aws_date_storage[i].tm_wday);
-        if(i > 0){
-            // Assert there is one week difference
-            assert_int_equal((test_aws_date_storage[i-1].tm_yday + 7) % 365, test_aws_date_storage[i].tm_yday);
-        }
-    }
-}
-
-/**
- * Test that all executions matches day of the month configuration 
- * */
-static void check_time_of_day() {
-    const wm_aws *ptr = (wm_aws *) aws_module.data;
-    for (int i = 0; i < MAX_DATES; i++) {
-        char ** parts = OS_StrBreak(':', ptr->scan_config.scan_time, 2);
-        // Look for the particular hour
-        int tm_hour = atoi(parts[0]);
-        int tm_min = atoi(parts[1]);
-        
-        assert_int_equal( tm_hour, test_aws_date_storage[i].tm_hour);
-        assert_int_equal( tm_min, test_aws_date_storage[i].tm_min);
-        if(i > 0){
-            // Assert that there are following days
-            assert_int_equal((test_aws_date_storage[i-1].tm_yday + 1) % 365, test_aws_date_storage[i].tm_yday);
-        }
-    }
 }
 
 
