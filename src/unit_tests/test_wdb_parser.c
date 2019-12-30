@@ -234,23 +234,39 @@ void test_parse_invalid_agent_id(void **state)
     free(output3);
 }
 
-void test_parse_inventory_no_type(void **state)
+void test_parse_inventory_invalid_type(void **state)
 {
-    char * input = strdup("agent 000 inventory");
-    char * output = calloc(1, OS_MAXSTR + 1);
-    *output = '\0';
+    char * input1 = strdup("agent 000 inventory");
+    char * output1 = calloc(1, OS_MAXSTR + 1);
+    *output1 = '\0';
 
     will_return(__wrap_wdb_open_agent2, 1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax.");
 
-    int ret = wdb_parse(input, output);
+    int ret = wdb_parse(input1, output1);
 
     assert_int_equal(ret, -1);
-    assert_string_equal(output, "err Invalid inventory query syntax, near 'inventory'");
+    assert_string_equal(output1, "err Invalid inventory query syntax, near 'inventory'");
 
-    free(input);
-    free(output);
+    free(input1);
+    free(output1);
+
+    char * input2 = strdup("agent 000 inventory drivers");
+    char * output2 = calloc(1, OS_MAXSTR + 1);
+    *output2 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: drivers");
+
+    ret = wdb_parse(input2, output2);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output2, "err Invalid inventory query syntax, near 'drivers'");
+
+    free(input2);
+    free(output2);
 }
 
 void test_parse_inventory_network_invalid_query(void **state)
@@ -1114,12 +1130,677 @@ void test_parse_inventory_process_delete_error(void **state)
     free(output);
 }
 
+void test_parse_inventory_network_scan_invalid_query(void **state)
+{
+    char * input1 = strdup("agent 000 inventory network_scan");
+    char * output1 = calloc(1, OS_MAXSTR + 1);
+    *output1 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: network_scan");
+
+    int ret = wdb_parse(input1, output1);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output1, "err Invalid inventory query syntax, near 'network_scan'");
+
+    free(input1);
+    free(output1);
+
+    char * input2 = strdup("agent 000 inventory network_scan update");
+    char * output2 = calloc(1, OS_MAXSTR + 1);
+    *output2 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: update");
+
+    ret = wdb_parse(input2, output2);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output2, "err Invalid inventory query syntax, near 'update'");
+
+    free(input2);
+    free(output2);
+
+    char * input3 = strdup("agent 000 inventory network_scan save {}");
+    char * output3 = calloc(1, OS_MAXSTR + 1);
+    *output3 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: save");
+
+    ret = wdb_parse(input3, output3);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output3, "err Invalid inventory query syntax, near 'save'");
+
+    free(input3);
+    free(output3);
+}
+
+void test_parse_inventory_network_scan_save(void **state)
+{
+    char * input = strdup("agent 000 inventory network_scan update {\"timestamp\":12345}");
+    char * output = calloc(1, OS_MAXSTR + 1);
+    *output = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap_wdb_inventory_save_scan_info, inventory, "network");
+    expect_string(__wrap_wdb_inventory_save_scan_info, payload, "{\"timestamp\":12345}");
+    will_return(__wrap_wdb_inventory_save_scan_info, 0);
+
+    int ret = wdb_parse(input, output);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(output, "ok");
+
+    free(input);
+    free(output);
+}
+
+void test_parse_inventory_network_scan_save_error(void **state)
+{
+    char * input = strdup("agent 000 inventory network_scan update {\"timestamp\":12345}");
+    char * output = calloc(1, OS_MAXSTR + 1);
+    *output = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap_wdb_inventory_save_scan_info, inventory, "network");
+    expect_string(__wrap_wdb_inventory_save_scan_info, payload, "{\"timestamp\":12345}");
+    will_return(__wrap_wdb_inventory_save_scan_info, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot save network scan information.");
+
+    int ret = wdb_parse(input, output);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output, "err Cannot save network scan information.");
+
+    free(input);
+    free(output);
+}
+
+void test_parse_inventory_os_scan_invalid_query(void **state)
+{
+    char * input1 = strdup("agent 000 inventory OS_scan");
+    char * output1 = calloc(1, OS_MAXSTR + 1);
+    *output1 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: OS_scan");
+
+    int ret = wdb_parse(input1, output1);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output1, "err Invalid inventory query syntax, near 'OS_scan'");
+
+    free(input1);
+    free(output1);
+
+    char * input2 = strdup("agent 000 inventory OS_scan update");
+    char * output2 = calloc(1, OS_MAXSTR + 1);
+    *output2 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: update");
+
+    ret = wdb_parse(input2, output2);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output2, "err Invalid inventory query syntax, near 'update'");
+
+    free(input2);
+    free(output2);
+
+    char * input3 = strdup("agent 000 inventory OS_scan save {}");
+    char * output3 = calloc(1, OS_MAXSTR + 1);
+    *output3 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: save");
+
+    ret = wdb_parse(input3, output3);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output3, "err Invalid inventory query syntax, near 'save'");
+
+    free(input3);
+    free(output3);
+}
+
+void test_parse_inventory_os_scan_save(void **state)
+{
+    char * input = strdup("agent 000 inventory OS_scan update {\"timestamp\":12345}");
+    char * output = calloc(1, OS_MAXSTR + 1);
+    *output = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap_wdb_inventory_save_scan_info, inventory, "OS");
+    expect_string(__wrap_wdb_inventory_save_scan_info, payload, "{\"timestamp\":12345}");
+    will_return(__wrap_wdb_inventory_save_scan_info, 0);
+
+    int ret = wdb_parse(input, output);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(output, "ok");
+
+    free(input);
+    free(output);
+}
+
+void test_parse_inventory_os_scan_save_error(void **state)
+{
+    char * input = strdup("agent 000 inventory OS_scan update {\"timestamp\":12345}");
+    char * output = calloc(1, OS_MAXSTR + 1);
+    *output = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap_wdb_inventory_save_scan_info, inventory, "OS");
+    expect_string(__wrap_wdb_inventory_save_scan_info, payload, "{\"timestamp\":12345}");
+    will_return(__wrap_wdb_inventory_save_scan_info, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot save OS scan information.");
+
+    int ret = wdb_parse(input, output);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output, "err Cannot save OS scan information.");
+
+    free(input);
+    free(output);
+}
+
+void test_parse_inventory_hw_scan_invalid_query(void **state)
+{
+    char * input1 = strdup("agent 000 inventory hardware_scan");
+    char * output1 = calloc(1, OS_MAXSTR + 1);
+    *output1 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: hardware_scan");
+
+    int ret = wdb_parse(input1, output1);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output1, "err Invalid inventory query syntax, near 'hardware_scan'");
+
+    free(input1);
+    free(output1);
+
+    char * input2 = strdup("agent 000 inventory hardware_scan update");
+    char * output2 = calloc(1, OS_MAXSTR + 1);
+    *output2 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: update");
+
+    ret = wdb_parse(input2, output2);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output2, "err Invalid inventory query syntax, near 'update'");
+
+    free(input2);
+    free(output2);
+
+    char * input3 = strdup("agent 000 inventory hardware_scan save {}");
+    char * output3 = calloc(1, OS_MAXSTR + 1);
+    *output3 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: save");
+
+    ret = wdb_parse(input3, output3);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output3, "err Invalid inventory query syntax, near 'save'");
+
+    free(input3);
+    free(output3);
+}
+
+void test_parse_inventory_hw_scan_save(void **state)
+{
+    char * input = strdup("agent 000 inventory hardware_scan update {\"timestamp\":12345}");
+    char * output = calloc(1, OS_MAXSTR + 1);
+    *output = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap_wdb_inventory_save_scan_info, inventory, "hardware");
+    expect_string(__wrap_wdb_inventory_save_scan_info, payload, "{\"timestamp\":12345}");
+    will_return(__wrap_wdb_inventory_save_scan_info, 0);
+
+    int ret = wdb_parse(input, output);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(output, "ok");
+
+    free(input);
+    free(output);
+}
+
+void test_parse_inventory_hw_scan_save_error(void **state)
+{
+    char * input = strdup("agent 000 inventory hardware_scan update {\"timestamp\":12345}");
+    char * output = calloc(1, OS_MAXSTR + 1);
+    *output = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap_wdb_inventory_save_scan_info, inventory, "hardware");
+    expect_string(__wrap_wdb_inventory_save_scan_info, payload, "{\"timestamp\":12345}");
+    will_return(__wrap_wdb_inventory_save_scan_info, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot save hardware scan information.");
+
+    int ret = wdb_parse(input, output);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output, "err Cannot save hardware scan information.");
+
+    free(input);
+    free(output);
+}
+
+void test_parse_inventory_program_scan_invalid_query(void **state)
+{
+    char * input1 = strdup("agent 000 inventory program_scan");
+    char * output1 = calloc(1, OS_MAXSTR + 1);
+    *output1 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: program_scan");
+
+    int ret = wdb_parse(input1, output1);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output1, "err Invalid inventory query syntax, near 'program_scan'");
+
+    free(input1);
+    free(output1);
+
+    char * input2 = strdup("agent 000 inventory program_scan update");
+    char * output2 = calloc(1, OS_MAXSTR + 1);
+    *output2 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: update");
+
+    ret = wdb_parse(input2, output2);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output2, "err Invalid inventory query syntax, near 'update'");
+
+    free(input2);
+    free(output2);
+
+    char * input3 = strdup("agent 000 inventory program_scan save {}");
+    char * output3 = calloc(1, OS_MAXSTR + 1);
+    *output3 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: save");
+
+    ret = wdb_parse(input3, output3);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output3, "err Invalid inventory query syntax, near 'save'");
+
+    free(input3);
+    free(output3);
+}
+
+void test_parse_inventory_program_scan_save(void **state)
+{
+    char * input = strdup("agent 000 inventory program_scan update {\"timestamp\":12345}");
+    char * output = calloc(1, OS_MAXSTR + 1);
+    *output = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap_wdb_inventory_save_scan_info, inventory, "program");
+    expect_string(__wrap_wdb_inventory_save_scan_info, payload, "{\"timestamp\":12345}");
+    will_return(__wrap_wdb_inventory_save_scan_info, 0);
+
+    int ret = wdb_parse(input, output);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(output, "ok");
+
+    free(input);
+    free(output);
+}
+
+void test_parse_inventory_program_scan_save_error(void **state)
+{
+    char * input = strdup("agent 000 inventory program_scan update {\"timestamp\":12345}");
+    char * output = calloc(1, OS_MAXSTR + 1);
+    *output = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap_wdb_inventory_save_scan_info, inventory, "program");
+    expect_string(__wrap_wdb_inventory_save_scan_info, payload, "{\"timestamp\":12345}");
+    will_return(__wrap_wdb_inventory_save_scan_info, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot save program scan information.");
+
+    int ret = wdb_parse(input, output);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output, "err Cannot save program scan information.");
+
+    free(input);
+    free(output);
+}
+
+void test_parse_inventory_hotfix_scan_invalid_query(void **state)
+{
+    char * input1 = strdup("agent 000 inventory hotfix_scan");
+    char * output1 = calloc(1, OS_MAXSTR + 1);
+    *output1 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: hotfix_scan");
+
+    int ret = wdb_parse(input1, output1);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output1, "err Invalid inventory query syntax, near 'hotfix_scan'");
+
+    free(input1);
+    free(output1);
+
+    char * input2 = strdup("agent 000 inventory hotfix_scan update");
+    char * output2 = calloc(1, OS_MAXSTR + 1);
+    *output2 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: update");
+
+    ret = wdb_parse(input2, output2);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output2, "err Invalid inventory query syntax, near 'update'");
+
+    free(input2);
+    free(output2);
+
+    char * input3 = strdup("agent 000 inventory hotfix_scan save {}");
+    char * output3 = calloc(1, OS_MAXSTR + 1);
+    *output3 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: save");
+
+    ret = wdb_parse(input3, output3);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output3, "err Invalid inventory query syntax, near 'save'");
+
+    free(input3);
+    free(output3);
+}
+
+void test_parse_inventory_hotfix_scan_save(void **state)
+{
+    char * input = strdup("agent 000 inventory hotfix_scan update {\"timestamp\":12345}");
+    char * output = calloc(1, OS_MAXSTR + 1);
+    *output = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap_wdb_inventory_save_scan_info, inventory, "hotfix");
+    expect_string(__wrap_wdb_inventory_save_scan_info, payload, "{\"timestamp\":12345}");
+    will_return(__wrap_wdb_inventory_save_scan_info, 0);
+
+    int ret = wdb_parse(input, output);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(output, "ok");
+
+    free(input);
+    free(output);
+}
+
+void test_parse_inventory_hotfix_scan_save_error(void **state)
+{
+    char * input = strdup("agent 000 inventory hotfix_scan update {\"timestamp\":12345}");
+    char * output = calloc(1, OS_MAXSTR + 1);
+    *output = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap_wdb_inventory_save_scan_info, inventory, "hotfix");
+    expect_string(__wrap_wdb_inventory_save_scan_info, payload, "{\"timestamp\":12345}");
+    will_return(__wrap_wdb_inventory_save_scan_info, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot save hotfix scan information.");
+
+    int ret = wdb_parse(input, output);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output, "err Cannot save hotfix scan information.");
+
+    free(input);
+    free(output);
+}
+
+void test_parse_inventory_port_scan_invalid_query(void **state)
+{
+    char * input1 = strdup("agent 000 inventory port_scan");
+    char * output1 = calloc(1, OS_MAXSTR + 1);
+    *output1 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: port_scan");
+
+    int ret = wdb_parse(input1, output1);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output1, "err Invalid inventory query syntax, near 'port_scan'");
+
+    free(input1);
+    free(output1);
+
+    char * input2 = strdup("agent 000 inventory port_scan update");
+    char * output2 = calloc(1, OS_MAXSTR + 1);
+    *output2 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: update");
+
+    ret = wdb_parse(input2, output2);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output2, "err Invalid inventory query syntax, near 'update'");
+
+    free(input2);
+    free(output2);
+
+    char * input3 = strdup("agent 000 inventory port_scan save {}");
+    char * output3 = calloc(1, OS_MAXSTR + 1);
+    *output3 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: save");
+
+    ret = wdb_parse(input3, output3);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output3, "err Invalid inventory query syntax, near 'save'");
+
+    free(input3);
+    free(output3);
+}
+
+void test_parse_inventory_port_scan_save(void **state)
+{
+    char * input = strdup("agent 000 inventory port_scan update {\"timestamp\":12345}");
+    char * output = calloc(1, OS_MAXSTR + 1);
+    *output = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap_wdb_inventory_save_scan_info, inventory, "port");
+    expect_string(__wrap_wdb_inventory_save_scan_info, payload, "{\"timestamp\":12345}");
+    will_return(__wrap_wdb_inventory_save_scan_info, 0);
+
+    int ret = wdb_parse(input, output);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(output, "ok");
+
+    free(input);
+    free(output);
+}
+
+void test_parse_inventory_port_scan_save_error(void **state)
+{
+    char * input = strdup("agent 000 inventory port_scan update {\"timestamp\":12345}");
+    char * output = calloc(1, OS_MAXSTR + 1);
+    *output = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap_wdb_inventory_save_scan_info, inventory, "port");
+    expect_string(__wrap_wdb_inventory_save_scan_info, payload, "{\"timestamp\":12345}");
+    will_return(__wrap_wdb_inventory_save_scan_info, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot save port scan information.");
+
+    int ret = wdb_parse(input, output);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output, "err Cannot save port scan information.");
+
+    free(input);
+    free(output);
+}
+
+void test_parse_inventory_process_scan_invalid_query(void **state)
+{
+    char * input1 = strdup("agent 000 inventory process_scan");
+    char * output1 = calloc(1, OS_MAXSTR + 1);
+    *output1 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: process_scan");
+
+    int ret = wdb_parse(input1, output1);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output1, "err Invalid inventory query syntax, near 'process_scan'");
+
+    free(input1);
+    free(output1);
+
+    char * input2 = strdup("agent 000 inventory process_scan update");
+    char * output2 = calloc(1, OS_MAXSTR + 1);
+    *output2 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: update");
+
+    ret = wdb_parse(input2, output2);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output2, "err Invalid inventory query syntax, near 'update'");
+
+    free(input2);
+    free(output2);
+
+    char * input3 = strdup("agent 000 inventory process_scan save {}");
+    char * output3 = calloc(1, OS_MAXSTR + 1);
+    *output3 = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid inventory query syntax: save");
+
+    ret = wdb_parse(input3, output3);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output3, "err Invalid inventory query syntax, near 'save'");
+
+    free(input3);
+    free(output3);
+}
+
+void test_parse_inventory_process_scan_save(void **state)
+{
+    char * input = strdup("agent 000 inventory process_scan update {\"timestamp\":12345}");
+    char * output = calloc(1, OS_MAXSTR + 1);
+    *output = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap_wdb_inventory_save_scan_info, inventory, "process");
+    expect_string(__wrap_wdb_inventory_save_scan_info, payload, "{\"timestamp\":12345}");
+    will_return(__wrap_wdb_inventory_save_scan_info, 0);
+
+    int ret = wdb_parse(input, output);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(output, "ok");
+
+    free(input);
+    free(output);
+}
+
+void test_parse_inventory_process_scan_save_error(void **state)
+{
+    char * input = strdup("agent 000 inventory process_scan update {\"timestamp\":12345}");
+    char * output = calloc(1, OS_MAXSTR + 1);
+    *output = '\0';
+
+    will_return(__wrap_wdb_open_agent2, 1);
+
+    expect_string(__wrap_wdb_inventory_save_scan_info, inventory, "process");
+    expect_string(__wrap_wdb_inventory_save_scan_info, payload, "{\"timestamp\":12345}");
+    will_return(__wrap_wdb_inventory_save_scan_info, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot save process scan information.");
+
+    int ret = wdb_parse(input, output);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(output, "err Cannot save process scan information.");
+
+    free(input);
+    free(output);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_parse_no_input),
         cmocka_unit_test(test_parse_invalid_actor),
         cmocka_unit_test(test_parse_invalid_agent_id),
-        cmocka_unit_test(test_parse_inventory_no_type),
+        cmocka_unit_test(test_parse_inventory_invalid_type),
         cmocka_unit_test(test_parse_inventory_network_invalid_query),
         cmocka_unit_test(test_parse_inventory_network_save),
         cmocka_unit_test(test_parse_inventory_network_save_error),
@@ -1150,7 +1831,28 @@ int main(void) {
         cmocka_unit_test(test_parse_inventory_process_save),
         cmocka_unit_test(test_parse_inventory_process_save_error),
         cmocka_unit_test(test_parse_inventory_process_delete),
-        cmocka_unit_test(test_parse_inventory_process_delete_error)
+        cmocka_unit_test(test_parse_inventory_process_delete_error),
+        cmocka_unit_test(test_parse_inventory_network_scan_invalid_query),
+        cmocka_unit_test(test_parse_inventory_network_scan_save),
+        cmocka_unit_test(test_parse_inventory_network_scan_save_error),
+        cmocka_unit_test(test_parse_inventory_os_scan_invalid_query),
+        cmocka_unit_test(test_parse_inventory_os_scan_save),
+        cmocka_unit_test(test_parse_inventory_os_scan_save_error),
+        cmocka_unit_test(test_parse_inventory_hw_scan_invalid_query),
+        cmocka_unit_test(test_parse_inventory_hw_scan_save),
+        cmocka_unit_test(test_parse_inventory_hw_scan_save_error),
+        cmocka_unit_test(test_parse_inventory_program_scan_invalid_query),
+        cmocka_unit_test(test_parse_inventory_program_scan_save),
+        cmocka_unit_test(test_parse_inventory_program_scan_save_error),
+        cmocka_unit_test(test_parse_inventory_hotfix_scan_invalid_query),
+        cmocka_unit_test(test_parse_inventory_hotfix_scan_save),
+        cmocka_unit_test(test_parse_inventory_hotfix_scan_save_error),
+        cmocka_unit_test(test_parse_inventory_port_scan_invalid_query),
+        cmocka_unit_test(test_parse_inventory_port_scan_save),
+        cmocka_unit_test(test_parse_inventory_port_scan_save_error),
+        cmocka_unit_test(test_parse_inventory_process_scan_invalid_query),
+        cmocka_unit_test(test_parse_inventory_process_scan_save),
+        cmocka_unit_test(test_parse_inventory_process_scan_save_error)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
