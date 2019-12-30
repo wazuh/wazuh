@@ -6,7 +6,7 @@
  * To add this tests on CMAKE:
  *  
  *  list(APPEND tests_names "test_wmodules_scheduling")
- *  list(APPEND tests_flags "-Wl,--wrap=time,--wrap=wm_delay, --wrap=mwarn, --wrap=minfo, --wrap=merror")
+ *  list(APPEND tests_flags "-Wl,--wrap=time,--wrap=wm_delay,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror")
  * 
  * */
 #include <stdarg.h>
