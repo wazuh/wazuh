@@ -21,6 +21,13 @@
 #ifdef UNIT_TESTING
 /* Remove static qualifier when unit testing */
 #define static
+
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
 
 static void dispatch_send_local(dbsync_context_t * ctx, const char * query) {
@@ -230,6 +237,9 @@ end:
 }
 
 void DispatchDBSync(dbsync_context_t * ctx, Eventinfo * lf) {
+    assert(ctx != NULL);
+    assert(lf != NULL);
+
     ctx->agent_id = lf->agent_id;
 
     cJSON * root = cJSON_Parse(lf->log);
