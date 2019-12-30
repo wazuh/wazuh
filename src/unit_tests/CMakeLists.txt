@@ -53,6 +53,11 @@ list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn 
                          -Wl,--wrap,wdb_inventory_save_port -Wl,--wrap,wdb_inventory_delete_port -Wl,--wrap,wdb_inventory_save_process -Wl,--wrap,wdb_inventory_delete_process \
                          -Wl,--wrap,wdb_inventory_save_scan_info")
 
+list(APPEND tests_names "test_wdb_inventory")
+list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_hardware_save -Wl,--wrap,wdb_osinfo_save -Wl,--wrap,wdb_netinfo_save \
+                         -Wl,--wrap,wdb_netproto_save -Wl,--wrap,wdb_netaddr_save -Wl,--wrap,wdb_netinfo_delete2 -Wl,--wrap,wdb_package_save \
+                         -Wl,--wrap,wdb_package_delete2 -Wl,--wrap,wdb_hotfix_save -Wl,--wrap,wdb_set_hotfix_metadata -Wl,--wrap,wdb_hotfix_delete2")
+
 # Config files
 configure_file("test_syscollector.conf" "test_syscollector.conf" COPYONLY)
 

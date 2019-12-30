@@ -147,6 +147,8 @@ int __wrap_wdb_inventory_save_scan_info(wdb_t * wdb, const char * inventory, con
 
 void test_parse_no_input(void **state)
 {
+    (void) state;
+
     char output[OS_MAXSTR + 1];
     *output = '\0';
 
@@ -160,6 +162,8 @@ void test_parse_no_input(void **state)
 
 void test_parse_invalid_actor(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("abcdef");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -191,6 +195,8 @@ void test_parse_invalid_actor(void **state)
 
 void test_parse_invalid_agent_id(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -236,6 +242,8 @@ void test_parse_invalid_agent_id(void **state)
 
 void test_parse_inventory_invalid_type(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000 inventory");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -271,6 +279,8 @@ void test_parse_inventory_invalid_type(void **state)
 
 void test_parse_inventory_network_invalid_query(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000 inventory network");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -322,6 +332,8 @@ void test_parse_inventory_network_invalid_query(void **state)
 
 void test_parse_inventory_network_save(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory network save {\"type\":\"added\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -342,6 +354,8 @@ void test_parse_inventory_network_save(void **state)
 
 void test_parse_inventory_network_save_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory network save {\"type\":\"added\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -364,6 +378,8 @@ void test_parse_inventory_network_save_error(void **state)
 
 void test_parse_inventory_network_delete(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory network delete {\"type\":\"deleted\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -384,6 +400,8 @@ void test_parse_inventory_network_delete(void **state)
 
 void test_parse_inventory_network_delete_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory network delete {\"type\":\"deleted\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -406,6 +424,8 @@ void test_parse_inventory_network_delete_error(void **state)
 
 void test_parse_inventory_os_invalid_query(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000 inventory OS");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -457,6 +477,8 @@ void test_parse_inventory_os_invalid_query(void **state)
 
 void test_parse_inventory_os_save(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory OS save {\"type\":\"modified\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -477,6 +499,8 @@ void test_parse_inventory_os_save(void **state)
 
 void test_parse_inventory_os_save_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory OS save {\"type\":\"modified\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -499,6 +523,8 @@ void test_parse_inventory_os_save_error(void **state)
 
 void test_parse_inventory_hw_invalid_query(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000 inventory hardware");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -550,6 +576,8 @@ void test_parse_inventory_hw_invalid_query(void **state)
 
 void test_parse_inventory_hw_save(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory hardware save {\"type\":\"added\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -570,6 +598,8 @@ void test_parse_inventory_hw_save(void **state)
 
 void test_parse_inventory_hw_save_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory hardware save {\"type\":\"added\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -592,6 +622,8 @@ void test_parse_inventory_hw_save_error(void **state)
 
 void test_parse_inventory_program_invalid_query(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000 inventory program");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -643,6 +675,8 @@ void test_parse_inventory_program_invalid_query(void **state)
 
 void test_parse_inventory_program_save(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory program save {\"type\":\"modified\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -663,6 +697,8 @@ void test_parse_inventory_program_save(void **state)
 
 void test_parse_inventory_program_save_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory program save {\"type\":\"added\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -685,6 +721,8 @@ void test_parse_inventory_program_save_error(void **state)
 
 void test_parse_inventory_program_delete(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory program delete {\"type\":\"deleted\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -705,6 +743,8 @@ void test_parse_inventory_program_delete(void **state)
 
 void test_parse_inventory_program_delete_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory program delete {\"type\":\"deleted\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -727,6 +767,8 @@ void test_parse_inventory_program_delete_error(void **state)
 
 void test_parse_inventory_hotfix_invalid_query(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000 inventory hotfix");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -778,6 +820,8 @@ void test_parse_inventory_hotfix_invalid_query(void **state)
 
 void test_parse_inventory_hotfix_save(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory hotfix save {\"type\":\"added\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -798,6 +842,8 @@ void test_parse_inventory_hotfix_save(void **state)
 
 void test_parse_inventory_hotfix_save_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory hotfix save {\"type\":\"added\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -820,6 +866,8 @@ void test_parse_inventory_hotfix_save_error(void **state)
 
 void test_parse_inventory_hotfix_delete(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory hotfix delete {\"type\":\"deleted\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -840,6 +888,8 @@ void test_parse_inventory_hotfix_delete(void **state)
 
 void test_parse_inventory_hotfix_delete_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory hotfix delete {\"type\":\"deleted\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -862,6 +912,8 @@ void test_parse_inventory_hotfix_delete_error(void **state)
 
 void test_parse_inventory_port_invalid_query(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000 inventory port");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -913,6 +965,8 @@ void test_parse_inventory_port_invalid_query(void **state)
 
 void test_parse_inventory_port_save(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory port save {\"type\":\"modified\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -933,6 +987,8 @@ void test_parse_inventory_port_save(void **state)
 
 void test_parse_inventory_port_save_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory port save {\"type\":\"added\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -955,6 +1011,8 @@ void test_parse_inventory_port_save_error(void **state)
 
 void test_parse_inventory_port_delete(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory port delete {\"type\":\"deleted\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -975,6 +1033,8 @@ void test_parse_inventory_port_delete(void **state)
 
 void test_parse_inventory_port_delete_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory port delete {\"type\":\"deleted\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -997,6 +1057,8 @@ void test_parse_inventory_port_delete_error(void **state)
 
 void test_parse_inventory_process_invalid_query(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000 inventory process");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -1048,6 +1110,8 @@ void test_parse_inventory_process_invalid_query(void **state)
 
 void test_parse_inventory_process_save(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory process save {\"type\":\"added\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1068,6 +1132,8 @@ void test_parse_inventory_process_save(void **state)
 
 void test_parse_inventory_process_save_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory process save {\"type\":\"added\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1090,6 +1156,8 @@ void test_parse_inventory_process_save_error(void **state)
 
 void test_parse_inventory_process_delete(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory process delete {\"type\":\"deleted\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1110,6 +1178,8 @@ void test_parse_inventory_process_delete(void **state)
 
 void test_parse_inventory_process_delete_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory process delete {\"type\":\"deleted\"}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1132,6 +1202,8 @@ void test_parse_inventory_process_delete_error(void **state)
 
 void test_parse_inventory_network_scan_invalid_query(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000 inventory network_scan");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -1183,6 +1255,8 @@ void test_parse_inventory_network_scan_invalid_query(void **state)
 
 void test_parse_inventory_network_scan_save(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory network_scan update {\"timestamp\":12345}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1204,6 +1278,8 @@ void test_parse_inventory_network_scan_save(void **state)
 
 void test_parse_inventory_network_scan_save_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory network_scan update {\"timestamp\":12345}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1227,6 +1303,8 @@ void test_parse_inventory_network_scan_save_error(void **state)
 
 void test_parse_inventory_os_scan_invalid_query(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000 inventory OS_scan");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -1278,6 +1356,8 @@ void test_parse_inventory_os_scan_invalid_query(void **state)
 
 void test_parse_inventory_os_scan_save(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory OS_scan update {\"timestamp\":12345}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1299,6 +1379,8 @@ void test_parse_inventory_os_scan_save(void **state)
 
 void test_parse_inventory_os_scan_save_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory OS_scan update {\"timestamp\":12345}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1322,6 +1404,8 @@ void test_parse_inventory_os_scan_save_error(void **state)
 
 void test_parse_inventory_hw_scan_invalid_query(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000 inventory hardware_scan");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -1373,6 +1457,8 @@ void test_parse_inventory_hw_scan_invalid_query(void **state)
 
 void test_parse_inventory_hw_scan_save(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory hardware_scan update {\"timestamp\":12345}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1394,6 +1480,8 @@ void test_parse_inventory_hw_scan_save(void **state)
 
 void test_parse_inventory_hw_scan_save_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory hardware_scan update {\"timestamp\":12345}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1417,6 +1505,8 @@ void test_parse_inventory_hw_scan_save_error(void **state)
 
 void test_parse_inventory_program_scan_invalid_query(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000 inventory program_scan");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -1468,6 +1558,8 @@ void test_parse_inventory_program_scan_invalid_query(void **state)
 
 void test_parse_inventory_program_scan_save(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory program_scan update {\"timestamp\":12345}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1489,6 +1581,8 @@ void test_parse_inventory_program_scan_save(void **state)
 
 void test_parse_inventory_program_scan_save_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory program_scan update {\"timestamp\":12345}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1512,6 +1606,8 @@ void test_parse_inventory_program_scan_save_error(void **state)
 
 void test_parse_inventory_hotfix_scan_invalid_query(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000 inventory hotfix_scan");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -1563,6 +1659,8 @@ void test_parse_inventory_hotfix_scan_invalid_query(void **state)
 
 void test_parse_inventory_hotfix_scan_save(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory hotfix_scan update {\"timestamp\":12345}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1584,6 +1682,8 @@ void test_parse_inventory_hotfix_scan_save(void **state)
 
 void test_parse_inventory_hotfix_scan_save_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory hotfix_scan update {\"timestamp\":12345}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1607,6 +1707,8 @@ void test_parse_inventory_hotfix_scan_save_error(void **state)
 
 void test_parse_inventory_port_scan_invalid_query(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000 inventory port_scan");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -1658,6 +1760,8 @@ void test_parse_inventory_port_scan_invalid_query(void **state)
 
 void test_parse_inventory_port_scan_save(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory port_scan update {\"timestamp\":12345}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1679,6 +1783,8 @@ void test_parse_inventory_port_scan_save(void **state)
 
 void test_parse_inventory_port_scan_save_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory port_scan update {\"timestamp\":12345}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1702,6 +1808,8 @@ void test_parse_inventory_port_scan_save_error(void **state)
 
 void test_parse_inventory_process_scan_invalid_query(void **state)
 {
+    (void) state;
+
     char * input1 = strdup("agent 000 inventory process_scan");
     char * output1 = calloc(1, OS_MAXSTR + 1);
     *output1 = '\0';
@@ -1753,6 +1861,8 @@ void test_parse_inventory_process_scan_invalid_query(void **state)
 
 void test_parse_inventory_process_scan_save(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory process_scan update {\"timestamp\":12345}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';
@@ -1774,6 +1884,8 @@ void test_parse_inventory_process_scan_save(void **state)
 
 void test_parse_inventory_process_scan_save_error(void **state)
 {
+    (void) state;
+
     char * input = strdup("agent 000 inventory process_scan update {\"timestamp\":12345}");
     char * output = calloc(1, OS_MAXSTR + 1);
     *output = '\0';

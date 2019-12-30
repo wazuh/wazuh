@@ -27,14 +27,14 @@ int wdb_inventory_save_hw(wdb_t * wdb, const char * payload) {
     char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
     if (scan_time == NULL) {
-        merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
+        merror("DB(%s) HW save request with no timestamp path argument.", wdb->agent_id);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        merror("DB(%s) HW save request with no attributes argument.", wdb->agent_id);
         return -1;
     }
 
@@ -46,7 +46,11 @@ int wdb_inventory_save_hw(wdb_t * wdb, const char * payload) {
     attribute = cJSON_GetObjectItem(attributes, "cpu_cores");
     int cpu_cores = attribute ? attribute->valueint : -1;
     attribute = cJSON_GetObjectItem(attributes, "cpu_MHz");
-    char * cpu_mhz = attribute ? attribute->valuestring : NULL;
+    char * cpu_mhz = NULL;
+    if (attribute) {
+        os_calloc(20, sizeof(char), cpu_mhz);
+        snprintf(cpu_mhz, 19, "%0.1f", attribute->valuedouble);
+    }
     attribute = cJSON_GetObjectItem(attributes, "ram_total");
     long ram_total = attribute ? (long)attribute->valuedouble : -1;
     attribute = cJSON_GetObjectItem(attributes, "ram_free");
@@ -55,9 +59,12 @@ int wdb_inventory_save_hw(wdb_t * wdb, const char * payload) {
     int ram_usage = attribute ? attribute->valueint : -1;
 
     if (result = wdb_hardware_save(wdb, DEFAULT_SCAN_ID, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage), result < 0) {
-        mdebug1("wdb_inventory_save_hw(): Cannot save HW information.");
+        mdebug1("Cannot save HW information.");
     }
 
+    if (cpu_mhz) {
+        free(cpu_mhz);
+    }
     cJSON_Delete(data);
     return result;
 }
@@ -76,14 +83,14 @@ int wdb_inventory_save_os(wdb_t * wdb, const char * payload) {
     char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
     if (scan_time == NULL) {
-        merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
+        merror("DB(%s) OS save request with no timestamp path argument.", wdb->agent_id);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        merror("DB(%s) OS save request with no attributes argument.", wdb->agent_id);
         return -1;
     }
 
@@ -137,14 +144,14 @@ int wdb_inventory_save_network(wdb_t * wdb, const char * payload) {
     char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
     if (scan_time == NULL) {
-        merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
+        merror("DB(%s) network save request with no timestamp path argument.", wdb->agent_id);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        merror("DB(%s) network save request with no attributes argument.", wdb->agent_id);
         return -1;
     }
 
@@ -271,7 +278,7 @@ int wdb_inventory_delete_network(wdb_t * wdb, const char * payload) {
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        merror("DB(%s) network delete request with no attributes argument.", wdb->agent_id);
         return -1;
     }
 
@@ -301,14 +308,14 @@ int wdb_inventory_save_program(wdb_t * wdb, const char * payload) {
     char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
     if (scan_time == NULL) {
-        merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
+        merror("DB(%s) program save request with no timestamp path argument.", wdb->agent_id);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        merror("DB(%s) program save request with no attributes argument.", wdb->agent_id);
         return -1;
     }
 
@@ -362,7 +369,7 @@ int wdb_inventory_delete_program(wdb_t * wdb, const char * payload) {
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        merror("DB(%s) program delete request with no attributes argument.", wdb->agent_id);
         return -1;
     }
 
@@ -396,14 +403,14 @@ int wdb_inventory_save_hotfix(wdb_t * wdb, const char * payload) {
     char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
     if (scan_time == NULL) {
-        merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
+        merror("DB(%s) hotfix save request with no timestamp path argument.", wdb->agent_id);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        merror("DB(%s) hotfix save request with no attributes argument.", wdb->agent_id);
         return -1;
     }
 
@@ -435,7 +442,7 @@ int wdb_inventory_delete_hotfix(wdb_t * wdb, const char * payload) {
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        merror("DB(%s) hotfix delete request with no attributes argument.", wdb->agent_id);
         return -1;
     }
 
@@ -465,14 +472,14 @@ int wdb_inventory_save_port(wdb_t * wdb, const char * payload) {
     char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
     if (scan_time == NULL) {
-        merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
+        merror("DB(%s) port save request with no timestamp path argument.", wdb->agent_id);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        merror("DB(%s) port save request with no attributes argument.", wdb->agent_id);
         return -1;
     }
 
@@ -522,7 +529,7 @@ int wdb_inventory_delete_port(wdb_t * wdb, const char * payload) {
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        merror("DB(%s) port delete request with no attributes argument.", wdb->agent_id);
         return -1;
     }
 
@@ -558,14 +565,14 @@ int wdb_inventory_save_process(wdb_t * wdb, const char * payload) {
     char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
     if (scan_time == NULL) {
-        merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
+        merror("DB(%s) process save request with no timestamp path argument.", wdb->agent_id);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        merror("DB(%s) process save request with no attributes argument.", wdb->agent_id);
         return -1;
     }
 
@@ -649,7 +656,7 @@ int wdb_inventory_delete_process(wdb_t * wdb, const char * payload) {
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        merror("DB(%s) process delete request with no attributes argument.", wdb->agent_id);
         return -1;
     }
 
