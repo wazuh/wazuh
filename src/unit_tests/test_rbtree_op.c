@@ -77,13 +77,11 @@ void test_rbtree_insert_failure(void **state)
 void test_rbtree_insert_null_tree(void **state)
 {
     (void) state;
-    rb_tree *tree = *state;
     char *value = strdup("testing");
-    char *ret;
 
-    ret = rbtree_insert(NULL, "test", value);
+    expect_assert_failure(rbtree_insert(NULL, "test", value));
 
-    assert_null(ret);
+    free(value);
 }
 
 void test_rbtree_insert_null_key(void **state)
@@ -91,14 +89,10 @@ void test_rbtree_insert_null_key(void **state)
     (void) state;
     rb_tree *tree = *state;
     char *value = strdup("testing");
-    char *ret;
 
-    ret = rbtree_insert(tree, NULL, value);
+    expect_assert_failure(rbtree_insert(tree, NULL, value));
 
-    assert_non_null(tree->root);
-    assert_null(ret);
-    assert_string_equal(tree->root->key, "test");
-    assert_ptr_equal(tree->root->value, value);
+    free(value);
 }
 
 void test_rbtree_insert_null_value(void **state)
@@ -151,13 +145,11 @@ void test_rbtree_replace_failure(void **state)
 void test_rbtree_replace_null_tree(void **state)
 {
     (void) state;
-    rb_tree *tree = *state;
     char *value_testing = strdup("testing");
-    char *ret;
 
-    ret = rbtree_replace(NULL, "invalid", value_testing);
+    expect_assert_failure(rbtree_replace(NULL, "invalid", value_testing));
 
-    assert_null(ret);
+    free(value_testing);
 }
 
 void test_rbtree_replace_null_key(void **state)
@@ -165,12 +157,10 @@ void test_rbtree_replace_null_key(void **state)
     (void) state;
     rb_tree *tree = *state;
     char *value_testing = strdup("testing");
-    char *ret;
 
-    rbtree_insert(tree, "test", value_testing);
-    ret = rbtree_replace(tree, NULL, value_testing);
+    expect_assert_failure(rbtree_replace(tree, NULL, value_testing));
 
-    assert_null(ret);
+    free(value_testing);
 }
 
 void test_rbtree_replace_null_value(void **state)
@@ -197,7 +187,9 @@ void test_rbtree_get_success(void **state)
 
     rbtree_insert(tree, "test", value_testing);
 
-    assert_ptr_equal(rbtree_get(tree, "test"), value_testing);
+    ret = rbtree_get(tree, "test");
+
+    assert_ptr_equal(ret, value_testing);
 }
 
 void test_rbtree_get_failure(void **state)
@@ -216,26 +208,16 @@ void test_rbtree_get_failure(void **state)
 void test_rbtree_get_null_tree(void **state)
 {
     (void) state;
-    rb_tree *tree = *state;
-    char *value_testing = strdup("testing");
-    rb_node *ret;
 
-    ret = rbtree_get(NULL, "invalid");
-
-    assert_null(ret);
+    expect_assert_failure(rbtree_get(NULL, "invalid"));
 }
 
 void test_rbtree_get_null_key(void **state)
 {
     (void) state;
     rb_tree *tree = *state;
-    char *value_testing = strdup("testing");
-    rb_node *ret;
 
-    rbtree_insert(tree, "test", value_testing);
-    ret = rbtree_get(tree, NULL);
-
-    assert_null(ret);
+    expect_assert_failure(rbtree_get(tree, NULL));
 }
 
 
@@ -273,21 +255,16 @@ void test_rbtree_delete_failure(void **state)
 void test_rbtree_delete_null_tree(void **state)
 {
     (void) state;
-    rb_tree *tree = *state;
-    char *value = strdup("value");
 
-    assert_int_equal(rbtree_delete(NULL, "invalid"), 0);
+    expect_assert_failure(rbtree_delete(NULL, "invalid"));
 }
 
 void test_rbtree_delete_null_key(void **state)
 {
     (void) state;
     rb_tree *tree = *state;
-    char *value = strdup("value");
 
-    rbtree_insert(tree, "test", value);
-
-    assert_int_equal(rbtree_delete(tree, NULL), 0);
+    expect_assert_failure(rbtree_delete(tree, NULL));
 }
 
 void test_rbtree_minimum(void **state)
@@ -320,18 +297,8 @@ void test_rbtree_minimum_empty_tree(void **state)
 void test_rbtree_minimum_null_tree(void **state)
 {
     (void) state;
-    rb_tree *tree = *state;
-    char *value = strdup("value");
-    const char *ret;
 
-    rbtree_insert(tree, "a_key", value);
-    rbtree_insert(tree, "-key", value);
-    rbtree_insert(tree, "9key", value);
-    rbtree_insert(tree, "Z_key", value);
-
-    ret = rbtree_minimum(NULL);
-    free(value);
-    assert_null(ret);
+    expect_assert_failure(rbtree_minimum(NULL));
 }
 
 void test_rbtree_maximum(void **state)
@@ -364,18 +331,8 @@ void test_rbtree_maximum_empty_tree(void **state)
 void test_rbtree_maximum_null_tree(void **state)
 {
     (void) state;
-    rb_tree *tree = *state;
-    char *value = strdup("value");
-    const char *ret;
 
-    rbtree_insert(tree, "a_key", value);
-    rbtree_insert(tree, "-key", value);
-    rbtree_insert(tree, "9key", value);
-    rbtree_insert(tree, "Z_key", value);
-
-    ret = rbtree_maximum(NULL);
-    free(value);
-    assert_string_equal(ret, "a_key");
+    expect_assert_failure(rbtree_maximum(NULL));
 }
 
 void test_rbtree_keys(void **state)
@@ -415,8 +372,6 @@ void test_rbtree_keys_empty_tree(void **state)
     (void) state;
     rb_tree *tree = *state;
     char ** ret = NULL;
-    char expected_ret[32];
-    int i;
 
     ret = rbtree_keys(tree);
 
@@ -429,16 +384,8 @@ void test_rbtree_keys_empty_tree(void **state)
 void test_rbtree_keys_null_tree(void **state)
 {
     (void) state;
-    rb_tree *tree = *state;
-    char *value = strdup("value");
-    char ** ret = NULL;
-    char expected_ret[32];
-    int i;
 
-    ret = rbtree_keys(NULL);
-    free(value);
-
-    assert_null(ret);
+    expect_assert_failure(rbtree_keys(NULL));
 }
 
 void test_rbtree_range(void **state)
@@ -478,9 +425,7 @@ void test_rbtree_range_empty_tree(void **state)
 {
     (void) state;
     rb_tree *tree = *state;
-    char expected_ret[32];
     char ** ret = NULL;
-    int i;
 
     ret = rbtree_range(tree, "b_key", "d_key");
 
@@ -492,14 +437,8 @@ void test_rbtree_range_empty_tree(void **state)
 void test_rbtree_range_null_tree(void **state)
 {
     (void) state;
-    rb_tree *tree = *state;
-    char *value = strdup("value");
-    char expected_ret[32];
-    char ** ret = NULL;
-    int i;
 
-    ret = rbtree_range(NULL, "b_key", "d_key");
-    free(value);
+    expect_assert_failure(rbtree_range(NULL, "b_key", "d_key"));
 }
 
 void test_rbtree_range_min_not_in_tree(void **state)
@@ -539,33 +478,8 @@ void test_rbtree_range_null_min(void **state)
 {
     (void) state;
     rb_tree *tree = *state;
-    char *value = strdup("value");
-    char expected_ret[32];
-    char ** ret = NULL;
-    int i;
 
-    rbtree_insert(tree, "a_key", value);
-    rbtree_insert(tree, "b_key", value);
-    rbtree_insert(tree, "c_key", value);
-    rbtree_insert(tree, "d_key", value);
-    rbtree_insert(tree, "e_key", value);
-
-    ret = rbtree_range(tree, NULL, "d_key");
-    free(value);
-
-    for(i = 0; ret[i]; i++) {
-        assert_non_null(ret[i]);
-
-        snprintf(expected_ret, 32, "%c_key", (i + 'b'));
-        assert_string_equal(ret[i], expected_ret);
-
-        free(ret[i]);
-    }
-
-    assert_int_equal(i, 3);
-
-    free(ret[i]);
-    free(ret);
+    expect_assert_failure(rbtree_range(tree, NULL, "d_key"));
 }
 
 void test_rbtree_range_max_not_in_tree(void **state)
@@ -605,33 +519,8 @@ void test_rbtree_range_null_max(void **state)
 {
     (void) state;
     rb_tree *tree = *state;
-    char *value = strdup("value");
-    char expected_ret[32];
-    char ** ret = NULL;
-    int i;
 
-    rbtree_insert(tree, "a_key", value);
-    rbtree_insert(tree, "b_key", value);
-    rbtree_insert(tree, "c_key", value);
-    rbtree_insert(tree, "d_key", value);
-    rbtree_insert(tree, "e_key", value);
-
-    ret = rbtree_range(tree, "b_key", NULL);
-    free(value);
-
-    for(i = 0; ret[i]; i++) {
-        assert_non_null(ret[i]);
-
-        snprintf(expected_ret, 32, "%c_key", (i + 'b'));
-        assert_string_equal(ret[i], expected_ret);
-
-        free(ret[i]);
-    }
-
-    assert_int_equal(i, 3);
-
-    free(ret[i]);
-    free(ret);
+    expect_assert_failure(rbtree_range(tree, "b_key", NULL));
 }
 
 void test_rbtree_black_depth_success(void **state)
@@ -673,14 +562,8 @@ void test_rbtree_black_depth_failure(void **state)
 void test_rbtree_black_depth_null_tree(void **state)
 {
     (void) state;
-    rb_tree *tree = *state;
-    char *value = strdup("value");
-    int ret;
 
-    ret = rbtree_black_depth(NULL);
-    free(value);
-
-    assert_int_equal(ret, 0);
+    expect_assert_failure(rbtree_black_depth(NULL));
 }
 
 void test_rbtree_size(void **state)
@@ -708,14 +591,8 @@ void test_rbtree_size(void **state)
 void test_rbtree_size_null_tree(void **state)
 {
     (void) state;
-    rb_tree *tree = *state;
-    char *value = strdup("value");
-    int ret;
 
-    ret = rbtree_size(NULL);
-    free(value);
-
-    assert_int_equal(ret, 0);
+    expect_assert_failure(rbtree_size(NULL));
 }
 
 void test_rbtree_empty(void **state)
@@ -740,15 +617,8 @@ void test_rbtree_empty(void **state)
 void test_rbtree_empty_null_tree(void **state)
 {
     (void) state;
-    rb_tree *tree = *state;
-    char *value = strdup("value");
-    int ret;
 
-    ret = rbtree_empty(NULL);
-
-    free(value);
-
-    assert_int_equal(ret, 0);
+    expect_assert_failure(rbtree_empty(NULL));
 }
 
 
