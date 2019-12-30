@@ -621,29 +621,12 @@ static void test_fim_send_db_delete_query_too_long(void **state) {
     fim_send_db_delete(&sdb, agent_id, path);
 }
 
-static void test_fim_send_db_delete_null_sdb(void **state) {
-    const char *agent_id = "001";
-    const char *path = "/a/path";
-    const char *result = "This is a mock query result, it wont go anywhere";
-
-    // Assertion of this test is done through fim_send_db_query.
-    // The following lines configure the test to check a correct input message.
-    expect_string(__wrap_wdbc_query_ex, query, "agent 001 syscheck delete /a/path");
-    will_return(__wrap_wdbc_query_ex, result);
-    will_return(__wrap_wdbc_query_ex, 0);
-
-    expect_string(__wrap_wdbc_parse_result, result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    fim_send_db_delete(NULL, agent_id, path);
-}
-
 static void test_fim_send_db_delete_null_agent_id(void **state) {
     _sdb sdb = {.socket=10};
     const char *path = "/a/path";
     const char *result = "This is a mock query result, it wont go anywhere";
 
-    expect_string(__wrap_wdbc_query_ex, query, "agent  syscheck delete /a/path");
+    expect_string(__wrap_wdbc_query_ex, query, "agent (null) syscheck delete /a/path");
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -660,7 +643,7 @@ static void test_fim_send_db_delete_null_path(void **state) {
 
     // Assertion of this test is done through fim_send_db_query.
     // The following lines configure the test to check a correct input message.
-    expect_string(__wrap_wdbc_query_ex, query, "agent 001 syscheck delete ");
+    expect_string(__wrap_wdbc_query_ex, query, "agent 001 syscheck delete (null)");
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -731,43 +714,6 @@ static void test_fim_send_db_save_event_too_long(void **state) {
     fim_send_db_save(&sdb, agent_id, data);
 }
 
-static void test_fim_send_db_save_null_sdb(void **state) {
-    const char *agent_id = "007";
-    const char *result = "This is a mock query result, it wont go anywhere";
-    cJSON *event = *state;
-
-    cJSON *data = cJSON_GetObjectItem(event, "data");
-
-    // Assertion of this test is done through fim_send_db_query.
-    // The following lines configure the test to check a correct input message.
-    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
-        "{\"path\":\"/a/path\","
-        "\"timestamp\":123456789,"
-        "\"attributes\":{"
-            "\"type\":\"file\","
-            "\"size\":4567,"
-            "\"perm\":\"perm\","
-            "\"user_name\":\"user_name\","
-            "\"group_name\":\"group_name\","
-            "\"uid\":\"uid\","
-            "\"gid\":\"gid\","
-            "\"inode\":5678,"
-            "\"mtime\":6789,"
-            "\"hash_md5\":\"hash_md5\","
-            "\"hash_sha1\":\"hash_sha1\","
-            "\"hash_sha256\":\"hash_sha256\","
-            "\"win_attributes\":\"win_attributes\","
-            "\"symlink_path\":\"symlink_path\","
-            "\"checksum\":\"checksum\"}}");
-    will_return(__wrap_wdbc_query_ex, result);
-    will_return(__wrap_wdbc_query_ex, 0);
-
-    expect_string(__wrap_wdbc_parse_result, result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    fim_send_db_save(NULL, agent_id, data);
-}
-
 static void test_fim_send_db_save_null_agent_id(void **state) {
     _sdb sdb = {.socket = 10};
     const char *result = "This is a mock query result, it wont go anywhere";
@@ -777,7 +723,7 @@ static void test_fim_send_db_save_null_agent_id(void **state) {
 
     // Assertion of this test is done through fim_send_db_query.
     // The following lines configure the test to check a correct input message.
-    expect_string(__wrap_wdbc_query_ex, query, "agent  syscheck save2 "
+    expect_string(__wrap_wdbc_query_ex, query, "agent (null) syscheck save2 "
         "{\"path\":\"/a/path\","
         "\"timestamp\":123456789,"
         "\"attributes\":{"
@@ -812,7 +758,7 @@ static void test_fim_send_db_save_null_data(void **state) {
 
     // Assertion of this test is done through fim_send_db_query.
     // The following lines configure the test to check a correct input message.
-    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 ");
+    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 (null)");
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -894,25 +840,6 @@ static void test_fim_process_scan_info_query_too_long(void **state) {
     fim_process_scan_info(&sdb, agent_id, FIM_SCAN_START, data);
 }
 
-static void test_fim_process_scan_info_null_sdb(void **state) {
-    const char *agent_id = "007";
-    const char *result = "This is a mock query result, it wont go anywhere";
-    cJSON *event = *state;
-
-    cJSON *data = cJSON_GetObjectItem(event, "data");
-
-    // Assertion of this test is done through fim_send_db_query.
-    // The following lines configure the test to check a correct input message.
-    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck scan_info_update start_scan 123456789");
-    will_return(__wrap_wdbc_query_ex, result);
-    will_return(__wrap_wdbc_query_ex, 0);
-
-    expect_string(__wrap_wdbc_parse_result, result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    fim_process_scan_info(NULL, agent_id, FIM_SCAN_START, data);
-}
-
 static void test_fim_process_scan_info_null_agent_id(void **state) {
     _sdb sdb = {.socket = 10};
     const char *result = "This is a mock query result, it wont go anywhere";
@@ -922,7 +849,7 @@ static void test_fim_process_scan_info_null_agent_id(void **state) {
 
     // Assertion of this test is done through fim_send_db_query.
     // The following lines configure the test to check a correct input message.
-    expect_string(__wrap_wdbc_query_ex, query, "agent  syscheck scan_info_update start_scan 123456789");
+    expect_string(__wrap_wdbc_query_ex, query, "agent (null) syscheck scan_info_update start_scan 123456789");
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -1516,20 +1443,6 @@ static void test_fim_generate_alert_invalid_element_in_audit(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_fim_generate_alert_null_lf(void **state) {
-    fim_data_t *input = *state;
-    char *mode = "fim_mode";
-    char *event_type = "fim_event_type";
-
-    cJSON *data = cJSON_GetObjectItem(input->event, "data");
-    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
-    cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
-    cJSON *audit = cJSON_GetObjectItem(data, "audit");
-
-    expect_assert_failure(fim_generate_alert(NULL, mode, event_type,
-                            attributes, old_attributes, audit));
-}
-
 static void test_fim_generate_alert_null_mode(void **state) {
     fim_data_t *input = *state;
     char *event_type = "fim_event_type";
@@ -1602,7 +1515,7 @@ static void test_fim_generate_alert_null_mode(void **state) {
     /* Assert actual output */
     assert_string_equal(input->lf->full_log,
         "File '/a/file' fim_event_type\n"
-        "Mode: \n"
+        "Mode: (null)\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 }
 
@@ -1677,7 +1590,7 @@ static void test_fim_generate_alert_null_event_type(void **state) {
 
     /* Assert actual output */
     assert_string_equal(input->lf->full_log,
-        "File '/a/file' \n"
+        "File '/a/file' (null)\n"
         "Mode: fim_mode\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 }
@@ -2389,7 +2302,7 @@ static void test_fim_process_alert_no_path(void **state) {
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
 
     assert_string_equal(input->lf->full_log,
-        "File '' added\n"
+        "File '(null)' added\n"
         "Mode: whodata\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
@@ -2486,7 +2399,7 @@ static void test_fim_process_alert_no_mode(void **state) {
 
     assert_string_equal(input->lf->full_log,
         "File '/a/path' added\n"
-        "Mode: \n"
+        "Mode: (null)\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
     /* Assert actual output */
@@ -3090,89 +3003,6 @@ static void test_fim_process_alert_no_audit(void **state) {
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
 
-static void test_fim_process_alert_null_sdb(void **state) {
-    fim_data_t *input = *state;
-    const char *result = "This is a mock query result, it wont go anywhere";
-    int ret;
-
-    cJSON *data = cJSON_GetObjectItem(input->event, "data");
-
-    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
-        fail();
-
-    /* Inside fim_send_db_save */
-    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
-        "{\"path\":\"/a/path\","
-        "\"timestamp\":123456789,"
-        "\"attributes\":{"
-            "\"type\":\"file\","
-            "\"size\":4567,"
-            "\"perm\":\"perm\","
-            "\"user_name\":\"user_name\","
-            "\"group_name\":\"group_name\","
-            "\"uid\":\"uid\","
-            "\"gid\":\"gid\","
-            "\"inode\":5678,"
-            "\"mtime\":6789,"
-            "\"hash_md5\":\"hash_md5\","
-            "\"hash_sha1\":\"hash_sha1\","
-            "\"hash_sha256\":\"hash_sha256\","
-            "\"win_attributes\":\"win_attributes\","
-            "\"symlink_path\":\"symlink_path\","
-            "\"checksum\":\"checksum\"}}");
-    will_return(__wrap_wdbc_query_ex, result);
-    will_return(__wrap_wdbc_query_ex, 0);
-
-    expect_string(__wrap_wdbc_parse_result, result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    ret = fim_process_alert(NULL, input->lf, data);
-
-    assert_int_equal(ret, 0);
-}
-
-static void test_fim_process_alert_null_eventinfo(void **state) {
-    fim_data_t *input = *state;
-    _sdb sdb = {.socket = 10};
-    const char *result = "This is a mock query result, it wont go anywhere";
-    int ret;
-
-    cJSON *data = cJSON_GetObjectItem(input->event, "data");
-
-    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
-        fail();
-
-    /* Inside fim_send_db_save */
-    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
-        "{\"path\":\"/a/path\","
-        "\"timestamp\":123456789,"
-        "\"attributes\":{"
-            "\"type\":\"file\","
-            "\"size\":4567,"
-            "\"perm\":\"perm\","
-            "\"user_name\":\"user_name\","
-            "\"group_name\":\"group_name\","
-            "\"uid\":\"uid\","
-            "\"gid\":\"gid\","
-            "\"inode\":5678,"
-            "\"mtime\":6789,"
-            "\"hash_md5\":\"hash_md5\","
-            "\"hash_sha1\":\"hash_sha1\","
-            "\"hash_sha256\":\"hash_sha256\","
-            "\"win_attributes\":\"win_attributes\","
-            "\"symlink_path\":\"symlink_path\","
-            "\"checksum\":\"checksum\"}}");
-    will_return(__wrap_wdbc_query_ex, result);
-    will_return(__wrap_wdbc_query_ex, 0);
-
-    expect_string(__wrap_wdbc_parse_result, result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    ret = fim_process_alert(&sdb, NULL, data);
-
-    assert_int_equal(ret, 0);
-}
-
 static void test_fim_process_alert_null_event(void **state) {
     fim_data_t *input = *state;
     _sdb sdb = {.socket = 10};
@@ -3436,48 +3266,14 @@ static void test_decode_fim_event_invalid_json(void **state) {
 
 static void test_decode_fim_event_null_sdb(void **state) {
     Eventinfo *lf = *state;
-    const char *result = "This is a mock query result, it wont go anywhere";
-    int ret;
 
-    cJSON *event = cJSON_Parse(lf->log);
-    cJSON_DeleteItemFromObject(event, "type");
-    cJSON_AddStringToObject(event, "type", "scan_start");
-
-    free(lf->log);
-    lf->log = cJSON_PrintUnformatted(event);
-
-    if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
-        fail();
-
-    /* inside fim_process_scan_info */
-    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck scan_info_update start_scan 123456789");
-    will_return(__wrap_wdbc_query_ex, result);
-    will_return(__wrap_wdbc_query_ex, 0);
-
-    expect_string(__wrap_wdbc_parse_result, result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    ret = decode_fim_event(NULL, lf);
-
-    assert_int_equal(ret, 0);
+    expect_assert_failure(decode_fim_event(NULL, lf));
 }
 
 static void test_decode_fim_event_null_eventinfo(void **state) {
     _sdb sdb = {.socket = 10};
-    const char *result = "This is a mock query result, it wont go anywhere";
-    int ret;
 
-    /* inside fim_process_scan_info */
-    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck scan_info_update start_scan 123456789");
-    will_return(__wrap_wdbc_query_ex, result);
-    will_return(__wrap_wdbc_query_ex, 0);
-
-    expect_string(__wrap_wdbc_parse_result, result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    ret = decode_fim_event(&sdb, NULL);
-
-    assert_int_equal(ret, 0);
+    expect_assert_failure(decode_fim_event(&sdb, NULL));
 }
 
 static void test_fim_adjust_checksum_no_attributes_no_win_perm(void **state) {
@@ -3557,26 +3353,6 @@ static void test_fim_adjust_checksum_all_possible_data(void **state) {
     assert_string_equal(*data->checksum, "changed string:replaced\\: this: second part:new attributes");
 }
 
-static void test_fim_adjust_checksum_null_newsum(void **state) {
-    fim_adjust_checksum_data_t *data = *state;
-
-    *data->checksum = strdup("unchanged string");
-
-    fim_adjust_checksum(NULL, data->checksum);
-
-    assert_string_equal(*data->checksum, "unchanged string");
-}
-
-static void test_fim_adjust_checksum_null_checksum(void **state) {
-    fim_adjust_checksum_data_t *data = *state;
-
-    data->newsum->win_perm = strdup("replaced: this");
-    data->newsum->attributes = strdup("new attributes");
-
-    fim_adjust_checksum(data->newsum, NULL);
-
-    assert_null(*data->checksum);
-}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -3589,14 +3365,12 @@ int main(void) {
         /* fim_send_db_delete */
         cmocka_unit_test(test_fim_send_db_delete_success),
         cmocka_unit_test(test_fim_send_db_delete_query_too_long),
-        cmocka_unit_test(test_fim_send_db_delete_null_sdb),
         cmocka_unit_test(test_fim_send_db_delete_null_agent_id),
         cmocka_unit_test(test_fim_send_db_delete_null_path),
 
         /* fim_send_db_save */
         cmocka_unit_test_setup_teardown(test_fim_send_db_save_success, setup_fim_event_cjson, teardown_fim_event_cjson),
         cmocka_unit_test_setup_teardown(test_fim_send_db_save_event_too_long, setup_fim_event_cjson, teardown_fim_event_cjson),
-        cmocka_unit_test_setup_teardown(test_fim_send_db_save_null_sdb, setup_fim_event_cjson, teardown_fim_event_cjson),
         cmocka_unit_test_setup_teardown(test_fim_send_db_save_null_agent_id, setup_fim_event_cjson, teardown_fim_event_cjson),
         cmocka_unit_test_setup_teardown(test_fim_send_db_save_null_data, setup_fim_event_cjson, teardown_fim_event_cjson),
 
@@ -3605,7 +3379,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_process_scan_info_scan_end, setup_fim_event_cjson, teardown_fim_event_cjson),
         cmocka_unit_test_setup_teardown(test_fim_process_scan_info_timestamp_not_a_number,setup_fim_event_cjson, teardown_fim_event_cjson),
         cmocka_unit_test_setup_teardown(test_fim_process_scan_info_query_too_long,setup_fim_event_cjson, teardown_fim_event_cjson),
-        cmocka_unit_test_setup_teardown(test_fim_process_scan_info_null_sdb,setup_fim_event_cjson, teardown_fim_event_cjson),
         cmocka_unit_test_setup_teardown(test_fim_process_scan_info_null_agent_id,setup_fim_event_cjson, teardown_fim_event_cjson),
         cmocka_unit_test_setup_teardown(test_fim_process_scan_info_null_data,setup_fim_event_cjson, teardown_fim_event_cjson),
 
@@ -3638,7 +3411,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_type_not_modified, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_invalid_element_in_attributes, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_invalid_element_in_audit, setup_fim_data, teardown_fim_data),
-        cmocka_unit_test_setup_teardown(test_fim_generate_alert_null_lf, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_null_mode, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_null_event_type, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_null_attributes, setup_fim_data, teardown_fim_data),
@@ -3660,8 +3432,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_process_alert_no_attributes, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_no_old_attributes, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_no_audit, setup_fim_data, teardown_fim_data),
-        cmocka_unit_test_setup_teardown(test_fim_process_alert_null_sdb, setup_fim_data, teardown_fim_data),
-        cmocka_unit_test_setup_teardown(test_fim_process_alert_null_eventinfo, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_null_event, setup_fim_data, teardown_fim_data),
 
         /* decode_fim_event */
@@ -3683,9 +3453,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_adjust_checksum_no_attributes_no_second_part, setup_fim_adjust_checksum, teardown_fim_adjust_checksum),
         cmocka_unit_test_setup_teardown(test_fim_adjust_checksum_no_attributes, setup_fim_adjust_checksum, teardown_fim_adjust_checksum),
         cmocka_unit_test_setup_teardown(test_fim_adjust_checksum_all_possible_data, setup_fim_adjust_checksum, teardown_fim_adjust_checksum),
-        cmocka_unit_test_setup_teardown(test_fim_adjust_checksum_null_newsum, setup_fim_adjust_checksum, teardown_fim_adjust_checksum),
-        cmocka_unit_test_setup_teardown(test_fim_adjust_checksum_null_checksum, setup_fim_adjust_checksum, teardown_fim_adjust_checksum),
-
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

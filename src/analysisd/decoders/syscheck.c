@@ -1133,6 +1133,9 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
     cJSON *root_json = NULL;
     int retval = 0;
 
+    assert(sdb != NULL);
+    assert(lf != NULL);
+
     if (root_json = cJSON_Parse(lf->log), !root_json) {
         merror("Malformed FIM JSON event");
         return retval;
@@ -1495,7 +1498,7 @@ int fim_fetch_attributes(cJSON *new_attrs, cJSON *old_attrs, Eventinfo *lf) {
 int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
     cJSON *attr_it;
 
-    assert(lf);
+    assert(lf != NULL);
 
     cJSON_ArrayForEach(attr_it, attr) {
         if (!attr_it->string) {
