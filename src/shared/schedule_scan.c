@@ -112,7 +112,7 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
  * */
 time_t sched_scan_get_next_time(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
     const time_t next_time = _get_next_time(config, MODULE_TAG, run_on_start);
-    config->time_start = time(NULL);
+    config->time_start = time(NULL) + next_time;
     return next_time;
 }
 
@@ -125,14 +125,17 @@ static time_t _get_next_time(const sched_scan_config *config, const char *MODULE
     if (config->scan_day) {
         // Option 1: Day of the month
         int status = -1;
+        int avoid_repeated_scan = 0;
         int month_counter = config->interval; // To check correct month
-        while (status < 0) {
+        while (status < 0 || !avoid_repeated_scan) {
             status = check_day_to_scan(config->scan_day, config->scan_time);
-            if ( (status == 0) && (month_counter <= 1) ) {
+            //At least a day from the last scan
+            avoid_repeated_scan = (time(NULL) - config->time_start) > 86400;
+            if ( (status == 0) && (month_counter <= 1) && avoid_repeated_scan) {
                 // Correct day, sleep until scan_time and then run
                 return (time_t) get_time_to_hour(config->scan_time);
             } else {
-                if (status == 0) {
+                if (status == 0 && avoid_repeated_scan) {
                     // Correct day, but incorrect month
                     month_counter--;
                 }

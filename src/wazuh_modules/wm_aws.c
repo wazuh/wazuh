@@ -148,7 +148,7 @@ void* wm_aws_main(wm_aws *aws_config) {
 
         mtinfo(WM_AWS_LOGTAG, "Fetching logs finished.");
 
-    } while (1);
+    } while (FOREVER());
 
     return NULL;
 }
