@@ -5,7 +5,7 @@
  * To add this tests on CMAKE:
  *  
  *  list(APPEND tests_names "test_aws_scheduling")
- *  list(APPEND tests_flags "-Wl,--wrap=time,--wrap=wm_delay,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=wm_aws_run_service,--wrap=wm_aws_setup")
+ *  list(APPEND tests_flags "-Wl,--wrap=time,--wrap=wm_delay,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER")
  * 
  * */
 #include <stdarg.h>
@@ -137,6 +137,41 @@ static void check_day_of_month() {
     }
 }
 
+/**
+ * Test that all executions matches day of the month configuration 
+ * */
+static void check_day_of_week() {
+    const wm_aws *ptr = (wm_aws *) aws_module.data;
+    for (int i = 0; i < MAX_DATES; i++) {
+        assert_int_equal( ptr->scan_config.scan_wday, test_aws_date_storage[i].tm_wday);
+        if(i > 0){
+            // Assert there is one week difference
+            assert_int_equal((test_aws_date_storage[i-1].tm_yday + 7) % 365, test_aws_date_storage[i].tm_yday);
+        }
+    }
+}
+
+/**
+ * Test that all executions matches day of the month configuration 
+ * */
+static void check_time_of_day() {
+    const wm_aws *ptr = (wm_aws *) aws_module.data;
+    for (int i = 0; i < MAX_DATES; i++) {
+        char ** parts = OS_StrBreak(':', ptr->scan_config.scan_time, 2);
+        // Look for the particular hour
+        int tm_hour = atoi(parts[0]);
+        int tm_min = atoi(parts[1]);
+        
+        assert_int_equal( tm_hour, test_aws_date_storage[i].tm_hour);
+        assert_int_equal( tm_min, test_aws_date_storage[i].tm_min);
+        if(i > 0){
+            // Assert that there are following days
+            assert_int_equal((test_aws_date_storage[i-1].tm_yday + 1) % 365, test_aws_date_storage[i].tm_yday);
+        }
+    }
+}
+
+
 /****************************************************************/
 
 /** Tests **/
@@ -179,10 +214,51 @@ void test_day_of_month(){
     aws_module.context->start( (wm_aws *) aws_module.data);
 }
 
+void test_day_of_week(){
+    set_up_test(check_day_of_week);
+    const char *string = 
+        "<disabled>no</disabled>\n"
+        "<wday>Sunday</wday>\n"
+        "<time>0:00</time>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<skip_on_error>yes</skip_on_error>\n"
+        "<bucket type=\"config\">\n"
+        "    <name>wazuh-aws-wodle</name>\n"
+        "    <path>config</path>\n"
+        "   <aws_profile>default</aws_profile>\n"
+        "</bucket>"
+    ;
+    OS_XML lxml;
+    XML_NODE nodes = string_to_xml_node(string, &lxml);
+    wm_aws_read(&lxml, nodes, &aws_module);
+    aws_module.context->start( (wm_aws *) aws_module.data);
+}
+
+void test_time_of_day(){
+    set_up_test(check_time_of_day);
+    const char *string = 
+        "<disabled>no</disabled>\n"
+        "<time>15:05</time>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<skip_on_error>yes</skip_on_error>\n"
+        "<bucket type=\"config\">\n"
+        "    <name>wazuh-aws-wodle</name>\n"
+        "    <path>config</path>\n"
+        "   <aws_profile>default</aws_profile>\n"
+        "</bucket>"
+    ;
+    OS_XML lxml;
+    XML_NODE nodes = string_to_xml_node(string, &lxml);
+    wm_aws_read(&lxml, nodes, &aws_module);
+    aws_module.context->start( (wm_aws *) aws_module.data);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_interval_execution),
         cmocka_unit_test(test_day_of_month),
+        cmocka_unit_test(test_day_of_week),
+        cmocka_unit_test(test_time_of_day),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

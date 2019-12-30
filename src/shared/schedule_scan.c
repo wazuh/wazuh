@@ -149,10 +149,18 @@ static time_t _get_next_time(const sched_scan_config *config, const char *MODULE
         }
     } else if (config->scan_wday >= 0) {
         // Option 2: Day of the week
+        if(time(NULL) - config->time_start < 3600){
+            // Sleep an hour
+            wm_delay(3600000);
+        }
         return (time_t) get_time_to_day(config->scan_wday, config->scan_time);
 
     } else if (config->scan_time) {
         // Option 3: Time of the day [hh:mm]
+        if(time(NULL) - config->time_start < 3600){
+            // Sleep an hour
+            wm_delay(3600000);
+        }
         return (time_t) get_time_to_hour(config->scan_time);
     } else if (config->interval) {
         // Option 4: Interval of time
