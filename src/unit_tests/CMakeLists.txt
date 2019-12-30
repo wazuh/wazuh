@@ -46,6 +46,13 @@ list(APPEND tests_names "test_decoder_syscollector")
 list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,fillData \
                          -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
 
+list(APPEND tests_names "test_wdb_parser")
+list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_open_agent2 -Wl,--wrap,wdb_leave \
+                         -Wl,--wrap,wdb_inventory_save_hw -Wl,--wrap,wdb_inventory_save_os -Wl,--wrap,wdb_inventory_save_network -Wl,--wrap,wdb_inventory_delete_network \
+                         -Wl,--wrap,wdb_inventory_save_program -Wl,--wrap,wdb_inventory_delete_program -Wl,--wrap,wdb_inventory_save_hotfix -Wl,--wrap,wdb_inventory_delete_hotfix \
+                         -Wl,--wrap,wdb_inventory_save_port -Wl,--wrap,wdb_inventory_delete_port -Wl,--wrap,wdb_inventory_save_process -Wl,--wrap,wdb_inventory_delete_process \
+                         -Wl,--wrap,wdb_inventory_save_scan_info")
+
 # Config files
 configure_file("test_syscollector.conf" "test_syscollector.conf" COPYONLY)
 
@@ -103,6 +110,28 @@ set_target_properties(
 target_link_libraries(ANALYSISD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 
+# Generate wazuh_db library
+file(GLOB wazuhdb_files ../wazuh_db/*.o)
+list(REMOVE_ITEM modulesd_files ../wazuh_db/main.o)
+
+add_library(WAZUHDB_O STATIC ${wazuhdb_files})
+
+set_source_files_properties(
+  ${wazuhdb_files}
+  PROPERTIES
+  EXTERNAL_OBJECT true
+  GENERATED true
+  )
+
+set_target_properties(
+  WAZUHDB_O
+  PROPERTIES
+  LINKER_LANGUAGE C
+  )
+
+target_link_libraries(WAZUHDB_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+
+
 # Compiling tests
 list(LENGTH tests_names count)
 math(EXPR count "${count} - 1")
@@ -118,6 +147,7 @@ foreach(counter RANGE ${count})
         ${WAZUHEXT}
         MODULESD_O
         ANALYSISD_O
+        WAZUHDB_O
         -lcmocka
         -fprofile-arcs
         -ftest-coverage
