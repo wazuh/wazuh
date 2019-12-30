@@ -13,7 +13,7 @@
 
 #include <sys/types.h>
 
-typedef char os_sha1[65];
+typedef char os_sha1[41];
 
 int OS_SHA1_File(const char *fname, os_sha1 output, int mode) __attribute((nonnull));
 int OS_SHA1_Str(const char *str, ssize_t length, os_sha1 output) __attribute((nonnull));
