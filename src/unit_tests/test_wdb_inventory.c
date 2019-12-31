@@ -171,6 +171,83 @@ int __wrap_wdb_hotfix_delete2(wdb_t * wdb, const char * hotfix)
     return mock();
 }
 
+int __wrap_wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * _state, int pid, const char * process)
+{
+    check_expected(scan_id);
+    check_expected(scan_time);
+    check_expected(protocol);
+    check_expected(local_ip);
+    check_expected(local_port);
+    check_expected(remote_ip);
+    check_expected(remote_port);
+    check_expected(tx_queue);
+    check_expected(rx_queue);
+    check_expected(inode);
+    check_expected(_state);
+    check_expected(pid);
+    check_expected(process);
+    return mock();
+}
+
+int __wrap_wdb_port_delete2(wdb_t * wdb, const char * protocol, const char * local_ip, const int local_port, const int pid)
+{
+    check_expected(protocol);
+    check_expected(local_ip);
+    check_expected(local_port);
+    check_expected(pid);
+    return mock();
+}
+
+int __wrap_wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * _state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor)
+{
+    check_expected(scan_id);
+    check_expected(scan_time);
+    check_expected(pid);
+    check_expected(name);
+    check_expected(_state);
+    check_expected(ppid);
+    check_expected(utime);
+    check_expected(stime);
+    check_expected(cmd);
+    check_expected(argvs);
+    check_expected(euser);
+    check_expected(ruser);
+    check_expected(suser);
+    check_expected(egroup);
+    check_expected(rgroup);
+    check_expected(sgroup);
+    check_expected(fgroup);
+    check_expected(priority);
+    check_expected(nice);
+    check_expected(size);
+    check_expected(vm_size);
+    check_expected(resident);
+    check_expected(share);
+    check_expected(start_time);
+    check_expected(pgrp);
+    check_expected(session);
+    check_expected(nlwp);
+    check_expected(tgid);
+    check_expected(tty);
+    check_expected(processor);
+    return mock();
+}
+
+int __wrap_wdb_process_delete2(wdb_t * wdb, const int pid, const char * name)
+{
+    check_expected(pid);
+    check_expected(name);
+    return mock();
+}
+
+int __wrap_wdb_sys_scan_info_save(wdb_t * wdb, const char * inventory, time_t timestamp, int items)
+{
+    check_expected(inventory);
+    check_expected(timestamp);
+    check_expected(items);
+    return mock();
+}
+
 static int init_wdb_object(void **state)
 {
     wdb_t * wdb = NULL;
@@ -277,13 +354,13 @@ void test_inventory_hardware_save_invalid_input(void **state)
     assert_int_equal(ret, -1);
 
     char *payload3 = "{\"type\":\"added\","
-                     "\"attributes\":{\"board_serial\":\"1234567890\","
-                                     "\"cpu_name\":\"processor123\","
-                                     "\"cpu_cores\":4,"
-                                     "\"cpu_MHz\":2.5,"
-                                     "\"ram_total\":22222,"
-                                     "\"ram_free\":1000,"
-                                     "\"ram_usage\":55}}";
+                      "\"attributes\":{\"board_serial\":\"1234567890\","
+                                      "\"cpu_name\":\"processor123\","
+                                      "\"cpu_cores\":4,"
+                                      "\"cpu_MHz\":2.5,"
+                                      "\"ram_total\":22222,"
+                                      "\"ram_free\":1000,"
+                                      "\"ram_usage\":55}}";
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) HW save request with no timestamp path argument.");
 
@@ -292,7 +369,7 @@ void test_inventory_hardware_save_invalid_input(void **state)
     assert_int_equal(ret, -1);
 
     char *payload4 = "{\"type\":\"added\","
-                     "\"timestamp\":\"12345\"}";
+                      "\"timestamp\":\"12345\"}";
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) HW save request with no attributes argument.");
 
@@ -408,19 +485,19 @@ void test_inventory_os_save_invalid_input(void **state)
     assert_int_equal(ret, -1);
 
     char *payload3 = "{\"type\":\"added\","
-                     "\"attributes\":{\"os_name\":\"Ubuntu\","
-                                     "\"os_major\":\"18\","
-                                     "\"os_minor\":\"4\","
-                                     "\"os_build\":\"1515\","
-                                     "\"os_version\":\"Desktop\","
-                                     "\"os_codename\":\"UU\","
-                                     "\"os_platform\":\"Linux\","
-                                     "\"sysname\":\"UbuntuOS\","
-                                     "\"hostname\":\"wazuh\","
-                                     "\"release\":\"1.5\","
-                                     "\"version\":\"5\","
-                                     "\"architecture\":\"x86_64\","
-                                     "\"os_release\":\"x23\"}}";
+                      "\"attributes\":{\"os_name\":\"Ubuntu\","
+                                      "\"os_major\":\"18\","
+                                      "\"os_minor\":\"4\","
+                                      "\"os_build\":\"1515\","
+                                      "\"os_version\":\"Desktop\","
+                                      "\"os_codename\":\"UU\","
+                                      "\"os_platform\":\"Linux\","
+                                      "\"sysname\":\"UbuntuOS\","
+                                      "\"hostname\":\"wazuh\","
+                                      "\"release\":\"1.5\","
+                                      "\"version\":\"5\","
+                                      "\"architecture\":\"x86_64\","
+                                      "\"os_release\":\"x23\"}}";
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) OS save request with no timestamp path argument.");
 
@@ -429,7 +506,7 @@ void test_inventory_os_save_invalid_input(void **state)
     assert_int_equal(ret, -1);
 
     char *payload4 = "{\"type\":\"added\","
-                     "\"timestamp\":\"12345\"}";
+                      "\"timestamp\":\"12345\"}";
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) OS save request with no attributes argument.");
 
@@ -689,7 +766,7 @@ void test_inventory_network_save_invalid_input(void **state)
     assert_int_equal(ret, -1);
 
     char *payload4 = "{\"type\":\"added\","
-                     "\"timestamp\":\"12345\"}";
+                      "\"timestamp\":\"12345\"}";
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) network save request with no attributes argument.");
 
@@ -803,7 +880,7 @@ void test_inventory_network_delete_invalid_input(void **state)
     assert_int_equal(ret, -1);
 
     char *payload3 = "{\"type\":\"deleted\","
-                     "\"timestamp\":\"12345\"}";
+                      "\"timestamp\":\"12345\"}";
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) network delete request with no attributes argument.");
 
@@ -919,19 +996,19 @@ void test_inventory_program_save_invalid_input(void **state)
     assert_int_equal(ret, -1);
 
     char *payload3 = "{\"type\":\"added\","
-                     "\"attributes\":{\"name\":\"Wazuh\","
-                                     "\"format\":\"pkg\","
-                                     "\"priority\":\"high\","
-                                     "\"group\":\"000\","
-                                     "\"size\":15000,"
-                                     "\"vendor\":\"Wazuh Inc\","
-                                     "\"install_time\":\"123456789\","
-                                     "\"version\":\"3.12\","
-                                     "\"architecture\":\"x64\","
-                                     "\"multi-arch\":\"x64_86\","
-                                     "\"source\":\"C\","
-                                     "\"description\":\"Wazuh agent package\","
-                                     "\"location\":\"/var/bin\"}}";
+                      "\"attributes\":{\"name\":\"Wazuh\","
+                                      "\"format\":\"pkg\","
+                                      "\"priority\":\"high\","
+                                      "\"group\":\"000\","
+                                      "\"size\":15000,"
+                                      "\"vendor\":\"Wazuh Inc\","
+                                      "\"install_time\":\"123456789\","
+                                      "\"version\":\"3.12\","
+                                      "\"architecture\":\"x64\","
+                                      "\"multi-arch\":\"x64_86\","
+                                      "\"source\":\"C\","
+                                      "\"description\":\"Wazuh agent package\","
+                                      "\"location\":\"/var/bin\"}}";
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) program save request with no timestamp path argument.");
 
@@ -940,7 +1017,7 @@ void test_inventory_program_save_invalid_input(void **state)
     assert_int_equal(ret, -1);
 
     char *payload4 = "{\"type\":\"added\","
-                     "\"timestamp\":\"12345\"}";
+                      "\"timestamp\":\"12345\"}";
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) program save request with no attributes argument.");
 
@@ -1032,7 +1109,7 @@ void test_inventory_program_delete_invalid_input(void **state)
     assert_int_equal(ret, -1);
 
     char *payload3 = "{\"type\":\"deleted\","
-                     "\"timestamp\":\"12345\"}";
+                      "\"timestamp\":\"12345\"}";
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) program delete request with no attributes argument.");
 
@@ -1100,7 +1177,7 @@ void test_inventory_hotfix_save_invalid_input(void **state)
     assert_int_equal(ret, -1);
 
     char *payload3 = "{\"type\":\"added\","
-                     "\"attributes\":{\"hotfix\":\"KB12345\"}}";
+                      "\"attributes\":{\"hotfix\":\"KB12345\"}}";
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) hotfix save request with no timestamp path argument.");
 
@@ -1109,7 +1186,7 @@ void test_inventory_hotfix_save_invalid_input(void **state)
     assert_int_equal(ret, -1);
 
     char *payload4 = "{\"type\":\"added\","
-                     "\"timestamp\":\"12345\"}";
+                      "\"timestamp\":\"12345\"}";
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) hotfix save request with no attributes argument.");
 
@@ -1173,11 +1250,617 @@ void test_inventory_hotfix_delete_invalid_input(void **state)
     assert_int_equal(ret, -1);
 
     char *payload3 = "{\"type\":\"deleted\","
-                     "\"timestamp\":\"12345\"}";
+                      "\"timestamp\":\"12345\"}";
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) hotfix delete request with no attributes argument.");
 
     ret = wdb_inventory_delete_hotfix(*state, payload3);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_inventory_port_save(void **state)
+{
+    (void) state;
+
+    char *payload = "{\"type\":\"added\","
+                     "\"timestamp\":\"67890\","
+                     "\"attributes\":{\"protocol\":\"tcp\","
+                                     "\"local_ip\":\"10.0.2.9\","
+                                     "\"local_port\":5555,"
+                                     "\"remote_ip\":\"10.0.2.6\","
+                                     "\"remote_port\":22,"
+                                     "\"tx_queue\":500,"
+                                     "\"rx_queue\":200,"
+                                     "\"inode\":0,"
+                                     "\"state\":\"listening\","
+                                     "\"PID\":1234,"
+                                     "\"process\":\"ssh\"}}";
+
+    expect_string(__wrap_wdb_port_save, scan_id, "1");
+    expect_string(__wrap_wdb_port_save, scan_time, "67890");
+    expect_string(__wrap_wdb_port_save, protocol, "tcp");
+    expect_string(__wrap_wdb_port_save, local_ip, "10.0.2.9");
+    expect_value(__wrap_wdb_port_save, local_port, 5555);
+    expect_string(__wrap_wdb_port_save, remote_ip, "10.0.2.6");
+    expect_value(__wrap_wdb_port_save, remote_port, 22);
+    expect_value(__wrap_wdb_port_save, tx_queue, 500);
+    expect_value(__wrap_wdb_port_save, rx_queue, 200);
+    expect_value(__wrap_wdb_port_save, inode, 0);
+    expect_string(__wrap_wdb_port_save, _state, "listening");
+    expect_value(__wrap_wdb_port_save, pid, 1234);
+    expect_string(__wrap_wdb_port_save, process, "ssh");
+    will_return(__wrap_wdb_port_save, 0);
+
+    int ret = wdb_inventory_save_port(*state, payload);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_inventory_port_save_error(void **state)
+{
+    (void) state;
+
+    char *payload = "{\"type\":\"added\","
+                     "\"timestamp\":\"67890\","
+                     "\"attributes\":{\"protocol\":\"tcp\","
+                                     "\"local_ip\":\"10.0.2.9\","
+                                     "\"local_port\":5555,"
+                                     "\"remote_ip\":\"10.0.2.6\","
+                                     "\"remote_port\":22,"
+                                     "\"tx_queue\":500,"
+                                     "\"rx_queue\":200,"
+                                     "\"inode\":0,"
+                                     "\"state\":\"listening\","
+                                     "\"PID\":1234,"
+                                     "\"process\":\"ssh\"}}";
+
+    expect_string(__wrap_wdb_port_save, scan_id, "1");
+    expect_string(__wrap_wdb_port_save, scan_time, "67890");
+    expect_string(__wrap_wdb_port_save, protocol, "tcp");
+    expect_string(__wrap_wdb_port_save, local_ip, "10.0.2.9");
+    expect_value(__wrap_wdb_port_save, local_port, 5555);
+    expect_string(__wrap_wdb_port_save, remote_ip, "10.0.2.6");
+    expect_value(__wrap_wdb_port_save, remote_port, 22);
+    expect_value(__wrap_wdb_port_save, tx_queue, 500);
+    expect_value(__wrap_wdb_port_save, rx_queue, 200);
+    expect_value(__wrap_wdb_port_save, inode, 0);
+    expect_string(__wrap_wdb_port_save, _state, "listening");
+    expect_value(__wrap_wdb_port_save, pid, 1234);
+    expect_string(__wrap_wdb_port_save, process, "ssh");
+    will_return(__wrap_wdb_port_save, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot save Port information.");
+
+    int ret = wdb_inventory_save_port(*state, payload);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_inventory_port_save_invalid_input(void **state)
+{
+    (void) state;
+
+    char *payload1 = NULL;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse inventory payload: '(null)'");
+
+    int ret = wdb_inventory_save_port(*state, payload1);
+
+    assert_int_equal(ret, -1);
+
+    char *payload2 = "abcdef";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse inventory payload: 'abcdef'");
+
+    ret = wdb_inventory_save_port(*state, payload2);
+
+    assert_int_equal(ret, -1);
+
+    char *payload3 = "{\"type\":\"added\","
+                      "\"attributes\":{\"protocol\":\"tcp\","
+                                      "\"local_ip\":\"10.0.2.9\","
+                                      "\"local_port\":5555,"
+                                      "\"remote_ip\":\"10.0.2.6\","
+                                      "\"remote_port\":22,"
+                                      "\"tx_queue\":500,"
+                                      "\"rx_queue\":200,"
+                                      "\"inode\":0,"
+                                      "\"state\":\"listening\","
+                                      "\"PID\":1234,"
+                                      "\"process\":\"ssh\"}}";
+
+    expect_string(__wrap__merror, formatted_msg, "DB(000) port save request with no timestamp path argument.");
+
+    ret = wdb_inventory_save_port(*state, payload3);
+
+    assert_int_equal(ret, -1);
+
+    char *payload4 = "{\"type\":\"added\","
+                      "\"timestamp\":\"12345\"}";
+
+    expect_string(__wrap__merror, formatted_msg, "DB(000) port save request with no attributes argument.");
+
+    ret = wdb_inventory_save_port(*state, payload4);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_inventory_port_delete(void **state)
+{
+    (void) state;
+
+    char *payload = "{\"type\":\"deleted\","
+                     "\"timestamp\":\"67890\","
+                     "\"attributes\":{\"protocol\":\"tcp\","
+                                     "\"local_ip\":\"10.0.2.9\","
+                                     "\"local_port\":5555,"
+                                     "\"remote_ip\":\"10.0.2.6\","
+                                     "\"remote_port\":22,"
+                                     "\"tx_queue\":500,"
+                                     "\"rx_queue\":200,"
+                                     "\"inode\":0,"
+                                     "\"state\":\"listening\","
+                                     "\"PID\":1234,"
+                                     "\"process\":\"ssh\"}}";
+
+    expect_string(__wrap_wdb_port_delete2, protocol, "tcp");
+    expect_string(__wrap_wdb_port_delete2, local_ip, "10.0.2.9");
+    expect_value(__wrap_wdb_port_delete2, local_port, 5555);
+    expect_value(__wrap_wdb_port_delete2, pid, 1234);
+    will_return(__wrap_wdb_port_delete2, 0);
+
+    int ret = wdb_inventory_delete_port(*state, payload);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_inventory_port_delete_error(void **state)
+{
+    (void) state;
+
+    char *payload = "{\"type\":\"deleted\","
+                     "\"timestamp\":\"67890\","
+                     "\"attributes\":{\"protocol\":\"tcp\","
+                                     "\"local_ip\":\"10.0.2.9\","
+                                     "\"local_port\":5555,"
+                                     "\"remote_ip\":\"10.0.2.6\","
+                                     "\"remote_port\":22,"
+                                     "\"tx_queue\":500,"
+                                     "\"rx_queue\":200,"
+                                     "\"inode\":0,"
+                                     "\"state\":\"listening\","
+                                     "\"PID\":1234,"
+                                     "\"process\":\"ssh\"}}";
+
+    expect_string(__wrap_wdb_port_delete2, protocol, "tcp");
+    expect_string(__wrap_wdb_port_delete2, local_ip, "10.0.2.9");
+    expect_value(__wrap_wdb_port_delete2, local_port, 5555);
+    expect_value(__wrap_wdb_port_delete2, pid, 1234);
+    will_return(__wrap_wdb_port_delete2, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot delete old Port entry.");
+
+    int ret = wdb_inventory_delete_port(*state, payload);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_inventory_port_delete_invalid_input(void **state)
+{
+    (void) state;
+
+    char *payload1 = NULL;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse inventory payload: '(null)'");
+
+    int ret = wdb_inventory_delete_port(*state, payload1);
+
+    assert_int_equal(ret, -1);
+
+    char *payload2 = "abcdef";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse inventory payload: 'abcdef'");
+
+    ret = wdb_inventory_delete_port(*state, payload2);
+
+    assert_int_equal(ret, -1);
+
+    char *payload3 = "{\"type\":\"deleted\","
+                      "\"timestamp\":\"12345\"}";
+
+    expect_string(__wrap__merror, formatted_msg, "DB(000) port delete request with no attributes argument.");
+
+    ret = wdb_inventory_delete_port(*state, payload3);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_inventory_process_save(void **state)
+{
+    (void) state;
+
+    char *payload = "{\"type\":\"added\","
+                     "\"timestamp\":\"78901\","
+                     "\"attributes\":{\"pid\":1234,"
+                                     "\"name\":\"bash\","
+                                     "\"state\":\"S\","
+                                     "\"ppid\":123,"
+                                     "\"utime\":456,"
+                                     "\"stime\":123,"
+                                     "\"cmd\":\"bash -c\","
+                                     "\"argvs\":[\"python\",\"main.py\"],"
+                                     "\"euser\":\"root\","
+                                     "\"ruser\":\"root\","
+                                     "\"suser\":\"root\","
+                                     "\"egroup\":\"admin\","
+                                     "\"rgroup\":\"admin\","
+                                     "\"sgroup\":\"admin\","
+                                     "\"fgroup\":\"admin\","
+                                     "\"priority\":10,"
+                                     "\"nice\":0,"
+                                     "\"size\":1000,"
+                                     "\"vm_size\":500,"
+                                     "\"resident\":200,"
+                                     "\"share\":100,"
+                                     "\"start_time\":123456789,"
+                                     "\"pgrp\":75,"
+                                     "\"session\":12,"
+                                     "\"nlwp\":33,"
+                                     "\"tgid\":5,"
+                                     "\"tty\":15,"
+                                     "\"processor\":2}}";
+
+    expect_string(__wrap_wdb_process_save, scan_id, "1");
+    expect_string(__wrap_wdb_process_save, scan_time, "78901");
+    expect_value(__wrap_wdb_process_save, pid, 1234);
+    expect_string(__wrap_wdb_process_save, name, "bash");
+    expect_string(__wrap_wdb_process_save, _state, "S");
+    expect_value(__wrap_wdb_process_save, ppid, 123);
+    expect_value(__wrap_wdb_process_save, utime, 456);
+    expect_value(__wrap_wdb_process_save, stime, 123);
+    expect_string(__wrap_wdb_process_save, cmd, "bash -c");
+    expect_string(__wrap_wdb_process_save, argvs, "python,main.py");
+    expect_string(__wrap_wdb_process_save, euser, "root");
+    expect_string(__wrap_wdb_process_save, ruser, "root");
+    expect_string(__wrap_wdb_process_save, suser, "root");
+    expect_string(__wrap_wdb_process_save, egroup, "admin");
+    expect_string(__wrap_wdb_process_save, rgroup, "admin");
+    expect_string(__wrap_wdb_process_save, sgroup, "admin");
+    expect_string(__wrap_wdb_process_save, fgroup, "admin");
+    expect_value(__wrap_wdb_process_save, priority, 10);
+    expect_value(__wrap_wdb_process_save, nice, 0);
+    expect_value(__wrap_wdb_process_save, size, 1000);
+    expect_value(__wrap_wdb_process_save, vm_size, 500);
+    expect_value(__wrap_wdb_process_save, resident, 200);
+    expect_value(__wrap_wdb_process_save, share, 100);
+    expect_value(__wrap_wdb_process_save, start_time, 123456789);
+    expect_value(__wrap_wdb_process_save, pgrp, 75);
+    expect_value(__wrap_wdb_process_save, session, 12);
+    expect_value(__wrap_wdb_process_save, nlwp, 33);
+    expect_value(__wrap_wdb_process_save, tgid, 5);
+    expect_value(__wrap_wdb_process_save, tty, 15);
+    expect_value(__wrap_wdb_process_save, processor, 2);
+    will_return(__wrap_wdb_process_save, 0);
+
+    int ret = wdb_inventory_save_process(*state, payload);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_inventory_process_save_error(void **state)
+{
+    (void) state;
+
+    char *payload = "{\"type\":\"added\","
+                     "\"timestamp\":\"78901\","
+                     "\"attributes\":{\"pid\":1234,"
+                                     "\"name\":\"bash\","
+                                     "\"state\":\"S\","
+                                     "\"ppid\":123,"
+                                     "\"utime\":456,"
+                                     "\"stime\":123,"
+                                     "\"cmd\":\"bash -c\","
+                                     "\"argvs\":[\"python\",\"main.py\"],"
+                                     "\"euser\":\"root\","
+                                     "\"ruser\":\"root\","
+                                     "\"suser\":\"root\","
+                                     "\"egroup\":\"admin\","
+                                     "\"rgroup\":\"admin\","
+                                     "\"sgroup\":\"admin\","
+                                     "\"fgroup\":\"admin\","
+                                     "\"priority\":10,"
+                                     "\"nice\":0,"
+                                     "\"size\":1000,"
+                                     "\"vm_size\":500,"
+                                     "\"resident\":200,"
+                                     "\"share\":100,"
+                                     "\"start_time\":123456789,"
+                                     "\"pgrp\":75,"
+                                     "\"session\":12,"
+                                     "\"nlwp\":33,"
+                                     "\"tgid\":5,"
+                                     "\"tty\":15,"
+                                     "\"processor\":2}}";
+
+    expect_string(__wrap_wdb_process_save, scan_id, "1");
+    expect_string(__wrap_wdb_process_save, scan_time, "78901");
+    expect_value(__wrap_wdb_process_save, pid, 1234);
+    expect_string(__wrap_wdb_process_save, name, "bash");
+    expect_string(__wrap_wdb_process_save, _state, "S");
+    expect_value(__wrap_wdb_process_save, ppid, 123);
+    expect_value(__wrap_wdb_process_save, utime, 456);
+    expect_value(__wrap_wdb_process_save, stime, 123);
+    expect_string(__wrap_wdb_process_save, cmd, "bash -c");
+    expect_string(__wrap_wdb_process_save, argvs, "python,main.py");
+    expect_string(__wrap_wdb_process_save, euser, "root");
+    expect_string(__wrap_wdb_process_save, ruser, "root");
+    expect_string(__wrap_wdb_process_save, suser, "root");
+    expect_string(__wrap_wdb_process_save, egroup, "admin");
+    expect_string(__wrap_wdb_process_save, rgroup, "admin");
+    expect_string(__wrap_wdb_process_save, sgroup, "admin");
+    expect_string(__wrap_wdb_process_save, fgroup, "admin");
+    expect_value(__wrap_wdb_process_save, priority, 10);
+    expect_value(__wrap_wdb_process_save, nice, 0);
+    expect_value(__wrap_wdb_process_save, size, 1000);
+    expect_value(__wrap_wdb_process_save, vm_size, 500);
+    expect_value(__wrap_wdb_process_save, resident, 200);
+    expect_value(__wrap_wdb_process_save, share, 100);
+    expect_value(__wrap_wdb_process_save, start_time, 123456789);
+    expect_value(__wrap_wdb_process_save, pgrp, 75);
+    expect_value(__wrap_wdb_process_save, session, 12);
+    expect_value(__wrap_wdb_process_save, nlwp, 33);
+    expect_value(__wrap_wdb_process_save, tgid, 5);
+    expect_value(__wrap_wdb_process_save, tty, 15);
+    expect_value(__wrap_wdb_process_save, processor, 2);
+    will_return(__wrap_wdb_process_save, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot save Process information.");
+
+    int ret = wdb_inventory_save_process(*state, payload);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_inventory_process_save_invalid_input(void **state)
+{
+    (void) state;
+
+    char *payload1 = NULL;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse inventory payload: '(null)'");
+
+    int ret = wdb_inventory_save_process(*state, payload1);
+
+    assert_int_equal(ret, -1);
+
+    char *payload2 = "abcdef";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse inventory payload: 'abcdef'");
+
+    ret = wdb_inventory_save_process(*state, payload2);
+
+    assert_int_equal(ret, -1);
+
+    char *payload3 = "{\"type\":\"added\","
+                      "\"attributes\":{\"pid\":1234,"
+                                      "\"name\":\"bash\","
+                                      "\"state\":\"S\","
+                                      "\"ppid\":123,"
+                                      "\"utime\":456,"
+                                      "\"stime\":123,"
+                                      "\"cmd\":\"bash -c\","
+                                      "\"argvs\":[\"python\",\"main.py\"],"
+                                      "\"euser\":\"root\","
+                                      "\"ruser\":\"root\","
+                                      "\"suser\":\"root\","
+                                      "\"egroup\":\"admin\","
+                                      "\"rgroup\":\"admin\","
+                                      "\"sgroup\":\"admin\","
+                                      "\"fgroup\":\"admin\","
+                                      "\"priority\":10,"
+                                      "\"nice\":0,"
+                                      "\"size\":1000,"
+                                      "\"vm_size\":500,"
+                                      "\"resident\":200,"
+                                      "\"share\":100,"
+                                      "\"start_time\":123456789,"
+                                      "\"pgrp\":75,"
+                                      "\"session\":12,"
+                                      "\"nlwp\":33,"
+                                      "\"tgid\":5,"
+                                      "\"tty\":15,"
+                                      "\"processor\":2}}";
+
+    expect_string(__wrap__merror, formatted_msg, "DB(000) process save request with no timestamp path argument.");
+
+    ret = wdb_inventory_save_process(*state, payload3);
+
+    assert_int_equal(ret, -1);
+
+    char *payload4 = "{\"type\":\"added\","
+                      "\"timestamp\":\"12345\"}";
+
+    expect_string(__wrap__merror, formatted_msg, "DB(000) process save request with no attributes argument.");
+
+    ret = wdb_inventory_save_process(*state, payload4);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_inventory_process_delete(void **state)
+{
+    (void) state;
+
+    char *payload = "{\"type\":\"deleted\","
+                     "\"timestamp\":\"78901\","
+                     "\"attributes\":{\"pid\":1234,"
+                                     "\"name\":\"bash\","
+                                     "\"state\":\"S\","
+                                     "\"ppid\":123,"
+                                     "\"utime\":456,"
+                                     "\"stime\":123,"
+                                     "\"cmd\":\"bash -c\","
+                                     "\"argvs\":[\"python\",\"main.py\"],"
+                                     "\"euser\":\"root\","
+                                     "\"ruser\":\"root\","
+                                     "\"suser\":\"root\","
+                                     "\"egroup\":\"admin\","
+                                     "\"rgroup\":\"admin\","
+                                     "\"sgroup\":\"admin\","
+                                     "\"fgroup\":\"admin\","
+                                     "\"priority\":10,"
+                                     "\"nice\":0,"
+                                     "\"size\":1000,"
+                                     "\"vm_size\":500,"
+                                     "\"resident\":200,"
+                                     "\"share\":100,"
+                                     "\"start_time\":123456789,"
+                                     "\"pgrp\":75,"
+                                     "\"session\":12,"
+                                     "\"nlwp\":33,"
+                                     "\"tgid\":5,"
+                                     "\"tty\":15,"
+                                     "\"processor\":2}}";
+
+    expect_value(__wrap_wdb_process_delete2, pid, 1234);
+    expect_string(__wrap_wdb_process_delete2, name, "bash");
+    will_return(__wrap_wdb_process_delete2, 0);
+
+    int ret = wdb_inventory_delete_process(*state, payload);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_inventory_process_delete_error(void **state)
+{
+    (void) state;
+
+    char *payload = "{\"type\":\"deleted\","
+                     "\"timestamp\":\"78901\","
+                     "\"attributes\":{\"pid\":1234,"
+                                     "\"name\":\"bash\","
+                                     "\"state\":\"S\","
+                                     "\"ppid\":123,"
+                                     "\"utime\":456,"
+                                     "\"stime\":123,"
+                                     "\"cmd\":\"bash -c\","
+                                     "\"argvs\":[\"python\",\"main.py\"],"
+                                     "\"euser\":\"root\","
+                                     "\"ruser\":\"root\","
+                                     "\"suser\":\"root\","
+                                     "\"egroup\":\"admin\","
+                                     "\"rgroup\":\"admin\","
+                                     "\"sgroup\":\"admin\","
+                                     "\"fgroup\":\"admin\","
+                                     "\"priority\":10,"
+                                     "\"nice\":0,"
+                                     "\"size\":1000,"
+                                     "\"vm_size\":500,"
+                                     "\"resident\":200,"
+                                     "\"share\":100,"
+                                     "\"start_time\":123456789,"
+                                     "\"pgrp\":75,"
+                                     "\"session\":12,"
+                                     "\"nlwp\":33,"
+                                     "\"tgid\":5,"
+                                     "\"tty\":15,"
+                                     "\"processor\":2}}";
+
+    expect_value(__wrap_wdb_process_delete2, pid, 1234);
+    expect_string(__wrap_wdb_process_delete2, name, "bash");
+    will_return(__wrap_wdb_process_delete2, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot delete old Process entry.");
+
+    int ret = wdb_inventory_delete_process(*state, payload);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_inventory_process_delete_invalid_input(void **state)
+{
+    (void) state;
+
+    char *payload1 = NULL;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse inventory payload: '(null)'");
+
+    int ret = wdb_inventory_delete_process(*state, payload1);
+
+    assert_int_equal(ret, -1);
+
+    char *payload2 = "abcdef";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse inventory payload: 'abcdef'");
+
+    ret = wdb_inventory_delete_process(*state, payload2);
+
+    assert_int_equal(ret, -1);
+
+    char *payload3 = "{\"type\":\"deleted\","
+                      "\"timestamp\":\"12345\"}";
+
+    expect_string(__wrap__merror, formatted_msg, "DB(000) process delete request with no attributes argument.");
+
+    ret = wdb_inventory_delete_process(*state, payload3);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_inventory_scan_info_save(void **state)
+{
+    (void) state;
+
+    char *payload = "{\"timestamp\":12345,"
+                     "\"items\":10}";
+
+    expect_string(__wrap_wdb_sys_scan_info_save, inventory, "hardware");
+    expect_value(__wrap_wdb_sys_scan_info_save, timestamp, 12345);
+    expect_value(__wrap_wdb_sys_scan_info_save, items, 10);
+    will_return(__wrap_wdb_sys_scan_info_save, 0);
+
+    int ret = wdb_inventory_save_scan_info(*state, "hardware", payload);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_inventory_scan_info_save_error(void **state)
+{
+    (void) state;
+
+    char *payload = "{\"timestamp\":12345,"
+                     "\"items\":10}";
+
+    expect_string(__wrap_wdb_sys_scan_info_save, inventory, "hardware");
+    expect_value(__wrap_wdb_sys_scan_info_save, timestamp, 12345);
+    expect_value(__wrap_wdb_sys_scan_info_save, items, 10);
+    will_return(__wrap_wdb_sys_scan_info_save, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot save scan information.");
+
+    int ret = wdb_inventory_save_scan_info(*state, "hardware", payload);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_inventory_scan_info_save_invalid_input(void **state)
+{
+    (void) state;
+
+    char *payload1 = NULL;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse inventory scan info payload: '(null)'");
+
+    int ret = wdb_inventory_save_scan_info(*state, "hardware", payload1);
+
+    assert_int_equal(ret, -1);
+
+    char *payload2 = "abcdef";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse inventory scan info payload: 'abcdef'");
+
+    ret = wdb_inventory_save_scan_info(*state, "hardware", payload2);
 
     assert_int_equal(ret, -1);
 }
@@ -1207,7 +1890,22 @@ int main(void) {
         cmocka_unit_test(test_inventory_hotfix_save_invalid_input),
         cmocka_unit_test(test_inventory_hotfix_delete),
         cmocka_unit_test(test_inventory_hotfix_delete_error),
-        cmocka_unit_test(test_inventory_hotfix_delete_invalid_input)
+        cmocka_unit_test(test_inventory_hotfix_delete_invalid_input),
+        cmocka_unit_test(test_inventory_port_save),
+        cmocka_unit_test(test_inventory_port_save_error),
+        cmocka_unit_test(test_inventory_port_save_invalid_input),
+        cmocka_unit_test(test_inventory_port_delete),
+        cmocka_unit_test(test_inventory_port_delete_error),
+        cmocka_unit_test(test_inventory_port_delete_invalid_input),
+        cmocka_unit_test(test_inventory_process_save),
+        cmocka_unit_test(test_inventory_process_save_error),
+        cmocka_unit_test(test_inventory_process_save_invalid_input),
+        cmocka_unit_test(test_inventory_process_delete),
+        cmocka_unit_test(test_inventory_process_delete_error),
+        cmocka_unit_test(test_inventory_process_delete_invalid_input),
+        cmocka_unit_test(test_inventory_scan_info_save),
+        cmocka_unit_test(test_inventory_scan_info_save_error),
+        cmocka_unit_test(test_inventory_scan_info_save_invalid_input)
     };
     return cmocka_run_group_tests(tests, init_wdb_object, delete_wdb_object);
 }

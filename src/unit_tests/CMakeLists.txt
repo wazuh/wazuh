@@ -35,9 +35,6 @@ enable_testing()
 
 
 # Tests list and flags
-list(APPEND tests_names "test_rbtree_op")
-list(APPEND tests_flags " ")
-
 list(APPEND tests_names "test_syscollector_common")
 list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_replace \
                          -Wl,--wrap,rbtree_delete -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_keys -Wl,--wrap,w_get_timestamp -Wl,--wrap,wm_sendmsg")
@@ -56,7 +53,9 @@ list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn 
 list(APPEND tests_names "test_wdb_inventory")
 list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_hardware_save -Wl,--wrap,wdb_osinfo_save -Wl,--wrap,wdb_netinfo_save \
                          -Wl,--wrap,wdb_netproto_save -Wl,--wrap,wdb_netaddr_save -Wl,--wrap,wdb_netinfo_delete2 -Wl,--wrap,wdb_package_save \
-                         -Wl,--wrap,wdb_package_delete2 -Wl,--wrap,wdb_hotfix_save -Wl,--wrap,wdb_set_hotfix_metadata -Wl,--wrap,wdb_hotfix_delete2")
+                         -Wl,--wrap,wdb_package_delete2 -Wl,--wrap,wdb_hotfix_save -Wl,--wrap,wdb_set_hotfix_metadata -Wl,--wrap,wdb_hotfix_delete2 \
+                         -Wl,--wrap,wdb_port_save -Wl,--wrap,wdb_port_delete2 -Wl,--wrap,wdb_process_save -Wl,--wrap,wdb_process_delete2 \
+                         -Wl,--wrap,wdb_sys_scan_info_save")
 
 # Config files
 configure_file("test_syscollector.conf" "test_syscollector.conf" COPYONLY)

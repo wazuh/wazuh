@@ -617,8 +617,14 @@ int wdb_inventory_save_process(wdb_t * wdb, const char * payload) {
     char * state = attribute ? attribute->valuestring : NULL;
     attribute = cJSON_GetObjectItem(attributes, "cmd");
     char * cmd = attribute ? attribute->valuestring : NULL;
-    attribute = cJSON_GetObjectItem(attributes, "argvs");
-    char * argvs = attribute ? attribute->valuestring : NULL;
+    cJSON * argvs_array = NULL;
+    char * argvs = NULL;
+    if (argvs_array = cJSON_GetObjectItem(attributes, "argvs"), argvs_array) {
+        int i;
+        for (i = 0; i < cJSON_GetArraySize(argvs_array); i++) {
+            wm_strcat(&argvs, cJSON_GetArrayItem(argvs_array, i)->valuestring, ',');
+        }
+    }
     attribute = cJSON_GetObjectItem(attributes, "euser");
     char * euser = attribute ? attribute->valuestring : NULL;
     attribute = cJSON_GetObjectItem(attributes, "ruser");
@@ -638,6 +644,9 @@ int wdb_inventory_save_process(wdb_t * wdb, const char * payload) {
         mdebug1("Cannot save Process information.");
     }
 
+    if (argvs) {
+        free(argvs);
+    }
     cJSON_Delete(data);
     return result;
 }
