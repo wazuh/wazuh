@@ -27,15 +27,7 @@ static struct tm test_aws_date_storage[TEST_MAX_DATES];
  *  Since module run is in a loop we pass a function ptr 
  * to use when cut condition is met in wrapped funcion
  * */
-static void (*check_function_ptr)(const sched_scan_config *scan_config, const struct tm *date_array, unsigned int MAX_DATES) = 0;
-
-/**     Mocked functions       **/
-static int FOREVER_LOOP = 1;
-
-//Function that defines the ending of the module main loop
-int __wrap_FOREVER(){
-    return FOREVER_LOOP;
-}
+static void (*check_function_ptr)(const sched_scan_config *scan_config, struct tm *date_array, unsigned int MAX_DATES) = 0;
 
 int __wrap_StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) short int type)
 {
@@ -51,7 +43,7 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
         const wm_aws *ptr = (wm_aws *) aws_module.data;
         check_function_ptr( &ptr->scan_config, &test_aws_date_storage[0], TEST_MAX_DATES);
         // Break infinite loop
-        FOREVER_LOOP = 0;
+        disable_forever_loop();
     }
     return 0;
 }
@@ -59,8 +51,8 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
 
 /******* Helpers **********/
 
-static void set_up_test(void (*ptr)(const sched_scan_config *scan_config, const struct tm *date_array, unsigned int MAX_DATES)) {
-    FOREVER_LOOP = 1;
+static void set_up_test(void (*ptr)(const sched_scan_config *scan_config, struct tm *date_array, unsigned int MAX_DATES)) {
+    enable_forever_loop();
     wm_max_eps = 1;
     test_aws_date_counter = 0;
     check_function_ptr = ptr;

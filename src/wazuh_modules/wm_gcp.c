@@ -51,7 +51,7 @@ void* wm_gcp_main(wm_gcp *data) {
         wm_gcp_run(data);
 
         mtdebug1(WM_GCP_LOGTAG, "Fetching logs finished.");
-    } while (1);
+    } while (FOREVER());
 
     return NULL;
 }

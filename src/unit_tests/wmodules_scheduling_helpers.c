@@ -2,9 +2,24 @@
 #include <time.h> 
 
 static time_t current_time = 0;
+static int FOREVER_LOOP = 1;
 
 /**************** Mocked functions *************/
 /**     Mocked functions       **/
+
+//Function that defines the ending of the module main loop
+int __wrap_FOREVER(){
+    return FOREVER_LOOP;
+}
+
+void disable_forever_loop(){
+    FOREVER_LOOP = 0;
+}
+
+void enable_forever_loop(){
+    FOREVER_LOOP = 1;
+}
+
 time_t __wrap_time(time_t *_time){
     if(!current_time){
         current_time = __real_time(NULL);
@@ -18,7 +33,6 @@ void __wrap_wm_delay(unsigned int msec){
 
 
 /***************** Helpers  ********************/
-
 /**
  * Receives a string in XML format and returnes it as an xml_node array structure
  * Example:
@@ -59,11 +73,10 @@ sched_scan_config init_config_from_string(const char* string){
 }
 
 /********* Check functions  ********************/
-
 /**
  * Test interval between consecutive runs matches configuration
  * */
-void check_time_interval(const sched_scan_config *scan_config, const struct tm *date_array, unsigned int MAX_DATES) {
+void check_time_interval(const sched_scan_config *scan_config, struct tm *date_array, unsigned int MAX_DATES) {
     time_t current = mktime(&date_array[0]);
     int i=1;
     while(i < MAX_DATES) {
@@ -76,7 +89,7 @@ void check_time_interval(const sched_scan_config *scan_config, const struct tm *
 /**
  * Test that all executions matches day of the month configuration 
  * */
-void check_day_of_month(const sched_scan_config *scan_config,const struct tm *date_array, unsigned int MAX_DATES) {
+void check_day_of_month(const sched_scan_config *scan_config, struct tm *date_array, unsigned int MAX_DATES) {
     for (int i = 0; i < MAX_DATES; i++) {
         assert_int_equal( scan_config->scan_day, date_array[i].tm_mday);
         if(i > 0){
@@ -89,7 +102,7 @@ void check_day_of_month(const sched_scan_config *scan_config,const struct tm *da
 /**
  * Test that all executions matches day of the month configuration 
  * */
-void check_day_of_week(const sched_scan_config *scan_config, const struct tm *date_array, unsigned int MAX_DATES) {
+void check_day_of_week(const sched_scan_config *scan_config, struct tm *date_array, unsigned int MAX_DATES) {
     for (int i = 0; i < MAX_DATES; i++) {
         assert_int_equal( scan_config->scan_wday, date_array[i].tm_wday);
         if(i > 0){
@@ -102,7 +115,7 @@ void check_day_of_week(const sched_scan_config *scan_config, const struct tm *da
 /**
  * Test that all executions matches day of the month configuration 
  * */
-void check_time_of_day(const sched_scan_config *scan_config, const struct tm *date_array, unsigned int MAX_DATES) {
+void check_time_of_day(const sched_scan_config *scan_config, struct tm *date_array, unsigned int MAX_DATES) {
     for (int i = 0; i < MAX_DATES; i++) {
         char ** parts = OS_StrBreak(':', scan_config->scan_time, 2);
         // Look for the particular hour
