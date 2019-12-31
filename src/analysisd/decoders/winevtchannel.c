@@ -48,11 +48,11 @@ void WinevtInit(){
 }
 
 char *replace_formatting_bytes(const char * string, const char * search, const char * replace) {
-    char * result;
-    const char * scur;
-    const char * snext;
-    const char * prev_char;
-    const char * snext_search;
+    char * result = NULL;
+    const char * scur = NULL;
+    const char * snext = NULL;
+    const char * prev_char = NULL;
+    const char * snext_search = NULL;
     size_t wi = 0;
     size_t zcur;
     size_t znext_search;
@@ -70,9 +70,11 @@ char *replace_formatting_bytes(const char * string, const char * search, const c
 
     while (snext = strstr(scur, search), snext) {
         // Check if the previous character is not a backslash, which would mean it is not a formatting character
-        prev_char = snext - 1;
+        if (strcmp(string, snext)) {
+            prev_char = snext - 1;
+        }
 
-        if (*prev_char != '\\') {
+        if (!prev_char || *prev_char != '\\') {
             zcur = snext - scur;
             os_realloc(result, wi + zcur + ZREPLACE + 1, result);
             memcpy(result + wi, scur, zcur);
@@ -87,6 +89,8 @@ char *replace_formatting_bytes(const char * string, const char * search, const c
                 memcpy(result + wi, scur, znext_search);
                 wi += znext_search;
                 scur = snext_search;
+            } else {
+                break;
             }
         }
     }
