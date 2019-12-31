@@ -17,6 +17,16 @@ typedef enum fim_event_mode {
     FIM_WHODATA
 } fim_event_mode;
 
+typedef enum fim_entry_type {
+    FIM_TYPE_FILE,
+    FIM_TYPE_REGISTRY
+} fim_entry_type;
+
+static const char *FIM_ENTRY_TYPE[] = {
+    "file",
+    "registry"
+};
+
 #define FIM_MODE(x) (x & WHODATA_ACTIVE ? FIM_WHODATA : x & REALTIME_ACTIVE ? FIM_REALTIME : FIM_SCHEDULED)
 
 #if defined(WIN32) && defined(EVENTCHANNEL_SUPPORT)
@@ -196,12 +206,19 @@ typedef struct fim_entry_data {
     // Options
     fim_event_mode mode;
     time_t last_event;
-    const char * entry_type;
+    fim_entry_type entry_type;
     unsigned long int dev;
     unsigned int scanned;
     int options;
     os_sha1 checksum;
 } fim_entry_data;
+
+
+typedef struct fim_entry {
+    char ** path;
+    fim_entry_data *data;
+} fim_entry;
+
 
 typedef struct fim_inode_data {
     int items;

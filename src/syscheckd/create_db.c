@@ -1179,6 +1179,15 @@ void free_entry_data(fim_entry_data * data) {
 }
 
 
+void free_entry(fim_entry * entry) {
+    if (entry) {
+        w_FreeArray(entry->path);
+        free_entry_data(entry->data);
+        free(entry);
+    }
+}
+
+
 void free_inode_data(fim_inode_data **data) {
     int i;
 

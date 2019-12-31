@@ -1,6 +1,20 @@
-#include <pthread.h>
-#include <stdlib.h>
-#include <stdio.h>
+/**
+ * @file fim_db.c
+ * @author Alberto Marin
+ * @author Cristobal Lopez
+ * @brief Definition of FIM database library.
+ * @date 2019-12-31
+ *
+ * @copyright Copyright (c) 2019 Wazuh, Inc.
+ */
+
+/*
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include "fim_db.h"
 
 static fdb_t fim_db;
@@ -40,22 +54,20 @@ int fim_db_clean(void) {
 }
 
 
-int fim_db_init(const bool MEM) {
+int fim_db_init(void) {
     memset(&fim_db, 0, sizeof(fdb_t));
     fim_db.transaction.interval = COMMIT_INTERVAL;
-    char * path = (MEM == true)? FIM_DB_MEM : FIM_DB_PATH;
 
-    if(fim_db_clean() < 0) {
+    if (fim_db_clean() < 0) {
         return FIMDB_ERR;
     }
 
-    if (wdb_create_file(path, schema_fim_sql, MEM, &fim_db.db) < 0) {
+    if (wdb_create_file(FIM_DB_PATH, schema_fim_sql) < 0) {
         return FIMDB_ERR;
     }
 
-    if (MEM == false &&
-        sqlite3_open_v2(path, &fim_db.db, SQLITE_OPEN_READWRITE, NULL)) {
-            return FIMDB_ERR;
+    if (sqlite3_open_v2(FIM_DB_PATH, &fim_db.db, SQLITE_OPEN_READWRITE, NULL)) {
+        return FIMDB_ERR;
     }
 
     if (fim_exec_simple_wquery("BEGIN;") == FIMDB_ERR) {

@@ -1,7 +1,25 @@
-#include "dependencies.h"
+/**
+ * @file fim_db.h
+ * @author Alberto Marin
+ * @author Cristobal Lopez
+ * @brief FIM database library.
+ * @date 2019-12-31
+ *
+ * @copyright Copyright (c) 2019 Wazuh, Inc.
+ */
+
+/*
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+#include "../headers/shared.h"
+#include "../config/syscheck-config.h"
 
 #define FIM_DB_MEM ":memory:"
-#define FIM_DB_PATH "fim.db"
+#define FIM_DB_PATH DEFAULTDIR "/queue/db/fim/fim.db"
+#define COMMIT_INTERVAL 1
 
 #define FIMDB_OK   0 // Successful result.
 #define FIMDB_ERR -1 // Generic error.
@@ -50,7 +68,7 @@ typedef struct fdb_t {
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_init(const bool type);
+int fim_db_init(void);
 
 
 /**

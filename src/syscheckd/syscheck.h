@@ -329,6 +329,13 @@ cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data 
 void free_entry_data(fim_entry_data *data);
 
 /**
+ * @brief Deallocates fim_entry struct.
+ *
+ * @param entry Entry to be deallocated.
+ */
+void free_entry(fim_entry * entry);
+
+/**
  * @brief Frees the memory of a FIM inode data structure
  *
  * @param [out] data The FIM inode data to be freed
