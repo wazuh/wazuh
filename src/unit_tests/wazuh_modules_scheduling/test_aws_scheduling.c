@@ -29,11 +29,6 @@ static struct tm test_aws_date_storage[TEST_MAX_DATES];
  * */
 static void (*check_function_ptr)(const sched_scan_config *scan_config, struct tm *date_array, unsigned int MAX_DATES) = 0;
 
-int __wrap_StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) short int type)
-{
-    return (0);
-}
-
 int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
     // Will wrap this funciont to check running times in order to check scheduling
     time_t current_time = time(NULL);

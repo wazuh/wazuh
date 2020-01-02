@@ -24,3 +24,8 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
 void __wrap__mtwarn(const char *tag, const char * file, int line, const char * func, const char *msg, ...){
     return;
 }
+
+int __wrap_StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) short int type)
+{
+    return (0);
+}

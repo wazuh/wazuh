@@ -90,7 +90,7 @@ void* wm_azure_main(wm_azure_t *azure_config) {
 
         mtdebug1(WM_AZURE_LOGTAG, "Fetching logs finished.");
 
-    } while (1);
+    } while (FOREVER());
 
     return NULL;
 }
