@@ -60,7 +60,7 @@ static void run_test_string(const char *string){
     OS_XML lxml;
     XML_NODE nodes = string_to_xml_node(string, &lxml);
     assert_int_equal(wm_gcp_read(nodes, &gcp_module),0);
-    gcp_module.context->start( (wm_aws *) gcp_module.data);
+    gcp_module.context->start( (wm_gcp *) gcp_module.data);
 }
 
 
