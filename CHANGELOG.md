@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.11.0]
 
+### Fixed
+
+- The Windows Eventchannel log decoder in Analysisd maxed out CPU usage due to an infinite loop. ([#4412](https://github.com/wazuh/wazuh/pull/4412))
+
+
+## [v3.11.0]
+
 ### Added
 
 - Add support to Windows agents for vulnerability detector. ([#2787](https://github.com/wazuh/wazuh/pull/2787))
