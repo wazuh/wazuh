@@ -786,3 +786,64 @@ char * wstr_escape_json(const char * string) {
     output[j] = '\0';
     return output;
 }
+
+// Unescape JSON reserved characters
+
+char * wstr_unescape_json(const char * string) {
+    const char UNESCAPE_MAP[] = {
+        ['b'] = '\b',
+        ['t'] = '\t',
+        ['n'] = '\n',
+        ['f'] = '\f',
+        ['r'] = '\r',
+        ['\"'] = '\"',
+        ['\\'] = '\\'
+    };
+
+    size_t i = 0;   // Read position
+    size_t j = 0;   // Write position
+    size_t z;       // Span length
+
+    char * output;
+    os_malloc(1, output);
+
+    do {
+        z = strcspn(string + i, "\\");
+
+        // Extend output and copy
+        os_realloc(output, j + z + 3, output);
+        strncpy(output + j, string + i, z);
+
+        i += z;
+        j += z;
+
+        if (string[i] != '\0') {
+            // Peek byte following '\'
+            switch (string[++i]) {
+            case '\0':
+                // End of string
+                output[j++] = '\\';
+                break;
+
+            case 'b':
+            case 't':
+            case 'n':
+            case 'f':
+            case 'r':
+            case '\"':
+            case '\\':
+                // Escaped character
+                output[j++] = UNESCAPE_MAP[(int)string[i++]];
+                break;
+
+            default:
+                // Bad escape
+                output[j++] = '\\';
+                output[j++] = string[i++];
+            }
+        }
+    } while (string[i] != '\0');
+
+    output[j] = '\0';
+    return output;
+}
