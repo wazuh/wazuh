@@ -81,6 +81,24 @@ int test_json_escape() {
     return 1;
 }
 
+int test_json_unescape() {
+    const char * INPUTS[] = { "\\b\\tHello \\n\\f\\r \\\"World\\\".\\\\", "Hello\\b\\t \\n\\f\\r \\\"World\\\"\\\\.", "Hello \\World", "Hello World\\", NULL };
+    const char * EXPECTED_OUTPUTS[] = { "\b\tHello \n\f\r \"World\".\\", "Hello\b\t \n\f\r \"World\"\\.", "Hello \\World", "Hello World\\", NULL };
+    int i;
+
+    for (i = 0; INPUTS[i] != NULL; i++) {
+        char * output = wstr_unescape_json(INPUTS[i]);
+        int cmp = strcmp(output, EXPECTED_OUTPUTS[i]);
+        free(output);
+
+        if (cmp != 0) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 int test_log_builder() {
     const char * PATTERN = "location: $(location), log: $(log), escaped: $(json_escaped_log)";
     const char * LOG = "Hello \"World\"";
@@ -122,6 +140,9 @@ int main(void) {
 
     /* Test reserved JSON character escaping */
     TAP_TEST_MSG(test_json_escape(), "Escape reserved JSON characters.");
+
+    /* Test reserved JSON character unescaping */
+    TAP_TEST_MSG(test_json_unescape(), "Unescape reserved JSON characters.");
 
     /* Test log builder */
     TAP_TEST_MSG(test_log_builder(), "Test log builder.");
