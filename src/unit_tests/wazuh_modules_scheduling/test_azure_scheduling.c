@@ -129,7 +129,6 @@ void test_time_of_day(){
     set_up_test(check_time_of_day);
     const char *string = 
         "<disabled>no</disabled>\n"
-        "<wday>Wednesday</wday>\n"
         "<time>00:01</time>\n"
         "<run_on_start>no</run_on_start>\n"
         "<log_analytics>\n"
