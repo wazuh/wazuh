@@ -143,4 +143,15 @@ size_t strcspn_escaped(const char * s, char reject);
  */
 char * wstr_escape_json(const char * string);
 
+/**
+ * @brief Unescape JSON reserved characters
+ *
+ * Unescape sets '\b', '\t', '\n', '\f', '\r', '\"' and '\\'.
+ * Bypass any other escape attempt.
+ *
+ * @param string Input string
+ * @return Pointer to a new string containg an unescaped copy of "string"
+ */
+char * wstr_unescape_json(const char * string);
+
 #endif
