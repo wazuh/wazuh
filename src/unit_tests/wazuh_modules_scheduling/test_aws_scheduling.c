@@ -1,12 +1,6 @@
 /**
  * Test corresponding to the scheduling capacities
- * for aws Module
- * 
- * To add this tests on CMAKE:
- *  
- *  list(APPEND tests_names "test_aws_scheduling")
- *  list(APPEND tests_flags "-Wl,--wrap=time,--wrap=wm_delay,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER")
- * 
+ * for aws Module 
  * */
 #include <stdarg.h>
 #include <stddef.h>
@@ -23,11 +17,6 @@
 static wmodule aws_module;
 static unsigned test_aws_date_counter = 0;
 static struct tm test_aws_date_storage[TEST_MAX_DATES];
-/**
- *  Since module run is in a loop we pass a function ptr 
- * to use when cut condition is met in wrapped funcion
- * */
-static void (*check_function_ptr)(const sched_scan_config *scan_config, struct tm *date_array, unsigned int MAX_DATES) = 0;
 
 int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
     // Will wrap this funciont to check running times in order to check scheduling

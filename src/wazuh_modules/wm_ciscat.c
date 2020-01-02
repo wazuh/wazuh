@@ -199,7 +199,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         }
 
         mtinfo(WM_CISCAT_LOGTAG, "Evaluation finished.");
-    } while(1);
+    } while(FOREVER());
 
     free(cis_path);
 #ifdef WIN32

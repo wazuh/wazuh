@@ -2,13 +2,7 @@
  * Test corresponding to the scheduling capacities
  * described in 'headers/schedule_scan.h' and 
  * 'shared/schedule_scan.c' files
- * 
- * To add this tests on CMAKE:
- *  
- *  list(APPEND tests_names "test_wmodules_scheduling")
- *  list(APPEND tests_flags "-Wl,--wrap=time,--wrap=wm_delay,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror")
- * 
- * */
+* */
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>

@@ -1,10 +1,6 @@
 /**
  * Test corresponding to the scheduling capacities
- * for aws Module
- * 
- * To add this tests on CMAKE:
- *  
- * 
+ * for azure Module
  * */
 #include <stdarg.h>
 #include <stddef.h>
@@ -21,11 +17,6 @@
 static wmodule azure_module;
 static unsigned test_azure_date_counter = 0;
 static struct tm test_azure_date_storage[TEST_MAX_DATES];
-/**
- *  Since module run is in a loop we pass a function ptr 
- * to use when cut condition is met in wrapped funcion
- * */
-static void (*check_function_ptr)(const sched_scan_config *scan_config, struct tm *date_array, unsigned int MAX_DATES) = 0;
 
 int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
     // Will wrap this funciont to check running times in order to check scheduling
