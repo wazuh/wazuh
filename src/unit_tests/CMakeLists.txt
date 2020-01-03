@@ -66,7 +66,7 @@ list(APPEND tests_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckCon
 
 list(APPEND tests_names "test_run_realtime")
 list(APPEND tests_flags "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,read \
-                        -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Get -Wl,--wrap,rbtree_insert -Wl,--wrap,_merror")
+                        -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Get -Wl,--wrap,rbtree_insert -Wl,--wrap,_merror -Wl,--wrap,W_Vector_insert_unique")
 
 list(APPEND tests_names "test_syscheck_config")
 list(APPEND tests_flags "-Wl,--wrap,_merror")
