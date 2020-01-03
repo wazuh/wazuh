@@ -315,7 +315,7 @@ static int wm_sca_start(wm_sca_t * data) {
 
         mtdebug1(WM_SCA_LOGTAG, "Security Configuration Assessment scan finished. Duration: %d seconds.", (int)time_sleep);
 
-    } while(1);
+    } while(FOREVER());
 
     return 0;
 }

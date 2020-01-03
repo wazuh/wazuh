@@ -19,7 +19,9 @@ static unsigned test_docker_date_counter = 0;
 static struct tm test_docker_date_storage[TEST_MAX_DATES];
 
 int __wrap_wpclose(wfd_t * wfd) {
-    __real_wpclose(wfd);
+    if (wfd->file) {
+        fclose(wfd->file);
+    }
     time_t current_time = time(NULL);
     struct tm *date = localtime(&current_time);
     test_docker_date_storage[test_docker_date_counter++] = *date;
@@ -29,6 +31,10 @@ int __wrap_wpclose(wfd_t * wfd) {
         // Break infinite loop
         disable_forever_loop();
     }
+    return 0;
+}
+
+char *__wrap_fgets (char *__restrict __s, int __n, FILE *__restrict __stream) {
     return 0;
 }
 
