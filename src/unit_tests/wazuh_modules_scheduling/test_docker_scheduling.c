@@ -1,6 +1,6 @@
 /**
  * Test corresponding to the scheduling capacities
- * for command Module 
+ * for docker Module 
  * */
 #include <stdarg.h>
 #include <stddef.h>

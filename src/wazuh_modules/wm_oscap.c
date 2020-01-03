@@ -69,7 +69,7 @@ void* wm_oscap_main(wm_oscap *oscap) {
 
         mtinfo(WM_OSCAP_LOGTAG, "Evaluation finished.");
 
-    }  while (1);
+    }  while (FOREVER());
 
     return NULL;
 }
