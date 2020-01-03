@@ -14,8 +14,18 @@
 #include "os_net/os_net.h"
 #include "wazuh_modules/wmodules.h"
 
+#ifdef UNIT_TESTING
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#endif
 
 size_t syscom_dispatch(char * command, char ** output){
+    assert(command != NULL);
+    assert(output != NULL);
 
     char *rcv_comm = command;
     char *rcv_args = NULL;
@@ -52,6 +62,8 @@ size_t syscom_dispatch(char * command, char ** output){
 }
 
 size_t syscom_getconfig(const char * section, char ** output) {
+    assert(section != NULL);
+    assert(output != NULL);
 
     cJSON *cfg;
     char *json_str;
