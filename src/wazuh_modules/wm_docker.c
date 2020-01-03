@@ -90,7 +90,7 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
             }
             mtwarn(WM_DOCKER_LOGTAG, "Docker-listener finished unexpectedly (code %d). Retrying to run in next scheduled time...", exitcode);
         }
-    } while (1);
+    } while (FOREVER());
 
     return NULL;
 }
