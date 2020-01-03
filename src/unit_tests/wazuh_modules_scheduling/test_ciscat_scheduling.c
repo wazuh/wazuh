@@ -33,7 +33,7 @@ int __wrap_os_random() {
     return 0;
 }
 
-int __wrap_IsDir(const char *file){
+int __wrap_IsDir(const char *file) {
     // Bypass dir verification in main loop
     return 0;
 }
@@ -49,7 +49,7 @@ static void set_up_test(void (*ptr)(const sched_scan_config *scan_config, struct
     check_function_ptr = ptr;
 }
 
-static void run_test_string(const char *string){
+static void run_test_string(const char *string) {
     OS_XML lxml;
     XML_NODE nodes = string_to_xml_node(string, &lxml);
     assert_int_equal(wm_ciscat_read(&lxml, nodes, &ciscat_module),0);
@@ -72,7 +72,7 @@ void test_interval_execution() {
     run_test_string(string);
 }
 
-void test_day_of_month(){
+void test_day_of_month() {
     set_up_test(check_day_of_month);
     const char *string = 
         "<disabled>no</disabled>\n"
@@ -89,7 +89,7 @@ void test_day_of_month(){
     run_test_string(string);
 }
 
-void test_day_of_week(){
+void test_day_of_week() {
     set_up_test(check_day_of_week);
     const char *string =
         "<disabled>no</disabled>\n"
@@ -106,7 +106,7 @@ void test_day_of_week(){
     run_test_string(string);
 }
 
-void test_time_of_day(){
+void test_time_of_day() {
     set_up_test(check_time_of_day);
     const char *string = 
         "<disabled>no</disabled>\n"

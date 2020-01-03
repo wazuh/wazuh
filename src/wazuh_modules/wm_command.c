@@ -205,7 +205,7 @@ void * wm_command_main(wm_command_t * command) {
 
 
         mtdebug1(WM_COMMAND_LOGTAG, "Command '%s' finished.", command->tag);
-    } while (1);
+    } while (FOREVER());
 
     return NULL;
 }

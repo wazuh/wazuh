@@ -65,7 +65,7 @@ void test_interval_execution() {
     aws_module.context->start( (wm_aws *) aws_module.data);
 }
 
-void test_day_of_month(){
+void test_day_of_month() {
     set_up_test(check_day_of_month);
     const char *string = 
         "<disabled>no</disabled>\n"
@@ -85,7 +85,7 @@ void test_day_of_month(){
     aws_module.context->start( (wm_aws *) aws_module.data);
 }
 
-void test_day_of_week(){
+void test_day_of_week() {
     set_up_test(check_day_of_week);
     const char *string = 
         "<disabled>no</disabled>\n"
@@ -105,7 +105,7 @@ void test_day_of_week(){
     aws_module.context->start( (wm_aws *) aws_module.data);
 }
 
-void test_time_of_day(){
+void test_time_of_day() {
     set_up_test(check_time_of_day);
     const char *string = 
         "<disabled>no</disabled>\n"
