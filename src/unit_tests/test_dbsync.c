@@ -289,7 +289,7 @@ static void test_dispatch_send_local_socket_connect_error(void **state) {
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, OS_SOCKTERR);
 
-    expect_string(__wrap__merror, formatted_msg, "dbsync: cannot connect to syscheck: ");
+    expect_string(__wrap__merror, formatted_msg, "dbsync: cannot connect to syscheck: Too many open files in system (23)");
 
     errno = ENFILE;
 

@@ -76,7 +76,7 @@ list(APPEND tests_flags "-Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_setSize -Wl,
 
 list(APPEND tests_names "test_fim_sync")
 list(APPEND tests_flags "-Wl,--wrap,rbtree_keys -Wl,--wrap,rbtree_get -Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,rbtree_range -Wl,--wrap,_mwarn \
-                         -Wl,--wrap,_mdebug1")
+                         -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex")
 
 list(APPEND tests_names "test_run_check")
 list(APPEND tests_flags "-Wl,--wrap,_minfo")
