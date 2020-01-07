@@ -281,8 +281,7 @@ typedef struct _config {
     char **audit_key;               // Listen audit keys
     int audit_healthcheck;          // Startup health-check for whodata
     int sym_checker_interval;
-
-    rb_tree * fim_entry;
+    
     OSHash * fim_inode;
     pthread_mutex_t fim_entry_mutex;
     pthread_mutex_t fim_scan_mutex;
