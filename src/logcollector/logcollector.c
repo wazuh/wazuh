@@ -162,6 +162,7 @@ void LogCollectorStart()
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
 #endif
+            free(current->file);
             current->file = NULL;
             current->command = NULL;
             current->fp = NULL;
@@ -178,7 +179,10 @@ void LogCollectorStart()
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
 #endif
-
+            free(current->file);
+            current->file = NULL;
+            current->command = NULL;
+            current->fp = NULL;
         } else if (strcmp(current->logformat, "command") == 0) {
             current->file = NULL;
             current->fp = NULL;
@@ -275,6 +279,9 @@ void LogCollectorStart()
             }
         }
     }
+
+    // Initialize message queue's log builder
+    mq_log_builder_init();
 
     /* Create the output threads */
     w_create_output_threads();
@@ -714,6 +721,10 @@ void LogCollectorStart()
             }
 
             f_check = 0;
+        }
+
+        if (mq_log_builder_update() == -1) {
+            mdebug1("Output log pattern data could not be updated.");
         }
 
         sleep(1);

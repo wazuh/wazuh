@@ -29,7 +29,7 @@ int test_search_and_replace(){
 }
 
 int test_utf8_random(bool replacement) {
-    int i;
+    size_t i;
     const size_t LENGTH = 4096;
     char buffer[LENGTH];
 
@@ -59,6 +59,68 @@ int test_strnspn_escaped() {
     w_assert_uint_eq(strcspn_escaped("ABCDE\\\\", ' '), 7);
     w_assert_uint_eq(strcspn_escaped("ABC\\ D E", ' '), 6);
     w_assert_uint_eq(strcspn_escaped("ABCDE", ' '), 5);
+
+    return 1;
+}
+
+int test_json_escape() {
+    const char * INPUTS[] = { "\b\tHello \n\f\r \"World\".\\", "Hello\b\t \n\f\r \"World\"\\.", NULL };
+    const char * EXPECTED_OUTPUTS[] = { "\\b\\tHello \\n\\f\\r \\\"World\\\".\\\\", "Hello\\b\\t \\n\\f\\r \\\"World\\\"\\\\.", NULL };
+    int i;
+
+    for (i = 0; INPUTS[i] != NULL; i++) {
+        char * output = wstr_escape_json(INPUTS[i]);
+        int cmp = strcmp(output, EXPECTED_OUTPUTS[i]);
+        free(output);
+
+        if (cmp != 0) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+int test_json_unescape() {
+    const char * INPUTS[] = { "\\b\\tHello \\n\\f\\r \\\"World\\\".\\\\", "Hello\\b\\t \\n\\f\\r \\\"World\\\"\\\\.", "Hello \\World", "Hello World\\", NULL };
+    const char * EXPECTED_OUTPUTS[] = { "\b\tHello \n\f\r \"World\".\\", "Hello\b\t \n\f\r \"World\"\\.", "Hello \\World", "Hello World\\", NULL };
+    int i;
+
+    for (i = 0; INPUTS[i] != NULL; i++) {
+        char * output = wstr_unescape_json(INPUTS[i]);
+        int cmp = strcmp(output, EXPECTED_OUTPUTS[i]);
+        free(output);
+
+        if (cmp != 0) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+int test_log_builder() {
+    const char * PATTERN = "location: $(location), log: $(log), escaped: $(json_escaped_log)";
+    const char * LOG = "Hello \"World\"";
+    const char * LOCATION = "test";
+    const char * EXPECTED_OUTPUT = "location: test, log: Hello \"World\", escaped: Hello \\\"World\\\"";
+
+    int retval = 1;
+    log_builder_t * builder = log_builder_init(false);
+
+    if (builder == NULL) {
+        return 0;
+    }
+
+    char * output = log_builder_build(builder, PATTERN, LOG, LOCATION);
+
+    if (strcmp(output, EXPECTED_OUTPUT) != 0) {
+        retval = 0;
+    }
+
+    free(output);
+    log_builder_destroy(builder);
+    return retval;
 }
 
 int main(void) {
@@ -75,6 +137,15 @@ int main(void) {
 
     /* Test strnspn_escaped function */
     TAP_TEST_MSG(test_strnspn_escaped(), "Check return values for stnspn_escaped.");
+
+    /* Test reserved JSON character escaping */
+    TAP_TEST_MSG(test_json_escape(), "Escape reserved JSON characters.");
+
+    /* Test reserved JSON character unescaping */
+    TAP_TEST_MSG(test_json_unescape(), "Unescape reserved JSON characters.");
+
+    /* Test log builder */
+    TAP_TEST_MSG(test_log_builder(), "Test log builder.");
 
     TAP_PLAN;
     TAP_SUMMARY;
