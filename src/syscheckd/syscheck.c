@@ -82,10 +82,10 @@ void read_internal(int debug_level)
 
 void fim_initialize() {
     // Create store data
-    syscheck.fim_entry = rbtree_init();
+    int db_status = fim_db_init();
 
-    if (!syscheck.fim_entry) {
-        merror_exit(FIM_CRITICAL_DATA_CREATE, "rb-tree init"); // LCOV_EXCL_LINE
+    if (!db_status) {
+        merror_exit(FIM_CRITICAL_DATA_CREATE, "sqlite3 db"); // LCOV_EXCL_LINE
     }
 
 #ifndef WIN32
@@ -101,7 +101,6 @@ void fim_initialize() {
     }
 #endif
 
-    rbtree_set_dispose(syscheck.fim_entry, (void (*)(void *))free_entry_data);
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
