@@ -15,6 +15,8 @@
  * Foundation.
  */
 #include "../headers/shared.h"
+#include "../wazuh_db/wdb.h"
+#include "../headers/os_utils.h"
 #include "../config/syscheck-config.h"
 
 #define FIM_DB_MEM ":memory:"
