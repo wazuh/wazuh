@@ -16,6 +16,15 @@
 
 #include "../syscheckd/syscheck.h"
 
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+
+/* Globals */
+extern w_queue_t * fim_sync_queue;
 
 /* redefinitons/wrapping */
 
@@ -30,7 +39,12 @@ char ** __wrap_rbtree_keys() {
 }
 
 
-char ** __wrap_rbtree_range() {
+char ** __wrap_rbtree_range(const rb_tree * tree, const char * min, const char * max) {
+    // This asserts come from the real rbtree_range, if modified please adjust it here.
+    assert(tree != NULL);
+    assert(min != NULL);
+    assert(max != NULL);
+
     return mock_type(char **);
 }
 
@@ -68,7 +82,80 @@ void __wrap__mdebug1(const char * file, int line, const char * func, const char 
     check_expected(formatted_msg);
 }
 
+void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...)
+{
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
+int __wrap_queue_push_ex(w_queue_t * queue, void * data) {
+    int retval = mock();
+
+    check_expected_ptr(queue);
+    check_expected(data);
+
+    if(retval != -1)
+        free(data);     //  This won't be used, free it
+
+    return retval;
+}
+
+/* setup/teardown */
+static int setup_group(void **state) {
+    fim_initialize();
+
+    return 0;
+}
+
+static int setup_fim_sync_queue(void **state) {
+    fim_sync_queue = queue_init(10);
+
+    return 0;
+}
+
+static int teardown_fim_sync_queue(void **state) {
+    queue_free(fim_sync_queue);
+
+    fim_sync_queue = NULL;
+
+    return 0;
+}
+
+static int teardown_free_fim_entry_mutex(void **state) {
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    return 0;
+}
+
 /* tests */
+
+void test_fim_sync_push_msg_success(void **state) {
+    char *msg = "This is a mock message, it won't go anywhere";
+
+    expect_value(__wrap_queue_push_ex, queue, fim_sync_queue);
+    expect_string(__wrap_queue_push_ex, data, msg);
+    will_return(__wrap_queue_push_ex, 0);
+
+    fim_sync_push_msg(msg);
+}
+
+void test_fim_sync_push_msg_queue_full(void **state) {
+    char *msg = "This is a mock message, it won't go anywhere";
+
+    expect_value(__wrap_queue_push_ex, queue, fim_sync_queue);
+    expect_string(__wrap_queue_push_ex, data, msg);
+    will_return(__wrap_queue_push_ex, -1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Cannot push a data synchronization message: queue is full.");
+
+    fim_sync_push_msg(msg);
+}
 
 void test_fim_sync_push_msg_no_response(void **state)
 {
@@ -103,7 +190,6 @@ void test_fim_sync_checksum(void **state)
     fim_sync_checksum();
 }
 
-
 void test_fim_sync_checksum_clear(void **state)
 {
     (void) state;
@@ -118,6 +204,19 @@ void test_fim_sync_checksum_clear(void **state)
     fim_sync_checksum();
 }
 
+void test_fim_sync_checksum_null_rbtree(void **state)
+{
+    (void) state;
+    char ** keys = NULL;
+    keys = os_AddStrArray("test1", keys);
+    keys = os_AddStrArray("test2", keys);
+
+    will_return(__wrap_rbtree_keys, keys);
+
+    will_return(__wrap_rbtree_get, NULL);
+
+    expect_assert_failure(fim_sync_checksum());
+}
 
 void test_fim_sync_checksum_split_unary(void **state)
 {
@@ -137,7 +236,6 @@ void test_fim_sync_checksum_split_unary(void **state)
 
     fim_sync_checksum_split("init", "end", 1);
 }
-
 
 void test_fim_sync_checksum_split_list(void **state)
 {
@@ -164,6 +262,15 @@ void test_fim_sync_checksum_split_list(void **state)
     fim_sync_checksum_split("init", "end", 1);
 }
 
+void test_fim_sync_checksum_split_null_start(void **state)
+{
+    expect_assert_failure(fim_sync_checksum_split(NULL, "end", 1));
+}
+
+void test_fim_sync_checksum_split_null_stop(void **state)
+{
+    expect_assert_failure(fim_sync_checksum_split("init", NULL, 1));
+}
 
 void test_fim_sync_send_list(void **state)
 {
@@ -205,6 +312,15 @@ void test_fim_sync_send_list_null(void **state)
     fim_sync_send_list("start", "top");
 }
 
+void test_fim_sync_send_list_null_start(void **state)
+{
+    expect_assert_failure(fim_sync_send_list(NULL, "top"));
+}
+
+void test_fim_sync_send_list_null_top(void **state)
+{
+    expect_assert_failure(fim_sync_send_list("start", NULL));
+}
 
 void test_fim_sync_dispatch_noarg(void **state)
 {
@@ -312,19 +428,26 @@ void test_fim_sync_dispatch_null_payload(void **state)
 {
     (void) state;
 
-    fim_sync_dispatch(NULL);
+    expect_assert_failure(fim_sync_dispatch(NULL));
 }
 
 
 int main(void) {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test_setup_teardown(test_fim_sync_push_msg_success, setup_fim_sync_queue, teardown_fim_sync_queue),
+        cmocka_unit_test_setup_teardown(test_fim_sync_push_msg_queue_full, setup_fim_sync_queue, teardown_fim_sync_queue),
         cmocka_unit_test(test_fim_sync_push_msg_no_response),
         cmocka_unit_test(test_fim_sync_checksum),
         cmocka_unit_test(test_fim_sync_checksum_clear),
+        cmocka_unit_test_teardown(test_fim_sync_checksum_null_rbtree, teardown_free_fim_entry_mutex),
         cmocka_unit_test(test_fim_sync_checksum_split_unary),
+        cmocka_unit_test_teardown(test_fim_sync_checksum_split_null_start, teardown_free_fim_entry_mutex),
+        cmocka_unit_test_teardown(test_fim_sync_checksum_split_null_stop, teardown_free_fim_entry_mutex),
         cmocka_unit_test(test_fim_sync_checksum_split_list),
         cmocka_unit_test(test_fim_sync_send_list),
         cmocka_unit_test(test_fim_sync_send_list_null),
+        cmocka_unit_test_teardown(test_fim_sync_send_list_null_start, teardown_free_fim_entry_mutex),
+        cmocka_unit_test_teardown(test_fim_sync_send_list_null_top, teardown_free_fim_entry_mutex),
         cmocka_unit_test(test_fim_sync_dispatch_noarg),
         cmocka_unit_test(test_fim_sync_dispatch_invalidarg),
         cmocka_unit_test(test_fim_sync_dispatch_invalid_id),
@@ -332,8 +455,8 @@ int main(void) {
         cmocka_unit_test(test_fim_sync_dispatch_checksum),
         cmocka_unit_test(test_fim_sync_dispatch_no_data),
         cmocka_unit_test(test_fim_sync_dispatch_unknown),
-        // cmocka_unit_test(test_fim_sync_dispatch_null_payload),
+        cmocka_unit_test(test_fim_sync_dispatch_null_payload),
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, NULL);
 }
