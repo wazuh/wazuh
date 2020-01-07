@@ -1,7 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.11.0]
+## [v3.11.1]
 
 ### Fixed
 
