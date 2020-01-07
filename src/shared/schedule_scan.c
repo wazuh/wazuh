@@ -35,7 +35,8 @@ void sched_scan_init(sched_scan_config *scan_config){
  * ´´´
  * */
 int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char *MODULE_NAME) {
-    for (unsigned i = 0; nodes[i]; i++) {
+    unsigned i;
+    for (i = 0; nodes[i]; i++) {
         if (!strcmp(nodes[i]->element, XML_SCAN_DAY)) { // <day></day>
             if (!OS_StrIsNum(nodes[i]->content)) {
                 merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
