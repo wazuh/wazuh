@@ -106,6 +106,17 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
             }
         }
 
+        /* Check for repetitions from same destination ip */
+        if (rule->context_opts & SAME_DSTIP) {
+            if ((!lf->dstip) || (!my_lf->dstip)) {
+                continue;
+            }
+
+            if (strcmp(lf->dstip, my_lf->dstip) != 0) {
+                continue;
+            }
+        }
+
         /* Check for repetitions from same dynamic fields */
         if (rule->context_opts & SAME_FIELD) {
             if (my_lf->nfields == 0 || lf->nfields == 0)
@@ -213,7 +224,16 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
                 }
             }
 
+            /* Check for different from same destination ip */
+            if (rule->context_opts & DIFFERENT_DSTIP) {
 
+                if ((!lf->dstip) || (!my_lf->dstip)) {
+                    continue;
+                }
+                if (strcmp(lf->dstip, my_lf->dstip) == 0) {
+                    continue;
+                }
+            }
         }
 
         /* We avoid multiple triggers for the same rule
@@ -339,6 +359,17 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
             }
         }
 
+        /* Check for repetitions from same destination ip */
+        if (rule->context_opts & SAME_DSTIP) {
+            if ((!lf->dstip) || (!my_lf->dstip)) {
+                continue;
+            }
+
+            if (strcmp(lf->dstip, my_lf->dstip) != 0) {
+                continue;
+            }
+        }
+
         /* Check for repetitions from same dynamic fields */
         if (rule->context_opts & SAME_FIELD) {
             if (my_lf->nfields == 0 || lf->nfields == 0) {
@@ -445,6 +476,17 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
                 }
 
                 if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
+                    continue;
+                }
+            }
+
+            /* Check for different from same destination ip */
+            if (rule->context_opts & DIFFERENT_DSTIP) {
+
+                if ((!lf->dstip) || (!my_lf->dstip)) {
+                    continue;
+                }
+                if (strcmp(lf->dstip, my_lf->dstip) == 0) {
                     continue;
                 }
             }
@@ -589,6 +631,17 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
         }
 
+        /* Check for repetitions from same destination ip */
+        if (rule->context_opts & SAME_DSTIP) {
+            if ((!lf->dstip) || (!my_lf->dstip)) {
+                goto next_it;
+            }
+
+            if (strcmp(lf->dstip, my_lf->dstip) != 0) {
+                goto next_it;
+            }
+        }
+
         /* Check for repetitions from same dynamic fields */
         if (rule->context_opts & SAME_FIELD) {
             if (my_lf->nfields == 0 || lf->nfields == 0)
@@ -650,6 +703,18 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
 
             if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
+                goto next_it;
+            }
+        }
+
+        /* Check for different from same destination ip */
+        if (rule->context_opts & DIFFERENT_DSTIP) {
+
+            if ((!lf->dstip) || (!my_lf->dstip)) {
+                goto next_it;
+            }
+
+            if (strcmp(lf->dstip, my_lf->dstip) == 0) {
                 goto next_it;
             }
         }
