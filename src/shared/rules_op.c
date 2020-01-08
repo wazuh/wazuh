@@ -94,6 +94,7 @@ int OS_ReadXMLRules(const char *rulefile,
     const char *xml_same_field = "same_field";
     const char *xml_same_destination_ip = "same_destination_ip";
     const char *xml_same_agent = "same_agent";
+    const char *xml_same_url = "same_url";
 
     const char *xml_different_url = "different_url";
     const char *xml_different_destination_ip = "different_destination_ip";
@@ -536,6 +537,9 @@ int OS_ReadXMLRules(const char *rulefile,
                     config_ruleinfo->context_opts &= NOT_SAME_SRCIP;
                 } else if (strcmp(rule_opt[k]->element, xml_same_id) == 0) {
                     config_ruleinfo->context_opts |= SAME_ID;
+                } else if (strcmp(rule_opt[k]->element,
+                                      xml_same_url) == 0) {
+                    config_ruleinfo->context_opts &= SAME_URL;
                 } else if (strcmp(rule_opt[k]->element,
                                   xml_different_url) == 0) {
                     config_ruleinfo->context_opts |= DIFFERENT_URL;

@@ -202,6 +202,28 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
                 }
             }
 
+            /* Check for same srcgeoip */
+            if (rule->context_opts & SAME_SRCGEOIP) {
+
+                if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
+                    continue;
+                }
+                if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
+                    continue;
+                }
+            }
+
+            /* Check for same URLs */
+            if (rule->context_opts & SAME_URL) {
+                if ((!lf->url) || (!my_lf->url)) {
+                    continue;
+                }
+
+                if (strcmp(lf->url, my_lf->url) == 0) {
+                    continue;
+                }
+            }
+
             /* Check for different URLs */
             if (rule->context_opts & DIFFERENT_URL) {
                 if ((!lf->url) || (!my_lf->url)) {
@@ -490,6 +512,28 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
                 }
             }
 
+            /* Check for same srcgeoip */
+            if (rule->context_opts & SAME_SRCGEOIP) {
+
+                if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
+                    continue;
+                }
+                if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
+                    continue;
+                }
+            }
+
+            /* Check for same URLs */
+            if (rule->context_opts & SAME_URL) {
+                if ((!lf->url) || (!my_lf->url)) {
+                    continue;
+                }
+
+                if (strcmp(lf->url, my_lf->url) == 0) {
+                    continue;
+                }
+            }
+
             /* Check for different URLs */
             if (rule->context_opts & DIFFERENT_URL) {
                 if ((!lf->url) || (!my_lf->url)) {
@@ -704,6 +748,28 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
 
             if (strcmp(lf->dstip, my_lf->dstip) != 0) {
+                goto next_it;
+            }
+        }
+
+        /* Check same srcgeoip */
+        if (rule->context_opts & SAME_SRCGEOIP) {
+
+            if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
+                goto next_it;
+            }
+            if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
+                goto next_it;
+            }
+        }
+
+        /* Check for same URLs */
+        if (rule->context_opts & SAME_URL) {
+            if ((!lf->url) || (!my_lf->url)) {
+                goto next_it;
+            }
+
+            if (strcmp(lf->url, my_lf->url) == 0) {
                 goto next_it;
             }
         }

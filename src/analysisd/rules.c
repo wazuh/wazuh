@@ -125,6 +125,8 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_same_field = "same_field";
     const char *xml_same_destination_ip = "same_destination_ip";
     const char *xml_same_agent = "same_agent";
+    const char *xml_same_url = "same_url";
+    const char *xml_same_srcgeoip = "same_srcgeoip";
 
     const char *xml_different_url = "different_url";
     const char *xml_different_srcip = "different_srcip";
@@ -929,6 +931,9 @@ int Rules_OP_ReadRules(const char *rulefile)
                     } else if (strcmp(rule_opt[k]->element, xml_same_id) == 0) {
                         config_ruleinfo->context_opts |= SAME_ID;
                     } else if (strcmp(rule_opt[k]->element,
+                                          xml_same_url) == 0) {
+                        config_ruleinfo->context_opts &= SAME_URL;
+                    } else if (strcmp(rule_opt[k]->element,
                                       xml_different_url) == 0) {
                         config_ruleinfo->context_opts |= DIFFERENT_URL;
 
@@ -941,6 +946,9 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
+                    } else if(strcmp(rule_opt[k]->element,
+                                   xml_same_srcgeoip) == 0) {
+                        config_ruleinfo->context_opts &= SAME_SRCGEOIP;
                     } else if(strcmp(rule_opt[k]->element,
                                    xml_different_srcgeoip) == 0) {
                         config_ruleinfo->context_opts|= DIFFERENT_SRCGEOIP;

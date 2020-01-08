@@ -38,6 +38,7 @@
 #define DIFFERENT_DSTPORT   0xf7f /* 0xfff - 0x080 */
 #define DIFFERENT_LOCATION  0xeff /* 0xfff - 0x100 */
 #define SAME_AGENT          0xdff /* 0xfff - 0x200 */
+#define SAME_URL            0xbff /* 0xfff - 0x400 */
 #define GLOBAL_FREQUENCY    0x1000
 
 /* Alert options - stored in a uint8 */
