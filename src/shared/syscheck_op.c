@@ -10,6 +10,15 @@
 
 #include "syscheck_op.h"
 
+#ifdef UNIT_TESTING
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#endif
+
 int delete_target_file(const char *path) {
     char full_path[PATH_MAX] = "\0";
     snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
@@ -48,6 +57,8 @@ char *escape_syscheck_field(char *field) {
 }
 
 void normalize_path(char * path) {
+    assert(path != NULL);
+
     char *ptname = path;
 
     if(ptname[1] == ':' && ((ptname[0] >= 'A' && ptname[0] <= 'Z') || (ptname[0] >= 'a' && ptname[0] <= 'z'))) {
@@ -63,6 +74,8 @@ void normalize_path(char * path) {
 }
 
 int remove_empty_folders(const char *path) {
+    assert(path != NULL);
+
     const char LOCALDIR[] = { PATH_SEP, 'l', 'o', 'c', 'a', 'l', '\0' };
     char DIFF_PATH[MAXPATHLEN] = DIFF_DIR_PATH;
     strcat(DIFF_PATH, LOCALDIR);
@@ -102,6 +115,9 @@ int remove_empty_folders(const char *path) {
 #ifndef WIN32
 #ifndef CLIENT
 int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
+    assert(sum != NULL);
+    assert(c_sum != NULL);
+
     char *c_perm;
     char *c_mtime;
     char *c_inode;
@@ -307,6 +323,9 @@ int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
     char *date_alert;
     char *sym_path;
 
+    assert(sum != NULL);
+    assert(c_sum != NULL);
+
     if (changes = strchr(c_sum, '!'), !changes) {
         return 0;
     }
@@ -329,6 +348,10 @@ int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
 }
 
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
+    assert(lf != NULL);
+    assert(f_name != NULL);
+    assert(sum != NULL);
+
     os_strdup(f_name, lf->filename);
     os_strdup(f_name, lf->fields[FIM_FILE].value);
 
@@ -460,6 +483,9 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     char s_inode[16];
     char *username;
 
+    assert(sum != NULL);
+    assert(output != NULL);
+
     if(sum->perm) {
         snprintf(s_perm, sizeof(s_perm), "%d", sum->perm);
     } else {
@@ -502,6 +528,8 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
 }
 
 void sk_sum_clean(sk_sum_t * sum) {
+    assert(sum != NULL);
+
     os_free(sum->symbolic_path);
     os_free(sum->attributes);
     os_free(sum->wdata.user_name);
@@ -1004,6 +1032,8 @@ error:
 cJSON *attrs_to_json(const char *attributes) {
     cJSON *attrs_array;
 
+    assert(attributes != NULL);
+
     if (attrs_array = cJSON_CreateArray(), !attrs_array) {
         return NULL;
     }
@@ -1028,6 +1058,9 @@ cJSON *attrs_to_json(const char *attributes) {
 
 cJSON *win_perm_to_json(char *perms) {
     cJSON *perms_json;
+
+    assert(perms != NULL);
+
     if (perms_json = cJSON_CreateArray(), !perms_json) {
         return NULL;
     }
