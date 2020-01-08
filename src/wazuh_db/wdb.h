@@ -80,8 +80,6 @@ typedef enum wdb_stmt {
     WDB_STMT_ADDR_DEL,
     WDB_STMT_CISCAT_INSERT,
     WDB_STMT_CISCAT_DEL,
-    WDB_STMT_SCAN_INFO_FIND,
-    WDB_STMT_SCAN_INFO_INSERT,
     WDB_STMT_SCAN_INFO_UPDATEFS,
     WDB_STMT_SCAN_INFO_UPDATEFE,
     WDB_STMT_SCAN_INFO_UPDATESS,
@@ -569,8 +567,6 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp)
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
-int wdb_scan_info_find(wdb_t * wdb, const char * module);
-int wdb_scan_info_insert (wdb_t * wdb, const char *module);
 int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, long value);
 int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output);
 int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check);

@@ -1958,6 +1958,9 @@ int rmdir_ex(const char *name) {
 #endif
         return unlink(name);
 
+#if EEXIST != ENOTEMPTY
+    case EEXIST:
+#endif
     case ENOTEMPTY: // Directory not empty
         // Erase content and try to erase again
         return cldir_ex(name) || rmdir(name) ? -1 : 0;

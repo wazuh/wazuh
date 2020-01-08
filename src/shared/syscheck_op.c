@@ -202,15 +202,19 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
     // Get extra data
     if (w_sum) {
+        char * user_name;
+        char * process_name;
+        char * symbolic_path;
+
         sum->wdata.user_id = w_sum;
 
-        if ((sum->wdata.user_name = wstr_chr(w_sum, ':'))) {
-            *(sum->wdata.user_name++) = '\0';
+        if ((user_name = wstr_chr(w_sum, ':'))) {
+            *(user_name++) = '\0';
         } else {
             return -1;
         }
 
-        if ((sum->wdata.group_id = wstr_chr(sum->wdata.user_name, ':'))) {
+        if ((sum->wdata.group_id = wstr_chr(user_name, ':'))) {
             *(sum->wdata.group_id++) = '\0';
         } else {
             return -1;
@@ -222,13 +226,13 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             return -1;
         }
 
-        if ((sum->wdata.process_name = wstr_chr(sum->wdata.group_name, ':'))) {
-            *(sum->wdata.process_name++) = '\0';
+        if ((process_name = wstr_chr(sum->wdata.group_name, ':'))) {
+            *(process_name++) = '\0';
         } else {
             return -1;
         }
 
-        if ((sum->wdata.audit_uid = wstr_chr(sum->wdata.process_name, ':'))) {
+        if ((sum->wdata.audit_uid = wstr_chr(process_name, ':'))) {
             *(sum->wdata.audit_uid++) = '\0';
         } else {
             return -1;
@@ -272,14 +276,14 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
         }
 
         /* Look for a symbolic path */
-        if (sum->tag && (sum->symbolic_path = wstr_chr(sum->tag, ':'))) {
-            *(sum->symbolic_path++) = '\0';
+        if (sum->tag && (symbolic_path = wstr_chr(sum->tag, ':'))) {
+            *(symbolic_path++) = '\0';
         } else {
-            sum->symbolic_path = NULL;
+            symbolic_path = NULL;
         }
 
         /* Look if it is a silent event */
-        if (sum->symbolic_path && (c_inode = wstr_chr(sum->symbolic_path, ':'))) {
+        if (symbolic_path && (c_inode = wstr_chr(symbolic_path, ':'))) {
             *(c_inode++) = '\0';
             if (*c_inode == '+') {
                 sum->silent = 1;
@@ -287,9 +291,9 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
         }
 
 
-        sum->symbolic_path = unescape_syscheck_field(sum->symbolic_path);
-        sum->wdata.user_name = unescape_syscheck_field(sum->wdata.user_name);
-        sum->wdata.process_name = unescape_syscheck_field(sum->wdata.process_name);
+        sum->symbolic_path = unescape_syscheck_field(symbolic_path);
+        sum->wdata.user_name = unescape_syscheck_field(user_name);
+        sum->wdata.process_name = unescape_syscheck_field(process_name);
         if (*sum->wdata.ppid == '-') {
             sum->wdata.ppid = NULL;
         }

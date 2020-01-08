@@ -1047,7 +1047,7 @@ cJSON * fim_json_compare_attrs(const fim_entry_data * old_data, const fim_entry_
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
     }
 
-#ifdef __linux__
+#ifndef WIN32
     if ( (old_data->options & CHECK_INODE) && (old_data->inode != new_data->inode) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
     }

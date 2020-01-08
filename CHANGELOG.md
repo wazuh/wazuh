@@ -15,6 +15,8 @@ All notable changes to this project will be documented in this file.
 - Add a validation for avoiding agents to keep trying to connect to an invalid address indefinitely. ([#3951](https://github.com/wazuh/wazuh/pull/3951))
 - Add the condition field of SCA checks to the agent databases. ([#3631](https://github.com/wazuh/wazuh/pull/3631))
 - Display a warning message when registering to an unverified manager. ([#4207](https://github.com/wazuh/wazuh/pull/4207))
+- Allow JSON escaping for logs on Logcollector's output format. ([#4273](https://github.com/wazuh/wazuh/pull/4273))
+- Add TCP keepalive support for Fluent Forwarder. ([#4274](https://github.com/wazuh/wazuh/pull/4274))
 
 ### Changed
 
@@ -22,6 +24,8 @@ All notable changes to this project will be documented in this file.
 - Changed `-G` agent-auth description in help message. ([#3856](https://github.com/wazuh/wazuh/pull/3856))
 - Unified the Makefile flags allowed values. ([#4034](https://github.com/wazuh/wazuh/pull/4034))
 - Let Logcollector queue file rotation and keepalive messages. ([#4222](https://github.com/wazuh/wazuh/pull/4222))
+- Changed default paths for the OSQuery module in Windows agents. ([#4148](https://github.com/wazuh/wazuh/pull/4148))
+- Fluent Forward now packs the content towards Fluentd into an object. ([#4334](https://github.com/wazuh/wazuh/pull/4334))
 
 ### Fixed
 
@@ -46,7 +50,11 @@ All notable changes to this project will be documented in this file.
 - Fix event iteration when evaluating contextual rules. ([#4106](https://github.com/wazuh/wazuh/pull/4106))
 - Fix the use of `prefilter_cmd` remotely by a new local option `allow_remote_prefilter_cmd`. ([#4178](https://github.com/wazuh/wazuh/pull/4178) & [4194](https://github.com/wazuh/wazuh/pull/4194))
 - Fix restarting agents by group using the API when some of them are in a worker node. ([#4226](https://github.com/wazuh/wazuh/pull/4226))
-- Fixed error in Fluent Forwarder that requests an user and pass although the server does not need it. ([#3910](https://github.com/wazuh/wazuh/pull/3910))
+- Fix error in Fluent Forwarder that requests an user and pass although the server does not need it. ([#3910](https://github.com/wazuh/wazuh/pull/3910))
+- Fix FTS data length bound mishandling in Analysisd. ([#4278](https://github.com/wazuh/wazuh/pull/4278))
+- Fix a memory leak in Modulesd and Agentd when Fluent Forward parses duplicate options. [#4334](https://github.com/wazuh/wazuh/pull/4334))
+- Fix an invalid memory read in Agentd when checking a remote configuration containing an invalid stanza inside `<labels>`. [#4334](https://github.com/wazuh/wazuh/pull/4334))
+- Fix error using force_reload and the eventchannel format in UNIX systems. [#4294](https://github.com/wazuh/wazuh/pull/4294))
 
 
 ## [v3.10.2] - 2019-09-23

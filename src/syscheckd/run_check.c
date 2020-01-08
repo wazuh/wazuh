@@ -73,9 +73,7 @@ void fim_send_sync_msg(const char * msg) {
 // Send a message related to syscheck change/addition
 void send_syscheck_msg(const char *msg)
 {
-#ifndef WIN32
     mdebug2(FIM_SEND, msg);
-#endif
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
     struct timespec timeout = { syscheck.send_delay / 1000000, syscheck.send_delay % 1000000 * 1000 };
     nanosleep(&timeout, NULL);
@@ -151,7 +149,10 @@ void start_daemon()
     char diff_dir[PATH_MAX];
 
     snprintf(diff_dir, PATH_MAX, "%s/local/", DIFF_DIR_PATH);
-    cldir_ex(diff_dir);
+
+    if (cldir_ex(diff_dir) == -1 && errno != ENOENT) {
+        merror("Unable to clear directory '%s': %s (%d)", diff_dir, strerror(errno), errno);
+    }
 
     if (syscheck.disabled) {
         return;
@@ -165,7 +166,7 @@ void start_daemon()
     w_create_thread(fim_run_realtime, &syscheck);
 
     // Launch inventory synchronization thread, if enabled
-    if (syscheck.enable_inventory) {
+    if (syscheck.enable_synchronization) {
         w_create_thread(fim_run_integrity, &syscheck);
     }
 

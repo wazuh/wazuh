@@ -49,9 +49,9 @@
     <max_eps>200</max_eps>
 
     <!-- Database synchronization settings -->
-    <inventory>
-      <sync_interval>5m</sync_interval>
-      <response_timeout>30</response_timeout>
-      <sync_queue_size>16384</sync_queue_size>
-    </inventory>
+    <synchronization>
+      <enabled>yes</enabled>
+      <interval>5m</interval>
+      <max_interval>1h</max_interval>
+    </synchronization>
   </syscheck>
