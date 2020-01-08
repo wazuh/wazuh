@@ -1141,7 +1141,7 @@ void test_audit_parse_rm_hc(void **state)
     expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_hc\"'");
     expect_string(__wrap__mdebug2, msg, FIM_HEALTHCHECK_DELETE);
-    expect_string(__wrap__mdebug2, formatted_msg, "(6253): Whodata health-check: Detected file deletion event (263).");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6253): Whodata health-check: Detected file deletion event (263)");
 
     audit_health_check_deletion = 0;
 
@@ -1167,7 +1167,7 @@ void test_audit_parse_add_hc(void **state)
     expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_hc\"'");
     expect_string(__wrap__mdebug2, msg, FIM_HEALTHCHECK_CREATE);
-    expect_string(__wrap__mdebug2, formatted_msg, "(6252): Whodata health-check: Detected file creation event (257).");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6252): Whodata health-check: Detected file creation event (257)");
 
     audit_parse(buffer);
 }

@@ -60,7 +60,7 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_null(syscheck.scan_time);
     assert_non_null(syscheck.dir);
     assert_non_null(syscheck.opts);
-    assert_int_equal(syscheck.enable_inventory, 1);
+    assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
     assert_int_equal(syscheck.enable_whodata, 1);
     assert_null(syscheck.realtime);
@@ -68,7 +68,7 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_int_equal(syscheck.process_priority, 10);
     assert_non_null(syscheck.prefilter_cmd);
     assert_int_equal(syscheck.sync_interval, 600);
-    assert_int_equal(syscheck.sync_response_timeout, 60);
+    assert_int_equal(syscheck.sync_response_timeout, 30);
     assert_int_equal(syscheck.sync_queue_size, 64);
     assert_int_equal(syscheck.max_eps, 200);
     assert_int_equal(syscheck.send_delay, 5000);
@@ -140,15 +140,17 @@ void test_getSyscheckConfig(void **state)
     cJSON *prefilter_cmd = cJSON_GetObjectItem(sys_items, "prefilter_cmd");
     assert_string_equal(cJSON_GetStringValue(prefilter_cmd), "/usr/sbin/prelink -y");
 
-    cJSON *sys_inventory = cJSON_GetObjectItem(sys_items, "inventory");
-    cJSON *inventory_enabled = cJSON_GetObjectItem(sys_inventory, "enabled");
-    assert_string_equal(cJSON_GetStringValue(inventory_enabled), "yes");
-    cJSON *inventory_sync_interval = cJSON_GetObjectItem(sys_inventory, "sync_interval");
-    assert_int_equal(inventory_sync_interval->valueint, 600);
-    cJSON *inventory_response_timeout = cJSON_GetObjectItem(sys_inventory, "response_timeout");
-    assert_int_equal(inventory_response_timeout->valueint, 60);
-    cJSON *inventory_sync_queue_size = cJSON_GetObjectItem(sys_inventory, "sync_queue_size");
-    assert_int_equal(inventory_sync_queue_size->valueint, 64);
+    cJSON *sys_synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
+    cJSON *synchronization_enabled = cJSON_GetObjectItem(sys_synchronization, "enabled");
+    assert_string_equal(cJSON_GetStringValue(synchronization_enabled), "yes");
+    cJSON *synchronization_max_interval = cJSON_GetObjectItem(sys_synchronization, "max_interval");
+    assert_int_equal(synchronization_max_interval->valueint, 3600);
+    cJSON *synchronization_interval = cJSON_GetObjectItem(sys_synchronization, "interval");
+    assert_int_equal(synchronization_interval->valueint, 600);
+    cJSON *synchronization_response_timeout = cJSON_GetObjectItem(sys_synchronization, "response_timeout");
+    assert_int_equal(synchronization_response_timeout->valueint, 30);
+    cJSON *synchronization_queue_size = cJSON_GetObjectItem(sys_synchronization, "queue_size");
+    assert_int_equal(synchronization_queue_size->valueint, 64);
 }
 
 

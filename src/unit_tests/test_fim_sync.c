@@ -337,7 +337,7 @@ void test_fim_sync_dispatch_invalidarg(void **state)
     (void) state;
     char payload[] = "test payload";
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: payload.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: 'payload'");
 
     fim_sync_dispatch(payload);
 }
@@ -346,7 +346,7 @@ void test_fim_sync_dispatch_invalid_id(void **state)
 {
     (void) state;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: {\"id\":\"1\"}.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"id\":\"1\"}'");
 
     char payload[] = "msg {\"id\":\"1\"}";
 
@@ -359,8 +359,8 @@ void test_fim_sync_dispatch_id(void **state)
 
     char payload[] = "msg {\"id\":1}";
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6315): Setting global ID back to lower message ID (1).");
-    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: {\"id\":1}.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6315): Setting global ID back to lower message ID (1)");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"id\":1}'");
 
     fim_sync_dispatch(payload);
 }
@@ -419,7 +419,7 @@ void test_fim_sync_dispatch_unknown(void **state)
 
     char payload[] = "unknown {\"id\":1,\"begin\":\"test_begin\",\"end\":\"test_end\"}";
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6313): Unknown data synchronization command: unknown.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6313): Unknown data synchronization command: 'unknown'");
 
     fim_sync_dispatch(payload);
 }
