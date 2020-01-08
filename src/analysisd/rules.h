@@ -26,10 +26,12 @@
 #define DIFFERENT_SRCIP     0x200
 #define DIFFERENT_SRCGEOIP  0x400
 #define SAME_SRCPORT        0x020
+#define DIFFERENT_SRCPORT   0xfbf /* 0xfff - 0x040 */
 #define SAME_DSTPORT        0x040
+#define DIFFERENT_DSTPORT   0xf7f /* 0xfff - 0x080 */ 
 #define SAME_DODIFF         0x100
-#define SAME_DSTIP          0x2000
-#define DIFFERENT_DSTIP     0x4000
+#define SAME_DSTIP          0xfef /* 0xfff - 0x010 */
+#define DIFFERENT_DSTIP     0xfdf /* 0xfff - 0x020 */
 #define SAME_FIELD          0x080
 #define NOT_SAME_FIELD      0x800
 #define NOT_SAME_USER       0xffe /* 0xfff - 0x001  */

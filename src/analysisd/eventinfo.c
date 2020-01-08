@@ -234,6 +234,28 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
                     continue;
                 }
             }
+
+            /* Check for different from same source port */
+            if (rule->context_opts & DIFFERENT_SRCPORT) {
+
+                if ((!lf->srcport) || (!my_lf->srcport)) {
+                    continue;
+                }
+                if (strcmp(lf->srcport, my_lf->srcport) == 0) {
+                    continue;
+                }
+            }
+
+            /* Check for different from same destination port */
+            if (rule->context_opts & DIFFERENT_DSTPORT) {
+
+                if ((!lf->dstport) || (!my_lf->dstport)) {
+                    continue;
+                }
+                if (strcmp(lf->dstport, my_lf->dstport) == 0) {
+                    continue;
+                }
+            }
         }
 
         /* We avoid multiple triggers for the same rule
@@ -490,6 +512,28 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
                     continue;
                 }
             }
+
+            /* Check for different from same source port */
+            if (rule->context_opts & DIFFERENT_SRCPORT) {
+
+                if ((!lf->srcport) || (!my_lf->srcport)) {
+                    continue;
+                }
+                if (strcmp(lf->srcport, my_lf->srcport) == 0) {
+                    continue;
+                }
+            }
+
+            /* Check for different from same destination port */
+            if (rule->context_opts & DIFFERENT_DSTPORT) {
+
+                if ((!lf->dstport) || (!my_lf->dstport)) {
+                    continue;
+                }
+                if (strcmp(lf->dstport, my_lf->dstport) == 0) {
+                    continue;
+                }
+            }
         }
 
         /* We avoid multiple triggers for the same rule
@@ -715,6 +759,28 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
 
             if (strcmp(lf->dstip, my_lf->dstip) == 0) {
+                goto next_it;
+            }
+        }
+
+        /* Check for different from same source port */
+        if (rule->context_opts & DIFFERENT_SRCPORT) {
+
+            if ((!lf->srcport) || (!my_lf->srcport)) {
+                goto next_it;
+            }
+            if (strcmp(lf->srcport, my_lf->srcport) == 0) {
+                goto next_it;
+            }
+        }
+
+        /* Check for different from same destination port */
+        if (rule->context_opts & DIFFERENT_DSTPORT) {
+
+            if ((!lf->dstport) || (!my_lf->dstport)) {
+                goto next_it;
+            }
+            if (strcmp(lf->dstport, my_lf->dstport) == 0) {
                 goto next_it;
             }
         }

@@ -129,6 +129,8 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_different_srcip = "different_srcip";
     const char *xml_different_srcgeoip = "different_srcgeoip";
     const char *xml_different_destination_ip = "different_destination_ip";
+    const char *xml_different_src_port = "different_src_port";
+    const char *xml_different_dst_port = "different_dst_port";
 
     const char *xml_notsame_source_ip = "not_same_source_ip";
     const char *xml_notsame_user = "not_same_user";
@@ -900,6 +902,9 @@ int Rules_OP_ReadRules(const char *rulefile)
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
+                                          xml_different_src_port) == 0) {
+                        config_ruleinfo->context_opts &= DIFFERENT_SRCPORT;
+                    } else if (strcasecmp(rule_opt[k]->element,
                                           xml_dodiff) == 0) {
                         config_ruleinfo->context = 1;
                         config_ruleinfo->context_opts |= SAME_DODIFF;
@@ -913,6 +918,9 @@ int Rules_OP_ReadRules(const char *rulefile)
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
+                    } else if (strcasecmp(rule_opt[k]->element,
+                                          xml_different_dst_port) == 0) {
+                        config_ruleinfo->context_opts &= DIFFERENT_DSTPORT;
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_notsame_source_ip) == 0) {
                         config_ruleinfo->context_opts &= NOT_SAME_SRCIP;
