@@ -93,11 +93,13 @@ int OS_ReadXMLRules(const char *rulefile,
     const char *xml_dodiff = "check_diff";
     const char *xml_same_field = "same_field";
     const char *xml_same_destination_ip = "same_destination_ip";
+    const char *xml_same_agent = "same_agent";
 
     const char *xml_different_url = "different_url";
     const char *xml_different_destination_ip = "different_destination_ip";
     const char *xml_different_src_port = "different_src_port";
     const char *xml_different_dst_port = "different_dst_port";
+    const char *xml_different_location = "different_location";
 
     const char *xml_notsame_source_ip = "not_same_source_ip";
     const char *xml_notsame_user = "not_same_user";
@@ -563,6 +565,9 @@ int OS_ReadXMLRules(const char *rulefile,
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
                 } else if (strcasecmp(rule_opt[k]->element,
+                                      xml_same_agent) == 0) {
+                    config_ruleinfo->context_opts &= SAME_AGENT;
+                } else if (strcasecmp(rule_opt[k]->element,
                                       xml_notsame_agent) == 0) {
                     config_ruleinfo->context_opts &= NOT_SAME_AGENT;
                 } else if (strcasecmp(rule_opt[k]->element,
@@ -571,6 +576,9 @@ int OS_ReadXMLRules(const char *rulefile,
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_different_destination_ip) == 0) {
                     config_ruleinfo->context_opts &= DIFFERENT_DSTIP;
+                } else if (strcasecmp(rule_opt[k]->element,
+                                      xml_different_location) == 0) {
+                        config_ruleinfo->context_opts &= DIFFERENT_LOCATION; 
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_global_frequency) == 0) {
                     config_ruleinfo->context_opts |= GLOBAL_FREQUENCY;

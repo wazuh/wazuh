@@ -24,18 +24,20 @@
 #define DIFFERENT_SRCIP     0x200
 #define DIFFERENT_SRCGEOIP  0x400
 #define SAME_SRCPORT        0x020
-#define DIFFERENT_SRCPORT   0xfbf /* 0xfff - 0x040 */
 #define SAME_DSTPORT        0x040
-#define DIFFERENT_DSTPORT   0xf7f /* 0xfff - 0x080 */ 
 #define SAME_DODIFF         0x100
-#define SAME_DSTIP          0xfef /* 0xfff - 0x010 */
-#define DIFFERENT_DSTIP     0xfdf /* 0xfff - 0x020 */
 #define SAME_FIELD          0x200
 #define NOT_SAME_FIELD      0x400
 #define NOT_SAME_USER       0xffe /* 0xfff - 0x001 */
 #define NOT_SAME_SRCIP      0xffd /* 0xfff - 0x002 */
 #define NOT_SAME_ID         0xffb /* 0xfff - 0x004 */
 #define NOT_SAME_AGENT      0xff7 /* 0xfff - 0x008 */
+#define SAME_DSTIP          0xfef /* 0xfff - 0x010 */
+#define DIFFERENT_DSTIP     0xfdf /* 0xfff - 0x020 */
+#define DIFFERENT_SRCPORT   0xfbf /* 0xfff - 0x040 */
+#define DIFFERENT_DSTPORT   0xf7f /* 0xfff - 0x080 */
+#define DIFFERENT_LOCATION  0xeff /* 0xfff - 0x100 */
+#define SAME_AGENT          0xdff /* 0xfff - 0x200 */
 #define GLOBAL_FREQUENCY    0x1000
 
 /* Alert options - stored in a uint8 */

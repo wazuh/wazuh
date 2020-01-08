@@ -256,6 +256,17 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
                     continue;
                 }
             }
+
+            /* Check for different from same location */
+            if (rule->context_opts & DIFFERENT_LOCATION) {
+
+                if ((!lf->location) || (!my_lf->location)) {
+                    continue;
+                }
+                if (strcmp(lf->location, my_lf->location) == 0) {
+                    continue;
+                }
+            }
         }
 
         /* We avoid multiple triggers for the same rule
@@ -534,6 +545,17 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
                     continue;
                 }
             }
+
+            /* Check for different from same location */
+            if (rule->context_opts & DIFFERENT_LOCATION) {
+
+                if ((!lf->location) || (!my_lf->location)) {
+                    continue;
+                }
+                if (strcmp(lf->location, my_lf->location) == 0) {
+                    continue;
+                }
+            }
         }
 
         /* We avoid multiple triggers for the same rule
@@ -782,6 +804,17 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
             if (strcmp(lf->dstport, my_lf->dstport) == 0) {
                 goto next_it;
+            }
+        }
+
+        /* Check for different from same location */
+        if (rule->context_opts & DIFFERENT_LOCATION) {
+
+            if ((!lf->location) || (!my_lf->location)) {
+                continue;
+            }
+            if (strcmp(lf->location, my_lf->location) == 0) {
+                continue;
             }
         }
 
