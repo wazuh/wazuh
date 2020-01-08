@@ -207,6 +207,12 @@ void __wrap_closeproc(PROCTAB* PT)
     check_expected(PT);
 }
 
+char *__wrap_get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid)
+{
+    check_expected(uid);
+    return mock_type(char*);
+}
+
 /* setup/teardown */
 static int free_string(void **state)
 {
@@ -827,6 +833,12 @@ void test_audit_parse(void **state)
 
     expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("root"));
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("root"));
+
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -862,6 +874,14 @@ void test_audit_parse_hex(void **state)
 
     expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("root"));
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("root"));
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("root"));
+
     expect_string(__wrap__mdebug2, msg,
         "(6248): audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, msg,
@@ -990,14 +1010,18 @@ void test_audit_parse_mv(void **state)
 
     expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
-    expect_string_count(__wrap__mdebug2, msg, "User with uid '%d' not found.\n", 3);
-    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '30' not found.\n");
-    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '20' not found.\n");
-    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '50' not found.\n");
+
+    expect_value(__wrap_get_user, uid, 30);
+    will_return(__wrap_get_user, strdup("user30"));
+    expect_value(__wrap_get_user, uid, 20);
+    will_return(__wrap_get_user, strdup("user20"));
+    expect_value(__wrap_get_user, uid, 50);
+    will_return(__wrap_get_user, strdup("user50"));
+
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=, auid=, euid=, gid=, pid=52277, ppid=3210, inode=28, path=/root/test/folder/test, pname=/usr/bin/mv");
+        "(6247): audit_event: uid=user30, auid=user20, euid=user50, gid=, pid=52277, ppid=3210, inode=28, path=/root/test/folder/test, pname=/usr/bin/mv");
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 52277);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "30");
@@ -1030,14 +1054,18 @@ void test_audit_parse_mv_hex(void **state)
 
     expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
-    expect_string_count(__wrap__mdebug2, msg, "User with uid '%d' not found.\n", 3);
-    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '30' not found.\n");
-    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '20' not found.\n");
-    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '50' not found.\n");
+
+    expect_value(__wrap_get_user, uid, 30);
+    will_return(__wrap_get_user, strdup("user30"));
+    expect_value(__wrap_get_user, uid, 20);
+    will_return(__wrap_get_user, strdup("user20"));
+    expect_value(__wrap_get_user, uid, 50);
+    will_return(__wrap_get_user, strdup("user50"));
+
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=, auid=, euid=, gid=, pid=52277, ppid=3210, inode=28, path=/root/test/folder/test, pname=/usr/bin/mv");
+        "(6247): audit_event: uid=user30, auid=user20, euid=user50, gid=, pid=52277, ppid=3210, inode=28, path=/root/test/folder/test, pname=/usr/bin/mv");
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 52277);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "30");
@@ -1068,12 +1096,18 @@ void test_audit_parse_rm(void **state)
 
     expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
-    expect_string(__wrap__mdebug2, msg, "User with uid '%d' not found.\n");
-    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '30' not found.\n");
+
+    expect_value(__wrap_get_user, uid, 30);
+    will_return(__wrap_get_user, strdup("user30"));
+    expect_value(__wrap_get_user, uid, 2);
+    will_return(__wrap_get_user, strdup("daemon"));
+    expect_value(__wrap_get_user, uid, 2);
+    will_return(__wrap_get_user, strdup("daemon"));
+
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=, auid=daemon, euid=daemon, gid=tty, pid=56650, ppid=3211, inode=24, path=/root/test/, pname=/usr/bin/rm");
+        "(6247): audit_event: uid=user30, auid=daemon, euid=daemon, gid=tty, pid=56650, ppid=3211, inode=24, path=/root/test/, pname=/usr/bin/rm");
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 56650);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "30");
@@ -1102,13 +1136,18 @@ void test_audit_parse_chmod(void **state)
 
     expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
-    expect_string_count(__wrap__mdebug2, msg, "User with uid '%d' not found.\n", 2);
-    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '99' not found.\n");
-    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '29' not found.\n");
+
+    expect_value(__wrap_get_user, uid, 99);
+    will_return(__wrap_get_user, strdup("user99"));
+    expect_value(__wrap_get_user, uid, 4);
+    will_return(__wrap_get_user, strdup("lp"));
+    expect_value(__wrap_get_user, uid, 29);
+    will_return(__wrap_get_user, strdup("user29"));
+
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=, auid=lp, euid=, gid=, pid=58280, ppid=3211, inode=19, path=/root/test/file, pname=/usr/bin/chmod");
+        "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/root/test/file, pname=/usr/bin/chmod");
 
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 58280);
@@ -1210,6 +1249,14 @@ void test_audit_parse_delete_folder(void **state)
 
     expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("root"));
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("root"));
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("root"));
+
     expect_string(__wrap__mdebug2, msg, "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
 
@@ -1245,6 +1292,14 @@ void test_audit_parse_delete_folder_hex(void **state)
 
     expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("root"));
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("root"));
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("root"));
+
     expect_string(__wrap__mdebug2, msg, "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
 
