@@ -101,7 +101,8 @@ list(APPEND tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_mer
                          -Wl,--wrap,wdbi_query_checksum -Wl,--wrap,wdbi_query_clear")
 
 list(APPEND tests_names "test_analysisd_syscheck")
-list(APPEND tests_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
+list(APPEND tests_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 \
+                         -Wl,--wrap,getDecoderfromlist -Wl,--wrap,OSHash_Create")
 
 list(APPEND tests_names "test_wdb_integrity")
 list(APPEND tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_errmsg \

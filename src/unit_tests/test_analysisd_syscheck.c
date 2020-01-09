@@ -15,18 +15,32 @@
 
 #include "../headers/wazuhdb_op.h"
 #include "../headers/syscheck_op.h"
+#include "../config/global-config.h"
+#include "../analysisd/analysisd.h"
 
 /* Auxiliar structs */
 
 typedef struct __fim_data_s {
     cJSON *event;
     Eventinfo *lf;
+    sk_sum_t *oldsum;
+    char *old_c_sum;
+    char *old_w_sum;
+    sk_sum_t *newsum;
+    char *c_sum;
+    char *w_sum;
 }fim_data_t;
 
 typedef struct __fim_adjust_checksum_data_s {
     sk_sum_t *newsum;
     char **checksum;
 }fim_adjust_checksum_data_t;
+
+/* externs */
+extern _Config Config;
+extern int decode_event_add;
+extern int decode_event_delete;
+extern int decode_event_modify;
 
 /* private functions to be tested */
 void fim_send_db_query(int * sock, const char * query);
@@ -41,6 +55,9 @@ int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
 int fim_process_alert(_sdb *sdb, Eventinfo *lf, cJSON *event);
 int decode_fim_event(_sdb *sdb, Eventinfo *lf);
 void fim_adjust_checksum(sk_sum_t *newsum, char **checksum);
+void sdb_clean(_sdb *localsdb);
+void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder);
+int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb);;
 
 /* wrappers */
 
@@ -94,85 +111,19 @@ int __wrap_wdbc_parse_result(char *result, char **payload) {
     return retval;
 }
 
+int __wrap_getDecoderfromlist(const char *name) {
+    check_expected(name);
+
+    return mock();
+}
+
+OSHash *__wrap_OSHash_Create() {
+    return mock_type(OSHash*);
+}
+
 /* setup/teardown */
 
 static int setup_fim_event_cjson(void **state) {
-    const char *plain_event = "{\"type\":\"event\","
-        "\"data\":{"
-            "\"path\":\"/a/path\","
-            "\"mode\":\"whodata\","
-            "\"type\":\"added\","
-            "\"timestamp\":123456789,"
-            "\"changed_attributes\":["
-                "\"size\",\"permission\",\"uid\","
-                "\"user_name\",\"gid\",\"group_name\","
-                "\"mtime\",\"inode\",\"md5\",\"sha1\",\"sha256\"],"
-            "\"tags\":\"tags\","
-            "\"content_changes\":\"some_changes\","
-            "\"old_attributes\":{"
-                "\"type\":\"file\","
-                "\"size\":1234,"
-                "\"perm\":\"perm\","
-                "\"user_name\":\"user_name\","
-                "\"group_name\":\"group_name\","
-                "\"uid\":\"uid\","
-                "\"gid\":\"gid\","
-                "\"inode\":2345,"
-                "\"mtime\":3456,"
-                "\"hash_md5\":\"hash_md5\","
-                "\"hash_sha1\":\"hash_sha1\","
-                "\"hash_sha256\":\"hash_sha256\","
-                "\"win_attributes\":\"win_attributes\","
-                "\"symlink_path\":\"symlink_path\","
-                "\"checksum\":\"checksum\"},"
-            "\"attributes\":{"
-                "\"type\":\"file\","
-                "\"size\":4567,"
-                "\"perm\":\"perm\","
-                "\"user_name\":\"user_name\","
-                "\"group_name\":\"group_name\","
-                "\"uid\":\"uid\","
-                "\"gid\":\"gid\","
-                "\"inode\":5678,"
-                "\"mtime\":6789,"
-                "\"hash_md5\":\"hash_md5\","
-                "\"hash_sha1\":\"hash_sha1\","
-                "\"hash_sha256\":\"hash_sha256\","
-                "\"win_attributes\":\"win_attributes\","
-                "\"symlink_path\":\"symlink_path\","
-                "\"checksum\":\"checksum\"},"
-            "\"audit\":{"
-                "\"user_id\":\"user_id\","
-                "\"user_name\":\"user_name\","
-                "\"group_id\":\"group_id\","
-                "\"group_name\":\"group_name\","
-                "\"process_name\":\"process_name\","
-                "\"audit_uid\":\"audit_uid\","
-                "\"audit_name\":\"audit_name\","
-                "\"effective_uid\":\"effective_uid\","
-                "\"effective_name\":\"effective_name\","
-                "\"ppid\":12345,"
-                "\"process_id\":23456}}}";
-
-    cJSON *event = cJSON_Parse(plain_event);
-
-    if(event == NULL)
-        return -1;
-
-    *state = event;
-    return 0;
-}
-
-static int teardown_fim_event_cjson(void **state) {
-    cJSON *event = *state;
-
-    cJSON_Delete(event);
-
-    return 0;
-}
-
-static int setup_fim_data(void **state) {
-    fim_data_t *data;
     const char *plain_event = "{\"type\":\"event\","
         "\"data\":{"
             "\"path\":\"/a/path\","
@@ -230,10 +181,31 @@ static int setup_fim_data(void **state) {
                 "\"ppid\":12345,"
                 "\"process_id\":23456}}}";
 
+    cJSON *event = cJSON_Parse(plain_event);
+
+    if(event == NULL)
+        return -1;
+
+    *state = event;
+    return 0;
+}
+
+static int teardown_fim_event_cjson(void **state) {
+    cJSON *event = *state;
+
+    cJSON_Delete(event);
+
+    return 0;
+}
+
+static int setup_fim_data(void **state) {
+    fim_data_t *data;
+
     if(data = calloc(1, sizeof(fim_data_t)), data == NULL)
         return -1;
 
-    data->event = cJSON_Parse(plain_event);
+    if(setup_fim_event_cjson((void**)&data->event))
+        return -1;
 
     if(data->event == NULL)
         return -1;
@@ -308,7 +280,51 @@ static int setup_fim_data(void **state) {
     if(data->lf->decoder_info->fields[FIM_SYM_PATH] = strdup("sym_path"), data->lf->decoder_info->fields[FIM_SYM_PATH] == NULL)
         return -1;
 
+    if(data->newsum = calloc(1, sizeof(sk_sum_t)), data->newsum == NULL)
+        return -1;
+    data->c_sum = strdup("size:511:uid:gid:"
+                            "3691689a513ace7e508297b583d7050d:"
+                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
+                            "uname:gname:2345:3456:"
+                            "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40:"
+                            "attributes");
+    if(data->c_sum == NULL)
+        return -1;
+
+    data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
+                    "audit_uid:audit_name:effective_uid:effective_name:"
+                    "ppid:process_id:tag:symbolic_path:-");
+    if(data->w_sum == NULL)
+        return -1;
+
+    if(sk_decode_sum(data->newsum, data->c_sum, data->w_sum) != 0)
+        return -1;
+
+    if(data->oldsum = calloc(1, sizeof(sk_sum_t)), data->oldsum == NULL)
+        return -1;
+    data->old_c_sum = strdup("old_size:292:old_uid:old_gid:"
+                                "a691689a513ace7e508297b583d7050d:"
+                                "a7f05add1049244e7e71ad0f54f24d8094cd8f8b:"
+                                "old_uname:old_gname:5678:6789:"
+                                "a72a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40:"
+                                "old_attributes");
+    if(data->old_c_sum == NULL)
+        return -1;
+
+    data->old_w_sum = strdup("old_user_id:old_user_name:old_group_id:old_group_name:old_process_name:"
+                                "old_audit_uid:old_audit_name:old_effective_uid:old_effective_name:"
+                                "old_ppid:old_process_id:old_tag:old_symbolic_path:-");
+    if(data->old_w_sum == NULL)
+        return -1;
+
+    if(sk_decode_sum(data->oldsum, data->old_c_sum, data->old_w_sum) != 0)
+        return -1;
+
     *state = data;
+
+    decode_event_add = 1;
+    decode_event_delete = 2;
+    decode_event_modify = 3;
 
     return 0;
 }
@@ -327,7 +343,22 @@ static int teardown_fim_data(void **state) {
 
     Free_Eventinfo(data->lf);
 
+    sk_sum_clean(data->newsum);
+    free(data->newsum);
+
+    sk_sum_clean(data->oldsum);
+    free(data->oldsum);
+
+    free(data->c_sum);
+    free(data->w_sum);
+    free(data->old_c_sum);
+    free(data->old_w_sum);
+
     free(data);
+
+    decode_event_add = 0;
+    decode_event_delete = 0;
+    decode_event_modify = 0;
 
     return 0;
 }
@@ -520,6 +551,38 @@ static int teardown_fim_adjust_checksum(void **state) {
         free(data);
         data = NULL;
     }
+
+    return 0;
+}
+
+static int setup_sdb_init(void **state) {
+    OSDecoderInfo *fim_decoder = calloc(1, sizeof(OSDecoderInfo));
+
+    if(fim_decoder == NULL)
+        return -1;
+
+    *state = fim_decoder;
+
+    Config.decoder_order_size = FIM_NFIELDS;
+
+    return 0;
+}
+
+static int teardown_sdb_init(void **state) {
+    OSDecoderInfo *fim_decoder = *state;
+
+    if(fim_decoder->fields)
+        free(fim_decoder->fields);
+
+    free(fim_decoder);
+
+    Config.decoder_order_size = 0;
+
+    return 0;
+}
+
+static int teardown_fim_init(void **state) {
+    fim_agentinfo = 0;
 
     return 0;
 }
@@ -1959,7 +2022,7 @@ static void test_fim_process_alert_added_success(void **state) {
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_ADDED);
     assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
-    assert_int_equal(input->lf->decoder_info->id, 0);
+    assert_int_equal(input->lf->decoder_info->id, decode_event_add);
 }
 
 static void test_fim_process_alert_modified_success(void **state) {
@@ -2071,7 +2134,7 @@ static void test_fim_process_alert_modified_success(void **state) {
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_MODIFIED);
     assert_string_equal(input->lf->decoder_info->name, SYSCHECK_MOD);
-    assert_int_equal(input->lf->decoder_info->id, 0);
+    assert_int_equal(input->lf->decoder_info->id, decode_event_modify);
 }
 
 static void test_fim_process_alert_deleted_success(void **state) {
@@ -2151,7 +2214,7 @@ static void test_fim_process_alert_deleted_success(void **state) {
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_DELETED);
     assert_string_equal(input->lf->decoder_info->name, SYSCHECK_DEL);
-    assert_int_equal(input->lf->decoder_info->id, 0);
+    assert_int_equal(input->lf->decoder_info->id, decode_event_delete);
 }
 
 static void test_fim_process_alert_no_event_type(void **state) {
@@ -2309,7 +2372,7 @@ static void test_fim_process_alert_no_path(void **state) {
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_ADDED);
     assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
-    assert_int_equal(input->lf->decoder_info->id, 0);
+    assert_int_equal(input->lf->decoder_info->id, decode_event_add);
 }
 
 static void test_fim_process_alert_no_mode(void **state) {
@@ -2405,7 +2468,7 @@ static void test_fim_process_alert_no_mode(void **state) {
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_ADDED);
     assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
-    assert_int_equal(input->lf->decoder_info->id, 0);
+    assert_int_equal(input->lf->decoder_info->id, decode_event_add);
 }
 
 static void test_fim_process_alert_no_tags(void **state) {
@@ -2501,7 +2564,7 @@ static void test_fim_process_alert_no_tags(void **state) {
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_ADDED);
     assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
-    assert_int_equal(input->lf->decoder_info->id, 0);
+    assert_int_equal(input->lf->decoder_info->id, decode_event_add);
     assert_null(input->lf->sk_tag);
     assert_null(input->lf->fields[FIM_TAG].value);
 }
@@ -2599,7 +2662,7 @@ static void test_fim_process_alert_no_content_changes(void **state) {
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_ADDED);
     assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
-    assert_int_equal(input->lf->decoder_info->id, 0);
+    assert_int_equal(input->lf->decoder_info->id, decode_event_add);
     assert_null(input->lf->fields[FIM_DIFF].value);
 }
 
@@ -2695,7 +2758,7 @@ static void test_fim_process_alert_no_changed_attributes(void **state) {
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_ADDED);
     assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
-    assert_int_equal(input->lf->decoder_info->id, 0);
+    assert_int_equal(input->lf->decoder_info->id, decode_event_add);
     assert_null(input->lf->fields[FIM_CHFIELDS].value);
 }
 
@@ -2792,7 +2855,7 @@ static void test_fim_process_alert_no_attributes(void **state) {
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_MODIFIED);
     assert_string_equal(input->lf->decoder_info->name, SYSCHECK_MOD);
-    assert_int_equal(input->lf->decoder_info->id, 0);
+    assert_int_equal(input->lf->decoder_info->id, decode_event_modify);
 }
 
 static void test_fim_process_alert_no_old_attributes(void **state) {
@@ -2904,7 +2967,7 @@ static void test_fim_process_alert_no_old_attributes(void **state) {
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_MODIFIED);
     assert_string_equal(input->lf->decoder_info->name, SYSCHECK_MOD);
-    assert_int_equal(input->lf->decoder_info->id, 0);
+    assert_int_equal(input->lf->decoder_info->id, decode_event_modify);
 }
 
 static void test_fim_process_alert_no_audit(void **state) {
@@ -3000,7 +3063,7 @@ static void test_fim_process_alert_no_audit(void **state) {
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_ADDED);
     assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
-    assert_int_equal(input->lf->decoder_info->id, 0);
+    assert_int_equal(input->lf->decoder_info->id, decode_event_add);
 }
 
 static void test_fim_process_alert_null_event(void **state) {
@@ -3353,6 +3416,403 @@ static void test_fim_adjust_checksum_all_possible_data(void **state) {
     assert_string_equal(*data->checksum, "changed string:replaced\\: this: second part:new attributes");
 }
 
+/* sdb_clean */
+static void test_sdb_clean_success(void **state) {
+    _sdb sdb;
+
+    /* Fill a mock struct with garbage */
+    sprintf(sdb.comment, "comment");
+    sprintf(sdb.size, "size");
+    sprintf(sdb.perm, "perm");
+    sprintf(sdb.owner, "owner");
+    sprintf(sdb.gowner, "gowner");
+    sprintf(sdb.md5, "md5");
+    sprintf(sdb.sha1, "sha1");
+    sprintf(sdb.sha256, "sha256");
+    sprintf(sdb.mtime, "mtime");
+    sprintf(sdb.inode, "inode");
+    sprintf(sdb.attrs, "attrs");
+    sprintf(sdb.sym_path, "sym_path");
+
+    sprintf(sdb.user_id, "user_id");
+    sprintf(sdb.user_name, "user_name");
+    sprintf(sdb.group_id, "group_id");
+    sprintf(sdb.group_name, "group_name");
+    sprintf(sdb.process_name, "process_name");
+    sprintf(sdb.audit_uid, "audit_uid");
+    sprintf(sdb.audit_name, "audit_name");
+    sprintf(sdb.effective_uid, "effective_uid");
+    sprintf(sdb.effective_name, "effective_name");
+    sprintf(sdb.ppid, "ppid");
+    sprintf(sdb.process_id, "process_id");
+
+    sdb_clean(&sdb);
+
+    assert_string_equal(sdb.comment, "\0");
+    assert_string_equal(sdb.size, "\0");
+    assert_string_equal(sdb.perm, "\0");
+    assert_string_equal(sdb.owner, "\0");
+    assert_string_equal(sdb.gowner, "\0");
+    assert_string_equal(sdb.md5, "\0");
+    assert_string_equal(sdb.sha1, "\0");
+    assert_string_equal(sdb.sha256, "\0");
+    assert_string_equal(sdb.mtime, "\0");
+    assert_string_equal(sdb.inode, "\0");
+    assert_string_equal(sdb.attrs, "\0");
+    assert_string_equal(sdb.sym_path, "\0");
+    assert_string_equal(sdb.user_id, "\0");
+    assert_string_equal(sdb.user_name, "\0");
+    assert_string_equal(sdb.group_id, "\0");
+    assert_string_equal(sdb.group_name, "\0");
+    assert_string_equal(sdb.process_name, "\0");
+    assert_string_equal(sdb.audit_uid, "\0");
+    assert_string_equal(sdb.audit_name, "\0");
+    assert_string_equal(sdb.effective_uid, "\0");
+    assert_string_equal(sdb.effective_name, "\0");
+    assert_string_equal(sdb.ppid, "\0");
+    assert_string_equal(sdb.process_id, "\0");
+}
+
+static void test_sdb_clean_null_sdb(void **state) {
+    sdb_clean(NULL);
+}
+
+/* sdb_init */
+static void test_sdb_init_success(void **state) {
+    OSDecoderInfo *fim_decoder = *state;
+    _sdb sdb;
+
+    /* Fill a mock struct with garbage */
+    sprintf(sdb.comment, "comment");
+    sprintf(sdb.size, "size");
+    sprintf(sdb.perm, "perm");
+    sprintf(sdb.owner, "owner");
+    sprintf(sdb.gowner, "gowner");
+    sprintf(sdb.md5, "md5");
+    sprintf(sdb.sha1, "sha1");
+    sprintf(sdb.sha256, "sha256");
+    sprintf(sdb.mtime, "mtime");
+    sprintf(sdb.inode, "inode");
+    sprintf(sdb.attrs, "attrs");
+    sprintf(sdb.sym_path, "sym_path");
+
+    sprintf(sdb.user_id, "user_id");
+    sprintf(sdb.user_name, "user_name");
+    sprintf(sdb.group_id, "group_id");
+    sprintf(sdb.group_name, "group_name");
+    sprintf(sdb.process_name, "process_name");
+    sprintf(sdb.audit_uid, "audit_uid");
+    sprintf(sdb.audit_name, "audit_name");
+    sprintf(sdb.effective_uid, "effective_uid");
+    sprintf(sdb.effective_name, "effective_name");
+    sprintf(sdb.ppid, "ppid");
+    sprintf(sdb.process_id, "process_id");
+
+    sdb.db_err = 12345678;
+    sdb.socket = 12345678;
+
+    expect_string(__wrap_getDecoderfromlist, name, SYSCHECK_MOD);
+    will_return(__wrap_getDecoderfromlist, 5);
+
+    sdb_init(&sdb, fim_decoder);
+
+    assert_string_equal(sdb.comment, "\0");
+    assert_string_equal(sdb.size, "\0");
+    assert_string_equal(sdb.perm, "\0");
+    assert_string_equal(sdb.owner, "\0");
+    assert_string_equal(sdb.gowner, "\0");
+    assert_string_equal(sdb.md5, "\0");
+    assert_string_equal(sdb.sha1, "\0");
+    assert_string_equal(sdb.sha256, "\0");
+    assert_string_equal(sdb.mtime, "\0");
+    assert_string_equal(sdb.inode, "\0");
+    assert_string_equal(sdb.attrs, "\0");
+    assert_string_equal(sdb.sym_path, "\0");
+    assert_string_equal(sdb.user_id, "\0");
+    assert_string_equal(sdb.user_name, "\0");
+    assert_string_equal(sdb.group_id, "\0");
+    assert_string_equal(sdb.group_name, "\0");
+    assert_string_equal(sdb.process_name, "\0");
+    assert_string_equal(sdb.audit_uid, "\0");
+    assert_string_equal(sdb.audit_name, "\0");
+    assert_string_equal(sdb.effective_uid, "\0");
+    assert_string_equal(sdb.effective_name, "\0");
+    assert_string_equal(sdb.ppid, "\0");
+    assert_string_equal(sdb.process_id, "\0");
+    assert_int_equal(sdb.db_err, 0);
+    assert_int_equal(sdb.socket, -1);
+
+    assert_int_equal(fim_decoder->id, 5);
+    assert_string_equal(fim_decoder->name, SYSCHECK_MOD);
+    assert_int_equal(fim_decoder->type, OSSEC_RL);
+    assert_int_equal(fim_decoder->fts, 0);
+
+    assert_string_equal(fim_decoder->fields[FIM_FILE], "file");
+    assert_string_equal(fim_decoder->fields[FIM_SIZE], "size");
+    assert_string_equal(fim_decoder->fields[FIM_PERM], "perm");
+    assert_string_equal(fim_decoder->fields[FIM_UID], "uid");
+    assert_string_equal(fim_decoder->fields[FIM_GID], "gid");
+    assert_string_equal(fim_decoder->fields[FIM_MD5], "md5");
+    assert_string_equal(fim_decoder->fields[FIM_SHA1], "sha1");
+    assert_string_equal(fim_decoder->fields[FIM_UNAME], "uname");
+    assert_string_equal(fim_decoder->fields[FIM_GNAME], "gname");
+    assert_string_equal(fim_decoder->fields[FIM_MTIME], "mtime");
+    assert_string_equal(fim_decoder->fields[FIM_INODE], "inode");
+    assert_string_equal(fim_decoder->fields[FIM_SHA256], "sha256");
+    assert_string_equal(fim_decoder->fields[FIM_DIFF], "changed_content");
+    assert_string_equal(fim_decoder->fields[FIM_ATTRS], "win_attributes");
+    assert_string_equal(fim_decoder->fields[FIM_CHFIELDS], "changed_fields");
+    assert_string_equal(fim_decoder->fields[FIM_TAG], "tag");
+    assert_string_equal(fim_decoder->fields[FIM_SYM_PATH], "symbolic_path");
+    assert_string_equal(fim_decoder->fields[FIM_USER_ID], "user_id");
+    assert_string_equal(fim_decoder->fields[FIM_USER_NAME], "user_name");
+    assert_string_equal(fim_decoder->fields[FIM_GROUP_ID], "group_id");
+    assert_string_equal(fim_decoder->fields[FIM_GROUP_NAME], "group_name");
+    assert_string_equal(fim_decoder->fields[FIM_PROC_NAME], "process_name");
+    assert_string_equal(fim_decoder->fields[FIM_AUDIT_ID], "audit_uid");
+    assert_string_equal(fim_decoder->fields[FIM_AUDIT_NAME], "audit_name");
+    assert_string_equal(fim_decoder->fields[FIM_EFFECTIVE_UID], "effective_uid");
+    assert_string_equal(fim_decoder->fields[FIM_EFFECTIVE_NAME], "effective_name");
+    assert_string_equal(fim_decoder->fields[FIM_PPID], "ppid");
+    assert_string_equal(fim_decoder->fields[FIM_PROC_ID], "process_id");
+}
+
+static void test_sdb_init_null_sdb(void **state) {
+    OSDecoderInfo *fim_decoder = *state;
+
+    sdb_init(NULL, fim_decoder);
+}
+
+static void test_sdb_init_null_fim_decoder(void **state) {
+    _sdb sdb;
+
+    /* Fill a mock struct with garbage */
+    sprintf(sdb.comment, "comment");
+    sprintf(sdb.size, "size");
+    sprintf(sdb.perm, "perm");
+    sprintf(sdb.owner, "owner");
+    sprintf(sdb.gowner, "gowner");
+    sprintf(sdb.md5, "md5");
+    sprintf(sdb.sha1, "sha1");
+    sprintf(sdb.sha256, "sha256");
+    sprintf(sdb.mtime, "mtime");
+    sprintf(sdb.inode, "inode");
+    sprintf(sdb.attrs, "attrs");
+    sprintf(sdb.sym_path, "sym_path");
+
+    sprintf(sdb.user_id, "user_id");
+    sprintf(sdb.user_name, "user_name");
+    sprintf(sdb.group_id, "group_id");
+    sprintf(sdb.group_name, "group_name");
+    sprintf(sdb.process_name, "process_name");
+    sprintf(sdb.audit_uid, "audit_uid");
+    sprintf(sdb.audit_name, "audit_name");
+    sprintf(sdb.effective_uid, "effective_uid");
+    sprintf(sdb.effective_name, "effective_name");
+    sprintf(sdb.ppid, "ppid");
+    sprintf(sdb.process_id, "process_id");
+
+    sdb.db_err = 12345678;
+    sdb.socket = 12345678;
+
+    expect_string(__wrap_getDecoderfromlist, name, SYSCHECK_MOD);
+    will_return(__wrap_getDecoderfromlist, 5);
+
+    sdb_init(&sdb, NULL);
+}
+
+/* fim_init */
+static void test_fim_init_success(void **state) {
+    int ret;
+
+    will_return(__wrap_OSHash_Create, 12345678);
+
+    expect_string(__wrap_getDecoderfromlist, name, SYSCHECK_NEW);
+    will_return(__wrap_getDecoderfromlist, 1);
+    expect_string(__wrap_getDecoderfromlist, name, SYSCHECK_MOD);
+    will_return(__wrap_getDecoderfromlist, 2);
+    expect_string(__wrap_getDecoderfromlist, name, SYSCHECK_DEL);
+    will_return(__wrap_getDecoderfromlist, 3);
+
+    ret = fim_init();
+
+    assert_int_equal(ret, 1);
+    assert_int_equal(decode_event_add, 1);
+    assert_int_equal(decode_event_modify, 2);
+    assert_int_equal(decode_event_delete, 3);
+    assert_ptr_equal(fim_agentinfo, (OSHash*)12345678);
+}
+
+static void test_fim_init_no_hash_created(void **state) {
+    int ret;
+
+    will_return(__wrap_OSHash_Create, NULL);
+
+    expect_string(__wrap_getDecoderfromlist, name, SYSCHECK_NEW);
+    will_return(__wrap_getDecoderfromlist, 1);
+    expect_string(__wrap_getDecoderfromlist, name, SYSCHECK_MOD);
+    will_return(__wrap_getDecoderfromlist, 2);
+    expect_string(__wrap_getDecoderfromlist, name, SYSCHECK_DEL);
+    will_return(__wrap_getDecoderfromlist, 3);
+
+    ret = fim_init();
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(decode_event_add, 1);
+    assert_int_equal(decode_event_modify, 2);
+    assert_int_equal(decode_event_delete, 3);
+    assert_ptr_equal(fim_agentinfo, (OSHash*)NULL);
+}
+
+/* fim_alert */
+static void test_fim_alert_deleted(void **state) {
+    fim_data_t *input = *state;
+    _sdb sdb;
+    int ret;
+
+    input->lf->event_type = FIM_DELETED;
+    sdb_clean(&sdb);
+
+    free(input->newsum->symbolic_path);
+    input->newsum->symbolic_path = NULL;
+
+    ret = fim_alert("test_name", input->oldsum, input->newsum, input->lf, &sdb);
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(input->lf->decoder_info->id, decode_event_delete);
+    assert_int_equal(input->lf->decoder_syscheck_id, decode_event_delete);
+    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_MOD);
+    assert_string_equal(sdb.comment, "File 'test_name' was deleted.\n");
+    assert_string_equal(input->lf->full_log, "File 'test_name' was deleted.\n");
+    assert_ptr_equal(input->lf->log, input->lf->full_log);
+}
+
+static void test_fim_alert_added(void **state) {
+    fim_data_t *input = *state;
+    _sdb sdb;
+    int ret;
+
+    input->lf->event_type = FIM_ADDED;
+    sdb_clean(&sdb);
+
+    ret = fim_alert("test_name", input->oldsum, input->newsum, input->lf, &sdb);
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(input->lf->decoder_info->id, decode_event_add);
+    assert_int_equal(input->lf->decoder_syscheck_id, decode_event_add);
+    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
+    assert_string_equal(sdb.sym_path, "Symbolic path: 'symbolic_path'.\n");
+    assert_string_equal(sdb.comment, "File 'test_name' was added.\nSymbolic path: 'symbolic_path'.\n");
+    assert_string_equal(input->lf->full_log, "File 'test_name' was added.\nSymbolic path: 'symbolic_path'.\n");
+    assert_ptr_equal(input->lf->log, input->lf->full_log);
+}
+
+static void test_fim_alert_modified(void **state) {
+    fim_data_t *input = *state;
+    _sdb sdb;
+    int ret;
+
+    input->lf->event_type = FIM_MODIFIED;
+    sdb_clean(&sdb);
+
+    ret = fim_alert("test_name", input->oldsum, input->newsum, input->lf, &sdb);
+
+    assert_int_equal(ret, 0);
+
+    assert_string_equal(sdb.sym_path, "Symbolic path: 'symbolic_path'.\n");
+    assert_string_equal(sdb.size, "Size changed from 'old_size' to 'size'\n");
+    assert_string_equal(sdb.perm, "Permissions changed from 'r--r--r--' to 'rwxrwxrwx'\n");
+    assert_string_equal(sdb.owner, "Ownership was 'old_uname (old_uid)', now it is 'uname (uid)'\n");
+    assert_string_equal(sdb.gowner, "Group ownership was 'old_gname (old_gid)', now it is 'gname (gid)'\n");
+    assert_string_equal(sdb.md5, "Old md5sum was: 'a691689a513ace7e508297b583d7050d'\n"
+                                 "New md5sum is : '3691689a513ace7e508297b583d7050d'\n");
+    assert_string_equal(sdb.sha1, "Old sha1sum was: 'a7f05add1049244e7e71ad0f54f24d8094cd8f8b'\n"
+                                  "New sha1sum is : '07f05add1049244e7e71ad0f54f24d8094cd8f8b'\n");
+    assert_string_equal(sdb.sha256, "Old sha256sum was: 'a72a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40'\n"
+                                    "New sha256sum is : '672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40'\n");
+    assert_string_equal(sdb.mtime, "Old modification time was: 'Thu Jan  1 02:34:38 1970', now it is 'Thu Jan  1 01:39:05 1970'\n");
+    assert_string_equal(sdb.inode, "Old inode was: '6789', now it is '3456'\n");
+    assert_string_equal(sdb.attrs, "Old attributes were: 'old_attributes'\nNow they are 'attributes'\n");
+
+    assert_string_equal(sdb.comment, "File 'test_name' checksum changed.\n"
+                                     "Symbolic path: 'symbolic_path'.\n"
+                                     "Size changed from 'old_size' to 'size'\n"
+                                     "Permissions changed from 'r--r--r--' to 'rwxrwxrwx'\n"
+                                     "Ownership was 'old_uname (old_uid)', now it is 'uname (uid)'\n"
+                                     "Group ownership was 'old_gname (old_gid)', now it is 'gname (gid)'\n"
+                                     "Old md5sum was: 'a691689a513ace7e508297b583d7050d'\n"
+                                     "New md5sum is : '3691689a513ace7e508297b583d7050d'\n"
+                                     "Old sha1sum was: 'a7f05add1049244e7e71ad0f54f24d8094cd8f8b'\n"
+                                     "New sha1sum is : '07f05add1049244e7e71ad0f54f24d8094cd8f8b'\n"
+                                     "Old sha256sum was: 'a72a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40'\n"
+                                     "New sha256sum is : '672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40'\n"
+                                     "Old attributes were: 'old_attributes'\n"
+                                     "Now they are 'attributes'\n"
+                                     "Old modification time was: 'Thu Jan  1 02:34:38 1970', now it is 'Thu Jan  1 01:39:05 1970'\n"
+                                     "Old inode was: '6789', now it is '3456'\n");
+
+    assert_int_equal(input->lf->decoder_info->id, decode_event_modify);
+    assert_int_equal(input->lf->decoder_syscheck_id, decode_event_modify);
+    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_MOD);
+
+    assert_string_equal(input->lf->size_before, "old_size");
+    assert_string_equal(input->lf->perm_before, "r--r--r--");
+    assert_string_equal(input->lf->uname_before, "old_uname");
+    assert_string_equal(input->lf->owner_before, "old_uid");
+    assert_string_equal(input->lf->gname_before, "old_gname");
+    assert_string_equal(input->lf->md5_before, "a691689a513ace7e508297b583d7050d");
+    assert_string_equal(input->lf->sha1_before, "a7f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(input->lf->sha256_before, "a72a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    assert_int_equal(input->lf->mtime_before, 5678);
+    assert_int_equal(input->lf->inode_before, 6789);
+    assert_string_equal(input->lf->attributes_before, "old_attributes");
+
+    assert_string_equal(input->lf->fields[FIM_CHFIELDS].value, "size,perm,uid,gid,md5,sha1,sha256,mtime,inode,attributes,");
+    assert_string_equal(input->lf->full_log, sdb.comment);
+    assert_ptr_equal(input->lf->log, input->lf->full_log);
+}
+
+static void test_fim_alert_invalid_event_type(void **state) {
+    fim_data_t *input = *state;
+    _sdb sdb;
+    int ret;
+
+    input->lf->event_type = FIM_MODIFIED * 10;
+
+    ret = fim_alert("test_name", input->oldsum, input->newsum, input->lf, &sdb);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_fim_alert_modified_no_changes(void **state) {
+    fim_data_t *input = *state;
+    _sdb sdb;
+    int ret;
+
+    input->lf->event_type = FIM_MODIFIED;
+    sdb_clean(&sdb);
+
+    ret = fim_alert("test_name", input->newsum, input->newsum, input->lf, &sdb);
+
+    assert_int_equal(ret, -1);
+
+    assert_string_equal(sdb.sym_path, "Symbolic path: 'symbolic_path'.\n");
+    assert_string_equal(sdb.size, "");
+    assert_string_equal(sdb.perm, "");
+    assert_string_equal(sdb.owner, "");
+    assert_string_equal(sdb.gowner, "");
+    assert_string_equal(sdb.md5, "");
+    assert_string_equal(sdb.sha1, "");
+    assert_string_equal(sdb.sha256, "");
+    assert_string_equal(sdb.mtime, "");
+    assert_string_equal(sdb.inode, "");
+    assert_string_equal(sdb.attrs, "");
+
+    assert_string_equal(sdb.comment, "File 'test_name' checksum changed.\n"
+                                     "Symbolic path: 'symbolic_path'.\n");
+
+    assert_null(input->lf->data);
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -3453,6 +3913,26 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_adjust_checksum_no_attributes_no_second_part, setup_fim_adjust_checksum, teardown_fim_adjust_checksum),
         cmocka_unit_test_setup_teardown(test_fim_adjust_checksum_no_attributes, setup_fim_adjust_checksum, teardown_fim_adjust_checksum),
         cmocka_unit_test_setup_teardown(test_fim_adjust_checksum_all_possible_data, setup_fim_adjust_checksum, teardown_fim_adjust_checksum),
+
+        /* sdb_clean */
+        cmocka_unit_test(test_sdb_clean_success),
+        cmocka_unit_test(test_sdb_clean_null_sdb),
+
+        /* sdb_init */
+        cmocka_unit_test_setup_teardown(test_sdb_init_success, setup_sdb_init, teardown_sdb_init),
+        cmocka_unit_test_setup_teardown(test_sdb_init_null_sdb, setup_sdb_init, teardown_sdb_init),
+        cmocka_unit_test(test_sdb_init_null_fim_decoder),
+
+        /* fim_init */
+        cmocka_unit_test_teardown(test_fim_init_success, teardown_fim_init),
+        cmocka_unit_test_teardown(test_fim_init_no_hash_created, teardown_fim_init),
+
+        /* fim_alert */
+        cmocka_unit_test_setup_teardown(test_fim_alert_deleted, setup_fim_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_alert_added, setup_fim_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_alert_modified, setup_fim_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_alert_invalid_event_type, setup_fim_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_alert_modified_no_changes, setup_fim_data, teardown_fim_data),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
