@@ -25,11 +25,11 @@ with patch('wazuh.common.ossec_uid'):
                 return wrapper
             return decorator
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.syscheck import run
+        from wazuh.syscheck import run, clear
         from wazuh.syscheck import AffectedItemsWazuhResult
 
 
-def raise_wazuh_error(mock_path):
+def raise_wazuh_error(*mock_args, **mock_kwargs):
     raise WazuhError(1000)
 
 
@@ -44,7 +44,8 @@ test_result = [
     {'affected_items': ['003', '008'], 'total_affected_items': 2, 'failed_items': {'001'}, 'total_failed_items': 1},
     {'affected_items': ['001'], 'total_affected_items': 1, 'failed_items': {'002', '003'},
      'total_failed_items': 2},
-    {'affected_items': [], 'total_affected_items': 0, 'failed_items': {'001'}, 'total_failed_items': 1}
+    # This result is used for exceptions
+    {'affected_items': [], 'total_affected_items': 0, 'failed_items': {'001'}, 'total_failed_items': 1},
 ]
 
 
@@ -88,3 +89,39 @@ def test_syscheck_run_exception(mock_OssecQueue, agent_list, status_list, expect
             assert result.failed_items == expected_result['failed_items']
         assert result.total_failed_items == expected_result['total_failed_items']
 
+
+@pytest.mark.parametrize('agent_list, expected_result, agent_info_list', [
+    (['001', '002'], test_result[0], ['001', '002']),
+    (['003', '001', '008'], test_result[1], ['003', '008'])
+])
+@patch('wazuh.wdb.WazuhDBConnection.__init__', return_value=None)
+@patch('wazuh.wdb.WazuhDBConnection.execute', return_value=None)
+def test_syscheck_clear(mock_wdb, mock_wdb_execute, agent_list, expected_result, agent_info_list):
+    with patch('wazuh.syscheck.get_agents_info', return_value=agent_info_list):
+        result = clear(agent_list=agent_list)
+        assert isinstance(result, AffectedItemsWazuhResult)
+        assert result.affected_items == expected_result['affected_items']
+        assert result.total_affected_items == expected_result['total_affected_items']
+        if result.failed_items:
+            assert next(iter(result.failed_items.values())) == expected_result['failed_items']
+        else:
+            assert result.failed_items == expected_result['failed_items']
+        assert result.total_failed_items == expected_result['total_failed_items']
+
+
+@pytest.mark.parametrize('agent_list, expected_result, agent_info_list', [
+    (['001'], test_result[3], ['001']),
+])
+@patch('wazuh.wdb.WazuhDBConnection.__init__', return_value=None)
+@patch('wazuh.wdb.WazuhDBConnection.execute', side_effect=raise_wazuh_error)
+def test_syscheck_clear_exception(mock_wdb, mock_execute, agent_list, expected_result, agent_info_list):
+    with patch('wazuh.syscheck.get_agents_info', return_value=agent_info_list):
+        result = clear(agent_list=agent_list)
+        assert isinstance(result, AffectedItemsWazuhResult)
+        assert result.affected_items == expected_result['affected_items']
+        assert result.total_affected_items == expected_result['total_affected_items']
+        if result.failed_items:
+            assert next(iter(result.failed_items.values())) == expected_result['failed_items']
+        else:
+            assert result.failed_items == expected_result['failed_items']
+        assert result.total_failed_items == expected_result['total_failed_items']
