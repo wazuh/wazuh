@@ -239,7 +239,7 @@ int log_builder_update_host_ip(log_builder_t * builder) {
     char * host_ip = NULL;
 
 #ifdef WIN32
-    host_ip = get_win_agent_ip();
+    host_ip = get_agent_ip();
 
     if (host_ip == NULL) {
         mdebug1("Cannot update host IP.");
