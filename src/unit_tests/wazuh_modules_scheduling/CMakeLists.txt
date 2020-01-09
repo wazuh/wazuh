@@ -69,9 +69,9 @@ list(APPEND shared_libs "wmodules_scheduling_helpers.c")
 
 
 # Generate modulesd library
-file(GLOB modulesd_files ../wazuh_modules/*.o)
-list(REMOVE_ITEM modulesd_files ../wazuh_modules/main.o)
-file(GLOB syscollector_files ../wazuh_modules/syscollector/*.o)
+file(GLOB modulesd_files ../../wazuh_modules/*.o)
+list(REMOVE_ITEM modulesd_files ../../wazuh_modules/main.o)
+file(GLOB syscollector_files ../../wazuh_modules/syscollector/*.o)
 
 add_library(MODULESD_O STATIC ${modulesd_files})
 add_library(SYSCOLLECTOR_O STATIC ${syscollector_files})
