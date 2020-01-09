@@ -137,12 +137,37 @@ void test_time_of_day() {
     run_test_string(string);
 }
 
+void test_fake_tag() {
+    set_up_test(check_time_of_day);
+    const char *string = 
+        "<disabled>no</disabled>\n"
+        "<fake_tag>1</fake_tag>\n"
+        "<time>00:01</time>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<log_analytics>\n"
+        "    <application_id>8b7...c14</application_id>\n"
+        "    <application_key>w22...91x</application_key>\n"
+        "    <tenantdomain>wazuh.onmicrosoft.com</tenantdomain>\n"
+        "    <request>\n"
+        "        <tag>azure-activity</tag>\n"
+        "        <query>AzureActivity | where SubscriptionId == 2d7...61d </query>\n"
+        "        <workspace>d6b...efa</workspace>\n"
+        "        <time_offset>36h</time_offset>\n"
+        "    </request>\n"
+        "</log_analytics>\n"
+    ;
+    OS_XML lxml;
+    XML_NODE nodes = string_to_xml_node(string, &lxml);
+    assert_int_equal(wm_azure_read(&lxml, nodes, &azure_module),-1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_interval_execution),
         cmocka_unit_test(test_day_of_month),
         cmocka_unit_test(test_day_of_week),
         cmocka_unit_test(test_time_of_day),
+        cmocka_unit_test(test_fake_tag)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

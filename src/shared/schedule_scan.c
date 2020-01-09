@@ -12,6 +12,13 @@ static int _sched_scan_validate_parameters(sched_scan_config *scan_config);
 static time_t _get_next_time(const sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start);
 
 /**
+ * Check if the input tag is used for scheduling
+ * */
+int is_sched_tag(const char* tag){
+    return !strcmp(tag, XML_INTERVAL) || !strcmp(tag, XML_SCAN_DAY) || !strcmp(tag, XML_WEEK_DAY) || !strcmp(tag, XML_TIME);
+}
+
+/**
  * Initializes sched_scan_config structure with 
  * default values
  * */

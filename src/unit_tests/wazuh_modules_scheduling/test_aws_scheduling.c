@@ -61,7 +61,7 @@ void test_interval_execution() {
     ;
     OS_XML lxml;
     XML_NODE nodes = string_to_xml_node(string, &lxml);
-    wm_aws_read(&lxml, nodes, &aws_module);
+    assert_int_equal(wm_aws_read(&lxml, nodes, &aws_module), 0);
     aws_module.context->start( (wm_aws *) aws_module.data);
 }
 
@@ -81,7 +81,7 @@ void test_day_of_month() {
     ;
     OS_XML lxml;
     XML_NODE nodes = string_to_xml_node(string, &lxml);
-    wm_aws_read(&lxml, nodes, &aws_module);
+    assert_int_equal(wm_aws_read(&lxml, nodes, &aws_module), 0);
     aws_module.context->start( (wm_aws *) aws_module.data);
 }
 
@@ -101,7 +101,7 @@ void test_day_of_week() {
     ;
     OS_XML lxml;
     XML_NODE nodes = string_to_xml_node(string, &lxml);
-    wm_aws_read(&lxml, nodes, &aws_module);
+    assert_int_equal(wm_aws_read(&lxml, nodes, &aws_module), 0);
     aws_module.context->start( (wm_aws *) aws_module.data);
 }
 
@@ -120,8 +120,28 @@ void test_time_of_day() {
     ;
     OS_XML lxml;
     XML_NODE nodes = string_to_xml_node(string, &lxml);
-    wm_aws_read(&lxml, nodes, &aws_module);
+    assert_int_equal(wm_aws_read(&lxml, nodes, &aws_module), 0);
     aws_module.context->start( (wm_aws *) aws_module.data);
+}
+
+
+void test_fake_tag() {
+    set_up_test(check_time_of_day);
+    const char *string = 
+        "<disabled>no</disabled>\n"
+        "<time>15:05</time>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<skip_on_error>yes</skip_on_error>\n"
+        "<bucket type=\"config\">\n"
+        "    <name>wazuh-aws-wodle</name>\n"
+        "    <path>config</path>\n"
+        "   <aws_profile>default</aws_profile>\n"
+        "</bucket>\n"
+        "<fake-tag>ASD</fake-tag>"
+    ;
+    OS_XML lxml;
+    XML_NODE nodes = string_to_xml_node(string, &lxml);
+    assert_int_equal(wm_aws_read(&lxml, nodes, &aws_module), -1);
 }
 
 int main(void) {
@@ -130,6 +150,7 @@ int main(void) {
         cmocka_unit_test(test_day_of_month),
         cmocka_unit_test(test_day_of_week),
         cmocka_unit_test(test_time_of_day),
+        cmocka_unit_test(test_fake_tag),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

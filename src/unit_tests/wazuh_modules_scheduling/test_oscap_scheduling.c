@@ -103,12 +103,26 @@ void test_time_of_day() {
     run_test_string(string);
 }
 
+void test_fake_tag() {
+    set_up_test(check_time_of_day);
+    const char *string = 
+        "<timeout>1800</timeout>\n"
+        "<time>1:15</time>\n"
+        "<scan-on-start>no</scan-on-start>\n"
+        // Only one contect type to avoid repeating wm_exec command
+        "<fake_tag>null<fake_tag/>\n";
+    OS_XML lxml;
+    XML_NODE nodes = string_to_xml_node(string, &lxml);
+    assert_int_equal(wm_oscap_read(&lxml, nodes, &oscap_module),-1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_interval_execution),
         cmocka_unit_test(test_day_of_month),
         cmocka_unit_test(test_day_of_week),
         cmocka_unit_test(test_time_of_day),
+        cmocka_unit_test(test_fake_tag)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

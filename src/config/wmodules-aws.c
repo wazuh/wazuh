@@ -372,6 +372,9 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             OS_ClearNode(children);
 
+        } else if (!is_sched_tag(nodes[i]->element)) {
+            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_AWS_CONTEXT.name);	
+            return OS_INVALID;
         }
     }
 

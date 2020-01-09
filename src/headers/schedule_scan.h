@@ -28,5 +28,5 @@ void sched_scan_init(sched_scan_config *scan_config);
 int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char *MODULE_NAME);
 time_t sched_scan_get_next_time(sched_scan_config *config, const char *MODULE_TAG, const int run_on_start);
 void sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object);
-
+int is_sched_tag(const char* tag);
 #endif /* SCHED_SCAN_H */

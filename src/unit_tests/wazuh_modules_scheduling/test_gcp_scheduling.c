@@ -78,7 +78,6 @@ void test_day_of_month(){
         "<day>28</day>\n"
         "<time>0:00</time>\n"
         "<pull_on_start>no</pull_on_start>\n"
-        "<disabled>no</disabled>\n"
     ;
     run_test_string(string);
 }
@@ -94,7 +93,6 @@ void test_day_of_week(){
         "<wday>Saturday</wday>\n"
         "<time>3:00</time>\n"
         "<pull_on_start>no</pull_on_start>\n"
-        "<disabled>no</disabled>\n"
     ;
     run_test_string(string);
 }
@@ -109,11 +107,27 @@ void test_time_of_day(){
         "<max_messages>1</max_messages>\n"
         "<time>18:00</time>\n"
         "<pull_on_start>no</pull_on_start>\n"
-        "<disabled>no</disabled>\n"
     ;
     run_test_string(string);
 }
 
+
+void test_fake_tag(){
+    set_up_test(check_time_of_day);
+    const char *string = 
+       "<enabled>yes</enabled>\n"
+        "<project_id>trial-project-id</project_id>\n"
+        "<subscription_name>wazuh</subscription_name>\n"
+        "<credentials_file>credentials.json</credentials_file>\n"
+        "<max_messages>1</max_messages>\n"
+        "<time>18:00</time>\n"
+        "<pull_on_start>no</pull_on_start>\n"
+        "<tag>yes</tag>"
+    ;
+    OS_XML lxml;
+    XML_NODE nodes = string_to_xml_node(string, &lxml);
+    assert_int_equal(wm_gcp_read(nodes, &gcp_module),-1);
+}
 
 int main(void) {
     // Create file if is not existent
@@ -136,6 +150,7 @@ int main(void) {
         cmocka_unit_test(test_day_of_month),
         cmocka_unit_test(test_day_of_week),
         cmocka_unit_test(test_time_of_day),
+        cmocka_unit_test(test_fake_tag)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -329,6 +329,10 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
 
             sca->skip_nfs = skip_nfs;
+        } 
+        else if (!is_sched_tag(nodes[i]->element)) {
+            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_SCA_CONTEXT.name);	
+            return OS_INVALID;
         }
     }
 

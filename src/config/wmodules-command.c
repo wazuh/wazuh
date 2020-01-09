@@ -156,6 +156,9 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
                 merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_VERIFICATION, WM_COMMAND_CONTEXT.name);
                 return OS_INVALID;
             }
+        } else if (!is_sched_tag(nodes[i]->element)) {
+            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_COMMAND_CONTEXT.name);	
+            return OS_INVALID;
         }
     }
 

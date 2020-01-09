@@ -124,12 +124,34 @@ void test_time_of_day() {
     run_test_string(string);
 }
 
+void test_fake_tag() {
+    set_up_test(check_time_of_day);
+    const char *string =
+        "<fake>True</fake>\n"
+        "<disabled>no</disabled>\n"
+        "<tag>test</tag>\n"
+        "<command>/bin/bash /root/script.sh</command>\n"
+        "<timeout>1800</timeout>\n"
+        "<time>19:55</time>\n"
+        "<ignore_output>no</ignore_output>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<timeout>0</timeout>\n"
+        "<verify_sha1>da39a3ee5e6b4b0d3255bfef95601890afd80709</verify_sha1>\n"
+        "<verify_sha256>292a188e498caea5c5fbfb0beca413c980e7a5edf40d47cf70e1dbc33e4f395e</verify_sha256>\n"
+        "<interval>10m</interval>\n"
+        "<skip_verification>yes</skip_verification>";
+    OS_XML lxml;
+    XML_NODE nodes = string_to_xml_node(string, &lxml);
+    assert_int_equal(wm_command_read(nodes, &command_module, 0),-1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_interval_execution),
         cmocka_unit_test(test_day_of_month),
         cmocka_unit_test(test_day_of_week),
         cmocka_unit_test(test_time_of_day),
+        cmocka_unit_test(test_fake_tag)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

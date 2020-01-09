@@ -102,12 +102,28 @@ void test_time_of_day() {
     run_test_string(string);
 }
 
+void test_fake_tag() {
+    set_up_test(check_time_of_day);
+    const char *string =
+        "<time>19:55</time>\n"
+        "<interval>10m</interval>\n"
+        "<attempts>10</attempts>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<disabled>no</disabled>\n"
+        "<extra-tag>extra</extra-tag>\n";
+    OS_XML lxml;
+    XML_NODE nodes = string_to_xml_node(string, &lxml);
+    assert_int_equal(wm_docker_read(nodes, &docker_module),-1);
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_interval_execution),
         cmocka_unit_test(test_day_of_month),
         cmocka_unit_test(test_day_of_week),
         cmocka_unit_test(test_time_of_day),
+        cmocka_unit_test(test_fake_tag)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -122,12 +122,32 @@ void test_time_of_day() {
     run_test_string(string);
 }
 
+void test_fake_tag() {
+    set_up_test(check_time_of_day);
+    const char *string = 
+        "<disabled>no</disabled>\n"
+        "<timeout>1800</timeout>\n"
+        "<time>14:59</time>\n"
+        "<scan-on-start>no</scan-on-start>\n"
+        "<java_path>/usr/lib/jvm/java-1.8.0-openjdk-amd64/jre/bin</java_path>\n"
+        "<ciscat_path>wodles/ciscat</ciscat_path>\n"
+        "<invalid-tag>laklsdaklsa</invalid-tag>"
+        "<content type=\"xccdf\" path=\"benchmarks/CIS_Ubuntu_Linux_16.04_LTS_Benchmark_v1.0.0-xccdf.xml\">\n"
+        "    <profile>xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server</profile>\n"
+        "</content>\n" 
+    ;
+    OS_XML lxml;
+    XML_NODE nodes = string_to_xml_node(string, &lxml);
+    assert_int_equal(wm_ciscat_read(&lxml, nodes, &ciscat_module),-1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_interval_execution),
         cmocka_unit_test(test_day_of_month),
         cmocka_unit_test(test_day_of_week),
         cmocka_unit_test(test_time_of_day),
+        cmocka_unit_test(test_fake_tag)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
