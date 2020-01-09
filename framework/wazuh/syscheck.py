@@ -75,7 +75,6 @@ def clear(agent_list=None):
     result.affected_items.sort(key=int)
     result.total_affected_items = len(result.affected_items)
 
-
     return result
 
 
