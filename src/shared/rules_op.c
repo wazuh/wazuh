@@ -539,14 +539,10 @@ int OS_ReadXMLRules(const char *rulefile,
                     config_ruleinfo->context_opts |= SAME_ID;
                 } else if (strcmp(rule_opt[k]->element,
                                       xml_same_url) == 0) {
-                    config_ruleinfo->context_opts &= SAME_URL;
+                    config_ruleinfo->context_opts |= SAME_URL;
                 } else if (strcmp(rule_opt[k]->element,
                                   xml_different_url) == 0) {
-                    config_ruleinfo->context_opts |= DIFFERENT_URL;
-
-                    if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
-                        config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
-                    }
+                    config_ruleinfo->context_opts &= DIFFERENT_URL;
                 } else if (strcmp(rule_opt[k]->element, xml_notsame_id) == 0) {
                     config_ruleinfo->context_opts &= NOT_SAME_ID;
                 } else if (strcasecmp(rule_opt[k]->element,
@@ -570,13 +566,13 @@ int OS_ReadXMLRules(const char *rulefile,
                     }
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_same_agent) == 0) {
-                    config_ruleinfo->context_opts &= SAME_AGENT;
+                    config_ruleinfo->context_opts |= SAME_AGENT;
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_notsame_agent) == 0) {
                     config_ruleinfo->context_opts &= NOT_SAME_AGENT;
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_same_destination_ip) == 0) {
-                    config_ruleinfo->context_opts &= SAME_DSTIP;
+                    config_ruleinfo->context_opts |= SAME_DSTIP;
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_different_destination_ip) == 0) {
                     config_ruleinfo->context_opts &= DIFFERENT_DSTIP;

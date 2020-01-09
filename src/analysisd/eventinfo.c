@@ -225,15 +225,15 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
             }
 
             /* Check for different URLs */
-            if (rule->context_opts & DIFFERENT_URL) {
-                if ((!lf->url) || (!my_lf->url)) {
-                    continue;
-                }
+            // if (rule->context_opts & DIFFERENT_URL) {
+            //     if ((!lf->url) || (!my_lf->url)) {
+            //         continue;
+            //     }
 
-                if (strcmp(lf->url, my_lf->url) == 0) {
-                    continue;
-                }
-            }
+            //     if (strcmp(lf->url, my_lf->url) == 0) {
+            //         continue;
+            //     }
+            // }
 
             /* Check for different from same srcgeoip */
             if (rule->context_opts & DIFFERENT_SRCGEOIP) {
@@ -242,50 +242,6 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
                     continue;
                 }
                 if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different from same destination ip */
-            if (rule->context_opts & DIFFERENT_DSTIP) {
-
-                if ((!lf->dstip) || (!my_lf->dstip)) {
-                    continue;
-                }
-                if (strcmp(lf->dstip, my_lf->dstip) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different from same source port */
-            if (rule->context_opts & DIFFERENT_SRCPORT) {
-
-                if ((!lf->srcport) || (!my_lf->srcport)) {
-                    continue;
-                }
-                if (strcmp(lf->srcport, my_lf->srcport) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different from same destination port */
-            if (rule->context_opts & DIFFERENT_DSTPORT) {
-
-                if ((!lf->dstport) || (!my_lf->dstport)) {
-                    continue;
-                }
-                if (strcmp(lf->dstport, my_lf->dstport) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different from same location */
-            if (rule->context_opts & DIFFERENT_LOCATION) {
-
-                if ((!lf->location) || (!my_lf->location)) {
-                    continue;
-                }
-                if (strcmp(lf->location, my_lf->location) == 0) {
                     continue;
                 }
             }
@@ -535,15 +491,15 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
             }
 
             /* Check for different URLs */
-            if (rule->context_opts & DIFFERENT_URL) {
-                if ((!lf->url) || (!my_lf->url)) {
-                    continue;
-                }
+            // if (rule->context_opts & DIFFERENT_URL) {
+            //     if ((!lf->url) || (!my_lf->url)) {
+            //         continue;
+            //     }
 
-                if (strcmp(lf->url, my_lf->url) == 0) {
-                    continue;
-                }
-            }
+            //     if (strcmp(lf->url, my_lf->url) == 0) {
+            //         continue;
+            //     }
+            // }
 
             /* Check for different from same srcgeoip */
             if (rule->context_opts & DIFFERENT_SRCGEOIP) {
@@ -553,50 +509,6 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
                 }
 
                 if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different from same destination ip */
-            if (rule->context_opts & DIFFERENT_DSTIP) {
-
-                if ((!lf->dstip) || (!my_lf->dstip)) {
-                    continue;
-                }
-                if (strcmp(lf->dstip, my_lf->dstip) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different from same source port */
-            if (rule->context_opts & DIFFERENT_SRCPORT) {
-
-                if ((!lf->srcport) || (!my_lf->srcport)) {
-                    continue;
-                }
-                if (strcmp(lf->srcport, my_lf->srcport) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different from same destination port */
-            if (rule->context_opts & DIFFERENT_DSTPORT) {
-
-                if ((!lf->dstport) || (!my_lf->dstport)) {
-                    continue;
-                }
-                if (strcmp(lf->dstport, my_lf->dstport) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different from same location */
-            if (rule->context_opts & DIFFERENT_LOCATION) {
-
-                if ((!lf->location) || (!my_lf->location)) {
-                    continue;
-                }
-                if (strcmp(lf->location, my_lf->location) == 0) {
                     continue;
                 }
             }
@@ -818,15 +730,15 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         }
 
         /* Check for different urls */
-        if (rule->context_opts & DIFFERENT_URL) {
-            if ((!lf->url) || (!my_lf->url)) {
-                goto next_it;
-            }
+        // if (rule->context_opts & DIFFERENT_URL) {
+        //     if ((!lf->url) || (!my_lf->url)) {
+        //         goto next_it;
+        //     }
 
-            if (strcmp(lf->url, my_lf->url) == 0) {
-                goto next_it;
-            }
-        }
+        //     if (strcmp(lf->url, my_lf->url) == 0) {
+        //         goto next_it;
+        //     }
+        // }
 
         /* Check for different from same srcgeoip */
         if (rule->context_opts & DIFFERENT_SRCGEOIP) {
@@ -836,51 +748,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
 
             if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
                 goto next_it;
-            }
-        }
-
-        /* Check for different from same destination ip */
-        if (rule->context_opts & DIFFERENT_DSTIP) {
-
-            if ((!lf->dstip) || (!my_lf->dstip)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->dstip, my_lf->dstip) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different from same source port */
-        if (rule->context_opts & DIFFERENT_SRCPORT) {
-
-            if ((!lf->srcport) || (!my_lf->srcport)) {
-                goto next_it;
-            }
-            if (strcmp(lf->srcport, my_lf->srcport) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different from same destination port */
-        if (rule->context_opts & DIFFERENT_DSTPORT) {
-
-            if ((!lf->dstport) || (!my_lf->dstport)) {
-                goto next_it;
-            }
-            if (strcmp(lf->dstport, my_lf->dstport) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different from same location */
-        if (rule->context_opts & DIFFERENT_LOCATION) {
-
-            if ((!lf->location) || (!my_lf->location)) {
-                continue;
-            }
-            if (strcmp(lf->location, my_lf->location) == 0) {
-                continue;
             }
         }
 
