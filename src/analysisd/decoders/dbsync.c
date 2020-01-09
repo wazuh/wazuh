@@ -28,7 +28,7 @@ static void dispatch_send_local(dbsync_context_t * ctx, const char * query) {
         return;
     }
 
-    if (sock == -1) {
+    if (sock == OS_SOCKTERR) {
         merror("dbsync: cannot connect to %s: %s (%d)", ctx->component, strerror(errno), errno);
         return;
     }
