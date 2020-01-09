@@ -496,8 +496,6 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
         pl = locmsg;
     }
 
-    mdebug2("Sending message to server: %s", message);
-
     snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, pl, message);
 
     /* Send events to the manager across the buffer */

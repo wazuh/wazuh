@@ -10,6 +10,15 @@
 
 #include "syscheck_op.h"
 
+#ifdef UNIT_TESTING
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#endif
+
 int delete_target_file(const char *path) {
     char full_path[PATH_MAX] = "\0";
     snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
@@ -48,6 +57,8 @@ char *escape_syscheck_field(char *field) {
 }
 
 void normalize_path(char * path) {
+    assert(path != NULL);
+
     char *ptname = path;
 
     if(ptname[1] == ':' && ((ptname[0] >= 'A' && ptname[0] <= 'Z') || (ptname[0] >= 'a' && ptname[0] <= 'z'))) {
@@ -63,6 +74,8 @@ void normalize_path(char * path) {
 }
 
 int remove_empty_folders(const char *path) {
+    assert(path != NULL);
+
     const char LOCALDIR[] = { PATH_SEP, 'l', 'o', 'c', 'a', 'l', '\0' };
     char DIFF_PATH[MAXPATHLEN] = DIFF_DIR_PATH;
     strcat(DIFF_PATH, LOCALDIR);
@@ -102,6 +115,9 @@ int remove_empty_folders(const char *path) {
 #ifndef WIN32
 #ifndef CLIENT
 int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
+    assert(sum != NULL);
+    assert(c_sum != NULL);
+
     char *c_perm;
     char *c_mtime;
     char *c_inode;
@@ -202,15 +218,19 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
     // Get extra data
     if (w_sum) {
+        char * user_name;
+        char * process_name;
+        char * symbolic_path;
+
         sum->wdata.user_id = w_sum;
 
-        if ((sum->wdata.user_name = wstr_chr(w_sum, ':'))) {
-            *(sum->wdata.user_name++) = '\0';
+        if ((user_name = wstr_chr(w_sum, ':'))) {
+            *(user_name++) = '\0';
         } else {
             return -1;
         }
 
-        if ((sum->wdata.group_id = wstr_chr(sum->wdata.user_name, ':'))) {
+        if ((sum->wdata.group_id = wstr_chr(user_name, ':'))) {
             *(sum->wdata.group_id++) = '\0';
         } else {
             return -1;
@@ -222,13 +242,13 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             return -1;
         }
 
-        if ((sum->wdata.process_name = wstr_chr(sum->wdata.group_name, ':'))) {
-            *(sum->wdata.process_name++) = '\0';
+        if ((process_name = wstr_chr(sum->wdata.group_name, ':'))) {
+            *(process_name++) = '\0';
         } else {
             return -1;
         }
 
-        if ((sum->wdata.audit_uid = wstr_chr(sum->wdata.process_name, ':'))) {
+        if ((sum->wdata.audit_uid = wstr_chr(process_name, ':'))) {
             *(sum->wdata.audit_uid++) = '\0';
         } else {
             return -1;
@@ -272,14 +292,14 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
         }
 
         /* Look for a symbolic path */
-        if (sum->tag && (sum->symbolic_path = wstr_chr(sum->tag, ':'))) {
-            *(sum->symbolic_path++) = '\0';
+        if (sum->tag && (symbolic_path = wstr_chr(sum->tag, ':'))) {
+            *(symbolic_path++) = '\0';
         } else {
-            sum->symbolic_path = NULL;
+            symbolic_path = NULL;
         }
 
         /* Look if it is a silent event */
-        if (sum->symbolic_path && (c_inode = wstr_chr(sum->symbolic_path, ':'))) {
+        if (symbolic_path && (c_inode = wstr_chr(symbolic_path, ':'))) {
             *(c_inode++) = '\0';
             if (*c_inode == '+') {
                 sum->silent = 1;
@@ -287,9 +307,9 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
         }
 
 
-        sum->symbolic_path = unescape_syscheck_field(sum->symbolic_path);
-        sum->wdata.user_name = unescape_syscheck_field(sum->wdata.user_name);
-        sum->wdata.process_name = unescape_syscheck_field(sum->wdata.process_name);
+        sum->symbolic_path = unescape_syscheck_field(symbolic_path);
+        sum->wdata.user_name = unescape_syscheck_field(user_name);
+        sum->wdata.process_name = unescape_syscheck_field(process_name);
         if (*sum->wdata.ppid == '-') {
             sum->wdata.ppid = NULL;
         }
@@ -302,6 +322,9 @@ int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
     char *changes;
     char *date_alert;
     char *sym_path;
+
+    assert(sum != NULL);
+    assert(c_sum != NULL);
 
     if (changes = strchr(c_sum, '!'), !changes) {
         return 0;
@@ -325,6 +348,10 @@ int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
 }
 
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
+    assert(lf != NULL);
+    assert(f_name != NULL);
+    assert(sum != NULL);
+
     os_strdup(f_name, lf->filename);
     os_strdup(f_name, lf->fields[FIM_FILE].value);
 
@@ -456,6 +483,9 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     char s_inode[16];
     char *username;
 
+    assert(sum != NULL);
+    assert(output != NULL);
+
     if(sum->perm) {
         snprintf(s_perm, sizeof(s_perm), "%d", sum->perm);
     } else {
@@ -498,6 +528,8 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
 }
 
 void sk_sum_clean(sk_sum_t * sum) {
+    assert(sum != NULL);
+
     os_free(sum->symbolic_path);
     os_free(sum->attributes);
     os_free(sum->wdata.user_name);
@@ -1000,6 +1032,8 @@ error:
 cJSON *attrs_to_json(const char *attributes) {
     cJSON *attrs_array;
 
+    assert(attributes != NULL);
+
     if (attrs_array = cJSON_CreateArray(), !attrs_array) {
         return NULL;
     }
@@ -1024,6 +1058,9 @@ cJSON *attrs_to_json(const char *attributes) {
 
 cJSON *win_perm_to_json(char *perms) {
     cJSON *perms_json;
+
+    assert(perms != NULL);
+
     if (perms_json = cJSON_CreateArray(), !perms_json) {
         return NULL;
     }
@@ -1114,6 +1151,7 @@ cJSON *win_perm_to_json(char *perms) {
         char **perms_array = NULL;
         wstr_split(permissions, "|", NULL, 1, &perms_array);
         if (!perms_array) {
+            cJSON_Delete(specific_perms);
             goto error;
         }
 

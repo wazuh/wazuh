@@ -826,7 +826,6 @@ static void test_fim_process_scan_info_timestamp_not_a_number(void **state) {
 
 static void test_fim_process_scan_info_query_too_long(void **state) {
     _sdb sdb = {.socket = 10};
-    const char *agent_id = "007";
     char buffer[OS_SIZE_6144];
     cJSON *event = *state;
 
@@ -837,7 +836,7 @@ static void test_fim_process_scan_info_query_too_long(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "FIM decoder: Cannot build save query: input is too long.");
 
-    fim_process_scan_info(&sdb, agent_id, FIM_SCAN_START, data);
+    fim_process_scan_info(&sdb, buffer, FIM_SCAN_START, data);
 }
 
 static void test_fim_process_scan_info_null_agent_id(void **state) {

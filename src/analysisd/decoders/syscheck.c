@@ -1146,7 +1146,11 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
 
     if (type != NULL && data != NULL) {
         if (strcmp(type, "event") == 0) {
-            fim_process_alert(sdb, lf, data);
+            if (fim_process_alert(sdb, lf, data) == -1) {
+                merror("Can't generate fim alert for event: '%s'", lf->log);
+                return retval;
+            }
+
             retval = 1;
         } else if (strcmp(type, "scan_start") == 0) {
             fim_process_scan_info(sdb, lf->agent_id, FIM_SCAN_START, data);
@@ -1290,7 +1294,7 @@ end:
 void fim_send_db_delete(_sdb * sdb, const char * agent_id, const char * path) {
     char query[OS_SIZE_6144];
 
-    if (snprintf(query, sizeof(query), "agent %s syscheck delete %s", agent_id, path) >= OS_MAXSTR) {
+    if (snprintf(query, sizeof(query), "agent %s syscheck delete %s", agent_id, path) >= OS_SIZE_6144) {
         merror("FIM decoder: Cannot build delete query: input is too long.");
         return;
     }
@@ -1478,7 +1482,7 @@ void fim_process_scan_info(_sdb * sdb, const char * agent_id, fim_scan_event eve
 
     char query[OS_SIZE_6144];
 
-    if (snprintf(query, sizeof(query), "agent %s syscheck scan_info_update %s %ld", agent_id, event == FIM_SCAN_START ? "start_scan" : "end_scan", (long)timestamp->valuedouble) >= OS_MAXSTR) {
+    if (snprintf(query, sizeof(query), "agent %s syscheck scan_info_update %s %ld", agent_id, event == FIM_SCAN_START ? "start_scan" : "end_scan", (long)timestamp->valuedouble) >= OS_SIZE_6144) {
         merror("FIM decoder: Cannot build save query: input is too long.");
         return;
     }

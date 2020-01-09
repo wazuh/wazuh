@@ -38,14 +38,19 @@ static w_queue_t * fim_sync_queue;
 // LCOV_EXCL_START
 // Starting data synchronization thread
 void * fim_run_integrity(void * args) {
+    // Keep track of synchronization failures
+    long sync_interval = syscheck.sync_interval;
+
     fim_sync_queue = queue_init(syscheck.sync_queue_size);
 
     while (1) {
-        mdebug2("Performing synchronization check.");
+        bool sync_successful = true;
+        
+        mdebug1("Initializing FIM Integrity Synchronization check. Sync interval is %li seconds.", sync_interval);
         fim_sync_checksum();
 
-        struct timespec timeout = { .tv_sec = time(NULL) + syscheck.sync_interval };
-
+        struct timespec timeout = { .tv_sec = time(NULL) + sync_interval };
+        
         // Get messages until timeout
         char * msg;
 
@@ -57,7 +62,19 @@ void * fim_run_integrity(void * args) {
 
             // Wait for sync_response_timeout seconds since the last message received, or sync_interval
             timeout.tv_sec = timeout.tv_sec > margin ? timeout.tv_sec : margin;
+
+            sync_successful = false;
         }
+
+        if (sync_successful) {
+            sync_interval = syscheck.sync_interval;
+        }
+        else {
+            // Duplicate for every failure
+            mdebug1("FIM Integrity Synchronization check failed. Adjusting sync interval for next run.");
+            sync_interval *= 2;
+            sync_interval = (sync_interval < syscheck.max_sync_interval) ? sync_interval : syscheck.max_sync_interval;
+        } 
     }
 
     return args;

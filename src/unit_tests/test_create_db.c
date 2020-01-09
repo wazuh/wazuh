@@ -660,6 +660,8 @@ void test_fim_check_restrict_null_filename(void **state)
     restriction = calloc(1, sizeof(OSMatch));
     OSMatch_Compile("test$", restriction, 0);
 
+    expect_string(__wrap__merror, formatted_msg, NULL_ERROR);
+
     ret = fim_check_restrict(NULL, restriction);
     OSMatch_FreePattern(restriction);
     free(restriction);

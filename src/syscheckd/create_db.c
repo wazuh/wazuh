@@ -1047,7 +1047,7 @@ cJSON * fim_json_compare_attrs(const fim_entry_data * old_data, const fim_entry_
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
     }
 
-#ifdef __linux__
+#ifndef WIN32
     if ( (old_data->options & CHECK_INODE) && (old_data->inode != new_data->inode) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
     }
@@ -1136,6 +1136,11 @@ int fim_check_ignore (const char *file_name) {
 
 // LCOV_EXCL_START
 int fim_check_restrict (const char *file_name, OSMatch *restriction) {
+    if (file_name == NULL) {
+        merror(NULL_ERROR);
+        return 1;
+    }
+
     // Restrict file types
     if (restriction) {
         if (!OSMatch_Execute(file_name, strlen(file_name), restriction)) {
