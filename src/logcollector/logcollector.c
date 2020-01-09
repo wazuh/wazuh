@@ -162,6 +162,7 @@ void LogCollectorStart()
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
 #endif
+            free(current->file);
             current->file = NULL;
             current->command = NULL;
             current->fp = NULL;
@@ -170,7 +171,7 @@ void LogCollectorStart()
 
 #ifdef EVENTCHANNEL_SUPPORT
             minfo(READING_EVTLOG, current->file);
-            win_start_event_channel(current->file, current->future, current->query);
+            win_start_event_channel(current->file, current->future, current->query, current->reconnect_time);
 #else
             mwarn("eventchannel not available on this version of Windows");
 #endif
@@ -178,7 +179,10 @@ void LogCollectorStart()
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
 #endif
-
+            free(current->file);
+            current->file = NULL;
+            current->command = NULL;
+            current->fp = NULL;
         } else if (strcmp(current->logformat, "command") == 0) {
             current->file = NULL;
             current->fp = NULL;
@@ -275,6 +279,9 @@ void LogCollectorStart()
             }
         }
     }
+
+    // Initialize message queue's log builder
+    mq_log_builder_init();
 
     /* Create the output threads */
     w_create_output_threads();
@@ -716,6 +723,10 @@ void LogCollectorStart()
             f_check = 0;
         }
 
+        if (mq_log_builder_update() == -1) {
+            mdebug1("Output log pattern data could not be updated.");
+        }
+
         sleep(1);
 
         f_check++;
@@ -725,11 +736,11 @@ void LogCollectorStart()
 
 int update_fname(int i, int j)
 {
-    struct tm *p;
     time_t __ctime = time(0);
     char lfile[OS_FLSIZE + 1];
     size_t ret;
     logreader *lf;
+    struct tm tm_result = { .tm_sec = 0 };
 
     if (j < 0) {
         lf = &logff[i];
@@ -737,15 +748,15 @@ int update_fname(int i, int j)
         lf = &globs[j].gfiles[i];
     }
 
-    p = localtime(&__ctime);
+    localtime_r(&__ctime, &tm_result);
 
     /* Handle file */
-    if (p->tm_mday == _cday) {
+    if (tm_result.tm_mday == _cday) {
         return (0);
     }
 
     lfile[OS_FLSIZE] = '\0';
-    ret = strftime(lfile, OS_FLSIZE, lf->ffile, p);
+    ret = strftime(lfile, OS_FLSIZE, lf->ffile, &tm_result);
     if (ret == 0) {
         merror_exit(PARSE_ERROR, lf->ffile);
     }
@@ -763,7 +774,7 @@ int update_fname(int i, int j)
         return (1);
     }
 
-    _cday = p->tm_mday;
+    _cday = tm_result.tm_mday;
     return (0);
 }
 
@@ -1308,7 +1319,7 @@ int check_pattern_expand(int do_seek) {
             if ( wildcard ) {
 
                 DIR *dir = NULL;
-                struct dirent *dirent;
+                struct dirent *dirent = NULL;
 
                 *wildcard = '\0';
                 wildcard++;
@@ -2217,7 +2228,7 @@ static void check_pattern_expand_excluded() {
             if (wildcard) {
 
                 DIR *dir = NULL;
-                struct dirent *dirent;
+                struct dirent *dirent = NULL;
 
                 *wildcard = '\0';
                 wildcard++;

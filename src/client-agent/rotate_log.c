@@ -28,7 +28,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     struct stat buf;
     off_t size;
     time_t now = time(NULL);
-    struct tm tm;
+    struct tm tm = { .tm_sec = 0 };
     int today;
     log_compress = getDefine_Int("monitord", "compress", 0, 1);
     keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);

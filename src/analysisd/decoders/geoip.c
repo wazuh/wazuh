@@ -69,16 +69,16 @@ char *GetGeoInfobyIP(char *ip_addr)
         {
             snprintf(geobuffer, 255, "%s / %s", geoiprecord->country_code, regionname);
             geobuffer[255] = '\0';
-            geodata = strdup(geobuffer);
+            os_strdup(geobuffer, geodata);
         }
         else
         {
-            geodata = strdup(geoiprecord->country_code);
+            os_strdup(geoiprecord->country_code, geodata);
         }
     }
     else
     {
-        geodata = strdup(geoiprecord->country_code);
+        os_strdup(geoiprecord->country_code, geodata);
     }
 
     GeoIPRecord_delete(geoiprecord);
