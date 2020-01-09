@@ -40,6 +40,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     ciscat->flags.enabled = 1;
     ciscat->flags.scan_on_start = 1;
     sched_scan_init(&(ciscat->scan_config));
+    ciscat->scan_config.interval = WM_DEF_INTERVAL;
     module->context = &WM_CISCAT_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = ciscat;

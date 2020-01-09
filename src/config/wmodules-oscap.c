@@ -42,7 +42,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     oscap->flags.enabled = 1;
     oscap->flags.scan_on_start = 1;
     sched_scan_init(&(oscap->scan_config));
-    oscap->scan_config.interval = WM_OSCAP_DEF_INTERVAL;
+    oscap->scan_config.interval = WM_DEF_INTERVAL;
     module->context = &WM_OSCAP_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = oscap;

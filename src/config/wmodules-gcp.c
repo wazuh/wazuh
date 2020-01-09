@@ -34,6 +34,7 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
         gcp->max_messages = 100;
         gcp->project_id = NULL;
         sched_scan_init(&(gcp->scan_config));
+        gcp->scan_config.interval = WM_GCP_DEF_INTERVAL;
         gcp->subscription_name = NULL;
         gcp->credentials_file = NULL;
         gcp->pull_on_start = 1;

@@ -16,6 +16,8 @@
 #define WM_GCP_DEFAULT_DIR WM_DEFAULT_DIR "/gcloud"
 #define WM_GCP_SCRIPT_PATH WM_GCP_DEFAULT_DIR "/gcloud.py"
 
+#define WM_GCP_DEF_INTERVAL 3600
+
 typedef struct wm_gcp {
     int enabled;
     int pull_on_start;

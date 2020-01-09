@@ -66,6 +66,7 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     azure->flags.enabled = 1;
     azure->flags.run_on_start = 1;
     sched_scan_init(&(azure->scan_config));
+    azure->scan_config.interval = WM_DEF_INTERVAL;
     module->context = &WM_AZURE_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = azure;
@@ -207,10 +208,6 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     if ( sched_read != 0 ) {
         return OS_INVALID;
     }
-
-
-    if (!azure->scan_config.interval)
-        azure->scan_config.interval = WM_DEF_INTERVAL;
 
     return 0;
 }

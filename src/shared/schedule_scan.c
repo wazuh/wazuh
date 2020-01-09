@@ -205,7 +205,7 @@ int _sched_scan_validate_parameters(sched_scan_config *scan_config) {
             scan_config->interval = 1; // 1 month
             scan_config->month_interval = true;
         }
-        if (scan_config->scan_time)
+        if (!scan_config->scan_time)
             scan_config->scan_time = strdup("00:00");
     } else if (scan_config->scan_wday >= 0) {
         if (w_validate_interval(scan_config->interval, 1) != 0) {
@@ -222,7 +222,7 @@ int _sched_scan_validate_parameters(sched_scan_config *scan_config) {
             mwarn("Interval must be a multiple of one day. New interval value: 1d");
         }
     } else if (scan_config->month_interval) {
-        mwarn("Interval value is in months. Setting scan day to first day of the month");
+        mwarn("Interval value is in months. Setting scan day to first day of the month.");
         scan_config->scan_day = 1;
         scan_config->scan_time = strdup("00:00");
     }
