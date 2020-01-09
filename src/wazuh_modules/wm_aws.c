@@ -51,7 +51,10 @@ void* wm_aws_main(wm_aws *aws_config) {
 
         const time_t time_sleep = sched_scan_get_next_time(&(aws_config->scan_config), WM_AWS_LOGTAG, aws_config->run_on_start);
 
-        aws_config->state.next_time = aws_config->scan_config.time_start + time_sleep;
+        if (aws_config->state.next_time == 0) {
+            aws_config->state.next_time = aws_config->scan_config.time_start + time_sleep;
+        }
+
         if (wm_state_io(WM_AWS_CONTEXT.name, WM_IO_WRITE, &aws_config->state, sizeof(aws_config->state)) < 0)
             mterror(WM_AWS_LOGTAG, "Couldn't save running state.");
 

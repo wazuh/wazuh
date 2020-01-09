@@ -160,7 +160,10 @@ void * wm_command_main(wm_command_t * command) {
 
     do {
         const time_t time_sleep = sched_scan_get_next_time(&(command->scan_config), WM_COMMAND_LOGTAG, command->run_on_start);
-        command->state.next_time = command->scan_config.time_start + time_sleep;
+
+        if(command->state.next_time == 0) {
+            command->state.next_time = command->scan_config.time_start + time_sleep;
+        }
 
         if (time_sleep) {
             mtdebug1(WM_GCP_LOGTAG, "Sleeping for %li seconds", time_sleep);

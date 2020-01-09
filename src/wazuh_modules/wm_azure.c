@@ -56,7 +56,10 @@ void* wm_azure_main(wm_azure_t *azure_config) {
 
     do {
         const time_t time_sleep = sched_scan_get_next_time(&(azure_config->scan_config), WM_AZURE_LOGTAG, azure_config->flags.run_on_start);
-        azure_config->state.next_time = azure_config->scan_config.time_start + time_sleep;
+
+        if(azure_config->state.next_time == 0) {
+            azure_config->state.next_time = azure_config->scan_config.time_start + time_sleep;
+        }
 
         if (time_sleep) {
             mtdebug1(WM_AZURE_LOGTAG, "Sleeping for %li seconds", time_sleep);

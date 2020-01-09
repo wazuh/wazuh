@@ -52,7 +52,10 @@ void* wm_oscap_main(wm_oscap *oscap) {
     do {
         const time_t time_sleep = sched_scan_get_next_time(&(oscap->scan_config), WM_OSCAP_LOGTAG, oscap->flags.scan_on_start);
         
-        oscap->state.next_time = oscap->scan_config.time_start + time_sleep;
+        if (oscap->state.next_time == 0) {
+            oscap->state.next_time = oscap->scan_config.time_start + time_sleep;
+        }
+
         if (wm_state_io(WM_OSCAP_CONTEXT.name, WM_IO_WRITE, &oscap->state, sizeof(oscap->state)) < 0)
             mterror(WM_OSCAP_LOGTAG, "Couldn't save running state.");
 
