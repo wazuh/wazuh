@@ -29,7 +29,6 @@ const wm_context WM_OSCAP_CONTEXT = {
 static wm_oscap *oscap;                             // Pointer to configuration
 static int queue_fd;                                // Output queue file descriptor
 
-
 static void wm_oscap_setup(wm_oscap *_oscap);       // Setup module
 static void wm_oscap_cleanup();                     // Cleanup function, doesn't overwrite wm_cleanup
 static void wm_oscap_check();                       // Check configuration, disable flag
