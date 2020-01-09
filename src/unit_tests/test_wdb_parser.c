@@ -476,6 +476,24 @@ void test_syscheck_save_file_type_error(void **state)
     os_free(output);
 }
 
+void test_syscheck_save_file_nospace(void **state)
+{
+    (void) state;
+    int ret;
+
+    wdb_t *socket;
+    char *output;
+    os_malloc(256, output);
+    char *query = strdup("save file ");
+    ret = wdb_parse_syscheck(socket, query, output);
+
+    assert_string_equal(output, "err Invalid Syscheck query syntax, near \'\'");
+    assert_int_equal(ret, -1);
+
+    os_free(query);
+    os_free(output);
+}
+
 void test_syscheck_save_file_type_ok(void **state)
 {
     (void) state;
@@ -685,6 +703,24 @@ void test_integrity_clear_ok(void **state)
     os_free(output);
 }
 
+
+void test_invalid_command(void **state){
+    (void) state;
+    int ret;
+
+    wdb_t *socket;
+    char *output;
+    os_malloc(256, output);
+    char *query = strdup("wrong_command ");
+    ret = wdb_parse_syscheck(socket, query, output);
+
+    assert_string_equal(output, "err Invalid Syscheck query syntax, near 'wrong_command'");
+    assert_int_equal(ret, -1);
+
+    os_free(query);
+    os_free(output);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = 
@@ -708,6 +744,7 @@ int main()
         cmocka_unit_test(test_syscheck_save_noarg),
         cmocka_unit_test(test_syscheck_save_invalid_type),
         cmocka_unit_test(test_syscheck_save_file_type_error),
+        cmocka_unit_test(test_syscheck_save_file_nospace),
         cmocka_unit_test(test_syscheck_save_file_type_ok),
         cmocka_unit_test(test_syscheck_save_registry_type_error),
         cmocka_unit_test(test_syscheck_save_registry_type_ok),
@@ -719,6 +756,7 @@ int main()
         cmocka_unit_test(test_integrity_check_ok),
         cmocka_unit_test(test_integrity_clear_error),
         cmocka_unit_test(test_integrity_clear_ok),
+        cmocka_unit_test(test_invalid_command)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
