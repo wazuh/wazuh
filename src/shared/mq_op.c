@@ -12,8 +12,7 @@
 #include "config/config.h"
 #include "os_net/os_net.h"
 
-static char * msgsubst(const char * pattern, const char * logmsg, const char * location, time_t timestamp);
-
+static log_builder_t * mq_log_builder;
 int sock_fail_time;
 
 #ifndef WIN32
@@ -110,10 +109,10 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
-    time_t mtime = time(NULL);
+    time_t mtime;
     char * _message = NULL;
 
-    _message = msgsubst(target->format, message, locmsg, mtime);
+    _message = log_builder_build(mq_log_builder, target->format, message, locmsg);
 
     if (strcmp(target->log_socket->name, "agent") == 0) {
         SendMSG(queue, _message, locmsg, loc);
@@ -208,7 +207,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
         return -1;
     }
 
-    _message = msgsubst(targets[0].format, message, locmsg, time(NULL));
+    _message = log_builder_build(mq_log_builder, targets[0].format, message, locmsg);
     retval = SendMSG(queue, _message, locmsg, loc);
     free(_message);
     return retval;
@@ -216,127 +215,12 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 
 #endif /* !WIN32 */
 
-char * msgsubst(const char * pattern, const char * logmsg, const char * location, time_t timestamp) {
-    char * final;
-    char * _pattern;
-    char * cur;
-    char * tok;
-    char * end;
-    char * param;
-    const char * field;
-    char _timestamp[64];
-    char hostname[512];
-    size_t n = 0;
-    size_t z;
+void mq_log_builder_init() {
+    assert(mq_log_builder == NULL);
+    mq_log_builder = log_builder_init(true);
+}
 
-    if (!pattern) {
-        return strdup(logmsg);
-    }
-
-    os_malloc(OS_MAXSTR, final);
-    os_strdup(pattern, _pattern);
-
-    for (cur = _pattern; tok = strstr(cur, "$("), tok; cur = end) {
-        field = NULL;
-        *tok = '\0';
-
-        // Skip $(
-        param = tok + 2;
-
-        // Copy anything before the token
-        z = strlen(cur);
-
-        if (n + z >= OS_MAXSTR) {
-            goto fail;
-        }
-
-        strncpy(final + n, cur, OS_MAXSTR - n);
-        n += z;
-
-        if (end = strchr(param, ')'), !end) {
-            // Token not closed: break
-            *tok = '$';
-            cur = tok;
-            break;
-        }
-
-        *end++ = '\0';
-
-        // Find parameter
-
-        if (strcmp(param, "log") == 0 || strcmp(param, "output") == 0) {
-            field = logmsg;
-        } else if (strcmp(param, "location") == 0 || strcmp(param, "command") == 0) {
-            field = location;
-        } else if (strncmp(param, "timestamp", 9) == 0) {
-            struct tm tm = { .tm_sec = 0 };
-            char * format;
-
-            localtime_r(&timestamp, &tm);
-
-            if (format = strchr(param, ' '), format) {
-                if (strftime(_timestamp, sizeof(_timestamp), format + 1, &tm)) {
-                    field = _timestamp;
-                } else {
-                    mdebug1("Cannot format time '%s': %s (%d)", format, strerror(errno), errno);
-                }
-            } else {
-                // If format is not speficied, use RFC3164
-#ifdef WIN32
-                // strfrime() does not allow %e in Windows
-                const char * MONTHS[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-
-                if (snprintf(_timestamp, sizeof(_timestamp), "%s %s%d %02d:%02d:%02d", MONTHS[tm.tm_mon], tm.tm_mday < 10 ? " " : "", tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec) < (int)sizeof(_timestamp)) {
-                    field = _timestamp;
-                }
-#else
-                if (strftime(_timestamp, sizeof(_timestamp), "%b %e %T", &tm)) {
-                    field = _timestamp;
-                }
-#endif // WIN32
-            }
-        } else if (strcmp(param, "hostname") == 0) {
-            if (gethostname(hostname, sizeof(hostname)) != 0) {
-                strncpy(hostname, "localhost", sizeof(hostname));
-            }
-
-            hostname[sizeof(hostname) - 1] = '\0';
-            field = hostname;
-        } else {
-            mdebug1("Invalid parameter '%s' for log format.", param);
-            continue;
-        }
-
-        if (field) {
-            z = strlen(field);
-
-            if (n + z >= OS_MAXSTR) {
-                goto fail;
-            }
-
-            strncpy(final + n, field, OS_MAXSTR - n);
-            n += z;
-        }
-    }
-
-    // Copy rest of the pattern
-
-    z = strlen(cur);
-
-    if (n + z >= OS_MAXSTR) {
-        goto fail;
-    }
-
-    strncpy(final + n, cur, OS_MAXSTR - n);
-    final[n + z] = '\0';
-
-    free(_pattern);
-    return final;
-
-fail:
-    mdebug1("Too long message format");
-    strncpy(final, logmsg ? logmsg : "Too long message format", OS_MAXSTR - 1);
-    final[OS_MAXSTR - 1] = '\0';
-    free(_pattern);
-    return final;
+int mq_log_builder_update() {
+    assert(mq_log_builder != NULL);
+    return log_builder_update(mq_log_builder);
 }

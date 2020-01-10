@@ -116,6 +116,8 @@ ifeq (${uname_S},SunOS)
 ifneq (${uname_P},sparc)
 ifeq (${uname_K},5.11)
 		OSSEC_LDFLAGS+=-z relax=secadj
+else
+		OSSEC_CFLAGS+=-DMSGPACK_ZONE_ALIGN=8
 endif
 endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'

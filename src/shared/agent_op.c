@@ -768,9 +768,9 @@ char * get_agent_id_from_name(const char *agent_name) {
 }
 
 /* Connect to the control socket if available */
-#if defined (__linux__) || defined (__MACH__)
+#if defined (__linux__) || defined (__MACH__) || defined(sun)
 int control_check_connection() {
-    int sock = OS_ConnectUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_SIZE_128);
+    int sock = OS_ConnectUnixDomain(isChroot() ? CONTROL_SOCK : DEFAULTDIR CONTROL_SOCK, SOCK_STREAM, OS_SIZE_128);
 
     if (sock < 0) {
         return -1;

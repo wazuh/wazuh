@@ -40,9 +40,9 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
     module->data = osquery_monitor;
 
 #ifdef WIN32
-    os_strdup("C:\\ProgramData\\osquery\\osqueryd", osquery_monitor->bin_path);
-    os_strdup("C:\\ProgramData\\osquery\\log\\osqueryd.results.log", osquery_monitor->log_path);
-    os_strdup("C:\\ProgramData\\osquery\\osquery.conf", osquery_monitor->config_path);
+    os_strdup("C:\\Program Files\\osquery\\osqueryd", osquery_monitor->bin_path);
+    os_strdup("C:\\Program Files\\osquery\\log\\osqueryd.results.log", osquery_monitor->log_path);
+    os_strdup("C:\\Program Files\\osquery\\osquery.conf", osquery_monitor->config_path);
 
 #else
     os_strdup("/var/log/osquery/osqueryd.results.log", osquery_monitor->log_path);

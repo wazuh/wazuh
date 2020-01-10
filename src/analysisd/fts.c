@@ -109,7 +109,7 @@ int FTS_Init(int threads)
 
     /* Add content from the files to memory */
     fseek(fp_list, 0, SEEK_SET);
-    while (fgets(_line, OS_FLSIZE , fp_list) != NULL) {
+    while (fgets(_line, sizeof(_line), fp_list) != NULL) {
         char *tmp_s;
 
         /* Remove newlines */
