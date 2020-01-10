@@ -1801,10 +1801,30 @@ void * w_output_thread(void * args){
         message = w_msg_queue_pop(msg_queue);
 
         if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) < 0) {
-            merror(QUEUE_SEND);
+            if (strcmp(message->log_target->log_socket->name, "agent") == 0) {
+                // When dealing with this type of messages we don't want any of them to be lost
+                // Continuously attempt to reconnect to the queue and send the message.
+                int sleep_time = 5;
 
-            if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+                while(1) {
+                    if(logr_queue = StartMQ(DEFAULTQPATH, WRITE), logr_queue > 0) {
+                        if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) == 0) {
+                            break;  //  We sent the message successfully, we can go on.
+                        }
+                    }
+
+                    sleep(sleep_time);
+
+                    // If we failed, we will wait longer before reattempting to connect
+                    if(sleep_time < 300)
+                        sleep_time += 5;
+                }
+            } else {
+                merror(QUEUE_SEND);
+
+                if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+                    merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+                }
             }
         }
 
