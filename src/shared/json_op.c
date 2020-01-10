@@ -16,7 +16,7 @@ cJSON * json_fread(const char * path, char retry) {
     char * buffer = NULL;
     const char *jsonErrPtr;
 
-    if (buffer = get_file_content(path, JSON_MAX_FSIZE), !buffer) {
+    if (buffer = w_get_file_content(path, JSON_MAX_FSIZE), !buffer) {
         mdebug1("Cannot get the content of the file: %s", path);
         return NULL;
     }

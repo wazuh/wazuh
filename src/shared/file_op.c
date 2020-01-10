@@ -2942,7 +2942,7 @@ void w_descriptor_cloexec(__attribute__((unused)) int fd){
 }
 
 /* Return the content of a file from a given path*/
-char * get_file_content(const char * path, int max_size) {
+char * w_get_file_content(const char * path, int max_size) {
     FILE * fp = NULL;
     char * buffer = NULL;
     long size;
@@ -2975,7 +2975,7 @@ char * get_file_content(const char * path, int max_size) {
     // Allocate memory
     os_malloc(size + 1, buffer);
 
-    // Get file and parse into JSON
+    // Get file content
     if (read = fread(buffer, 1, size, fp), read != (size_t)size && !feof(fp)) {
         mdebug1(FREAD_ERROR, path, errno, strerror(errno));
         os_free(buffer);
