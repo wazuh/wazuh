@@ -2941,7 +2941,7 @@ void w_descriptor_cloexec(__attribute__((unused)) int fd){
 #endif
 }
 
-/* Return the content of a file from a given path*/
+/* Return the content of a file from a given path */
 char * w_get_file_content(const char * path, int max_size) {
     FILE * fp = NULL;
     char * buffer = NULL;
