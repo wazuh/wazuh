@@ -88,19 +88,6 @@ void fim_initialize() {
         merror_exit(FIM_CRITICAL_DATA_CREATE, "sqlite3 db"); // LCOV_EXCL_LINE
     }
 
-#ifndef WIN32
-    // Create hash table for inodes entries
-    syscheck.fim_inode = OSHash_Create();
-
-    if (!syscheck.fim_inode) {
-        merror_exit(FIM_CRITICAL_DATA_CREATE, "inode hash table"); // LCOV_EXCL_LINE
-    }
-
-    if (!OSHash_setSize(syscheck.fim_inode, OS_SIZE_4096)) {
-        mwarn(LIST_ERROR);
-    }
-#endif
-
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);

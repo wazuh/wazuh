@@ -282,7 +282,6 @@ typedef struct _config {
     int audit_healthcheck;          // Startup health-check for whodata
     int sym_checker_interval;
     
-    OSHash * fim_inode;
     pthread_mutex_t fim_entry_mutex;
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
