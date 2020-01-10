@@ -4,7 +4,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -13,7 +13,7 @@
 #include "remoted.h"
 #include <pthread.h>
 
-remoted_state_t remoted_state = {0, 0, 0, 0, 0};
+remoted_state_t remoted_state;
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int rem_write_state();
 static char *refresh_time;
@@ -26,13 +26,13 @@ void * rem_state_main() {
         return NULL;
     }
 
-    os_calloc(30, sizeof(char), refresh_time);
+    os_calloc(48, sizeof(char), refresh_time);
     if (interval < 60) {
-        snprintf(refresh_time, 30, "Updated every %i seconds.", interval);
+        snprintf(refresh_time, 48, "Updated every %i seconds.", interval);
     } else if (interval < 3600) {
-        snprintf(refresh_time, 30, "Updated every %i minutes.", interval/60);
+        snprintf(refresh_time, 48, "Updated every %i minutes.", interval/60);
     } else {
-        snprintf(refresh_time, 30, "Updated every %i hours.", interval/3600);
+        snprintf(refresh_time, 48, "Updated every %i hours.", interval/3600);
     }
 
     mdebug1("State file updating thread started.");
@@ -47,7 +47,7 @@ void * rem_state_main() {
 
 int rem_write_state() {
     FILE * fp;
-    char path[PATH_MAX + 1];
+    char path[PATH_MAX - 8];
     char path_temp[PATH_MAX + 1];
     remoted_state_t state_cpy;
 
@@ -93,9 +93,16 @@ int rem_write_state() {
         "discarded_count='%u'\n"
         "\n"
         "# Messages sent\n"
-        "msg_sent='%u'\n",
+        "msg_sent='%u'\n"
+        "\n"
+        "# Total number of bytes received\n"
+        "recv_bytes='%lu'\n"
+        "\n"
+        "# Messages dequeued after the agent closes the connection\n"
+        "dequeued_after_close='%u'\n",
         __local_name, refresh_time, rem_get_qsize(), rem_get_tsize(), state_cpy.tcp_sessions,
-        state_cpy.evt_count, state_cpy.ctrl_msg_count, state_cpy.discarded_count, state_cpy.msg_sent);
+        state_cpy.evt_count, state_cpy.ctrl_msg_count, state_cpy.discarded_count, state_cpy.msg_sent,
+        state_cpy.recv_bytes, state_cpy.dequeued_after_close);
 
     fclose(fp);
 
@@ -143,5 +150,17 @@ void rem_inc_msg_sent() {
 void rem_inc_discarded() {
     w_mutex_lock(&state_mutex);
     remoted_state.discarded_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_add_recv(unsigned long bytes) {
+    w_mutex_lock(&state_mutex);
+    remoted_state.recv_bytes += bytes;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_dequeued() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.dequeued_after_close++;
     w_mutex_unlock(&state_mutex);
 }

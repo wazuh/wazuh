@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -44,7 +44,7 @@ static int read_proc_file(const char *file_name, const char *pid, int position)
 int read_proc_dir(const char *dir_name, const char *pid, int position)
 {
     DIR *dp;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
 
     if ((dir_name == NULL) || (strlen(dir_name) > PATH_MAX)) {
         mterror(ARGV0, "Invalid directory given");

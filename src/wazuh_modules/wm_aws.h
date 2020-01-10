@@ -5,7 +5,7 @@
  *
  * Updated by Jeremy Phillips <jeremy@uranusbytes.com>
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -29,6 +29,7 @@ typedef struct wm_aws_bucket {
     char *secret_key;                   // IAM secret key
     char *aws_profile;                  // AWS credentials profile
     char *iam_role_arn;                 // IAM role
+    char *aws_organization_id;          // AWS organization ID
     char *aws_account_id;               // AWS account ID(s)
     char *aws_account_alias;            // AWS account alias
     char *trail_prefix;                 // Trail prefix

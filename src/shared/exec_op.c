@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * May 1, 2018
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -82,6 +82,10 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
         if (fp) {
             fclose(fp);
             CloseHandle(hPipe[1]);
+        }
+
+        if(lpCommandLine) {
+            free(lpCommandLine);
         }
 
         return NULL;

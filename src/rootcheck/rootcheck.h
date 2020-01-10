@@ -2,18 +2,24 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef __ROOTCHECK_H
-#define __ROOTCHECK_H
+#ifndef ROOTCHECK_H
+#define ROOTCHECK_H
 
 #include "list_op.h"
 #include "config/rootcheck-config.h"
 #include "external/cJSON/cJSON.h"
+
+#ifdef WIN32
+#define PATH_SEP '\\'
+#else
+#define PATH_SEP '/'
+#endif
 
 extern rkconfig rootcheck;
 
@@ -45,7 +51,7 @@ int rk_check_file(char *file, char *pattern);
 
 int rk_check_dir(const char *dir, const char *file, char *pattern);
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getRootcheckConfig(void);
 
 /* Check if pattern is present on string */
@@ -120,6 +126,9 @@ void check_rc_ports(void);
 void check_open_ports(void);
 void check_rc_if(void);
 
+/*Checks if the path or file is user-ignored */
+ int check_ignore(const char *path_to_ignore);
+
 int Read_Rootcheck_Config(const char *cfgfile);
 
 /* Global variables */
@@ -137,4 +146,4 @@ typedef struct _Proc_Info {
     char *p_path;
 } Proc_Info;
 
-#endif /* __ROOTCHECK_H */
+#endif /* ROOTCHECK_H */

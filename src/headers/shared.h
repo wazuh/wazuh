@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -24,16 +24,16 @@
 #define FORTIFY_SOURCE
 #endif
 
-#ifndef __SHARED_H
-#define __SHARED_H
+#ifndef SHARED_H
+#define SHARED_H
 
-#ifndef _LARGEFILE64_SOURCE
-#define _LARGEFILE64_SOURCE
-#endif
+#ifndef LARGEFILE64_SOURCE
+#define LARGEFILE64_SOURCE
+#endif /* LARGEFILE64_SOURCE */
 
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
+#ifndef FILE_OFFSET_BITS
+#define FILE_OFFSET_BITS 64
+#endif /* FILE_OFFSET_BITS */
 
 /* Global headers */
 #include <sys/types.h>
@@ -42,6 +42,7 @@
 #include <sys/param.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <assert.h>
 
 #ifndef WIN32
 #include <sys/wait.h>
@@ -69,6 +70,8 @@
 #include <dirent.h>
 #include <ctype.h>
 #include <signal.h>
+#include <stdbool.h>
+#include <pthread.h>
 
 /* The mingw32 builder used by travis.ci can't find glob.h
  * Yet glob must work on actual win32.
@@ -80,6 +83,7 @@
 #ifndef WIN32
 #include <netdb.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -101,13 +105,13 @@
 
 #include "os_err.h"
 
-#ifndef _LARGEFILE64_SOURCE
-#define _LARGEFILE64_SOURCE
-#endif
+#ifndef LARGEFILE64_SOURCE
+#define LARGEFILE64_SOURCE
+#endif /* LARGEFILE64_SOURCE */
 
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
+#ifndef FILE_OFFSET_BITS
+#define FILE_OFFSET_BITS 64
+#endif /* FILE_OFFSET_BITS */
 
 /* Global portability code */
 
@@ -123,8 +127,10 @@ typedef uint8_t u_int8_t;
 
 #endif /* SOLARIS */
 
-#if defined HPUX
+#if defined(HPUX) || defined(DOpenBSD)
 #include <limits.h>
+typedef uint64_t u_int64_t;
+typedef int int32_t;
 typedef uint32_t u_int32_t;
 typedef uint16_t u_int16_t;
 typedef uint8_t u_int8_t;
@@ -164,6 +170,12 @@ typedef uint8_t u_int8_t;
 #define MSG_DONTWAIT MSG_NONBLOCK
 #endif
 
+#if defined(__GNUC__) && __GNUC__ >= 7
+#define fallthrough __attribute__ ((fallthrough))
+#else
+#define fallthrough ((void) 0)
+#endif
+
 extern const char *__local_name;
 /*** Global prototypes ***/
 /*** These functions will exit on error. No need to check return code ***/
@@ -186,7 +198,7 @@ extern const char *__local_name;
 
 #define w_strdup(x,y) ({ int retstr = 0; if (x) { os_strdup(x, y);} else retstr = 1; retstr;})
 
-#define w_ftell(x)({ long z = ftell(x); if(z < 0) merror_exit("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno)); z; })
+#define w_strlen(x) ({ size_t ret = 0; if (x) ret = strlen(x); ret;})
 
 #ifdef CLIENT
 #define isAgent 1
@@ -227,15 +239,21 @@ extern const char *__local_name;
 #include "json_op.h"
 #include "notify_op.h"
 #include "version_op.h"
+#include "utf8_op.h"
+#include "log_builder.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"
 
 #include "error_messages/error_messages.h"
 #include "error_messages/debug_messages.h"
+#include "error_messages/information_messages.h"
+#include "error_messages/warning_messages.h"
 #include "custom_output_search.h"
 #include "url.h"
+#include "yaml2json.h"
 #include "cluster_utils.h"
 #include "auth_client.h"
+#include "os_utils.h"
 
-#endif /* __SHARED_H */
+#endif /* SHARED_H */

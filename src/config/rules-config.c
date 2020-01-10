@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -81,7 +81,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     char path[PATH_MAX + 2];
     char f_name[PATH_MAX + 2];
     int att_count = 0;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     DIR *dfd;
     OSRegex regex;
 

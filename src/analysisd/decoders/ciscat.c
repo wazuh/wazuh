@@ -2,7 +2,7 @@
 * Copyright (C) 2015-2019, Wazuh Inc.
 * April 23, 2018.
 *
-* This program is a free software; you can redistribute it
+* This program is free software; you can redistribute it
 * and/or modify it under the terms of the GNU General Public
 * License (version 2) as published by the FSF - Free Software
 * Foundation.
@@ -33,7 +33,7 @@ void CiscatInit(){
 }
 
 /* Special decoder for CIS-CAT events */
-int DecodeCiscat(Eventinfo *lf)
+int DecodeCiscat(Eventinfo *lf, int *socket)
 {
     cJSON *logJSON;
     char *msg_type = NULL;
@@ -61,9 +61,11 @@ int DecodeCiscat(Eventinfo *lf)
     }
 
     // Parsing event.
-    logJSON = cJSON_Parse(lf->log);
+    const char *jsonErrPtr;
+    logJSON = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0);
     if (!logJSON) {
-        mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
+        mdebug1("Error parsing JSON event.");
+        mdebug2("Input JSON: '%s", lf->log);
         return (0);
     }
 
@@ -76,7 +78,6 @@ int DecodeCiscat(Eventinfo *lf)
     }
 
     if (strcmp(msg_type, "scan_info") == 0) {
-        int socket = -1;
         char *msg = NULL;
         cJSON * cis_data;
 
@@ -172,7 +173,7 @@ int DecodeCiscat(Eventinfo *lf)
                 wm_strcat(&msg, "NULL", '|');
             }
 
-            if (sc_send_db(msg,&socket) < 0) {
+            if (sc_send_db(msg, socket) < 0) {
                 cJSON_Delete(logJSON);
                 return (0);
             }

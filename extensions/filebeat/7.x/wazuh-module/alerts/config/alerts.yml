@@ -1,0 +1,7 @@
+fields:
+  index_prefix: {{ .index_prefix }}
+type: log
+paths:
+{{ range $i, $path := .paths }}
+ - {{$path}}
+{{ end }}

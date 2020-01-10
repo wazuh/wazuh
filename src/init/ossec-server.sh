@@ -36,15 +36,18 @@ is_rhel_le_5() {
 AUTHOR="Wazuh Inc."
 USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
-DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
+DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
+OP_DAEMONS="ossec-maild ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
 
 if ! is_rhel_le_5
 then
     DAEMONS="wazuh-clusterd $DAEMONS"
+    OP_DAEMONS="wazuh-clusterd $OP_DAEMONS"
 fi
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
+OP_SDAEMONS=$(echo $OP_DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
 
 [ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
@@ -130,26 +133,30 @@ help()
     exit 1;
 }
 
-AUTHD_MSG="This option is deprecated because Authd is now enabled by default. If you want to change it, modify the ossec.conf file."
+AUTHD_MSG="This option is deprecated because Authd is now enabled by default."
+DATABASE_MSG="This option is deprecated because the database output is now enabled by default."
+SYSLOG_MSG="This option is deprecated because Client Syslog is now enabled by default."
+AGENTLESS_MSG="This option is deprecated because Agentless is now enabled by default."
+INTEGRATOR_MSG="This option is deprecated because Integrator is now enabled by default."
 
 # Enables additional daemons
 enable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
+        echo "Enable options: debug"
+        echo "Usage: $0 enable debug"
         exit 1;
     fi
 
     if [ "X$2" = "Xdatabase" ]; then
-        echo "DB_DAEMON=ossec-dbd" >> ${PLIST};
+        echo "$DATABASE_MSG"
     elif [ "X$2" = "Xclient-syslog" ]; then
-        echo "CSYSLOG_DAEMON=ossec-csyslogd" >> ${PLIST};
+        echo "$SYSLOG_MSG"
     elif [ "X$2" = "Xagentless" ]; then
-        echo "AGENTLESS_DAEMON=ossec-agentlessd" >> ${PLIST};
+        echo "$AGENTLESS_MSG";
     elif [ "X$2" = "Xintegrator" ]; then
-        echo "INTEGRATOR_DAEMON=ossec-integratord" >> ${PLIST};
+        echo "$INTEGRATOR_MSG";
     elif [ "X$2" = "Xauth" ]; then
         echo "$AUTHD_MSG"
     elif [ "X$2" = "Xdebug" ]; then
@@ -158,44 +165,40 @@ enable()
         echo ""
         echo "Invalid enable option."
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
+        echo "Enable options: debug"
+        echo "Usage: $0 enable debug"
         exit 1;
     fi
 }
+
 
 # Disables additional daemons
 disable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator]"
+        echo "Disable options: debug"
+        echo "Usage: $0 disable debug]"
         exit 1;
     fi
     daemon=''
+  
     if [ "X$2" = "Xdatabase" ]; then
-        echo "DB_DAEMON=\"\"" >> ${PLIST};
-        daemon='ossec-dbd'
+        echo "$DATABASE_MSG"
     elif [ "X$2" = "Xclient-syslog" ]; then
-        echo "CSYSLOG_DAEMON=\"\"" >> ${PLIST};
-        daemon='ossec-csyslogd'
+        echo "$SYSLOG_MSG"
     elif [ "X$2" = "Xagentless" ]; then
-        echo "AGENTLESS_DAEMON=\"\"" >> ${PLIST};
-        daemon='ossec-agentlessd'
+        echo "$AGENTLESS_MSG";
     elif [ "X$2" = "Xintegrator" ]; then
-        echo "INTEGRATOR_DAEMON=\"\"" >> ${PLIST};
-        daemon='ossec-integratord'
-    elif [ "X$2" = "Xauth" ]; then
-        echo "$AUTHD_MSG"
+        echo "$INTEGRATOR_MSG";
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid disable option."
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator]"
+        echo "Disable options: debug"
+        echo "Usage: $0 disable debug"
         exit 1;
     fi
     if [ "$daemon" != '' ]; then
@@ -249,9 +252,6 @@ testconfig()
 {
     # We first loop to check the config.
     for i in ${SDAEMONS}; do
-        if [ X"$i" = "Xwazuh-clusterd" ]; then
-            continue
-        fi
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
             if [ $USE_JSON = true ]; then
@@ -259,6 +259,11 @@ testconfig()
             else
                 echo "${i}: Configuration error. Exiting"
             fi
+            if [ ! -f ${DIR}/var/run/.restart ]; then
+                touch ${DIR}/var/run/${i}.failed
+            fi
+            rm -f ${DIR}/var/run/*.start
+            rm -f ${DIR}/var/run/.restart
             unlock;
             exit 1;
         fi
@@ -281,6 +286,7 @@ start()
         else
             echo "OSSEC analysisd: Testing rules failed. Configuration error. Exiting."
         fi
+        touch ${DIR}/var/run/ossec-analysisd.failed
         exit 1;
     fi
 
@@ -325,6 +331,31 @@ start()
                 continue
              fi
         fi
+        ## If ossec-authd is disabled, don't try to start it.
+        if [ X"$i" = "Xossec-authd" ]; then
+             start_config="$(grep -n "<auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+             end_config="$(grep -n "</auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+             if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
+                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
+                if [ $? = 0 ]; then
+                    continue
+                fi
+             else
+                continue
+             fi
+             # If it is a worker node, don't try to start authd.
+             start_config="$(grep -n "<cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+             end_config="$(grep -n "</cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+             if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
+                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
+                if [ $? != 0 ]; then
+                    sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<node_type>worker" >/dev/null 2>&1
+                    if [ $? = 0 ]; then
+                        continue
+                    fi
+                fi
+             fi
+        fi
         if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
         else
@@ -333,17 +364,44 @@ start()
 
         pstatus ${i};
         if [ $? = 0 ]; then
+            ## Create starting flag
+            failed=false
+            rm -f ${DIR}/var/run/${i}.failed
+            touch ${DIR}/var/run/${i}.start
             if [ $USE_JSON = true ]; then
                 ${DIR}/bin/${i} ${DEBUG_CLI} > /dev/null 2>&1;
             else
                 ${DIR}/bin/${i} ${DEBUG_CLI};
             fi
             if [ $? != 0 ]; then
+                failed=true
+            else
+                is_optional ${i};
+                if [ $? = 0 ]; then
+                    j=0;
+                    while [ $failed = false ]; do
+                        pstatus ${i};
+                        if [ $? = 1 ]; then
+                            break;
+                        fi
+                        sleep 0.5;
+                        j=`expr $j + 1`;
+                        if [ "$j" = "${MAX_ITERATION}" ]; then
+                            failed=true
+                        fi
+                    done
+                fi
+            fi
+            if [ $failed = true ]; then
                 if [ $USE_JSON = true ]; then
                     echo -n '{"daemon":"'${i}'","status":"error"}'
                 else
                     echo "${i} did not start correctly.";
                 fi
+                rm -f ${DIR}/var/run/${i}.start
+                touch ${DIR}/var/run/${i}.failed
+                rm -f ${DIR}/var/run/*.start
+                rm -f ${DIR}/var/run/.restart
                 unlock;
                 exit 1;
             fi
@@ -373,6 +431,19 @@ start()
     else
         echo "Completed."
     fi
+    rm -f ${DIR}/var/run/*.start
+}
+
+is_optional()
+{
+    daemon=$1
+    for op in ${OP_SDAEMONS}; do
+        # If the daemon is optional, don't check if it is running in background.
+        if [ X"$op" = X"$daemon" ]; then
+            return 1;
+        fi
+    done
+    return 0;
 }
 
 pstatus()
@@ -389,7 +460,7 @@ pstatus()
             ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
-                    echo "${pfile}: Process $j not used by ossec, removing..."
+                    echo "${pfile}: Process $j not used by Wazuh, removing..."
                 fi
                 rm -f ${DIR}/var/run/${pfile}-$j.pid
                 continue;
@@ -478,11 +549,6 @@ stopa()
     fi
 }
 
-buildCDB()
-{
-    ${DIR}/bin/ossec-makelists > /dev/null 2>&1
-}
-
 ### MAIN HERE ###
 
 if [ "$1" = "-j" ]; then
@@ -507,6 +573,7 @@ stop)
     unlock
     ;;
 restart)
+    touch ${DIR}/var/run/.restart
     testconfig
     lock
     if [ $USE_JSON = true ]; then
@@ -514,8 +581,8 @@ restart)
     else
         stopa
     fi
-    buildCDB
     start
+    rm -f ${DIR}/var/run/.restart
     unlock
     ;;
 reload)

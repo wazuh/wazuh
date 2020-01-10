@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 27, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -44,7 +44,6 @@ int wm_config() {
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else
     wmodule *module;
-
     // The database module won't be available on agents
 
     if ((module = wm_database_read()))
@@ -55,6 +54,12 @@ int wm_config() {
     if ((module = wm_download_read()))
         wm_add(module);
 
+#endif
+
+#if defined (__linux__) || (__MACH__) || defined (sun)
+    wmodule * control_module;
+    control_module = wm_control_read();
+    wm_add(control_module);
 #endif
 
     return 0;
@@ -108,6 +113,7 @@ int wm_check() {
 
     // Get the last module of the same type
 
+#ifndef __clang_analyzer__
     for (i = wmodules->next; i; i = i->next) {
         for (j = prev = wmodules; j != i; j = next) {
             next = j->next;
@@ -128,6 +134,7 @@ int wm_check() {
             }
         }
     }
+#endif
 
     return 0;
 }
@@ -204,6 +211,7 @@ int wm_state_io(const char * tag, int op, void *state, size_t size) {
     if (!(file = fopen(path, op == WM_IO_WRITE ? "wb" : "rb"))) {
         return -1;
     }
+    w_file_cloexec(file);
 
     nmemb = (op == WM_IO_WRITE) ? fwrite(state, size, 1, file) : fread(state, size, 1, file);
     fclose(file);
@@ -251,7 +259,7 @@ void wm_module_free(wmodule * config){
 }
 
 
-// Get readed data
+// Get read data
 cJSON *getModulesConfig(void) {
 
     wmodule *cur_module;
@@ -260,8 +268,13 @@ cJSON *getModulesConfig(void) {
     cJSON *wm_mod = cJSON_CreateArray();
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        if (cur_module->context->dump(cur_module->data))
-            cJSON_AddItemToArray(wm_mod,cur_module->context->dump(cur_module->data));
+        if (cur_module->context->dump) {
+            cJSON * item = cur_module->context->dump(cur_module->data);
+
+            if (item) {
+                cJSON_AddItemToArray(wm_mod, item);
+            }
+        }
     }
 
     cJSON_AddItemToObject(root,"wmodules",wm_mod);
@@ -341,7 +354,7 @@ int get_time_to_hour(const char * hour) {
 
     time_t curr_time;
     time_t target_time;
-    struct tm * time_now;
+    struct tm tm_result = { .tm_sec = 0 };
     double diff;
     int i;
 
@@ -349,9 +362,9 @@ int get_time_to_hour(const char * hour) {
 
     // Get current time
     curr_time = time(NULL);
-    time_now = localtime(&curr_time);
+    localtime_r(&curr_time, &tm_result);
 
-    struct tm t_target = *time_now;
+    struct tm t_target = tm_result;
 
     // Look for the particular hour
     t_target.tm_hour = atoi(parts[0]);
@@ -380,7 +393,7 @@ int get_time_to_day(int wday, const char * hour) {
 
     time_t curr_time;
     time_t target_time;
-    struct tm * time_now;
+    struct tm tm_result = { .tm_sec = 0 };
     double diff;
     int i, ret;
 
@@ -389,9 +402,9 @@ int get_time_to_day(int wday, const char * hour) {
 
     // Get current time
     curr_time = time(NULL);
-    time_now = localtime(&curr_time);
+    localtime_r(&curr_time, &tm_result);
 
-    struct tm t_target = *time_now;
+    struct tm t_target = tm_result;
 
     // Look for the particular hour
     t_target.tm_hour = atoi(parts[0]);
@@ -402,22 +415,22 @@ int get_time_to_day(int wday, const char * hour) {
     target_time = mktime(&t_target);
     diff = difftime(target_time, curr_time);
 
-    if (wday == time_now->tm_wday) {    // We are in the desired day
+    if (wday == tm_result.tm_wday) {    // We are in the desired day
 
         if (diff < 0) {
             diff += (7*24*60*60);   // Seconds of a week
         }
 
-    } else if (wday > time_now->tm_wday) {  // We are looking for a future day
+    } else if (wday > tm_result.tm_wday) {  // We are looking for a future day
 
-        while (wday > time_now->tm_wday) {
+        while (wday > tm_result.tm_wday) {
             diff += (24*60*60);
-            time_now->tm_wday++;
+            tm_result.tm_wday++;
         }
 
-    } else if (wday < time_now->tm_wday) { // We have past the desired day
+    } else if (wday < tm_result.tm_wday) { // We have past the desired day
 
-        ret = 7 - (time_now->tm_wday - wday);
+        ret = 7 - (tm_result.tm_wday - wday);
         for (i = 0; i < ret; i++) {
             diff += (24*60*60);
         }
@@ -434,17 +447,17 @@ int check_day_to_scan(int day, const char *hour) {
 
     time_t curr_time;
     time_t target_time;
-    struct tm * time_now;
+    struct tm tm_result = { .tm_sec = 0 };
     double diff;
     int i;
 
     // Get current time
     curr_time = time(NULL);
-    time_now = localtime(&curr_time);
+    localtime_r(&curr_time, &tm_result);
 
-    if (day == time_now->tm_mday) {    // Day of the scan
+    if (day == tm_result.tm_mday) {    // Day of the scan
 
-        struct tm t_target = *time_now;
+        struct tm t_target = tm_result;
 
         char ** parts = OS_StrBreak(':', hour, 2);
 
@@ -483,6 +496,7 @@ int wm_get_path(const char *binary, char **validated_comm){
     char *full_path;
     char *validated = NULL;
     char *env_path = NULL;
+    char *save_ptr = NULL;
 
 #ifdef WIN32
     if (IsFile(binary) == 0) {
@@ -498,7 +512,7 @@ int wm_get_path(const char *binary, char **validated_comm){
     } else {
 
         env_path = getenv("PATH");
-        path = strtok(env_path, sep);
+        path = strtok_r(env_path, sep, &save_ptr);
 
         while (path != NULL) {
             os_calloc(strlen(path) + strlen(binary) + 2, sizeof(char), full_path);
@@ -513,7 +527,7 @@ int wm_get_path(const char *binary, char **validated_comm){
                 break;
             }
             free(full_path);
-            path = strtok(NULL, sep);
+            path = strtok_r(NULL, sep, &save_ptr);
         }
 
         // Check binary found
@@ -591,3 +605,13 @@ void wm_delay(unsigned int ms) {
     select(0, NULL, NULL, NULL, &timeout);
 #endif
 }
+
+#ifdef __MACH__
+void freegate(gateway *gate){
+    if(!gate){
+        return;
+    }
+    os_free(gate->addr);
+    os_free(gate);
+}
+#endif

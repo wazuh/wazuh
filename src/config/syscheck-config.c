@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -11,7 +11,6 @@
 #include "shared.h"
 #include "syscheck-config.h"
 #include "config.h"
-
 
 int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg,
         const char *restrictfile, int recursion_limit, const char *tag, int overwrite)
@@ -70,28 +69,23 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
 #endif
         if (syscheck->dir == NULL) {
             os_calloc(2, sizeof(char *), syscheck->dir);
-            syscheck->dir[pl + 1] = NULL;
-            os_strdup(entry, syscheck->dir[pl]);
+            os_strdup(entry, syscheck->dir[0]);
 
 #ifdef WIN32
             os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
-            memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
 #endif
+            os_calloc(2, sizeof(char *), syscheck->converted_links);
+            set_linked_path(syscheck, entry, 0);
+
             os_calloc(2, sizeof(int), syscheck->opts);
-            syscheck->opts[pl] = vals;
-            syscheck->opts[pl + 1] = 0;
+            syscheck->opts[0] = vals;
 
             os_calloc(2, sizeof(OSMatch *), syscheck->filerestrict);
-            syscheck->filerestrict[pl] = NULL;
-            syscheck->filerestrict[pl + 1] = NULL;
 
             os_calloc(2, sizeof(int), syscheck->recursion_level);
-            syscheck->recursion_level[pl] = recursion_limit;
-            syscheck->recursion_level[pl + 1] = 0;
+            syscheck->recursion_level[0] = recursion_limit;
 
             os_calloc(2, sizeof(char *), syscheck->tag);
-            syscheck->tag[pl] = NULL;
-            syscheck->tag[pl + 1] = NULL;
         } else if (overwrite < 0) {
             while (syscheck->dir[pl] != NULL) {
                 pl++;
@@ -105,6 +99,11 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
                     syscheck->wdata.dirs_status);
             memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
 #endif
+
+            os_realloc(syscheck->converted_links, (pl + 2) * sizeof(char *), syscheck->converted_links);
+            set_linked_path(syscheck, entry, pl);
+            syscheck->converted_links[pl + 1] = NULL;
+
             os_realloc(syscheck->opts, (pl + 2) * sizeof(int),
                        syscheck->opts);
             syscheck->opts[pl] = vals;
@@ -268,6 +267,7 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
             if (syscheck->registry[i].arch == arch && strcmp(syscheck->registry[i].entry, tmp_entry) == 0) {
                 mdebug2("Overwriting the registration entry: %s", syscheck->registry[i].entry);
                 dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag, i);
+                free_strarray(entry);
                 return (1);
             }
             i++;
@@ -365,7 +365,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
         /* Get the options */
         if (!g_attrs || !g_values) {
-            mwarn(SYSCHECK_NO_OPT, dirs);
+            mwarn(FIM_NO_OPTIONS, dirs);
             ret = 0;
             goto out_free;
         }
@@ -396,7 +396,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM
                             | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_ATTRS);
                 } else {
-                    merror(SK_INV_OPT, *values, *attrs);
+                    merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -410,7 +410,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM);
                 } else {
-                    merror(SK_INV_OPT, *values, *attrs);
+                    merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -422,7 +422,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_MD5SUM;
                 } else {
-                    merror(SK_INV_OPT, *values, *attrs);
+                    merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -434,7 +434,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_SHA1SUM;
                 } else {
-                    merror(SK_INV_OPT, *values, *attrs);
+                    merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -446,7 +446,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_SHA256SUM;
                 } else {
-                    merror(SK_INV_OPT, *values, *attrs);
+                    merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -455,10 +455,11 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             else if (strcmp(*attrs, xml_whodata) == 0) {
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_WHODATA;
+                    opts &= ~ CHECK_REALTIME;
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_WHODATA;
                 } else {
-                    merror(SK_INV_OPT, *values, *attrs);
+                    merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -470,7 +471,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_PERM;
                 } else {
-                    merror(SK_INV_OPT, *values, *attrs);
+                    merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -482,7 +483,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_SIZE;
                 } else {
-                    merror(SK_INV_OPT, *values, *attrs);
+                    merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -494,7 +495,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_OWNER;
                 } else {
-                    merror(SK_INV_OPT, *values, *attrs);
+                    merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -506,7 +507,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_GROUP;
                 } else {
-                    merror(SK_INV_OPT, *values, *attrs);
+                    merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -518,7 +519,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_MTIME;
                 } else {
-                    merror(SK_INV_OPT, *values, *attrs);
+                    merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -530,7 +531,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_INODE;
                 } else {
-                    merror(SK_INV_OPT, *values, *attrs);
+                    merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -543,7 +544,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_ATTRS;
                 } else {
-                    merror(SK_INV_OPT, *values, *attrs);
+                    merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -554,11 +555,13 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             /* Check real time */
             else if (strcmp(*attrs, xml_real_time) == 0) {
                 if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_REALTIME;
+                    if(!(opts & CHECK_WHODATA)) {
+                        opts |= CHECK_REALTIME;
+                    }
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_REALTIME;
                 } else {
-                    merror(SK_INV_OPT, *values, *attrs);
+                    merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -570,7 +573,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_SEECHANGES;
                 } else {
-                    merror(SK_INV_OPT, *values, *attrs);
+                    merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -614,12 +617,12 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                } else if (strcmp(*values, "no") == 0) {
                    opts &= ~ CHECK_FOLLOW;
                } else {
-                   merror(SK_INV_OPT, *values, *attrs);
+                   merror(FIM_INVALID_OPTION, *values, *attrs);
                    ret = 0;
                    goto out_free;
                }
             } else {
-                merror(SK_INV_ATTR, *attrs);
+                merror(FIM_INVALID_ATTRIBUTE, *attrs);
                 ret = 0;
                 goto out_free;
             }
@@ -629,7 +632,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
         /* You must have something set */
         if (opts == 0) {
-            mwarn(SYSCHECK_NO_OPT, dirs);
+            mwarn(FIM_NO_OPTIONS, dirs);
             ret = 0;
             goto out_free;
         }
@@ -661,34 +664,47 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
         }
 
-        /* Add directory - look for the last available */
-        j = 0;
         int overwrite = 0;
-        while (syscheck->dir && syscheck->dir[j]) {
-            char expandedpath[OS_MAXSTR];
-            char *ptfile;
-#ifdef WIN32
-            if(!ExpandEnvironmentStrings(tmp_dir, expandedpath, sizeof(expandedpath) - 1)){
-                merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
-                continue;
-            }
-            str_lowercase(expandedpath);
-            /* Change forward slashes to backslashes on entry */
-            ptfile = strchr(expandedpath, '/');
-            while (ptfile) {
-                *ptfile = '\\';
 
-                ptfile++;
-                ptfile = strchr(ptfile, '/');
-            }
+        char expandedpath[OS_MAXSTR];
+        char *ptfile;
+
+#ifdef WIN32
+        if(!ExpandEnvironmentStrings(tmp_dir, expandedpath, sizeof(expandedpath) - 1)){
+            merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
+            os_free(restrictfile);
+            os_free(tag);
+            continue;
+        }
+
+        str_lowercase(expandedpath);
+
+        /* Change forward slashes to backslashes on entry */
+        ptfile = strchr(expandedpath, '/');
+
+        while (ptfile) {
+            *ptfile = '\\';
+
+            ptfile++;
+            ptfile = strchr(ptfile, '/');
+        }
 #else
-            strncpy(expandedpath, tmp_dir, sizeof(expandedpath) - 1);
+        strncpy(expandedpath, tmp_dir, sizeof(expandedpath) - 1);
 #endif
-            ptfile = expandedpath;
-            ptfile += strlen(expandedpath)+1;
-            if (*ptfile == '/' || *ptfile == '\\') {
-                *ptfile = '\0';
-            }
+        ptfile = expandedpath;
+        ptfile += strlen(expandedpath) - 1;
+
+        if (*ptfile == '/'
+#ifdef WIN32
+            || *ptfile == '\\'
+#endif
+        ) {
+            *ptfile = '\0';
+        }
+
+        /* Add directory - look for the last available */
+
+        for (j = 0; syscheck->dir && syscheck->dir[j]; j++) {
             /* Duplicate entry */
             if (strcmp(syscheck->dir[j], expandedpath) == 0) {
                 mdebug2("Overwriting the file entry %s", expandedpath);
@@ -696,29 +712,27 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 ret = 1;
                 overwrite = 1;
             }
-
-            j++;
         }
 
         /* Check for glob */
-	/* The mingw32 builder used by travis.ci can't find glob.h
-	 * Yet glob must work on actual win32.
-	 */
+        /* The mingw32 builder used by travis.ci can't find glob.h
+         * Yet glob must work on actual win32.
+         */
 #ifndef __MINGW32__
-        if (strchr(tmp_dir, '*') ||
-                strchr(tmp_dir, '?') ||
-                strchr(tmp_dir, '[')) {
+        if (strchr(expandedpath, '*') ||
+                strchr(expandedpath, '?') ||
+                strchr(expandedpath, '[')) {
             int gindex = 0;
             glob_t g;
 
             if (glob(tmp_dir, 0, NULL, &g) != 0) {
-                merror(GLOB_ERROR, tmp_dir);
+                merror(GLOB_ERROR, expandedpath);
                 ret = 1;
                 goto out_free;
             }
 
             if (g.gl_pathv[0] == NULL) {
-                merror(GLOB_NFOUND, tmp_dir);
+                merror(GLOB_NFOUND, expandedpath);
                 ret = 1;
                 goto out_free;
             }
@@ -734,12 +748,12 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
         else {
             if(overwrite == 0) {
-                dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+                dump_syscheck_entry(syscheck, expandedpath, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
             }
         }
 #else
         if(overwrite == 0) {
-            dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+            dump_syscheck_entry(syscheck, expandedpath, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
         }
 #endif
 
@@ -781,7 +795,7 @@ out_free:
     return ret;
 }
 
-int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
+int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp, int modules)
 {
     int i = 0;
     int j = 0;
@@ -814,6 +828,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 #endif
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
+    const char *xml_audit_hc = "startup_healthcheck";
+    const char *xml_allow_remote_prefilter_cmd = "allow_remote_prefilter_cmd";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -824,13 +840,15 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     syscheck_config *syscheck;
     syscheck = (syscheck_config *)configp;
     unsigned int nodiff_size = 0;
+    char prefilter_cmd[OS_MAXSTR] = "";
 
     if (syscheck->disabled == SK_CONF_UNPARSED) {
         syscheck->disabled = SK_CONF_UNDEFINED;
     }
 
-    os_calloc(1, sizeof(char *), syscheck->audit_key);
-
+    if(!syscheck->audit_key) {
+        os_calloc(1, sizeof(char *), syscheck->audit_key);
+    }
     while (node && node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
@@ -890,6 +908,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
                 while(node[i]->attributes[j]) {
                     if (strcmp(node[i]->attributes[j], xml_tag) == 0) {
+                        os_free(tag);
                         os_strdup(node[i]->values[j], tag);
                     } else if (strcmp(node[i]->attributes[j], xml_arch) == 0) {
                         if (strcmp(node[i]->values[j], xml_32bit) == 0) {
@@ -899,10 +918,12 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             snprintf(arch, 6, "%s", "both");
                         } else {
                             merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
+                            os_free(tag);
                             return OS_INVALID;
                         }
                     } else {
                         merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
+                        os_free(tag);
                         return OS_INVALID;
                     }
                     j++;
@@ -911,14 +932,23 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
             if (strcmp(arch, "both") == 0) {
                 if (!(read_reg(syscheck, node[i]->content, ARCH_32BIT, tag) &&
-                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag)))
-                return (OS_INVALID);
+                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag))) {
+                    free(tag);
+                    return (OS_INVALID);
+                }
+
             } else if (strcmp(arch, "64bit") == 0) {
-                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag))
-                return (OS_INVALID);
+                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag)) {
+                    free(tag);
+                    return (OS_INVALID);
+                }
+
             } else {
-                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag))
-                return (OS_INVALID);
+                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag)) {
+                    free(tag);
+                    return (OS_INVALID);
+                }
+
             }
 
             if (tag)
@@ -1013,6 +1043,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
             if(!ExpandEnvironmentStrings(node[i]->content, new_ig, 2047)){
                 merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                free(new_ig);
                 continue;
             }
 
@@ -1021,10 +1052,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             node[i]->content = new_ig;
 #endif
             /* Add if regex */
-            if (node[i]->attributes && node[i]->values) {
-                if (node[i]->attributes[0] && node[i]->values[0] &&
-                        (strcmp(node[i]->attributes[0], "type") == 0) &&
-                        (strcmp(node[i]->values[0], "sregex") == 0)) {
+            if (node[i]->attributes && node[i]->values && node[i]->attributes[0] && node[i]->values[0]) {
+                if (!strcmp(node[i]->attributes[0], "type") &&
+                    !strcmp(node[i]->values[0], "sregex")) {
                     OSMatch *mt_pt;
 
                     if (!syscheck->ignore_regex) {
@@ -1052,7 +1082,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         return (0);
                     }
                 } else {
-                    merror(SK_INV_ATTR, node[i]->attributes[0]);
+                    merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0]);
                     return (OS_INVALID);
                 }
             }
@@ -1136,6 +1166,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
             if(!ExpandEnvironmentStrings(node[i]->content, new_nodiff, 2047)){
                 merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                free(new_nodiff);
                 continue;
             }
 
@@ -1144,10 +1175,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             node[i]->content = new_nodiff;
 #endif
             /* Add if regex */
-            if (node[i]->attributes && node[i]->values) {
-                if (node[i]->attributes[0] && node[i]->values[0] &&
-                        (strcmp(node[i]->attributes[0], "type") == 0) &&
-                        (strcmp(node[i]->values[0], "sregex") == 0)) {
+            if (node[i]->attributes && node[i]->values && node[i]->attributes[0] && node[i]->values[0]) {
+                if (!strcmp(node[i]->attributes[0], "type") &&
+                    !strcmp(node[i]->values[0], "sregex")) {
                     OSMatch *mt_pt;
                     if (!syscheck->nodiff_regex) {
                         os_calloc(2, sizeof(OSMatch *), syscheck->nodiff_regex);
@@ -1176,7 +1206,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     mdebug1("Found nodiff regex node %s OK?", node[i]->content);
                     mdebug1("Found nodiff regex size %d", nodiff_size);
                 } else {
-                    merror(SK_INV_ATTR, node[i]->attributes[0]);
+                    merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0]);
                     return (OS_INVALID);
                 }
             }
@@ -1204,31 +1234,28 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
             /* alert_new_files option is not read here */
         } else if (strcmp(node[i]->element, xml_prefilter_cmd) == 0) {
-            char cmd[OS_MAXSTR];
             struct stat statbuf;
 
 #ifdef WIN32
-            if(!ExpandEnvironmentStrings(node[i]->content, cmd, sizeof(cmd) - 1)){
+            if(!ExpandEnvironmentStrings(node[i]->content, prefilter_cmd, sizeof(prefilter_cmd) - 1)){
                 merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
                 continue;
             }
-            str_lowercase(cmd);
+            str_lowercase(prefilter_cmd);
 #else
-            strncpy(cmd, node[i]->content, sizeof(cmd) - 1);
+            strncpy(prefilter_cmd, node[i]->content, sizeof(prefilter_cmd) - 1);
+            prefilter_cmd[sizeof(prefilter_cmd) - 1] = '\0';
 #endif
 
-            if (strlen(cmd) > 0) {
+            if (strlen(prefilter_cmd) > 0) {
                 char statcmd[OS_MAXSTR];
                 char *ix;
-                strncpy(statcmd, cmd, sizeof(statcmd) - 1);
+                strncpy(statcmd, prefilter_cmd, sizeof(statcmd) - 1);
+                statcmd[sizeof(statcmd) - 1] = '\0';
                 if (NULL != (ix = strchr(statcmd, ' '))) {
                     *ix = '\0';
                 }
-                if (stat(statcmd, &statbuf) == 0) {
-                    /* More checks needed (perms, owner, etc.) */
-                    os_calloc(1, strlen(cmd) + 1, syscheck->prefilter_cmd);
-                    strncpy(syscheck->prefilter_cmd, cmd, strlen(cmd));
-                } else {
+                if (stat(statcmd, &statbuf) != 0) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
@@ -1236,6 +1263,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         } else if (strcmp(node[i]->element, xml_remove_old_diff) == 0) {
             // Deprecated since 3.8.0, aplied by default...
         } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
+            // To be deprecated. This field is now read inside the <whodata> block.
             if(strcmp(node[i]->content, "yes") == 0)
                 syscheck->restart_audit = 1;
             else if(strcmp(node[i]->content, "no") == 0)
@@ -1260,17 +1288,39 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     int keyit = 0;
                     char delim = ',';
                     char *key;
-                    syscheck->audit_key[keyit] = NULL;
-                    key = strtok(children[j]->content, &delim);
+                    char *saveptr;
+                    key = strtok_r(children[j]->content, &delim, &saveptr);
 
                     while (key) {
                         if (*key) {
                             syscheck->audit_key[keyit] = check_ascci_hex(key);
                             os_realloc(syscheck->audit_key, (keyit + 2) * sizeof(char *), syscheck->audit_key);
                             syscheck->audit_key[keyit + 1] = NULL;
-                            key = strtok(NULL, &delim);
+                            key = strtok_r(NULL, &delim, &saveptr);
                             keyit++;
                         }
+                    }
+                } else if (strcmp(children[j]->element, xml_audit_hc) == 0) {
+                    if(strcmp(children[j]->content, "yes") == 0)
+                        syscheck->audit_healthcheck = 1;
+                    else if(strcmp(children[j]->content, "no") == 0)
+                        syscheck->audit_healthcheck = 0;
+                    else
+                    {
+                        merror(XML_VALUEERR,children[j]->element,children[j]->content);
+                        OS_ClearNode(children);
+                        return(OS_INVALID);
+                    }
+                } else if (strcmp(children[j]->element, xml_restart_audit) == 0) {
+                    if(strcmp(children[j]->content, "yes") == 0)
+                        syscheck->restart_audit = 1;
+                    else if(strcmp(children[j]->content, "no") == 0)
+                        syscheck->restart_audit = 0;
+                    else
+                    {
+                        merror(XML_VALUEERR,children[j]->element,children[j]->content);
+                        OS_ClearNode(children);
+                        return(OS_INVALID);
                     }
                 } else {
                     merror(XML_ELEMNULL);
@@ -1279,11 +1329,37 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 }
             }
             OS_ClearNode(children);
+        } /* Allow prefilter cmd */
+        else if (strcmp(node[i]->element, xml_allow_remote_prefilter_cmd) == 0) {
+            if (modules & CAGENT_CONFIG) {
+                mwarn("'%s' option can't be changed using centralized configuration (agent.conf).", xml_allow_remote_prefilter_cmd);
+                i++;
+                continue;
+            }
+            if(strcmp(node[i]->content, "yes") == 0)
+                syscheck->allow_remote_prefilter_cmd = 1;
+            else if(strcmp(node[i]->content, "no") == 0)
+                syscheck->allow_remote_prefilter_cmd = 0;
+            else {
+                merror(XML_VALUEERR,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }
         i++;
+    }
+
+    // Set prefilter only if it's expressly allowed (ossec.conf in agent side).
+
+    if (prefilter_cmd[0]) {
+        if (!(modules & CAGENT_CONFIG) || syscheck->allow_remote_prefilter_cmd) {
+            free(syscheck->prefilter_cmd);
+            os_strdup(prefilter_cmd, syscheck->prefilter_cmd);
+        } else if (!syscheck->allow_remote_prefilter_cmd) {
+            mwarn(FIM_WARN_ALLOW_PREFILTER, prefilter_cmd, xml_allow_remote_prefilter_cmd);
+        }
     }
 
     return (0);
@@ -1476,3 +1552,24 @@ char* check_ascci_hex (char *input) {
     }
     return output;
 }
+
+#ifdef WIN32
+void set_linked_path(__attribute__((unused)) syscheck_config *syscheck, __attribute__((unused)) const char *entry, __attribute__((unused)) int position) {}
+#else
+void set_linked_path(syscheck_config *syscheck, const char *entry, int position) {
+    char *linked_path;
+
+    if (linked_path = realpath(entry, NULL), !linked_path) {
+        mdebug1("Could not check the real path of '%s'.", entry);
+        return;
+    }
+
+    if (!strcmp(linked_path, entry)) {
+        mdebug2("'%s' is not a symbolic link.", linked_path);
+        free(linked_path);
+        return;
+    }
+
+    syscheck->converted_links[position] = linked_path;
+}
+#endif

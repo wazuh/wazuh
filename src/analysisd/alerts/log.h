@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -10,8 +10,8 @@
 
 /* Basic logging operations */
 
-#ifndef __LOG_H
-#define __LOG_H
+#ifndef LOG_H
+#define LOG_H
 
 #include "eventinfo.h"
 
@@ -27,5 +27,4 @@ void OS_CustomLog_Flush();
 void OS_Store_Flush();
 int FW_Log(Eventinfo *lf);
 
-#endif
-
+#endif /* LOG_H */

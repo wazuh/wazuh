@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -21,13 +21,24 @@
 /* Trim CR and/or LF from the last positions of a string */
 void os_trimcrlf(char *str)
 {
-    size_t len;
+    if (str == NULL) {
+        return;
+    }
 
-    len = strlen(str);
+    if (*str == '\0') {
+        return;
+    }
+
+    size_t len = strlen(str);
     len--;
 
     while (str[len] == '\n' || str[len] == '\r') {
         str[len] = '\0';
+
+        if (len == 0) {
+            break;
+        }
+
         len--;
     }
 }
@@ -91,7 +102,7 @@ int os_substr(char *dest, const char *src, size_t position, ssize_t length)
 char *os_shell_escape(const char *src)
 {
     /* Maximum Length of the String is 2 times the current length */
-    char shell_escapes[] = { '\\', '"', '\'', '\t', ';', '`', '>', '<', '|', '#',
+    char shell_escapes[22] = { '\\', '"', '\'', '\t', ';', '`', '>', '<', '|', '#',
                              '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')'
                            };
 
@@ -148,9 +159,11 @@ char * w_strtrim(char * string) {
     char *c;
     char *d;
 
-    string = &string[strspn(string, " ")];
-    for (c = string + strcspn(string, " "); *(d = c + strspn(c, " ")); c = d + strcspn(d, " "));
-    *c = '\0';
+    if(string != NULL) {
+        string = &string[strspn(string, " ")];
+        for (c = string + strcspn(string, " "); *(d = c + strspn(c, " ")); c = d + strcspn(d, " "));
+        *c = '\0';
+    }
     return string;
 }
 
@@ -178,12 +191,36 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 
         free(current);
     } else if (!cJSON_GetObjectItem(root, key)) {
-        cJSON_AddStringToObject(root, key, value);
+        char *string_end =  NULL;
+        if (*value == '[' &&
+           (string_end = memchr(value, '\0', OS_MAXSTR)) &&
+           (string_end != NULL) &&
+           (']' == *(string_end - 1)))
+        {
+            const char *jsonErrPtr;
+            cJSON_AddItemToObject(root, key, cJSON_ParseWithOpts(value, &jsonErrPtr, 0));
+        } else {
+            cJSON_AddStringToObject(root, key, value);
+        }
     }
 }
 
-// Searches haystack for needle. Returns 1 if needle is found in haystack.
+void csv_list_to_json_str_array(char * const csv_list, char **buffer)
+{
+    cJSON *array = cJSON_CreateArray();
+    char *remaining_str = NULL;
+    char *element = strtok_r(csv_list, ",", &remaining_str);
 
+    while (element) {
+        cJSON *obj = cJSON_CreateString(element);
+        cJSON_AddItemToArray(array, obj);
+        element = strtok_r(NULL, ",", &remaining_str);
+    }
+    *buffer = cJSON_Print(array);
+    cJSON_Delete(array);
+}
+
+// Searches haystack for needle. Returns 1 if needle is found in haystack.
 int w_str_in_array(const char * needle, const char ** haystack) {
     int i;
 
@@ -383,9 +420,7 @@ int wstr_find_in_folder(char *path,const char *str,int strip_new_line){
 
         fp = fopen(file,"r");
 
-        if(!fp){
-            closedir(dp);
-            dp = NULL;
+        if (!fp) {
             continue;
         }
 
@@ -513,4 +548,302 @@ int wstr_end(char *str, const char *str_end) {
     size_t str_len = strlen(str);
     size_t str_end_len = strlen(str_end);
     return str_end_len <= str_len && !strcmp(str + str_len - str_end_len, str_end);
+}
+
+void wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str) {
+    char *new_delim = replace_delim ? replace_delim : delim;
+    size_t new_delim_size = strlen(replace_delim ? replace_delim : delim);
+    int count = 0;
+    int splitted_count;
+    char *str_cpy, *str_cpy_ref;
+    char *str_it;
+    char **acc_strs;
+    char *saveptr;
+
+    if (occurrences < 1) {
+        return;
+    }
+
+    os_strdup(str, str_cpy);
+    str_cpy_ref = str_cpy;
+    str_it = strtok_r(str_cpy, delim, &saveptr);
+
+    os_calloc(occurrences, sizeof(char *), acc_strs);
+
+    for (splitted_count = 0; *splitted_str && (*splitted_str)[splitted_count]; splitted_count++);
+
+    for (; str_it && *str_it; count++) {
+        os_strdup(str_it, acc_strs[count]);
+
+        if (count == occurrences - 1) {
+            // Add a new term
+            size_t term_size;
+            char *new_term_it;
+
+            for (count = term_size = 0; count < occurrences; count++) {
+                term_size += strlen(acc_strs[count]);
+            }
+
+            term_size += (occurrences - 1) * new_delim_size + 1;
+
+            os_realloc(*splitted_str, (splitted_count + 2) * sizeof(char *), *splitted_str);
+            os_calloc(term_size, sizeof(char), (*splitted_str)[splitted_count]);
+            (*splitted_str)[splitted_count + 1] = NULL;
+
+            for (count = 0, new_term_it = (*splitted_str)[splitted_count]; count < occurrences; count++) {
+                if (count) {
+                    strncpy(new_term_it, new_delim, new_delim_size);
+                    new_term_it += new_delim_size;
+                }
+                strncpy(new_term_it, acc_strs[count], strlen(acc_strs[count]));
+                new_term_it += strlen(acc_strs[count]);
+                os_free(acc_strs[count]);
+            }
+
+            splitted_count++;
+            count = -1;
+        }
+        str_it = strtok_r(NULL, delim, &saveptr);
+    }
+
+    // Remove residual terms (they are discarded)
+    for (count = 0; acc_strs[count]; count++) {
+        free(acc_strs[count]);
+    }
+    free(acc_strs);
+    free(str_cpy_ref);
+}
+
+/* Check if the specified string is already in the array */
+int w_is_str_in_array(char *const *ar, const char *str)
+{
+    while (*ar) {
+        if (strcmp(*ar, str) == 0) {
+            return (1);
+        }
+        ar++;
+    }
+    return (0);
+}
+
+// Remove zeros from the end of the decimal number
+void w_remove_zero_dec(char *str_number) {
+    char *base;
+    char *number_end;
+
+    if (base = strchr(str_number, '.'), base) {
+        for (number_end = base; *number_end; number_end++);
+        for (--number_end; base != number_end && *number_end == '0'; number_end--) {
+            *number_end = '\0';
+        }
+    }
+}
+
+/* Similar to strtok_r but checks for full delim appearances */
+char *w_strtok_r_str_delim(const char *delim, char **remaining_str)
+{
+    if (!*remaining_str) {
+        return NULL;
+    }
+
+    if (!delim || *delim == '\0') {
+        char *str = *remaining_str;
+        *remaining_str = NULL;
+        return str;
+    }
+
+    char *delim_found = NULL;
+    size_t delim_len = strlen(delim);
+
+    while ((delim_found = strstr(*remaining_str, delim))) {
+        if (*remaining_str == delim_found) {
+            *remaining_str += delim_len;
+            continue;
+        }
+        break;
+    }
+
+    if (**remaining_str == '\0') {
+        return NULL;
+    }
+
+    char *token = *remaining_str;
+
+    if((delim_found = strstr(*remaining_str, delim))) {
+        *delim_found = '\0';
+        *remaining_str = delim_found + delim_len;
+    } else {
+        *remaining_str = NULL;
+    }
+
+    return token;
+}
+
+const char *find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
+{
+    if (!string_array || !str){
+        return NULL;
+    }
+
+    size_t i;
+    for (i = 0; i < array_len; ++i) {
+        if (strncmp(str, string_array[i], str_len) == 0) {
+            return string_array[i];
+        }
+    }
+
+    return NULL;
+}
+
+char* decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const size_t buffer_size)
+{
+    if (!encoded_buffer) {
+        return NULL;
+    }
+
+    /* each ASCII character has 2 digits in its HEX form, hence its length must be even */
+    if (buffer_size % 2 != 0) {
+        return NULL;
+    }
+
+    const size_t decoded_len = buffer_size / 2;
+    char *decoded_buffer;
+    os_calloc(decoded_len, sizeof(char), decoded_buffer);
+
+    size_t i;
+    for(i = 0; i < decoded_len; ++i) {
+        if (1 != sscanf(encoded_buffer + 2 * i, "%2hhx", decoded_buffer + i)) {
+            os_free(decoded_buffer);
+            return NULL;
+        }
+    }
+
+    return decoded_buffer;
+}
+
+// Length of the initial segment of s which consists entirely of non-escaped bytes different from reject
+
+size_t strcspn_escaped(const char * s, char reject) {
+    char charset[3] = { '\\', reject };
+
+    size_t len = strlen(s);
+    size_t spn_len = 0;
+
+    do {
+        spn_len += strcspn(s + spn_len, charset);
+
+        if (s[spn_len] == '\\') {
+            spn_len += 2;
+        } else {
+            return spn_len;
+        }
+    } while (spn_len < len);
+
+    return len;
+}
+
+// Escape JSON reserved characters
+
+char * wstr_escape_json(const char * string) {
+    const char escape_map[] = {
+        ['\b'] = 'b',
+        ['\t'] = 't',
+        ['\n'] = 'n',
+        ['\f'] = 'f',
+        ['\r'] = 'r',
+        ['\"'] = '\"',
+        ['\\'] = '\\'
+    };
+
+    size_t i = 0;   // Read position
+    size_t j = 0;   // Write position
+    size_t z;       // Span length
+
+    char * output;
+    os_malloc(1, output);
+
+    do {
+        z = strcspn(string + i, "\b\t\n\f\r\"\\");
+
+        if (string[i + z] == '\0') {
+            // End of string
+            os_realloc(output, j + z + 1, output);
+            strncpy(output + j, string + i, z);
+        } else {
+            // Reserved character
+            os_realloc(output, j + z + 3, output);
+            strncpy(output + j, string + i, z);
+            output[j + z] = '\\';
+            output[j + z + 1] = escape_map[(int)string[i + z]];
+            z++;
+            j++;
+        }
+
+        j += z;
+        i += z;
+    } while (string[i] != '\0');
+
+    output[j] = '\0';
+    return output;
+}
+
+// Unescape JSON reserved characters
+
+char * wstr_unescape_json(const char * string) {
+    const char UNESCAPE_MAP[] = {
+        ['b'] = '\b',
+        ['t'] = '\t',
+        ['n'] = '\n',
+        ['f'] = '\f',
+        ['r'] = '\r',
+        ['\"'] = '\"',
+        ['\\'] = '\\'
+    };
+
+    size_t i = 0;   // Read position
+    size_t j = 0;   // Write position
+    size_t z;       // Span length
+
+    char * output;
+    os_malloc(1, output);
+
+    do {
+        z = strcspn(string + i, "\\");
+
+        // Extend output and copy
+        os_realloc(output, j + z + 3, output);
+        strncpy(output + j, string + i, z);
+
+        i += z;
+        j += z;
+
+        if (string[i] != '\0') {
+            // Peek byte following '\'
+            switch (string[++i]) {
+            case '\0':
+                // End of string
+                output[j++] = '\\';
+                break;
+
+            case 'b':
+            case 't':
+            case 'n':
+            case 'f':
+            case 'r':
+            case '\"':
+            case '\\':
+                // Escaped character
+                output[j++] = UNESCAPE_MAP[(int)string[i++]];
+                break;
+
+            default:
+                // Bad escape
+                output[j++] = '\\';
+                output[j++] = string[i++];
+            }
+        }
+    } while (string[i] != '\0');
+
+    output[j] = '\0';
+    return output;
 }

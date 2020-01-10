@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -146,3 +146,14 @@ void os_wait()
 }
 
 #endif /* !WIN32 */
+
+// Check whether the agent wait mark is on (manager is disconnected)
+
+bool os_iswait() {
+#ifndef WIN32
+    return IsFile(isChroot() ? WAIT_FILE : WAIT_FILE_PATH) == 0;
+#else
+    return __wait_lock;
+#endif
+
+}

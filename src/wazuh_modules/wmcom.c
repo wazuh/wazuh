@@ -2,7 +2,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * Mar 14, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -27,14 +27,14 @@ size_t wmcom_dispatch(char * command, char ** output){
         // getconfig section
         if (!rcv_args){
             mdebug1("WMCOM getconfig needs arguments.");
-            *output = strdup("err WMCOM getconfig needs arguments");
+            os_strdup("err WMCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return wmcom_getconfig(rcv_args, output);
 
     } else {
         mdebug1("WMCOM Unrecognized command '%s'.", rcv_comm);
-        *output = strdup("err Unrecognized command");
+        os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
 }
@@ -46,22 +46,22 @@ size_t wmcom_getconfig(const char * section, char ** output) {
 
     if (strcmp(section, "wmodules") == 0){
         if (cfg = getModulesConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
-            cJSON_free(cfg);
+            cJSON_Delete(cfg);
             return strlen(*output);
         } else {
             goto error;
         }
     } else if (strcmp(section, "internal_options") == 0){
         if (cfg = getModulesInternalOptions(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
-            cJSON_free(cfg);
+            cJSON_Delete(cfg);
             return strlen(*output);
         } else {
             goto error;
@@ -71,7 +71,7 @@ size_t wmcom_getconfig(const char * section, char ** output) {
     }
 error:
     mdebug1("At WMCOM getconfig: Could not get '%s' section", section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
 
@@ -119,6 +119,10 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
 
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
+        case OS_SOCKTERR:
+            merror("At wmcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+            break;
+
         case -1:
             merror("At wmcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
             break;

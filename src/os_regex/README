@@ -8,7 +8,7 @@ with intrusion detection systems in mind, where having
 all options is not crucial, but speed is.
 
 The following expressions are supported:
-    \w  ->  A-Z, a-z, 0-9 characters
+    \w  ->  A-Z, a-z, 0-9, ‘-‘, ‘@’, '_' characters
     \d  ->  0-9 characters
     \s  ->  For spaces " "
     \p  ->  ()*+,-.:;<=>?[]!"'#$%&|{} (punctuation characters)

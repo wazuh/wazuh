@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -14,6 +14,10 @@
 
 /* Global variables */
 int sender_pool;
+
+static netbuffer_t netbuffer;
+
+size_t global_counter;
 
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
@@ -53,8 +57,8 @@ void HandleSecure()
     int n_events = 0;
     char buffer[OS_MAXSTR + 1];
     ssize_t recv_b;
-    uint32_t length;
     struct sockaddr_in peer_info;
+    memset(&peer_info, 0, sizeof(struct sockaddr_in));
     wnotify_t * notify = NULL;
 
     /* Initialize manager */
@@ -63,11 +67,17 @@ void HandleSecure()
     // Initialize messag equeue
     rem_msginit(logr.queue_size);
 
-    /* Create Active Response forwarder thread */
+    /* Initialize the agent key table mutex */
+    key_lock_init();
+
+    /* Create shared file updating thread */
     w_create_thread(update_shared_files, NULL);
 
     /* Create Active Response forwarder thread */
     w_create_thread(AR_Forward, NULL);
+
+    /* Create Security configuration assessment forwarder thread */
+    w_create_thread(SCFGA_Forward, NULL);
 
     // Create Request listener thread
     w_create_thread(req_main, NULL);
@@ -96,7 +106,9 @@ void HandleSecure()
     // Create message handler thread pool
     {
         int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
-
+        // Initialize FD list and counter.
+        global_counter = 0;
+        rem_initList(FD_LIST_INIT_VALUE);
         while (worker_pool > 0) {
             w_create_thread(rem_handler_main, NULL);
             worker_pool--;
@@ -126,7 +138,7 @@ void HandleSecure()
     /* Initialize some variables */
     memset(buffer, '\0', OS_MAXSTR + 1);
 
-    if (protocol == TCP_PROTO) {
+    if (protocol == IPPROTO_TCP) {
         if (notify = wnotify_init(MAX_EVENTS), !notify) {
             merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
         }
@@ -138,7 +150,7 @@ void HandleSecure()
 
     while (1) {
         /* Receive message  */
-        if (protocol == TCP_PROTO) {
+        if (protocol == IPPROTO_TCP) {
             if (n_events = wnotify_wait(notify, EPOLL_MILLIS), n_events < 0) {
                 if (errno != EINTR) {
                     merror("Waiting for connection: %s (%d)", strerror(errno), errno);
@@ -155,9 +167,10 @@ void HandleSecure()
                 if (fd == logr.sock) {
                     sock_client = accept(logr.sock, (struct sockaddr *)&peer_info, &logr.peer_size);
                     if (sock_client < 0) {
-                        merror_exit(ACCEPT_ERROR);
+                        merror_exit(ACCEPT_ERROR, strerror(errno), errno);
                     }
 
+                    nb_open(&netbuffer, sock_client, &peer_info);
                     rem_inc_tcp();
                     mdebug1("New TCP connection at %s [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
 
@@ -167,63 +180,36 @@ void HandleSecure()
                     }
                 } else {
                     sock_client = fd;
-                    recv_b = recv(sock_client, (char*)&length, sizeof(length), MSG_WAITALL);
-                    length = wnet_order(length);
 
-                    if (getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size) < 0) {
+                    switch (recv_b = nb_recv(&netbuffer, sock_client), recv_b) {
+                    case -2:
+                        mwarn("Too big message size from %s [%d].", inet_ntoa(peer_info.sin_addr), sock_client);
+                        _close_sock(&keys, sock_client);
+                        continue;
+
+                    case -1:
                         switch (errno) {
-                            case ENOTCONN:
-                                mdebug1("TCP peer was disconnected: cannot get peer name. [%d]", sock_client);
-                                break;
-                            default:
-                                merror("Couldn't get the remote peer information: %s [%d]", strerror(errno), errno);
-                        }
-
-                        _close_sock(&keys, sock_client);
-                        continue;
-                    }
-
-                    /* Nothing received */
-                    if (recv_b <= 0 || length > OS_MAXSTR) {
-                        switch (recv_b) {
-                        case -1:
-                            if (errno == ENOTCONN) {
-                                mdebug1("TCP peer at %s disconnected (ENOTCONN) [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
-                            } else {
-                                merror("TCP peer at %s: %s (%d)", inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
-                            }
-
+                        case ECONNRESET:
+                        case ENOTCONN:
+                        case EAGAIN:
+#if EAGAIN != EWOULDBLOCK
+                        case EWOULDBLOCK:
+#endif
+#if ETIMEDOUT
+                        case ETIMEDOUT:
+#endif
+                            mdebug2("TCP peer [%d] at %s: %s (%d)", sock_client, inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
                             break;
-
-                        case 0:
-                            mdebug1("TCP peer at %s disconnected [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
-                            break;
-
                         default:
-                            // length > OS_MAXSTR
-                            mwarn("Too big message size from %s.", inet_ntoa(peer_info.sin_addr));
+                            merror("TCP peer [%d] at %s: %s (%d)", sock_client, inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
                         }
-
-                        if (wnotify_delete(notify, sock_client) < 0) {
-                            merror("wnotify_delete(%d): %s (%d)", sock_client, strerror(errno), errno);
-                        }
-
+                        fallthrough;
+                    case 0:
                         _close_sock(&keys, sock_client);
                         continue;
-                    }
 
-                    recv_b = recv(sock_client, buffer, length, MSG_WAITALL);
-
-                    if (recv_b != (ssize_t)length) {
-                        mwarn("Incorrect message size from %s: expecting %u, got %zd. Agent may have disconnected [%d]", inet_ntoa(peer_info.sin_addr), length, recv_b, sock_client);
-
-                        if (wnotify_delete(notify, sock_client) < 0) {
-                            merror("wnotify_delete(%d): %s (%d)", sock_client, strerror(errno), errno);
-                        }
-
-                        _close_sock(&keys, sock_client);
-                    } else {
-                        rem_msgpush(buffer, recv_b, &peer_info, sock_client);
+                    default:
+                        rem_add_recv((unsigned long)recv_b);
                     }
                 }
             }
@@ -235,6 +221,7 @@ void HandleSecure()
                 continue;
             } else {
                 rem_msgpush(buffer, recv_b, &peer_info, -1);
+                rem_add_recv((unsigned long)recv_b);
             }
         }
     }
@@ -248,8 +235,13 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
 
     while (1) {
         message = rem_msgpop();
-        memcpy(buffer, message->buffer, message->size);
-        HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
+        size_t fd_list_counter = rem_getCounter(message->sock);
+        if (message->counter > fd_list_counter) {
+            memcpy(buffer, message->buffer, message->size);
+            HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
+        } else {
+            rem_inc_dequeued();
+        }
         rem_msgfree(message);
     }
 
@@ -275,7 +267,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     int protocol = logr.proto[logr.position];
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
-    char srcip[IPSIZE + 1];
+    char srcip[IPSIZE + 1] = {0};
     char agname[KEYSIZE + 1];
     char *tmp_msg;
     size_t msg_length;
@@ -283,8 +275,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     int r;
 
     /* Set the source IP */
-    strncpy(srcip, inet_ntoa(peer_info->sin_addr), IPSIZE);
-    srcip[IPSIZE] = '\0';
+    inet_ntop(peer_info->sin_family, &peer_info->sin_addr, srcip, IPSIZE);
 
     /* Initialize some variables */
     memset(cleartext_msg, '\0', OS_MAXSTR + 1);
@@ -348,7 +339,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
         if (agentid < 0) {
             key_unlock();
-            mwarn(DENYIP_WARN, srcip);
+            mwarn(DENYIP_WARN " Source agent ID is unknown.", srcip);
 
             // Send key request by ip
             push_request(srcip,"ip");
@@ -384,13 +375,12 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
-        r = 2;
 
         /* We need to save the peerinfo if it is a control msg */
 
         memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
-        r = (protocol == TCP_PROTO) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
+        r = (protocol == IPPROTO_TCP) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
         keys.keyentries[agentid]->rcvd = time(0);
 
         switch (r) {
@@ -444,9 +434,11 @@ int _close_sock(keystore * keys, int sock) {
     retval = OS_DeleteSocket(keys, sock);
     key_unlock();
 
-    if (close(sock) == 0) {
+    if (nb_close(&netbuffer, sock) == 0) {
         rem_dec_tcp();
     }
+
+    rem_setCounter(sock, global_counter);
 
     mdebug1("TCP peer disconnected [%d]", sock);
 

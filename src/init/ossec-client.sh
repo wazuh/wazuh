@@ -139,13 +139,29 @@ start()
     for i in ${SDAEMONS}; do
         pstatus ${i};
         if [ $? = 0 ]; then
+            failed=false
             ${DIR}/bin/${i};
             if [ $? != 0 ]; then
+                failed=true
+            else
+                j=0;
+                while [ $failed = false ]; do
+                    pstatus ${i};
+                    if [ $? = 1 ]; then
+                        break;
+                    fi
+                    sleep 0.5;
+                    j=`expr $j + 1`;
+                    if [ "$j" = "${MAX_ITERATION}" ]; then
+                        failed=true
+                    fi
+                done
+            fi
+            if [ $failed = true ]; then
                 echo "${i} did not start";
                 unlock;
                 exit 1;
             fi
-
             echo "Started ${i}..."
         else
             echo "${i} already running..."
@@ -172,7 +188,7 @@ pstatus()
         for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
             ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
-                echo "${pfile}: Process $j not used by ossec, removing .."
+                echo "${pfile}: Process $j not used by Wazuh, removing .."
                 rm -f ${DIR}/var/run/${pfile}-$j.pid
                 continue;
             fi

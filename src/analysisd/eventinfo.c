@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -31,9 +31,13 @@ time_t current_time = 0;
 Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unused)) regex_matching *rule_match)
 {
     Eventinfo *lf = NULL;
-    Eventinfo *first_lf;
+    Eventinfo *first_matched = NULL;
     OSListNode *lf_node;
     int frequency_count = 0;
+    int i;
+    int found;
+    const char * my_field;
+    const char * field;
 
     /* Checking if sid search is valid */
     if (!rule->sid_search) {
@@ -58,8 +62,6 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         goto end;
     }
 
-    first_lf = (Eventinfo *)lf_node->data;
-
     do {
         lf = (Eventinfo *)lf_node->data;
 
@@ -70,6 +72,16 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
             goto end;
+        }
+
+        if (!(rule->context_opts & GLOBAL_FREQUENCY)) {
+            if ((!lf->agent_id) || (!my_lf->agent_id)) {
+                continue;
+            }
+
+            if (strcmp(lf->agent_id, my_lf->agent_id) != 0) {
+                continue;
+            }
         }
 
         /* Check for same ID */
@@ -90,6 +102,49 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
             }
 
             if (strcmp(lf->srcip, my_lf->srcip) != 0) {
+                continue;
+            }
+        }
+
+        /* Check for repetitions from same dynamic fields */
+        if (rule->context_opts & SAME_FIELD) {
+            if (my_lf->nfields == 0 || lf->nfields == 0)
+                continue;
+
+            found = 1;
+            for (i = 0; rule->same_fields[i] && found; ++i) {
+                found = 0;
+                my_field = FindField(my_lf, rule->same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
+                    }
+                }
+            }
+
+            if (!found) {
+                continue;
+            }
+        }
+
+        /* Check for differences from dynamic fields values (not_same_field) */
+        if (rule->context_opts & NOT_SAME_FIELD) {
+            if (my_lf->nfields == 0 && lf->nfields == 0)
+                continue;
+
+            found = 0;
+            for (i = 0; rule->not_same_fields[i] && !found; ++i) {
+                my_field = FindField(my_lf, rule->not_same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->not_same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
+                    }
+                }
+            }
+
+            if (found) {
                 continue;
             }
         }
@@ -164,7 +219,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
-        else if (lf->matched >= rule->level) {
+        if (lf->matched >= rule->level) {
             lf = NULL;
             goto end;
         }
@@ -176,13 +231,18 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
 
         if (frequency_count < rule->frequency) {
             frequency_count++;
+            if (!first_matched) {
+               first_matched = lf;
+            }
             continue;
         }
         frequency_count++;
+
         /* If reached here, we matched */
         my_lf->matched = rule->level;
-        lf->matched = rule->level;
-        first_lf->matched = rule->level;
+        if (first_matched) { // To protect from a possible frequency 0
+            first_matched->matched = rule->level;
+        }
         goto end;
     } while ((lf_node = lf_node->prev) != NULL);
 
@@ -201,15 +261,19 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 {
     Eventinfo *lf = NULL;
     OSListNode *lf_node;
-    Eventinfo *first_lf;
+    Eventinfo *first_matched = NULL;
     int frequency_count = 0;
+    int i;
+    int found;
     OSList *list = rule->group_search;
+    const char * my_field;
+    const char * field;
 
     //w_mutex_lock(&rule->mutex);
 
     /* Check if sid search is valid */
     if (!list) {
-        merror("No group search!");
+        merror("No group search.");
         return NULL;
     }
 
@@ -231,8 +295,6 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         goto end;
     }
 
-    first_lf = (Eventinfo *)lf_node->data;
-
     do {
         lf = (Eventinfo *)lf_node->data;
 
@@ -243,6 +305,16 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
             goto end;
+        }
+
+        if (!(rule->context_opts & GLOBAL_FREQUENCY)) {
+            if ((!lf->agent_id) || (!my_lf->agent_id)) {
+                continue;
+            }
+
+            if (strcmp(lf->agent_id, my_lf->agent_id) != 0) {
+                continue;
+            }
         }
 
         /* Check for same ID */
@@ -263,6 +335,51 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
             }
 
             if (strcmp(lf->srcip, my_lf->srcip) != 0) {
+                continue;
+            }
+        }
+
+        /* Check for repetitions from same dynamic fields */
+        if (rule->context_opts & SAME_FIELD) {
+            if (my_lf->nfields == 0 || lf->nfields == 0) {
+                continue;
+            }
+
+            found = 1;
+            for (i = 0; rule->same_fields[i] && found; ++i) {
+                found = 0;
+                my_field = FindField(my_lf, rule->same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
+                    }
+                }
+            }
+
+            if (!found) {
+                continue;
+            }
+        }
+
+        /* Check for differences from dynamic fields values (not_same_field) */
+        if (rule->context_opts & NOT_SAME_FIELD) {
+            if (my_lf->nfields == 0 && lf->nfields == 0) {
+                continue;
+            }
+
+            found = 0;
+            for (i = 0; rule->not_same_fields[i] && !found; ++i) {
+                my_field = FindField(my_lf, rule->not_same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->not_same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
+                    }
+                }
+            }
+
+            if (found) {
                 continue;
             }
         }
@@ -332,29 +449,35 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
                 }
             }
         }
+
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
-        else if (lf->matched >= rule->level) {
+        if (lf->matched >= rule->level) {
             lf = NULL;
             goto end;
         }
 
 
         /* Check if the number of matches worked */
-        if (frequency_count < rule->frequency) {
-            if (frequency_count <= 10) {
-                add_lastevt(my_lf->last_events, frequency_count, lf->full_log);
-            }
+        if (frequency_count <= 10) {
+            add_lastevt(my_lf->last_events, frequency_count, lf->full_log);
+        }
 
+        if (frequency_count < rule->frequency) {
             frequency_count++;
+            if (!first_matched) {
+               first_matched = lf;
+            }
             continue;
         }
+        frequency_count++;
 
         /* If reached here, we matched */
         my_lf->matched = rule->level;
-        lf->matched = rule->level;
-        first_lf->matched = rule->level;
+        if (first_matched) { // To protect from a possible frequency 0
+            first_matched->matched = rule->level;
+        }
         goto end;
     } while ((lf_node = lf_node->prev) != NULL);
 
@@ -375,8 +498,13 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
 {
     EventNode *eventnode_pt = NULL;
     EventNode *first_pt;
+    Eventinfo *first_matched = NULL;
     Eventinfo *lf = NULL;
     int frequency_count = 0;
+    int i;
+    int found;
+    const char * my_field;
+    const char * field;
 
     w_mutex_lock(&rule->mutex);
 
@@ -405,8 +533,18 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             goto end;
         }
 
+        if (!(rule->context_opts & GLOBAL_FREQUENCY)) {
+            if ((!lf->agent_id) || (!my_lf->agent_id)) {
+                continue;
+            }
+
+            if (strcmp(lf->agent_id, my_lf->agent_id) != 0) {
+                continue;
+            }
+        }
+
         /* The category must be the same */
-        else if (lf->decoder_info->type != my_lf->decoder_info->type) {
+        if (lf->decoder_info->type != my_lf->decoder_info->type) {
             goto next_it;
         }
 
@@ -451,6 +589,49 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
         }
 
+        /* Check for repetitions from same dynamic fields */
+        if (rule->context_opts & SAME_FIELD) {
+            if (my_lf->nfields == 0 || lf->nfields == 0)
+                goto next_it;
+
+            found = 1;
+            for (i = 0; rule->same_fields[i] && found; ++i) {
+                found = 0;
+                my_field = FindField(my_lf, rule->same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
+                    }
+                }
+            }
+
+            if (!found) {
+                goto next_it;
+            }
+        }
+
+        /* Check for differences from dynamic fields values (not_same_field) */
+        if (rule->context_opts & NOT_SAME_FIELD) {
+            if (my_lf->nfields == 0 && lf->nfields == 0)
+                goto next_it;
+
+            found = 0;
+            for (i = 0; rule->not_same_fields[i] && !found; ++i) {
+                my_field = FindField(my_lf, rule->not_same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->not_same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
+                    }
+                }
+            }
+
+            if (found) {
+                goto next_it;
+            }
+        }
+
         /* Check for different urls */
         if (rule->context_opts & DIFFERENT_URL) {
             if ((!lf->url) || (!my_lf->url)) {
@@ -476,7 +657,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
-        else if (lf->matched >= rule->level) {
+        if (lf->matched >= rule->level) {
             lf = NULL;
             goto end;
         }
@@ -488,13 +669,17 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
 
             frequency_count++;
+            if (!first_matched) {
+               first_matched = lf;
+            }
             goto next_it;
         }
 
         /* If reached here, we matched */
         my_lf->matched = rule->level;
-        lf->matched = rule->level;
-
+        if (first_matched) { // To protect from a possible frequency 0
+            first_matched->matched = rule->level;
+        }
         goto end;
 next_it:
         w_mutex_lock(&eventnode_pt->mutex);
@@ -545,6 +730,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->command = NULL;
     lf->url = NULL;
     lf->data = NULL;
+    lf->extra_data = NULL;
     lf->systemname = NULL;
 
     if (lf->fields) {
@@ -600,6 +786,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->previous = NULL;
     lf->labels = NULL;
     lf->sk_tag = NULL;
+    lf->sym_path = NULL;
 
     lf->user_id = NULL;
     lf->user_name = NULL;
@@ -761,6 +948,10 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->data);
     }
 
+    if (lf->extra_data) {
+        free(lf->extra_data);
+    }
+
     if (lf->systemname) {
         free(lf->systemname);
     }
@@ -780,6 +971,9 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->sk_tag) {
         free(lf->sk_tag);
+    }
+    if (lf->sym_path) {
+        free(lf->sym_path);
     }
     if (lf->win_perm_before) {
         free(lf->win_perm_before);
@@ -960,10 +1154,12 @@ char* ParseRuleComment(Eventinfo *lf) {
             field = lf->id;
         } else if (strcmp(var, "url") == 0) {
             field = lf->url;
-        } else if (strcmp(var, "data") == 0 || strcmp(var, "extra_data") == 0) {
+        } else if (strcmp(var, "data") == 0) {
             field = lf->data;
         } else if (strcmp(var, "status") == 0) {
             field = lf->status;
+        } else if (strcmp(var, "extra_data") == 0) {
+            field = lf->extra_data;
         } else if (strcmp(var, "system_name") == 0) {
             field = lf->systemname;
         }
@@ -1085,6 +1281,10 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     if(lf->data){
         os_strdup(lf->data,lf_cpy->data);
+    }
+
+    if(lf->extra_data){
+        os_strdup(lf->extra_data, lf_cpy->extra_data);
     }
 
     if(lf->systemname){
@@ -1291,6 +1491,8 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         }
         lf_cpy->last_events[index] = NULL;
     }
+
+    w_strdup(lf->sym_path, lf_cpy->sym_path);
 
     lf_cpy->labels = labels_dup(lf->labels);
     lf_cpy->decoder_syscheck_id = lf->decoder_syscheck_id;

@@ -3,8 +3,8 @@
  *
  */
 
-#ifndef __JSON_EXTENDED_H__
-#define __JSON_EXTENDED_H__
+#ifndef JSON_EXTENDED_H
+#define JSON_EXTENDED_H
 
 #include "eventinfo.h"
 #include "cJSON.h"
@@ -42,10 +42,16 @@ int add_groupCIS(cJSON *rule, char * group, int firstCIS);
 int add_groupGDPR(cJSON* rule, char* group, int firstGDPR);
 // Parsing GPG13 Compliance groups
 int add_groupGPG13(cJSON* rule, char* group, int firstGPG13);
+// Parsing HIPAA Compliance groups
+int add_groupHIPAA(cJSON* rule, char* group, int firstHIPAA);
+// Parsing NIST_500_83 Compliance groups
+int add_groupNIST(cJSON* rule, char* group, int firstNIST);
+// Add SCA compliance groups to rule groups
+void add_SCA_groups(cJSON *rule, char* compliance, char* value);
 // Aux functions
 int str_cut(char *str, int begin, int len);
 regex_t * compile_regex (const char * regex_text);
 int match_regex (regex_t * r, const char * to_match, char * results[MAX_MATCHES]);
 void trim(char * s);
 int startsWith(const char *pre, const char *str);
-#endif
+#endif /* JSON_EXTENDED_H */

@@ -2,7 +2,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * December 18, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -17,17 +17,6 @@
 static w_audit_rules_list *_audit_rules_list;
 
 
-int audit_send(int fd, int type, const void *data, unsigned int size) {
-    int rc;
-    int seq;
-
-    rc = __audit_send(fd, type, data, size, &seq);
-    if (rc == 0)
-        rc = seq;
-    return rc;
-}
-
-
 int audit_get_rule_list(int fd) {
 
     // Clean rules list
@@ -40,7 +29,7 @@ int audit_get_rule_list(int fd) {
         return -1;
     }
 
-    get_reply(fd);
+    kernel_get_reply(fd);
     return 1;
 }
 
@@ -98,7 +87,7 @@ int audit_print_reply(struct audit_reply *rep) {
 }
 
 
-void get_reply(int fd) {
+void kernel_get_reply(int fd) {
     int i, retval;
     int timeout = 40;
     struct audit_reply rep;

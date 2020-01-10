@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
 from os import listdir
@@ -41,8 +41,6 @@ def _iterate_lists(absolute_path, only_names=False):
     """
     Get the content of all CDB lists
     :param absolute_path: Full path of directory to get CDB lists
-    :param relative_path: Relative path of directory
-    :param dir_content: Content of the directory
     :param only_names: If this parameter is true, only the name of all lists will be showed
     :return: List with all CDB lists
     """
@@ -61,11 +59,11 @@ def _iterate_lists(absolute_path, only_names=False):
             and ('.cdb' not in name)  \
             and ('~' not in name) \
             and not pattern.search(name):
-            items = get_list_from_file(new_relative_path)
             if only_names:
                 relative_path = _get_relative_path(absolute_path)
                 output.append({'path': relative_path, 'name': name})
             else:
+                items = get_list_from_file(new_relative_path)
                 output.append({'path': new_relative_path, 'items': items})
         elif isdir(new_absolute_path):
             if only_names:

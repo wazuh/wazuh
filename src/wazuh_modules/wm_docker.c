@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * October, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -27,7 +27,7 @@ cJSON *wm_docker_dump(const wm_docker_t *docker_conf);         // Dump docker co
 const wm_context WM_DOCKER_CONTEXT = {
     "docker-listener",
     (wm_routine)wm_docker_main,
-    (wm_routine)wm_docker_destroy,
+    (wm_routine)(void *)wm_docker_destroy,
     (cJSON * (*)(const void *))wm_docker_dump
 };
 
@@ -36,12 +36,11 @@ const wm_context WM_DOCKER_CONTEXT = {
 void* wm_docker_main(wm_docker_t *docker_conf) {
 
     int status = 0;
-    char * command = NULL;
-    char * output = NULL;
+    char * command = WM_DOCKER_SCRIPT_PATH;
     int attempts = 0;
 
     wm_docker_setup(docker_conf);
-    mtinfo(WM_DOCKER_LOGTAG, "Module docker-listener started");
+    mtinfo(WM_DOCKER_LOGTAG, "Module docker-listener started.");
 
     // First sleeping
 
@@ -58,42 +57,52 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
         // Running the docker listener script
 
-        command = strdup(WM_DOCKER_SCRIPT_PATH);
+        mtdebug1(WM_DOCKER_LOGTAG, "Launching command '%s'", command);
 
-        mtdebug1(WM_DOCKER_LOGTAG, "Launching command '%s'.", command);
+        wfd_t * wfd = wpopenl(command, W_BIND_STDERR | W_APPEND_POOL, command, NULL);
 
-        switch (wm_exec(command, &output, &status, 0, NULL)) {
-            case 0:
-                if (status > 0) {
-                    mtwarn(WM_DOCKER_LOGTAG, "Returned exit code %d", status);
-                    mterror(WM_DOCKER_LOGTAG, "OUTPUT: %s", output);
-                } else {
-                    if (output) {
-                        mtdebug2(WM_DOCKER_LOGTAG, "OUTPUT: %s", output);
-                    }
-                }
-                attempts++;
-                break;
-            default:
-                mterror(WM_DOCKER_LOGTAG, "Internal calling. Exiting...");
-                pthread_exit(NULL);
-        }
-
-        if (attempts > docker_conf->attempts) {
-            mtinfo(WM_DOCKER_LOGTAG, "Maximum attempts reached to run the listener. Exiting...");
+        if (wfd == NULL) {
+            mterror(WM_DOCKER_LOGTAG, "Cannot launch Docker integration due to an internal error.");
             pthread_exit(NULL);
         }
 
-        mtinfo(WM_DOCKER_LOGTAG, "Docker-listener finished unexpected. Retrying to run it in %u seconds...", docker_conf->interval);
-        sleep(docker_conf->interval);
+        char buffer[4096];
 
+        while (fgets(buffer, sizeof(buffer), wfd->file)) {
+            char * end = strchr(buffer, '\n');
+            if (end) {
+                *end = '\0';
+            }
+
+            mterror(WM_DOCKER_LOGTAG, "%s", buffer);
+        }
+
+        // At this point, DockerListener terminated
+
+        status = wpclose(wfd);
+        int exitcode = WEXITSTATUS(status);
+
+        switch (exitcode) {
+        case 127:
+            mterror(WM_DOCKER_LOGTAG, "Cannot launch Docker integration. Please check the file '%s'", command);
+            pthread_exit(NULL);
+
+        default:
+            if (++attempts >= docker_conf->attempts) {
+                mterror(WM_DOCKER_LOGTAG, "Maximum attempts reached to run the listener. Exiting...");
+                pthread_exit(NULL);
+            }
+
+            mtwarn(WM_DOCKER_LOGTAG, "Docker-listener finished unexpectedly (code %d). Retrying to run it in %u seconds...", exitcode, docker_conf->interval);
+            sleep(docker_conf->interval);
+        }
     }
 
     return NULL;
 }
 
 
-// Get readed data
+// Get read data
 
 cJSON *wm_docker_dump(const wm_docker_t *docker_conf) {
 
@@ -103,7 +112,7 @@ cJSON *wm_docker_dump(const wm_docker_t *docker_conf) {
     if (docker_conf->flags.enabled) cJSON_AddStringToObject(wm_docker,"disabled","no"); else cJSON_AddStringToObject(wm_docker,"disabled","yes");
     if (docker_conf->flags.run_on_start) cJSON_AddStringToObject(wm_docker,"run_on_start","yes"); else cJSON_AddStringToObject(wm_docker,"run_on_start","no");
     cJSON_AddNumberToObject(wm_docker,"interval",docker_conf->interval);
-
+    cJSON_AddNumberToObject(wm_docker, "attempts", docker_conf->attempts);
     cJSON_AddItemToObject(root,"docker-listener",wm_docker);
 
     return root;

@@ -21,13 +21,13 @@
     <action>DROP</action>
     <options>no_log</options>
     <description>Firewall drop event.</description>
-    <group>firewall_drop,pci_dss_1.4,gpg13_4.12,gdpr_IV_35.7.d,</group>
+    <group>firewall_drop,pci_dss_1.4,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="4151" level="10" frequency="18" timeframe="45" ignore="240">
     <if_matched_sid>4101</if_matched_sid>
     <same_source_ip />
     <description>Multiple Firewall drop events from same source.</description>
-    <group>multiple_drops,pci_dss_1.4,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,</group>
+    <group>multiple_drops,pci_dss_1.4,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.a.1,hipaa_164.312.b,nist_800_53_SC.7,nist_800_53_AU.6,</group>
   </rule>
 </group>

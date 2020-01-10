@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -15,19 +15,21 @@
 unsigned int s_events_syscheck_decoded = 0;
 unsigned int s_events_syscollector_decoded  = 0;
 unsigned int s_events_rootcheck_decoded = 0;
+unsigned int s_events_sca_decoded = 0;
 unsigned int s_events_hostinfo_decoded  = 0;
 unsigned int s_events_winevt_decoded = 0;
 unsigned int s_events_decoded = 0;
 unsigned int s_events_processed = 0;
 unsigned int s_events_dropped = 0 ;
 volatile unsigned int s_events_received = 0;
-unsigned int s_alerts_written  = 0; 
+unsigned int s_alerts_written  = 0;
 unsigned int s_firewall_written = 0;
 unsigned int s_fts_written = 0;
 
 float s_syscheck_queue = 0;
 float s_syscollector_queue = 0;
 float s_rootcheck_queue = 0;
+float s_sca_queue = 0;
 float s_hostinfo_queue = 0;
 float s_winevt_queue = 0;
 float s_event_queue = 0;
@@ -36,6 +38,7 @@ float s_process_event_queue = 0;
 unsigned int s_syscheck_queue_size = 0;
 unsigned int s_syscollector_queue_size = 0;
 unsigned int s_rootcheck_queue_size = 0;
+unsigned int s_sca_queue_size = 0;
 unsigned int s_hostinfo_queue_size = 0;
 unsigned int s_winevt_queue_size = 0;
 unsigned int s_event_queue_size = 0;
@@ -54,6 +57,7 @@ unsigned int s_writer_statistical_queue_size = 0;
 pthread_mutex_t s_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_syscollector_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_rootcheck_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t s_sca_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_hostinfo_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_winevt_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_event_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -85,7 +89,7 @@ void * w_analysisd_state_main(){
 
 int w_analysisd_write_state(){
     FILE * fp;
-    char path[PATH_MAX + 1];
+    char path[PATH_MAX - 8];
     char path_temp[PATH_MAX + 1];
 
     if (!strcmp(__local_name, "unset")) {
@@ -122,6 +126,10 @@ int w_analysisd_write_state(){
         "# Rootcheck events decoded\n"
         "rootcheck_events_decoded='%u'\n"
         "rootcheck_edps='%u'\n"
+        "\n"
+         "# Security configuration assessment events decoded\n"
+        "sca_events_decoded='%u'\n"
+        "sca_edps='%u'\n"
         "\n"
         "# Hostinfo events decoded\n"
         "hostinfo_events_decoded='%u'\n"
@@ -172,6 +180,12 @@ int w_analysisd_write_state(){
         "# Rootcheck queue size\n"
         "rootcheck_queue_size='%u'\n"
         "\n"
+        "# Security configuration assessment queue\n"
+        "sca_queue_usage='%.2f'\n"
+        "\n"
+        "# Security configuration assessment queue size\n"
+        "sca_queue_size='%u'\n"
+        "\n"
         "# Hostinfo queue\n"
         "hostinfo_queue_usage='%.2f'\n"
         "\n"
@@ -220,14 +234,16 @@ int w_analysisd_write_state(){
         "# Archives log queue size\n"
         "archives_queue_size='%u'\n"
         "\n",
-        __local_name, 
-        s_events_decoded + s_events_syscheck_decoded + s_events_syscollector_decoded + s_events_rootcheck_decoded + s_events_hostinfo_decoded + s_events_winevt_decoded ,
+        __local_name,
+        s_events_decoded + s_events_syscheck_decoded + s_events_syscollector_decoded + s_events_rootcheck_decoded + s_events_hostinfo_decoded + s_events_winevt_decoded + s_events_sca_decoded,
         s_events_syscheck_decoded,
-        s_events_syscheck_decoded / interval ,
+        s_events_syscheck_decoded / interval,
         s_events_syscollector_decoded,
         s_events_syscollector_decoded / interval,
         s_events_rootcheck_decoded,
         s_events_rootcheck_decoded / interval,
+        s_events_sca_decoded,
+        s_events_sca_decoded / interval,
         s_events_hostinfo_decoded,
         s_events_hostinfo_decoded / interval,
         s_events_winevt_decoded,
@@ -247,6 +263,8 @@ int w_analysisd_write_state(){
         s_syscollector_queue_size,
         s_rootcheck_queue,
         s_rootcheck_queue_size,
+        s_sca_queue,
+        s_sca_queue_size,
         s_hostinfo_queue,
         s_hostinfo_queue_size,
         s_winevt_queue,
@@ -293,6 +311,12 @@ void w_inc_rootcheck_decoded_events(){
     w_mutex_lock(&s_rootcheck_mutex);
     s_events_rootcheck_decoded++;
     w_mutex_unlock(&s_rootcheck_mutex);
+}
+
+void w_inc_sca_decoded_events(){
+    w_mutex_lock(&s_sca_mutex);
+    s_events_sca_decoded++;
+    w_mutex_unlock(&s_sca_mutex);
 }
 
 void w_inc_hostinfo_decoded_events(){
@@ -355,6 +379,10 @@ void w_reset_stats(){
     w_mutex_lock(&s_rootcheck_mutex);
     s_events_rootcheck_decoded = 0;
     w_mutex_unlock(&s_rootcheck_mutex);
+
+    w_mutex_lock(&s_sca_mutex);
+    s_events_sca_decoded = 0;
+    w_mutex_unlock(&s_sca_mutex);
 
     w_mutex_lock(&s_hostinfo_mutex);
     s_events_hostinfo_decoded = 0;

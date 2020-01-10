@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -116,13 +116,10 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                 mon_config->reports[s]->r_filter.show_alerts = 1;
             }
         } else if (strcmp(node[i]->element, xml_categories) == 0) {
-            char *ncat = NULL;
             _filter_arg(node[i]->content);
 
-            os_strdup(node[i]->content, ncat);
-
-            if (os_report_configfilter("group", ncat,
-                                       &mon_config->reports[s]->r_filter, REPORT_FILTER) < 0) {
+            if (os_report_configfilter("group", node[i]->content,
+                                       &mon_config->reports[s]->r_filter, REPORT_FILTER)) {
                 merror(CONFIG_ERROR, "user argument");
             }
         } else if ((strcmp(node[i]->element, xml_group) == 0) ||
@@ -132,7 +129,6 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                    (strcmp(node[i]->element, xml_srcip) == 0) ||
                    (strcmp(node[i]->element, xml_user) == 0)) {
             int reportf = REPORT_FILTER;
-            char *ncat = NULL;
             _filter_arg(node[i]->content);
 
             if (node[i]->attributes && node[i]->values) {
@@ -153,10 +149,8 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                 }
             }
 
-            os_strdup(node[i]->content, ncat);
-
-            if (os_report_configfilter(node[i]->element, ncat,
-                                       &mon_config->reports[s]->r_filter, reportf) < 0) {
+            if (os_report_configfilter(node[i]->element, node[i]->content,
+                                       &mon_config->reports[s]->r_filter, reportf)) {
                 merror("Invalid filter: %s:%s (ignored).", node[i]->element, node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_email) == 0) {

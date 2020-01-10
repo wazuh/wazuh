@@ -2,7 +2,7 @@
 * Copyright (C) 2015-2019, Wazuh Inc.
 * August 30, 2017.
 *
-* This program is a free software; you can redistribute it
+* This program is free software; you can redistribute it
 * and/or modify it under the terms of the GNU General Public
 * License (version 2) as published by the FSF - Free Software
 * Foundation.
@@ -32,6 +32,7 @@ static int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket);
 static int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket);
 static int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket);
 static int decode_package( Eventinfo *lf, cJSON * logJSON,int *socket);
+static int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket);
 static int decode_process( Eventinfo *lf, cJSON * logJSON,int *socket);
 
@@ -52,6 +53,7 @@ void SyscollectorInit(){
 int DecodeSyscollector(Eventinfo *lf,int *socket)
 {
     cJSON *logJSON;
+    cJSON *json_type;
     char *msg_type = NULL;
 
     lf->decoder_info = sysc_decoder;
@@ -74,15 +76,18 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     }
 
     // Parsing event.
-    logJSON = cJSON_Parse(lf->log);
+
+    const char *jsonErrPtr;
+    logJSON = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0);
     if (!logJSON) {
-        mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
+        mdebug1("Error parsing JSON event.");
+        mdebug2("Input JSON: '%s", lf->log);
         return (0);
     }
 
     // Detect message type
-    msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
-    if (!msg_type) {
+    json_type = cJSON_GetObjectItem(logJSON, "type");
+    if (!(json_type && (msg_type = json_type->valuestring))) {
         mdebug1("Invalid message. Type not found.");
         cJSON_Delete (logJSON);
         return (0);
@@ -99,6 +104,13 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     else if (strcmp(msg_type, "program") == 0 || strcmp(msg_type, "program_end") == 0) {
         if (decode_package(lf, logJSON,socket) < 0) {
             mdebug1("Unable to send packages information to Wazuh DB.");
+            cJSON_Delete (logJSON);
+            return (0);
+        }
+    }
+    else if (strcmp(msg_type, "hotfix") == 0 || strcmp(msg_type, "hotfix_end") == 0) {
+        if (decode_hotfix(lf, logJSON, socket) < 0) {
+            mdebug1("Unable to send hotfixes information to Wazuh DB.");
             cJSON_Delete (logJSON);
             return (0);
         }
@@ -311,6 +323,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                 cJSON * broadcast = cJSON_GetObjectItem(ip, "broadcast");
                 cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
                 cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
+                cJSON * metric = cJSON_GetObjectItem(ip, "metric");
 
                 os_calloc(OS_SIZE_6144, sizeof(char), msg);
                 snprintf(msg, OS_SIZE_6144 - 1, "agent %s netproto save", lf->agent_id);
@@ -340,6 +353,15 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                 if (dhcp) {
                     wm_strcat(&msg, dhcp->valuestring, '|');
                     fillData(lf,"netinfo.iface.ipv4.dhcp",dhcp->valuestring);
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (metric) {
+                    char _metric[OS_SIZE_128];
+                    snprintf(_metric, OS_SIZE_128 - 1, "%d", metric->valueint);
+                    fillData(lf,"netinfo.iface.ipv4.metric", _metric);
+                    wm_strcat(&msg, _metric, '|');
                 } else {
                     wm_strcat(&msg, "NULL", '|');
                 }
@@ -417,16 +439,23 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                         }
                     }
 
+                    char *array_buffer = NULL;
                     if (ip4_address) {
-                        fillData(lf,"netinfo.iface.ipv4.address", ip4_address);
+                        csv_list_to_json_str_array(ip4_address, &array_buffer);
+                        fillData(lf,"netinfo.iface.ipv4.address", array_buffer);
+                        os_free(array_buffer);
                         free(ip4_address);
                     }
                     if(ip4_netmask) {
-                        fillData(lf,"netinfo.iface.ipv4.netmask", ip4_netmask);
+                        csv_list_to_json_str_array(ip4_netmask, &array_buffer);
+                        fillData(lf,"netinfo.iface.ipv4.netmask", array_buffer);
+                        os_free(array_buffer);
                         free(ip4_netmask);
                     }
                     if(ip4_broadcast) {
-                        fillData(lf,"netinfo.iface.ipv4.broadcast",ip4_broadcast);
+                        csv_list_to_json_str_array(ip4_broadcast, &array_buffer);
+                        fillData(lf,"netinfo.iface.ipv4.broadcast", array_buffer);
+                        os_free(array_buffer);
                         free(ip4_broadcast);
                     }
                 }
@@ -436,6 +465,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                 cJSON * address = cJSON_GetObjectItem(ip, "address");
                 cJSON * netmask = cJSON_GetObjectItem(ip, "netmask");
                 cJSON * broadcast = cJSON_GetObjectItem(ip, "broadcast");
+                cJSON * metric = cJSON_GetObjectItem(ip, "metric");
                 cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
                 cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
 
@@ -467,6 +497,15 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                 if (dhcp) {
                     wm_strcat(&msg, dhcp->valuestring, '|');
                     fillData(lf, "netinfo.iface.ipv6.dhcp",dhcp->valuestring);
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (metric) {
+                    char _metric[OS_SIZE_128];
+                    snprintf(_metric, OS_SIZE_128 - 1, "%d", metric->valueint);
+                    fillData(lf,"netinfo.iface.ipv6.metric",_metric);
+                    wm_strcat(&msg, _metric, '|');
                 } else {
                     wm_strcat(&msg, "NULL", '|');
                 }
@@ -542,16 +581,23 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                         }
                     }
 
+                    char *array_buffer = NULL;
                     if (ip6_address) {
-                        fillData(lf,"netinfo.iface.ipv6.address", ip6_address);
+                        csv_list_to_json_str_array(ip6_address, &array_buffer);
+                        fillData(lf,"netinfo.iface.ipv6.address", array_buffer);
+                        os_free(array_buffer);
                         free(ip6_address);
                     }
                     if(ip6_netmask) {
-                        fillData(lf,"netinfo.iface.ipv6.netmask", ip6_netmask);
+                        csv_list_to_json_str_array(ip6_netmask, &array_buffer);
+                        fillData(lf,"netinfo.iface.ipv6.netmask", array_buffer);
+                        os_free(array_buffer);
                         free(ip6_netmask);
                     }
                     if(ip6_broadcast) {
-                        fillData(lf,"netinfo.iface.ipv6.broadcast",ip6_broadcast);
+                        csv_list_to_json_str_array(ip6_broadcast, &array_buffer);
+                        fillData(lf,"netinfo.iface.ipv6.broadcast", array_buffer);
+                        os_free(array_buffer);
                         free(ip6_broadcast);
                     }
 
@@ -605,6 +651,7 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         cJSON * sysname = cJSON_GetObjectItem(inventory, "sysname");
         cJSON * release = cJSON_GetObjectItem(inventory, "release");
         cJSON * version = cJSON_GetObjectItem(inventory, "version");
+        cJSON * os_release = cJSON_GetObjectItem(inventory, "os_release");
 
         char * msg = NULL;
         os_calloc(OS_SIZE_6144, sizeof(char), msg);
@@ -706,6 +753,13 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (version) {
             wm_strcat(&msg, version->valuestring, '|');
             fillData(lf,"os.release_version",version->valuestring);
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (os_release) {
+            wm_strcat(&msg, os_release->valuestring, '|');
+            fillData(lf,"os.os_release",os_release->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
@@ -966,7 +1020,7 @@ int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (ram_total) {
             char total[OS_SIZE_512];
             snprintf(total, OS_SIZE_512 - 1, "%f", ram_total->valuedouble);
-            fillData(lf,"harware.ram_total",total);
+            fillData(lf,"hardware.ram_total",total);
             wm_strcat(&msg, total, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
@@ -1181,6 +1235,55 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
     return 0;
 }
 
+int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
+    char * msg = NULL;
+    cJSON * hotfix;
+    cJSON * scan_id;
+    cJSON * scan_time;
+
+    if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
+        return -1;
+    }
+
+    os_calloc(OS_SIZE_1024, sizeof(char), msg);
+
+    if (hotfix = cJSON_GetObjectItem(logJSON, "hotfix"), hotfix) {
+        scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
+
+        snprintf(msg, OS_SIZE_1024, "agent %s hotfix save %d|%s|%s|",
+                lf->agent_id,
+                scan_id->valueint,
+                scan_time->valuestring,
+                hotfix->valuestring);
+
+        fillData(lf, "hotfix", hotfix->valuestring);
+
+        if (sc_send_db(msg, socket) < 0) {
+            return -1;
+        }
+    } else {
+        // Looking for 'end' message.
+        char * msg_type = NULL;
+
+        msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
+
+        if (!msg_type) {
+            merror("Invalid message. Type not found.");
+            free(msg);
+            return -1;
+        } else if (strcmp(msg_type, "hotfix_end") == 0) {
+            snprintf(msg, OS_SIZE_1024 - 1, "agent %s hotfix del %d", lf->agent_id, scan_id->valueint);
+            if (sc_send_db(msg,socket) < 0) {
+                return -1;
+            }
+        } else {
+            free(msg);
+        }
+    }
+
+    return 0;
+}
+
 int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
 
     int i;
@@ -1308,7 +1411,9 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
             for (i = 0; i < cJSON_GetArraySize(argvs); i++){
                 wm_strcat(&args, cJSON_GetArrayItem(argvs,i)->valuestring, ',');
             }
-            fillData(lf,"process.args",args);
+            char *array_buffer = cJSON_Print(argvs);
+            fillData(lf, "process.args", array_buffer);
+            os_free(array_buffer);
             wm_strcat(&msg, args, '|');
             free(args);
         } else {
@@ -1524,11 +1629,7 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
 }
 
 int sc_send_db(char *msg, int *sock) {
-    char response[OS_SIZE_128 + 1];
-    ssize_t length;
-    fd_set fdset;
-    struct timeval timeout = {0, 1000};
-    int size = strlen(msg);
+
     int retval = -1;
     int attempts;
 
@@ -1550,6 +1651,8 @@ int sc_send_db(char *msg, int *sock) {
             goto end;
         }
     }
+
+    int size = strlen(msg);
 
     // Send msg to Wazuh DB
     if (OS_SendSecureTCP(*sock, size + 1, msg) != 0) {
@@ -1581,24 +1684,22 @@ int sc_send_db(char *msg, int *sock) {
         }
     }
 
-    // Wait for socket
-    FD_ZERO(&fdset);
-    FD_SET(*sock, &fdset);
-
-    if (select(*sock + 1, &fdset, NULL, NULL, &timeout) < 0) {
-        merror("at sc_send_db(): at select(): %s (%d)", strerror(errno), errno);
-        goto end;
-    }
+    char response[OS_SIZE_128 + 1];
+    ssize_t length;
 
     // Receive response from socket
     length = OS_RecvSecureTCP(*sock, response, OS_SIZE_128);
     switch (length) {
+        case OS_SOCKTERR:
+            merror("At sc_send_db(): OS_RecvSecureTCP(): response size is bigger than expected");
+            break;
+
         case -1:
             merror("at sc_send_db(): at OS_RecvSecureTCP(): %s (%d)", strerror(errno), errno);
             goto end;
 
         default:
-            response[length] = '\0';
+            response[length >= 0 ? length : 0] = '\0';
 
             if (strcmp(response, "ok")) {
                 merror("at sc_send_db(): received: '%s'", response);

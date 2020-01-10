@@ -4,7 +4,7 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # November 18, 2016.
 #
-# This program is a free software; you can redistribute it
+# This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
@@ -21,11 +21,16 @@ if [ -r "/etc/os-release" ]; then
     if [ "X$DIST_VER" = "X" ]; then
         DIST_VER="0"
     fi
+    if [ "$DIST_NAME" = "amzn" ] && [ "$DIST_VER" != "2" ]; then
+        DIST_VER="1"
+    fi
     DIST_SUBVER=$(echo $VERSION_ID | sed -rn 's/[^0-9]*[0-9]+\.([0-9]+).*/\1/p')
     if [ "X$DIST_SUBVER" = "X" ]; then
         DIST_SUBVER="0"
     fi
-else
+fi
+
+if [ ! -r "/etc/os-release" ] || [ "$DIST_NAME" = "centos" ]; then
     # CentOS
     if [ -r "/etc/centos-release" ]; then
         DIST_NAME="centos"

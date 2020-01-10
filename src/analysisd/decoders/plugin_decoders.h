@@ -2,19 +2,16 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
-#ifndef __PLUGINDECODER_H
-#define __PLUGINDECODER_H
+#ifndef PLUGINDECODER_H
+#define PLUGINDECODER_H
 
 #include "eventinfo.h"
-
-/* Decoder for Cis-cat events */
-int DecodeCiscat(Eventinfo *lf);
 
 /* Plugin decoder for OpenBSD PF */
 void *PF_Decoder_Init(void);
@@ -42,4 +39,4 @@ extern const char *(plugin_decoders[]);
 extern void *(plugin_decoders_init[]);
 extern void *(plugin_decoders_exec[]);
 
-#endif /* __PLUGINDECODER_H */
+#endif /* PLUGINDECODER_H */

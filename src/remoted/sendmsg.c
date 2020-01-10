@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -14,7 +14,23 @@
 #include "os_net/os_net.h"
 
 /* pthread key update mutex */
-static pthread_rwlock_t keyupdate_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_rwlock_t keyupdate_rwlock;
+
+void key_lock_init()
+{
+    pthread_rwlockattr_t attr;
+    pthread_rwlockattr_init(&attr);
+
+#ifdef __linux__
+    /* PTHREAD_RWLOCK_PREFER_WRITER_NP is ignored.
+     * Do not use recursive locking.
+     */
+    pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+#endif
+
+    w_rwlock_init(&keyupdate_rwlock, &attr);
+    pthread_rwlockattr_destroy(&attr);
+}
 
 void key_lock_read()
 {
@@ -69,6 +85,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[key_id]->rcvd < (time(0) - DISCON_TIME)) {
+        key_unlock();
         mwarn(SEND_DISCON, keys.keyentries[key_id]->id);
         return (-1);
     }
@@ -82,7 +99,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     }
 
     /* Send initial message */
-    if (logr.proto[logr.position] == UDP_PROTO) {
+    if (logr.proto[logr.position] == IPPROTO_UDP) {
         retval = sendto(logr.sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size) == msg_size ? 0 : -1;
         error = errno;
     } else if (keys.keyentries[key_id]->sock >= 0) {
@@ -99,10 +116,11 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     if (retval < 0) {
         switch (error) {
         case 0:
-            mwarn(SEND_ERROR " [%d]", agent_id, "Unknown error.", keys.keyentries[key_id]->sock);
+            mwarn(SEND_ERROR " [%d]", agent_id, "A message could not be delivered completely.", keys.keyentries[key_id]->sock);
             break;
         case EPIPE:
         case EBADF:
+        case ECONNRESET:
             mdebug1(SEND_ERROR " [%d]", agent_id, "Agent may have disconnected.", keys.keyentries[key_id]->sock);
             break;
         case EAGAIN:

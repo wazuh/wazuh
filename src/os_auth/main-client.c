@@ -2,7 +2,7 @@
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -38,28 +38,28 @@ static void help_agent_auth()
 {
     print_header();
     print_out("  %s: -[Vhdti] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group] [-I IP address]", ARGV0);
-    print_out("    -V          Version and license message");
-    print_out("    -h          This help message");
+    print_out("    -V          Version and license message.");
+    print_out("    -h          This help message.");
     print_out("    -d          Execute in debug mode. This parameter");
     print_out("                can be specified multiple times");
     print_out("                to increase the debug level.");
-    print_out("    -t          Test configuration");
+    print_out("    -t          Test configuration.");
 #ifndef WIN32
-    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -g <group>  Group to run as (default: %s).", GROUPGLOBAL);
+    print_out("    -D <dir>    Directory to chroot into (default: %s).", DEFAULTDIR);
 #endif
-    print_out("    -m <addr>   Manager IP address");
-    print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
-    print_out("    -A <name>   Agent name (default: hostname)");
-    print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
-    print_out("    -v <path>   Full path to CA certificate used to verify the server");
-    print_out("    -x <path>   Full path to agent certificate");
-    print_out("    -k <path>   Full path to agent key");
-    print_out("    -P <pass>   Authorization password");
+    print_out("    -m <addr>   Manager IP address.");
+    print_out("    -p <port>   Manager port (default: %d).", DEFAULT_PORT);
+    print_out("    -A <name>   Agent name (default: hostname).");
+    print_out("    -c <cipher> SSL cipher list (default: %s)", DEFAULT_CIPHERS);
+    print_out("    -v <path>   Full path to CA certificate used to verify the server.");
+    print_out("    -x <path>   Full path to agent certificate.");
+    print_out("    -k <path>   Full path to agent key.");
+    print_out("    -P <pass>   Authorization password.");
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
-    print_out("    -G <group>  Set the group for centralized configuration");
-    print_out("    -I <IP>     Set the agent IP address");
-    print_out("    -i          Let the agent IP address be set by the manager connection");
+    print_out("    -G <group>  Assigns the agent to one or more existing groups (separated by commas).");
+    print_out("    -I <IP>     Set the agent IP address.");
+    print_out("    -i          Let the agent IP address be set by the manager connection.");
     print_out(" ");
     exit(1);
 }
@@ -106,7 +106,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "VdhtG:m:p:A:c:v:x:k:D:P:a:I:i"
+    while ((c = getopt(argc, argv, "VdhtG:m:p:A:c:v:x:k:D:P:aI:i"
 #ifndef WIN32
     "g:D:"
 #endif
@@ -214,6 +214,10 @@ int main(int argc, char **argv)
         }
     }
 
+    if (optind < argc) {
+        mwarn("Extra arguments detected. They will be ignored.");
+    }
+
     if (debug_level == 0) {
         /* Get debug level */
         debug_level = getDefine_Int("authd", "debug", 0, 2);
@@ -319,11 +323,11 @@ int main(int argc, char **argv)
             }
 
             fclose(fp);
-            printf("INFO: Using password specified on file: %s\n", AUTHDPASS_PATH);
+            minfo("Using password specified on file: %s", AUTHDPASS_PATH);
         }
     }
     if (!authpass) {
-        printf("INFO: No authentication password provided.\n");
+        minfo("No authentication password provided.");
     }
 
     /* Connect via TCP */
@@ -339,30 +343,34 @@ int main(int argc, char **argv)
     sbio = BIO_new_socket(sock, BIO_NOCLOSE);
     SSL_set_bio(ssl, sbio, sbio);
 
+    ERR_clear_error();
     ret = SSL_connect(ssl);
     if (ret <= 0) {
-        ERR_print_errors_fp(stderr);
-        merror("SSL error (%d). Exiting.", ret);
+        merror("SSL error (%d). Connection refused by the manager. Maybe the port specified is incorrect. Exiting.", SSL_get_error(ssl, ret));
+        ERR_print_errors_fp(stderr);  // This function empties the error queue
         free(buf);
         exit(1);
     }
 
-    printf("INFO: Connected to %s:%d\n", ipaddress, port);
+    minfo("Connected to %s:%d", ipaddress, port);
 
     /* Additional verification of the manager's certificate if a hostname
      * rather than an IP address is given on the command line. Could change
      * this to do the additional validation on IP addresses as well if needed.
      */
     if (ca_cert) {
-        printf("INFO: Verifying manager's certificate\n");
+        minfo("Verifying manager's certificate");
         if (check_x509_cert(ssl, manager) != VERIFY_TRUE) {
             merror("Unable to verify server certificate.");
             free(buf);
             exit(1);
         }
     }
+    else {
+        mwarn("Registering agent to unverified manager.");
+    }
 
-    printf("INFO: Using agent name as: %s\n", agentname);
+    minfo("Using agent name as: %s", agentname);
 
     if (authpass) {
         snprintf(buf, 2048, "OSSEC PASS: %s OSSEC A:'%s'", authpass, agentname);
@@ -404,13 +412,13 @@ int main(int argc, char **argv)
     strncat(buf,"\n",1);
     ret = SSL_write(ssl, buf, strlen(buf));
     if (ret < 0) {
-        printf("SSL write error (unable to send message.)\n");
+        merror("SSL write error (unable to send message.)");
         ERR_print_errors_fp(stderr);
         free(buf);
         exit(1);
     }
 
-    printf("INFO: Send request to manager. Waiting for reply.\n");
+    minfo("Send request to manager. Waiting for reply.");
 
     while (1) {
         ret = SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096);
@@ -423,18 +431,25 @@ int main(int argc, char **argv)
                     if (tmpstr) {
                         *tmpstr = '\0';
                     }
-                    printf("%s (from manager)\n", buf);
+                    if (strlen(buf) > 7 && !strncmp(buf, "ERROR: ", 7)) {
+                        char *tmpbuf;
+                        tmpbuf = strchr(buf, ' ');
+                        tmpbuf++;
+                        if (tmpbuf && tmpbuf[0] != '\0') {
+                            merror("%s (from manager)", tmpbuf);
+                        }
+                    }
                 } else if (strncmp(buf, "OSSEC K:'", 9) == 0) {
                     char *key;
                     char *tmpstr;
                     char **entry;
-                    printf("INFO: Received response with agent key\n");
+                    minfo("Received response with agent key");
 
                     key = buf;
                     key += 9;
                     tmpstr = strchr(key, '\'');
                     if (!tmpstr) {
-                        printf("ERROR: Invalid key received. Closing connection.\n");
+                        merror("Invalid key received. Closing connection.");
                         free(buf);
                         exit(1);
                     }
@@ -442,7 +457,7 @@ int main(int argc, char **argv)
                     entry = OS_StrBreak(' ', key, 4);
                     if (!OS_IsValidID(entry[0]) || !OS_IsValidName(entry[1]) ||
                             !OS_IsValidIP(entry[2], NULL) || !OS_IsValidName(entry[3])) {
-                        printf("ERROR: Invalid key received (2). Closing connection.\n");
+                        merror("Invalid key received (2). Closing connection.");
                         free(buf);
                         exit(1);
                     }
@@ -454,7 +469,7 @@ int main(int argc, char **argv)
                         fp = fopen(KEYSFILE_PATH, "w");
 
                         if (!fp) {
-                            printf("ERROR: Unable to open key file: %s", KEYSFILE_PATH);
+                            merror("Unable to open key file: %s", KEYSFILE_PATH);
                             free(buf);
                             exit(1);
                         }
@@ -462,20 +477,20 @@ int main(int argc, char **argv)
                         fclose(fp);
                     }
                     key_added = 1;
-                    printf("INFO: Valid key created. Finished.\n");
+                    minfo("Valid key created. Finished.");
                 }
                 break;
             case SSL_ERROR_ZERO_RETURN:
             case SSL_ERROR_SYSCALL:
                 if (key_added == 0) {
-                    printf("ERROR: Unable to create key. Either wrong password or connection not accepted by the manager.\n");
+                    merror("Unable to create key. Either wrong password or connection not accepted by the manager.");
                 }
-                printf("INFO: Connection closed.\n");
+                minfo("Connection closed.");
                 free(buf);
                 exit(!key_added);
                 break;
             default:
-                printf("ERROR: SSL read (unable to receive message)\n");
+                merror("SSL read (unable to receive message)");
                 free(buf);
                 exit(1);
                 break;
@@ -485,7 +500,7 @@ int main(int argc, char **argv)
 
     /* Shut down the socket */
     if (key_added == 0) {
-        printf("ERROR: Unable to create key. Either wrong password or connection not accepted by the manager.\n");
+        merror("Unable to create key. Either wrong password or connection not accepted by the manager.");
     }
     SSL_CTX_free(ctx);
     close(sock);

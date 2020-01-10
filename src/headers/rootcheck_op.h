@@ -2,14 +2,14 @@
  * Shared functions for Rootcheck events decoding
  * Copyright (C) 2015-2019, Wazuh Inc.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
-#ifndef __ROOTCHECK_OP_H
-#define __ROOTCHECK_OP_H
+#ifndef ROOTCHECK_OP_H
+#define ROOTCHECK_OP_H
 
 /* Rootcheck fields */
 #define RK_TITLE   0
@@ -31,4 +31,4 @@ char* rk_get_file(const char *log);
 /* Extract time and event from Rootcheck log. It doesn't reserve memory. */
 int rk_decode_event(char *buffer, rk_event_t *event);
 
-#endif
+#endif /* ROOTCHECK_OP_H */

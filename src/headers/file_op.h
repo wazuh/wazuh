@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -10,15 +10,21 @@
 
 /* Functions to handle operation with files */
 
-#ifndef __FILE_H
-#define __FILE_H
+#ifndef FILE_OP_H
+#define FILE_OP_H
 
 #include <stdint.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <external/cJSON/cJSON.h>
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 #define OS_PIDFILE  "/var/run"
+#define UCS2_LE 1
+#define UCS2_BE 2
 
 #ifdef WIN32
 typedef uint64_t wino_t;
@@ -96,7 +102,6 @@ int w_copy_file(const char *src, const char *dst,char mode,char * message,int si
 #ifdef WIN32
 int checkVista();
 int isVista;
-int get_creation_date(char *dir, SYSTEMTIME *utc);
 
 // Move to the directory where this executable lives in
 void w_ch_exec_dir();
@@ -132,5 +137,21 @@ int w_remove_line_from_file(char *file, int line);
 // To compress an decompress a file in gzip
 int w_compress_gzfile(const char *filesrc, const char *filedst);
 int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
+int is_ascii_utf8(const char * file, unsigned int max_lines, unsigned int max_chars_utf8);
+int is_usc2(const char * file);
 
-#endif /* __FILE_H */
+#ifdef WIN32
+DWORD FileSizeWin(const char * file);
+#endif
+
+int checkBinaryFile(const char *f_name);
+
+int64_t w_ftell (FILE *x);
+
+/* Prevent children processes from inheriting a file pointer */
+void w_file_cloexec(FILE * fp);
+
+/* Prevent children processes from inheriting a file descriptor */
+void w_descriptor_cloexec(int fd);
+
+#endif /* FILE_OP_H */

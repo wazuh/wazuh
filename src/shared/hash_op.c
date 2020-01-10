@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -53,7 +53,7 @@ OSHash *OSHash_Create()
     srandom((unsigned int)time(0));
     self->initial_seed = os_getprime((unsigned)os_random() % self->rows);
     self->constant = os_getprime((unsigned)os_random() % self->rows);
-    pthread_rwlock_init(&self->mutex, NULL);
+    w_rwlock_init(&self->mutex, NULL);
     return (self);
 }
 
@@ -117,7 +117,7 @@ int OSHash_setSize(OSHash *self, unsigned int new_size)
 {
     unsigned int i = 0, orig_size = self->rows;
     OSHashNode **tmpTable = NULL;
-    
+
     /* We can't decrease the size */
     if (new_size <= self->rows) {
         return (1);
@@ -133,10 +133,10 @@ int OSHash_setSize(OSHash *self, unsigned int new_size)
     /* If a call to realloc() fails, the pointer passed to it will remain unchanged */
     tmpTable = (OSHashNode **) realloc(self->table, (self->rows + 1) * sizeof(OSHashNode *));
     if (!tmpTable) return (0);
-    
+
     /* If a call to realloc() succeeds, the pointer passed to it would have been freed */
     self->table = tmpTable;
-    
+
     /* Check if previous tables had allocated data */
     OSHashNode *curr_node, *next_node;
     for(i = 0; i < orig_size; i++) {
@@ -274,6 +274,7 @@ int _OSHash_Add(OSHash *self, const char *key, void *data, int update)
         return (0);
     }
     new_node->next = NULL;
+    new_node->prev = NULL;
     new_node->data = data;
     new_node->key = strdup(key);
     if ( new_node->key == NULL ) {
@@ -289,8 +290,11 @@ int _OSHash_Add(OSHash *self, const char *key, void *data, int update)
     /* If there is duplicated, add to the beginning */
     else {
         new_node->next = self->table[index];
+        self->table[index]->prev = new_node;
         self->table[index] = new_node;
     }
+
+    self->elements = self->elements + 1;
 
     return (2);
 }
@@ -380,17 +384,15 @@ void *OSHash_Get(const OSHash *self, const char *key)
 
     /* Get entry */
     curr_node = self->table[index];
+
     while (curr_node != NULL) {
         /* Skip null pointers */
-        if ( curr_node->key == NULL ) {
-            continue;
+        if (curr_node->key != NULL) {
+            /* We may have collisions, so double check with strcmp */
+            if (strcmp(curr_node->key, key) == 0) {
+                return (curr_node->data);
+            }
         }
-
-        /* We may have collisions, so double check with strcmp */
-        if (strcmp(curr_node->key, key) == 0) {
-            return (curr_node->data);
-        }
-
         curr_node = curr_node->next;
     }
 
@@ -443,11 +445,21 @@ void *OSHash_Get_ins(const OSHash *self, const char *key)
     return result;
 }
 
+/* Return the number of elements in the hash table */
+unsigned int OSHash_Get_Elem_ex(OSHash *self) {
+    unsigned int ret;
+    w_rwlock_rdlock((pthread_rwlock_t *)&self->mutex);
+    ret = self->elements;
+    w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
+
+    return ret;
+}
+
 /* Return a pointer to a hash node if found, that hash node is removed from the table */
 void *OSHash_Delete(OSHash *self, const char *key)
 {
     OSHashNode *curr_node;
-    OSHashNode *prev_node = 0;
+    OSHashNode *prev_node = NULL;
     unsigned int hash_key;
     unsigned int index;
     void *data;
@@ -466,9 +478,13 @@ void *OSHash_Delete(OSHash *self, const char *key)
             } else {
                 prev_node->next = curr_node->next;
             }
+            if (curr_node->next) {
+                curr_node->next->prev = prev_node;
+            }
             free(curr_node->key);
             data = curr_node->data;
             free(curr_node);
+            self->elements = self->elements - 1;
             return data;
         }
         prev_node = curr_node;
@@ -521,9 +537,9 @@ OSHash *OSHash_Duplicate(const OSHash *hash) {
     self->initial_seed = hash->initial_seed;
     self->constant = hash->constant;
     self->free_data_function = hash->free_data_function;
-    
+
     os_calloc(self->rows + 1, sizeof(OSHashNode*), self->table);
-    pthread_rwlock_init(&self->mutex, NULL);
+    w_rwlock_init(&self->mutex, NULL);
 
     for (i = 0; i <= self->rows; i++) {
         next_addr = &self->table[i];
@@ -587,15 +603,14 @@ OSHashNode *OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current
 }
 
 void *OSHash_Clean(OSHash *self, void (*cleaner)(void*)){
-    unsigned int *i;
-    os_calloc(1, sizeof(unsigned int), i);
+    unsigned int i;
     OSHashNode *curr_node;
     OSHashNode *next_node;
 
-    curr_node = OSHash_Begin(self, i);
+    curr_node = OSHash_Begin(self, &i);
     if(curr_node){
         do {
-            next_node = OSHash_Next(self, i, curr_node);
+            next_node = OSHash_Next(self, &i, curr_node);
             if(curr_node->key){
                 free(curr_node->key);
             }
@@ -607,11 +622,47 @@ void *OSHash_Clean(OSHash *self, void (*cleaner)(void*)){
         } while (curr_node);
     }
 
-    os_free(i);
-
     /* Free the hash table */
     free(self->table);
     pthread_rwlock_destroy(&self->mutex);
     free(self);
     return NULL;
+}
+
+void OSHash_It(const OSHash *hash, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data)) {
+    unsigned int i;
+    OSHashNode *node_it;
+
+    for (i = 0; i < hash->rows; i++) {
+        node_it = hash->table[i];
+        while (node_it && node_it->key) {
+            OSHashNode *node_cpy = node_it;
+
+            iterating_function(&hash->table[i], &node_it, data);
+
+            // To avoid infinite loops
+            if (node_cpy == node_it) {
+                node_it = node_it->next;
+            }
+        }
+    }
+}
+
+void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data)) {
+    switch (mode) {
+        case 0:
+            w_rwlock_rdlock((pthread_rwlock_t *)&hash->mutex);
+        break;
+        case 1:
+            w_rwlock_wrlock((pthread_rwlock_t *)&hash->mutex);
+        break;
+        case 2:
+            w_rwlock_wrlock((pthread_rwlock_t *)&hash->mutex);
+            sleep(1);
+        break;
+        default:
+            return;
+    }
+    OSHash_It(hash, data, iterating_function);
+    w_rwlock_unlock((pthread_rwlock_t *)&hash->mutex);
 }

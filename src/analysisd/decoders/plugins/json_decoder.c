@@ -2,7 +2,7 @@
 * Copyright (C) 2015-2019, Wazuh Inc.
 * April 18, 2017.
 *
-* This program is a free software; you can redistribute it
+* This program is free software; you can redistribute it
 * and/or modify it under the terms of the GNU General Public
 * License (version 2) as published by the FSF - Free Software
 * Foundation.
@@ -22,7 +22,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
         return;
 
     if (strcmp(key, "srcip") == 0){
-        lf->srcip = strdup(value);
+        os_strdup(value, lf->srcip);
 #ifdef TESTRULE
         if (!alert_only) {
             print_out("       srcip: '%s'", lf->srcip);
@@ -42,7 +42,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "dstip") == 0){
-        lf->dstip = strdup(value);
+        os_strdup(value, lf->dstip);
 #ifdef TESTRULE
         if (!alert_only) {
             print_out("       dstip: '%s'", lf->dstip);
@@ -62,7 +62,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "dstport") == 0){
-        lf->dstport = strdup(value);
+        os_strdup(value, lf->dstport);
 #ifdef TESTRULE
         if (!alert_only) {
             print_out("       dstport: '%s'", lf->dstport);
@@ -72,7 +72,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "srcport") == 0){
-        lf->srcport = strdup(value);
+        os_strdup(value, lf->srcport);
 #ifdef TESTRULE
         if (!alert_only) {
             print_out("       srcport: '%s'", lf->srcport);
@@ -82,7 +82,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "protocol") == 0){
-        lf->protocol = strdup(value);
+        os_strdup(value, lf->protocol);
 #ifdef TESTRULE
         if (!alert_only) {
             print_out("       protocol: '%s'", lf->protocol);
@@ -92,7 +92,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "action") == 0){
-        lf->action = strdup(value);
+        os_strdup(value, lf->action);
 #ifdef TESTRULE
         if (!alert_only) {
             print_out("       action: '%s'", lf->action);
@@ -102,7 +102,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "srcuser") == 0){
-        lf->srcuser = strdup(value);
+        os_strdup(value, lf->srcuser);
 #ifdef TESTRULE
         if (!alert_only) {
             print_out("       srcuser: '%s'", lf->srcuser);
@@ -112,7 +112,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "dstuser") == 0){
-        lf->dstuser = strdup(value);
+        os_strdup(value, lf->dstuser);
 #ifdef TESTRULE
         if (!alert_only) {
             print_out("       dstuser: '%s'", lf->dstuser);
@@ -122,7 +122,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "id") == 0){
-        lf->id = strdup(value);
+        os_strdup(value, lf->id);
 #ifdef TESTRULE
         if (!alert_only) {
             print_out("       id: '%s'", lf->id);
@@ -132,7 +132,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "status") == 0){
-        lf->status = strdup(value);
+        os_strdup(value, lf->status);
 #ifdef TESTRULE
         if (!alert_only) {
             print_out("       status: '%s'", lf->status);
@@ -142,7 +142,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "command") == 0){
-        lf->command = strdup(value);
+        os_strdup(value, lf->command);
 #ifdef TESTRULE
         if (!alert_only) {
             print_out("       command: '%s'", lf->command);
@@ -152,7 +152,7 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "url") == 0){
-        lf->url = strdup(value);
+        os_strdup(value, lf->url);
 #ifdef TESTRULE
         if (!alert_only) {
             print_out("       url: '%s'", lf->url);
@@ -171,8 +171,18 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
         return;
     }
 
+    if (strcmp(key, "extra_data") == 0){
+        os_strdup(value, lf->extra_data);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       extra_data: '%s'", lf->extra_data);
+        }
+#endif
+        return;
+    }
+
     if (strcmp(key, "systemname") == 0){
-        lf->systemname = strdup(value);
+        os_strdup(value, lf->systemname);
 #ifdef TESTRULE
         if (!alert_only) {
             print_out("       systemname: '%s'", lf->systemname);
@@ -191,8 +201,8 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
         print_out("       %s: '%s'", key, value);
     }
 #endif
-    lf->fields[lf->nfields].key = strdup(key);
-    lf->fields[lf->nfields].value = strdup(value);
+    os_strdup(key, lf->fields[lf->nfields].key);
+    os_strdup(value, lf->fields[lf->nfields].value);
     lf->nfields++;
 
 }
@@ -221,7 +231,7 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                 strcpy(key + n, logJSON->string);
             }
             else {
-                key = strdup(logJSON->string);
+                os_strdup(logJSON->string, key);
             }
         }
 
@@ -383,16 +393,18 @@ void *JSON_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *d
     if (!input) {
         mdebug1("JSON decoder: null input (offset = %hu)", lf->decoder_info->plugin_offset);
     }
+    else {
+        mdebug2("Decoding JSON: '%.32s'", input);
 
-    mdebug2("Decoding JSON: '%.32s'", input);
-
-    logJSON = cJSON_Parse(input);
-    if (!logJSON)
-        mdebug2("Malformed JSON string '%s', near '%.20s'", input, cJSON_GetErrorPtr());
-    else
-    {
-        readJSON (logJSON, NULL, lf);
-        cJSON_Delete (logJSON);
+        const char *jsonErrPtr;
+        logJSON = cJSON_ParseWithOpts(input, &jsonErrPtr, 0);
+        if (!logJSON)
+            mdebug2("Malformed JSON string '%s'", input);
+        else
+        {
+            readJSON (logJSON, NULL, lf);
+            cJSON_Delete (logJSON);
+        }
     }
     return (NULL);
 }

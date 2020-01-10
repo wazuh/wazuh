@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _MAILLIST__H
-#define _MAILLIST__H
+#ifndef MAILLIST_H
+#define MAILLIST_H
 
 /* Events List structure */
 typedef struct _MailNode {
@@ -38,5 +38,4 @@ void FreeMail(MailNode *ml);
 /* Free email msg */
 void FreeMailMsg(MailMsg *ml);
 
-#endif /* _MAILLIST__H */
-
+#endif /* MAILLIST_H */

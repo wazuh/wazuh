@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -392,7 +392,7 @@ int main(int argc, char **argv)
 
             /* Get netmask from IP */
             getNetmask(keys.keyentries[agt_id]->ip->netmask, final_mask, 128);
-            snprintf(final_ip, 128, "%s%s", keys.keyentries[agt_id]->ip->ip,
+            snprintf(final_ip, sizeof(final_ip), "%s%s", keys.keyentries[agt_id]->ip->ip,
                      final_mask);
 
             if (!csv_output && !json_output) {

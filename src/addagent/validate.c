@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -13,6 +13,7 @@
 #include "os_crypto/sha256/sha256_op.h"
 #ifndef CLIENT
 #include "wazuh_db/wdb.h"
+#include "wazuhdb_op.h"
 #endif
 
 #define str_startwith(x, y) strncmp(x, y, strlen(y))
@@ -60,6 +61,8 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
     return OS_AddKey(keys, id, name, ip ? ip : "any", key);
 }
 
+#ifndef CLIENT
+
 int OS_RemoveAgent(const char *u_id) {
     FILE *fp;
     File file;
@@ -70,6 +73,8 @@ int OS_RemoveAgent(const char *u_id) {
     char *buffer;
     char buf_curline[OS_BUFFER_SIZE];
     struct stat fp_stat;
+    char wdbquery[OS_SIZE_128 + 1];
+    char *wdboutput;
 
     id_exist = IDExist(u_id, 1);
 
@@ -158,12 +163,25 @@ int OS_RemoveAgent(const char *u_id) {
         free(full_name);
     }
 
+    // Remove DB from wazuh-db
+    snprintf(wdbquery, OS_SIZE_128, "agent %s remove", u_id);
+    wdb_send_query(wdbquery, &wdboutput);
+
+    if (wdboutput) {
+        mdebug1("DB from agent %s was deleted '%s'", u_id, wdboutput);
+        os_free(wdboutput);
+    }
+
+
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
     OS_RemoveAgentTimestamp(u_id);
     OS_RemoveAgentGroup(u_id);
     return 1;
 }
+
+#endif
+
 
 int OS_IsValidID(const char *id)
 {
@@ -575,7 +593,7 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
     if (!active_only && print_status) {
         const char *aip = NULL;
         DIR *dirp;
-        struct dirent *dp;
+        struct dirent *dp = NULL;
 
         if (!csv_output && !json_output) {
             printf("\nList of agentless devices:\n");
@@ -678,6 +696,7 @@ void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
 char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_t now) {
     char path[OS_FLSIZE + 1];
     char timestamp[40];
+    struct tm tm_result = { .tm_sec = 0 };
 
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
         merror("Unspecified uid or gid.");
@@ -686,7 +705,7 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
 
     /* Directory for year ^*/
 
-    strftime(timestamp, 40, "%Y", localtime(&now));
+    strftime(timestamp, 40, "%Y", localtime_r(&now, &tm_result));
     snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
 
     if (IsDir(path) != 0) {
@@ -697,7 +716,7 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
 
     /* Directory for month */
 
-    strftime(timestamp, 40, "%Y/%b", localtime(&now));
+    strftime(timestamp, 40, "%Y/%b", localtime_r(&now, &tm_result));
     snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
 
     if (IsDir(path) != 0) {
@@ -708,7 +727,7 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
 
     /* Directory for day */
 
-    strftime(timestamp, 40, "%Y/%b/%d", localtime(&now));
+    strftime(timestamp, 40, "%Y/%b/%d", localtime_r(&now, &tm_result));
     snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
 
     if (IsDir(path) != 0) {
@@ -749,13 +768,14 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
 {
     File file;
     char timestamp[40];
+    struct tm tm_result = { .tm_sec = 0 };
 
     if (TempFile(&file, TIMESTAMP_FILE, 1) < 0) {
         merror("Couldn't open timestamp file.");
         return;
     }
 
-    strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&now));
+    strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime_r(&now, &tm_result));
     fprintf(file.fp, "%s %s %s %s\n", id, name, ip, timestamp);
     fclose(file.fp);
     OS_MoveFile(file.name, TIMESTAMP_FILE);
@@ -838,10 +858,6 @@ void OS_RemoveAgentGroup(const char *id)
             }
 
         }
-#ifndef CLIENT
-        /* Remove from the 'belongs' table groups which the agent belongs to*/
-        wdb_delete_agent_belongs(atoi(id));
-#endif
 
         if(fp){
             fclose(fp);

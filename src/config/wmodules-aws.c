@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * October 26, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -22,6 +22,7 @@ static const char *XML_REMOVE_FORM_BUCKET = "remove_from_bucket";
 static const char *XML_SKIP_ON_ERROR = "skip_on_error";
 static const char *XML_AWS_PROFILE = "aws_profile";
 static const char *XML_IAM_ROLE_ARN = "iam_role_arn";
+static const char *XML_AWS_ORGANIZATION_ID = "aws_organization_id";
 static const char *XML_AWS_ACCOUNT_ID = "aws_account_id";
 static const char *XML_AWS_ACCOUNT_ALIAS = "aws_account_alias";
 static const char *XML_TRAIL_PREFIX = "path";
@@ -38,7 +39,9 @@ static const char *CONFIG_BUCKET_TYPE = "config";
 static const char *VPCFLOW_BUCKET_TYPE = "vpcflow";
 static const char *CUSTOM_BUCKET_TYPE = "custom";
 static const char *GUARDDUTY_BUCKET_TYPE = "guardduty";
+static const char *WAF_BUCKET_TYPE = "waf";
 static const char *INSPECTOR_SERVICE_TYPE = "inspector";
+static const char *CISCO_UMBRELLA_BUCKET_TYPE = "cisco_umbrella";
 
 // Parse XML
 
@@ -178,11 +181,13 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 if (!strcmp(*nodes[i]->attributes, XML_BUCKET_TYPE)) {
                     if (!strcmp(*nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE) || !strcmp(*nodes[i]->values, CONFIG_BUCKET_TYPE)
                         || !strcmp(*nodes[i]->values, CUSTOM_BUCKET_TYPE) || !strcmp(*nodes[i]->values, GUARDDUTY_BUCKET_TYPE)
-                        || !strcmp(*nodes[i]->values, VPCFLOW_BUCKET_TYPE)) {
+                        || !strcmp(*nodes[i]->values, VPCFLOW_BUCKET_TYPE) || !strcmp(*nodes[i]->values, CISCO_UMBRELLA_BUCKET_TYPE)
+                        || !strcmp(*nodes[i]->values, WAF_BUCKET_TYPE)) {
                         os_strdup(*nodes[i]->values, cur_bucket->type);
                     } else {
-                        mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s', '%s' or '%s'", *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE,
-                            CONFIG_BUCKET_TYPE, CUSTOM_BUCKET_TYPE, GUARDDUTY_BUCKET_TYPE, VPCFLOW_BUCKET_TYPE);
+                        mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s', '%s', '%s', '%s' or '%s'",
+                            *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE, CONFIG_BUCKET_TYPE, GUARDDUTY_BUCKET_TYPE, VPCFLOW_BUCKET_TYPE,
+                            WAF_BUCKET_TYPE, CISCO_UMBRELLA_BUCKET_TYPE, CUSTOM_BUCKET_TYPE);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
@@ -212,6 +217,14 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         }
                         free(cur_bucket->bucket);
                         os_strdup(children[j]->content, cur_bucket->bucket);
+                    } else if (!strcmp(children[j]->element, XML_AWS_ORGANIZATION_ID)) {
+                        if (strlen(children[j]->content) == 0) {
+                            merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+                            OS_ClearNode(children);
+                            return OS_INVALID;
+                        }
+                        free(cur_bucket->aws_organization_id);
+                        os_strdup(children[j]->content, cur_bucket->aws_organization_id);
                     } else if (!strcmp(children[j]->element, XML_AWS_ACCOUNT_ID)) {
                         if (strlen(children[j]->content) == 0) {
                             merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);

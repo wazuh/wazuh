@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -138,6 +138,11 @@ int main(int argc, char **argv)
 
     if (!(agt->server && agt->server[0].rip)) {
         merror(AG_INV_IP);
+        merror_exit(CLIENT_ERROR);
+    }
+
+    if (!Validate_Address(agt->server)){
+        merror(AG_INV_MNGIP, agt->server[0].rip);
         merror_exit(CLIENT_ERROR);
     }
 

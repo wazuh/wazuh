@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -58,7 +58,7 @@ static void format_labels(char *buffer, size_t size, const Eventinfo *lf) {
     size_t z = 0;
 
     for (i = 0; lf->labels[i].key != NULL; i++) {
-        if (!lf->labels[i].flags.hidden || Config.show_hidden_labels) {
+        if (!lf->labels[i].flags.system && (!lf->labels[i].flags.hidden || Config.show_hidden_labels)) {
             z += (size_t)snprintf(buffer + z, size - z, "%s: %s\n",
                 lf->labels[i].key,
                 lf->labels[i].value);
@@ -105,7 +105,9 @@ void OS_Store_Flush(){
 void OS_LogOutput(Eventinfo *lf)
 {
     int i;
-    char labels[OS_MAXSTR];
+    char labels[OS_MAXSTR] = {0};
+    char * saveptr;
+    char buf_ptr[26];
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
@@ -192,7 +194,7 @@ void OS_LogOutput(Eventinfo *lf)
         }
 
         if (lf->mtime_after) {
-            printf(" - Date: %s", ctime(&lf->mtime_after));
+            printf(" - Date: %s", ctime_r(&lf->mtime_after, buf_ptr));
         }
 
         if (lf->inode_after) {
@@ -255,10 +257,10 @@ void OS_LogOutput(Eventinfo *lf)
         if (strcmp(lf->sk_tag, "") != 0) {
             printf("\nTags:\n");
             char * tag;
-            tag = strtok(lf->sk_tag, ",");
+            tag = strtok_r(lf->sk_tag, ",", &saveptr);
             while (tag != NULL) {
                 printf(" - %s\n", tag);
-                tag = strtok(NULL, ",");
+                tag = strtok_r(NULL, ",", &saveptr);
             }
         }
     }
@@ -291,7 +293,9 @@ void OS_LogOutput(Eventinfo *lf)
 void OS_Log(Eventinfo *lf)
 {
     int i;
-    char labels[OS_MAXSTR];
+    char labels[OS_MAXSTR] = {0};
+    char * saveptr;
+    char buf_ptr[26];
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
@@ -303,7 +307,6 @@ void OS_Log(Eventinfo *lf)
         }
     }
 #endif
-
     if (lf->labels && lf->labels[0].key) {
         format_labels(labels, OS_MAXSTR, lf);
     } else {
@@ -377,7 +380,7 @@ void OS_Log(Eventinfo *lf)
         }
 
         if (lf->mtime_after) {
-            fprintf(_aflog, " - Date: %s", ctime(&lf->mtime_after));
+            fprintf(_aflog, " - Date: %s", ctime_r(&lf->mtime_after, buf_ptr));
         }
         if (lf->inode_after) {
             fprintf(_aflog, " - Inode: %ld\n", lf->inode_after);
@@ -438,10 +441,10 @@ void OS_Log(Eventinfo *lf)
             os_strdup(lf->sk_tag, tags);
             fprintf(_aflog, "\nTags:\n");
             char * tag;
-            tag = strtok(tags, ",");
+            tag = strtok_r(tags, ",", &saveptr);
             while (tag != NULL) {
                 fprintf(_aflog, " - %s\n", tag);
-                tag = strtok(NULL, ",");
+                tag = strtok_r(NULL, ",", &saveptr);
             }
             free(tags);
         }

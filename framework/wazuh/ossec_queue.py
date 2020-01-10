@@ -1,8 +1,8 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.exception import WazuhException
 from wazuh import common
@@ -82,9 +82,6 @@ class OssecQueue:
 
         # AR
         if msg_type == OssecQueue.AR_TYPE:
-
-            if not agent_id:
-                raise WazuhException(1653)
 
             if agent_id != "000":
                 # Example restart 'msg': restart-ossec0 - null (from_the_server) (no_rule_id)

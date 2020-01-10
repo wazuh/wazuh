@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -48,7 +48,7 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
         str_sizes = &reg->d_size;
     }
 
-    if (regex_match && sub_strings) {
+    if (regex_match) {
         if (str_sizes->sub_strings_size < reg->d_size.sub_strings_size) {
             if (!*sub_strings) {
                 os_calloc(1, reg->d_size.sub_strings_size, *sub_strings);
@@ -58,9 +58,8 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
             }
             str_sizes->sub_strings_size = reg->d_size.sub_strings_size;
         }
-
-        w_FreeArray(*sub_strings);
     }
+    w_FreeArray(*sub_strings);
 
     if (regex_match && prts_str) {
         if (str_sizes->prts_str_alloc_size < reg->d_size.prts_str_alloc_size) {
@@ -356,7 +355,7 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
                 continue;
             }
 
-            else if ((*(pt + 3) == '\0') && (_regex_matched == 1) && (r_code)) {
+            else if ((*(pt + 2) == '\0' || *(pt + 3) == '\0') && (_regex_matched == 1) && (r_code)) {
                 r_code = st;
                 if (!(flags & END_SET) || ((flags & END_SET) && (*st == '\0'))) {
                     return (r_code);

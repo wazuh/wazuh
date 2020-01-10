@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -13,27 +13,22 @@
 #include "../os_net/os_net.h"
 #include "../addagent/manage_agents.h"
 
-static pthread_mutex_t restart_syscheck = PTHREAD_MUTEX_INITIALIZER;
 
 /* Check if syscheck is to be executed/restarted
  * Returns 1 on success or 0 on failure (shouldn't be executed now)
  */
 int os_check_restart_syscheck()
 {
-    w_mutex_lock(&restart_syscheck);
     /* If the restart is not present, return 0 */
     if (isChroot()) {
         if (unlink(SYSCHECK_RESTART) == -1) {
-            w_mutex_unlock(&restart_syscheck);
             return (0);
         }
     } else {
         if (unlink(SYSCHECK_RESTART_PATH) == -1) {
-            w_mutex_unlock(&restart_syscheck);
             return (0);
         }
     }
-    w_mutex_unlock(&restart_syscheck);
     return (1);
 }
 
@@ -343,7 +338,7 @@ int set_agent_multigroup(char * group){
 #ifndef WIN32
             int retval = mkdir(multigroup_path, 0770);
 #else
-            int retval = mkdir(multigroup_path); 
+            int retval = mkdir(multigroup_path);
 #endif
             umask(oldmask);
 
@@ -473,6 +468,7 @@ int w_validate_group_name(const char *group){
     int valid_chars_length = strlen(valid_chars);
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
     char *multi_group_cpy = NULL;
+    char *save_ptr = NULL;
 
     os_calloc(OS_SIZE_65536,sizeof(char),multi_group_cpy);
     snprintf(multi_group_cpy,OS_SIZE_65536,"%s",group);
@@ -505,7 +501,7 @@ int w_validate_group_name(const char *group){
     if(multigroup){
 
         const char delim[2] = ",";
-        char *individual_group = strtok(multi_group_cpy, delim);
+        char *individual_group = strtok_r(multi_group_cpy, delim, &save_ptr);
 
         while( individual_group != NULL ) {
 
@@ -516,7 +512,7 @@ int w_validate_group_name(const char *group){
                 return -4;
             }
 
-            individual_group = strtok(NULL, delim);
+            individual_group = strtok_r(NULL, delim, &save_ptr);
         }
 
         /* Look for consecutive ',' */
@@ -614,7 +610,7 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip,const ch
     if(agent_id) {
         cJSON_AddStringToObject(arguments, "id", agent_id);
     }
-        
+
     if (force >= 0) {
         cJSON_AddNumberToObject(arguments, "force", force);
     }
@@ -651,7 +647,8 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip,const ch
 
         // Decode response
 
-        if (response = cJSON_Parse(buffer), !response) {
+        const char *jsonErrPtr;
+        if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response) {
             if(exit_on_error){
                 merror_exit("Parsing JSON response.");
             }
@@ -719,7 +716,7 @@ char * get_agent_id_from_name(const char *agent_name) {
 
     fp = fopen(path,"r");
 
-    if(!fp) { 
+    if(!fp) {
         mdebug1("Couldnt open file '%s'",path);
         os_free(path);
         os_free(buffer);
@@ -769,3 +766,16 @@ char * get_agent_id_from_name(const char *agent_name) {
 
     return NULL;
 }
+
+/* Connect to the control socket if available */
+#if defined (__linux__) || defined (__MACH__) || defined(sun)
+int control_check_connection() {
+    int sock = OS_ConnectUnixDomain(isChroot() ? CONTROL_SOCK : DEFAULTDIR CONTROL_SOCK, SOCK_STREAM, OS_SIZE_128);
+
+    if (sock < 0) {
+        return -1;
+    } else {
+        return sock;
+    }
+}
+#endif

@@ -2,7 +2,7 @@
 * Copyright (C) 2015-2019, Wazuh Inc.
 * December 05, 2018.
 *
-* This program is a free software; you can redistribute it
+* This program is free software; you can redistribute it
 * and/or modify it under the terms of the GNU General Public
 * License (version 2) as published by the FSF - Free Software
 * Foundation.
@@ -47,23 +47,21 @@ void WinevtInit(){
     mdebug1("WinevtInit completed.");
 }
 
-char *replace_win_format(char *str){
-    char *ret1 = NULL;
-    char *ret2 = NULL;
-    char *ret3 = NULL;
-    char *ret4 = NULL;
+char *replace_win_format(char *str, int message){
+    char *result = NULL;
     char *end = NULL;
     int spaces = 0;
 
     // Remove undesired characters from the string
-    ret1 = wstr_replace(str, "\\r", "");
-    ret2 = wstr_replace(ret1, "\\t", "");
-    ret3 = wstr_replace(ret2, "\\n", "");
-    ret4 = wstr_replace(ret3, "\\\\", "\\");
+    if (message) {
+        result = wstr_unescape_json(str);
+    } else {
+        os_strdup(str, result);
+    }
 
     // Remove trailing spaces at the end of the string
-    end = ret4 + strlen(ret4) - 1;
-    while(end > ret4 && isspace((unsigned char)*end)) {
+    end = result + strlen(result) - 1;
+    while(end > result && isspace((unsigned char)*end)) {
         end--;
         spaces = 1;
     }
@@ -71,11 +69,7 @@ char *replace_win_format(char *str){
     if(spaces)
         end[1] = '\0';
 
-    os_free(ret1);
-    os_free(ret2);
-    os_free(ret3);
-
-    return ret4;
+    return result;
 }
 
 /* Special decoder for Windows eventchannel */
@@ -83,15 +77,20 @@ int DecodeWinevt(Eventinfo *lf){
     OS_XML xml;
     int xml_init = 0;
     int ret_val = 0;
+    char *categoryId = NULL;
+    char *subcategoryId = NULL;
+    char *auditPolicyChangesId = NULL;
     cJSON *final_event = cJSON_CreateObject();
     cJSON *json_event = cJSON_CreateObject();
     cJSON *json_system_in = cJSON_CreateObject();
     cJSON *json_eventdata_in = cJSON_CreateObject();
     cJSON *json_extra_in = cJSON_CreateObject();
+    cJSON *json_received_event = NULL;
+    cJSON *json_find_msg = NULL;
+    cJSON *received_event = NULL;
     int level_n;
     unsigned long long int keywords_n;
     XML_NODE node, child;
-    int num;
     char *extra = NULL;
     char *filtered_string = NULL;
     char *level = NULL;
@@ -99,70 +98,40 @@ int DecodeWinevt(Eventinfo *lf){
     char *msg_from_prov = NULL;
     char *returned_event = NULL;
     char *event = NULL;
-    char *find_event = NULL;
-    char *end_event = NULL;
-    char *real_end = NULL;
     char *find_msg = NULL;
-    char *end_msg = NULL;
-    char *next = NULL;
-    char *category = NULL;
-    char aux = 0;
+    char *severityValue = NULL;
+    char *join_data = NULL;
+    char *join_data2 = NULL;
     lf->decoder_info = winevt_decoder;
 
-    os_calloc(OS_MAXSTR, sizeof(char), event);
     os_calloc(OS_MAXSTR, sizeof(char), msg_from_prov);
+    os_calloc(OS_MAXSTR, sizeof(char), join_data);
 
-    find_event = strstr(lf->log, "Event");
+    const char *jsonErrPtr;
 
-    if(find_event){
-        find_event = find_event + 8;
-        end_event = strchr(find_event, '"');
-
-        if(end_event){
-            real_end = end_event;
-            aux = *(end_event + 1);
-
-            if(aux != '}' && aux != ','){
-                while(1){
-                    next = real_end + 1;
-                    real_end = strchr(next,'"');
-
-                    if(real_end) {
-                        aux = *(real_end + 1);
-                        if (aux == '}' || aux == ','){
-                            end_event = real_end;
-                            break;
-                        }
-                    } else {
-                        mdebug1("Malformed 'Event' field");
-                        break;
-                    }
-                }
-            }
-
-            num = end_event - find_event;
-
-            if(num > OS_MAXSTR - 1){
-                mwarn("The event message has exceeded the maximum size.");
-                cJSON_Delete(json_system_in);
-                cJSON_Delete(json_event);
-                cJSON_Delete(json_eventdata_in);
-                cJSON_Delete(json_extra_in);
-                ret_val = 1;
-                goto cleanup;
-            }
-
-            memcpy(event, find_event, num);
-            event[num] = '\0';
-            find_event = NULL;
-            end_event = NULL;
-            real_end = NULL;
-            next = NULL;
-            aux = 0;
-        }
-    } else {
-        mdebug1("Malformed JSON output received. No 'Event' field found");
+    if (received_event = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0), !received_event) {
+        merror("Malformed EventChannel JSON event.");
+        ret_val = 1;
+        cJSON_Delete(json_event);
+        cJSON_Delete(json_system_in);
+        cJSON_Delete(json_eventdata_in);
+        cJSON_Delete(json_extra_in);
+        goto cleanup;
     }
+
+    json_received_event = cJSON_GetObjectItem(received_event, "Event");
+
+    if(json_received_event == NULL) {
+        mdebug1("Malformed JSON received. No 'Event' field found.");
+        ret_val = 1;
+        cJSON_Delete(json_event);
+        cJSON_Delete(json_system_in);
+        cJSON_Delete(json_eventdata_in);
+        cJSON_Delete(json_extra_in);
+        goto cleanup;
+    }
+
+    event = cJSON_PrintUnformatted(json_received_event);
 
     if(event){
         if (OS_ReadXMLString(event, &xml) < 0){
@@ -191,88 +160,146 @@ int DecodeWinevt(Eventinfo *lf){
                             if (!strcmp(child_attr[p]->element, "Provider")) {
                                 while(child_attr[p]->attributes[l]){
                                     if (!strcmp(child_attr[p]->attributes[l], "Name")){
-                                        cJSON_AddStringToObject(json_system_in, "ProviderName", child_attr[p]->values[l]);
+                                        cJSON_AddStringToObject(json_system_in, "providerName", child_attr[p]->values[l]);
                                     } else if (!strcmp(child_attr[p]->attributes[l], "Guid")){
-                                        cJSON_AddStringToObject(json_system_in, "ProviderGuid", child_attr[p]->values[l]);
+                                        cJSON_AddStringToObject(json_system_in, "providerGuid", child_attr[p]->values[l]);
                                     } else if (!strcmp(child_attr[p]->attributes[l], "EventSourceName")){
-                                        cJSON_AddStringToObject(json_system_in, "EventSourceName", child_attr[p]->values[l]);
+                                        cJSON_AddStringToObject(json_system_in, "eventSourceName", child_attr[p]->values[l]);
                                     }
                                     l++;
                                 }
                             } else if (!strcmp(child_attr[p]->element, "TimeCreated")) {
                                 if(!strcmp(child_attr[p]->attributes[0], "SystemTime")){
-                                    cJSON_AddStringToObject(json_system_in, "SystemTime", child_attr[p]->values[0]);
+                                    cJSON_AddStringToObject(json_system_in, "systemTime", child_attr[p]->values[0]);
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Execution")) {
                                 if(!strcmp(child_attr[p]->attributes[0], "ProcessID")){
-                                    cJSON_AddStringToObject(json_system_in, "ProcessID", child_attr[p]->values[0]);
+                                    cJSON_AddStringToObject(json_system_in, "processID", child_attr[p]->values[0]);
                                 }
                                 if(!strcmp(child_attr[p]->attributes[1], "ThreadID")){
-                                    cJSON_AddStringToObject(json_system_in, "ThreadID", child_attr[p]->values[1]);
+                                    cJSON_AddStringToObject(json_system_in, "threadID", child_attr[p]->values[1]);
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Channel")) {
-                                cJSON_AddStringToObject(json_system_in, "Channel", child_attr[p]->content);
+                                cJSON_AddStringToObject(json_system_in, "channel", child_attr[p]->content);
                                 if(child_attr[p]->attributes && child_attr[p]->values && !strcmp(child_attr[p]->values[0], "UserID")){
-                                    cJSON_AddStringToObject(json_system_in, "UserID", child_attr[p]->values[0]);
+                                    cJSON_AddStringToObject(json_system_in, "userID", child_attr[p]->values[0]);
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Security")) {
                                 if(child_attr[p]->attributes && child_attr[p]->values && !strcmp(child_attr[p]->values[0], "UserID")){
-                                    cJSON_AddStringToObject(json_system_in, "SecurityUserID", child_attr[p]->values[0]);
+                                    cJSON_AddStringToObject(json_system_in, "securityUserID", child_attr[p]->values[0]);
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Level")) {
                                 if (level){
                                     os_free(level);
                                 }
                                 os_strdup(child_attr[p]->content, level);
+                                *child_attr[p]->element = tolower(*child_attr[p]->element);
                                 cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                             } else if (!strcmp(child_attr[p]->element, "Keywords")) {
                                 if (keywords){
                                     os_free(keywords);
                                 }
                                 os_strdup(child_attr[p]->content, keywords);
+                                *child_attr[p]->element = tolower(*child_attr[p]->element);
                                 cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                             } else if (!strcmp(child_attr[p]->element, "Correlation")) {
-                            } else {
+                            } else if(strlen(child_attr[p]->content) > 0){
+                                *child_attr[p]->element = tolower(*child_attr[p]->element);
                                 cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                             }
-
                         } else if (child[j]->element && !strcmp(child[j]->element, "EventData") && child_attr[p]->element){
-                            if (!strcmp(child_attr[p]->element, "Data") && child_attr[p]->values){
+                            if (!strcmp(child_attr[p]->element, "Data") && child_attr[p]->values && strlen(child_attr[p]->content) > 0){
                                 for (l = 0; child_attr[p]->attributes[l]; l++) {
-                                    if (!strcmp(child_attr[p]->attributes[l], "Name")) {
-                                        filtered_string = replace_win_format(child_attr[p]->content);
-                                        cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
+                                    if (!strcmp(child_attr[p]->attributes[l], "Name") && strcmp(child_attr[p]->content, "(NULL)") != 0
+                                            && strcmp(child_attr[p]->content, "-") != 0) {
+                                        filtered_string = replace_win_format(child_attr[p]->content, 0);
+                                        *child_attr[p]->values[l] = tolower(*child_attr[p]->values[l]);
+
+                                        // Save category ID
+                                        if (!strcmp(child_attr[p]->values[l], "categoryId")){
+                                            if (categoryId){
+                                                os_free(categoryId);
+                                            }
+                                            os_strdup(filtered_string, categoryId);
+
+                                        // Save subcategory ID
+                                        } else if (!strcmp(child_attr[p]->values[l], "subcategoryId")){
+                                            if (subcategoryId){
+                                                os_free(subcategoryId);
+                                            }
+                                            os_strdup(filtered_string, subcategoryId);
+                                        }
+
+                                        // Save Audit Policy Changes
+                                        if (!strcmp(child_attr[p]->values[l], "auditPolicyChanges")){
+                                            if (auditPolicyChangesId){
+                                                os_free(auditPolicyChangesId);
+                                            }
+                                            os_strdup(filtered_string, auditPolicyChangesId);
+                                            cJSON_AddStringToObject(json_eventdata_in, "auditPolicyChangesId", filtered_string);
+                                        } else {
+                                            cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
+                                        }
+
                                         os_free(filtered_string);
                                         break;
-                                    } else if(child_attr[p]->content && strcmp(child_attr[p]->content, "(NULL)") != 0){
-                                        filtered_string = replace_win_format(child_attr[p]->content);
+
+                                    } else if(child_attr[p]->content && strcmp(child_attr[p]->content, "(NULL)") != 0
+                                            && strcmp(child_attr[p]->content, "-") != 0){
+                                        filtered_string = replace_win_format(child_attr[p]->content, 0);
                                         mdebug2("Unexpected attribute at EventData (%s).", child_attr[p]->attributes[j]);
+                                        *child_attr[p]->values[l] = tolower(*child_attr[p]->values[l]);
                                         cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
                                         os_free(filtered_string);
                                     }
                                 }
-                            } else if (child_attr[p]->content && strcmp(child_attr[p]->content, "(NULL)") != 0){
-                                filtered_string = replace_win_format(child_attr[p]->content);
-                                cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->element, filtered_string);
+                            } else if (child_attr[p]->content && strcmp(child_attr[p]->content, "(NULL)") != 0
+                                    && strcmp(child_attr[p]->content, "-") != 0 && strlen(child_attr[p]->content) > 0){
+                                filtered_string = replace_win_format(child_attr[p]->content, 0);
+
+                                if (strcmp(filtered_string, "") && !strcmp(child_attr[p]->element, "Data")){
+                                    if(strcmp(join_data, "")){
+                                        snprintf(join_data, strlen(join_data) + strlen(filtered_string) + 3, "%s, %s", join_data2, filtered_string);
+                                    } else {
+                                        snprintf(join_data, strlen(filtered_string) + 1, "%s", filtered_string);
+                                    }
+                                    if (join_data2){
+                                        os_free(join_data2);
+                                    }
+                                    os_strdup(join_data,join_data2);
+                                } else if (strcmp(child_attr[p]->element, "Data")){
+                                    *child_attr[p]->element = tolower(*child_attr[p]->element);
+                                    cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->element, filtered_string);
+                                }
+
                                 os_free(filtered_string);
                             }
                         } else {
-                            mdebug1("Unexpected element (%s). Decoding it.", child[j]->element);
+                            if (child[j]->element) {
+                                mdebug1("Unexpected element (%s). Decoding it.", child[j]->element);
+                            } else {
+                                mdebug1("Unexpected element. Decoding it.");
+                            }
 
                             XML_NODE extra_data_child = NULL;
                             extra_data_child = OS_GetElementsbyNode(&xml, child_attr[p]);
                             int h=0;
 
                             while(extra_data_child && extra_data_child[h]){
-                                filtered_string = replace_win_format(extra_data_child[h]->content);
-                                cJSON_AddStringToObject(json_extra_in, extra_data_child[h]->element, filtered_string);
-                                os_free(filtered_string);
+                                if(strcmp(extra_data_child[h]->content, "(NULL)") != 0 && strcmp(extra_data_child[h]->content, "-") != 0 && strlen(extra_data_child[h]->content) > 0){
+                                    filtered_string = replace_win_format(extra_data_child[h]->content, 0);
+                                    *extra_data_child[h]->element = tolower(*extra_data_child[h]->element);
+                                    cJSON_AddStringToObject(json_extra_in, extra_data_child[h]->element, filtered_string);
+                                    os_free(filtered_string);
+                                }
                                 h++;
                             }
                             if(extra){
                                 os_free(extra);
                             }
-                            os_strdup(child_attr[p]->element, extra);
+                            if (child_attr[p]->element) {
+                                os_strdup(child_attr[p]->element, extra);
+                            }
                             OS_ClearNode(extra_data_child);
                         }
                         p++;
@@ -295,104 +322,394 @@ int DecodeWinevt(Eventinfo *lf){
 
                 switch (level_n) {
                     case CRITICAL:
-                        category = "CRITICAL";
+                        severityValue = "CRITICAL";
                         break;
                     case ERROR:
-                        category = "ERROR";
+                        severityValue = "ERROR";
                         break;
                     case WARNING:
-                        category = "WARNING";
+                        severityValue = "WARNING";
                         break;
                     case INFORMATION:
-                        category = "INFORMATION";
+                        severityValue = "INFORMATION";
                         break;
                     case VERBOSE:
-                        category = "VERBOSE";
+                        severityValue = "VERBOSE";
                         break;
                     case AUDIT:
                         if (keywords_n & AUDIT_FAILURE) {
-                            category = "AUDIT_FAILURE";
+                            severityValue = "AUDIT_FAILURE";
                             break;
                         } else if (keywords_n & AUDIT_SUCCESS) {
-                            category = "AUDIT_SUCCESS";
+                            severityValue = "AUDIT_SUCCESS";
                             break;
                         }
                         // fall through
                     default:
-                        category = "UNKNOWN";
+                        severityValue = "UNKNOWN";
                 }
 
-                cJSON_AddStringToObject(json_system_in, "SeverityValue", category);
+                cJSON_AddStringToObject(json_system_in, "severityValue", severityValue);
+
+                // Event category, subcategory and Audit Policy Changes
+
+                if (categoryId && subcategoryId){
+
+                    char *category = NULL;
+                    char *subcategory = NULL;
+                    int categoryId_n;
+                    int subcategoryId_n;
+                    char * filtered_categoryId = wstr_replace(categoryId, "%%", "");
+                    char * filtered_subcategoryId = wstr_replace(subcategoryId, "%%", "");
+
+                    categoryId_n = strtol(filtered_categoryId, NULL, 10);
+                    subcategoryId_n = strtol(filtered_subcategoryId, NULL, 10);
+
+                    switch (categoryId_n) {
+                        case 8272:
+                            category = "System";
+                            switch (subcategoryId_n) {
+                                case 12288:
+                                    subcategory = "Security State Change";
+                                    break;
+                                case 12289:
+                                    subcategory = "Security System Extension";
+                                    break;
+                                case 12290:
+                                    subcategory = "System Integrity";
+                                    break;
+                                case 12291:
+                                    subcategory = "IPsec Driver";
+                                    break;
+                                case 12292:
+                                    subcategory = "Other System Events";
+                                    break;
+                                default:
+                                    break;
+                            }
+                            break;
+                        case 8273:
+                            category = "Logon/Logoff";
+                            switch (subcategoryId_n) {
+                                case 12544:
+                                    subcategory = "Logon";
+                                    break;
+                                case 12545:
+                                    subcategory = "Logoff";
+                                    break;
+                                case 12546:
+                                    subcategory = "Account Lockout";
+                                    break;
+                                case 12547:
+                                    subcategory = "IPsec Main Mode";
+                                    break;
+                                case 12548:
+                                    subcategory = "Special Logon";
+                                    break;
+                                case 12549:
+                                    subcategory = "IPSec Extended Mode";
+                                    break;
+                                case 12550:
+                                    subcategory = "IPSec Quick Mode";
+                                    break;
+                                case 12551:
+                                    subcategory = "Other Logon/Logoff Events";
+                                    break;
+                                case 12552:
+                                    subcategory = "Network Policy Server";
+                                    break;
+                                case 12553:
+                                    subcategory = "User/Device Claims";
+                                    break;
+                                case 12554:
+                                    subcategory = "Group Membership";
+                                    break;
+                                default:
+                                    break;
+                            }
+                            break;
+                        case 8274:
+                            category = "Object Access";
+                            switch (subcategoryId_n) {
+                                case 12800:
+                                    subcategory = "File System";
+                                    break;
+                                case 12801:
+                                    subcategory = "Registry";
+                                    break;
+                                case 12802:
+                                    subcategory = "Kernel Object";
+                                    break;
+                                case 12803:
+                                    subcategory = "SAM";
+                                    break;
+                                case 12804:
+                                    subcategory = "Other Object Access Events";
+                                    break;
+                                case 12805:
+                                    subcategory = "Certification Services";
+                                    break;
+                                case 12806:
+                                    subcategory = "Application Generated";
+                                    break;
+                                case 12807:
+                                    subcategory = "Handle Manipulation";
+                                    break;
+                                case 12808:
+                                    subcategory = "File Share";
+                                    break;
+                                case 12809:
+                                    subcategory = "Filtering Platform Packet Drop";
+                                    break;
+                                case 12810:
+                                    subcategory = "Filtering Platform Connection";
+                                    break;
+                                case 12811:
+                                    subcategory = "Detailed File Share";
+                                    break;
+                                case 12812:
+                                    subcategory = "Removable Storage";
+                                    break;
+                                case 12813:
+                                    subcategory = "Central Policy Staging";
+                                    break;
+                                default:
+                                    break;
+                            }
+                            break;
+                        case 8275:
+                            category = "Privilege Use";
+                            switch (subcategoryId_n) {
+                                case 13056:
+                                    subcategory = "Sensitive Privilege Use";
+                                    break;
+                                case 13057:
+                                    subcategory = "Non Sensitive Privilege Use";
+                                    break;
+                                case 13058:
+                                    subcategory = "Other Privilege Use Events";
+                                    break;
+                                default:
+                                    break;
+                            }
+                            break;
+                        case 8276:
+                            category = "Detailed Tracking";
+                            switch (subcategoryId_n) {
+                                case 13312:
+                                    subcategory = "Process Creation";
+                                    break;
+                                case 13313:
+                                    subcategory = "Process Termination";
+                                    break;
+                                case 13314:
+                                    subcategory = "DPAPI Activity";
+                                    break;
+                                case 13315:
+                                    subcategory = "RPC Events";
+                                    break;
+                                case 13316:
+                                    subcategory = "Plug and Play Events";
+                                    break;
+                                case 13317:
+                                    subcategory = "Token Right Adjusted Events";
+                                    break;
+                                default:
+                                    break;
+                            }
+                            break;
+                        case 8277:
+                            category = "Policy Change";
+                            switch (subcategoryId_n) {
+                                case 13568:
+                                    subcategory = "Audit Policy Change";
+                                    break;
+                                case 13569:
+                                    subcategory = "Authentication Policy Change";
+                                    break;
+                                case 13570:
+                                    subcategory = "Authorization Policy Change";
+                                    break;
+                                case 13571:
+                                    subcategory = "MPSSVC Rule-Level Policy Change";
+                                    break;
+                                case 13572:
+                                    subcategory = "Filtering Platform Policy Change";
+                                    break;
+                                case 13573:
+                                    subcategory = "Other Policy Change Events";
+                                    break;
+                                default:
+                                    break;
+                            }
+                            break;
+                        case 8278:
+                            category = "Account Management";
+                            switch (subcategoryId_n) {
+                                case 13824:
+                                    subcategory = "User Account Management";
+                                    break;
+                                case 13825:
+                                    subcategory = "Computer Account Management";
+                                    break;
+                                case 13826:
+                                    subcategory = "Security Group Management";
+                                    break;
+                                case 13827:
+                                    subcategory = "Distribution Group Management";
+                                    break;
+                                case 13828:
+                                    subcategory = "Application Group Management";
+                                    break;
+                                case 13829:
+                                    subcategory = "Other Account Management Events";
+                                    break;
+                                default:
+                                    break;
+                            }
+                            break;
+                        case 8279:
+                            category = "DS Access";
+                            switch (subcategoryId_n) {
+                                case 14080:
+                                    subcategory = "Directory Service Access";
+                                    break;
+                                case 14081:
+                                    subcategory = "Directory Service Changes";
+                                    break;
+                                case 14082:
+                                    subcategory = "Directory Service Replication";
+                                    break;
+                                case 14083:
+                                    subcategory = "Detailed Directory Service Replication";
+                                    break;
+                                default:
+                                    break;
+                            }
+                            break;
+                        case 8280:
+                            category = "Account Logon";
+                            switch (subcategoryId_n) {
+                                case 14336:
+                                    subcategory = "Credential Validation";
+                                    break;
+                                case 14337:
+                                    subcategory = "Kerberos Service Ticket Operations";
+                                    break;
+                                case 14338:
+                                    subcategory = "Other Account Logon Events";
+                                    break;
+                                case 14339:
+                                    subcategory = "Kerberos Authentication Service";
+                                    break;
+                                default:
+                                    break;
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                    if (category) {
+                        cJSON_AddStringToObject(json_eventdata_in, "category", category);
+                    }
+                    if (subcategory) {
+                        cJSON_AddStringToObject(json_eventdata_in, "subcategory", subcategory);
+                    }
+
+                    os_free(categoryId);
+                    os_free(subcategoryId);
+                    os_free(filtered_categoryId);
+                    os_free(filtered_subcategoryId);
+                }
             }
+
+            if (auditPolicyChangesId) {
+                int audit_split_n = 0;
+                char **audit_split;
+                char *audit_pol_changes = NULL;
+                char *audit_final_field = NULL;
+                int i = 0;
+
+                char * filtered_changes = wstr_replace(auditPolicyChangesId, "%%", "");
+                os_free(auditPolicyChangesId);
+
+                audit_split = OS_StrBreak(',', filtered_changes, 4);
+
+                while (audit_split[i]) {
+                    audit_split_n = strtol(audit_split[i], NULL, 10);
+
+                    switch (audit_split_n) {
+                        case 8448:
+                            wm_strcat(&audit_pol_changes, "Success removed", ',');
+                            break;
+                        case 8449:
+                            wm_strcat(&audit_pol_changes, "Success added", ',');
+                            break;
+                        case 8450:
+                            wm_strcat(&audit_pol_changes, "Failure removed", ',');
+                            break;
+                        case 8451:
+                            wm_strcat(&audit_pol_changes, "Failure added", ',');
+                            break;
+                        default:
+                            break;
+                    }
+
+                    i++;
+                }
+                audit_final_field = wstr_replace(audit_pol_changes, ",", ", ");
+                cJSON_AddStringToObject(json_eventdata_in, "auditPolicyChanges", audit_final_field);
+                os_free(filtered_changes);
+                os_free(audit_pol_changes);
+                os_free(audit_final_field);
+                free_strarray(audit_split);
+            }
+
+            xml_init = 1;
         }
-        xml_init = 1;
     }
 
-    find_msg = strstr(lf->log, "Message");
+    json_find_msg = cJSON_GetObjectItem(received_event, "Message");
+
+    find_msg = cJSON_PrintUnformatted(json_find_msg);
+
     if(find_msg){
-        find_msg = find_msg + 10;
-        end_msg = strchr(find_msg,'\"');
-
-        if(end_msg){
-            real_end = end_msg;
-            aux = *(end_msg + 1);
-
-            if(aux != '}' && aux != ','){
-                while(1){
-                    next = real_end + 1;
-                    real_end = strchr(next,'"');
-
-                    if(real_end){
-                        aux = *(real_end + 1);
-                        if (aux == '}' || aux == ','){
-                            end_msg = real_end;
-                            break;
-                        }
-                    } else {
-                        mdebug1("Malformed 'Message' field");
-                        break;
-                    }
-                }
-            }
-
-            num = end_msg - find_msg;
-            if(num > OS_MAXSTR - 1){
-                cJSON_Delete(json_system_in);
-                cJSON_Delete(json_event);
-                cJSON_Delete(json_eventdata_in);
-                cJSON_Delete(json_extra_in);
-                mwarn("The event message has exceeded the maximum size.");
-                ret_val = 1;
-                goto cleanup;
-            }
-            memcpy(msg_from_prov, find_msg, num);
-            msg_from_prov[num] = '\0';
-            cJSON_AddStringToObject(json_system_in, "Message", msg_from_prov);
-
-            find_msg = NULL;
-            end_msg = NULL;
-            real_end = NULL;
-            next = NULL;
-            aux = 0;
-        }
-    } else {
-        mdebug1("Malformed JSON output received. No 'Message' field found");
-        cJSON_AddStringToObject(json_system_in, "Message", "No message");
+        filtered_string = replace_win_format(find_msg, 1);
+        cJSON_AddStringToObject(json_system_in, "message", filtered_string);
+        os_free(find_msg);
     }
 
     if(json_system_in){
-        cJSON_AddItemToObject(json_event, "System", json_system_in);
+        cJSON_AddItemToObject(json_event, "system", json_system_in);
     }
+
     if (json_eventdata_in){
-        cJSON_AddItemToObject(json_event, "EventData", json_eventdata_in);
+        if(strcmp(join_data,"")){
+            cJSON_AddStringToObject(json_eventdata_in, "data", join_data);
+        }
+
+        cJSON *element;
+        int n_elements=0;
+
+        cJSON_ArrayForEach(element, json_eventdata_in){
+            n_elements+=1;
+        }
+
+        if(n_elements > 0){
+            cJSON_AddItemToObject(json_event, "eventdata", json_eventdata_in);
+        } else {
+            cJSON_Delete(json_eventdata_in);
+        }
+        cJSON_Delete(element);
     }
     if (extra){
+        *extra = tolower(*extra);
         cJSON_AddItemToObject(json_event, extra, json_extra_in);
     } else {
         cJSON_Delete(json_extra_in);
     }
 
-    cJSON_AddItemToObject(final_event, "EventChannel", json_event);
+    cJSON_AddItemToObject(final_event, "win", json_event);
 
     returned_event = cJSON_PrintUnformatted(final_event);
 
@@ -412,14 +729,20 @@ cleanup:
     os_free(level);
     os_free(event);
     os_free(extra);
+    os_free(join_data);
+    os_free(join_data2);
     os_free(filtered_string);
     os_free(keywords);
     os_free(msg_from_prov);
     os_free(returned_event);
+    os_free(categoryId);
+    os_free(subcategoryId);
+    os_free(auditPolicyChangesId);
     if (xml_init){
         OS_ClearXML(&xml);
     }
     cJSON_Delete(final_event);
+    cJSON_Delete(received_event);
 
     return (ret_val);
 }

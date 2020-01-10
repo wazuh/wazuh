@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -73,12 +73,12 @@ int config_file(char *name, char *file, int quiet)
     /* Check if the file has a variable format */
     if (strchr(file, '%') != NULL) {
         time_t tm;
-        struct tm *p;
+        struct tm tm_result = { .tm_sec = 0 };
 
         tm = time(NULL);
-        p = localtime(&tm);
+        localtime_r(&tm, &tm_result);
 
-        if (strftime(ffile, 255, file, p) == 0) {
+        if (strftime(ffile, 255, file, &tm_result) == 0) {
             return (-1);
         }
     } else {
@@ -131,6 +131,7 @@ int main(int argc, char **argv)
     if (argc < 2) {
         printf("%s: Invalid syntax.\n", argv[0]);
         printf("Try: '%s <file_name>'\n\n", argv[0]);
+        return 0;
     }
 
     /* Look for the quiet option */

@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -34,16 +34,14 @@ void WinSetError();
 
 static void _log(int level, const char *tag, const char * file, int line, const char * func, const char *msg, va_list args)
 {
-    time_t now;
-    struct tm localtm;
     va_list args2; /* For the stderr print */
     va_list args3; /* For the JSON output */
     FILE *fp;
-    char timestamp[OS_MAXSTR];
     char jsonstr[OS_MAXSTR];
     char *output;
     char logfile[PATH_MAX + 1];
     char * filename;
+    char *timestamp = w_get_timestamp(time(NULL));
 
     const char *strlevel[5]={
       "DEBUG",
@@ -60,8 +58,6 @@ static void _log(int level, const char *tag, const char * file, int line, const 
       "critical"
     };
 
-    now = time(NULL);
-    localtime_r(&now, &localtm);
     /* Duplicate args */
     va_copy(args2, args);
     va_copy(args3, args);
@@ -109,10 +105,6 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 
         if (fp) {
             cJSON *json_log = cJSON_CreateObject();
-
-            snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
-                    localtm.tm_year + 1900, localtm.tm_mon + 1,
-                    localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
             vsnprintf(jsonstr, OS_MAXSTR, msg, args3);
 
@@ -177,9 +169,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 
         /* Maybe log to syslog if the log file is not available */
         if (fp) {
-            (void)fprintf(fp, "%d/%02d/%02d %02d:%02d:%02d ",
-                        localtm.tm_year + 1900, localtm.tm_mon + 1,
-                        localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+            (void)fprintf(fp, "%s ", timestamp);
 
             if (dbg_flag > 0) {
                 (void)fprintf(fp, "%s[%d] %s:%d at %s(): ", tag, pid, file, line, func);
@@ -199,9 +189,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
     /* Only if not in daemon mode */
     if (daemon_flag == 0) {
         /* Print to stderr */
-        (void)fprintf(stderr, "%d/%02d/%02d %02d:%02d:%02d ",
-                      localtm.tm_year + 1900, localtm.tm_mon + 1 , localtm.tm_mday,
-                      localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+        (void)fprintf(stderr, "%s ", timestamp);
 
         if (dbg_flag > 0) {
             (void)fprintf(stderr, "%s[%d] %s:%d at %s(): ", tag, pid, file, line, func);
@@ -218,6 +206,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 #endif
     }
 
+    free(timestamp);
     /* args must be ended here */
     va_end(args2);
     va_end(args3);

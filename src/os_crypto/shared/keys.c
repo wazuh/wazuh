@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -112,7 +112,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
         OS_MD5_Str(id, -1, filesum2);
 
         /* Generate new filesum1 */
-        snprintf(_finalstr, sizeof(_finalstr) - 1, "%s%s", filesum1, filesum2);
+        snprintf(_finalstr, sizeof(_finalstr), "%s%s", filesum1, filesum2);
 
         /* Use just half of the first MD5 (name/id) */
         OS_MD5_Str(_finalstr, -1, filesum1);
@@ -123,7 +123,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
         OS_MD5_Str(key, -1, filesum2);
 
         /* Generate final key */
-        snprintf(_finalstr, 49, "%s%s", filesum2, filesum1);
+        snprintf(_finalstr, sizeof(_finalstr), "%s%s", filesum2, filesum1);
 
         /* Final key is 48 * 4 = 192bits */
         os_strdup(_finalstr, keys->keyentries[keys->keysize]->key);
@@ -349,7 +349,7 @@ void OS_FreeKey(keyentry *key) {
         fclose(key->fp);
     }
 
-    pthread_mutex_destroy(&key->mutex);
+    w_mutex_destroy(&key->mutex);
     free(key);
 }
 
@@ -629,7 +629,7 @@ keyentry * OS_DupKeyEntry(const keyentry * key) {
     }
 
     copy->sock = key->sock;
-    copy->mutex = key->mutex;
+    w_mutex_init(&copy->mutex, NULL);
     copy->peer_info = key->peer_info;
 
     return copy;

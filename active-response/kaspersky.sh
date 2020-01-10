@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 ###
 # Integration of Wazuh agent with Kaspersky endpoint security for Linux

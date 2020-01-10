@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * October, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -16,7 +16,7 @@
 #define WM_DOCKER_LOGTAG ARGV0 ":docker-listener"
 #define WM_DOCKER_SCRIPT_PATH WM_DEFAULT_DIR "/docker/DockerListener"
 
-#define WM_DOCKER_DEF_INTERVAL 600
+#define WM_DOCKER_DEF_INTERVAL 60
 
 typedef struct wm_docker_flags_t {
     unsigned int enabled:1;

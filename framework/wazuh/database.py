@@ -1,8 +1,8 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import common
 from wazuh.exception import WazuhException
@@ -10,6 +10,7 @@ from os.path import isfile
 from distutils.version import LooseVersion
 import sqlite3
 import sys
+import time
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
     unicode = str
@@ -27,7 +28,7 @@ class Connection:
     Represents a connection against a database
     """
 
-    def __init__(self, db_path=common.database_path_global, busy_sleep=0.001, max_attempts=1000):
+    def __init__(self, db_path=common.database_path_global, busy_sleep=0.001, max_attempts=50):
         """
         Constructor
         """
@@ -40,6 +41,7 @@ class Connection:
 
         self.__conn = sqlite3.connect(database = db_path, timeout = busy_sleep)
         self.__conn.text_factory = lambda x: unicode(x, "utf-8", "ignore")
+        self.__conn.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
         self.__cur = self.__conn.cursor()
 
     def __iter__(self):
@@ -81,6 +83,7 @@ class Connection:
                 error_text = str(e)
                 if error_text == 'database is locked':
                     n_attempts += 1
+                    time.sleep(0.1)
                 else:
                     raise WazuhException(2003, error_text)
 
@@ -92,9 +95,10 @@ class Connection:
 
     def fetch(self):
         """
-        Return next tuple
+        Return next tuple value
         """
-        return self.__cur.fetchone()
+        next_val = self.__cur.fetchone()
+        return next(iter(next_val.values())) if isinstance(next_val, dict) else next_val
 
     def vacuum(self):
         """

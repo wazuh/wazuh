@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -14,6 +14,8 @@
 #include "os_execd/execd.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
+#include "wazuh_modules/wmodules.h"
+#include "wazuh_modules/wm_sca.h"
 #include "agentd.h"
 
 static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
@@ -59,6 +61,8 @@ void *receiver_thread(__attribute__((unused)) void *none)
             continue;
         }
 
+        run_notify();
+
         FD_ZERO(&fdset);
         FD_SET(agt->sock, &fdset);
 
@@ -69,7 +73,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
         /* Wait with a timeout for any descriptor */
         recv_b = select(agt->sock + 1, &fdset, NULL, NULL, &selecttime);
         if (recv_b == -1) {
-            merror(SELECT_ERROR, errno, strerror(errno));
+            merror(SELECT_ERROR, WSAGetLastError(), win_strerror(WSAGetLastError()));
             sleep(30);
             continue;
         } else if (recv_b == 0) {
@@ -80,7 +84,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
         /* Read until no more messages are available */
         while (1) {
-            if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
+            if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
                 /* Only one read per call */
                 if (reads++) {
                     break;
@@ -160,6 +164,16 @@ void *receiver_thread(__attribute__((unused)) void *none)
                     continue;
                 }
 
+                else if (strncmp(tmp_msg,CFGA_DB_DUMP,strlen(CFGA_DB_DUMP)) == 0) {
+
+                    wm_sca_push_request_win(tmp_msg);
+                    continue;
+                }
+
+
+
+
+
                 /* Close any open file pointer if it was being written to */
                 if (fp) {
                     fclose(fp);
@@ -213,12 +227,6 @@ void *receiver_thread(__attribute__((unused)) void *none)
                                  strlen(FILE_CLOSE_HEADER)) == 0) {
                     /* No error */
                     os_md5 currently_md5;
-
-                    /* Close for the rename to work */
-                    if (fp) {
-                        fclose(fp);
-                        fp = NULL;
-                    }
 
                     if (file[0] == '\0') {
                         /* Nothing to be done */

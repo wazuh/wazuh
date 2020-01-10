@@ -2,14 +2,14 @@
  * Shared functions for Syscheck events decoding
  * Copyright (C) 2015-2019, Wazuh Inc.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
-#ifndef __SYSCHECK_OP_H
-#define __SYSCHECK_OP_H
+#ifndef SYSCHECK_OP_H
+#define SYSCHECK_OP_H
 
 #include "analysisd/eventinfo.h"
 
@@ -78,7 +78,6 @@
 #define FIM_NATTR 11
 // Number of options in checksum hash table
 #define FIM_NOPTS 10
-
 /* Fields for rules */
 typedef enum sk_syscheck {
     SK_FILE,
@@ -90,10 +89,10 @@ typedef enum sk_syscheck {
     SK_SHA1,
     SK_UNAME,
     SK_GNAME,
+    SK_MTIME,
     SK_INODE,
     SK_SHA256,
     SK_ATTRS,
-    SK_MTIME,
     SK_CHFIELDS,
     SK_USER_ID,
     SK_USER_NAME,
@@ -107,6 +106,7 @@ typedef enum sk_syscheck {
     SK_PPID,
     SK_PROC_ID,
     SK_TAG,
+    SK_SYM_PATH,
     SK_NFIELDS
 } sk_syscheck;
 
@@ -122,6 +122,7 @@ typedef struct __sdb {
     char mtime[OS_FLSIZE + 1];
     char inode[OS_FLSIZE + 1];
     char attrs[OS_SIZE_1024 + 1];
+    char sym_path[OS_FLSIZE + 1];
 
     // Whodata fields
     char user_id[OS_FLSIZE + 1];
@@ -170,8 +171,10 @@ typedef struct sk_sum_t {
     long mtime;
     long inode;
     char *tag;
+    char *symbolic_path;
     sk_sum_wdata wdata;
     int changes;
+    char silent;
     long date_alert;
 } sk_sum_t;
 
@@ -202,10 +205,12 @@ void normalize_path(char *path);
 //Return an attr from checksum
 char *get_attr_from_checksum(char *checksum, int attr);
 
+char *escape_syscheck_field(char *field);
+
 #ifndef WIN32
 
-const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
-const char *get_group(int gid);
+char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
+char *get_group(int gid);
 void decode_win_attributes(char *str, unsigned int attrs);
 int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array);
 cJSON *attrs_to_json(unsigned int attributes);
@@ -219,7 +224,6 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
 const char *get_group(__attribute__((unused)) int gid);
 char *escape_perm_sum(char *sum);
 
-
 #endif
 
-#endif
+#endif /* SYSCHECK_OP_H */

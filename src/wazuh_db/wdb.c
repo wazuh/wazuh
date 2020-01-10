@@ -3,13 +3,14 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * June 06, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
 #include "wdb.h"
+#include "wazuh_modules/wmodules.h"
 
 #ifdef WIN32
 #define getuid() 0
@@ -24,26 +25,30 @@ static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
 static const char *SQL_STMT[] = {
-    "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes FROM fim_entry WHERE file = ?;",
+    "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE file = ?;",
     "SELECT 1 FROM fim_entry WHERE file = ?",
-    "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ?, attributes = ? WHERE file = ?;",
+    "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ?, attributes = ?, symbolic_path = ? WHERE file = ?;",
     "DELETE FROM fim_entry WHERE file = ?;",
     "UPDATE fim_entry SET date = strftime('%s', 'now') WHERE file = ?;",
-    "SELECT file, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes FROM fim_entry WHERE date < ?;",
-    "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "SELECT file, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE date < ?;",
+    "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version, os_release) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_osinfo;",
     "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_programs WHERE scan_id != ?;",
-    "UPDATE SYS_PROGRAMS SET TRIAGED = 1 WHERE SCAN_ID = ? AND EXISTS(SELECT OLD.SCAN_ID FROM SYS_PROGRAMS OLD WHERE OLD.SCAN_ID != SYS_PROGRAMS.SCAN_ID AND OLD.TRIAGED = 1 AND OLD.FORMAT = SYS_PROGRAMS.FORMAT AND OLD.NAME = SYS_PROGRAMS.NAME AND OLD.VENDOR = SYS_PROGRAMS.VENDOR AND OLD.VERSION = SYS_PROGRAMS.VERSION AND OLD.ARCHITECTURE = SYS_PROGRAMS.ARCHITECTURE);",
+    "SELECT CPE, MSU_NAME, TRIAGED, FORMAT, NAME, VENDOR, VERSION, ARCHITECTURE FROM SYS_PROGRAMS WHERE SCAN_ID != ?;",
+    "UPDATE SYS_PROGRAMS SET CPE = ?, MSU_NAME = ?, TRIAGED = ? WHERE SCAN_ID = ? AND FORMAT IS ? AND NAME IS ? AND VENDOR IS ? AND VERSION IS ? AND ARCHITECTURE IS ?;",
     "INSERT INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "INSERT INTO sys_hotfixes (scan_id, scan_time, hotfix) VALUES (?, ?, ?);",
     "DELETE FROM sys_hwinfo;",
+    "DELETE FROM sys_hotfixes WHERE scan_id != ?;",
+    "UPDATE vuln_metadata SET HOTFIX_SCAN_ID = ?;",
     "INSERT INTO sys_ports (scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, PID, process) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_ports WHERE scan_id != ?;",
     "INSERT INTO sys_processes (scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     "DELETE FROM sys_processes WHERE scan_id != ?;",
     "INSERT INTO sys_netiface (scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    "INSERT INTO sys_netproto (scan_id, iface, type, gateway, dhcp) VALUES (?, ?, ?, ?, ?);",
+    "INSERT INTO sys_netproto (scan_id, iface, type, gateway, dhcp, metric) VALUES (?, ?, ?, ?, ?, ?);",
     "INSERT INTO sys_netaddr (scan_id, iface, proto, address, netmask, broadcast) VALUES (?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_netiface WHERE scan_id != ?;",
     "DELETE FROM sys_netproto WHERE scan_id != ?;",
@@ -65,7 +70,28 @@ static const char *SQL_STMT[] = {
     "SELECT end_scan FROM scan_info WHERE module = ?;",
     "SELECT fim_first_check FROM scan_info WHERE module = ?;",
     "SELECT fim_second_check FROM scan_info WHERE module = ?;",
-    "SELECT fim_third_check FROM scan_info WHERE module = ?;"
+    "SELECT fim_third_check FROM scan_info WHERE module = ?;",
+    "SELECT id,result,status FROM sca_check WHERE id = ?;",
+    "UPDATE sca_check SET result = ?, scan_id = ?, status = ?, reason = ? WHERE id = ?;",
+    "INSERT INTO sca_check (id,scan_id,title,description,rationale,remediation,file,directory,process,registry,`references`,result,policy_id,command,status,reason,condition) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
+    "INSERT INTO sca_scan_info (start_scan,end_scan,id,policy_id,pass,fail,invalid,total_checks,score,hash) VALUES (?,?,?,?,?,?,?,?,?,?);",
+    "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ?, invalid = ?, total_checks = ?, score = ?, hash = ? WHERE policy_id = ?;",
+    "INSERT INTO sca_check_compliance (id_check,`key`,`value`) VALUES(?,?,?);",
+    "INSERT INTO sca_check_rules (id_check,`type`, rule) VALUES(?,?,?);",
+    "SELECT policy_id,hash,id FROM sca_scan_info WHERE policy_id = ?;",
+    "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ?, invalid = ?, total_checks = ?, score = ?, hash = ? WHERE policy_id = ?;",
+    "SELECT id FROM sca_policy WHERE id = ?;",
+    "SELECT hash_file FROM sca_policy WHERE id = ?;",
+    "INSERT INTO sca_policy (name,file,id,description,`references`,hash_file) VALUES(?,?,?,?,?,?);",
+    "SELECT result FROM sca_check WHERE policy_id = ? ORDER BY id;",
+    "SELECT id FROM sca_policy;",
+    "DELETE FROM sca_policy WHERE id = ?;",
+    "DELETE FROM sca_check WHERE policy_id = ?;",
+    "DELETE FROM sca_scan_info WHERE policy_id = ?;",
+    "DELETE FROM sca_check_compliance WHERE id_check NOT IN ( SELECT id FROM sca_check);",
+    "DELETE FROM sca_check_rules WHERE id_check NOT IN ( SELECT id FROM sca_check);",
+    "SELECT id FROM sca_check WHERE policy_id = ?;",
+    "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;"
 };
 
 sqlite3 *wdb_global = NULL;
@@ -202,7 +228,7 @@ wdb_t * wdb_open_agent2(int agent_id) {
         wdb = wdb_init(db, sagent_id);
         wdb_pool_append(wdb);
 
-        if (new_wdb = wdb_upgrade(wdb), new_wdb != NULL) {
+        if (new_wdb = wdb_upgrade(wdb), new_wdb != wdb) {
             // If I had to generate backup and change DB
             wdb = new_wdb;
             wdb_pool_append(wdb);
@@ -536,14 +562,14 @@ wdb_t * wdb_init(sqlite3 * db, const char * agent_id) {
     wdb_t * wdb;
     os_calloc(1, sizeof(wdb_t), wdb);
     wdb->db = db;
-    pthread_mutex_init(&wdb->mutex, NULL);
+    w_mutex_init(&wdb->mutex, NULL);
     os_strdup(agent_id, wdb->agent_id);
     return wdb;
 }
 
 void wdb_destroy(wdb_t * wdb) {
-    free(wdb->agent_id);
-    pthread_mutex_destroy(&wdb->mutex);
+    os_free(wdb->agent_id);
+    w_mutex_destroy(&wdb->mutex);
     free(wdb);
 }
 
@@ -601,7 +627,7 @@ void wdb_close_all() {
     while (node = db_pool_begin, node) {
         mdebug2("Closing database for agent %s", node->agent_id);
 
-        if (wdb_close(node) < 0) {
+        if (wdb_close(node, TRUE) < 0) {
             merror("Couldn't close DB for agent %s", node->agent_id);
         }
     }
@@ -639,7 +665,7 @@ void wdb_close_old() {
 
         if (node->refcount == 0 && !node->transaction) {
             mdebug2("Closing database for agent %s", node->agent_id);
-            wdb_close(node);
+            wdb_close(node, FALSE);
         }
     }
 
@@ -698,12 +724,12 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql) {
     return result;
 }
 
-int wdb_close(wdb_t * wdb) {
+int wdb_close(wdb_t * wdb, bool commit) {
     int result;
     int i;
 
     if (wdb->refcount == 0) {
-        if (wdb->transaction) {
+        if (wdb->transaction && commit) {
             wdb_commit2(wdb);
         }
 
@@ -724,7 +750,7 @@ int wdb_close(wdb_t * wdb) {
             return -1;
         }
     } else {
-        merror("Couldn't close database for agent %s: refcount = %u", wdb->agent_id, wdb->refcount);
+        mdebug1("Couldn't close database for agent %s: refcount = %u", wdb->agent_id, wdb->refcount);
         return -1;
     }
 }
@@ -787,4 +813,85 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
     }
 
     return result;
+}
+
+/* Delete a database file */
+int wdb_remove_database(const char * agent_id) {
+    char path[PATH_MAX];
+
+    snprintf(path, PATH_MAX, "%s%s/%s.db", isChroot() ? "/" : "", WDB2_DIR, agent_id);
+    int result = unlink(path);
+
+    if (result == -1) {
+        mdebug1(UNLINK_ERROR, path, errno, strerror(errno));
+    }
+
+    return result;
+}
+
+cJSON *wdb_remove_multiple_agents(char *agent_list) {
+    cJSON *response = NULL;
+    cJSON *json_agents = NULL;
+    wdb_t *wdb;
+    char **agents;
+    char *next;
+    char *json_formated;
+    char path[PATH_MAX];
+    char agent[OS_SIZE_128];
+    long int agent_id;
+    int n = 0;
+
+    if (!agent_list || strcmp(agent_list, "") == 0 || strcmp(agent_list, " ") == 0) {
+        return json_agents;
+    }
+
+    response = cJSON_CreateObject();
+    cJSON_AddItemToObject(response, "agents", json_agents = cJSON_CreateObject());
+
+    // Get agents id separated by whitespace
+    agents = wm_strtok(agent_list);
+
+    for (n = 0; agents && agents[n]; n++) {
+        if (strcmp(agents[n], "") != 0) {
+            next = agents[n + 1];
+            agent_id = strtol(agents[n], &next, 10);
+            const char * result = "ok";
+
+            // Check for valid ID
+            if ((errno == ERANGE) || (errno == EINVAL) || *next) {
+                mwarn("Invalid agent ID when deleting database '%s'\n", agents[n]);
+                result = "Invalid agent ID";
+            } else {
+                snprintf(path, PATH_MAX, "%s/%03ld.db", WDB2_DIR, agent_id);
+                snprintf(agent, OS_SIZE_128, "%03ld", agent_id);
+
+                // Close the database only if it was open
+
+                w_mutex_lock(&pool_mutex);
+
+                wdb = (wdb_t *)OSHash_Get(open_dbs, agent);
+                if (wdb) {
+                    if (wdb_close(wdb, FALSE) < 0) {
+                        result = "Can't close";
+                    }
+                }
+
+                w_mutex_unlock(&pool_mutex);
+
+                mdebug1("Removing db for agent '%s'", agent);
+
+                if (wdb_remove_database(agent) < 0) {
+                    result = "Can't delete";
+                }
+            }
+
+            cJSON_AddStringToObject(json_agents, agent, result);
+        }
+    }
+
+    free(agents);
+    json_formated = cJSON_PrintUnformatted(response);
+    mdebug1("Deleting databases. JSON output: %s", json_formated);
+    os_free(json_formated);
+    return response;
 }

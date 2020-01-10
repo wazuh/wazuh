@@ -1,7 +1,7 @@
 /* Copyright (C) 2015-2019, Wazuh Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -48,22 +48,29 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     char *id;
     char *p;
     size_t z;
-    long offset;
-    long rbytes;
+    int64_t offset = 0;
+    int64_t rbytes = 0;
+
     int lines = 0;
 
     *rc = 0;
 
-    for (offset = w_ftell(lf->fp); fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
+    for (offset = w_ftell(lf->fp); fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
+
+        /* Flow control */
+        if (rbytes <= 0) {
+            break;
+        }
+
         lines++;
 
         if (buffer[rbytes - 1] == '\n') {
             buffer[rbytes - 1] = '\0';
 
-            if ((long)strlen(buffer) != rbytes - 1)
+            if ((int64_t)strlen(buffer) != rbytes - 1)
             {
-                mdebug2("Line in '%s' contains some zero-bytes (valid=%ld / total=%ld). Dropping line.", lf->file, (long)strlen(buffer), rbytes - 1);
+                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(buffer), FTELL_INT64 rbytes - 1);
                 continue;
             }
         } else {
@@ -71,6 +78,11 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
                 // Message too large, discard line
                 for (offset += rbytes; fgets(buffer, OS_MAXSTR, lf->fp); offset += rbytes) {
                     rbytes = w_ftell(lf->fp) - offset;
+
+                    /* Flow control */
+                    if (rbytes <= 0) {
+                        break;
+                    }
 
                     if (buffer[rbytes - 1] == '\n') {
                         break;
@@ -80,8 +92,9 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
                 mdebug2("Message not complete. Trying again: '%s'", buffer);
 
                 if (fseek(lf->fp, offset, SEEK_SET) < 0) {
-                    merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
-                }
+                   merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
+                   break;
+               }
             }
 
             break;

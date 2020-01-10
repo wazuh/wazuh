@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef __LOGREADER_H
-#define __LOGREADER_H
+#ifndef LOGREADER_H
+#define LOGREADER_H
 
 #ifndef ARGV0
 #define ARGV0 "ossec-logcollector"
@@ -18,6 +18,7 @@
 #define N_MIN_INPUT_THREADS 1
 #define N_OUPUT_THREADS 1
 #define OUTPUT_MIN_QUEUE_SIZE 128
+#define WIN32_MAX_FILES 200
 
 #include "shared.h"
 #include "config/localfile-config.h"
@@ -28,7 +29,7 @@
 /* Read logcollector config */
 int LogCollectorConfig(const char *cfgfile);
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getLocalfileConfig(void);
 cJSON *getSocketConfig(void);
 cJSON *getLogcollectorInternalOptions(void);
@@ -47,6 +48,14 @@ void close_file(logreader * lf);
 
 /* Read syslog file */
 void *read_syslog(logreader *lf, int *rc, int drop_it);
+
+#ifdef WIN32
+/* Read ucs2 LE file*/
+void *read_ucs2_le(logreader *lf, int *rc, int drop_it);
+
+/* Read ucs2 BE file */
+void *read_ucs2_be(logreader *lf, int *rc, int drop_it);
+#endif
 
 /* Read snort full file */
 void *read_snortfull(logreader *lf, int *rc, int drop_it);
@@ -88,7 +97,7 @@ void *read_json(logreader *lf, int *rc, int drop_it);
 void win_startel();
 void win_readel();
 void win_read_vista_sec();
-void win_start_event_channel(char *evt_log, char future, char *query);
+int win_start_event_channel(char *evt_log, char future, char *query, int reconnect_time);
 void win_format_event_string(char *string);
 #endif
 
@@ -112,6 +121,7 @@ extern logsocket default_agent;
 extern int force_reload;
 extern int reload_interval;
 extern int reload_delay;
+extern int free_excluded_files_interval;
 
 typedef enum {
     CONTINUE_IT,
@@ -191,4 +201,4 @@ extern int OUTPUT_QUEUE_SIZE;
 extern rlim_t nofile;
 #endif
 
-#endif /* __LOGREADER_H */
+#endif /* LOGREADER_H */

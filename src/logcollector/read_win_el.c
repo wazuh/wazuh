@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -74,11 +74,11 @@ int startEL(char *app, os_el *el)
 /* Returns a string that is a human readable datetime from an epoch int */
 char *epoch_to_human(time_t epoch)
 {
-    struct tm   *ts;
     static char buf[80];
+    struct tm tm_result = { .tm_sec = 0 };
 
-    ts = localtime(&epoch);
-    strftime(buf, sizeof(buf), "%Y %b %d %H:%M:%S", ts);
+    localtime_r(&epoch, &tm_result);
+    strftime(buf, sizeof(buf), "%Y %b %d %H:%M:%S", &tm_result);
     return (buf);
 }
 
@@ -145,7 +145,7 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
         /* Adding to memory */
         skey = strdup(keyname + 42);
         sval = strdup(event);
-        
+
         if (skey != NULL && sval != NULL) {
             if (OSHash_Add(dll_hash, skey, sval) != 2) free(sval);
             free(skey);
@@ -154,7 +154,7 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
             if (skey != NULL) free(skey);
             if (sval != NULL) free(sval);
         }
-        
+
         skey = NULL;
         sval = NULL;
     }
@@ -283,6 +283,7 @@ void readel(os_el *el, int printit)
     int size_left;
     int str_size;
     int id;
+    static int counter = 0;
 
     char mbuffer[BUFFER_SIZE + 1];
     LPSTR sstr = NULL;
@@ -350,7 +351,7 @@ void readel(os_el *el, int printit)
                 sstr = (LPSTR)((LPBYTE)el->er + el->er->StringOffset);
                 el_string[0] = '\0';
 
-                for (nstr = 0; nstr < el->er->NumStrings; nstr++) {
+                for (nstr = 0; nstr < el->er->NumStrings && sstr; nstr++) {
                     str_size = strlen(sstr);
                     if (size_left > 1) {
                         strncat(el_string, sstr, size_left);
@@ -374,8 +375,6 @@ void readel(os_el *el, int printit)
                     sstr = strchr( (LPSTR)sstr, '\0');
                     if (sstr) {
                         sstr++;
-                    } else {
-                        break;
                     }
                 }
 
@@ -511,6 +510,34 @@ void readel(os_el *el, int printit)
         }
     }
 
+
+    /* Event log was closed and re-opened */
+    else if (id == ERROR_INVALID_HANDLE) {
+        mdebug1("The EventLog service has been restarted. Reconnecting to '%s' channel.", el->name);
+
+        CloseEventLog(el->h);
+        el->h = NULL;
+
+        /* Reopen */
+        if (startEL(el->name, el) < 0) {
+            merror(
+            "Could not subscribe for (%s) which returned (%d)",
+            el->name,
+            id);
+        } else {
+            counter = 0;
+            minfo("'%s' channel has been reconnected succesfully.", el->name);
+        }
+    }
+
+    else if (id == RPC_S_SERVER_UNAVAILABLE || id == RPC_S_UNKNOWN_IF) {
+        /* Prevent message flooding when EventLog is stopped */
+        if (counter == 0) {
+            mwarn("The EventLog service is down. Unable to collect logs from its channels.");
+            counter = 1;
+        }
+    }
+
     else {
         mdebug1("Error reading event log: %d", id);
     }
@@ -543,14 +570,13 @@ void win_read_vista_sec()
 
         p = strchr(buf, ',');
         if (!p) {
-            merror("Invalid entry on the Vista security "
-                   "description.");
+            merror("Invalid entry on the Vista security description.");
             continue;
         }
 
         *p = '\0';
         p++;
-        
+
         /* Remove whitespace */
         while (*p == ' ') {
             p++;
@@ -559,7 +585,7 @@ void win_read_vista_sec()
         /* Allocate memory */
         key = strdup(buf);
         desc = strdup(p);
-        
+
         if (!key || !desc) {
             merror("Invalid entry on the Vista security description.");
             if (key) free(key);
@@ -567,11 +593,11 @@ void win_read_vista_sec()
         } else {
             /* Insert on hash */
             if (OSHash_Add(vista_sec_id_hash, key, desc) != 2) free(desc);
-            
+
             /* OSHash_Add() duplicates the key, but not the data */
             free(key);
         }
-        
+
         /* Reset pointer addresses before using strdup() again */
         /* The hash will keep the needed memory references */
         key = NULL;

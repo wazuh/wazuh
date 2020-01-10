@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * June 06, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -41,6 +41,8 @@
 
 #define WDB_MULTI_GROUP_DELIM '-'
 
+#define WDB_RESPONSE_BEGIN_SIZE 16
+
 #define WDB_DATABASE_LOGTAG ARGV0 ":wdb_agent"
 
 typedef enum wdb_stmt {
@@ -55,9 +57,13 @@ typedef enum wdb_stmt {
     WDB_STMT_OSINFO_DEL,
     WDB_STMT_PROGRAM_INSERT,
     WDB_STMT_PROGRAM_DEL,
+    WDB_STMT_PROGRAM_GET,
     WDB_STMT_PROGRAM_UPD,
     WDB_STMT_HWINFO_INSERT,
+    WDB_STMT_HOTFIX_INSERT,
     WDB_STMT_HWINFO_DEL,
+    WDB_STMT_HOTFIX_DEL,
+    WDB_STMT_SET_HOTFIX_MET,
     WDB_STMT_PORT_INSERT,
     WDB_STMT_PORT_DEL,
     WDB_STMT_PROC_INSERT,
@@ -86,6 +92,27 @@ typedef enum wdb_stmt {
     WDB_STMT_SCAN_INFO_GET1C,
     WDB_STMT_SCAN_INFO_GET2C,
     WDB_STMT_SCAN_INFO_GET3C,
+    WDB_STMT_SCA_FIND,
+    WDB_STMT_SCA_UPDATE,
+    WDB_STMT_SCA_INSERT,
+    WDB_STMT_SCA_SCAN_INFO_INSERT,
+    WDB_STMT_SCA_SCAN_INFO_UPDATE,
+    WDB_STMT_SCA_INSERT_COMPLIANCE,
+    WDB_STMT_SCA_INSERT_RULES,
+    WDB_STMT_SCA_FIND_SCAN,
+    WDB_STMT_SCA_SCAN_INFO_UPDATE_START,
+    WDB_STMT_SCA_POLICY_FIND,
+    WDB_STMT_SCA_POLICY_SHA256,
+    WDB_STMT_SCA_POLICY_INSERT,
+    WDB_STMT_SCA_CHECK_GET_ALL_RESULTS,
+    WDB_STMT_SCA_POLICY_GET_ALL,
+    WDB_STMT_SCA_POLICY_DELETE,
+    WDB_STMT_SCA_CHECK_DELETE,
+    WDB_STMT_SCA_SCAN_INFO_DELETE,
+    WDB_STMT_SCA_CHECK_COMPLIANCE_DELETE,
+    WDB_STMT_SCA_CHECK_RULES_DELETE,
+    WDB_STMT_SCA_CHECK_FIND,
+    WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -113,6 +140,8 @@ extern sqlite3 *wdb_global;
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
 extern char *schema_upgrade_v1_sql;
+extern char *schema_upgrade_v2_sql;
+extern char *schema_upgrade_v3_sql;
 
 extern wdb_config config;
 extern pthread_mutex_t pool_mutex;
@@ -172,20 +201,82 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum);
 
 int wdb_fim_delete(wdb_t * wdb, const char * file);
 
-/* Insert policy monitoring entry. Returns ID on success or -1 on error. */
+/* Insert configuration assessment entry. Returns ID on success or -1 on error. */
 int wdb_insert_pm(sqlite3 *db, const rk_event_t *event);
 
-/* Update policy monitoring last date. Returns number of affected rows on success or -1 on error. */
+/* Update configuration assessment last date. Returns number of affected rows on success or -1 on error. */
 int wdb_update_pm(sqlite3 *db, const rk_event_t *event);
 
+/* Look for a configuration assessment entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
+int wdb_sca_find(wdb_t * wdb, int pm_id, char * output);
+
+/* Update a configuration assessment entry. Returns ID on success or -1 on error (new) */
+int wdb_sca_update(wdb_t * wdb, char * result, int id,int scan_id, char * status, char * reason);
+
+/* Insert configuration assessment entry. Returns ID on success or -1 on error (new) */
+int wdb_sca_save(wdb_t *wdb, int id, int scan_id, char *title, char *description, char *rationale,
+        char *remediation, char *condition, char *file, char *directory, char *process, char *registry,
+        char *reference, char *result, char *policy_id, char *command, char *status, char *reason);
+
+/* Insert scan info configuration assessment entry. Returns ID on success or -1 on error (new) */
+int wdb_sca_scan_info_save(wdb_t * wdb, int start_scan, int end_scan, int scan_id,char * policy_id,int pass,int fail,int invalid, int total_checks,int score,char * hash);
+
+/* Update scan info configuration assessment entry. Returns number of affected rows or -1 on error.  */
+int wdb_sca_scan_info_update(wdb_t * wdb, char * module, int end_scan);
+
+/* Insert global configuration assessment compliance entry. Returns number of affected rows or -1 on error.  */
+int wdb_sca_compliance_save(wdb_t * wdb, int id_check, char *key, char *value);
+
+/* Insert the rules of the policy checks,. Returns number of affected rows or -1 on error.  */
+int wdb_sca_rules_save(wdb_t * wdb, int id_check, char *type, char *rule);
+
+/* Look for a scan configuration assessment entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
+int wdb_sca_scan_find(wdb_t * wdb, char *policy_id, char * output);
+
+/* Update scan info configuration assessment entry. Returns number of affected rows or -1 on error.  */
+int wdb_sca_scan_info_update_start(wdb_t * wdb, char * policy_id, int start_scan,int end_scan,int scan_id,int pass,int fail,int invalid,int total_checks,int score,char * hash);
+
+/* Look for a scan policy entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
+int wdb_sca_policy_find(wdb_t * wdb, char *id, char * output);
+
+/* Gets the result of all checks in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
+int wdb_sca_checks_get_result(wdb_t * wdb, char * policy_id, char * output);
+
+/* Insert policy entry. Returns number of affected rows or -1 on error.  */
+int wdb_sca_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char * description,char *references, char *hash_file);
+
+/* Gets the result of all policies in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
+int wdb_sca_policy_get_id(wdb_t * wdb, char * output);
+
+/* Delete a configuration assessment policy. Returns 0 on success or -1 on error (new) */
+int wdb_sca_policy_delete(wdb_t * wdb,char * policy_id);
+
+/* Delete a configuration assessment check. Returns 0 on success or -1 on error (new) */
+int wdb_sca_check_delete(wdb_t * wdb,char * policy_id);
+
+/* Delete a configuration assessment policy. Returns 0 on success or -1 on error (new) */
+int wdb_sca_scan_info_delete(wdb_t * wdb,char * policy_id);
+
+/* Delete a configuration assessment check compliances. Returns 0 on success or -1 on error (new) */
+int wdb_sca_check_compliances_delete(wdb_t * wdb);
+
+/* Delete a configuration assessment check rules. Returns 0 on success or -1 on error (new) */
+int wdb_sca_check_rules_delete(wdb_t * wdb);
+
+/* Delete distinct configuration assessment check. Returns 0 on success or -1 on error (new) */
+int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id,int scan_id);
+
+/* Gets the policy SHA256. Returns 1 if found, 0 if not or -1 on error */
+int wdb_sca_policy_sha256(wdb_t * wdb, char *id, char * output);
+
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group, int keep_date);
+int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date);
 
 /* Update agent name. It doesn't rename agent DB file. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_name(int id, const char *name);
 
 /* Update agent version. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name);
+int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name, const char *agent_ip);
 
 /* Update agent's last keepalive. It opens and closes the DB. Returns number of affected rows or -1 on error. */
 int wdb_update_agent_keepalive(int id, long keepalive);
@@ -201,6 +292,9 @@ int wdb_update_groups(const char *dirname);
 
 /* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_agent(int id);
+
+/* Remove agents databases from id's list. */
+cJSON *wdb_remove_multiple_agents(char *agent_list);
 
 /* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_group_db(const char *name);
@@ -276,9 +370,9 @@ int* wdb_get_all_agents();
 int wdb_agent_belongs_first_time();
 
 /* Get the agent first registration date */
-char *get_agent_date_added(int agent_id);
+time_t get_agent_date_added(int agent_id);
 
-/* Find agent by name and address. Returns ID if success or -1 on failure. */
+/* Find agent by name and address. Returns id if success, -1 on failure or -2 if it has not been found. */
 int wdb_find_agent(const char *name, const char *ip);
 
 /* Find group by name. Returns id if success or -1 on failure. */
@@ -320,11 +414,17 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 // Delete Network info from DB.
 int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id);
 
+// Delete Hotfix info from DB.
+int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id);
+
+// Set hotfix metadata.
+int wdb_set_hotfix_metadata(wdb_t * wdb, const char * scan_id);
+
 // Insert IPv4/IPv6 protocol info tuple. Return 0 on success or -1 on error.
-int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface,  int type, const char * gateway, const char * dhcp);
+int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface,  int type, const char * gateway, const char * dhcp, int metric);
 
 // Save IPv4/IPv6 protocol info into DB.
-int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface,  int type, const char * gateway, const char * dhcp);
+int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface,  int type, const char * gateway, const char * dhcp, int metric);
 
 // Insert IPv4/IPv6 address info tuple. Return 0 on success or -1 on error.
 int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast);
@@ -333,10 +433,10 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, in
 int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast);
 
 // Insert OS info tuple. Return 0 on success or -1 on error.
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version);
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release);
 
 // Save OS info into DB.
-int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version);
+int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release);
 
 // Insert HW info tuple. Return 0 on success or -1 on error.
 int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage);
@@ -349,6 +449,12 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
 
 // Save Packages info into DB.
 int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location);
+
+// Insert hotfix info tuple. Return 0 on success or -1 on error.
+int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix);
+
+// Save Hotfixes info into DB.
+int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix);
 
 // Update the new Package info with the previous scan.
 int wdb_package_update(wdb_t * wdb, const char * scan_id);
@@ -397,12 +503,14 @@ void wdb_commit_old();
 
 void wdb_close_old();
 
+int wdb_remove_database(const char * agent_id);
+
 cJSON * wdb_exec(sqlite3 * db, const char * sql);
 
 // Execute SQL script into an database
 int wdb_sql_exec(wdb_t *wdb, const char *sql_exec);
 
-int wdb_close(wdb_t * wdb);
+int wdb_close(wdb_t * wdb, bool commit);
 
 void wdb_leave(wdb_t * wdb);
 
@@ -426,11 +534,15 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_packages(wdb_t * wdb, char * input, char * output);
 
+int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output);
+
 int wdb_parse_ports(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_processes(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
@@ -449,5 +561,8 @@ wdb_t * wdb_backup(wdb_t *wdb, int version);
 
 /* Create backup for agent. Returns 0 on success or -1 on error. */
 int wdb_create_backup(const char * agent_id, int version);
+
+// Finalize a statement securely
+#define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
 
 #endif

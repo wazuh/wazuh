@@ -2,7 +2,7 @@
  * Copyright (C) 2014 Daniel B. Cid
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -45,6 +45,7 @@ cJSON *getIntegratorConfig(void) {
         if (integrator_config[i]->hookurl) cJSON_AddStringToObject(cfg,"hook_url",integrator_config[i]->hookurl);
         if (integrator_config[i]->apikey) cJSON_AddStringToObject(cfg,"api_key",integrator_config[i]->apikey);
         cJSON_AddNumberToObject(cfg,"level",integrator_config[i]->level);
+        cJSON_AddNumberToObject(cfg,"max_log",integrator_config[i]->max_log);
         if (integrator_config[i]->rule_id) {
             cJSON *ids = cJSON_CreateArray();
             for(j=0;integrator_config[i]->rule_id[j];j++){

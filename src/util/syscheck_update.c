@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
         }
     } else if (strcmp(argv[1], "-a") == 0) {
         DIR *sys_dir;
-        struct dirent *entry;
+        struct dirent *entry = NULL;
 
         sys_dir = opendir(SYSCHECK_DIR);
         if (!sys_dir) {

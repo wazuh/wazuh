@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -12,9 +12,8 @@
  * APIs for many network operations
  */
 
-
-#ifndef __OS_NET_H
-#define __OS_NET_H
+#ifndef OS_NET_H
+#define OS_NET_H
 
 /* OS_Bindport*
  * Bind a specific port (protocol and a ip).
@@ -81,6 +80,23 @@ int OS_CloseSocket(int socket);
  */
 int OS_SetRecvTimeout(int socket, long seconds, long useconds);
 
+/*
+ * Enable SO_KEEPALIVE for TCP
+ */
+int OS_SetKeepalive(int socket);
+
+/**
+ * @brief Set keepalive parameters for a socket
+ *
+ * Options with a value 0 will not be changed.
+ *
+ * @param socket Socket descriptor.
+ * @param idle Idle time, in seconds, to start sending probes.
+ * @param intvl Interval between probes, in seconds.
+ * @param cnt Number of probes sent before closing the connection.
+ */
+void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt);
+
 /* Set the delivery timeout for a socket
  * Returns 0 on success, else -1
  */
@@ -109,11 +125,6 @@ int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload
  */
 int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length);
 
-
-// Receive dynamic size message. Use with OS_SendSecureTCP function.
-ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret);
-
-
 // Byte ordering
 
 uint32_t wnet_order(uint32_t value);
@@ -128,4 +139,7 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size);
  */
 ssize_t os_recv_waitall(int sock, void * buf, size_t size);
 
-#endif /* __OS_NET_H */
+// Wrapper for select()
+int wnet_select(int sock, int timeout);
+
+#endif /* OS_NET_H */

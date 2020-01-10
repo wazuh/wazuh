@@ -2,7 +2,7 @@
  * Copyright (C) 2009-2012 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -10,8 +10,8 @@
 
 /* Global Definitions */
 
-#ifndef __OS_HEADERS
-#define __OS_HEADERS
+#ifndef OS_HEADERS
+#define OS_HEADERS
 
 #define TRUE            1
 #define FALSE           0
@@ -48,7 +48,7 @@
 #define OS_HEADER_SIZE  OS_SIZE_128     /* Maximum header size          */
 #define OS_LOG_HEADER   OS_SIZE_256     /* Maximum log header size      */
 #define OS_SK_HEADER    OS_SIZE_6144    /* Maximum syscheck header size */
-#define IPSIZE          16              /* IP Address size              */
+#define IPSIZE          INET6_ADDRSTRLEN /* IP Address size             */
 #define AUTH_POOL       1000            /* Max number of connections    */
 #define BACKLOG         128             /* Socket input queue length    */
 #define MAX_EVENTS      1024            /* Max number of epoll events   */
@@ -56,12 +56,11 @@
 #define MAX_TAG_COUNTER 256             /* Max retrying counter         */
 #define SOCK_RECV_TIME0 300             /* Socket receiving timeout (s) */
 #define MIN_ORDER_SIZE  10              /* Minimum size of orders array */
-#define KEEPALIVE_SIZE  700             /* Random keepalive string size */
 #define MAX_DYN_STR     4194304         /* Max message size received 4MiB */
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.9.0"
+#define __ossec_version "v3.12.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -140,6 +139,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define CSYS_LOCAL_SOCK  "/queue/ossec/csyslog"
 #define MON_LOCAL_SOCK  "/queue/ossec/monitor"
 #define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
+#define CONTROL_SOCK "/queue/ossec/control"
+
+// Attempts to check sockets availability
+#define SOCK_ATTEMPTS   10
 
 // Database socket
 #define WDB_LOCAL_SOCK "/queue/db/wdb"
@@ -172,6 +175,15 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Exec queue */
 #define EXECQUEUE       "/queue/alerts/execq"
+
+/* Security configuration assessment module queue */
+#define CFGAQUEUE       "/queue/alerts/cfgaq"
+
+/* Security configuration assessment remoted queue */
+#define CFGARQUEUE       "/queue/alerts/cfgarq"
+
+/* Exec queue api*/
+#define EXECQUEUEA      "/queue/alerts/execa"
 
 /* Active Response queue */
 #define ARQUEUE         "/queue/alerts/ar"
@@ -359,6 +371,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AGENTLESS_ENTRYDIRPATH  AGENTLESS_ENTRYDIR
 #endif
 #define EXECQUEUEPATH           DEFAULTDIR EXECQUEUE
+#define CFGASSESSMENTQUEUEPATH  DEFAULTDIR CFGAQUEUE
+
+#define EXECQUEUEPATHAPI        DEFAULTDIR EXECQUEUEA
 
 #ifdef WIN32
 #define SHAREDCFG_DIRPATH   SHAREDCFG_DIR
@@ -387,6 +402,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #ifndef DEFAULT_SYSLOG
 #define DEFAULT_SYSLOG 514 /* Default syslog port - udp */
+#endif
+
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
 #endif
 
 /* XML global elements */
@@ -436,4 +455,16 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #define CLOCK_LENGTH 256
 
-#endif /* __OS_HEADERS */
+#define SECURITY_CONFIGURATION_ASSESSMENT_DIR   "/ruleset/sca"
+
+#define SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN   "ruleset\\sca"
+
+#ifdef WIN32
+#define FTELL_TT "%lld"
+#define FTELL_INT64 (int64_t)
+#else
+#define FTELL_TT "%ld"
+#define FTELL_INT64 (long)
+#endif
+
+#endif /* OS_HEADERS */

@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * February 27, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -111,7 +111,12 @@ wlabel_t* labels_find(const Eventinfo *lf) {
 
         if (mtime == -1) {
             if (!data->error_flag) {
-                minfo("Cannot get agent-info file for agent %s (%s). Using old labels.", hostname, ip);
+                if (errno == ENOENT) {
+                    mdebug1("Cannot get agent-info file for agent %s (%s). It could have been removed.", hostname, ip);
+
+                } else {
+                    minfo("Cannot get agent-info file for agent %s (%s). Using old labels.", hostname, ip);
+                }
                 data->error_flag = 1;
             }
         } else if (mtime > data->mtime + Config.label_cache_maxage) {

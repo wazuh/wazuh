@@ -1,8 +1,8 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.exception import WazuhException
 from wazuh import common
@@ -22,8 +22,8 @@ class OssecSocket:
         try:
             self.s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.s.connect(self.path)
-        except:
-            raise WazuhException(1013, self.path)
+        except Exception as e:
+            raise WazuhException(1013, str(e))
 
     def close(self):
         self.s.close()
@@ -35,22 +35,19 @@ class OssecSocket:
         try:
             sent = self.s.send(pack("<I", len(msg_bytes)) + msg_bytes)
             if sent == 0:
-                raise WazuhException(1014, self.path)
+                raise WazuhException(1014, "Number of sent bytes is 0")
             return sent
-        except:
-            raise WazuhException(1014, self.path)
+        except Exception as e:
+            raise WazuhException(1014, str(e))
 
     def receive(self):
 
         try:
             size = unpack("<I", self.s.recv(4, socket.MSG_WAITALL))[0]
-
-            if size > OssecSocket.MAX_SIZE:
-                raise WazuhException(1014, self.path)
-
             return self.s.recv(size, socket.MSG_WAITALL)
-        except:
-            raise WazuhException(1014, self.path)
+        except Exception as e:
+            raise WazuhException(1014, str(e))
+
 
 class OssecSocketJSON(OssecSocket):
 

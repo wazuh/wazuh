@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -91,6 +91,7 @@ int OS_ReadXMLRules(const char *rulefile,
     const char *xml_same_location = "same_location";
     const char *xml_same_id = "same_id";
     const char *xml_dodiff = "check_diff";
+    const char *xml_same_field = "same_field";
 
     const char *xml_different_url = "different_url";
 
@@ -98,6 +99,8 @@ int OS_ReadXMLRules(const char *rulefile,
     const char *xml_notsame_user = "not_same_user";
     const char *xml_notsame_agent = "not_same_agent";
     const char *xml_notsame_id = "not_same_id";
+    const char *xml_notsame_field = "not_same_field";
+    const char *xml_global_frequency = "global_frequency";
 
     const char *xml_options = "options";
 
@@ -201,8 +204,11 @@ int OS_ReadXMLRules(const char *rulefile,
             config_ruleinfo = NULL;
 
             /* Check if the rule element is correct */
-            if ((!rule[j]->element) ||
-                    (strcasecmp(rule[j]->element, xml_rule) != 0)) {
+            if (!rule[j]->element) {
+                goto cleanup;
+            }
+
+            if (strcasecmp(rule[j]->element, xml_rule) != 0) {
                 merror(RL_INV_RULE, node[i]->element);
                 retval = -1;
                 goto cleanup;
@@ -316,6 +322,10 @@ int OS_ReadXMLRules(const char *rulefile,
                     config_ruleinfo->srcip = (os_ip **)
                                              realloc(config_ruleinfo->srcip,
                                                      (ip_s + 2) * sizeof(os_ip *));
+
+                    if(config_ruleinfo->srcip == NULL) {
+                        merror_exit(MEM_ERROR, errno, strerror(errno));
+                    }
 
                     /* Allocate memory for the individual entries */
                     os_calloc(1, sizeof(os_ip),
@@ -545,6 +555,51 @@ int OS_ReadXMLRules(const char *rulefile,
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_notsame_agent) == 0) {
                     config_ruleinfo->context_opts &= NOT_SAME_AGENT;
+                } else if (strcasecmp(rule_opt[k]->element,
+                                      xml_global_frequency) == 0) {
+                    config_ruleinfo->context_opts |= GLOBAL_FREQUENCY;
+                } else if (strcasecmp(rule_opt[k]->element,
+                                      xml_same_field) == 0) {
+
+                    if (config_ruleinfo->context_opts & SAME_FIELD) {
+
+                        int size;
+                        for (size = 0; config_ruleinfo->same_fields[size] != NULL; size++);
+
+                        os_realloc(config_ruleinfo->same_fields, (size + 2) * sizeof(char *), config_ruleinfo->same_fields);
+                        os_strdup(rule_opt[k]->content, config_ruleinfo->same_fields[size]);
+                        config_ruleinfo->same_fields[size + 1] = NULL;
+
+                    } else {
+
+                        config_ruleinfo->context_opts |= SAME_FIELD;
+                        os_calloc(2, sizeof(char *), config_ruleinfo->same_fields);
+                        os_strdup(rule_opt[k]->content, config_ruleinfo->same_fields[0]);
+                        config_ruleinfo->same_fields[1] = NULL;
+
+                    }
+
+                } else if (strcasecmp(rule_opt[k]->element,
+                                        xml_notsame_field) == 0) {
+
+                    if (config_ruleinfo->context_opts & NOT_SAME_FIELD) {
+
+                        int size;
+                        for (size = 0; config_ruleinfo->not_same_fields[size] != NULL; size++);
+
+                        os_realloc(config_ruleinfo->not_same_fields, (size + 2) * sizeof(char *), config_ruleinfo->not_same_fields);
+                        os_strdup(rule_opt[k]->content, config_ruleinfo->not_same_fields[size]);
+                        config_ruleinfo->not_same_fields[size + 1] = NULL;
+
+                    } else {
+
+                        config_ruleinfo->context_opts |= NOT_SAME_FIELD;
+                        os_calloc(2, sizeof(char *), config_ruleinfo->not_same_fields);
+                        os_strdup(rule_opt[k]->content, config_ruleinfo->not_same_fields[0]);
+                        config_ruleinfo->not_same_fields[1] = NULL;
+
+                    }
+
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_options) == 0) {
                     if (strcmp("alert_by_email",
@@ -976,6 +1031,9 @@ static RuleInfo *_OS_AllocateRule()
     ruleinfo_pt->action = NULL;
     ruleinfo_pt->location = NULL;
 
+    ruleinfo_pt->same_fields = NULL;
+    ruleinfo_pt->not_same_fields = NULL;
+
     /* Zero the list of previous matches */
     ruleinfo_pt->sid_prev_matched = NULL;
     ruleinfo_pt->group_prev_matched = NULL;
@@ -985,7 +1043,7 @@ static RuleInfo *_OS_AllocateRule()
 
     ruleinfo_pt->event_search = NULL;
 
-    ruleinfo_pt->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+    w_mutex_init(&ruleinfo_pt->mutex, NULL);
 
     return (ruleinfo_pt);
 }
@@ -1141,6 +1199,20 @@ void _OS_FreeRule(RuleInfo *ruleinfo) {
     free(ruleinfo->if_sid);
     free(ruleinfo->if_level);
     free(ruleinfo->if_group);
+
+    if (ruleinfo->same_fields) {
+        for (i = 0; ruleinfo->same_fields[i] != NULL; i++) {
+            free(ruleinfo->same_fields[i]);
+        }
+        free(ruleinfo->same_fields);
+    }
+
+    if (ruleinfo->not_same_fields) {
+        for (i = 0; ruleinfo->not_same_fields[i] != NULL; i++) {
+            free(ruleinfo->not_same_fields[i]);
+        }
+        free(ruleinfo->not_same_fields);
+    }
 
     free(ruleinfo);
 }

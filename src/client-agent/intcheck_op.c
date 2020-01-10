@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -56,10 +56,8 @@ int intcheck_file(const char *file_name, const char *dir)
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
 #endif
     {
-        if (OS_MD5_SHA1_SHA256_File(file_name, NULL, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
-            strncpy(mf_sum, "n/a", 4);
-            strncpy(sf_sum, "n/a", 4);
-            strncpy(sf256_sum, "n/a", 4);
+        if (OS_MD5_SHA1_SHA256_File(file_name, NULL, mf_sum, sf_sum, sf256_sum, OS_BINARY, 0) < 0) {
+            return 1;
         }
     }
 
@@ -86,6 +84,8 @@ int intcheck_file(const char *file_name, const char *dir)
         LocalFree(sid);
     }
 #else
+    char *user = get_user(file_name, statbuf.st_uid, NULL);
+    char *group = get_group(statbuf.st_gid);
     snprintf(newsum, 1172, "%c:%s:%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s %s%s",
             SYSCHECK_MQ,
             SYSCHECK,
@@ -95,13 +95,16 @@ int intcheck_file(const char *file_name, const char *dir)
             (int)statbuf.st_gid,
             mf_sum,
             sf_sum,
-            get_user(file_name, statbuf.st_uid, NULL),
-            get_group(statbuf.st_gid),
+            user,
+            group,
             (long)statbuf.st_mtime,
             (long)statbuf.st_ino,
             sf256_sum,
             dir,
             file_name);
+            
+    os_free(user);
+    os_free(group);
 #endif
     send_msg(newsum, -1);
     return (1);

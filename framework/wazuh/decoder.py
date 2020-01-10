@@ -1,17 +1,16 @@
-#!/usr/bin/env python
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+import os
 import re
 from glob import glob
 from xml.etree.ElementTree import fromstring
 import wazuh.configuration as configuration
 from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
+from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml, filter_array_by_query
 from sys import version_info
+
 
 class Decoder:
     """
@@ -87,7 +86,7 @@ class Decoder:
 
         tmp_data = []
         tags = ['decoder_include', 'decoder_exclude']
-        exclude_filenames =[]
+        exclude_filenames = []
         for tag in tags:
             if tag in ruleset_conf:
                 item_status = Decoder.S_DISABLED if tag == 'decoder_exclude' else Decoder.S_ENABLED
@@ -98,17 +97,12 @@ class Decoder:
                     items = [ruleset_conf[tag]]
 
                 for item in items:
-                    if '/' in item:
-                        item_split = item.split('/')
-                        item_name = item_split[-1]
-                        item_dir = "{0}/{1}".format(common.ossec_path, "/".join(item_split[:-1]))
-                    else:
-                        item_name = item
-                        item_dir = "{0}/{1}".format(common.ruleset_rules_path, item)
-
+                    item_name = os.path.basename(item)
+                    full_dir = os.path.dirname(item)
+                    item_dir = os.path.relpath(full_dir if full_dir else common.ruleset_rules_path,
+                                               start=common.ossec_path)
                     if tag == 'decoder_exclude':
                         exclude_filenames.append(item_name)
-                        # tmp_data.append({'file': item_name, 'path': '-', 'status': item_status})
                     else:
                         tmp_data.append({'file': item_name, 'path': item_dir, 'status': item_status})
 
@@ -123,9 +117,8 @@ class Decoder:
                 all_decoders = "{0}/{1}/*.xml".format(common.ossec_path, item_dir)
 
                 for item in glob(all_decoders):
-                    item_split = item.split('/')
-                    item_name = item_split[-1]
-                    item_dir = "/".join(item_split[:-1])
+                    item_name = os.path.basename(item)
+                    item_dir = os.path.relpath(os.path.dirname(item), start=common.ossec_path)
                     if item_name in exclude_filenames:
                         item_status = Decoder.S_DISABLED
                     else:
@@ -155,21 +148,27 @@ class Decoder:
         return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
 
     @staticmethod
-    def get_decoders(status=None, path=None, file=None, name=None, parents=False, offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_decoders(offset=0, limit=common.database_limit, sort=None, search=None, filters={}, q=''):
         """
         Gets a list of available decoders.
 
-        :param status: Filters by status: enabled, disabled, all.
-        :param path: Filters by path.
-        :param file: Filters by file.
-        :param name: Filters by name.
-        :param parents: Just parent decoders.
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
+        :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}.
+            This filter is used for filtering by 'status', 'path', 'file', 'name' and 'parents'.
+        :param q: Defines query to filter.
+
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+        # set default values to parameters
+        status = filters.get('status', None)
+        path = filters.get('path', None)
+        file_ = filters.get('file', None)
+        name = filters.get('name', None)
+        parents = filters.get('parents', None)
+
         status = Decoder.__check_status(status)
         all_decoders = []
 
@@ -181,7 +180,7 @@ class Decoder:
             if path and path != d.path:
                 decoders.remove(d)
                 continue
-            if file and file != d.file:
+            if file_ and file_ != d.file:
                 decoders.remove(d)
                 continue
             if name and name != d.name:
@@ -193,6 +192,10 @@ class Decoder:
 
         if search:
             decoders = search_array(decoders, search['value'], search['negation'])
+
+        if q:
+            # decoders contains a list of Decoder objects, it is necessary to cast it into dictionaries
+            decoders = filter_array_by_query(q, [decoder.to_dict() for decoder in decoders])
 
         if sort:
             decoders = sort_array(decoders, sort['fields'], sort['order'], Decoder.SORT_FIELDS)
@@ -207,9 +210,9 @@ class Decoder:
             decoders = []
             position = 0
 
-            root = load_wazuh_xml("{}/{}".format(decoder_path, decoder_file))
+            root = load_wazuh_xml(os.path.join(common.ossec_path, decoder_path, decoder_file))
 
-            for xml_decoder in root.getchildren():
+            for xml_decoder in list(root):
                 # New decoder
                 if xml_decoder.tag.lower() == "decoder":
                     decoder          = Decoder()
@@ -224,7 +227,7 @@ class Decoder:
                         if k != 'name':
                             decoder.details[k] = xml_decoder.attrib[k]
 
-                    for xml_decoder_tags in xml_decoder.getchildren():
+                    for xml_decoder_tags in list(xml_decoder):
                         decoder.add_detail(xml_decoder_tags.tag.lower(), xml_decoder_tags.text)
 
                     decoders.append(decoder)

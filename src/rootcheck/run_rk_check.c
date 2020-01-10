@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -69,12 +69,17 @@ void run_rk_check()
     char basedir[] = "";
 #else
     /* On Windows, always start at C:\ */
-    char basedir[] = "C:\\";
+    char basedir[] = "C:";
 #endif
 
     /* Set basedir */
-    if (rootcheck.basedir == NULL) {
+    if (rootcheck.basedir == NULL || !strlen(rootcheck.basedir)) {
+        free(rootcheck.basedir);
         rootcheck.basedir = strdup(basedir);
+    } else {
+        if (rootcheck.basedir[strlen(rootcheck.basedir)-1] == PATH_SEP) {
+            rootcheck.basedir[strlen(rootcheck.basedir)-1] = '\0';
+        }
     }
 
     time1 = time(0);
@@ -115,7 +120,6 @@ void run_rk_check()
 
             else {
                 check_rc_files(rootcheck.basedir, fp);
-
                 fclose(fp);
             }
         }

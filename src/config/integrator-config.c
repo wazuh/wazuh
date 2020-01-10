@@ -2,7 +2,7 @@
  * Copyright (C) 2014 Daniel B. Cid
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -121,7 +121,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
                     }
 
                     os_realloc(integrator_config[s]->rule_id,
-                               (id_i +2) * sizeof(int),
+                               (id_i +2) * sizeof(unsigned int),
                                integrator_config[s]->rule_id);
 
                     integrator_config[s]->rule_id[id_i + 1] = 0;

@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -189,7 +189,7 @@ int main(int argc, char **argv)
         /* Clean all agents (and server) db */
         if (strcmp(agent_id, "all") == 0) {
             DIR *sys_dir;
-            struct dirent *entry;
+            struct dirent *entry = NULL;
 
             sys_dir = opendir(ROOTCHECK_DIR);
             if (!sys_dir) {
@@ -347,7 +347,7 @@ int main(int argc, char **argv)
             final_mask[128] = '\0';
             getNetmask(keys.keyentries[i]->ip->netmask,
                        final_mask, 128);
-            snprintf(final_ip, 128, "%s%s", keys.keyentries[i]->ip->ip,
+            snprintf(final_ip, sizeof(final_ip), "%s%s", keys.keyentries[i]->ip->ip,
                      final_mask);
 
             if (!(csv_output || json_output))

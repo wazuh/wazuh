@@ -21,13 +21,13 @@
     <action>block</action>
     <options>no_log</options>
     <description>pfSense firewall drop event.</description>
-    <group>firewall_block,pci_dss_1.4,gpg13_4.12,</group>
+    <group>firewall_block,pci_dss_1.4,gpg13_4.12,hipaa_164.312.a.1,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="87702" level="10" frequency="18" timeframe="45" ignore="240">
     <if_matched_sid>87701</if_matched_sid>
     <same_source_ip />
     <description>Multiple pfSense firewall blocks events from same source.</description>
-    <group>multiple_blocks,pci_dss_1.4,pci_dss_10.6.1,gpg13_4.12,</group>
+    <group>multiple_blocks,pci_dss_1.4,pci_dss_10.6.1,gpg13_4.12,hipaa_164.312.a.1,hipaa_164.312.b,nist_800_53_SC.7,nist_800_53_AU.6,</group>
   </rule>
 </group>

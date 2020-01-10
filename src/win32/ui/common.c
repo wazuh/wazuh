@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -123,9 +123,17 @@ void config_clear()
         free(config_inst.revision);
     }
 
+    if (config_inst.agentname) {
+        free(config_inst.agentname);
+    }
+
+    if (config_inst.agentip) {
+        free(config_inst.agentip);
+    }
+
     /* Initialize config instance */
     config_inst.dir = NULL;
-    config_inst.key = FL_NOKEY;
+    config_inst.key = strdup(FL_NOKEY);
     config_inst.server = strdup(FL_NOSERVER);
     config_inst.config = NULL;
 
@@ -144,7 +152,7 @@ void init_config()
 {
     /* Initialize config instance */
     config_inst.dir = NULL;
-    config_inst.key = FL_NOKEY;
+    config_inst.key = strdup(FL_NOKEY);
     config_inst.server = NULL;
     config_inst.config = NULL;
 
@@ -193,11 +201,13 @@ int config_read(__attribute__((unused)) HWND hwnd)
         os_strdup(buffer, config_inst.version);
     }
 
+    free(tmp_str);
     if (tmp_str = cat_file(REVISION_FILE, NULL), tmp_str) {
         snprintf(buffer, sizeof(buffer), "Revision %s", tmp_str);
         os_strdup(buffer, config_inst.revision);
     }
 
+    free(tmp_str);
     /* Get number of messages sent */
     tmp_str = cat_file(SENDER_FILE, NULL);
     if (tmp_str) {
@@ -222,10 +232,12 @@ int config_read(__attribute__((unused)) HWND hwnd)
     /* Get agent ID, name and IP */
     tmp_str = cat_file(AUTH_FILE, NULL);
     if (tmp_str) {
+        char *to_free = tmp_str;
         /* Get base 64 */
+        free(config_inst.key);
         config_inst.key = encode_base64(strlen(tmp_str), tmp_str);
         if (config_inst.key == NULL) {
-            config_inst.key = FL_NOKEY;
+            config_inst.key = strdup(FL_NOKEY);
         }
 
         /* Get ID */
@@ -251,13 +263,18 @@ int config_read(__attribute__((unused)) HWND hwnd)
                     *tmp_str = '\0';
                 }
             }
+
+            config_inst.agentid = strdup(config_inst.agentid);
+            config_inst.agentname = strdup(config_inst.agentname);
+            config_inst.agentip = strdup(config_inst.agentip);
         }
+        free(to_free);
     }
 
     if (config_inst.agentip == NULL) {
         config_inst.agentid = strdup(ST_NOTSET);
         config_inst.agentname = strdup("Auth key not imported.");
-        config_inst.agentip = ST_NOTSET;
+        config_inst.agentip = strdup(ST_NOTSET);
 
         config_inst.status = ST_MISSING_IMPORT;
     }
@@ -306,19 +323,11 @@ int get_ossec_server()
             success = 1;
             goto ret;
         } else {
-            /* If we don't find the IP, try the server hostname */
-            char *s_ip;
-            s_ip = OS_GetHost(str, 0);
-            if (s_ip) {
-                /* Clear the host memory */
-                free(s_ip);
-
-                /* Assign the hostname to the server info */
-                config_inst.server_type = SERVER_HOST_USED;
-                config_inst.server = str;
-                success = 1;
-                goto ret;
-            }
+            /* If we don't find the IP, get the server hostname */
+            config_inst.server_type = SERVER_HOST_USED;
+            config_inst.server = str;
+            success = 1;
+            goto ret;
         }
     }
     if (str = OS_GetOneContentforElement(&xml, xml_serverip), str) {
@@ -330,15 +339,10 @@ int get_ossec_server()
         }
     }
     if (str = OS_GetOneContentforElement(&xml, xml_serverhost), str) {
-        char *s_ip;
-        s_ip = OS_GetHost(str, 0);
-        if (s_ip) {
-            free(s_ip);
-            config_inst.server_type = SERVER_HOST_USED;
-            config_inst.server = str;
-            success = 1;
-            goto ret;
-        }
+        config_inst.server_type = SERVER_HOST_USED;
+        config_inst.server = str;
+        success = 1;
+        goto ret;
     }
 
     /* Set up final server name when not available */
@@ -411,14 +415,11 @@ int set_ossec_server(char *ip, HWND hwnd)
 
     /* Verify IP Address */
     if (OS_IsValidIP(ip, NULL) != 1) {
-        char *s_ip;
-        s_ip = OS_GetHost(ip, 0);
 
-        if (!s_ip) {
-            MessageBox(hwnd, "Invalid Server IP Address.\r\n"
-                       "It must be the valid IPv4 address of the "
-                       "OSSEC server or the resolvable hostname.",
-                       "Error -- Failure Setting IP", MB_OK);
+        if (strchr(ip, '/')) {
+            MessageBox(hwnd,
+                       "A valid hostname cannot contain the following character: /",
+                       "Cannot save hostname", MB_OK | MB_ICONERROR);
             return (0);
         }
         config_inst.server_type = SERVER_HOST_USED;

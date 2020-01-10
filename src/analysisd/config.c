@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -86,7 +86,7 @@ int GlobalConf(const char *cfgfile)
     Config.rotate_interval = 0;
     Config.min_rotate_interval = 0;
     Config.max_output_size = 0;
-    Config.queue_size = 131072;
+    Config.queue_size = 0;
 
     os_calloc(1, sizeof(wlabel_t), Config.labels);
 
@@ -116,15 +116,6 @@ int GlobalConf(const char *cfgfile)
     if (Config.max_output_size && (Config.max_output_size < 1000000 || Config.max_output_size > 1099511627776)) {
         merror("Maximum output size must be between 1 MiB and 1 TiB.");
         return (OS_INVALID);
-    }
-
-    if (Config.queue_size < 1) {
-        merror("Queue size is invalid. Review configuration.");
-        return OS_INVALID;
-    }
-
-    if (Config.queue_size > 262144) {
-        mwarn("Queue size is very high. The application may run out of memory.");
     }
 
     return (0);
@@ -162,7 +153,7 @@ cJSON *getGlobalConfig(void) {
         }
         OSMatch **wl;
         wl = Config.hostname_white_list;
-        while (*wl) {
+        while (wl && *wl) {
             char **tmp_pts = (*wl)->patterns;
             while (*tmp_pts) {
                 cJSON_AddItemToArray(ip_list,cJSON_CreateString(*tmp_pts));
@@ -325,17 +316,21 @@ cJSON *getRulesConfig(void) {
 
 cJSON *getManagerLabelsConfig(void) {
 
-    unsigned int i;
     cJSON *root = cJSON_CreateObject();
-    cJSON *labels = cJSON_CreateObject();
+    cJSON *labels = cJSON_CreateArray();
 
     if (Config.labels) {
-        for (i=0;Config.labels[i].key;i++) {
-            cJSON_AddStringToObject(labels,Config.labels[i].key,Config.labels[i].value);
+        unsigned int i;
+        for (i=0;Config.labels[i].key; i++) {
+            cJSON *label = cJSON_CreateObject();
+            cJSON_AddStringToObject(label, "value", Config.labels[i].value);
+            cJSON_AddStringToObject(label, "key", Config.labels[i].key);
+            cJSON_AddStringToObject(label, "hidden", Config.labels[i].flags.hidden ? "yes" : "no");
+            cJSON_AddItemToObject(labels, "", label);
         }
     }
 
-    cJSON_AddItemToObject(root,"labels",labels);
+    cJSON_AddItemToObject(root, "labels", labels);
 
     return root;
 }

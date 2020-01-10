@@ -2,7 +2,7 @@
  * Copyright (C) 2015 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -31,6 +31,8 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     char manager_name[512];
     char* out;
     int i;
+    char * saveptr;
+    struct tm tm_result = { .tm_sec = 0 };
 
     extern long int __crt_ftell;
 
@@ -94,8 +96,8 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->generated_rule->info) {
             cJSON_AddStringToObject(rule, "info", lf->generated_rule->info);
         }
-        if(lf->generated_rule->frequency){
-            cJSON_AddNumberToObject(rule, "frequency", lf->generated_rule->frequency);
+        if(lf->generated_rule->event_search){
+            cJSON_AddNumberToObject(rule, "frequency", lf->generated_rule->frequency + 2);
         }
         if(lf->r_firedtimes != -1 && !(lf->generated_rule->alert_opts & NO_COUNTER)) {
             cJSON_AddNumberToObject(rule, "firedtimes", lf->r_firedtimes);
@@ -163,6 +165,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON_AddItemToObject(root, "syscheck", file_diff);
         cJSON_AddStringToObject(file_diff, "path", lf->filename);
 
+        if (lf->sym_path && *lf->sym_path) {
+            cJSON_AddStringToObject(file_diff, "symbolic_path", lf->sym_path);
+        }
         if(lf->size_before) {
             if (strcmp(lf->size_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "size_before", lf->size_before);
@@ -289,12 +294,12 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         }
         if (lf->mtime_before) {
             char mtime[25];
-            strftime(mtime, 20, "%FT%T%z", localtime(&lf->mtime_before));
+            strftime(mtime, 20, "%FT%T%z", localtime_r(&lf->mtime_before, &tm_result));
             cJSON_AddStringToObject(file_diff, "mtime_before", mtime);
         }
         if (lf->mtime_after) {
             char mtime[25];
-            strftime(mtime, 20, "%FT%T%z", localtime(&lf->mtime_after));
+            strftime(mtime, 20, "%FT%T%z", localtime_r(&lf->mtime_after, &tm_result));
             cJSON_AddStringToObject(file_diff, "mtime_after", mtime);
         }
         if (lf->inode_before) {
@@ -315,10 +320,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                 char * tag;
                 char * aux_tags;
                 os_strdup(lf->sk_tag, aux_tags);
-                tag = strtok(aux_tags, ",");
+                tag = strtok_r(aux_tags, ",", &saveptr);
                 while (tag != NULL) {
                     cJSON_AddItemToArray(tags, cJSON_CreateString(tag));
-                    tag = strtok(NULL, ",");
+                    tag = strtok_r(NULL, ",", &saveptr);
                 }
                 free(aux_tags);
             }
@@ -367,6 +372,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
     if(lf->data)
         cJSON_AddStringToObject(data, "data", lf->data);
+    
+    if(lf->extra_data)
+        cJSON_AddStringToObject(data, "extra_data", lf->extra_data);
 
     if(lf->systemname)
         cJSON_AddStringToObject(data, "system_name", lf->systemname);

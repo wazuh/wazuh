@@ -2,14 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _MONITORD_H
-#define _MONITORD_H
+#ifndef MONITORD_H
+#define MONITORD_H
 
 #ifndef ARGV0
 #define ARGV0 "ossec-monitord"
@@ -18,6 +18,8 @@
 #include "config/reports-config.h"
 
 #define MAX_DAY_WAIT 600
+#define MONITORD_MSG_HEADER "1:" ARGV0 ":"
+#define AG_DISCON_MSG MONITORD_MSG_HEADER OS_AG_DISCON
 
 /* Prototypes */
 void Monitord(void) __attribute__((noreturn));
@@ -29,7 +31,7 @@ void OS_CompressLog(const char *logfile);
 void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations);
 int delete_old_agent(const char *agent_id);
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getMonitorInternalOptions(void);
 cJSON *getReportsOptions(void);
 size_t moncom_dispatch(char * command, char ** output);
@@ -39,4 +41,4 @@ void * moncom_main(__attribute__((unused)) void * arg);
 /* Global variables */
 extern monitor_config mond;
 
-#endif
+#endif /* MONITORD_H */

@@ -2,13 +2,14 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
 #include "shared.h"
+#include "os_net/os_net.h"
 #include "maild.h"
 #include "mail_list.h"
 
@@ -161,7 +162,26 @@ int main(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    if (mail.smtpserver[0] != '/') {
+    if (!mail.mn) {
+        minfo("Mail notifications are disabled. Exiting.");
+        exit(0);
+    }
+
+    if (!mail.smtpserver) {
+        merror_exit("SMTP server not set. Exiting.");
+    }
+    else if (mail.smtpserver[0] != '/') {
+
+        char * aux_smtp_server;
+        aux_smtp_server = mail.smtpserver;
+
+        mail.smtpserver = OS_GetHost(aux_smtp_server, 5);
+        if (!mail.smtpserver) {
+            merror_exit(INVALID_SMTP, aux_smtp_server);
+        }
+
+        free(aux_smtp_server);
+
         /* chroot */
         if (Privsep_Chroot(dir) < 0) {
             merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
@@ -205,7 +225,7 @@ static void OS_Run(MailConfig *mail)
     MailMsg *msg_sms = NULL;
 
     time_t tm;
-    struct tm *p;
+    struct tm tm_result = { .tm_sec = 0 };
 
     int i = 0;
     int mailtosend = 0;
@@ -218,8 +238,8 @@ static void OS_Run(MailConfig *mail)
 
     /* Get current time before starting */
     tm = time(NULL);
-    p = localtime(&tm);
-    thishour = p->tm_hour;
+    localtime_r(&tm, &tm_result);
+    thishour = tm_result.tm_hour;
 
     /* Initialize file queue */
     os_calloc(1, sizeof(file_queue), fileq);
@@ -227,7 +247,7 @@ static void OS_Run(MailConfig *mail)
     switch (mail->source) {
     case MAIL_SOURCE_LOGS:
         minfo("Getting alerts in log format.");
-        Init_FileQueue(fileq, p, CRALERT_MAIL_SET);
+        Init_FileQueue(fileq, &tm_result, CRALERT_MAIL_SET);
         break;
 
     case MAIL_SOURCE_JSON:
@@ -256,7 +276,7 @@ static void OS_Run(MailConfig *mail)
 
     while (1) {
         tm = time(NULL);
-        p = localtime(&tm);
+        localtime_r(&tm, &tm_result);
 
         /* SMS messages are sent without delay */
         if (msg_sms) {
@@ -269,7 +289,7 @@ static void OS_Run(MailConfig *mail)
                 sleep(30);
                 continue;
             } else if (pid == 0) {
-                if (OS_Sendsms(mail, p, msg_sms) < 0) {
+                if (OS_Sendsms(mail, &tm_result, msg_sms) < 0) {
                     merror(SNDMAIL_ERROR, mail->smtpserver);
                 }
 
@@ -287,13 +307,13 @@ static void OS_Run(MailConfig *mail)
         /* If mail_timeout == NEXTMAIL_TIMEOUT, we will try to get
          * more messages, before sending anything
          */
-        if ((mail_timeout == NEXTMAIL_TIMEOUT) && (p->tm_hour == thishour)) {
+        if ((mail_timeout == NEXTMAIL_TIMEOUT) && (tm_result.tm_hour == thishour)) {
             /* Get more messages */
         }
 
         /* Hour changed: send all suppressed mails */
         else if (((mailtosend < mail->maxperhour) && (mailtosend != 0)) ||
-                 ((p->tm_hour != thishour) && (childcount < MAXCHILDPROCESS))) {
+                 ((tm_result.tm_hour != thishour) && (childcount < MAXCHILDPROCESS))) {
             MailNode *mailmsg;
             pid_t pid;
 
@@ -310,7 +330,7 @@ static void OS_Run(MailConfig *mail)
                 sleep(30);
                 continue;
             } else if (pid == 0) {
-                if (OS_Sendmail(mail, p) < 0) {
+                if (OS_Sendmail(mail, &tm_result) < 0) {
                     merror(SNDMAIL_ERROR, mail->smtpserver);
                 }
 
@@ -347,8 +367,8 @@ static void OS_Run(MailConfig *mail)
 
 snd_check_hour:
             /* If we sent everything */
-            if (p->tm_hour != thishour) {
-                thishour = p->tm_hour;
+            if (tm_result.tm_hour != thishour) {
+                thishour = tm_result.tm_hour;
 
                 mailtosend = 0;
             }
@@ -375,7 +395,7 @@ snd_check_hour:
         }
 
         /* Receive message from queue */
-        if (msg = mail->source == MAIL_SOURCE_LOGS ? OS_RecvMailQ(fileq, p, mail, &msg_sms) : OS_RecvMailQ_JSON(fileq, mail, &msg_sms), msg) {
+        if (msg = mail->source == MAIL_SOURCE_LOGS ? OS_RecvMailQ(fileq, &tm_result, mail, &msg_sms) : OS_RecvMailQ_JSON(fileq, mail, &msg_sms), msg) {
             /* If the e-mail priority is do_not_group,
              * flush all previous entries and then send it.
              * Use s_msg to hold the pointer to the message while we flush it.
