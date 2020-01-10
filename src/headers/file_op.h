@@ -155,6 +155,6 @@ void w_file_cloexec(FILE * fp);
 void w_descriptor_cloexec(int fd);
 
 /* Return the content of a file */
-char * get_file_content(const char * path, int max_size);
+char * w_get_file_content(const char * path, int max_size);
 
 #endif /* FILE_OP_H */
