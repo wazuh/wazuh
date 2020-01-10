@@ -1,8 +1,21 @@
-#include <pthread.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include "fim_db.h"
+/**
+ * @file fim_db.c
+ * @author Alberto Marin
+ * @author Cristobal Lopez
+ * @brief Definition of FIM database library.
+ * @date 2020-1-10
+ *
+ * @copyright Copyright (c) 2019 Wazuh, Inc.
+ */
 
+/*
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#include "fim_db.h"
 static fdb_t fim_db;
 
 static const char *SQL_STMT[] = {
@@ -41,7 +54,7 @@ int fim_db_clean(void) {
 }
 
 
-int fim_db_init(const bool MEM) {
+int fim_db_init(void) {
     memset(&fim_db, 0, sizeof(fdb_t));
     fim_db.transaction.interval = COMMIT_INTERVAL;
     char * path = (MEM == true)? FIM_DB_MEM : FIM_DB_PATH;
@@ -54,8 +67,7 @@ int fim_db_init(const bool MEM) {
         return FIMDB_ERR;
     }
 
-    if (MEM == false &&
-        sqlite3_open_v2(path, &fim_db.db, SQLITE_OPEN_READWRITE, NULL)) {
+    if (sqlite3_open_v2(path, &fim_db.db, SQLITE_OPEN_READWRITE, NULL)) {
             return FIMDB_ERR;
     }
 
@@ -562,8 +574,7 @@ int fim_db_process_get_query(fdb_stmt query_id, const char * start, const char *
 
         fim_entry *entry = fim_decode_full_row(stmt);
         callback((void *) entry, arg);
-        
-        //fim_db_remove_inode(entry->data->inode, entry->data->dev);
+    
         free_entry(entry);
 
         if (end && !strcmp(end, path)) {
