@@ -1,27 +1,7 @@
-/**
- * @file fim_db.h
- * @author Alberto Marin
- * @author Cristobal Lopez
- * @brief FIM database library.
- * @date 2019-12-31
- *
- * @copyright Copyright (c) 2019 Wazuh, Inc.
- */
-
-/*
- * This program is a free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
- */
-#include "../headers/shared.h"
-#include "../wazuh_db/wdb.h"
-#include "../headers/os_utils.h"
-#include "../config/syscheck-config.h"
+#include "dependencies.h"
 
 #define FIM_DB_MEM ":memory:"
-#define FIM_DB_PATH DEFAULTDIR "/queue/db/fim/fim.db"
-#define COMMIT_INTERVAL 1
+#define FIM_DB_PATH "fim.db"
 
 #define FIMDB_OK   0 // Successful result.
 #define FIMDB_ERR -1 // Generic error.
@@ -45,6 +25,7 @@ typedef enum fdb_stmt {
     FIMDB_STMT_DELETE_PATH,
     FIMDB_STMT_GET_DATA_ROW,
     FIMDB_STMT_DELETE_DATA_ROW,
+    FIMDB_STMT_GET_HARDLINK_COUNT,
     FIMDB_STMT_DELETE_PATH_INODE,
     FIMDB_STMT_DISABLE_SCANNED,
     FIMDB_STMT_GET_UNIQUE_FILE,
@@ -70,7 +51,7 @@ typedef struct fdb_t {
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_init(void);
+int fim_db_init(const bool type);
 
 
 /**
@@ -185,9 +166,9 @@ int fim_db_set_all_unscanned(void);
 /**
  * @brief Delete all unescanned entries.
  *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ * Most be used as a callback function.
  */
-int fim_db_delete_unscanned(void);
+void fim_db_delete_unscanned(fim_entry *entry, void *arg);
 
 
 /**

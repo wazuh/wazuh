@@ -1,20 +1,6 @@
-/**
- * @file fim_db.c
- * @author Alberto Marin
- * @author Cristobal Lopez
- * @brief Definition of FIM database library.
- * @date 2019-12-31
- *
- * @copyright Copyright (c) 2019 Wazuh, Inc.
- */
-
-/*
- * This program is a free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
- */
-
+#include <pthread.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include "fim_db.h"
 
 static fdb_t fim_db;
@@ -34,11 +20,12 @@ static const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_PATH_COUNT] = "SELECT count(*), inode_id FROM entry_path WHERE path = ?;",
     [FIMDB_STMT_DELETE_DATA_ID] = "DELETE FROM entry_data WHERE rowid = ?;",
     [FIMDB_STMT_GET_DATA_ROW] = "SELECT rowid FROM entry_data WHERE inode = ? AND dev = ?;",
+    [FIMDB_STMT_GET_HARDLINK_COUNT] = "SELECT count(*) FROM entry_path WHERE inode_id = ?;",
     [FIMDB_STMT_DELETE_DATA_ROW] = "DELETE FROM entry_data WHERE rowid = ?;",
     [FIMDB_STMT_DELETE_PATH_INODE] = "DELETE FROM entry_path WHERE inode_id = ?;",
     [FIMDB_STMT_DELETE_PATH] = "DELETE FROM entry_path WHERE path = ?;",
-    [FIMDB_STMT_DISABLE_SCANNED] = "UPDATE entry_data SET scanned = 0;",
-    [FIMDB_STMT_GET_UNIQUE_FILE] = "SELECT path, inode_id, mode, last_event, entry_type, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM entry_path INNER JOIN entry_data ON inode = ? AND dev = ? AND entry_data.rowid = entry_path.inode_id AND entry_path.path = ?;"
+    [FIMDB_STMT_DISABLE_SCANNED] = "UPDATE entry_path SET scanned = 0;",
+    [FIMDB_STMT_GET_UNIQUE_FILE] = "SELECT path, inode_id, mode, last_event, entry_type, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM entry_path INNER JOIN entry_data ON inode = ? AND dev = ? AND entry_data.rowid = entry_path.inode_id AND entry_path.path = ?;",
 };
 
 static fim_entry *fim_decode_full_row(sqlite3_stmt *stmt);
@@ -54,20 +41,22 @@ int fim_db_clean(void) {
 }
 
 
-int fim_db_init(void) {
+int fim_db_init(const bool MEM) {
     memset(&fim_db, 0, sizeof(fdb_t));
     fim_db.transaction.interval = COMMIT_INTERVAL;
+    char * path = (MEM == true)? FIM_DB_MEM : FIM_DB_PATH;
 
-    if (fim_db_clean() < 0) {
+    if(fim_db_clean() < 0) {
         return FIMDB_ERR;
     }
 
-    if (wdb_create_file(FIM_DB_PATH, schema_fim_sql) < 0) {
+    if (wdb_create_file(path, schema_fim_sql, MEM, &fim_db.db) < 0) {
         return FIMDB_ERR;
     }
 
-    if (sqlite3_open_v2(FIM_DB_PATH, &fim_db.db, SQLITE_OPEN_READWRITE, NULL)) {
-        return FIMDB_ERR;
+    if (MEM == false &&
+        sqlite3_open_v2(path, &fim_db.db, SQLITE_OPEN_READWRITE, NULL)) {
+            return FIMDB_ERR;
     }
 
     if (fim_exec_simple_wquery("BEGIN;") == FIMDB_ERR) {
@@ -440,10 +429,49 @@ int fim_db_set_all_unscanned(void) {
 }
 
 
-int fim_db_delete_unscanned(void) {
-    int retval = fim_exec_simple_wquery(SQL_STMT[FIMDB_STMT_DELETE_UNSCANNED]);
-    fim_check_transaction();
-    return retval;
+void fim_db_delete_unscanned(fim_entry *entry, void *arg) {
+    sqlite3_stmt *stmt = fim_db_cache(FIMDB_STMT_GET_DATA_ROW);
+    if (!stmt) {
+        merror("fim_db_cache(): GET data row failed");
+        return;
+    }
+
+    sqlite3_bind_int(stmt, 1, entry->data->inode);
+    sqlite3_bind_int(stmt, 2, entry->data->dev);
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        merror("SQL ERROR: GET data row failed\n");
+        return;
+    }
+
+    int row  = sqlite3_column_int(stmt, 0);
+
+    //Hadlinks = More than one path sharing same inode object
+    stmt = fim_db_cache(FIMDB_STMT_GET_HARDLINK_COUNT);
+    if (!stmt) {
+        merror("fim_db_cache(): GET hardlink failed");
+        return;
+    }
+    
+    int count = 0;
+    sqlite3_bind_int(stmt, 1, row);
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        count = sqlite3_column_int(stmt, 0);
+    }else {
+        merror("SQL ERROR: GET hardlink failed\n");
+        return;
+    }
+
+    if (count == 1){ 
+        if (fim_db_remove_inode(entry->data->inode,entry->data->dev) != FIMDB_OK){
+            merror("fim_db_remove_inode(): Error deleting inode and path\n");
+        }
+    }
+
+    if (fim_db_remove_path(entry->path[0] == FIMDB_ERR) {
+        merror("fim_db_remove_path(): Error deleting only path");
+    }
+
+    return;
 }
 
 
@@ -534,6 +562,8 @@ int fim_db_process_get_query(fdb_stmt query_id, const char * start, const char *
 
         fim_entry *entry = fim_decode_full_row(stmt);
         callback((void *) entry, arg);
+        
+        //fim_db_remove_inode(entry->data->inode, entry->data->dev);
         free_entry(entry);
 
         if (end && !strcmp(end, path)) {
