@@ -137,7 +137,7 @@ def delete_users(usernames=None):
     :return: Result of the operation
     """
     f_kwargs = {'username_list': usernames}
-    dapi = DistributedAPI(f=security.delete_users,
+    dapi = DistributedAPI(f=security.remove_users,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

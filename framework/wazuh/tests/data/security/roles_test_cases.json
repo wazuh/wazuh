@@ -1,0 +1,198 @@
+{
+  "get_roles": [
+    {
+      "params": {
+        "role_ids": [
+          "1", "4"
+        ]
+      },
+      "result": {
+        "affected_items": [
+          "1", "4"
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "role_ids": [
+          "3", "5", "6", "9"
+        ]
+      },
+      "result": {
+        "affected_items": [
+          "3", "5", "6"
+        ],
+        "failed_items": {
+          "4002": [
+            "9"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "role_ids": []
+      },
+      "result": {
+        "affected_items": [
+          "1", "2", "3", "4", "5", "6"
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "role_ids": [
+          "10", "11", "12"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4002": [
+            "10", "11", "12"
+          ]
+        }
+      }
+    }
+  ],
+  "add_roles": [
+    {
+      "params": {
+        "name": "new_role",
+        "rule": {
+          "MATCH": {
+            "definition": "normalRule"
+          }
+        }
+      },
+      "result": {
+        "affected_items": [
+          "7"
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "name": "ossec",
+        "rule": {
+          "MATCH": {
+            "definition": "normalRule1"
+          }
+        }
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4002": [
+            "ossec"
+          ]
+        }
+      }
+    }
+  ],
+  "update_roles": [
+    {
+      "params": {
+        "role_id": ["6"],
+        "rule": {
+          "MATCH": {
+            "definition": "normalRule1"
+          }
+        }
+      },
+      "result": {
+        "affected_items": [
+          "6"
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "role_id": ["5"],
+        "rule": {
+          "MATCH": {
+            "definition": "normalRule1"
+          }
+        }
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4002": [
+            "5"
+          ]
+        }
+      }
+    }
+  ],
+  "delete_roles": [
+    {
+      "params": {
+        "role_ids": [
+          "1", "4"
+        ]
+      },
+      "result": {
+        "affected_items": [
+          "4"
+        ],
+        "failed_items": {
+          "4008": [
+            "1"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "role_ids": [
+          "3", "5", "6", "9"
+        ]
+      },
+      "result": {
+        "affected_items": [
+          "3", "5", "6"
+        ],
+        "failed_items": {
+          "4002": [
+            "9"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "role_ids": []
+      },
+      "result": {
+        "affected_items": [
+          "3", "4", "5", "6"
+        ],
+        "failed_items": {
+          "4008": [
+            "1", "2"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "role_ids": [
+          "10", "11", "12"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4002": [
+            "10", "11", "12"
+          ]
+        }
+      }
+    }
+  ]
+}

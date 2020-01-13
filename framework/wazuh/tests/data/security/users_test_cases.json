@@ -91,7 +91,23 @@
       "result": {
         "affected_items": [],
         "failed_items": {
-          "5000": ["new_user"]
+          "5000": [
+            "new_user"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "username": "new_user1",
+        "password": "wazuh1"
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "5007": [
+            "new_user1"
+          ]
         }
       }
     }
@@ -99,7 +115,7 @@
   "update_users": [
     {
       "params": {
-        "username": "new_user",
+        "username": ["new_user"],
         "password": "wazuh2A!"
       },
       "result": {
@@ -111,13 +127,29 @@
     },
     {
       "params": {
-        "username": "new_user1",
+        "username": ["new_user1"],
         "password": "wazuh3A!"
       },
       "result": {
         "affected_items": [],
         "failed_items": {
-          "5001": ["new_user1"]
+          "5001": [
+            "new_user1"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "username": ["new_user1"],
+        "password": "wazuh1"
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "5007": [
+            "new_user1"
+          ]
         }
       }
     }
