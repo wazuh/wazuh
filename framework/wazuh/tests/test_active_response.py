@@ -8,19 +8,20 @@ import sys
 from functools import wraps
 from unittest.mock import patch, MagicMock
 
-from wazuh.exception import WazuhError
-
 import pytest
 
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', '..', 'api'))
+from wazuh.core.tests.test_active_response import agent_config, agent_info
+from wazuh.exception import WazuhError
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
+        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
+        del sys.modules['api']
 
-        def RBAC_bypasser(**kwargs):
+        def RBAC_bypasser(**kwargs_decorator):
             def decorator(f):
                 @wraps(f)
                 def wrapper(*args, **kwargs):
@@ -32,24 +33,6 @@ with patch('wazuh.common.ossec_uid'):
 
 # All necessary params
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-
-
-# Functions
-
-def agent_info(expected_exception):
-    """Returns dict to cause or not a exception code 1651 on active_response.send_command()."""
-    if expected_exception == 1651:
-        return {'status': 'random'}
-    else:
-        return {'status': 'active'}
-
-
-def agent_config(expected_exception):
-    """Returns dict to cause or not an exception code 1750 on active_response.send_command()."""
-    if expected_exception == 1750:
-        return {'active-response': {'disabled': 'yes'}}
-    else:
-        return {'active-response': {'disabled': 'no'}}
 
 
 # Tests
@@ -69,7 +52,7 @@ def agent_config(expected_exception):
 @patch("wazuh.syscheck.OssecQueue._send", return_value='1')
 @patch("wazuh.ossec_queue.OssecQueue.close")
 @patch('wazuh.common.ossec_path', new='wazuh/tests/data')
-def test_run_command(mock_conn,  mock_send, mock_close, message_exception, send_exception, agent_id, command,
+def test_run_command(mock_close,  mock_send, mock_conn, message_exception, send_exception, agent_id, command,
                      arguments, custom):
     """Verify the proper operation of active_response module.
 
