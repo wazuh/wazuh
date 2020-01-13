@@ -53,6 +53,7 @@ add_roles_rule = [test_case['params']['rule'] for test_case in file['add_roles']
 add_roles_expected_result = [test_case['result'] for test_case in file['add_roles']]
 
 update_roles_id = [test_case['params']['role_id'] for test_case in file['update_roles']]
+update_roles_name = [test_case['params']['name'] for test_case in file['update_roles']]
 update_roles_rule = [test_case['params']['rule'] for test_case in file['update_roles']]
 update_roles_expected_result = [test_case['result'] for test_case in file['update_roles']]
 
@@ -161,13 +162,13 @@ def test_add_roles(db_setup, name, rule, expected_result):
     assert are_equal(result.to_dict(), expected_result, key_result='id')
 
 
-@pytest.mark.parametrize('id_, rule, expected_result', zip(update_roles_id, update_roles_rule,
-                                                          update_roles_expected_result))
+@pytest.mark.parametrize('id_, name, rule, expected_result', zip(update_roles_id, update_roles_name, update_roles_rule,
+                                                                 update_roles_expected_result))
 @patch('wazuh.security.orm._engine', create_engine(f'sqlite://'))
 @patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://')))
-def test_update_roles(db_setup, id_, rule, expected_result):
+def test_update_roles(db_setup, id_, name, rule, expected_result):
     db_setup(security.orm._Session())
-    result = security.update_role(role_id=id_, rule=rule)
+    result = security.update_role(role_id=id_, name=name, rule=rule)
     assert are_equal(result.to_dict(), expected_result, key_result='id')
 
 

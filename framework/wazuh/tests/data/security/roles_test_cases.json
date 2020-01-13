@@ -91,12 +91,31 @@
           ]
         }
       }
+    },
+    {
+      "params": {
+        "name": "wazuh",
+        "rule": {
+          "MATCH": {
+            "definition": "wazuh"
+          }
+        }
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4008": [
+            "1"
+          ]
+        }
+      }
     }
   ],
   "update_roles": [
     {
       "params": {
         "role_id": ["6"],
+        "name": "ossec",
         "rule": {
           "MATCH": {
             "definition": "normalRule1"
@@ -113,6 +132,7 @@
     {
       "params": {
         "role_id": ["5"],
+        "name": "normalUser",
         "rule": {
           "MATCH": {
             "definition": "normalRule1"
@@ -124,6 +144,44 @@
         "failed_items": {
           "4002": [
             "5"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "role_id": ["5"],
+        "name": "normalUser",
+        "rule": {
+          "MATCH": {
+            "definition": "normalRule"
+          }
+        }
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4005": [
+            "5"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "role_id": ["1"],
+        "name": "wazuhh",
+        "rule": {
+          "MATCH": {
+            "definition": "wazuhh"
+          }
+        }
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4008": [
+            "1"
           ]
         }
       }
