@@ -3,22 +3,23 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import os
-import re
-import sqlite3
 import sys
 from functools import wraps
 from sqlite3 import connect
 from unittest.mock import patch, MagicMock
-from wazuh.tests.util import InitWDBSocketMock
 
 import pytest
 
+from wazuh.tests.util import InitWDBSocketMock
+
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
+        sys.modules['api'] = MagicMock()
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
         del sys.modules['wazuh.rbac.orm']
+        del sys.modules['api']
 
         def RBAC_bypasser(**kwargs):
             def decorator(f):
@@ -76,6 +77,17 @@ test_result = [
 @patch('wazuh.syscheck.OssecQueue.send_msg_to_agent', side_effect=set_callable_list)
 @patch('wazuh.syscheck.OssecQueue.close')
 def test_syscheck_run(close_mock, send_mock, connect_mock, agent_list, status_list, expected_result):
+    """Test function `run` from syscheck module.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent IDs.
+    status_list : list
+        List of agent statuses.
+    expected_result : list
+        List of dicts with expected results for every test.
+    """
     with patch('wazuh.syscheck.Agent.get_basic_information', side_effect=status_list):
         result = run(agent_list=agent_list)
         for args, kwargs in callable_list:
@@ -96,6 +108,19 @@ def test_syscheck_run(close_mock, send_mock, connect_mock, agent_list, status_li
 ])
 @patch('wazuh.syscheck.OssecQueue', side_effect=WazuhError(1000))
 def test_syscheck_run_exception(ossec_queue_mock, agent_list, status_list, expected_result):
+    """Test function `run` from syscheck module.
+
+    It will force an exception.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent IDs.
+    status_list : list
+        List of agent statuses.
+    expected_result : list
+        List of dicts with expected results for every test.
+    """
     with patch('wazuh.syscheck.Agent.get_basic_information', return_value=status_list):
         result = run(agent_list=agent_list)
         assert isinstance(result, AffectedItemsWazuhResult)
@@ -113,6 +138,17 @@ def test_syscheck_run_exception(ossec_queue_mock, agent_list, status_list, expec
 @patch('wazuh.wdb.WazuhDBConnection.__init__', return_value=None)
 @patch('wazuh.wdb.WazuhDBConnection.execute', return_value=None)
 def test_syscheck_clear(wdb_execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
+    """Test function `clear` from syscheck module.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent IDs.
+    expected_result : list
+        List of dicts with expected results for every test.
+    agent_info_list : list
+        List of agent IDs that `syscheck.get_agents_info` will return when mocked.
+    """
     with patch('wazuh.syscheck.get_agents_info', return_value=agent_info_list):
         result = clear(agent_list=agent_list)
         assert isinstance(result, AffectedItemsWazuhResult)
@@ -131,6 +167,19 @@ def test_syscheck_clear(wdb_execute_mock, wdb_init_mock, agent_list, expected_re
 @patch('wazuh.wdb.WazuhDBConnection.__init__', return_value=None)
 @patch('wazuh.wdb.WazuhDBConnection.execute', side_effect=WazuhError(1000))
 def test_syscheck_clear_exception(execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
+    """Test function `clear` from syscheck module.
+
+    It will force an exception.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent IDs.
+    expected_result : list
+        List of dicts with expected results for every test.
+    agent_info_list : list
+        List of agent IDs that `syscheck.get_agents_info` will return when mocked.
+    """
     with patch('wazuh.syscheck.get_agents_info', return_value=agent_info_list):
         result = clear(agent_list=agent_list)
         assert isinstance(result, AffectedItemsWazuhResult)
@@ -153,6 +202,15 @@ def test_syscheck_clear_exception(execute_mock, wdb_init_mock, agent_list, expec
 @patch("wazuh.syscheck.WazuhDBConnection.execute", return_value=[{'end': '', 'start': ''}])
 @patch('socket.socket.connect')
 def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock,  db_mock, agent_id, wazuh_version):
+    """Test function `last_scan` from syscheck module.
+
+    Parameters
+    ----------
+    agent_id : list
+        Agent ID.
+    wazuh_version : dict
+        Dict with the Wazuh version to be applied.
+    """
     with patch('wazuh.syscheck.Agent.get_basic_information', return_value=wazuh_version):
         with patch('wazuh.syscheck.glob',
                    return_value=[os.path.join(common.database_path_agents, '{}.db'.format(agent_id[0]))]):
@@ -167,6 +225,20 @@ def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock,  db_mock, 
 ])
 @patch('wazuh.syscheck.glob', return_value=None)
 def test_syscheck_last_scan_internal_error(glob_mock, version):
+    """Test function `last_scan` from syscheck module.
+
+    It will expect a WazuhInternalError.
+
+    Parameters
+    ----------
+    version : dict
+        Dict with the Wazuh version to be applied.
+
+    Raises
+    ------
+    WazuhInternalError
+        Raised when there is not a valid database file.
+    """
     with patch('wazuh.syscheck.Agent.get_basic_information', return_value=version):
         with pytest.raises(WazuhInternalError):
             last_scan(['001'])
@@ -182,6 +254,17 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
 @patch('socket.socket.connect')
 @patch('wazuh.common.wdb_path', new=test_data_path)
 def test_syscheck_files(socket_mock, agent_id, select, filters):
+    """Test function `files` from syscheck module.
+
+    Parameters
+    ----------
+    agent_id : list
+        Agent ID.
+    select :
+        List of parameters to show from the query.
+    filters : dict
+        Dict to filter out the result.
+    """
     select_list = ['date', 'mtime', 'file', 'size', 'perm', 'uname', 'gname', 'md5', 'sha1', 'sha256', 'inode', 'gid', 'uid', 'type', 'changes', 'attributes']
     with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscheck_test.sql')
