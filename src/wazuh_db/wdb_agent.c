@@ -438,7 +438,7 @@ int wdb_find_agent(const char *name, const char *ip) {
 
     sqlite3_bind_text(stmt, 1, name, -1, NULL);
     sqlite3_bind_text(stmt, 2, ip, -1, NULL);
-    
+
     if (result = wdb_step(stmt), result == SQLITE_ROW) {
         result = sqlite3_column_int(stmt, 0);
     } else if (result == SQLITE_DONE) {
