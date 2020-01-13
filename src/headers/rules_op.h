@@ -15,31 +15,49 @@
 
 #include "shared.h"
 
-/* Event context - stored in a uint8 */
-#define SAME_USER           0x001 /* 1   */
-#define SAME_SRCIP          0x002 /* 2   */
-#define SAME_ID             0x004 /* 4   */
-#define SAME_LOCATION       0x008 /* 8   */
-#define SAME_URL            0x010
-#define DIFFERENT_SRCIP     0x200
-#define DIFFERENT_SRCGEOIP  0x400
-#define SAME_SRCPORT        0x020
-#define SAME_DSTPORT        0x040
-#define SAME_DODIFF         0x100
-#define SAME_FIELD          0x200
-#define NOT_SAME_FIELD      0x400
-#define SAME_DSTIP          0x2000
-#define SAME_AGENT          0x4000
-#define NOT_SAME_USER       0xffe /* 0xfff - 0x001 */
-#define NOT_SAME_SRCIP      0xffd /* 0xfff - 0x002 */
-#define NOT_SAME_ID         0xffb /* 0xfff - 0x004 */
-#define NOT_SAME_AGENT      0xff7 /* 0xfff - 0x008 */
-#define DIFFERENT_URL       0xfef /* 0xfff - 0x010 */
-#define DIFFERENT_DSTIP     0xfdf /* 0xfff - 0x020 */ 
-#define DIFFERENT_SRCPORT   0xfbf /* 0xfff - 0x040 */
-#define DIFFERENT_DSTPORT   0xf7f /* 0xfff - 0x080 */
-#define DIFFERENT_LOCATION  0xeff /* 0xfff - 0x100 */
-#define GLOBAL_FREQUENCY    0x1000
+typedef struct _StaticFilters
+{
+    unsigned int same_dodiff:1;
+    unsigned int global_frequency:1;
+    unsigned int same_srcuser:1;
+    unsigned int different_srcuser:1;
+    unsigned int same_dstuser:1;
+    unsigned int different_dstuser:1;
+    unsigned int same_srcip:1;
+    unsigned int different_srcip:1;
+    unsigned int same_dstip:1;
+    unsigned int different_dstip:1;
+    unsigned int same_srcport:1;
+    unsigned int different_srcport:1;
+    unsigned int same_dstport:1;
+    unsigned int different_dstport:1;
+    unsigned int same_protocol:1;
+    unsigned int different_protocol:1;
+    unsigned int same_action:1;
+    unsigned int different_action:1;
+    unsigned int same_id:1;
+    unsigned int different_id:1;
+    unsigned int same_url:1;
+    unsigned int different_url:1;
+    unsigned int same_data:1;
+    unsigned int different_data:1;
+    unsigned int same_extra_data:1;
+    unsigned int different_extra_data:1;
+    unsigned int same_status:1;
+    unsigned int different_status:1;
+    unsigned int same_system_name:1;
+    unsigned int different_system_name:1;
+    unsigned int same_srcgeoip:1;
+    unsigned int different_srcgeoip:1;
+    unsigned int same_dstgeoip:1;
+    unsigned int different_dstgeoip:1;
+    unsigned int same_location:1;
+    unsigned int different_location:1;
+    unsigned int same_field:1;
+    unsigned int different_field:1;
+    unsigned int same_agent:1;
+    unsigned int different_agent:1;
+} StaticFilters;
 
 /* Alert options - stored in a uint8 */
 #define DO_FTS          0x0001
@@ -96,7 +114,7 @@ typedef struct _RuleInfo {
     u_int16_t alert_opts;
 
     /* Context options */
-    u_int16_t context_opts;
+    StaticFilters context_opts;
 
     /* Category */
     u_int8_t category;

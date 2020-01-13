@@ -118,6 +118,7 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_same_source_ip = "same_source_ip";
     const char *xml_same_src_port = "same_src_port";
     const char *xml_same_dst_port = "same_dst_port";
+    const char *xml_same_srcuser = "same_srcuser";
     const char *xml_same_user = "same_user";
     const char *xml_same_location = "same_location";
     const char *xml_same_id = "same_id";
@@ -127,19 +128,33 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_same_agent = "same_agent";
     const char *xml_same_url = "same_url";
     const char *xml_same_srcgeoip = "same_srcgeoip";
+    const char *xml_same_protocol = "same_protocol";
+    const char *xml_same_action = "same_action";
+    const char *xml_same_data = "same_data";
+    const char *xml_same_extra_data = "same_extra_data";
+    const char *xml_same_status = "same_status";
+    const char *xml_same_system_name = "same_system_name";
+    const char *xml_same_dstgeoip = "same_dstgeoip";
 
     const char *xml_different_url = "different_url";
-    const char *xml_different_srcip = "different_srcip";
+    const char *xml_different_srcip = "different_source_ip";
     const char *xml_different_srcgeoip = "different_srcgeoip";
     const char *xml_different_destination_ip = "different_destination_ip";
     const char *xml_different_src_port = "different_src_port";
     const char *xml_different_dst_port = "different_dst_port";
     const char *xml_different_location = "different_location";
+    const char *xml_different_protocol = "different_protocol";
+    const char *xml_different_action = "different_action";
+    const char *xml_different_srcuser = "different_srcuser";
+    const char *xml_different_user = "different_user";
+    const char *xml_different_id = "different_id";
+    const char *xml_different_data = "different_data";
+    const char *xml_different_extra_data = "different_extra_data";
+    const char *xml_different_status = "different_status";
+    const char *xml_different_system_name = "different_system_name";
+    const char *xml_different_dstgeoip = "different_dstgeoip";
+    const char *xml_different_agent = "different_agent";
 
-    const char *xml_notsame_source_ip = "not_same_source_ip";
-    const char *xml_notsame_user = "not_same_user";
-    const char *xml_notsame_agent = "not_same_agent";
-    const char *xml_notsame_id = "not_same_id";
     const char *xml_notsame_field = "not_same_field";
     const char *xml_global_frequency = "global_frequency";
 
@@ -897,103 +912,150 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_source_ip) == 0) {
-                        config_ruleinfo->context_opts |= SAME_SRCIP;
+                        config_ruleinfo->context_opts.same_srcip = 1;
+                    } else if (strcasecmp(rule_opt[k]->element,
+                                          xml_same_destination_ip) == 0) {
+                        config_ruleinfo->context_opts.same_dstip = 1;
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_src_port) == 0) {
-                        config_ruleinfo->context_opts |= SAME_SRCPORT;
+                        config_ruleinfo->context_opts.same_srcport = 1;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
-                        }
-                    } else if (strcasecmp(rule_opt[k]->element,
-                                          xml_different_src_port) == 0) {
-                        config_ruleinfo->context_opts &= DIFFERENT_SRCPORT;
-                    } else if (strcasecmp(rule_opt[k]->element,
-                                          xml_dodiff) == 0) {
-                        config_ruleinfo->context = 1;
-                        config_ruleinfo->context_opts |= SAME_DODIFF;
-                        if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
-                            config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_dst_port) == 0) {
-                        config_ruleinfo->context_opts |= SAME_DSTPORT;
+                        config_ruleinfo->context_opts.same_dstport = 1;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
-                                          xml_different_dst_port) == 0) {
-                        config_ruleinfo->context_opts &= DIFFERENT_DSTPORT;
+                                          xml_same_protocol) == 0) {
+                        config_ruleinfo->context_opts.same_protocol = 1;
                     } else if (strcasecmp(rule_opt[k]->element,
-                                          xml_notsame_source_ip) == 0) {
-                        config_ruleinfo->context_opts &= NOT_SAME_SRCIP;
+                                          xml_same_action) == 0) {
+                        config_ruleinfo->context_opts.same_action = 1;
                     } else if (strcmp(rule_opt[k]->element, xml_same_id) == 0) {
-                        config_ruleinfo->context_opts |= SAME_ID;
+                        config_ruleinfo->context_opts.same_id = 1;
                     } else if (strcmp(rule_opt[k]->element,
                                           xml_same_url) == 0) {
-                        config_ruleinfo->context_opts |= SAME_URL;
+                        config_ruleinfo->context_opts.same_url = 1;
                     } else if (strcmp(rule_opt[k]->element,
-                                      xml_different_url) == 0) {
-                        config_ruleinfo->context_opts &= DIFFERENT_URL;
-                    } else if(strcmp(rule_opt[k]->element,
-                                   xml_different_srcip) == 0) {
-                        config_ruleinfo->context_opts|= DIFFERENT_SRCIP;
-
-                        if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
-                            config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
+                                          xml_same_data) == 0) {
+                        config_ruleinfo->context_opts.same_data = 1;
+                    } else if (strcmp(rule_opt[k]->element,
+                                          xml_same_extra_data) == 0) {
+                        config_ruleinfo->context_opts.same_extra_data = 1;
+                    } else if (strcmp(rule_opt[k]->element,
+                                          xml_same_status) == 0) {
+                        config_ruleinfo->context_opts.same_status = 1;
+                    } else if (strcmp(rule_opt[k]->element,
+                                          xml_same_system_name) == 0) {
+                        config_ruleinfo->context_opts.same_system_name = 1;
                     } else if(strcmp(rule_opt[k]->element,
                                    xml_same_srcgeoip) == 0) {
-                        config_ruleinfo->context_opts &= SAME_SRCGEOIP;
+                        config_ruleinfo->context_opts.same_srcgeoip = 1;
                     } else if(strcmp(rule_opt[k]->element,
-                                   xml_different_srcgeoip) == 0) {
-                        config_ruleinfo->context_opts|= DIFFERENT_SRCGEOIP;
-
-                        if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
-                            config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
-                    } else if (strcmp(rule_opt[k]->element, xml_notsame_id) == 0) {
-                        config_ruleinfo->context_opts &= NOT_SAME_ID;
-                    } else if (strcasecmp(rule_opt[k]->element,
-                                          xml_fts) == 0) {
-                        config_ruleinfo->alert_opts |= DO_FTS;
-                    } else if (strcasecmp(rule_opt[k]->element,
-                                          xml_same_user) == 0) {
-                        config_ruleinfo->context_opts |= SAME_USER;
-
-                        if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
-                            config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
-                        }
-                    } else if (strcasecmp(rule_opt[k]->element,
-                                          xml_notsame_user) == 0) {
-                        config_ruleinfo->context_opts &= NOT_SAME_USER;
+                                   xml_same_dstgeoip) == 0) {
+                        config_ruleinfo->context_opts.same_dstgeoip = 1;
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_location) == 0) {
-                        config_ruleinfo->context_opts |= SAME_LOCATION;
+                        config_ruleinfo->context_opts.same_location = 1;
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_agent) == 0) {
-                        config_ruleinfo->context_opts |= SAME_AGENT;
+                        config_ruleinfo->context_opts.same_agent = 1;
                     } else if (strcasecmp(rule_opt[k]->element,
-                                          xml_notsame_agent) == 0) {
-                        config_ruleinfo->context_opts &= NOT_SAME_AGENT;
+                                          xml_same_srcuser) == 0) {
+                        config_ruleinfo->context_opts.same_srcuser = 1;
                     } else if (strcasecmp(rule_opt[k]->element,
-                                          xml_same_destination_ip) == 0) {
-                        config_ruleinfo->context_opts |= SAME_DSTIP;
+                                          xml_same_user) == 0) {
+                        config_ruleinfo->context_opts.same_dstuser = 1;
+
+                        if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
+                            config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
+                        }
+                    } else if (strcasecmp(rule_opt[k]->element,
+                                          xml_dodiff) == 0) {
+                        config_ruleinfo->context = 1;
+                        config_ruleinfo->context_opts.same_dodiff = 1;
+                        if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
+                            config_ruleinfo->alert_opts |= DO_EXTRAINFO;
+                        }
+                    } else if(strcmp(rule_opt[k]->element,
+                                   xml_different_srcip) == 0) {
+                        config_ruleinfo->context_opts.different_srcip = 1;
+
+                        if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
+                            config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
+                        }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_destination_ip) == 0) {
-                        config_ruleinfo->context_opts &= DIFFERENT_DSTIP;
+                        config_ruleinfo->context_opts.different_dstip = 1;
+                    } else if (strcasecmp(rule_opt[k]->element,
+                                          xml_different_src_port) == 0) {
+                        config_ruleinfo->context_opts.different_srcport = 1;
+                    } else if (strcasecmp(rule_opt[k]->element,
+                                          xml_different_dst_port) == 0) {
+                        config_ruleinfo->context_opts.different_dstport = 1;
+                    } else if (strcmp(rule_opt[k]->element,
+                                      xml_different_protocol) == 0) {
+                        config_ruleinfo->context_opts.different_protocol = 1;
+                    } else if (strcmp(rule_opt[k]->element,
+                                      xml_different_action) == 0) {
+                        config_ruleinfo->context_opts.different_action = 1;
+                    } else if (strcmp(rule_opt[k]->element, xml_different_id) == 0) {
+                        config_ruleinfo->context_opts.different_id = 1;
+                    } else if (strcmp(rule_opt[k]->element,
+                                      xml_different_url) == 0) {
+                        config_ruleinfo->context_opts.different_url = 1;
+                    } else if (strcmp(rule_opt[k]->element,
+                                      xml_different_data) == 0) {
+                        config_ruleinfo->context_opts.different_data = 1;
+                    } else if (strcmp(rule_opt[k]->element,
+                                      xml_different_extra_data) == 0) {
+                        config_ruleinfo->context_opts.different_extra_data = 1;
+                    } else if (strcmp(rule_opt[k]->element,
+                                      xml_different_status) == 0) {
+                        config_ruleinfo->context_opts.different_status = 1;
+                    } else if (strcmp(rule_opt[k]->element,
+                                      xml_different_system_name) == 0) {
+                        config_ruleinfo->context_opts.different_system_name = 1;
+                    } else if(strcmp(rule_opt[k]->element,
+                                   xml_different_srcgeoip) == 0) {
+                        config_ruleinfo->context_opts.different_srcgeoip = 1;
+
+                        if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
+                            config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
+                        }
+                    } else if (strcmp(rule_opt[k]->element,
+                                      xml_different_dstgeoip) == 0) {
+                        config_ruleinfo->context_opts.different_dstgeoip = 1;
+                    } else if (strcasecmp(rule_opt[k]->element,
+                                          xml_fts) == 0) {
+                        config_ruleinfo->alert_opts |= DO_FTS;
+                    } else if (strcasecmp(rule_opt[k]->element,
+                                          xml_different_srcuser) == 0) {
+                        config_ruleinfo->context_opts.different_srcuser = 1;
+                    } else if (strcasecmp(rule_opt[k]->element,
+                                          xml_different_user) == 0) {
+                        config_ruleinfo->context_opts.different_dstuser = 1;
+                    } else if (strcasecmp(rule_opt[k]->element,
+                                          xml_different_agent) == 0) {
+                        config_ruleinfo->context_opts.different_agent = 1;
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_location) == 0) {
-                        config_ruleinfo->context_opts &= DIFFERENT_LOCATION;    
+                        config_ruleinfo->context_opts.different_location = 1;    
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_global_frequency) == 0) {
-                        config_ruleinfo->context_opts |= GLOBAL_FREQUENCY;
+                        config_ruleinfo->context_opts.global_frequency = 1;
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_field) == 0) {
 
-                        if (config_ruleinfo->context_opts & SAME_FIELD) {
+                        if (config_ruleinfo->context_opts.same_field) {
 
                             int size;
                             for (size = 0; config_ruleinfo->same_fields[size] != NULL; size++);
@@ -1004,7 +1066,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         } else {
 
-                            config_ruleinfo->context_opts |= SAME_FIELD;
+                            config_ruleinfo->context_opts.same_field = 1;
                             os_calloc(2, sizeof(char *), config_ruleinfo->same_fields);
                             os_strdup(rule_opt[k]->content, config_ruleinfo->same_fields[0]);
                             config_ruleinfo->same_fields[1] = NULL;
@@ -1014,7 +1076,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_notsame_field) == 0) {
 
-                        if (config_ruleinfo->context_opts & NOT_SAME_FIELD) {
+                        if (config_ruleinfo->context_opts.different_field) {
                             int size;
                             for (size = 0; config_ruleinfo->not_same_fields[size] != NULL; size++);
 
@@ -1024,7 +1086,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         } else {
 
-                            config_ruleinfo->context_opts |= NOT_SAME_FIELD;
+                            config_ruleinfo->context_opts.different_field = 1;
                             os_calloc(2, sizeof(char *), config_ruleinfo->not_same_fields);
                             os_strdup(rule_opt[k]->content, config_ruleinfo->not_same_fields[0]);
                             config_ruleinfo->not_same_fields[1] = NULL;
@@ -1181,8 +1243,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                 }
 
                 /* Check for valid use of frequency */
-                if ((config_ruleinfo->context_opts ||
-                        config_ruleinfo->frequency) &&
+                if ((config_ruleinfo->frequency) &&
                         !config_ruleinfo->context) {
                     merror("Invalid use of frequency/context options. "
                            "Missing if_matched on rule '%d'.",
@@ -1500,8 +1561,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                 config_ruleinfo->event_search = (void *(*)(void *, void *, void *))
                     Search_LastGroups;
             } else if (config_ruleinfo->context) {
-                if ((config_ruleinfo->context == 1) &&
-                        (config_ruleinfo->context_opts & SAME_DODIFF)) {
+                if (config_ruleinfo->context == 1 &&
+                        (config_ruleinfo->context_opts.same_dodiff)) {
                     config_ruleinfo->context = 0;
                 } else {
                     config_ruleinfo->event_search = (void *(*)(void *, void *, void *))
@@ -1669,7 +1730,6 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->timeframe = timeframe;
     ruleinfo_pt->time_ignored = 0;
 
-    ruleinfo_pt->context_opts = 0;
     ruleinfo_pt->alert_opts = 0;
     ruleinfo_pt->ignore = 0;
     ruleinfo_pt->ckignore = 0;
