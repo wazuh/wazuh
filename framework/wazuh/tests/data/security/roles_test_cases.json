@@ -32,17 +32,6 @@
     },
     {
       "params": {
-        "role_ids": []
-      },
-      "result": {
-        "affected_items": [
-          "1", "2", "3", "4", "5", "6"
-        ],
-        "failed_items": {}
-      }
-    },
-    {
-      "params": {
         "role_ids": [
           "10", "11", "12"
         ]
@@ -63,7 +52,7 @@
         "name": "new_role",
         "rule": {
           "MATCH": {
-            "definition": "normalRule"
+            "definition": "normalRule1"
           }
         }
       },
@@ -86,7 +75,7 @@
       "result": {
         "affected_items": [],
         "failed_items": {
-          "4002": [
+          "4005": [
             "ossec"
           ]
         }
@@ -104,8 +93,8 @@
       "result": {
         "affected_items": [],
         "failed_items": {
-          "4008": [
-            "1"
+          "4005": [
+            "wazuh"
           ]
         }
       }
@@ -115,10 +104,10 @@
     {
       "params": {
         "role_id": ["6"],
-        "name": "ossec",
+        "name": "ossec1",
         "rule": {
           "MATCH": {
-            "definition": "normalRule1"
+            "definition": "normalRule3"
           }
         }
       },
@@ -131,11 +120,11 @@
     },
     {
       "params": {
-        "role_id": ["5"],
-        "name": "normalUser",
+        "role_id": ["89"],
+        "name": "normalUserw",
         "rule": {
           "MATCH": {
-            "definition": "normalRule1"
+            "definition": "normalRuleq1"
           }
         }
       },
@@ -143,7 +132,7 @@
         "affected_items": [],
         "failed_items": {
           "4002": [
-            "5"
+            "89"
           ]
         }
       }
@@ -218,21 +207,6 @@
         "failed_items": {
           "4002": [
             "9"
-          ]
-        }
-      }
-    },
-    {
-      "params": {
-        "role_ids": []
-      },
-      "result": {
-        "affected_items": [
-          "3", "4", "5", "6"
-        ],
-        "failed_items": {
-          "4008": [
-            "1", "2"
           ]
         }
       }

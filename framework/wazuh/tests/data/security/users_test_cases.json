@@ -45,17 +45,6 @@
     },
     {
       "params": {
-        "username_list": []
-      },
-      "result": {
-        "affected_items": [
-          "administrator", "guest", "normal", "ossec", "python", "rbac", "wazuh", "wazuh-wui"
-        ],
-        "failed_items": {}
-      }
-    },
-    {
-      "params": {
         "username_list": [
           "n", "m", "l"
         ]
@@ -115,12 +104,12 @@
   "update_users": [
     {
       "params": {
-        "username": ["new_user"],
+        "username": ["ossec"],
         "password": "wazuh2A!"
       },
       "result": {
         "affected_items": [
-          "new_user"
+          "ossec"
         ],
         "failed_items": {}
       }

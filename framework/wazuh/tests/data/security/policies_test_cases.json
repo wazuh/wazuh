@@ -1,0 +1,260 @@
+{
+  "get_policies": [
+    {
+      "params": {
+        "policy_ids": [
+          "1", "4"
+        ]
+      },
+      "result": {
+        "affected_items": [
+          "1", "4"
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "policy_ids": [
+          "3", "5", "6", "11"
+        ]
+      },
+      "result": {
+        "affected_items": [
+          "3", "5", "6"
+        ],
+        "failed_items": {
+          "4007": [
+            "11"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "policy_ids": [
+          "11", "12", "13"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4007": [
+            "11", "12", "13"
+          ]
+        }
+      }
+    }
+  ],
+  "add_policies": [
+    {
+      "params": {
+        "name": "new_policy",
+        "policy": {
+          "actions": [
+              "agent:delete"
+            ],
+            "effect": "allow",
+            "resources": [
+              "agent:id:099"
+            ]
+        }
+      },
+      "result": {
+        "affected_items": [
+          "11"
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "name": "ossecPolicy",
+        "policy": {
+          "actions": [
+              "agent:delete"
+            ],
+            "effect": "allow",
+            "resources": [
+              "agent:id:098"
+            ]
+        }
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4009": [
+            "ossecPolicy"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "name": "wazuhPolicy",
+        "policy": {
+          "actions": [
+              "agent:delete"
+            ],
+            "effect": "allow",
+            "resources": [
+              "agent:id:097"
+            ]
+        }
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4009": [
+            "wazuhPolicy"
+          ]
+        }
+      }
+    }
+  ],
+  "update_policies": [
+    {
+      "params": {
+        "policy_id": ["6"],
+        "name": "ossecPolicy1",
+        "policy": {
+          "actions": [
+              "agent:delete"
+            ],
+            "effect": "allow",
+            "resources": [
+              "agent:id:097"
+            ]
+        }
+      },
+      "result": {
+        "affected_items": [
+          "6"
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "policy_id": ["25"],
+        "name": "normalPolicy2",
+        "policy": {
+          "actions": [
+              "agent:delete"
+            ],
+            "effect": "allow",
+            "resources": [
+              "agent:id:098"
+            ]
+        }
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4007": [
+            "25"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "policy_id": ["4"],
+        "name": "administratorPolicy",
+        "policy": {
+          "actions": [
+              "agent:delete"
+            ],
+            "effect": "allow",
+            "resources": [
+              "agent:id:097"
+            ]
+        }
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4013": [
+            "4"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "policy_id": ["1"],
+        "name": "wazuhPolicy",
+        "policy": {
+          "actions": [
+              "agent:delete"
+            ],
+            "effect": "allow",
+            "resources": [
+              "agent:id:099"
+            ]
+        }
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4008": [
+            "1"
+          ]
+        }
+      }
+    }
+  ],
+  "delete_policies": [
+    {
+      "params": {
+        "policy_ids": [
+          "1", "4"
+        ]
+      },
+      "result": {
+        "affected_items": [
+          "4"
+        ],
+        "failed_items": {
+          "4008": [
+            "1"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "policy_ids": [
+          "3", "5", "6", "13"
+        ]
+      },
+      "result": {
+        "affected_items": [
+          "3", "5", "6"
+        ],
+        "failed_items": {
+          "4007": [
+            "13"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "policy_ids": [
+          "10", "11", "12"
+        ]
+      },
+      "result": {
+        "affected_items": [
+          "10"
+        ],
+        "failed_items": {
+          "4007": [
+            "11", "12"
+          ]
+        }
+      }
+    }
+  ]
+}

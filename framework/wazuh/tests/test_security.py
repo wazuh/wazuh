@@ -25,6 +25,9 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh import security
 
 # all necessary params
+
+# Users
+
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 with open(test_data_path + '/security/users_test_cases.json') as f:
     file = json.load(f)
@@ -41,6 +44,8 @@ update_users_expected_result = [test_case['result'] for test_case in file['updat
 
 delete_users_username_lists = [test_case['params']['username_list'] for test_case in file['delete_users']]
 delete_users_expected_results = [test_case['result'] for test_case in file['delete_users']]
+
+# Roles
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 with open(test_data_path + '/security/roles_test_cases.json') as f:
@@ -61,28 +66,54 @@ delete_roles_role_lists = [test_case['params']['role_ids'] for test_case in file
 delete_roles_expected_results = [test_case['result'] for test_case in file['delete_roles']]
 
 
+# Policies
+
+test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+with open(test_data_path + '/security/policies_test_cases.json') as f:
+    file = json.load(f)
+get_policies_policy_lists = [test_case['params']['policy_ids'] for test_case in file['get_policies']]
+get_policies_expected_results = [test_case['result'] for test_case in file['get_policies']]
+
+add_policies_name = [test_case['params']['name'] for test_case in file['add_policies']]
+add_policies_policy = [test_case['params']['policy'] for test_case in file['add_policies']]
+add_policies_expected_result = [test_case['result'] for test_case in file['add_policies']]
+
+update_policies_id = [test_case['params']['policy_id'] for test_case in file['update_policies']]
+update_policies_name = [test_case['params']['name'] for test_case in file['update_policies']]
+update_policies_policy = [test_case['params']['policy'] for test_case in file['update_policies']]
+update_policies_expected_result = [test_case['result'] for test_case in file['update_policies']]
+
+delete_policies_policy_lists = [test_case['params']['policy_ids'] for test_case in file['delete_policies']]
+delete_policies_expected_results = [test_case['result'] for test_case in file['delete_policies']]
+
+
 def create_memory_db(sql_file, session):
     with open(os.path.join(test_data_path, sql_file)) as f:
         for line in f.readlines():
-            if '*' not in line:
+            line = line.strip()
+            if '* ' not in line and '/*' not in line and '*/' not in line and line != '':
                 session.execute(line)
                 session.commit()
 
 
 def are_equal(result, expected, key_result='username'):
     result_list = {str(user[key_result]) for user in result['affected_items']}
-    affected_result = result_list == set(expected['affected_items']) or len(result_list) == 0
+    affected_result = result_list == set(expected['affected_items']) or \
+                      (len(result_list) == 0 and len(expected['affected_items']) == 0)
     failed_result = True
     if isinstance(expected['failed_items'], dict):
         for key, value in expected['failed_items'].items():
-            for expected_key, expected_value in result['failed_items'].items():
-                if key in str(expected_key):
-                    expected_value = map(str, expected_value)
+            for key_result in result['failed_items'].keys():
+                if str(key) == str(key_result.code):
+                    expected_value = map(str, result['failed_items'][key_result])
                     failed_result = set(value) == set(expected_value)
-                if not failed_result:
-                    return False
+                    break
+                else:
+                    failed_result = False
+            if not failed_result:
+                return False
 
-    return affected_result == failed_result
+    return affected_result is True and failed_result is True
 
 
 @pytest.fixture
@@ -178,4 +209,44 @@ def test_update_roles(db_setup, id_, name, rule, expected_result):
 def test_delete_roles(db_setup, role_ids, expected_result):
     db_setup(security.orm._Session())
     result = security.remove_roles(role_ids=role_ids)
+    assert are_equal(result.to_dict(), expected_result, key_result='id')
+
+
+# Policies
+
+@pytest.mark.parametrize('policy_ids, expected_result', zip(get_policies_policy_lists, get_policies_expected_results))
+@patch('wazuh.security.orm._engine', create_engine(f'sqlite://'))
+@patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://')))
+def test_get_policies(db_setup, policy_ids, expected_result):
+    db_setup(security.orm._Session())
+    result = security.get_policies(policy_ids=policy_ids)
+    assert are_equal(result.to_dict(), expected_result, key_result='id')
+
+
+@pytest.mark.parametrize('name, policy, expected_result', zip(add_policies_name, add_policies_policy,
+                                                              add_policies_expected_result))
+@patch('wazuh.security.orm._engine', create_engine(f'sqlite://'))
+@patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://')))
+def test_add_policies(db_setup, name, policy, expected_result):
+    db_setup(security.orm._Session())
+    result = security.add_policy(name=name, policy=policy)
+    assert are_equal(result.to_dict(), expected_result, key_result='id')
+
+
+@pytest.mark.parametrize('id_, name, policy, expected_result', zip(
+    update_policies_id, update_policies_name, update_policies_policy, update_policies_expected_result))
+@patch('wazuh.security.orm._engine', create_engine(f'sqlite://'))
+@patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://')))
+def test_update_policies(db_setup, id_, name, policy, expected_result):
+    db_setup(security.orm._Session())
+    result = security.update_policy(policy_id=id_, name=name, policy=policy)
+    assert are_equal(result.to_dict(), expected_result, key_result='id')
+
+
+@pytest.mark.parametrize('policy_ids, expected_result', zip(delete_policies_policy_lists, delete_policies_expected_results))
+@patch('wazuh.security.orm._engine', create_engine(f'sqlite://'))
+@patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://')))
+def test_delete_roles(db_setup, policy_ids, expected_result):
+    db_setup(security.orm._Session())
+    result = security.remove_policies(policy_ids=policy_ids)
     assert are_equal(result.to_dict(), expected_result, key_result='id')
