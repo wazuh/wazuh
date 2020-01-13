@@ -105,8 +105,8 @@ def update_user(username=None, password=None):
 
 @expose_resources(actions=['security:delete'], resources=['user:id:{username_list}'],
                   post_proc_kwargs={'exclude_codes': [5001, 5004]})
-def delete_user(username_list):
-    """Delete a specified user
+def delete_users(username_list):
+    """Delete a specified list of users
 
     :param username_list: List of usernames
     :return: Status message

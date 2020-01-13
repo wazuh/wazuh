@@ -1,0 +1,182 @@
+{
+  "get_users": [
+    {
+      "params": {
+        "username_list": [
+          "wazuh", "wazuh-wui"
+        ]
+      },
+      "result": {
+        "affected_items": [
+          "wazuh", "wazuh-wui"
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "username_list": [
+          "wazuh", "wazuh-wui", "ossec", "python"
+        ]
+      },
+      "result": {
+        "affected_items": [
+          "ossec", "python", "wazuh", "wazuh-wui"
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "username_list": [
+          "python", "normal", "noexists"
+        ]
+      },
+      "result": {
+        "affected_items": [
+          "normal", "python"
+        ],
+        "failed_items": {
+          "5001": [
+            "noexists"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "username_list": []
+      },
+      "result": {
+        "affected_items": [
+          "administrator", "guest", "normal", "ossec", "python", "rbac", "wazuh", "wazuh-wui"
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "username_list": [
+          "n", "m", "l"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "5001": [
+            "l", "m", "n"
+          ]
+        }
+      }
+    }
+  ],
+  "create_users": [
+    {
+      "params": {
+        "username": "new_user",
+        "password": "wazuh1A!"
+      },
+      "result": {
+        "affected_items": [
+          "new_user"
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "username": "new_user",
+        "password": "wazuh1A!"
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "5000": ["new_user"]
+        }
+      }
+    }
+  ],
+  "update_users": [
+    {
+      "params": {
+        "username": "new_user",
+        "password": "wazuh2A!"
+      },
+      "result": {
+        "affected_items": [
+          "new_user"
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "username": "new_user1",
+        "password": "wazuh3A!"
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "5001": ["new_user1"]
+        }
+      }
+    }
+  ],
+  "delete_users": [
+    {
+      "params": {
+        "username_list": ["python", "ossec"]
+      },
+      "result": {
+        "affected_items": [
+          "python", "ossec"
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "username_list": ["python", "new_user"]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "5001": [
+            "python", "new_user"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "username_list": ["ossec", "normal", "python", "new_user"]
+      },
+      "result": {
+        "affected_items": [
+          "normal"
+        ],
+        "failed_items": {
+          "5001": [
+            "ossec", "python", "new_user"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "username_list": ["wazuh", "normal"]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "5001": [
+            "normal"
+          ],
+          "5004": [
+            "wazuh"
+          ]
+        }
+      }
+    }
+  ]
+}

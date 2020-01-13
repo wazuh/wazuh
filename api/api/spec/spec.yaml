@@ -10979,7 +10979,37 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseUsers'
                 example:
                   data:
-                    message: 'User created correctly'
+                    affected_items:
+                      - roles:
+                          - 2
+                        username: administrator
+                      - roles: []
+                        username: guest
+                      - roles:
+                          - 4
+                          - 5
+                          - 6
+                        username: normal
+                      - roles:
+                          - 2
+                          - 5
+                        username: ossec
+                      - roles: []
+                        username: python
+                      - roles:
+                          - 3
+                          - 4
+                          - 5
+                        username: rbac
+                      - roles:
+                          - 1
+                        username: wazuh
+                      - roles: []
+                        username: wazuh-wui
+                    failed_items: []
+                    total_affected_items: 8
+                    total_failed_items: 0
+                  message: All specified users were shown
         '401':
           description: 'Access unauthorized'
         default:
@@ -11023,7 +11053,14 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseUsers'
                 example:
-                  message: 'User created correctly'
+                  data:
+                    affected_items:
+                      - roles: []
+                        username: wazuh1
+                    failed_items: []
+                    total_affected_items: 1
+                    total_failed_items: 0
+                  message: User created correctly
 
     delete:
       tags:

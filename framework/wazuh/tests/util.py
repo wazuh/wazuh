@@ -5,6 +5,10 @@
 import sqlite3
 import os
 import re
+import sys
+
+from unittest.mock import patch, MagicMock
+from functools import wraps
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -32,3 +36,12 @@ class InitWDBSocketMock:
         elif count:
             return next(iter(rows[0].values()))
         return rows
+
+
+def RBAC_bypasser(**kwargs):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
