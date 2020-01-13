@@ -346,7 +346,7 @@ int wdb_parse(char * input, char * output) {
         }
         return result;
     } else {
-        mdebug1("DB(%s) Invalid DB query actor: %s", sagent_id, actor);
+        mdebug1("DB() Invalid DB query actor: %s", actor);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query actor: '%.32s'", actor);
         return -1;
     }
