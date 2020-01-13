@@ -3,11 +3,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import os
+import re
+import sqlite3
 import sys
 from functools import wraps
-from os.path import join
 from sqlite3 import connect
 from unittest.mock import patch, MagicMock
+from wazuh.tests.util import InitWDBSocketMock
 
 import pytest
 
@@ -44,13 +46,11 @@ def set_callable_list(*params, **kwargs):
 
 # Get a fake database
 def get_fake_syscheck_db(sql_file):
-
     def create_memory_db(*args, **kwargs):
         syscheck_db = connect(':memory:')
         cur = syscheck_db.cursor()
         with open(os.path.join(test_data_path, sql_file)) as f:
             cur.executescript(f.read())
-
         return syscheck_db
 
     return create_memory_db
@@ -103,8 +103,6 @@ def test_syscheck_run_exception(ossec_queue_mock, agent_list, status_list, expec
         assert result.total_affected_items == expected_result['total_affected_items']
         if result.failed_items:
             assert next(iter(result.failed_items.values())) == expected_result['failed_items']
-        else:
-            assert result.failed_items == expected_result['failed_items']
         assert result.total_failed_items == expected_result['total_failed_items']
 
 
@@ -140,8 +138,6 @@ def test_syscheck_clear_exception(execute_mock, wdb_init_mock, agent_list, expec
         assert result.total_affected_items == expected_result['total_affected_items']
         if result.failed_items:
             assert next(iter(result.failed_items.values())) == expected_result['failed_items']
-        else:
-            assert result.failed_items == expected_result['failed_items']
         assert result.total_failed_items == expected_result['total_failed_items']
 
 
@@ -159,15 +155,43 @@ def test_syscheck_clear_exception(execute_mock, wdb_init_mock, agent_list, expec
 def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock,  db_mock, agent_id, wazuh_version):
     with patch('wazuh.syscheck.Agent.get_basic_information', return_value=wazuh_version):
         with patch('wazuh.syscheck.glob',
-                   return_value=[join(common.database_path_agents, '{}.db'.format(agent_id[0]))]):
+                   return_value=[os.path.join(common.database_path_agents, '{}.db'.format(agent_id[0]))]):
             result = last_scan(agent_id)
             assert isinstance(result, AffectedItemsWazuhResult)
             assert isinstance(result.affected_items, list)
             assert result.total_affected_items == 1
 
 
+@pytest.mark.parametrize('version', [
+    {'version': 'Wazuh v3.6.0'}
+])
 @patch('wazuh.syscheck.glob', return_value=None)
-@patch('wazuh.syscheck.Agent.get_basic_information', return_value={'version': 'Wazuh v3.6.0'})
-def test_syscheck_last_scan_internal_error(get_basic_information_mock, glob_mock):
-    with pytest.raises(WazuhInternalError):
-        last_scan(['001'])
+def test_syscheck_last_scan_internal_error(glob_mock, version):
+    with patch('wazuh.syscheck.Agent.get_basic_information', return_value=version):
+        with pytest.raises(WazuhInternalError):
+            last_scan(['001'])
+
+
+@pytest.mark.parametrize('agent_id, select, filters', [
+    (['001'], None, None),
+    (['001'], ['file', 'size', 'mtime'], None),
+    (['001'], None, {'inode': '15470536'}),
+    (['001'], ['file', 'size'], {'hash': '15470536'}),
+    (['001'], None, {'date': '2019-05-21'})
+])
+@patch('socket.socket.connect')
+@patch('wazuh.common.wdb_path', new=test_data_path)
+def test_syscheck_files(socket_mock, agent_id, select, filters):
+    select_list = ['date', 'mtime', 'file', 'size', 'perm', 'uname', 'gname', 'md5', 'sha1', 'sha256', 'inode', 'gid', 'uid', 'type', 'changes', 'attributes']
+    with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+        mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscheck_test.sql')
+        result = files(agent_id, select=select, filters=filters)
+        assert isinstance(result, AffectedItemsWazuhResult)
+        assert isinstance(result.affected_items, list)
+        select = select if select else select_list
+        for item in result.affected_items:
+            assert len(select) == len(item.keys())
+            assert (param in select for param in item.keys())
+        if filters:
+            for key, value in filters.items():
+                assert (item[key] == value for item in result.affected_items)
