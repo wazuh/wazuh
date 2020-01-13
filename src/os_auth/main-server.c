@@ -927,7 +927,9 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             if(strncmp(++tmpstr,client_source_ip_token,3)==0)
             {
-                sscanf(tmpstr," IP:\'%18[^\']\"",client_source_ip);
+                char format[15];
+                sprintf(format, " IP:\'%%%d[^\']\"", IPSIZE);
+                sscanf(tmpstr, format ,client_source_ip);
 
                 /* If IP: != 'src' and 'use_source_ip="no" overwrite the srcip */
                 if((strncmp(client_source_ip,"src",3) != 0) && !config.flags.use_source_ip)
