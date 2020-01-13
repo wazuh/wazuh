@@ -106,7 +106,7 @@ list(APPEND tests_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -
 list(APPEND tests_names "test_wdb_integrity")
 list(APPEND tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_errmsg \
                          -Wl,--wrap,EVP_DigestInit_ex -Wl,--wrap,EVP_DigestUpdate -Wl,--wrap,_DigestFinal_ex \
-                         -Wl,--wrap,sqlite3_column_text")
+                         -Wl,--wrap,sqlite3_column_text -Wl,--wrap,_mdebug2")
 
 list(APPEND tests_names "test_dbsync")
 list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
