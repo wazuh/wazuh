@@ -181,11 +181,23 @@ int fim_db_set_all_unscanned(void);
 
 
 /**
- * @brief Delete all unescanned entries.
+ * @brief Delete all unscanned entries.
  *
- * Most be used as a callback function.
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ *
  */
-void fim_db_delete_unscanned(fim_entry *entry, void *arg);
+int fim_db_delete_all(void);
+
+
+/**
+ *
+ * @brief Calculate checksum for all data entries.
+ *
+ * @param ctx Structure that contains the global checksum.
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise
+ *
+ */
+void fim_db_get_data_checksum(void * ctx);
 
 
 /**
@@ -220,3 +232,17 @@ sqlite3_stmt *fim_db_cache(fdb_stmt index);
  *
  */
 void fim_force_commit(void);
+
+
+/**
+ * @brief Callback function: Delete an unscanned entry.
+ *
+ */
+void fim_db_delete(fim_entry *entry, void *arg);
+
+
+/**
+ * @brief Callback function: Entry checksum calculation.
+ *
+ */
+void fim_db_checksum(fim_entry *entry, void *arg);

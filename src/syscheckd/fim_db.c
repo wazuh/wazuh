@@ -57,13 +57,13 @@ int fim_db_clean(void) {
 int fim_db_init(void) {
     memset(&fim_db, 0, sizeof(fdb_t));
     fim_db.transaction.interval = COMMIT_INTERVAL;
-    char * path = (MEM == true)? FIM_DB_MEM : FIM_DB_PATH;
+    //char * path = (MEM == true)? FIM_DB_MEM : FIM_DB_PATH;
 
     if(fim_db_clean() < 0) {
         return FIMDB_ERR;
     }
 
-    if (wdb_create_file(path, schema_fim_sql, MEM, &fim_db.db) < 0) {
+    if (wdb_create_file(path, schema_fim_sql) < 0) {
         return FIMDB_ERR;
     }
 
@@ -392,16 +392,21 @@ int fim_db_get_all(void (*callback)(fim_entry *, void *), void * arg) {
     return fim_db_process_get_query(FIMDB_STMT_GET_ALL_ENTRIES, NULL, NULL, callback, arg);
 }
 
+int fim_db_delete_all(void) {
+    return fim_db_process_get_query(FIMDB_STMT_DELETE_UNSCANNED, NULL, NULL, fim_db_delete, NULL);
+}
 
 int fim_db_get_range(const char * start, const char * end, void (*callback)(fim_entry *, void *), void * arg) {
     return fim_db_process_get_query(FIMDB_STMT_GET_ALL_ENTRIES, start, end, callback, arg);
 }
 
-
 int fim_db_get_not_scanned(void (*callback)(fim_entry *, void *), void * arg) {
     return fim_db_process_get_query(FIMDB_STMT_GET_NOT_SCANNED, NULL, NULL, callback, arg);
 }
 
+int fim_db_get_data_checksum(void * arg) {
+    return fim_db_process_get_query(FIMDB_STMT_GET_ALL_ENTRIES, NULL, NULL, fim_db_checksum, arg);
+}
 
 fim_entry *fim_decode_full_row(sqlite3_stmt *stmt) {
 
@@ -441,7 +446,7 @@ int fim_db_set_all_unscanned(void) {
 }
 
 
-void fim_db_delete_unscanned(fim_entry *entry, void *arg) {
+void fim_db_delete(fim_entry *entry, void *arg) {
     sqlite3_stmt *stmt = fim_db_cache(FIMDB_STMT_GET_DATA_ROW);
     if (!stmt) {
         merror("fim_db_cache(): GET data row failed");
@@ -457,13 +462,13 @@ void fim_db_delete_unscanned(fim_entry *entry, void *arg) {
 
     int row  = sqlite3_column_int(stmt, 0);
 
-    //Hadlinks = More than one path sharing same inode object
+    //Hardlinks = More than one path sharing same inode object
     stmt = fim_db_cache(FIMDB_STMT_GET_HARDLINK_COUNT);
     if (!stmt) {
         merror("fim_db_cache(): GET hardlink failed");
         return;
     }
-    
+
     int count = 0;
     sqlite3_bind_int(stmt, 1, row);
     if (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -473,13 +478,13 @@ void fim_db_delete_unscanned(fim_entry *entry, void *arg) {
         return;
     }
 
-    if (count == 1){ 
+    if (count == 1){
         if (fim_db_remove_inode(entry->data->inode,entry->data->dev) != FIMDB_OK){
             merror("fim_db_remove_inode(): Error deleting inode and path\n");
         }
     }
 
-    if (fim_db_remove_path(entry->path[0] == FIMDB_ERR) {
+    if ((entry->path[0] == FIMDB_ERR) {
         merror("fim_db_remove_path(): Error deleting only path");
     }
 
@@ -574,7 +579,7 @@ int fim_db_process_get_query(fdb_stmt query_id, const char * start, const char *
 
         fim_entry *entry = fim_decode_full_row(stmt);
         callback((void *) entry, arg);
-    
+
         free_entry(entry);
 
         if (end && !strcmp(end, path)) {
@@ -585,6 +590,13 @@ int fim_db_process_get_query(fdb_stmt query_id, const char * start, const char *
 
     fim_check_transaction();
     return result != SQLITE_DONE ? FIMDB_ERR : FIMDB_OK;
+}
+
+
+
+void fim_db_checksum(fim_entry *entry, void *arg) {
+    EVP_MD_CTX * ctx = (EVP_MD_CTX *) arg;
+    EVP_DigestUpdate(ctx, entry->data->checksum, strlen(entry->data->checksum));
 }
 
 

@@ -33,12 +33,12 @@ void * fim_run_integrity(void * args) {
 
     while (1) {
         bool sync_successful = true;
-        
+
         mdebug1("Initializing FIM Integrity Synchronization check. Sync interval is %li seconds.", sync_interval);
         fim_sync_checksum();
 
         struct timespec timeout = { .tv_sec = time(NULL) + sync_interval };
-        
+
         // Get messages until timeout
         char * msg;
 
@@ -62,7 +62,7 @@ void * fim_run_integrity(void * args) {
             mdebug1("FIM Integrity Synchronization check failed. Adjusting sync interval for next run.");
             sync_interval *= 2;
             sync_interval = (sync_interval < syscheck.max_sync_interval) ? sync_interval : syscheck.max_sync_interval;
-        } 
+        }
     }
 
     return args;
@@ -77,15 +77,7 @@ void fim_sync_checksum() {
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    {
-        keys = rbtree_keys(syscheck.fim_entry);
-
-        for (i = 0; keys[i]; i++) {
-            fim_entry_data * data = rbtree_get(syscheck.fim_entry, keys[i]);
-            assert(data);
-            EVP_DigestUpdate(ctx, data->checksum, strlen(data->checksum));
-        }
-    }
+    fim_db_get_data_checksum((void*) ctx);
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
     fim_sync_cur_id = time(NULL);
