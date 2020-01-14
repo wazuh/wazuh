@@ -109,17 +109,7 @@ int fim_db_update(const unsigned long int inode, const unsigned long int dev, fi
  * @param file_path File path.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_remove_path(const char * file_path);
-
-
-/**
- * @brief Delete entry using inode.
- *
- * @param inode File inode.
- * @param dev Device ID.
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_remove_inode(const unsigned long int inode, const unsigned long int dev);
+int fim_db_delete(const char * file_path);
 
 
 /**
@@ -235,13 +225,6 @@ sqlite3_stmt *fim_db_cache(fdb_stmt index);
  *
  */
 void fim_force_commit(void);
-
-
-/**
- * @brief Callback function: Delete an unscanned entry.
- *
- */
-void fim_db_delete(fim_entry *entry, void *arg);
 
 
 /**

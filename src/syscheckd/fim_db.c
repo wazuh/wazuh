@@ -30,7 +30,7 @@ static const char *SQL_STMT[] = {
     [FIMDB_STMT_DELETE_UNSCANNED] = "DELETE FROM entry_path WHERE scanned = 0;",
     [FIMDB_STMT_UPDATE_ENTRY_DATA] = "UPDATE entry_data SET size = ?, perm = ?, attributes = ?, uid = ?, gid = ?, user_name = ?, group_name = ?, hash_md5 = ?, hash_sha1 = ?, hash_sha256 = ?, mtime = ? WHERE dev = ? AND inode = ?;",
     [FIMDB_STMT_UPDATE_ENTRY_PATH] = "UPDATE entry_path SET mode = ?, last_event = ?, entry_type = ?, scanned = ?, options = ?, checksum = ? WHERE inode_id = (SELECT rowid FROM entry_data WHERE dev = ? AND inode = ?);",
-    [FIMDB_STMT_GET_PATH_COUNT] = "SELECT count(*), inode_id FROM entry_path WHERE path = ?;",
+    [FIMDB_STMT_GET_PATH_COUNT] = "SELECT count(inode_id), inode_id FROM entry_path WHERE inode_id = (select inode_id from entry_path where path = ?);",
     [FIMDB_STMT_GET_DATA_ROW] = "SELECT rowid FROM entry_data WHERE inode = ? AND dev = ?;",
     [FIMDB_STMT_GET_HARDLINK_COUNT] = "SELECT count(*) FROM entry_path WHERE inode_id = ?;",
     [FIMDB_STMT_DELETE_DATA_ROW] = "DELETE FROM entry_data WHERE rowid = ?;",
@@ -195,8 +195,12 @@ end:
     return retval;
 }
 
+void fim_db_callback_delete(fim_entry * entry, void * arg) {
+    fim_db_delete(entry->path[0]);
+}
 
-int fim_db_remove_path(const char * file_path) {
+
+int fim_db_delete(const char * file_path) {
     int retval = FIMDB_ERR;
     sqlite3_stmt *stmt = fim_db_cache(FIMDB_STMT_GET_PATH_COUNT);
     if (!stmt) {
@@ -207,6 +211,8 @@ int fim_db_remove_path(const char * file_path) {
 
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         int rows = sqlite3_column_int(stmt, 0);
+        int inode_id = sqlite3_column_int(stmt, 1);
+
         switch (rows) {
         case 0:
             // No entries with this path.
@@ -216,7 +222,7 @@ int fim_db_remove_path(const char * file_path) {
             if (stmt = fim_db_cache(FIMDB_STMT_DELETE_DATA_ROW), !stmt) {
                 goto end;
             }
-            sqlite3_bind_text(stmt, 1, (const char *)sqlite3_column_text(stmt, 1), -1, NULL);
+            sqlite3_bind_int(stmt, 1, inode_id);
             if (sqlite3_step(stmt) != SQLITE_DONE) {
                 goto end;
             }
@@ -231,44 +237,6 @@ int fim_db_remove_path(const char * file_path) {
                 goto end;
             }
             break;
-        }
-    }
-
-    retval = FIMDB_OK;
-end:
-    fim_check_transaction();
-    return retval;
-}
-
-
-int fim_db_remove_inode(const unsigned long int inode, const unsigned long int dev) {
-    int retval = FIMDB_ERR;
-    sqlite3_stmt *stmt = fim_db_cache(FIMDB_STMT_GET_DATA_ROW);
-    if (!stmt) {
-        goto end;
-    }
-
-    sqlite3_bind_int(stmt, 1, inode);
-    sqlite3_bind_int(stmt, 2, dev);
-
-    if (sqlite3_step(stmt) == SQLITE_ROW) {
-        int row_id = sqlite3_column_int(stmt, 0);
-        // Delete the entry data.
-        if (stmt = fim_db_cache(FIMDB_STMT_DELETE_DATA_ROW), !stmt) {
-            goto end;
-        }
-        sqlite3_bind_int(stmt, 1, row_id);
-        if (sqlite3_step(stmt) != SQLITE_DONE) {
-            goto end;
-        }
-
-        // Delete all paths with this inode.
-        if (stmt = fim_db_cache(FIMDB_STMT_DELETE_PATH_INODE), !stmt) {
-            goto end;
-        }
-        sqlite3_bind_int(stmt, 1, row_id);
-        if (sqlite3_step(stmt) != SQLITE_DONE) {
-            goto end;
         }
     }
 
@@ -401,7 +369,7 @@ int fim_db_get_range(const char * start, const char * end, void (*callback)(fim_
 }
 
 int fim_db_get_not_scanned() {
-    return fim_db_process_get_query(FIMDB_STMT_GET_NOT_SCANNED, NULL, NULL, fim_db_delete, NULL);
+    return fim_db_process_get_query(FIMDB_STMT_GET_NOT_SCANNED, NULL, NULL, fim_db_callback_delete, NULL);
 }
 
 int fim_db_get_data_checksum(void * arg) {
@@ -443,52 +411,6 @@ int fim_db_set_all_unscanned(void) {
     int retval = fim_exec_simple_wquery(SQL_STMT[FIMDB_STMT_SET_ALL_UNSCANNED]);
     fim_check_transaction();
     return retval;
-}
-
-
-void fim_db_delete(fim_entry *entry, void *arg) {
-    sqlite3_stmt *stmt = fim_db_cache(FIMDB_STMT_GET_DATA_ROW);
-    if (!stmt) {
-        merror("fim_db_cache(): GET data row failed");
-        return;
-    }
-
-    sqlite3_bind_int(stmt, 1, entry->data->inode);
-    sqlite3_bind_int(stmt, 2, entry->data->dev);
-    if (sqlite3_step(stmt) == SQLITE_DONE) {
-        merror("SQL ERROR: GET data row failed\n");
-        return;
-    }
-
-    int row  = sqlite3_column_int(stmt, 0);
-
-    //Hardlinks = More than one path sharing same inode object
-    stmt = fim_db_cache(FIMDB_STMT_GET_HARDLINK_COUNT);
-    if (!stmt) {
-        merror("fim_db_cache(): GET hardlink failed");
-        return;
-    }
-
-    int count = 0;
-    sqlite3_bind_int(stmt, 1, row);
-    if (sqlite3_step(stmt) == SQLITE_ROW) {
-        count = sqlite3_column_int(stmt, 0);
-    }else {
-        merror("SQL ERROR: GET hardlink failed\n");
-        return;
-    }
-
-    if (count == 1){
-        if (fim_db_remove_inode(entry->data->inode,entry->data->dev) != FIMDB_OK){
-            merror("fim_db_remove_inode(): Error deleting inode and path\n");
-        }
-    }
-
-    if ((entry->path[0]) == FIMDB_ERR) {
-        merror("fim_db_remove_path(): Error deleting only path");
-    }
-
-    return;
 }
 
 
