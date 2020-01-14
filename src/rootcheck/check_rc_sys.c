@@ -239,12 +239,12 @@ static int read_sys_dir(const char *dir_name, int depth)
             if (strstr(f_name, "/dev/fd") != NULL) {
                 return (0);
             }
-
+#ifndef WIN32
             /* Ignore the /proc directory (it has size 0) */
             if (statbuf_local.st_size == 0) {
                 return (0);
             }
- 
+#endif
             if(rootcheck.readall) {
                 read_sys_dir(f_name, depth + 1);
             }
