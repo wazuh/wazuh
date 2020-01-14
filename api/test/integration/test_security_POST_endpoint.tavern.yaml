@@ -431,9 +431,10 @@ stages:
                 code: !anyint
                 message: !anystr
                 remediation: !anything
-              id: !anything
+              id:
+                - '999'
           total_affected_items: 0
-          total_failed_items: 2
+          total_failed_items: 1
 
   # POST /security/roles/{role_id}/policies/{non-existent policy}
   - name: Create link role-policy (non-existent policy)
@@ -447,7 +448,18 @@ stages:
     response:
       status_code: 200
       body:
-        <<: *error
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: !anyint
+                message: !anystr
+                remediation: !anything
+              id:
+                - '56'
+                - '999'
+          total_affected_items: 0
+          total_failed_items: 2
 
   # POST /security/roles/{non-existent role_id}/policies/{non-existent policy}
   - name: Create link role-policy (Both non-existent)
@@ -564,6 +576,7 @@ stages:
         data:
           affected_items:
             - roles:
+                - 3
                 - 4
                 - 5
               username: new_user

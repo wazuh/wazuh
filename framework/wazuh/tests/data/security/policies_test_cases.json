@@ -7,9 +7,73 @@
         ]
       },
       "result": {
-        "affected_items": [
-          "1", "4"
-        ],
+        "affected_items": [{
+          "id": 1,
+          "name": "wazuhPolicy",
+          "policy": {
+            "actions": ["*:*"],
+            "resources": ["*:*"],
+            "effect": "allow"
+          },
+          "roles": [{
+            "id": 1,
+            "name": "wazuh",
+            "rule": {
+              "FIND": {
+                "r'^auth[a-zA-Z]+$'": ["administrator"]
+              }
+            }
+          }, {
+            "id": 2,
+            "name": "wazuh-wui",
+            "rule": {
+              "FIND": {
+                "r'^auth[a-zA-Z]+$'": ["administrator-app"]
+              }
+            }
+          }, {
+            "id": 3,
+            "name": "technical",
+            "rule": {
+              "MATCH": {
+                "definition": "technicalRule"
+              }
+            }
+          }, {
+            "id": 6,
+            "name": "ossec",
+            "rule": {
+              "MATCH": {
+                "definition": "ossecRule"
+              }
+            }
+          }]
+        }, {
+          "id": 4,
+          "name": "administratorPolicy",
+          "policy": {
+            "actions": ["agent:update", "agent:delete"],
+            "effect": "allow",
+            "resources": ["agent:id:*"]
+          },
+          "roles": [{
+            "id": 4,
+            "name": "administrator",
+            "rule": {
+              "MATCH": {
+                "definition": "administratorRule"
+              }
+            }
+          }, {
+            "id": 6,
+            "name": "ossec",
+            "rule": {
+              "MATCH": {
+                "definition": "ossecRule"
+              }
+            }
+          }]
+        }],
         "failed_items": {}
       }
     },
@@ -20,9 +84,82 @@
         ]
       },
       "result": {
-        "affected_items": [
-          "3", "5", "6"
-        ],
+        "affected_items": [{
+          "id": 3,
+          "name": "technicalPolicy",
+          "policy": {
+            "actions": ["agent:create"],
+            "effect": "allow",
+            "resources": ["*:*:*"]
+          },
+          "roles": [{
+            "id": 5,
+            "name": "normalUser",
+            "rule": {
+              "MATCH": {
+                "definition": "normalRule"
+              }
+            }
+          }, {
+            "id": 6,
+            "name": "ossec",
+            "rule": {
+              "MATCH": {
+                "definition": "ossecRule"
+              }
+            }
+          }]
+        }, {
+          "id": 5,
+          "name": "normalPolicy",
+          "policy": {
+            "actions": ["agent:update", "agent:delete"],
+            "effect": "deny",
+            "resources": ["agent:id:*"]
+          },
+          "roles": [{
+            "id": 3,
+            "name": "technical",
+            "rule": {
+              "MATCH": {
+                "definition": "technicalRule"
+              }
+            }
+          }, {
+            "id": 4,
+            "name": "administrator",
+            "rule": {
+              "MATCH": {
+                "definition": "administratorRule"
+              }
+            }
+          }, {
+            "id": 6,
+            "name": "ossec",
+            "rule": {
+              "MATCH": {
+                "definition": "ossecRule"
+              }
+            }
+          }]
+        }, {
+          "id": 6,
+          "name": "ossecPolicy",
+          "policy": {
+            "actions": ["role:read"],
+            "effect": "allow",
+            "resources": ["role:id:*"]
+          },
+          "roles": [{
+            "id": 6,
+            "name": "ossec",
+            "rule": {
+              "MATCH": {
+                "definition": "ossecRule"
+              }
+            }
+          }]
+        }],
         "failed_items": {
           "4007": [
             "11"
@@ -46,7 +183,7 @@
       }
     }
   ],
-  "add_policies": [
+  "add_policy": [
     {
       "params": {
         "name": "new_policy",
@@ -61,9 +198,16 @@
         }
       },
       "result": {
-        "affected_items": [
-          "11"
-        ],
+        "affected_items": [{
+          "id": 11,
+          "name": "new_policy",
+          "policy": {
+            "actions": ["agent:delete"],
+            "effect": "allow",
+            "resources": ["agent:id:099"]
+          },
+          "roles": []
+        }],
         "failed_items": {}
       }
     },
@@ -112,7 +256,7 @@
       }
     }
   ],
-  "update_policies": [
+  "update_policy": [
     {
       "params": {
         "policy_id": ["6"],
@@ -128,9 +272,24 @@
         }
       },
       "result": {
-        "affected_items": [
-          "6"
-        ],
+        "affected_items": [{
+          "id": 6,
+          "name": "ossecPolicy1",
+          "policy": {
+            "actions": ["agent:delete"],
+            "effect": "allow",
+            "resources": ["agent:id:097"]
+          },
+          "roles": [{
+            "id": 6,
+            "name": "ossec",
+            "rule": {
+              "MATCH": {
+                "definition": "ossecRule"
+              }
+            }
+          }]
+        }],
         "failed_items": {}
       }
     },
@@ -204,7 +363,7 @@
       }
     }
   ],
-  "delete_policies": [
+  "remove_policies": [
     {
       "params": {
         "policy_ids": [
@@ -212,9 +371,32 @@
         ]
       },
       "result": {
-        "affected_items": [
-          "4"
-        ],
+        "affected_items": [{
+          "id": 4,
+          "name": "administratorPolicy",
+          "policy": {
+            "actions": ["agent:update", "agent:delete"],
+            "effect": "allow",
+            "resources": ["agent:id:*"]
+          },
+          "roles": [{
+            "id": 4,
+            "name": "administrator",
+            "rule": {
+              "MATCH": {
+                "definition": "administratorRule"
+              }
+            }
+          }, {
+            "id": 6,
+            "name": "ossec",
+            "rule": {
+              "MATCH": {
+                "definition": "ossecRule"
+              }
+            }
+          }]
+        }],
         "failed_items": {
           "4008": [
             "1"
@@ -229,9 +411,82 @@
         ]
       },
       "result": {
-        "affected_items": [
-          "3", "5", "6"
-        ],
+        "affected_items": [{
+          "id": 3,
+          "name": "technicalPolicy",
+          "policy": {
+            "actions": ["agent:create"],
+            "effect": "allow",
+            "resources": ["*:*:*"]
+          },
+          "roles": [{
+            "id": 5,
+            "name": "normalUser",
+            "rule": {
+              "MATCH": {
+                "definition": "normalRule"
+              }
+            }
+          }, {
+            "id": 6,
+            "name": "ossec",
+            "rule": {
+              "MATCH": {
+                "definition": "ossecRule"
+              }
+            }
+          }]
+        }, {
+          "id": 5,
+          "name": "normalPolicy",
+          "policy": {
+            "actions": ["agent:update", "agent:delete"],
+            "effect": "deny",
+            "resources": ["agent:id:*"]
+          },
+          "roles": [{
+            "id": 3,
+            "name": "technical",
+            "rule": {
+              "MATCH": {
+                "definition": "technicalRule"
+              }
+            }
+          }, {
+            "id": 4,
+            "name": "administrator",
+            "rule": {
+              "MATCH": {
+                "definition": "administratorRule"
+              }
+            }
+          }, {
+            "id": 6,
+            "name": "ossec",
+            "rule": {
+              "MATCH": {
+                "definition": "ossecRule"
+              }
+            }
+          }]
+        }, {
+          "id": 6,
+          "name": "ossecPolicy",
+          "policy": {
+            "actions": ["role:read"],
+            "effect": "allow",
+            "resources": ["role:id:*"]
+          },
+          "roles": [{
+            "id": 6,
+            "name": "ossec",
+            "rule": {
+              "MATCH": {
+                "definition": "ossecRule"
+              }
+            }
+          }]
+        }],
         "failed_items": {
           "4007": [
             "13"
@@ -246,9 +501,32 @@
         ]
       },
       "result": {
-        "affected_items": [
-          "10"
-        ],
+        "affected_items": [{
+          "id": 10,
+          "name": "policy4",
+          "policy": {
+            "actions": ["policy:delete"],
+            "effect": "deny",
+            "resources": ["policy:id:*"]
+          },
+          "roles": [{
+            "id": 5,
+            "name": "normalUser",
+            "rule": {
+              "MATCH": {
+                "definition": "normalRule"
+              }
+            }
+          }, {
+            "id": 6,
+            "name": "ossec",
+            "rule": {
+              "MATCH": {
+                "definition": "ossecRule"
+              }
+            }
+          }]
+        }],
         "failed_items": {
           "4007": [
             "11", "12"

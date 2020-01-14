@@ -1,5 +1,5 @@
 {
-  "create_user_roles": [
+  "set_user_role": [
     {
       "params": {
         "user_id": [
@@ -10,9 +10,10 @@
         ]
       },
       "result": {
-        "affected_items": [
-          "2", "3", "4", "5"
-        ],
+        "affected_items": [{
+          "username": "ossec",
+          "roles": [2, 3, 4, 5]
+        }],
         "failed_items": {}
       }
     },
@@ -71,7 +72,7 @@
       }
     }
   ],
-  "delete_user_roles": [
+  "remove_user_role": [
     {
       "params": {
         "user_id": [
@@ -82,7 +83,10 @@
         ]
       },
       "result": {
-        "affected_items": [],
+        "affected_items": [{
+          "roles": [],
+          "username": "normal"
+        }],
         "failed_items": {}
       }
     },
@@ -96,7 +100,10 @@
         ]
       },
       "result": {
-        "affected_items": [],
+        "affected_items": [{
+          "username": "ossec",
+          "roles": []
+        }],
         "failed_items": {
           "4002": [
             "16"

@@ -386,7 +386,7 @@ class RolesManager:
             role = self.session.query(Roles).filter_by(name=name).first()
             if not role:
                 return SecurityError.ROLE_NOT_EXIST
-            return role
+            return role.to_dict()
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
 
@@ -400,7 +400,7 @@ class RolesManager:
             role = self.session.query(Roles).filter_by(id=role_id).first()
             if not role:
                 return SecurityError.ROLE_NOT_EXIST
-            return role
+            return role.to_dict()
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
 
@@ -554,7 +554,7 @@ class PoliciesManager:
             policy = self.session.query(Policies).filter_by(name=name).first()
             if not policy:
                 return SecurityError.POLICY_NOT_EXIST
-            return policy
+            return policy.to_dict()
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST
 
@@ -568,7 +568,7 @@ class PoliciesManager:
             policy = self.session.query(Policies).filter_by(id=policy_id).first()
             if not policy:
                 return SecurityError.POLICY_NOT_EXIST
-            return policy
+            return policy.to_dict()
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST
 
@@ -1184,9 +1184,10 @@ with RolesManager() as rm:
 
 with UserRolesManager() as urm:
     urm.add_role_to_user_admin(username=auth.get_user(username='wazuh')['username'],
-                               role_id=rm.get_role(name='wazuh').id)
+                               role_id=rm.get_role(name='wazuh')['id'])
 
 with RolesPoliciesManager() as rpm:
-    rpm.add_policy_to_role_admin(role_id=rm.get_role(name='wazuh').id, policy_id=pm.get_policy(name='wazuhPolicy').id)
+    rpm.add_policy_to_role_admin(role_id=rm.get_role(name='wazuh')['id'],
+                                 policy_id=pm.get_policy(name='wazuhPolicy')['id'])
     rpm.add_policy_to_role_admin(
-        role_id=rm.get_role(name='wazuh-wui').id, policy_id=pm.get_policy(name='wazuhPolicy').id)
+        role_id=rm.get_role(name='wazuh-wui')['id'], policy_id=pm.get_policy(name='wazuhPolicy')['id'])

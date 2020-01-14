@@ -8,7 +8,14 @@
       },
       "result": {
         "affected_items": [
-          "wazuh", "wazuh-wui"
+          {
+            "username": "wazuh",
+            "roles": [1]
+          },
+          {
+            "username": "wazuh-wui",
+            "roles": []
+          }
         ],
         "failed_items": {}
       }
@@ -21,7 +28,22 @@
       },
       "result": {
         "affected_items": [
-          "ossec", "python", "wazuh", "wazuh-wui"
+          {
+            "username": "wazuh",
+            "roles": [1]
+          },
+          {
+            "username": "wazuh-wui",
+            "roles": []
+          },
+          {
+            "username": "ossec",
+            "roles": [2, 5]
+          },
+          {
+            "username": "python",
+            "roles": []
+          }
         ],
         "failed_items": {}
       }
@@ -34,12 +56,17 @@
       },
       "result": {
         "affected_items": [
-          "normal", "python"
+          {
+            "username": "python",
+            "roles": []
+          },
+          {
+            "username": "normal",
+            "roles": [4, 5, 6]
+          }
         ],
         "failed_items": {
-          "5001": [
-            "noexists"
-          ]
+          "5001": ["noexists"]
         }
       }
     },
@@ -59,7 +86,7 @@
       }
     }
   ],
-  "create_users": [
+  "create_user": [
     {
       "params": {
         "username": "new_user",
@@ -67,21 +94,24 @@
       },
       "result": {
         "affected_items": [
-          "new_user"
+          {
+            "username": "new_user",
+            "roles": []
+          }
         ],
         "failed_items": {}
       }
     },
     {
       "params": {
-        "username": "new_user",
+        "username": "ossec",
         "password": "wazuh1A!"
       },
       "result": {
         "affected_items": [],
         "failed_items": {
           "5000": [
-            "new_user"
+            "ossec"
           ]
         }
       }
@@ -101,7 +131,7 @@
       }
     }
   ],
-  "update_users": [
+  "update_user": [
     {
       "params": {
         "username": ["ossec"],
@@ -109,7 +139,10 @@
       },
       "result": {
         "affected_items": [
-          "ossec"
+          {
+            "username": "ossec",
+            "roles": [2, 5]
+          }
         ],
         "failed_items": {}
       }
@@ -143,14 +176,20 @@
       }
     }
   ],
-  "delete_users": [
+  "remove_users": [
     {
       "params": {
         "username_list": ["python", "ossec"]
       },
       "result": {
         "affected_items": [
-          "python", "ossec"
+          {
+            "username": "ossec",
+            "roles": [2, 5]},
+          {
+            "username": "python",
+            "roles": []
+          }
         ],
         "failed_items": {}
       }
@@ -160,25 +199,37 @@
         "username_list": ["python", "new_user"]
       },
       "result": {
-        "affected_items": [],
+        "affected_items": [
+          {
+            "username": "python",
+            "roles": []
+          }
+        ],
         "failed_items": {
           "5001": [
-            "python", "new_user"
+            "new_user"
           ]
         }
       }
     },
     {
       "params": {
-        "username_list": ["ossec", "normal", "python", "new_user"]
+        "username_list": ["new_user1", "normal", "python", "new_user"]
       },
       "result": {
         "affected_items": [
-          "normal"
+          {
+            "username": "normal",
+            "roles": [4, 5, 6]
+          },
+          {
+            "username": "python",
+            "roles": []
+          }
         ],
         "failed_items": {
           "5001": [
-            "ossec", "python", "new_user"
+            "new_user1", "new_user"
           ]
         }
       }
@@ -188,11 +239,13 @@
         "username_list": ["wazuh", "normal"]
       },
       "result": {
-        "affected_items": [],
+        "affected_items": [
+          {
+            "username": "normal",
+            "roles": [4, 5, 6]
+          }
+        ],
         "failed_items": {
-          "5001": [
-            "normal"
-          ],
           "5004": [
             "wazuh"
           ]

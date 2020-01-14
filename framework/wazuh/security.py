@@ -154,7 +154,7 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
         for r_id in role_ids:
             role = rm.get_role_id(int(r_id))
             if role != SecurityError.ROLE_NOT_EXIST:
-                affected_items.append(role.to_dict())
+                affected_items.append(role)
             else:
                 # Role id does not exist
                 result.add_failed_item(id_=r_id, error=WazuhError(4002))
@@ -188,8 +188,9 @@ def remove_roles(role_ids):
             elif role_delete is False:
                 result.add_failed_item(id_=r_id, error=WazuhError(4002))
             elif role:
-                result.affected_items.append(role.to_dict())
+                result.affected_items.append(role)
                 result.total_affected_items += 1
+        result.affected_items = sorted(result.affected_items, key=lambda i: i['id'])
 
     return result
 
@@ -211,7 +212,7 @@ def add_role(name=None, rule=None):
         elif status == SecurityError.INVALID:
             result.add_failed_item(id_=name, error=WazuhError(4003))
         else:
-            result.affected_items.append(rm.get_role(name=name).to_dict())
+            result.affected_items.append(rm.get_role(name=name))
             result.total_affected_items += 1
 
     return result
@@ -231,17 +232,17 @@ def update_role(role_id=None, name=None, rule=None):
     result = AffectedItemsWazuhResult(none_msg='Role could not be updated',
                                       all_msg='Role updated correctly')
     with orm.RolesManager() as rm:
-        status = rm.update_role(role_id=int(role_id[0]), name=name, rule=rule)
+        status = rm.update_role(role_id=role_id[0], name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
-            result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4005))
+            result.add_failed_item(id_=role_id[0], error=WazuhError(4005))
         elif status == SecurityError.INVALID:
-            result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4003))
+            result.add_failed_item(id_=role_id[0], error=WazuhError(4003))
         elif status == SecurityError.ROLE_NOT_EXIST:
-            result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4002))
+            result.add_failed_item(id_=role_id[0], error=WazuhError(4002))
         elif status == SecurityError.ADMIN_RESOURCES:
-            result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4008))
+            result.add_failed_item(id_=role_id[0], error=WazuhError(4008))
         else:
-            result.affected_items.append(rm.get_role_id(role_id=role_id[0]).to_dict())
+            result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
             result.total_affected_items += 1
 
     return result
@@ -271,7 +272,7 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
         for p_id in policy_ids:
             policy = pm.get_policy_id(int(p_id))
             if policy != SecurityError.POLICY_NOT_EXIST:
-                affected_items.append(policy.to_dict())
+                affected_items.append(policy)
             else:
                 # Policy id does not exist
                 result.add_failed_item(id_=p_id, error=WazuhError(4007))
@@ -305,8 +306,9 @@ def remove_policies(policy_ids=None):
             elif policy_delete is False:
                 result.add_failed_item(id_=p_id, error=WazuhError(4007))
             elif policy:
-                result.affected_items.append(policy.to_dict())
+                result.affected_items.append(policy)
                 result.total_affected_items += 1
+        result.affected_items = sorted(result.affected_items, key=lambda i: i['id'])
 
     return result
 
@@ -329,7 +331,7 @@ def add_policy(name=None, policy=None):
         elif status == SecurityError.INVALID:
             result.add_failed_item(id_=name, error=WazuhError(4006))
         else:
-            result.affected_items.append(pm.get_policy(name=name).to_dict())
+            result.affected_items.append(pm.get_policy(name=name))
             result.total_affected_items += 1
 
     return result
@@ -349,17 +351,17 @@ def update_policy(policy_id=None, name=None, policy=None):
     result = AffectedItemsWazuhResult(none_msg='Policy could not be updated',
                                       all_msg='Policy updated correctly')
     with orm.PoliciesManager() as pm:
-        status = pm.update_policy(policy_id=int(policy_id[0]), name=name, policy=policy)
+        status = pm.update_policy(policy_id=policy_id[0], name=name, policy=policy)
         if status == SecurityError.ALREADY_EXIST:
-            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4013))
+            result.add_failed_item(id_=policy_id[0], error=WazuhError(4013))
         elif status == SecurityError.INVALID:
-            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4006))
+            result.add_failed_item(id_=policy_id[0], error=WazuhError(4006))
         elif status == SecurityError.POLICY_NOT_EXIST:
-            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4007))
+            result.add_failed_item(id_=policy_id[0], error=WazuhError(4007))
         elif status == SecurityError.ADMIN_RESOURCES:
-            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4008))
+            result.add_failed_item(id_=policy_id[0], error=WazuhError(4008))
         else:
-            result.affected_items.append(pm.get_policy_id(policy_id[0]).to_dict())
+            result.affected_items.append(pm.get_policy_id(policy_id[0]))
             result.total_affected_items += 1
 
     return result
@@ -449,21 +451,25 @@ def set_role_policy(role_id, policy_ids):
     result = AffectedItemsWazuhResult(none_msg=f'No link created to role {role_id[0]}',
                                       some_msg=f'Some policies could not be linked to role {role_id[0]}',
                                       all_msg=f'All policies were linked to role {role_id[0]}')
+    success = False
     with orm.RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
             role_policy = rpm.add_policy_to_role(role_id=role_id[0], policy_id=policy_id)
             if role_policy == SecurityError.ALREADY_EXIST:
                 result.add_failed_item(id_=policy_id, error=WazuhError(4011))
             elif role_policy == SecurityError.ROLE_NOT_EXIST:
-                result.add_failed_item(id_=policy_id, error=WazuhError(4002))
+                result.add_failed_item(id_=role_id[0], error=WazuhError(4002))
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
                 result.add_failed_item(id_=policy_id, error=WazuhError(4007))
             elif role_policy == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=policy_id, error=WazuhError(4008))
             else:
-                result.affected_items.append(policy_id)
+                success = True
                 result.total_affected_items += 1
-        result.affected_items.sort(key=str)
+        if success:
+            with orm.RolesManager() as rm:
+                result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
+            result.affected_items.sort(key=str)
 
     return result
 
@@ -480,21 +486,25 @@ def remove_role_policy(role_id, policy_ids):
     result = AffectedItemsWazuhResult(none_msg=f'No policy unlinked from role {role_id[0]}',
                                       some_msg=f'Some policies could not be unlinked from role {role_id[0]}',
                                       all_msg=f'All policies were unlinked from role {role_id[0]}')
+    success = False
     with orm.RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
             role_policy = rpm.remove_policy_in_role(role_id=role_id[0], policy_id=policy_id)
             if role_policy == SecurityError.INVALID:
                 result.add_failed_item(id_=policy_id, error=WazuhError(4010))
             elif role_policy == SecurityError.ROLE_NOT_EXIST:
-                result.add_failed_item(id_=policy_id, error=WazuhError(4002))
+                result.add_failed_item(id_=role_id[0], error=WazuhError(4002))
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
                 result.add_failed_item(id_=policy_id, error=WazuhError(4007))
             elif role_policy == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=policy_id, error=WazuhError(4008))
             else:
-                result.affected_items.append(policy_id)
+                success = True
                 result.total_affected_items += 1
-        result.affected_items.sort(key=str)
+        if success:
+            with orm.RolesManager() as rm:
+                result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
+            result.affected_items.sort(key=str)
 
     return result
 
