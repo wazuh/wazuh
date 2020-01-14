@@ -224,7 +224,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
                 }
             }
 
-            /* Check for same srcgeoip */
+            /* Check for same dstgeoip */
             if (rule->context_opts.same_dstgeoip) {
 
                 if ((!lf->dstgeoip) || (!my_lf->dstgeoip)) {
@@ -463,7 +463,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
             }
 
             /* Check for different extra data */
-            if (rule->context_opts.same_extra_data) {
+            if (rule->context_opts.different_extra_data) {
                 if ((!lf->extra_data) || (!my_lf->extra_data)) {
                     continue;
                 }
@@ -474,7 +474,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
             }
 
             /* Check for different status */
-            if (rule->context_opts.same_status) {
+            if (rule->context_opts.different_status) {
                 if ((!lf->status) || (!my_lf->status)) {
                     continue;
                 }
@@ -485,7 +485,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
             }
 
             /* Check for different system_name */
-            if (rule->context_opts.same_system_name) {
+            if (rule->context_opts.different_system_name) {
                 if ((!lf->systemname) || (!my_lf->systemname)) {
                     continue;
                 }
@@ -739,7 +739,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
                 }
             }
 
-            /* Check for same srcgeoip */
+            /* Check for same dstgeoip */
             if (rule->context_opts.same_dstgeoip) {
 
                 if ((!lf->dstgeoip) || (!my_lf->dstgeoip)) {
@@ -922,7 +922,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
                 }
             }
 
-            /* Check for different srcgeoip */
+            /* Check for different dstgeoip */
             if (rule->context_opts.different_dstgeoip) {
 
                 if ((!lf->dstgeoip) || (!my_lf->dstgeoip)) {
@@ -978,7 +978,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
             }
 
             /* Check for different extra data */
-            if (rule->context_opts.same_extra_data) {
+            if (rule->context_opts.different_extra_data) {
                 if ((!lf->extra_data) || (!my_lf->extra_data)) {
                     continue;
                 }
@@ -989,7 +989,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
             }
 
             /* Check for different status */
-            if (rule->context_opts.same_status) {
+            if (rule->context_opts.different_status) {
                 if ((!lf->status) || (!my_lf->status)) {
                     continue;
                 }
@@ -1000,7 +1000,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
             }
 
             /* Check for different system_name */
-            if (rule->context_opts.same_system_name) {
+            if (rule->context_opts.different_system_name) {
                 if ((!lf->systemname) || (!my_lf->systemname)) {
                     continue;
                 }
@@ -1266,7 +1266,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
         }
 
-        /* Check for same srcgeoip */
+        /* Check for same dstgeoip */
         if (rule->context_opts.same_dstgeoip) {
 
             if ((!lf->dstgeoip) || (!my_lf->dstgeoip)) {
@@ -1449,7 +1449,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
         }
 
-        /* Check for different srcgeoip */
+        /* Check for different dstgeoip */
         if (rule->context_opts.different_dstgeoip) {
 
             if ((!lf->dstgeoip) || (!my_lf->dstgeoip)) {
@@ -1505,7 +1505,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         }
 
         /* Check for different extra data */
-        if (rule->context_opts.same_extra_data) {
+        if (rule->context_opts.different_extra_data) {
             if ((!lf->extra_data) || (!my_lf->extra_data)) {
                 goto next_it;
             }
@@ -1516,7 +1516,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         }
 
         /* Check for different status */
-        if (rule->context_opts.same_status) {
+        if (rule->context_opts.different_status) {
             if ((!lf->status) || (!my_lf->status)) {
                 goto next_it;
             }
@@ -1527,7 +1527,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         }
 
         /* Check for different system_name */
-        if (rule->context_opts.same_system_name) {
+        if (rule->context_opts.different_system_name) {
             if ((!lf->systemname) || (!my_lf->systemname)) {
                 goto next_it;
             }
