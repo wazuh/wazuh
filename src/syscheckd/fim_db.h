@@ -27,6 +27,9 @@
 #define FIMDB_OK   0 // Successful result.
 #define FIMDB_ERR -1 // Generic error.
 
+#define FIM_LAST_ROW -1
+#define FIM_FIRST_ROW 1
+
 extern const char *schema_fim_sql;
 
 typedef enum fdb_stmt {
@@ -34,7 +37,8 @@ typedef enum fdb_stmt {
     FIMDB_STMT_INSERT_PATH,
     FIMDB_STMT_GET_PATH,
     FIMDB_STMT_GET_INODE,
-    FIMDB_STMT_GET_LAST_ROWID,
+    FIMDB_STMT_GET_LAST_ROW,
+    FIMDB_STMT_GET_FIRST_ROW,
     FIMDB_STMT_GET_ALL_ENTRIES,
     FIMDB_STMT_GET_NOT_SCANNED,
     FIMDB_STMT_SET_ALL_UNSCANNED,
@@ -121,6 +125,13 @@ int fim_db_delete(const char * file_path);
  */
 fim_entry * fim_db_get_inode(const unsigned long int inode, const unsigned long int dev);
 
+/**
+ * @brief Get the last/first row from entry_path.
+ *
+ * @param mode FIM_FIRST_ROW or FIM_LAST_ROW.
+ * @return path located at the specified row.
+ */
+char * fim_db_get_row_path(int mode);
 
 /**
  * @brief Get entry data using path.
@@ -158,11 +169,9 @@ int fim_db_get_range(const char * start, const char * end, void (*callback)(fim_
  * @brief Get all the paths in the DB.
  * This function will return a list with the paths in ascending order.
  *
- * @param callback Callback function.
- * @param arg Callback argument.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_all(void (*callback)(fim_entry *, void *), void * arg);
+int fim_db_get_all(void *arg);
 
 
 /**

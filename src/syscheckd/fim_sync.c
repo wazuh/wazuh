@@ -71,19 +71,20 @@ void * fim_run_integrity(void * args) {
 // LCOV_EXCL_STOP
 
 void fim_sync_checksum() {
-    char ** keys;
-    int i;
+    char * start, *top;
     EVP_MD_CTX * ctx = EVP_MD_CTX_create();
     EVP_DigestInit(ctx, EVP_sha1());
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
+    start = fim_db_get_row_path(FIM_FIRST_ROW);
+    top = fim_db_get_row_path(FIM_LAST_ROW);
     fim_db_get_data_checksum((void*) ctx);
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
     fim_sync_cur_id = time(NULL);
 
-    if (i > 0) {
+    if (start && top) {
         unsigned char digest[EVP_MAX_MD_SIZE];
         unsigned int digest_size;
         os_sha1 hexdigest;
@@ -91,8 +92,10 @@ void fim_sync_checksum() {
         EVP_DigestFinal_ex(ctx, digest, &digest_size);
         OS_SHA1_Hexdigest(digest, hexdigest);
 
-        char * plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_GLOBAL, fim_sync_cur_id, keys[0], keys[i - 1], NULL, hexdigest);
+        char * plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_GLOBAL, fim_sync_cur_id, start, top, NULL, hexdigest);
         fim_send_sync_msg(plain);
+        free(start);
+        free(top);
         free(plain);
     } else {
         char * plain = dbsync_check_msg("syscheck", INTEGRITY_CLEAR, fim_sync_cur_id, NULL, NULL, NULL, NULL);
@@ -101,7 +104,6 @@ void fim_sync_checksum() {
     }
 
     EVP_MD_CTX_destroy(ctx);
-    free_strarray(keys);
 }
 
 void fim_sync_checksum_split(const char * start, const char * top, long id) {

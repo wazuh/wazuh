@@ -23,7 +23,8 @@ static const char *SQL_STMT[] = {
     [FIMDB_STMT_INSERT_PATH] = "INSERT INTO entry_path (path, inode_id, mode, last_event, entry_type, scanned, options, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
     [FIMDB_STMT_GET_PATH] = "SELECT path, inode_id, mode, last_event, entry_type, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM entry_path INNER JOIN entry_data ON path = ? AND entry_data.rowid = entry_path.inode_id;",
     [FIMDB_STMT_GET_INODE] = "SELECT path, inode_id, mode, last_event, entry_type, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM entry_path INNER JOIN entry_data ON inode = ? AND dev = ? AND entry_data.rowid = entry_path.inode_id;",
-    [FIMDB_STMT_GET_LAST_ROWID] = "SELECT last_insert_rowid()",
+    [FIMDB_STMT_GET_LAST_ROW] = "select max(rowid), path from entry_path;",
+    [FIMDB_STMT_GET_FIRST_ROW] = "select min(rowid), path from entry_path;",
     [FIMDB_STMT_GET_ALL_ENTRIES] = "SELECT path, inode_id, mode, last_event, entry_type, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM entry_data INNER JOIN entry_path ON inode_id = entry_data.rowid ORDER BY PATH ASC;",
     [FIMDB_STMT_GET_NOT_SCANNED] = "SELECT path, inode_id, mode, last_event, entry_type, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM entry_data INNER JOIN entry_path ON inode_id = entry_data.rowid WHERE scanned = 0 ORDER BY PATH ASC;",
     [FIMDB_STMT_SET_ALL_UNSCANNED] = "UPDATE entry_path SET scanned = 0;",
@@ -105,7 +106,7 @@ int fim_db_insert(const char* file_path, fim_entry_data *entry) {
     switch(sqlite3_step(stmt)) {
     case SQLITE_DONE:
         // Get rowid
-        if (stmt = fim_db_cache(FIMDB_STMT_GET_LAST_ROWID), !stmt) {
+        if (stmt = fim_db_cache(FIMDB_STMT_GET_LAST_ROW), !stmt) {
             goto end;
         }
         int row_id;
@@ -247,6 +248,24 @@ end:
 }
 
 
+char * fim_db_get_row_path(int mode) {
+    int sql = (mode)? FIMDB_STMT_GET_FIRST_ROW : FIMDB_STMT_GET_LAST_ROW;
+
+    sqlite3_stmt *stmt = fim_db_cache(sql);
+    if (!stmt) {
+        merror("SQL ERROR: %s", sqlite3_errmsg(fim_db.db));
+        return NULL;
+    }
+
+    if (sqlite3_step(stmt) != SQLITE_ROW) {
+        merror("SQL ERROR: %s", sqlite3_errmsg(fim_db.db));
+        return NULL;
+    }
+
+    return sqlite3_column_int(stmt, 1);
+}
+
+
 fim_entry * fim_db_get_inode(const unsigned long int inode, const unsigned long int dev) {
 
     fim_entry *entry = NULL;
@@ -296,7 +315,6 @@ end:
     fim_check_transaction();
     return entry;
 }
-
 
 fim_entry * fim_db_get_path(const char * file_path) {
     fim_entry *entry = NULL;
@@ -356,8 +374,8 @@ int fim_db_set_not_scanned(void) {
 }
 
 
-int fim_db_get_all(void (*callback)(fim_entry *, void *), void * arg) {
-    return fim_db_process_get_query(FIMDB_STMT_GET_ALL_ENTRIES, NULL, NULL, callback, arg);
+int fim_db_get_all(void * args) {
+    return fim_db_process_get_query(FIMDB_STMT_GET_ALL_ENTRIES, NULL, NULL, fim_db_get_path, arg);
 }
 
 int fim_db_delete_all(void) {
