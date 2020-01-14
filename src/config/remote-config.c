@@ -14,7 +14,7 @@
 
 
 /* Reads remote config */
-int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
     int secure_count = 0;
@@ -36,7 +36,12 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_remote_ipv6 = "ipv6";
     const char *xml_remote_connection = "connection";
     const char *xml_remote_lip = "local_ip";
-    const char * xml_queue_size = "queue_size";
+    const char *xml_queue_size = "queue_size";
+    const char *xml_key_polling = "key_polling";
+    const char *xml_enabled = "enabled";
+    const char *xml_enabled_yes = "yes";
+    const char *xml_enabled_no = "no";
+    const char *xml_mode = "mode";  
 
     logr = (remoted *)d1;
 
@@ -209,6 +214,29 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return OS_INVALID;
             }
             defined_queue_size = 1;
+
+
+        } else if (strcmp(node[i]->element, xml_key_polling) == 0) {
+            //XML_NODE child_node = NULL;
+            //child_node = OS_GetElementsbyNode(&xml, node[i]);
+
+            minfo("~~~~~~~~~~~~~~~~~KEY_POLLING!!");
+            if(!strcmp(node[i]->attributes[0], xml_enabled) == 0){
+                merror("1.Invalid value for option ' <%s>", xml_enabled);
+                return OS_INVALID;
+            }
+            else if (!strcmp(node[i]->values[0], xml_enabled_yes) == 0 && !strcmp(node[i]->values[0], xml_enabled_no) == 0){
+                merror("2.Invalid value for option ' <%s>", xml_enabled);
+                return OS_INVALID;
+            }
+            else
+            {
+                minfo("~~~~~~~~~~~~~~~~~OK~~~~~~~~~~~~~~~~~");       
+            }
+            
+            minfo("~~~~~~~~~~~~~~~~~KEY_POLLING END ~~~~~~~~~~~~~~~~~");
+
+        
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
