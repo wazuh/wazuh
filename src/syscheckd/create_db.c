@@ -29,10 +29,12 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
+/* SQLite Development
 static const char *fim_entry_type[] = {
     "file",
     "registry"
 };
+*/
 
 void fim_scan() {
     int it = 0;
@@ -95,7 +97,8 @@ void fim_scan() {
 }
 
 void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) {
-    fim_entry_data *saved_data;
+    // SQLite Development
+    // fim_entry_data *saved_data;
     cJSON *json_event = NULL;
     int node;
     int depth;
@@ -139,10 +142,12 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         }
 
         w_mutex_lock(&syscheck.fim_entry_mutex);
+        /* SQLite Development
         if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, path), saved_data) {
             json_event = fim_json_event(path, NULL, saved_data, item->index, FIM_DELETE, item->mode, w_evt);
             fim_delete(path);
         }
+        */
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (json_event && report) {
@@ -244,13 +249,15 @@ int fim_directory (char *dir, fim_element *item, whodata_evt *w_evt, int report)
 
 int fim_file (char *file, fim_element *item, whodata_evt *w_evt, int report) {
     cJSON * json_event = NULL;
-    fim_entry_data * entry_data = NULL;
-    fim_entry_data * saved_data = NULL;
+    // SQLite Development
+    //fim_entry_data * entry_data = NULL;
+    //fim_entry_data * saved_data = NULL;
     char * json_formated;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
     //Get file attributes
+    /* SQLite Development
     if (entry_data = fim_get_data(file, item), !entry_data) {
         mdebug1(FIM_GET_ATTRIBUTES, file);
         w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -281,6 +288,7 @@ int fim_file (char *file, fim_element *item, whodata_evt *w_evt, int report) {
             free_entry_data(entry_data);
         }
     }
+    */
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
@@ -310,6 +318,7 @@ void fim_realtime_event(char *file) {
     } else {
         // Deleted file need get inode and dev from saved data
         w_mutex_lock(&syscheck.fim_entry_mutex);
+        /* SQLite Development
         fim_entry_data * saved_data = NULL;
 
         if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file), saved_data) {
@@ -318,6 +327,7 @@ void fim_realtime_event(char *file) {
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return;
         }
+        */
         w_mutex_unlock(&syscheck.fim_entry_mutex);
     }
     fim_audit_inode_event(file, inode_key, FIM_REALTIME, NULL);
@@ -336,13 +346,15 @@ void fim_whodata_event(whodata_evt * w_evt) {
 
 void fim_audit_inode_event(char *file, const char *inode_key, fim_event_mode mode, whodata_evt * w_evt) {
     struct fim_element *item;
-    fim_inode_data * inode_data;
+    // SQLite Development
+    // fim_inode_data * inode_data;
 
     os_calloc(1, sizeof(fim_element), item);
     item->mode = mode;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
+    /* SQLite Development
     if (inode_data = OSHash_Get_ex(syscheck.fim_inode, inode_key), inode_data) {
         // Modified and delete events
         char **event_paths = NULL;
@@ -379,6 +391,7 @@ void fim_audit_inode_event(char *file, const char *inode_key, fim_event_mode mod
         w_mutex_unlock(&syscheck.fim_entry_mutex);
         fim_checker(file, item, w_evt, 1);
     }
+    */
     os_free(item);
 
     return;
@@ -619,7 +632,8 @@ fim_entry_data * fim_get_data(const char *file, fim_element *item) {
     data->last_event = time(NULL);
     data->scanned = 1;
     // Set file entry type, registry or file
-    data->entry_type = fim_entry_type[0];
+    // SQLite Development
+    //data->entry_type = fim_entry_type[0];
     fim_get_checksum(data);
 
     return data;
@@ -684,19 +698,22 @@ void fim_get_checksum (fim_entry_data * data) {
 
 // Inserts a file in the syscheck hash table structure (inodes and paths)
 int fim_insert(char *file, fim_entry_data *data, __attribute__((unused))struct stat *file_stat) {
+    /* SQLite Development
     if (rbtree_insert(syscheck.fim_entry, file, data) == NULL) {
         mdebug1(FIM_RBTREE_DUPLICATE_INSERT, file);
         return -1;
     }
+    */
 
 #ifndef WIN32
     char inode_key[OS_SIZE_128];
     // Function OSHash_Add_ex doesn't alloc memory for the data of the hash table
     snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)file_stat->st_dev, (unsigned long)file_stat->st_ino);
-
+    /* SQLite Development
     if (fim_update_inode(file, inode_key) == -1) {
         return -1;
     }
+    */
 #endif
 
     return 0;
@@ -708,6 +725,7 @@ int fim_update(char *file, fim_entry_data *data, __attribute__((unused)) fim_ent
         return -1;
     }
 
+/* SQLite Development
 #ifndef WIN32
     char old_inode_key[OS_SIZE_128];
     char inode_key[OS_SIZE_128];
@@ -729,12 +747,13 @@ int fim_update(char *file, fim_entry_data *data, __attribute__((unused)) fim_ent
         mdebug1(FIM_RBTREE_REPLACE, file);
         return -1;
     }
-
+*/
     return 0;
 }
 
 #ifndef WIN32
 int fim_update_inode(char *file, char inode_key[]) {
+    /* SQLite Development
     fim_inode_data * inode_data;
 
     if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), !inode_data) {
@@ -753,12 +772,13 @@ int fim_update_inode(char *file, char inode_key[]) {
             inode_data->items++;
         }
     }
-
+*/
     return 0;
 }
 #endif
 
 void fim_delete (char * file_name) {
+    /* SQLite Development
     fim_entry_data * data;
 
     if (data = rbtree_get(syscheck.fim_entry, file_name), data) {
@@ -770,6 +790,7 @@ void fim_delete (char * file_name) {
 #endif
         rbtree_delete(syscheck.fim_entry, file_name);
     }
+    */
 }
 
 void check_deleted_files() {
@@ -780,9 +801,10 @@ void check_deleted_files() {
     int pos;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    keys = rbtree_keys(syscheck.fim_entry);
+    // SQLite Development
+    //keys = rbtree_keys(syscheck.fim_entry);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
-
+/* SQLite Development
     for (i = 0; keys[i] != NULL; i++) {
 
         w_mutex_lock(&syscheck.fim_entry_mutex);
@@ -825,7 +847,7 @@ void check_deleted_files() {
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     }
-
+*/
     free_strarray(keys);
 
     return;
@@ -833,6 +855,7 @@ void check_deleted_files() {
 
 
 void delete_inode_item(char *inode_key, char *file_name) {
+    /* SQLite Development
     fim_inode_data *inode_data;
     char **new_paths;
     int i = 0;
@@ -858,6 +881,7 @@ void delete_inode_item(char *inode_key, char *file_name) {
             inode_data->items--;
         }
     }
+    */
 }
 
 cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int pos, fim_event_type type, fim_event_mode mode, whodata_evt * w_evt) {
@@ -893,6 +917,7 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
     }
 
     char * tags = NULL;
+    /* SQLite Development
     if (strcmp(new_data->entry_type, "file") == 0) {
         if (w_evt) {
             cJSON_AddItemToObject(data, "audit", fim_audit_json(w_evt));
@@ -914,6 +939,7 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
         tags = syscheck.registry[pos].tag;
     }
 #endif
+*/
 
     if (tags != NULL) {
         cJSON_AddStringToObject(data, "tags", tags);
@@ -928,7 +954,8 @@ cJSON * fim_attributes_json(const fim_entry_data * data) {
     cJSON * attributes = cJSON_CreateObject();
 
     // TODO: Read structure.
-    cJSON_AddStringToObject(attributes, "type", data->entry_type);
+    // SQLite Development
+    //cJSON_AddStringToObject(attributes, "type", data->entry_type);
 
     if (data->options & CHECK_SIZE) {
         cJSON_AddNumberToObject(attributes, "size", data->size);
@@ -1207,7 +1234,8 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
     mdebug1(FIM_RUNNING_SCAN,
             time_diff(&start, &end),
             (double)(clock() - cputime_start) / CLOCKS_PER_SEC);
-    mdebug1(FIM_ENTRIES_INFO, rbtree_size(syscheck.fim_entry));
+    // SQLite Development 
+    //mdebug1(FIM_ENTRIES_INFO, rbtree_size(syscheck.fim_entry));
 
 #ifndef WIN32
     OSHashNode * hash_node;
@@ -1215,10 +1243,12 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
     unsigned inode_items = 0;
     unsigned inode_paths = 0;
 
+/* SQLite Development
     for (hash_node = OSHash_Begin(syscheck.fim_inode, &inode_it); hash_node; hash_node = OSHash_Next(syscheck.fim_inode, &inode_it, hash_node)) {
         inode_paths += ((fim_inode_data*)hash_node->data)->items;
         inode_items++;
     }
+*/
     mdebug1(FIM_INODES_INFO, inode_items, inode_paths);
 #endif
 

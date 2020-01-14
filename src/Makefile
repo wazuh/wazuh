@@ -1275,12 +1275,14 @@ rootcheck.a: ${rootcheck_o_lib}
 #### syscheck ######
 
 
+syscheck_sql := $(wildcard syscheckd/schema_fim_db.sql)
 syscheck_c := $(wildcard syscheckd/*.c)
-syscheck_o := $(syscheck_c:.c=.o)
+syschecklib_o := $(syschecklib_c:.c=.o) $(syscheck_sql:.sql=.o)
+syscheck_o := $(syschecklib_o:.c=.o) $(syscheck_c:.c=.o) $(syscheck_sql:.sql=.o)
 syscheck_eventchannel_o := $(syscheck_c:.c=-event.o)
 
 syscheckd/schema_fim_db.o: syscheckd/schema_fim_db.sql
-	@echo 'const char *schema_fim_sql = "'"`cat $< | tr -d \"\n\"`"'";' | gcc -xc -c -o $@ -
+	${QUIET_CC}echo 'const char *schema_fim_sql = "'"`cat $< | tr -d \"\n\"`"'";' | gcc -xc -c -o $@ -
 
 syscheckd/%.o: syscheckd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-syscheckd\" -c $^ -o $@

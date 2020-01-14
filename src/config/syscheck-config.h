@@ -22,10 +22,12 @@ typedef enum fim_entry_type {
     FIM_TYPE_REGISTRY
 } fim_entry_type;
 
+/*
 static const char *FIM_ENTRY_TYPE[] = {
     "file",
     "registry"
 };
+*/
 
 #define FIM_MODE(x) (x & WHODATA_ACTIVE ? FIM_WHODATA : x & REALTIME_ACTIVE ? FIM_REALTIME : FIM_SCHEDULED)
 

@@ -63,11 +63,12 @@ int fim_db_init(void) {
         return FIMDB_ERR;
     }
 
-    if (wdb_create_file(path, schema_fim_sql) < 0) {
+// SQLite Development
+    if (wdb_create_file(FIM_DB_PATH, schema_fim_sql) < 0) {
         return FIMDB_ERR;
     }
 
-    if (sqlite3_open_v2(path, &fim_db.db, SQLITE_OPEN_READWRITE, NULL)) {
+    if (sqlite3_open_v2(FIM_DB_PATH, &fim_db.db, SQLITE_OPEN_READWRITE, NULL)) {
             return FIMDB_ERR;
     }
 
@@ -216,7 +217,7 @@ int fim_db_remove_path(const char * file_path) {
             if (stmt = fim_db_cache(FIMDB_STMT_DELETE_DATA_ID), !stmt) {
                 goto end;
             }
-            sqlite3_bind_text(stmt, 1, sqlite3_column_text(stmt, 1), -1, NULL);
+            sqlite3_bind_text(stmt, 1, (const char *)sqlite3_column_text(stmt, 1), -1, NULL);
             if (sqlite3_step(stmt) != SQLITE_DONE) {
                 goto end;
             }
@@ -400,12 +401,12 @@ int fim_db_get_range(const char * start, const char * end, void (*callback)(fim_
     return fim_db_process_get_query(FIMDB_STMT_GET_ALL_ENTRIES, start, end, callback, arg);
 }
 
-int fim_db_get_not_scanned(void (*callback)(fim_entry *, void *), void * arg) {
-    return fim_db_process_get_query(FIMDB_STMT_GET_NOT_SCANNED, NULL, NULL, callback, arg);
+int fim_db_get_not_scanned() {
+    return fim_db_process_get_query(FIMDB_STMT_GET_NOT_SCANNED, NULL, NULL, fim_db_delete, NULL);
 }
 
 int fim_db_get_data_checksum(void * arg) {
-    return fim_db_process_get_query(FIMDB_STMT_GET_ALL_ENTRIES, NULL, NULL, fim_db_checksum, arg);
+    return fim_db_process_get_query(FIMDB_STMT_GET_ALL_ENTRIES, NULL, NULL, fim_db_callback_calculate_checksum, arg);
 }
 
 fim_entry *fim_decode_full_row(sqlite3_stmt *stmt) {
@@ -484,7 +485,7 @@ void fim_db_delete(fim_entry *entry, void *arg) {
         }
     }
 
-    if ((entry->path[0] == FIMDB_ERR) {
+    if ((entry->path[0]) == FIMDB_ERR) {
         merror("fim_db_remove_path(): Error deleting only path");
     }
 
@@ -594,7 +595,7 @@ int fim_db_process_get_query(fdb_stmt query_id, const char * start, const char *
 
 
 
-void fim_db_checksum(fim_entry *entry, void *arg) {
+void fim_db_callback_calculate_checksum(fim_entry *entry, void *arg) {
     EVP_MD_CTX * ctx = (EVP_MD_CTX *) arg;
     EVP_DigestUpdate(ctx, entry->data->checksum, strlen(entry->data->checksum));
 }
@@ -621,7 +622,7 @@ void fim_check_transaction() {
 sqlite3_stmt *fim_db_cache(fdb_stmt index) {
     sqlite3_stmt *stmt = NULL;
 
-    if (index >= WDB_STMT_SIZE) {
+    if (index >= FIMDB_STMT_SIZE) {
         merror("Error in fim_db_cache(): Invalid index: %d.", (int) index);
         goto end;
     } else if (!fim_db.stmt[index]) {

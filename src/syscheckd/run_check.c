@@ -600,7 +600,8 @@ static void fim_link_delete_range(int pos) {
     snprintf(first_entry, PATH_MAX, "%s/", syscheck.dir[pos]);
     snprintf(last_entry, PATH_MAX, "%s0", syscheck.dir[pos]);
 
-    paths = rbtree_range(syscheck.fim_entry, first_entry, last_entry);
+    // SQLite Development
+    //paths = rbtree_range(syscheck.fim_entry, first_entry, last_entry);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
     // If link pointing to a file

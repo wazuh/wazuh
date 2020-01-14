@@ -19,6 +19,7 @@
 #include <openssl/evp.h>
 #include "syscheck.h"
 #include "integrity_op.h"
+#include "fim_db.h"
 
 static long fim_sync_cur_id;
 static w_queue_t * fim_sync_queue;
@@ -116,6 +117,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
+/* SQLite Development
     {
         keys = rbtree_range(syscheck.fim_entry, start, top);
         for (n = 0; keys[n]; n++);
@@ -146,7 +148,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
             }
         }
     }
-
+*/
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (n > 0) {
@@ -180,9 +182,11 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
 
 void fim_sync_send_list(const char * start, const char * top) {
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    char ** keys = rbtree_range(syscheck.fim_entry, start, top);
+    // SQLite Development
+    //char ** keys = rbtree_range(syscheck.fim_entry, start, top);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
+/* SQLite Development
     for (int i = 0; keys[i]; i++) {
         w_mutex_lock(&syscheck.fim_entry_mutex);
         fim_entry_data * data = rbtree_get(syscheck.fim_entry, keys[i]);
@@ -199,8 +203,8 @@ void fim_sync_send_list(const char * start, const char * top) {
         fim_send_sync_msg(plain);
         free(plain);
     }
-
     free_strarray(keys);
+    */
 }
 
 void fim_sync_dispatch(char * payload) {

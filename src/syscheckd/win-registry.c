@@ -25,10 +25,13 @@
 /* Global variables */
 HKEY sub_tree;
 
+// SQLite Development
+/*
 static const char *fim_entry_type[] = {
     "file",
     "registry"
 };
+*/
 
 /* Prototypes */
 void os_winreg_open_key(char *subkey, char *fullkey_name, int pos);

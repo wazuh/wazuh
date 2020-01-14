@@ -15,6 +15,7 @@
 #include "shared.h"
 #include "syscheck.h"
 #include "rootcheck/rootcheck.h"
+#include "fim_db.h"
 
 // Global variables
 syscheck_config syscheck;

@@ -18,10 +18,14 @@
 #include "../wazuh_db/wdb.h"
 #include "../headers/os_utils.h"
 #include "../config/syscheck-config.h"
+#include <openssl/evp.h>
 
 #define FIM_DB_MEM ":memory:"
 #define FIM_DB_PATH DEFAULTDIR "/queue/db/fim/fim.db"
 #define COMMIT_INTERVAL 1
+
+#define FIMDB_OK   0 // Successful result.
+#define FIMDB_ERR -1 // Generic error.
 
 extern const char *schema_fim_sql;
 
@@ -46,7 +50,7 @@ typedef enum fdb_stmt {
     FIMDB_STMT_DELETE_PATH_INODE,
     FIMDB_STMT_DISABLE_SCANNED,
     FIMDB_STMT_GET_UNIQUE_FILE,
-    WDB_STMT_SIZE
+    FIMDB_STMT_SIZE
 } fdb_stmt;
 
 typedef struct transaction_t {
@@ -56,7 +60,7 @@ typedef struct transaction_t {
 
 typedef struct fdb_t {
     sqlite3 * db;
-    sqlite3_stmt *stmt[WDB_STMT_SIZE];
+    sqlite3_stmt *stmt[FIMDB_STMT_SIZE];
     transaction_t transaction;
 } fdb_t;
 
@@ -197,7 +201,7 @@ int fim_db_delete_all(void);
  * @return FIMDB_OK on success, FIMDB_ERR otherwise
  *
  */
-void fim_db_get_data_checksum(void * ctx);
+int fim_db_get_data_checksum(void * ctx);
 
 
 /**
@@ -207,7 +211,7 @@ void fim_db_get_data_checksum(void * ctx);
  * @param arg Callback argument.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_not_scanned(void (*callback)(fim_entry *, void *), void * arg);
+int fim_db_get_not_scanned();
 
 
 /**
@@ -245,4 +249,4 @@ void fim_db_delete(fim_entry *entry, void *arg);
  * @brief Callback function: Entry checksum calculation.
  *
  */
-void fim_db_checksum(fim_entry *entry, void *arg);
+void fim_db_callback_calculate_checksum(fim_entry *entry, void *arg);
