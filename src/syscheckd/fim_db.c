@@ -31,7 +31,6 @@ static const char *SQL_STMT[] = {
     [FIMDB_STMT_UPDATE_ENTRY_DATA] = "UPDATE entry_data SET size = ?, perm = ?, attributes = ?, uid = ?, gid = ?, user_name = ?, group_name = ?, hash_md5 = ?, hash_sha1 = ?, hash_sha256 = ?, mtime = ? WHERE dev = ? AND inode = ?;",
     [FIMDB_STMT_UPDATE_ENTRY_PATH] = "UPDATE entry_path SET mode = ?, last_event = ?, entry_type = ?, scanned = ?, options = ?, checksum = ? WHERE inode_id = (SELECT rowid FROM entry_data WHERE dev = ? AND inode = ?);",
     [FIMDB_STMT_GET_PATH_COUNT] = "SELECT count(*), inode_id FROM entry_path WHERE path = ?;",
-    [FIMDB_STMT_DELETE_DATA_ID] = "DELETE FROM entry_data WHERE rowid = ?;",
     [FIMDB_STMT_GET_DATA_ROW] = "SELECT rowid FROM entry_data WHERE inode = ? AND dev = ?;",
     [FIMDB_STMT_GET_HARDLINK_COUNT] = "SELECT count(*) FROM entry_path WHERE inode_id = ?;",
     [FIMDB_STMT_DELETE_DATA_ROW] = "DELETE FROM entry_data WHERE rowid = ?;",
@@ -214,7 +213,7 @@ int fim_db_remove_path(const char * file_path) {
             break;
         case 1:
             // The inode has only one entry, delete the entry data.
-            if (stmt = fim_db_cache(FIMDB_STMT_DELETE_DATA_ID), !stmt) {
+            if (stmt = fim_db_cache(FIMDB_STMT_DELETE_DATA_ROW), !stmt) {
                 goto end;
             }
             sqlite3_bind_text(stmt, 1, (const char *)sqlite3_column_text(stmt, 1), -1, NULL);
