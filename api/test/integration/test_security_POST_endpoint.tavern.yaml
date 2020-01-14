@@ -563,8 +563,10 @@ stages:
       body:
         data:
           affected_items:
-            - '4'
-            - '5'
+            - roles:
+                - 4
+                - 5
+              username: new_user
           failed_items:
             - error:
                 code: 4002

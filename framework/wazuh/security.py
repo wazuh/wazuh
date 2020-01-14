@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -377,6 +377,7 @@ def set_user_role(user_id, role_ids):
     result = AffectedItemsWazuhResult(none_msg=f'No link created to user {user_id[0]}',
                                       some_msg=f'Some roles could not be linked to user {user_id[0]}',
                                       all_msg=f'All roles were linked to user {user_id[0]}')
+    success = False
     with orm.UserRolesManager() as urm:
         for role_id in role_ids:
             user_role = urm.add_role_to_user(username=user_id[0], role_id=role_id)
@@ -390,9 +391,12 @@ def set_user_role(user_id, role_ids):
             elif user_role == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=user_id[0], error=WazuhError(4008))
             else:
-                result.affected_items.append(role_id)
+                success = True
                 result.total_affected_items += 1
-        result.affected_items.sort(key=str)
+        if success:
+            with orm.AuthenticationManager() as auth:
+                result.affected_items.append(auth.get_user(user_id[0]))
+            result.affected_items.sort(key=str)
 
     return result
 
@@ -409,6 +413,7 @@ def remove_user_role(user_id, role_ids):
     result = AffectedItemsWazuhResult(none_msg=f'No role unlinked from user {user_id[0]}',
                                       some_msg=f'Some roles could not be unlinked from user {user_id[0]}',
                                       all_msg=f'All roles were unlinked from user {user_id[0]}')
+    success = False
     with orm.UserRolesManager() as urm:
         for role_id in role_ids:
             user_role = urm.remove_role_in_user(username=user_id[0], role_id=role_id)
@@ -422,9 +427,12 @@ def remove_user_role(user_id, role_ids):
             elif user_role == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=user_id[0], error=WazuhError(4008))
             else:
-                result.affected_items.append(role_id)
+                success = True
                 result.total_affected_items += 1
-        result.affected_items.sort(key=str)
+        if success:
+            with orm.AuthenticationManager() as auth:
+                result.affected_items.append(auth.get_user(user_id[0]))
+            result.affected_items.sort(key=str)
 
     return result
 

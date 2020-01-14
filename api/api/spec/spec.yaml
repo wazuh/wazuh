@@ -10907,16 +10907,15 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
               example:
                 data:
-                  id: 1
-                  name: 'wazuh'
-                  rule:
-                    MATCH:
-                      administrator: 'administrator'
-                  policies:
-                    - id: 1
-                      name: 'wazuhPolicy'
-                      policy:
-                        administrator: 'total_access'
+                  affected_items:
+                    - roles:
+                        - 3
+                        - 4
+                      username: normal
+                  failed_items: []
+                  total_affected_items: 2
+                  total_failed_items: 0
+                message: All roles were linked to user normal
 
         default:
           $ref: '#/components/responses/ResponseError'
@@ -10942,11 +10941,13 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
               example:
                 data:
-                  id: 2
-                  name: 'normal'
-                  rule:
-                    normal: 'normal'
-                  policies: []
+                  affected_items:
+                    - roles: []
+                      username: normal
+                  failed_items: []
+                  total_affected_items: 2
+                  total_failed_items: 0
+                message: All roles were unlinked from user normal
         default:
           $ref: '#/components/responses/ResponseError'
 

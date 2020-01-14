@@ -781,7 +781,10 @@ stages:
       body:
         data:
           affected_items:
-            - '2'
+            - roles:
+                - 5
+                - 6
+              username: python
           failed_items:
             - error:
                 code: 4000
@@ -812,7 +815,9 @@ stages:
       body:
         data:
           affected_items:
-            - '1'
+            - roles:
+                - 1
+              username: python
           failed_items:
             - error:
                 code: 4017
@@ -841,8 +846,10 @@ stages:
       body:
         data:
           affected_items:
-            - '1'
-            - '2'
+            - roles:
+                - 1
+                - 2
+              username: python
           failed_items:
             - error:
                 code: 4016

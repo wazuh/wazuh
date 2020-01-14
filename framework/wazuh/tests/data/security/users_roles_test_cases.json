@@ -1,0 +1,111 @@
+{
+  "create_user_roles": [
+    {
+      "params": {
+        "user_id": [
+          "ossec"
+        ],
+        "role_ids": [
+          "3", "4"
+        ]
+      },
+      "result": {
+        "affected_items": [
+          "2", "3", "4", "5"
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "user_id": [
+          "wazuh"
+        ],
+        "role_ids": [
+          "5", "6"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4008": [
+            "wazuh"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "user_id": [
+          "noexists"
+        ],
+        "role_ids": [
+          "7", "2"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "5001": [
+            "noexists"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "user_id": [
+          "normal"
+        ],
+        "role_ids": [
+          "55", "66"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4002": [
+            "55", "66"
+          ]
+        }
+      }
+    }
+  ],
+  "delete_user_roles": [
+    {
+      "params": {
+        "user_id": [
+          "normal"
+        ],
+        "role_ids": [
+          "5", "4", "6"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "user_id": [
+          "ossec"
+        ],
+        "role_ids": [
+          "2", "5", "6", "16"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4002": [
+            "16"
+          ],
+          "4016": [
+            "6"
+          ]
+        }
+      }
+    }
+  ]
+}
