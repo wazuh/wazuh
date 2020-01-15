@@ -4,56 +4,81 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-from unittest.mock import patch
+import sys
+from functools import wraps
+from unittest.mock import patch, MagicMock
 
 import pytest
 
+from wazuh.core.tests.test_active_response import agent_config, agent_info
+from wazuh.exception import WazuhError
+
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        from wazuh.exception import WazuhError
-        from wazuh import active_response
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        sys.modules['api'] = MagicMock()
+        import wazuh.rbac.decorators
+        del sys.modules['wazuh.rbac.orm']
+        del sys.modules['api']
 
-# all necessary params
+        def RBAC_bypasser(**kwargs_decorator):
+            def decorator(f):
+                @wraps(f)
+                def wrapper(*args, **kwargs):
+                    return f(*args, **kwargs)
+                return wrapper
+            return decorator
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        from wazuh.active_response import run_command
+
+# All necessary params
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 
-@pytest.mark.parametrize('expected_exception, agent_id, command, arguments, custom', [
-    (1650, '000', None, [], False),
-    (1652, '000', 'random', [], False),
-    (1652, '000', 'invalid_cmd', [], False),
-    (1651, '001', 'restart-ossec0', [], False),
-    (None, '001', 'restart-ossec0', [], False),
-    (None, '001', 'restart-ossec0', [], True),
-    (None, '001', 'restart-ossec0', ["arg1", "arg2"], False),
-    (None, '000', 'restart-ossec0', [], False),
+# Tests
+
+@pytest.mark.parametrize('message_exception, send_exception, agent_id, command, arguments, custom', [
+    (1650, None, [0], None, [], False),
+    (1652, None, [0], 'random', [], False),
+    (None, 1651, [1], 'restart-ossec0', [], False),
+    (None, 1750, [1], 'restart-ossec0', [], False),
+    (None, None, [1], 'restart-ossec0', [], False),
+    (None, None, [1], 'restart-ossec0', [], True),
+    (None, None, [1], 'restart-ossec0', ["arg1", "arg2"], False),
+    (None, None, [0], 'restart-ossec0', [], False),
+    (None, None, [0, 1, 2, 3, 4, 5, 6], 'restart-ossec0', [], False),
 ])
-def test_run_command(expected_exception, agent_id, command, arguments, custom):
-    """
-    Tests run_command function
-    """
-    if expected_exception is not None:
-        with pytest.raises(WazuhError, match=f'.* {expected_exception} .*'):
-            active_response.run_command(agent_id=agent_id, command=command, arguments=arguments, custom=custom)
-    else:
-        ret = active_response.run_command(agent_id=agent_id, command=command, arguments=arguments, custom=custom)
-        assert ret == {'message': 'Command sent.'}
+@patch("wazuh.ossec_queue.OssecQueue._connect")
+@patch("wazuh.syscheck.OssecQueue._send", return_value='1')
+@patch("wazuh.ossec_queue.OssecQueue.close")
+@patch('wazuh.common.ossec_path', new='wazuh/tests/data')
+def test_run_command(mock_close,  mock_send, mock_conn, message_exception, send_exception, agent_id, command,
+                     arguments, custom):
+    """Verify the proper operation of active_response module.
 
-
-@pytest.mark.parametrize('expected_exception, command, arguments, custom', [
-    (1650, None, [], False),
-    (1652, 'random', [], False),
-    (1652, 'invalid_cmd', [], False),
-    (None, 'restart-ossec0', [], False),
-    (None, 'restart-ossec0', ["arg1", "arg2"], False)
-])
-def test_run_command_all(expected_exception, command, arguments, custom):
+    Parameters
+    ----------
+    message_exception : int
+        Exception code expected when calling create_message.
+    send_exception : int
+        Exception code expected when calling send_command.
+    agent_id : list
+        Agents on which to execute the Active response command.
+    command : string
+        Command to be executed on the agent.
+    arguments : list, optional
+        Arguments of the command.
+    custom : boolean
+        True if command is a script.
     """
-    Tests run_command function
-    """
-
-    if expected_exception is not None:
-        with pytest.raises(WazuhError, match=f'.* {expected_exception} .*'):
-            active_response.run_command(command=command, arguments=arguments, custom=custom)
-    else:
-        ret = active_response.run_command(command=command, arguments=arguments, custom=custom)
-        assert ret == {'message': 'Command sent.'}
+    with patch('wazuh.core.core_agent.Agent.get_basic_information', return_value=agent_info(send_exception)):
+        with patch('wazuh.core.core_agent.Agent.getconfig', return_value=agent_config(send_exception)):
+            if message_exception:
+                with pytest.raises(WazuhError, match=f'.* {message_exception} .*'):
+                    run_command(agent_list=agent_id, command=command, arguments=arguments, custom=custom)
+            else:
+                ret = run_command(agent_list=agent_id, command=command, arguments=arguments, custom=custom)
+                if send_exception:
+                    assert ret.render()['message'] == 'Could not send command to any agent'
+                else:
+                    assert ret.render()['message'] == 'Command sent to all agents'
