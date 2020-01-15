@@ -336,5 +336,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         }
     }
 
-    return sched_scan_read(&(sca->scan_config), nodes, module->context->name);
+    const int sched_read = sched_scan_read(&(sca->scan_config), nodes, module->context->name);
+    return sched_read;
 }
