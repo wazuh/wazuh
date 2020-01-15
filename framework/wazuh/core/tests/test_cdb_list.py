@@ -24,11 +24,9 @@ LIST_FILE_NOT_FOUND_ERROR_CODE = 1802
 PERMISSION_ERROR_CODE = 1803
 INVALID_FILEPATH_ERROR_CODE = 1804
 
-DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
-PATH_FILE = os.path.join(DATA_PATH, "test_lists")
-PATH_FILE_INVALID = os.path.join(DATA_PATH, "test_lists_invalid_format")
-PATH_NON_EXISTING_FILE = os.path.join(DATA_PATH, "no_test_list_file")
-PATH_FILE_PERMISSION = os.path.join(DATA_PATH, "test_lists_invalid_permission")
+ABSOLUTE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "test_cdb_list")
+RELATIVE_PATH = os.path.join("framework", "wazuh", "core", "tests", "data", "test_cdb_list")
+PATH_FILE = os.path.join(RELATIVE_PATH, "test_lists")
 
 CONTENT_FILE = [{'key': 'test-wazuh-w', 'value': 'write'},
                 {'key': 'test-wazuh-r', 'value': 'read'},
@@ -49,7 +47,7 @@ def test_get_relative_path(relative_path):
     Parameters
     ----------
     relative_path : str
-        relative path to create a full path and pass it to get_relative_path
+        Relative path to create a full path and pass it to `get_relative_path`.
     """
     full_path = os.path.join(common.ossec_path, relative_path)
     assert relative_path == get_relative_path(full_path)
@@ -77,7 +75,7 @@ def test_check_path(path, error_expected):
     path : str
         A relative path with a valid or invalid format.
     error_expected : int
-        Expected error to be raised by check_path due to an invalid path format
+        Expected error to be raised by check_path due to an invalid path format.
     """
     try:
         check_path(path)
@@ -91,18 +89,16 @@ def test_check_path(path, error_expected):
 def test_iterate_lists(only_names):
     """Test `iterate_lists` core functionality.
 
-    `Iterate_list` must get the content of all CDB lists in a specified path skipping .cdb and .swp files. It will
+    `Iterate_list` must get the content of all CDB lists in a specified path skipping `.cdb` and `.swp` files. It will
     return a list of dictionaries.
 
     Parameters
     ----------
     only_names : bool
-        If this parameter is true, only the name of all lists will be showed by iterate_lists instead of its content.
+        If this parameter is true, only the name of all lists will be showed by `iterate_lists` instead of its content.
     """
-    folders = [os.path.join(DATA_PATH, "test_iterate"),
-               os.path.join(DATA_PATH, "test_iterate", "subdir")]
-
-    required_fields = ['path', 'name', 'folder'] if only_names else False, ['path', 'items']
+    folders = [ABSOLUTE_PATH, os.path.join(ABSOLUTE_PATH, "subdir")]
+    required_fields = ['path', 'name', 'folder'] if only_names else ['path', 'items']
 
     for folder in folders:
         common.reset_context_cache()
