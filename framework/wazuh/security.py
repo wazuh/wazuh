@@ -462,7 +462,7 @@ def set_role_policy(role_id, policy_ids):
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
                 result.add_failed_item(id_=policy_id, error=WazuhError(4007))
             elif role_policy == SecurityError.ADMIN_RESOURCES:
-                result.add_failed_item(id_=policy_id, error=WazuhError(4008))
+                result.add_failed_item(id_=role_id[0], error=WazuhError(4008))
             else:
                 success = True
                 result.total_affected_items += 1
@@ -497,7 +497,7 @@ def remove_role_policy(role_id, policy_ids):
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
                 result.add_failed_item(id_=policy_id, error=WazuhError(4007))
             elif role_policy == SecurityError.ADMIN_RESOURCES:
-                result.add_failed_item(id_=policy_id, error=WazuhError(4008))
+                result.add_failed_item(id_=role_id[0], error=WazuhError(4008))
             else:
                 success = True
                 result.total_affected_items += 1

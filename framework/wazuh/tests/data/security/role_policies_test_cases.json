@@ -3,6 +3,42 @@
     {
       "params": {
         "role_id": [
+          "1"
+        ],
+        "policy_ids": [
+          "5", "4", "6"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4008": [
+            "1"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "role_id": [
+          "99"
+        ],
+        "policy_ids": [
+          "5", "4", "6"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4002": [
+            "99"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "role_id": [
           "3"
         ],
         "policy_ids": [
@@ -125,6 +161,42 @@
     }
   ],
   "remove_role_policy": [
+    {
+      "params": {
+        "role_id": [
+          "1"
+        ],
+        "policy_ids": [
+          "5", "4", "6"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4008": [
+            "1"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "role_id": [
+          "99"
+        ],
+        "policy_ids": [
+          "5", "4", "6"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4002": [
+            "99"
+          ]
+        }
+      }
+    },
     {
       "params": {
         "role_id": [

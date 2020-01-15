@@ -2,12 +2,9 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import sqlite3
 import os
 import re
-import sys
-
-from unittest.mock import patch, MagicMock
+import sqlite3
 from functools import wraps
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -43,5 +40,7 @@ def RBAC_bypasser(**kwargs):
         @wraps(f)
         def wrapper(*args, **kwargs):
             return f(*args, **kwargs)
+
         return wrapper
+
     return decorator

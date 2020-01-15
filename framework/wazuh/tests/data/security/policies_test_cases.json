@@ -259,6 +259,19 @@
   "update_policy": [
     {
       "params": {
+        "policy_id": ["6"]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4001": [
+            "6"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
         "policy_id": ["6"],
         "name": "ossecPolicy1",
         "policy": {

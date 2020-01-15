@@ -3,6 +3,24 @@
     {
       "params": {
         "user_id": [
+          "normal"
+        ],
+        "role_ids": [
+          "5"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4017": [
+            "5"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "user_id": [
           "ossec"
         ],
         "role_ids": [
@@ -73,6 +91,42 @@
     }
   ],
   "remove_user_role": [
+    {
+      "params": {
+        "user_id": [
+          "wazuh"
+        ],
+        "role_ids": [
+          "5", "4", "6"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4008": [
+            "wazuh"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "user_id": [
+          "wazuhhh"
+        ],
+        "role_ids": [
+          "5", "4", "6"
+        ]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "5001": [
+            "wazuhhh"
+          ]
+        }
+      }
+    },
     {
       "params": {
         "user_id": [

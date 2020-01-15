@@ -450,6 +450,19 @@
     },
     {
       "params": {
+        "role_id": ["3"]
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "4001": [
+            "3"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
         "role_id": ["5"],
         "name": "normalUser",
         "rule": {

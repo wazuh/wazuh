@@ -24,6 +24,7 @@ with patch('wazuh.common.ossec_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh import security
+        from wazuh.results import WazuhResult
 
 # Params
 
@@ -103,3 +104,9 @@ def test_get_users(db_setup, security_function, params, expected_result):
                 assert failed_are_equal(result, expected_result)
             except WazuhError as e:
                 assert str(e.code) == list(expected_result['failed_items'].keys())[0]
+
+
+def test_revoke_tokens():
+    """Checks that the return value of revoke_tokens is a WazuhResult."""
+    result = security.revoke_tokens()
+    assert isinstance(result, WazuhResult)
