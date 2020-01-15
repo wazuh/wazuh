@@ -172,7 +172,9 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             ciscat->java_path = strdup(nodes[i]->content);
         } else if (!strcmp(nodes[i]->element, XML_CISCAT_PATH)) {
             ciscat->ciscat_path = strdup(nodes[i]->content);
-        } else if (!is_sched_tag(nodes[i]->element)) {
+        } else if (is_sched_tag(nodes[i]->element)) {
+            // Do nothing
+        } else {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_CISCAT_CONTEXT.name);	
             return OS_INVALID;
         }

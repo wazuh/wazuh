@@ -231,7 +231,9 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_OSCAP_CONTEXT.name);
                 return OS_INVALID;
             }
-        } else if (!is_sched_tag(nodes[i]->element)) {
+        } else if (is_sched_tag(nodes[i]->element)) {
+            // Do nothing
+        } else {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_OSCAP_CONTEXT.name);	
             return OS_INVALID;
         }

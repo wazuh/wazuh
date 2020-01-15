@@ -198,7 +198,9 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             OS_ClearNode(children);
 
-        } else if (!is_sched_tag(nodes[i]->element)) {
+        } else if (is_sched_tag(nodes[i]->element)) {
+            // Do nothing
+        } else {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_AZURE_CONTEXT.name);	
             return OS_INVALID;
         }

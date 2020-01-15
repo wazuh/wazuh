@@ -153,7 +153,9 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
         } 
-        else if (!is_sched_tag(nodes[i]->element)) {
+        else if (is_sched_tag(nodes[i]->element)) {
+            // Do nothing
+        } else {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_GCP_CONTEXT.name);	
             return OS_INVALID;
         }

@@ -70,7 +70,9 @@ int wm_docker_read(xml_node **nodes, wmodule *module)
                 merror("At module '%s': Invalid content for tag '%s'.", WM_DOCKER_CONTEXT.name, XML_DISABLED);
                 return OS_INVALID;
             }
-        } else if (!is_sched_tag(nodes[i]->element)) {
+        } else if (is_sched_tag(nodes[i]->element)) {
+            // Do nothing
+        } else {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_DOCKER_CONTEXT.name);	
             return OS_INVALID;
         }
