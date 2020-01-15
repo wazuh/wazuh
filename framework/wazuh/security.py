@@ -94,7 +94,7 @@ def update_user(username=None, password=None):
                                       none_msg='User could not be updated')
     with AuthenticationManager() as auth:
         query = auth.update_user(username[0], password)
-        if query is False:
+        if not query:
             result.add_failed_item(id_=username[0], error=WazuhError(5001))
         else:
             result.affected_items.append(auth.get_user(username[0]))
@@ -118,7 +118,7 @@ def remove_users(username_list):
         for username in username_list:
             user = auth.get_user(username)
             query = auth.delete_user(username)
-            if query is False:
+            if not query:
                 result.add_failed_item(id_=username, error=WazuhError(5001))
             elif query == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=username, error=WazuhError(5004))
@@ -185,7 +185,7 @@ def remove_roles(role_ids):
             role_delete = rm.delete_role(int(r_id))
             if role_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=r_id, error=WazuhError(4008))
-            elif role_delete is False:
+            elif not role_delete:
                 result.add_failed_item(id_=r_id, error=WazuhError(4002))
             elif role:
                 result.affected_items.append(role)
@@ -303,7 +303,7 @@ def remove_policies(policy_ids=None):
             policy_delete = pm.delete_policy(int(p_id))
             if policy_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=p_id, error=WazuhError(4008))
-            elif policy_delete is False:
+            elif not policy_delete:
                 result.add_failed_item(id_=p_id, error=WazuhError(4007))
             elif policy:
                 result.affected_items.append(policy)
