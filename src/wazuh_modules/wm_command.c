@@ -169,7 +169,7 @@ void * wm_command_main(wm_command_t * command) {
             mtdebug1(WM_GCP_LOGTAG, "Sleeping for %li seconds", time_sleep);
             wm_delay(1000 * time_sleep);
         }
-        mtdebug1(WM_COMMAND_LOGTAG, "Starting command '%s'.", command->tag);
+        mtinfo(WM_COMMAND_LOGTAG, "Starting command '%s'.", command->tag);
         
         int status = 0;
         char *output = NULL;

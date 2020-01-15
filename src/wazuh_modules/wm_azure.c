@@ -65,7 +65,7 @@ void* wm_azure_main(wm_azure_t *azure_config) {
             mtdebug1(WM_AZURE_LOGTAG, "Sleeping for %li seconds", time_sleep);
             wm_delay(1000 * time_sleep);
         }
-        mtdebug1(WM_AZURE_LOGTAG, "Starting fetching of logs.");
+        mtinfo(WM_AZURE_LOGTAG, "Starting fetching of logs.");
 
         snprintf(msg, OS_SIZE_6144, "Starting Azure-logs scan.");
         SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
