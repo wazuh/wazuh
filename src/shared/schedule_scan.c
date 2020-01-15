@@ -186,9 +186,7 @@ static time_t _get_next_time(const sched_scan_config *config, const char *MODULE
             return 0;
         }
     } else {
-        mterror(MODULE_TAG, "Invalid Scheduling option. Exiting.");
-        pthread_exit(NULL);
-        
+        merror_exit("Invalid Scheduling option for module %s. Exiting.", MODULE_TAG);
     }
     return 0;
 }
