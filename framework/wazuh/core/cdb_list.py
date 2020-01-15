@@ -59,8 +59,7 @@ def iterate_lists(absolute_path=common.lists_path, only_names=False):
                 items = get_list_from_file(new_relative_path)
                 output.append({'path': new_relative_path, 'items': items})
         elif isdir(new_absolute_path):
-            output += iterate_lists(new_absolute_path, only_names=True) if only_names \
-                else iterate_lists(new_absolute_path)
+            output += iterate_lists(new_absolute_path, only_names=only_names)
 
     return output
 
