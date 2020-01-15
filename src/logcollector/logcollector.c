@@ -1806,9 +1806,16 @@ void * w_output_thread(void * args){
                 // Continuously attempt to reconnect to the queue and send the message.
                 int sleep_time = 5;
 
+                #ifdef CLIENT
+                merror("Unable to send message to '%s' (ossec-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
+                #else
+                merror("Unable to send message to '%s' (ossec-analysisd might be down). Attempting to reconnect.", DEFAULTQPATH);
+                #endif
+
                 while(1) {
                     if(logr_queue = StartMQ(DEFAULTQPATH, WRITE), logr_queue > 0) {
                         if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) == 0) {
+                            minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
                             break;  //  We sent the message successfully, we can go on.
                         }
                     }
