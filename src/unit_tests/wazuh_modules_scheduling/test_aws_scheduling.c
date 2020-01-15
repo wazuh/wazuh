@@ -34,8 +34,7 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
 /****************************************************************/
 
 /******* Helpers **********/
-
-static void set_up_test(void (*ptr)(const sched_scan_config *scan_config, struct tm *date_array, unsigned int MAX_DATES)) {
+static void set_config_test(void (*ptr)(const sched_scan_config *scan_config, struct tm *date_array, unsigned int MAX_DATES)) {
     enable_forever_loop();
     wm_max_eps = 1;
     test_aws_date_counter = 0;
@@ -47,7 +46,7 @@ static void set_up_test(void (*ptr)(const sched_scan_config *scan_config, struct
 
 /** Tests **/
 void test_interval_execution() {
-    set_up_test(check_time_interval);
+    set_config_test(check_time_interval);
     const char *string = 
         "<disabled>no</disabled>\n"
         "<interval>10m</interval>\n"
@@ -63,10 +62,12 @@ void test_interval_execution() {
     XML_NODE nodes = string_to_xml_node(string, &lxml);
     assert_int_equal(wm_aws_read(&lxml, nodes, &aws_module), 0);
     aws_module.context->start( (wm_aws *) aws_module.data);
+    OS_ClearNode(nodes);
+    OS_ClearXML(&lxml);
 }
 
 void test_day_of_month() {
-    set_up_test(check_day_of_month);
+    set_config_test(check_day_of_month);
     const char *string = 
         "<disabled>no</disabled>\n"
         "<day>3</day>\n"
@@ -83,10 +84,12 @@ void test_day_of_month() {
     XML_NODE nodes = string_to_xml_node(string, &lxml);
     assert_int_equal(wm_aws_read(&lxml, nodes, &aws_module), 0);
     aws_module.context->start( (wm_aws *) aws_module.data);
+    OS_ClearNode(nodes);
+    OS_ClearXML(&lxml);
 }
 
 void test_day_of_week() {
-    set_up_test(check_day_of_week);
+    set_config_test(check_day_of_week);
     const char *string = 
         "<disabled>no</disabled>\n"
         "<wday>Sunday</wday>\n"
@@ -103,10 +106,12 @@ void test_day_of_week() {
     XML_NODE nodes = string_to_xml_node(string, &lxml);
     assert_int_equal(wm_aws_read(&lxml, nodes, &aws_module), 0);
     aws_module.context->start( (wm_aws *) aws_module.data);
+    OS_ClearNode(nodes);
+    OS_ClearXML(&lxml);
 }
 
 void test_time_of_day() {
-    set_up_test(check_time_of_day);
+    set_config_test(check_time_of_day);
     const char *string = 
         "<disabled>no</disabled>\n"
         "<time>15:05</time>\n"
@@ -122,11 +127,13 @@ void test_time_of_day() {
     XML_NODE nodes = string_to_xml_node(string, &lxml);
     assert_int_equal(wm_aws_read(&lxml, nodes, &aws_module), 0);
     aws_module.context->start( (wm_aws *) aws_module.data);
+    OS_ClearNode(nodes);
+    OS_ClearXML(&lxml);
 }
 
 
 void test_fake_tag() {
-    set_up_test(check_time_of_day);
+    set_config_test(check_time_of_day);
     const char *string = 
         "<disabled>no</disabled>\n"
         "<time>15:05</time>\n"
@@ -142,6 +149,8 @@ void test_fake_tag() {
     OS_XML lxml;
     XML_NODE nodes = string_to_xml_node(string, &lxml);
     assert_int_equal(wm_aws_read(&lxml, nodes, &aws_module), -1);
+    OS_ClearNode(nodes);
+    OS_ClearXML(&lxml);
 }
 
 int main(void) {

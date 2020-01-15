@@ -305,7 +305,7 @@ static int wm_sca_start(wm_sca_t * data) {
             mtdebug1(WM_SCA_LOGTAG, "Sleeping for %li seconds", time_sleep);
             wm_delay(1000 * time_sleep);
         }
-        minfo(WM_SCA_LOGTAG,"Starting Security Configuration Assessment scan.");
+        mtinfo(WM_SCA_LOGTAG,"Starting Security Configuration Assessment scan.");
 
         /* Do scan for every policy file */
         wm_sca_read_files(data);
@@ -313,7 +313,7 @@ static int wm_sca_start(wm_sca_t * data) {
         /* Send policies scanned for database purge on manager side */
         wm_sca_send_policies_scanned(data);
 
-        minfo(WM_SCA_LOGTAG, "Security Configuration Assessment scan finished. Duration: %d seconds.", (int)time_sleep);
+        mtinfo(WM_SCA_LOGTAG, "Security Configuration Assessment scan finished. Duration: %d seconds.", (int)time_sleep);
 
     } while(FOREVER());
 
