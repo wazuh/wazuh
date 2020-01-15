@@ -34,8 +34,8 @@ typedef struct _remoted {
     socklen_t peer_size;
     long queue_size;
 
-    char * mode;
-    int key_polling_enabled;
+    enum KEYPOLL_MODE {KEYPOLL_MODE_LOCAL, KEYPOLL_MODE_MASTER} mode;
+    bool key_polling_enabled;
 
 } remoted;
 
