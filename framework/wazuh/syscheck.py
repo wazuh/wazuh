@@ -75,7 +75,6 @@ def clear(agent_list=None):
     result.affected_items.sort(key=int)
     result.total_affected_items = len(result.affected_items)
 
-
     return result
 
 
@@ -148,7 +147,7 @@ def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, sea
     :param limit: Maximum number of items to return.
     :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
     :param search: Looks for items with the specified string.
-    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+    :param select: Select fields to return. Format: ["field1","field2"].
     :param q: Query to filter by
     :return: AffectedItemsWazuhResult.
     """
