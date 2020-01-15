@@ -215,39 +215,36 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         } else if (strcmp(node[i]->element, xml_key_polling) == 0) {
             
             if(!strcmp(node[i]->attributes[0], xml_enabled) == 0){
-                merror("Invalid value for option '<%s>'", xml_key_polling);
-                return OS_INVALID;
+                mwarn("Invalid value for option '<%s>'", xml_key_polling);
+                //return OS_INVALID;
             }
-            else{ 
-                if (!strcmp(node[i]->values[0], "yes") == 0 && !strcmp(node[i]->values[0], "no") == 0){
-                merror("Invalid value for option '<%s>'", xml_enabled);
-                return OS_INVALID;
-                }
-                else if(strcmp(node[i]->values[0], "yes") == 0)
+            else{
+                if(strcmp(node[i]->values[0], "yes") == 0 || strcmp(node[i]->values[0], "") == 0)
                     logr->key_polling_enabled = 1;
-                else
-                    logr->key_polling_enabled = 0;
+                else if(strcmp(node[i]->values[0], "no") == 0)
+                    logr->key_polling_enabled = 0; 
+                else{
+                    mwarn("Invalid value for option '<%s>'", xml_enabled);
+                    logr->key_polling_enabled = -1;
+                }
             }
             
             XML_NODE chld_node = NULL;
             chld_node = OS_GetElementsbyNode(xml, node[i]);
             if (!chld_node) {
-                merror(XML_INVELEM, node[i]->element);
+                mwarn(XML_INVELEM, node[i]->element);
                 return OS_INVALID;
             }
 
-            if (!strcmp(chld_node[0]->element, xml_mode)==0){
-                merror("Invalid value for option '<%s>'", xml_key_polling);
-                return OS_INVALID;      
-            }
-            else if (!strcmp(chld_node[0]->content, "local") == 0 && !strcmp(chld_node[0]->content, "master") == 0){
-                merror("Invalid value for option '<%s>'", xml_mode);
-                return OS_INVALID;
-            }
-            else if (strcmp(chld_node[0]->content, "local")==0)
-                logr->mode = strdup("local");      
+            if (!strcmp(chld_node[0]->element, xml_mode)==0)
+                mwarn("Invalid value for option '<%s>'", xml_key_polling);    
+            else if (strcmp(chld_node[0]->content, "local")==0 || strcmp(chld_node[0]->content, "")==0)
+                logr->mode = strdup("local");
             else if (strcmp(chld_node[0]->content, "master")==0)
                 logr->mode = strdup("master");
+            else
+                mwarn("Invalid value for option '<%s>'", xml_mode);
+                              
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
