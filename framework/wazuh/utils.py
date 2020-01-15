@@ -819,7 +819,7 @@ class WazuhDBQuery(object):
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+        :param select: Select fields to return. Format: ["field1","field2"].
         :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
         :param query: query to filter in database. Format: field operator value.
         :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}

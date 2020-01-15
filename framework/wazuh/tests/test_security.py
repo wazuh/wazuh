@@ -81,6 +81,19 @@ def db_setup():
 @patch('wazuh.security.orm._engine', create_engine(f'sqlite://'))
 @patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://')))
 def test_get_users(db_setup, security_function, params, expected_result):
+    """Checks that the dict returned is correct
+
+    Parameters
+    ----------
+    db_setup : callable
+        This function creates the rbac.db file.
+    security_function : list of str
+        This is the name of the tested function.
+    params : list of str
+        Arguments for the tested function.
+    expected_result : list of dict
+        This is a list that contains the expected results .
+    """
     with patch('wazuh.security.orm._engine', create_engine(f'sqlite://')):
         with patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://'))):
             db_setup(security.orm._Session())
