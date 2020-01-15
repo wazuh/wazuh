@@ -21,7 +21,8 @@ typedef struct _sched_scan_config {
     char* scan_time;        /* Time of day [hh:mm]                        */
     unsigned int interval;  /* Interval betweeen events in seconds        */
     bool month_interval;    /* Flag to determine if interval is in months */
-    time_t time_start;      /* Last scan time                             */
+    time_t last_scan_time;      /* Last scan time                             */
+    time_t time_start;      /* Do not write, used by the modules          */
 } sched_scan_config;
 
 void sched_scan_init(sched_scan_config *scan_config);

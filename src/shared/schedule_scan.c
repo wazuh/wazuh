@@ -29,6 +29,7 @@ void sched_scan_init(sched_scan_config *scan_config){
     scan_config->interval = WM_DEF_INTERVAL / 2;
     scan_config->month_interval = false;
     scan_config->time_start = 0;
+    scan_config->last_scan_time = 0;
 }
 
 /**
@@ -120,12 +121,12 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
  * */
 time_t sched_scan_get_next_time(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
     const time_t next_time = _get_next_time(config, MODULE_TAG, run_on_start);
-    config->time_start = time(NULL) + next_time;
+    config->last_scan_time = time(NULL) + next_time;
     return next_time;
 }
 
 static time_t _get_next_time(const sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
-    if (run_on_start && !config->time_start) {
+    if (run_on_start && !config->last_scan_time) {
         // If scan on start then initial waiting time is 0
         return 0;
     }
@@ -138,7 +139,7 @@ static time_t _get_next_time(const sched_scan_config *config, const char *MODULE
         while (status < 0 || !avoid_repeated_scan) {
             status = check_day_to_scan(config->scan_day, config->scan_time);
             //At least a day from the last scan
-            avoid_repeated_scan = (time(NULL) - config->time_start) > 86400;
+            avoid_repeated_scan = (time(NULL) - config->last_scan_time) > 86400;
             if ( (status == 0) && (month_counter <= 1) && avoid_repeated_scan) {
                 // Correct day, sleep until scan_time and then run
                 return (time_t) get_time_to_hour(config->scan_time);
@@ -157,7 +158,7 @@ static time_t _get_next_time(const sched_scan_config *config, const char *MODULE
         }
     } else if (config->scan_wday >= 0) {
         // Option 2: Day of the week
-        if(time(NULL) - config->time_start < 3600){
+        if(time(NULL) - config->last_scan_time < 3600){
             // Sleep an hour
             wm_delay(3600000);
         }
@@ -165,7 +166,7 @@ static time_t _get_next_time(const sched_scan_config *config, const char *MODULE
 
     } else if (config->scan_time) {
         // Option 3: Time of the day [hh:mm]
-        if(time(NULL) - config->time_start < 3600){
+        if(time(NULL) - config->last_scan_time < 3600){
             // Sleep an hour
             wm_delay(3600000);
         }
@@ -173,11 +174,11 @@ static time_t _get_next_time(const sched_scan_config *config, const char *MODULE
     } else if (config->interval) {
         // Option 4: Interval of time
         
-        if(!config->time_start){
+        if(!config->last_scan_time){
             // First time
             return 0;
         }
-        const time_t last_run_time = time(NULL) - config->time_start;
+        const time_t last_run_time = time(NULL) - config->last_scan_time;
 
         if ((time_t)config->interval >= last_run_time) {
             return  (time_t)config->interval - last_run_time;
