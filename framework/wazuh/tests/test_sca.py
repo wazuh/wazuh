@@ -19,9 +19,10 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.security_configuration_assessment import get_sca_list, fields_translation_sca, \
+        from wazuh.sca import get_sca_list, fields_translation_sca, \
             get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
         from wazuh.results import AffectedItemsWazuhResult
+        from wazuh.exception import WazuhError
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -54,7 +55,7 @@ cols_returned_from_db_sca_check = [field.replace('`', '').replace('sca.', '')
                                    for field in fields_translation_sca_check.keys()]
 
 
-@patch("wazuh.security_configuration_assessment.common.database_path_global",
+@patch("wazuh.sca.common.database_path_global",
        new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
 def test_get_sca_list():
     """
@@ -71,8 +72,21 @@ def test_get_sca_list():
         assert isinstance(sca, dict)
         assert set(sca.keys()) == set(cols_returned_from_db_sca)
 
+        result = get_sca_list(agent_list=['999'])
+        assert isinstance(result, AffectedItemsWazuhResult)
+        result = result.to_dict()
+        assert isinstance(result['total_affected_items'], int)
+        assert result['total_affected_items'] == 0
+        assert len(result['affected_items']) == 0
+        assert result['total_failed_items'] == 1
+        assert len(result['failed_items']) == 1
+        failed = result['failed_items']
+        assert isinstance(list(failed.keys())[0], WazuhError)
+        assert list(failed.keys())[0].to_dict()['code'] == 1701
+        assert failed[list(failed.keys())[0]] == {'999'}
 
-@patch("wazuh.security_configuration_assessment.common.database_path_global",
+
+@patch("wazuh.sca.common.database_path_global",
        new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
 def test_get_sca_list_select_param():
     """
@@ -91,7 +105,7 @@ def test_get_sca_list_select_param():
         assert set(sca.keys()) == set(fields)
 
 
-@patch("wazuh.security_configuration_assessment.common.database_path_global",
+@patch("wazuh.sca.common.database_path_global",
        new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
 def test_get_sca_list_search_param():
     """
@@ -121,7 +135,7 @@ def test_get_sca_list_search_param():
         assert len(result['affected_items']) > 0
 
 
-@patch("wazuh.security_configuration_assessment.common.database_path_global",
+@patch("wazuh.sca.common.database_path_global",
        new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
 def test_get_sca_checks():
     """
@@ -152,8 +166,21 @@ def test_get_sca_checks():
         assert isinstance(sca, list)
         assert len(sca) == 0
 
+        result = get_sca_checks('cis_debian', agent_list=['999'])
+        assert isinstance(result, AffectedItemsWazuhResult)
+        result = result.to_dict()
+        assert isinstance(result['total_affected_items'], int)
+        assert result['total_affected_items'] == 0
+        assert len(result['affected_items']) == 0
+        assert result['total_failed_items'] == 1
+        assert len(result['failed_items']) == 1
+        failed = result['failed_items']
+        assert isinstance(list(failed.keys())[0], WazuhError)
+        assert list(failed.keys())[0].to_dict()['code'] == 1701
+        assert failed[list(failed.keys())[0]] == {'999'}
 
-@patch("wazuh.security_configuration_assessment.common.database_path_global",
+
+@patch("wazuh.sca.common.database_path_global",
        new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
 def test_sca_checks_select_and_q():
     """
@@ -167,7 +194,7 @@ def test_sca_checks_select_and_q():
         assert set(result['affected_items'][0].keys()).issubset({'compliance', 'policy_id', 'result', 'rules'})
 
 
-@patch("wazuh.security_configuration_assessment.common.database_path_global",
+@patch("wazuh.sca.common.database_path_global",
        new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
 def test_sca_failed_limit():
     """
@@ -182,7 +209,7 @@ def test_sca_failed_limit():
             get_sca_list(agent_list=['000'], limit=0)
 
 
-@patch("wazuh.security_configuration_assessment.common.database_path_global",
+@patch("wazuh.sca.common.database_path_global",
        new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
 def test_sca_response_without_result():
     """

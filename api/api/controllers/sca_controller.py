@@ -8,7 +8,7 @@ import logging
 
 import connexion
 
-import wazuh.security_configuration_assessment as sca
+import wazuh.sca as sca
 from api.authentication import get_permissions
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
