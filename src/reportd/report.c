@@ -71,8 +71,10 @@ int main(int argc, char **argv)
     if (!mon_config->reports) {
         os_calloc(1, 2 * sizeof(report_config *), mon_config->reports);
         os_calloc(1, sizeof(report_config), mon_config->reports[s]);
+
+        mon_config->reports[s]->r_filter.report_type = 0;
     }
-    
+
     while ((c = getopt(argc, argv, "Vdhstu:g:D:f:v:n:r:")) != -1) {
         switch (c) {
             case 'V':
