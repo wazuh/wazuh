@@ -107,79 +107,31 @@ void fim_sync_checksum() {
 }
 
 void fim_sync_checksum_split(const char * start, const char * top, long id) {
-    cJSON * entry_data = NULL;
-    char ** keys;
-    int n;
-    int m = 0;
-    EVP_MD_CTX * ctx_left = EVP_MD_CTX_create();
-    EVP_MD_CTX * ctx_right = EVP_MD_CTX_create();
+    int n = 0;
 
-    EVP_DigestInit(ctx_left, EVP_sha1());
-    EVP_DigestInit(ctx_right, EVP_sha1());
+    //n = fim_db_get_count_range(start, top); returns number of rows between start and top
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-/* SQLite Development
-    {
-        keys = rbtree_range(syscheck.fim_entry, start, top);
-        for (n = 0; keys[n]; n++);
-
-        switch (n) {
+    switch (n) {
         case 0:
             break;
 
         case 1:
-            // Unary list: send the file state
-            entry_data = fim_entry_json(keys[0], (fim_entry_data *) rbtree_get(syscheck.fim_entry, keys[0]));
-            break;
-
-        default:
-            // Other case: split the list
-            m = n / 2;
-
-            for (int i = 0; i < m; i++) {
-                fim_entry_data * data = rbtree_get(syscheck.fim_entry, keys[i]);
-                assert(data);
-                EVP_DigestUpdate(ctx_left, data->checksum, strlen(data->checksum));
-            }
-
-            for (int i = m; i < n; i++) {
-                fim_entry_data * data = rbtree_get(syscheck.fim_entry, keys[i]);
-                assert(data);
-                EVP_DigestUpdate(ctx_right, data->checksum, strlen(data->checksum));
-            }
-        }
-    }
-*/
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    if (n > 0) {
-        if (entry_data == NULL) {
-            unsigned char digest[EVP_MAX_MD_SIZE];
-            unsigned int digest_size;
-            os_sha1 hexdigest;
-
-            EVP_DigestFinal_ex(ctx_left, digest, &digest_size);
-            OS_SHA1_Hexdigest(digest, hexdigest);
-            char * plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_LEFT, id, keys[0], keys[m - 1], keys[m], hexdigest);
-            fim_send_sync_msg(plain);
-            free(plain);
-
-            EVP_DigestFinal_ex(ctx_right, digest, &digest_size);
-            OS_SHA1_Hexdigest(digest, hexdigest);
-            plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_RIGHT, id, keys[m], keys[n - 1], "", hexdigest);
-            fim_send_sync_msg(plain);
-            free(plain);
-        } else {
+            fim_entry *entry = fim_db_get_path(start);
+            cJSON * entry_data = fim_entry_json(start, entry->data);
+            free_entry(entry);
             char * plain = dbsync_state_msg("syscheck", entry_data);
             fim_send_sync_msg(plain);
             free(plain);
+            break;
+
+        default:
+            //fim_db_data_checksum_range(start, top, id, n);
         }
     }
 
-    free_strarray(keys);
-    EVP_MD_CTX_destroy(ctx_left);
-    EVP_MD_CTX_destroy(ctx_right);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 }
 
 void fim_sync_send_list(const char * start, const char * top) {
