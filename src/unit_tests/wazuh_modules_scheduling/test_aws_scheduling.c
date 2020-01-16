@@ -192,6 +192,91 @@ void test_read_scheduling_monthday_configuration() {
     wmodule_cleanup(module);
 }
 
+void test_read_scheduling_weekday_configuration() {
+    const char *string = 
+        "<disabled>no</disabled>\n"
+        "<time>13:03</time>\n"
+        "<wday>Monday</wday>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<skip_on_error>yes</skip_on_error>\n"
+        "<bucket type=\"config\">\n"
+        "    <name>wazuh-aws-wodle</name>\n"
+        "    <path>config</path>\n"
+        "   <aws_profile>default</aws_profile>\n"
+        "</bucket>\n"
+    ;
+    wmodule *module = calloc(1, sizeof(wmodule));;
+    OS_XML xml;
+    XML_NODE nodes = string_to_xml_node(string, &xml);
+    assert_int_equal(wm_aws_read(&xml, nodes, module), 0);
+    wm_aws *module_data = (wm_aws*)module->data;
+    assert_int_equal(module_data->scan_config.scan_day, 0);
+    assert_int_equal(module_data->scan_config.interval, 604800);
+    assert_int_equal(module_data->scan_config.month_interval, false);
+    assert_int_equal(module_data->scan_config.scan_wday, 1);
+    assert_string_equal(module_data->scan_config.scan_time, "13:03");
+    OS_ClearNode(nodes);
+    OS_ClearXML(&xml);
+    free(module_data->scan_config.scan_time);
+    wmodule_cleanup(module);
+}
+
+void test_read_scheduling_daytime_configuration() {
+    const char *string = 
+        "<disabled>no</disabled>\n"
+        "<time>01:11</time>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<skip_on_error>yes</skip_on_error>\n"
+        "<bucket type=\"config\">\n"
+        "    <name>wazuh-aws-wodle</name>\n"
+        "    <path>config</path>\n"
+        "   <aws_profile>default</aws_profile>\n"
+        "</bucket>\n"
+    ;
+    wmodule *module = calloc(1, sizeof(wmodule));;
+    OS_XML xml;
+    XML_NODE nodes = string_to_xml_node(string, &xml);
+    assert_int_equal(wm_aws_read(&xml, nodes, module), 0);
+    wm_aws *module_data = (wm_aws*)module->data;
+    assert_int_equal(module_data->scan_config.scan_day, 0);
+    assert_int_equal(module_data->scan_config.interval, WM_DEF_INTERVAL);
+    assert_int_equal(module_data->scan_config.month_interval, false);
+    assert_int_equal(module_data->scan_config.scan_wday, -1);
+    assert_string_equal(module_data->scan_config.scan_time, "01:11");
+    OS_ClearNode(nodes);
+    OS_ClearXML(&xml);
+    free(module_data->scan_config.scan_time);
+    wmodule_cleanup(module);
+}
+
+void test_read_scheduling_interval_configuration() {
+    const char *string = 
+        "<disabled>no</disabled>\n"
+        "<interval>10m</interval>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<skip_on_error>yes</skip_on_error>\n"
+        "<bucket type=\"config\">\n"
+        "    <name>wazuh-aws-wodle</name>\n"
+        "    <path>config</path>\n"
+        "   <aws_profile>default</aws_profile>\n"
+        "</bucket>\n"
+    ;
+    wmodule *module = calloc(1, sizeof(wmodule));;
+    OS_XML xml;
+    XML_NODE nodes = string_to_xml_node(string, &xml);
+    assert_int_equal(wm_aws_read(&xml, nodes, module), 0);
+    wm_aws *module_data = (wm_aws*)module->data;
+    assert_int_equal(module_data->scan_config.scan_day, 0);
+    assert_int_equal(module_data->scan_config.interval, 600);
+    assert_int_equal(module_data->scan_config.month_interval, false);
+    assert_int_equal(module_data->scan_config.scan_wday, -1);
+    assert_string_equal(module_data->scan_config.scan_time, "00:00");
+    OS_ClearNode(nodes);
+    OS_ClearXML(&xml);
+    free(module_data->scan_config.scan_time);
+    wmodule_cleanup(module);
+}
+
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test(test_interval_execution),
@@ -201,9 +286,12 @@ int main(void) {
     };
     const struct CMUnitTest tests_without_startup[] = {
         cmocka_unit_test(test_fake_tag),
-        cmocka_unit_test(test_read_scheduling_monthday_configuration)
+        cmocka_unit_test(test_read_scheduling_monthday_configuration),
+        cmocka_unit_test(test_read_scheduling_weekday_configuration),
+        cmocka_unit_test(test_read_scheduling_daytime_configuration),
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
     result &= cmocka_run_group_tests(tests_without_startup, NULL, NULL);
+    return result;
 }
