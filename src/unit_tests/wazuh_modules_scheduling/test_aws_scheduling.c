@@ -91,11 +91,9 @@ void test_interval_execution() {
     module_data->scan_config.last_scan_time = 0;
     module_data->scan_config.scan_day = 0;
     module_data->scan_config.scan_wday = -1;
-    //module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = 600; // 10min
     module_data->scan_config.month_interval = false;
     aws_module->context->start(module_data);
-    //free(module_data->scan_config.scan_time);
 }
 
 void test_day_of_month() {
