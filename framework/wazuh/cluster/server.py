@@ -1,16 +1,20 @@
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 import itertools
-import operator
-import ssl
-import uvloop
-import time
-from wazuh.cluster import common as c_common, cluster
-from wazuh import common, exception, utils
 import logging
-from typing import Tuple, Dict
 import random
+import ssl
+import time
+from typing import Tuple, Dict
+
+import uvloop
+
+from wazuh import common, exception, utils
+from wazuh.cluster import common as c_common, cluster
+from wazuh.ossec_socket import OssecSocket
 
 
 class AbstractServerHandler(c_common.Handler):
@@ -133,6 +137,8 @@ class AbstractServerHandler(c_common.Handler):
                 self.logger.error("Error during handshake with incoming connection: {}".format(exc))
             else:
                 self.logger.error("Error during handshake with incoming connection.")
+        # self.logger.info("Elimino el filtro AQUI")
+        # self.logger.removeFilter(self.logger_filter)
 
 
 class AbstractServer:
@@ -190,7 +196,8 @@ class AbstractServer:
             :param node_info: Node information
             :return: A boolean
             """
-            return (filter_node is None or node_info['name'] in filter_node) and (filter_type == 'all' or node_info['type'] == filter_type)
+            return (filter_node is None or node_info['name'] in filter_node) and \
+                   (filter_type == 'all' or node_info['type'] == filter_type)
 
         default_fields = self.to_dict()['info'].keys()
         if select is None:
@@ -220,6 +227,29 @@ class AbstractServer:
         return {'totalItems': len(res), 'items': utils.cut_array([{k: v[k] for k in select['fields']} for v in res],
                                                                  offset, limit)}
 
+    def send_key_polling(self, message):
+        """
+
+        Parameters
+        ----------
+        message : str
+            Message to send to modulesd
+        Returns
+        -------
+        str
+            Ok message
+        """
+        self.logger.info(f"Agent key polling requested for {message}")
+        s = OssecSocket(common.MODULESD_SOCKET)
+        s.send(message.encode())
+
+        # FINISH COMMUNICATION PROTOCOL ONCE KREQUEST OR KPOLLING SOCKET IS READY AND MODULESD COMMUNICATION FINISHED
+        # data = s.receive().decode()
+        # if not data.startswith('ok'):
+        #     raise exception.WazuhException(1014, data.replace("err ", ""))
+
+        return f"Key polling for {message} requested to modulesd"
+
     async def check_clients_keepalive(self):
         """
         Task to check the date of the last received keep alives from clients. It is started when the server starts and
@@ -230,7 +260,8 @@ class AbstractServer:
             keep_alive_logger.debug("Calculating.")
             curr_timestamp = time.time()
             for client_name, client in self.clients.copy().items():
-                if curr_timestamp - client.last_keepalive > self.cluster_items['intervals']['master']['max_allowed_time_without_keepalive']:
+                if curr_timestamp - client.last_keepalive > \
+                        self.cluster_items['intervals']['master']['max_allowed_time_without_keepalive']:
                     keep_alive_logger.error("No keep alives have been received from {} in the last minute. "
                                             "Disconnecting".format(client_name))
                     client.transport.close()

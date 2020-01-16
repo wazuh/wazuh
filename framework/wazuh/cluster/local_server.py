@@ -1,5 +1,7 @@
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 import functools
 import json
@@ -7,6 +9,7 @@ import random
 from typing import Tuple, Union
 
 import uvloop
+
 from wazuh import common, exception
 from wazuh.cluster import server, common as c_common, client
 from wazuh.cluster.dapi import dapi
@@ -47,6 +50,8 @@ class LocalServerHandler(server.AbstractServerHandler):
         elif command == b'send_file':
             path, node_name = data.decode().split(' ')
             return self.send_file_request(path, node_name)
+        elif command == b'run_keypoll':
+            return self.run_agent_key_polling(data)
         else:
             return super().process_request(command, data)
 
@@ -98,11 +103,21 @@ class LocalServerHandler(server.AbstractServerHandler):
         result = future.result()
         asyncio.create_task(self.send_request(command=b'send_f_res', data=result))
 
+    def run_agent_key_polling(self, message) -> Tuple[bytes, bytes]:
+        """ Handle the request run_agent_key_polling. It is implemented differently for master and workers.
+
+        Returns
+        -------
+
+        """
+        raise NotImplementedError
+
 
 class LocalServer(server.AbstractServer):
     """
     Creates the server, manages multiple client connections and it's connected to the cluster TCP transports.
     """
+
     def __init__(self, node: Union[server.AbstractServer, client.AbstractClientManager], **kwargs):
         """
         Class constructor
@@ -125,20 +140,22 @@ class LocalServer(server.AbstractServer):
         loop.set_exception_handler(c_common.asyncio_exception_handler)
 
         try:
-            server = await loop.create_unix_server(protocol_factory=lambda: self.handler_class(server=self, loop=loop,
-                                                                                               fernet_key='',
-                                                                                               logger=self.logger,
-                                                                                               cluster_items=self.cluster_items),
-                                                   path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
+            local_server = await loop.create_unix_server(
+                protocol_factory=lambda: self.handler_class(server=self,
+                                                            loop=loop,
+                                                            fernet_key='',
+                                                            logger=self.logger,
+                                                            cluster_items=self.cluster_items),
+                path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
         except OSError as e:
             self.logger.error("Could not create server: {}".format(e))
             raise KeyboardInterrupt
 
-        self.logger.info('Serving on {}'.format(server.sockets[0].getsockname()))
+        self.logger.info('Serving on {}'.format(local_server.sockets[0].getsockname()))
 
-        self.tasks.append(server.serve_forever)
+        self.tasks.append(local_server.serve_forever)
 
-        async with server:
+        async with local_server:
             # use asyncio.gather to run both tasks in parallel
             await asyncio.gather(*map(lambda x: x(), self.tasks))
 
@@ -147,6 +164,7 @@ class LocalServerHandlerMaster(LocalServerHandler):
     """
     The local server handler instance that runs in the Master node.
     """
+
     def process_request(self, command: bytes, data: bytes):
         """
         Defines requests available in the local server
@@ -209,11 +227,22 @@ class LocalServerHandlerMaster(LocalServerHandler):
             req.add_done_callback(self.get_send_file_response)
             return b'ok', b'Forwarding file to master node'
 
+    def run_agent_key_polling(self, message: bytes) -> Tuple[bytes, bytes]:
+        """ Manage the run_agent_key_polling command.
+
+        Returns
+        -------
+        Dict
+            Encoded response
+        """
+        return b'ok', json.dumps(self.server.node.send_key_polling(**json.loads(message.decode()))).encode()
+
 
 class LocalServerMaster(LocalServer):
     """
     The LocalServer object running in the master node
     """
+
     def __init__(self, node: server.AbstractServer, **kwargs):
         super().__init__(node=node, **kwargs)
         self.handler_class = LocalServerHandlerMaster
@@ -225,6 +254,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
     """
     The local server handler instance that runs in worker nodes.
     """
+
     def process_request(self, command: bytes, data: bytes):
         """
         Defines requests available in the local server
@@ -308,11 +338,23 @@ class LocalServerHandlerWorker(LocalServerHandler):
             req.add_done_callback(self.get_send_file_response)
             return b'ok', b'Forwarding file to master node'
 
+    def run_agent_key_polling(self, message) -> Tuple[bytes, bytes]:
+        """ Manage the run_agent_key_polling command. It forwards the request to the master node.
+
+        Returns
+        -------
+        Dict
+            Encoded response from master
+        """
+        self.logger.info("Agent key polling request sent to master")
+        return self.send_request_to_master(b'run_keypoll', message)
+
 
 class LocalServerWorker(LocalServer):
     """
     The LocalServer object running in worker nodes.
     """
+
     def __init__(self, node: client.AbstractClientManager, **kwargs):
         super().__init__(node=node, **kwargs)
         self.handler_class = LocalServerHandlerWorker

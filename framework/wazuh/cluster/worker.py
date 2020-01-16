@@ -1,6 +1,7 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 import errno
 import glob
@@ -9,16 +10,17 @@ import os
 import re
 import shutil
 import time
-from typing import Tuple, Dict, Callable, List, TextIO, KeysView
-from wazuh.cluster import client, cluster, common as c_common
+from typing import Tuple, Dict, Callable, List, TextIO
+
 from wazuh import cluster as metadata
 from wazuh import common, utils
-from wazuh.exception import WazuhException
 from wazuh.agent import Agent
-from wazuh.database import Connection
+from wazuh.cluster import client, cluster, common as c_common
 from wazuh.cluster.dapi import dapi
-from wazuh.wdb import WazuhDBConnection
+from wazuh.database import Connection
+from wazuh.exception import WazuhException
 from wazuh.utils import safe_move
+from wazuh.wdb import WazuhDBConnection
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -85,7 +87,8 @@ class SyncWorker:
         else:
             self.logger.info("Worker files sent to master.")
             result = await self.worker.send_request(
-                command=self.cmd+b'_e', data=task_id + b' ' + compressed_data_path.replace(common.ossec_path, '').encode())
+                command=self.cmd+b'_e',
+                data=task_id + b' ' + compressed_data_path.replace(common.ossec_path, '').encode())
 
         if result.startswith(b'Error'):
             self.logger.error(result.decode())
@@ -276,13 +279,16 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         if received_filename == 'Error':
             self.logger.info("Stopping synchronization process: worker files weren't correctly received.")
             return
+
+        zip_path = ''
         try:
             logger = self.task_loggers['Integrity']
             logger.info("Analyzing received files: Start.")
 
             ko_files, zip_path = await cluster.decompress_files(received_filename)
             logger.info("Analyzing received files: Missing: {}. Shared: {}. Extra: {}. ExtraValid: {}".format(
-                len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid'])))
+                len(ko_files['missing']), len(ko_files['shared']),
+                len(ko_files['extra']), len(ko_files['extra_valid'])))
 
             # Update files
             if ko_files['extra_valid']:
@@ -300,7 +306,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             shutil.rmtree(zip_path)
 
     @staticmethod
-    def remove_bulk_agents(agent_ids_list: KeysView, logger):
+    def remove_bulk_agents(agent_ids_list: set, logger):
         """
         Removes files created by agents in worker nodes. This function doesn't remove agents from client.keys since the
         client.keys file is overwritten by the master node.
@@ -418,36 +424,36 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         :param zip_path: Pathname of the received zip file containing the files to update
         :return: None
         """
-        def overwrite_or_create_files(filename: str, data: Dict):
+        def overwrite_or_create_files(filename_: str, data_: Dict):
             """
             Updates a file coming from the master
-            :param filename: Filename to update
-            :param data: File metadata such as modification time, whether it's a merged file or not, etc.
+            :param filename_: Filename to update
+            :param data_: File metadata such as modification time, whether it's a merged file or not, etc.
             :return: None
             """
-            full_filename_path = common.ossec_path + filename
-            if os.path.basename(filename) == 'client.keys':
-                self._check_removed_agents("{}{}".format(zip_path, filename), logger)
+            full_filename_path = common.ossec_path + filename_
+            if os.path.basename(filename_) == 'client.keys':
+                self._check_removed_agents("{}{}".format(zip_path, filename_), logger)
 
-            if data['merged']:  # worker nodes can only receive agent-groups files
-                if data['merge-type'] == 'agent-info':
+            if data_['merged']:  # worker nodes can only receive agent-groups files
+                if data_['merge-type'] == 'agent-info':
                     logger.warning("Agent status received in a worker node")
                     raise WazuhException(3011)
 
-                for name, content, _ in cluster.unmerge_agent_info('agent-groups', zip_path, filename):
+                for name, content, _ in cluster.unmerge_agent_info('agent-groups', zip_path, filename_):
                     full_unmerged_name = os.path.join(common.ossec_path, name)
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
                     with open(tmp_unmerged_path, 'wb') as f:
                         f.write(content)
                     safe_move(tmp_unmerged_path, full_unmerged_name,
-                              permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions'],
+                              permissions=self.cluster_items['files'][data_['cluster_item_key']]['permissions'],
                               ownership=(common.ossec_uid(), common.ossec_gid())
                               )
             else:
                 if not os.path.exists(os.path.dirname(full_filename_path)):
                     utils.mkdir_with_mode(os.path.dirname(full_filename_path))
-                safe_move("{}{}".format(zip_path, filename), full_filename_path,
-                          permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions'],
+                safe_move("{}{}".format(zip_path, filename_), full_filename_path,
+                          permissions=self.cluster_items['files'][data_['cluster_item_key']]['permissions'],
                           ownership=(common.ossec_uid(), common.ossec_gid())
                           )
 

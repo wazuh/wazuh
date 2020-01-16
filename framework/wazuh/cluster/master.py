@@ -1,22 +1,24 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
+import fcntl
+import functools
 import json
+import operator
+import os
 import random
 import re
 import shutil
 from calendar import timegm
 from datetime import datetime
-import functools
-import operator
-import os
 from typing import Tuple, Dict, Callable
-import fcntl
-from wazuh.agent import Agent
-from wazuh.cluster import server, cluster, common as c_common
+
 from wazuh import cluster as metadata
 from wazuh import common, utils, WazuhException
+from wazuh.agent import Agent
+from wazuh.cluster import server, cluster, common as c_common
 from wazuh.cluster.dapi import dapi
 
 
@@ -152,9 +154,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         Returns worker healthcheck information
         """
         return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'ip': self.ip},
-                'status': {'sync_integrity_free': self.sync_integrity_free, 'last_sync_integrity': self.sync_integrity_status,
-                           'sync_agentinfo_free': self.sync_agent_info_free, 'last_sync_agentinfo': self.sync_agent_info_status,
-                           'sync_extravalid_free': self.sync_extra_valid_free, 'last_sync_agentgroups': self.sync_extra_valid_status,
+                'status': {'sync_integrity_free': self.sync_integrity_free,
+                           'last_sync_integrity': self.sync_integrity_status,
+                           'sync_agentinfo_free': self.sync_agent_info_free,
+                           'last_sync_agentinfo': self.sync_agent_info_status,
+                           'sync_extravalid_free': self.sync_extra_valid_free,
+                           'last_sync_agentgroups': self.sync_extra_valid_status,
                            'last_keep_alive': self.last_keepalive}}
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
@@ -191,6 +196,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         elif command == b'get_health':
             cmd, res = self.get_health(json.loads(data))
             return cmd, json.dumps(res).encode()
+        elif command == b'run_keypoll':
+            cmd, res = self.send_key_polling(json.loads(data))
+            return cmd, json.dumps(res).encode()
         else:
             return super().process_request(command, data)
 
@@ -208,6 +216,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # create an event to wait for the response
         self.server.pending_api_requests[request_id] = {'Event': asyncio.Event(), 'Response': ''}
 
+        result = ''
         if command == b'dapi_forward':
             client, request = data.split(b' ', 1)
             client = client.decode()
@@ -215,7 +224,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 for worker in self.server.clients.values():
                     result = (await worker.send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
             elif client in self.server.clients:
-                result = (await self.server.clients[client].send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
+                result = (await self.server.clients[client].send_request(b'dapi',
+                                                                         request_id.encode() + b' ' + request)).decode()
             else:
                 raise WazuhException(3022, client)
         else:
@@ -228,7 +238,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 try:
                     timeout = None if wait_for_complete \
                                    else self.cluster_items['intervals']['communication']['timeout_api_request']
-                    await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
+                    await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(),
+                                           timeout=timeout)
                     request_result = self.server.pending_api_requests[request_id]['Response']
                 except asyncio.TimeoutError:
                     request_result = json.dumps({'error': 3000, 'message': 'Timeout exceeded'})
@@ -318,6 +329,14 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         :return: a JSON object containing all nodes information
         """
         return b'ok', self.server.get_connected_nodes(**arguments)
+
+    def send_key_polling(self, message: Dict) -> Tuple[bytes, Dict]:
+        """
+        Processes send request.
+        :param arguments: Arguments to use in get_connected_nodes function (filter, sort, etc)
+        :return: a JSON object containing all nodes information
+        """
+        return b'ok', self.server.send_key_polling(**message)
 
     def get_health(self, filter_nodes: Dict) -> Tuple[bytes, Dict]:
         """
@@ -497,7 +516,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 result = await self.send_request(command=b'sync_m_c_e', data=task_name + b' ' + b'Error')
             else:
                 result = await self.send_request(command=b'sync_m_c_e',
-                                                 data=task_name + b' ' + compressed_data.replace(common.ossec_path, '').encode())
+                                                 data=task_name + b' ' + compressed_data.replace(common.ossec_path, '')
+                                                 .encode())
 
             if result.startswith(b'Error'):
                 self.logger.error(result.decode())
@@ -544,7 +564,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                                                       decompressed_files_path,
                                                                                       data['merge_name']):
                         full_unmerged_name = os.path.join(common.ossec_path, file_path)
-                        tmp_unmerged_path = os.path.join(common.ossec_path, 'queue/cluster', self.name, os.path.basename(file_path))
+                        tmp_unmerged_path = os.path.join(common.ossec_path, 'queue/cluster', self.name,
+                                                         os.path.basename(file_path))
                         try:
                             if is_agent_info:
                                 agent_name_re = re.match(r'(^.+)-(.+)$', os.path.basename(file_path))
@@ -554,7 +575,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                         if n_errors['warnings'].get(data['cluster_item_key']) is None \
                                         else n_errors['warnings'][data['cluster_item_key']] + 1
 
-                                    self.logger.debug2("Received status of an non-existent agent '{}'".format(agent_name))
+                                    self.logger.debug2("Received status of an non-existent agent '{}'"
+                                                       .format(agent_name))
                                     continue
                             else:
                                 agent_id = os.path.basename(file_path)
@@ -742,7 +764,8 @@ class Master(server.AbstractServer):
 
         # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
-            workers_info[node_name]["info"]["n_active_agents"] = Agent.get_agents_overview(filters={'status': 'Active', 'node_name': node_name})['totalItems']
+            workers_info[node_name]["info"]["n_active_agents"] = \
+                Agent.get_agents_overview(filters={'status': 'Active', 'node_name': node_name})['totalItems']
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(
                     datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']))
