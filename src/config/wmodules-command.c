@@ -49,6 +49,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
     command->md5_hash = NULL;
     command->sha1_hash = NULL;
     command->sha256_hash = NULL;
+    command->full_command = NULL;
     module->context = &WM_COMMAND_CONTEXT;
     module->data = command;
 

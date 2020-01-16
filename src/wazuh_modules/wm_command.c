@@ -66,8 +66,12 @@ void * wm_command_main(wm_command_t * command) {
         }
 
         // Modify command with full path.
-        os_malloc(strlen(full_path) + strlen(command->command) - strlen(binary) + 1, command->full_command);
+        if (!command->full_command) {
+            os_malloc(strlen(full_path) + strlen(command->command) - strlen(binary) + 1, command->full_command);
+        }
         snprintf(command->full_command, strlen(full_path) + strlen(command->command) - strlen(binary) + 1, "%s %s", full_path, command->command + strlen(binary) + 1);
+        free(argv);
+
 
         if (command->md5_hash && command->md5_hash[0]) {
             validation = wm_validate_command(full_path, command->md5_hash, MD5SUM);
@@ -210,6 +214,7 @@ void * wm_command_main(wm_command_t * command) {
         mtdebug1(WM_COMMAND_LOGTAG, "Command '%s' finished.", command->tag);
     } while (FOREVER());
 
+    free(extag);
     return NULL;
 }
 
