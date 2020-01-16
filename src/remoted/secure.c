@@ -449,7 +449,7 @@ int key_request_connect() {
 #ifndef WIN32
     if(logr.key_polling_enabled == true){
         if(logr.mode == KEYPOLL_MODE_MASTER)
-            return OS_ConnectUnixDomain(WM_KEY_REQUEST_CLUSTER_SOCK, SOCK_STREAM, OS_MAXSTR); //SOCK_STREAM (caso cluster)
+            return OS_ConnectUnixDomain(WM_KEY_REQUEST_CLUSTER_SOCK, SOCK_STREAM, OS_MAXSTR);
         else
             return OS_ConnectUnixDomain(WM_KEY_REQUEST_SOCK, SOCK_DGRAM, OS_MAXSTR);
     }
@@ -470,9 +470,9 @@ static int send_key_request(int socket,const char *msg) {
             strcpy(payload, message);
             strcat(payload, msg);
             strcat(payload,"\"}");
-            return 1;//OS_SendSecureTCPCluster(socket, run_keypoll, payload,strlen(payload));
-
+            int rc = OS_SendSecureTCPCluster(socket, "run_keypoll", payload, strlen(payload));
             os_free(payload);
+            return rc;
         }
         else
             return OS_SendUnix(socket,msg,strlen(msg));
@@ -519,7 +519,7 @@ void * w_key_request_thread(__attribute__((unused)) void * args) {
     char * msg = NULL;
     int socket = -1;
 
-    while(1) {
+    while (1) {
         if (socket < 0) {
             socket = key_request_reconnect();
         }
