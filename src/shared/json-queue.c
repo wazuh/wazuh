@@ -311,14 +311,18 @@ alert_data *GetAlertJSONData(file_queue *fileq) {
 
     /* Full log */
     full_log = cJSON_GetObjectItem(al_json, "full_log");
-    
+
     os_realloc(al_data->log, 2 * sizeof(char *), al_data->log);
 
     if (full_log) {
         os_strdup(full_log->valuestring, al_data->log[0]);
     }
     else {
-        os_strdup(cJSON_PrintUnformatted(al_json), al_data->log[0]);
+        char *full_log_json = cJSON_PrintUnformatted(al_json);
+
+        os_strdup(full_log_json, al_data->log[0]);
+
+        os_free(full_log_json);
     }
 
     /*
