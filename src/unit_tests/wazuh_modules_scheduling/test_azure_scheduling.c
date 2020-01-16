@@ -173,13 +173,154 @@ void test_fake_tag() {
     wmodule_cleanup(module);
 }
 
+void test_read_scheduling_monthday_configuration() {
+    const char *string = 
+        "<disabled>no</disabled>\n"
+        "<time>00:01</time>\n"
+        "<day>4</day>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<log_analytics>\n"
+        "    <application_id>8b7...c14</application_id>\n"
+        "    <application_key>w22...91x</application_key>\n"
+        "    <tenantdomain>wazuh.onmicrosoft.com</tenantdomain>\n"
+        "    <request>\n"
+        "        <tag>azure-activity</tag>\n"
+        "        <query>AzureActivity | where SubscriptionId == 2d7...61d </query>\n"
+        "        <workspace>d6b...efa</workspace>\n"
+        "        <time_offset>36h</time_offset>\n"
+        "    </request>\n"
+        "</log_analytics>\n"
+    ;
+    wmodule *module = calloc(1, sizeof(wmodule));;
+    OS_XML xml;
+    XML_NODE nodes = string_to_xml_node(string, &xml);
+    assert_int_equal(wm_azure_read(&xml, nodes, module), 0);
+    wm_azure_t *module_data = (wm_azure_t*)module->data;
+    assert_int_equal(module_data->scan_config.scan_day, 4);
+    assert_int_equal(module_data->scan_config.interval, 1);
+    assert_int_equal(module_data->scan_config.month_interval, true);
+    assert_int_equal(module_data->scan_config.scan_wday, -1);
+    assert_string_equal(module_data->scan_config.scan_time, "00:01");
+    OS_ClearNode(nodes);
+    OS_ClearXML(&xml);
+    free(module_data->scan_config.scan_time);
+    wmodule_cleanup(module);
+}
+
+void test_read_scheduling_weekday_configuration() {
+    const char *string = 
+        "<disabled>no</disabled>\n"
+        "<time>00:01</time>\n"
+        "<wday>Friday</wday>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<log_analytics>\n"
+        "    <application_id>8b7...c14</application_id>\n"
+        "    <application_key>w22...91x</application_key>\n"
+        "    <tenantdomain>wazuh.onmicrosoft.com</tenantdomain>\n"
+        "    <request>\n"
+        "        <tag>azure-activity</tag>\n"
+        "        <query>AzureActivity | where SubscriptionId == 2d7...61d </query>\n"
+        "        <workspace>d6b...efa</workspace>\n"
+        "        <time_offset>36h</time_offset>\n"
+        "    </request>\n"
+        "</log_analytics>\n"
+    ;
+    wmodule *module = calloc(1, sizeof(wmodule));;
+    OS_XML xml;
+    XML_NODE nodes = string_to_xml_node(string, &xml);
+    assert_int_equal(wm_azure_read(&xml, nodes, module), 0);
+    wm_azure_t *module_data = (wm_azure_t*)module->data;
+    assert_int_equal(module_data->scan_config.scan_day, 0);
+    assert_int_equal(module_data->scan_config.interval, 604800);
+    assert_int_equal(module_data->scan_config.month_interval, false);
+    assert_int_equal(module_data->scan_config.scan_wday, 5);
+    assert_string_equal(module_data->scan_config.scan_time, "00:01");
+    OS_ClearNode(nodes);
+    OS_ClearXML(&xml);
+    free(module_data->scan_config.scan_time);
+    wmodule_cleanup(module);
+}
+
+void test_read_scheduling_daytime_configuration() {
+    const char *string = 
+        "<disabled>no</disabled>\n"
+        "<time>00:10</time>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<log_analytics>\n"
+        "    <application_id>8b7...c14</application_id>\n"
+        "    <application_key>w22...91x</application_key>\n"
+        "    <tenantdomain>wazuh.onmicrosoft.com</tenantdomain>\n"
+        "    <request>\n"
+        "        <tag>azure-activity</tag>\n"
+        "        <query>AzureActivity | where SubscriptionId == 2d7...61d </query>\n"
+        "        <workspace>d6b...efa</workspace>\n"
+        "        <time_offset>36h</time_offset>\n"
+        "    </request>\n"
+        "</log_analytics>\n"
+    ;
+    wmodule *module = calloc(1, sizeof(wmodule));;
+    OS_XML xml;
+    XML_NODE nodes = string_to_xml_node(string, &xml);
+    assert_int_equal(wm_azure_read(&xml, nodes, module), 0);
+    wm_azure_t *module_data = (wm_azure_t*)module->data;
+    assert_int_equal(module_data->scan_config.scan_day, 0);
+    assert_int_equal(module_data->scan_config.interval, WM_DEF_INTERVAL);
+    assert_int_equal(module_data->scan_config.month_interval, false);
+    assert_int_equal(module_data->scan_config.scan_wday, -1);
+    assert_string_equal(module_data->scan_config.scan_time, "00:10");
+    OS_ClearNode(nodes);
+    OS_ClearXML(&xml);
+    free(module_data->scan_config.scan_time);
+    wmodule_cleanup(module);
+}
+
+void test_read_scheduling_interval_configuration() {
+    const char *string = 
+        "<disabled>no</disabled>\n"
+        "<interval>3h</interval>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<log_analytics>\n"
+        "    <application_id>8b7...c14</application_id>\n"
+        "    <application_key>w22...91x</application_key>\n"
+        "    <tenantdomain>wazuh.onmicrosoft.com</tenantdomain>\n"
+        "    <request>\n"
+        "        <tag>azure-activity</tag>\n"
+        "        <query>AzureActivity | where SubscriptionId == 2d7...61d </query>\n"
+        "        <workspace>d6b...efa</workspace>\n"
+        "        <time_offset>36h</time_offset>\n"
+        "    </request>\n"
+        "</log_analytics>\n"
+    ;
+    wmodule *module = calloc(1, sizeof(wmodule));;
+    OS_XML xml;
+    XML_NODE nodes = string_to_xml_node(string, &xml);
+    assert_int_equal(wm_azure_read(&xml, nodes, module), 0);
+    wm_azure_t *module_data = (wm_azure_t*)module->data;
+    assert_int_equal(module_data->scan_config.scan_day, 0);
+    assert_int_equal(module_data->scan_config.interval, 3600*3);
+    assert_int_equal(module_data->scan_config.month_interval, false);
+    assert_int_equal(module_data->scan_config.scan_wday, -1);
+    OS_ClearNode(nodes);
+    OS_ClearXML(&xml);
+    wmodule_cleanup(module);
+}
+
 int main(void) {
-    const struct CMUnitTest tests[] = {
+    const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test(test_interval_execution),
         cmocka_unit_test(test_day_of_month),
         cmocka_unit_test(test_day_of_week),
-        cmocka_unit_test(test_time_of_day),
-        cmocka_unit_test(test_fake_tag)
+        cmocka_unit_test(test_time_of_day)
     };
-    return cmocka_run_group_tests(tests, setup_module, teardown_module);
+    const struct CMUnitTest tests_without_startup[] = {
+        cmocka_unit_test(test_fake_tag),
+        cmocka_unit_test(test_read_scheduling_monthday_configuration),
+        cmocka_unit_test(test_read_scheduling_weekday_configuration),
+        cmocka_unit_test(test_read_scheduling_daytime_configuration),
+        cmocka_unit_test(test_read_scheduling_interval_configuration)
+    };
+    int result;
+    result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
+    result &= cmocka_run_group_tests(tests_without_startup, NULL, NULL);
+    return result;
 }

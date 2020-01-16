@@ -268,10 +268,8 @@ void test_read_scheduling_interval_configuration() {
     assert_int_equal(module_data->scan_config.interval, 600);
     assert_int_equal(module_data->scan_config.month_interval, false);
     assert_int_equal(module_data->scan_config.scan_wday, -1);
-    assert_string_equal(module_data->scan_config.scan_time, "00:00");
     OS_ClearNode(nodes);
     OS_ClearXML(&xml);
-    free(module_data->scan_config.scan_time);
     wmodule_cleanup(module);
 }
 
@@ -287,6 +285,7 @@ int main(void) {
         cmocka_unit_test(test_read_scheduling_monthday_configuration),
         cmocka_unit_test(test_read_scheduling_weekday_configuration),
         cmocka_unit_test(test_read_scheduling_daytime_configuration),
+        cmocka_unit_test(test_read_scheduling_interval_configuration)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
