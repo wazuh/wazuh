@@ -311,19 +311,23 @@ alert_data *GetAlertJSONData(file_queue *fileq) {
 
     /* Full log */
     full_log = cJSON_GetObjectItem(al_json, "full_log");
+    
+    os_realloc(al_data->log, 2 * sizeof(char *), al_data->log);
 
     if (full_log) {
-        os_realloc(al_data->log, 2 * sizeof(char *), al_data->log);
         os_strdup(full_log->valuestring, al_data->log[0]);
-
-        /*
-            Because of the format of the full_log field in the json file, the entire log is stored in a single line,
-            meanwhile, in the log file, the full log is stored in several lines.
-            When freeing memory of an alert we try to free several lines, but in this case there is only one, this is
-            why the second element of this array is set to NULL, to prevent a segmentation fault.
-        */
-        al_data->log[1] = NULL;
     }
+    else {
+        os_strdup(cJSON_PrintUnformatted(al_json), al_data->log[0]);
+    }
+
+    /*
+        Because of the format of the full_log field in the json file, the entire log is stored in a single line,
+        meanwhile, in the log file, the full log is stored in several lines.
+        When freeing memory of an alert we try to free several lines, but in this case there is only one, this is
+        why the second element of this array is set to NULL, to prevent a segmentation fault.
+    */
+    al_data->log[1] = NULL;
 
     /* Free memory */
     cJSON_Delete(al_json);
