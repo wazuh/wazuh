@@ -106,7 +106,7 @@ class AbstractWazuhResult(collections.MutableMapping):
         :param key: name of the key being merged
         :return: dict
         """
-        raise self.__class__(self_field) | self.__class__(other_field)
+        return self.__class__(self_field) | self.__class__(other_field)
 
     def _merge_list(self, self_field, other_field, key=None):
         """Merges two list objects when merging two results by
@@ -256,7 +256,6 @@ class WazuhResult(AbstractWazuhResult):
         :return: instance of cls
         """
         result = cls(obj['result'], str_priority=obj['str_priority'])
-        result.update(obj['result'])
         return result
 
     def render(self):
