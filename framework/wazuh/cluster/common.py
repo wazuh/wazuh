@@ -1,5 +1,7 @@
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 import base64
 import hashlib
@@ -8,8 +10,10 @@ import os
 import random
 import struct
 import traceback
-import cryptography.fernet
 from typing import Tuple, Dict, Callable
+
+import cryptography.fernet
+
 from wazuh import exception, common
 from wazuh.cluster import cluster
 
@@ -79,11 +83,7 @@ class ReceiveFileTask:
     """
 
     def __init__(self, wazuh_common, logger):
-        """
-        Class constructor
-
-        :param coro: asyncio coroutine to run in the task
-        """
+        """ Class constructor """
         self.wazuh_common = wazuh_common
         self.coro = self.set_up_coro()
         self.name = str(random.randint(0, 2**32))
@@ -150,8 +150,6 @@ class Handler(asyncio.Protocol):
         self.in_str = {}
         # maximum message length to send in a single request
         self.request_chunk = 5242880
-        # stores message to be sent
-        self.out_msg = bytearray(self.header_len + self.request_chunk*2)
         # object use to encrypt and decrypt requests
         self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
         # logging.Logger object used to write logs
@@ -195,10 +193,11 @@ class Handler(asyncio.Protocol):
         # adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
         encrypted_data = self.my_fernet.encrypt(data) if self.my_fernet is not None else data
-        self.out_msg[:self.header_len] = struct.pack(self.header_format, counter, len(encrypted_data), command)
-        self.out_msg[self.header_len:self.header_len + len(encrypted_data)] = encrypted_data
+        out_msg = bytearray(self.header_len + len(encrypted_data))
+        out_msg[:self.header_len] = struct.pack(self.header_format, counter, len(encrypted_data), command)
+        out_msg[self.header_len:self.header_len + len(encrypted_data)] = encrypted_data
 
-        return self.out_msg[:self.header_len + len(encrypted_data)]
+        return out_msg[:self.header_len + len(encrypted_data)]
 
     def msg_parse(self) -> bool:
         """
@@ -228,8 +227,8 @@ class Handler(asyncio.Protocol):
                 # the message was correctly received
                 # decrypt received message
                 try:
-                    decrypted_payload = self.my_fernet.decrypt(bytes(self.in_msg.payload)) if self.my_fernet is not None \
-                                                                                           else bytes(self.in_msg.payload)
+                    decrypted_payload = self.my_fernet.decrypt(bytes(self.in_msg.payload)) \
+                        if self.my_fernet is not None else bytes(self.in_msg.payload)
                 except cryptography.fernet.InvalidToken:
                     self.logger.error("Could not decrypt message. Check key is correct.")
                     decrypted_payload = b'Could not decrypt message. Check key is correct.'
@@ -264,12 +263,15 @@ class Handler(asyncio.Protocol):
         except Exception as e:
             return "Error sending request: {}".format(e).encode()
         try:
-            response_data = await asyncio.wait_for(response.read(), timeout=self.cluster_items['intervals']['communication']['timeout_cluster_request'])
+            response_data = await asyncio.wait_for(
+                response.read(), timeout=self.cluster_items['intervals']['communication']['timeout_cluster_request'])
+            del self.box[msg_counter]
         except asyncio.TimeoutError:
+            self.box[msg_counter] = None
             return b'Error sending request: timeout expired.'
         return response_data
 
-    async def send_file(self, filename: str, node_name: str = None) -> bytes:
+    async def send_file(self, filename: str) -> bytes:
         """
         Sends a file to peer.
 
@@ -307,7 +309,6 @@ class Handler(asyncio.Protocol):
         Sends a large string to peer.
 
         :param my_str: String to send.
-        :param chunk: number of elements each slide will have
         :return: whether sending was successful or not.
         """
         try:
@@ -318,8 +319,8 @@ class Handler(asyncio.Protocol):
 
             local_req_chunk = self.request_chunk - len(task_id) - 1
             for c in range(0, total, local_req_chunk):
-                response = await self.send_request(command=b'str_upd', data=task_id + b' ' +
-                                                                            my_str[c:c + local_req_chunk])
+                response = await self.send_request(command=b'str_upd',
+                                                   data=task_id + b' ' + my_str[c:c + local_req_chunk])
                 if response.startswith(b"Error"):
                     return response
 
@@ -403,7 +404,7 @@ class Handler(asyncio.Protocol):
         :return: message to send.
         """
         if command == b'echo':
-            return self.echo(data)
+            return Handler.echo(data)
         elif command == b'new_file':
             return self.receive_file(data)
         elif command == b'new_str':
@@ -415,7 +416,7 @@ class Handler(asyncio.Protocol):
         elif command == b"file_end":
             return self.end_file(data)
         else:
-            return self.process_unknown_cmd(command)
+            return Handler.process_unknown_cmd(command)
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
         """
@@ -432,7 +433,8 @@ class Handler(asyncio.Protocol):
         else:
             return b"Unkown response command received: " + command
 
-    def echo(self, data: bytes) -> Tuple[bytes, bytes]:
+    @staticmethod
+    def echo(data: bytes) -> Tuple[bytes, bytes]:
         """
         Defines command "echo"
 
@@ -503,7 +505,8 @@ class Handler(asyncio.Protocol):
         # self.logger.debug("Length: {}/{}".format(self.in_str[name].received, self.in_str[name].total))
         return b"ok", b"Chunk received"
 
-    def process_unknown_cmd(self, command: bytes) -> Tuple[bytes, bytes]:
+    @staticmethod
+    def process_unknown_cmd(command: bytes) -> Tuple[bytes, bytes]:
         """
         Defines message when an unknown command is received
 
@@ -544,7 +547,7 @@ class WazuhCommon:
     def get_logger(self, logger_tag: str = '') -> logging.Logger:
         raise NotImplementedError
 
-    def setup_receive_file(self, ReceiveTaskClass: Callable):
+    def setup_receive_file(self, ReceiveTaskClass: callable):
         my_task = ReceiveTaskClass(self, self.get_logger(self.logger_tag))
         self.sync_tasks[my_task.name] = my_task
         return b'ok', str(my_task).encode()
