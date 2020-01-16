@@ -128,5 +128,9 @@ void check_time_of_day(const sched_scan_config *scan_config, struct tm *date_arr
             // Assert that there are following days
             assert_int_equal((date_array[i-1].tm_yday + 1) % 365, date_array[i].tm_yday);
         }
+
+        free(parts[0]);
+        free(parts[1]);
+        free(parts);
     }
 }

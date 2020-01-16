@@ -441,6 +441,8 @@ int get_time_to_day(int wday, const char * hour) {
         }
     }
 
+    free(parts[0]);
+    free(parts[1]);
     free(parts);
 
     return (int)diff;
